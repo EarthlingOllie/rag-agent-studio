@@ -25,6 +25,14 @@ A Member role that can manage Provider Credentials, Members and Organisation set
 **Editor**:
 A Member role that can manage Projects, Documents and Agents.
 
+**Audit Event**:
+An append-only record of who changed what in an Organisation, and when.
+_Avoid_: Activity, history, log
+
+**Archive**:
+To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
+_Avoid_: Disable, soft delete
+
 ## Models
 
 **Provider Credential**:
