@@ -1,0 +1,3 @@
+# One CloudFront distribution serves the Studio, widget and API
+
+Without a domain, ACM can't issue a certificate for the ALB. So a single CloudFront distribution on its default `*.cloudfront.net` hostname terminates TLS and routes by path: `/` to the Studio SPA in S3, `/embed.js` and `/widget/*` to the widget in S3, and `/api/*` to the ALB. The hop from CloudFront to the ALB is plain HTTP, but the ALB accepts traffic only from CloudFront's managed prefix list carrying a secret origin header. Because everything shares one origin, the Studio needs no CORS and no cross-site cookies. A `domain_name` variable adds Route 53 and ACM later without changing this layout.

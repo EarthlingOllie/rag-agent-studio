@@ -77,11 +77,19 @@ An immutable, numbered snapshot of a Draft, created by publishing it. An Agent's
 _Avoid_: Revision, release
 
 **Live Version**:
-The Version currently served to Visitors. Reverting moves it back to an earlier Version.
-_Avoid_: Active, current, production
+The Agent Version currently served to Visitors. Only Agents have one.
+_Avoid_: Active, production
+
+**Current Version**:
+The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones.
+_Avoid_: Live (for Project Instructions), latest
+
+**Live History**:
+The ordered record of an Agent's Live Version changes. Reverting steps back one entry.
+_Avoid_: Changelog, deployments
 
 **Publish**:
-To freeze a Draft into a new Version and make it the Live Version.
+To freeze a Draft into a new Version and make it the Live Version for an Agent, or the Current Version for Project Instructions.
 
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.
@@ -118,6 +126,10 @@ One turn in a Conversation, from either the Visitor or the Agent.
 **Message Feedback**:
 A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Message.
 _Avoid_: Reaction, vote
+
+**Trace**:
+The record of why an Agent Message said what it did: the retrieved Chunks, Guardrail outcomes, model, Version and token use.
+_Avoid_: Debug log, explanation
 
 **Conversation Rating**:
 A Visitor's 1–5 score for a whole Conversation.
