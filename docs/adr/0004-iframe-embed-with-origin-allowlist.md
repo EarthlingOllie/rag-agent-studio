@@ -1,0 +1,3 @@
+# Embed via script-injected iframe, protected by origin allowlist and budgets
+
+The Embed Snippet is a `<script>` tag that injects an iframe served from our domain. We rejected rendering a web component directly in the host page because an iframe isolates styles and scripts both ways, and lets us enforce an Agent's Allowed Origins with `Content-Security-Policy: frame-ancestors`. Visitors are anonymous, so a non-browser client can't be stopped. Abuse is bounded instead by short-lived signed Conversation tokens, per-token and per-IP rate limits, and a per-Agent daily token budget that acts as a circuit breaker.

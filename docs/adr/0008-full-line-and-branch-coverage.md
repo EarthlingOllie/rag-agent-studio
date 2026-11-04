@@ -1,0 +1,3 @@
+# 100% line and branch coverage, enforced in CI
+
+Backend (`pytest --cov-branch --cov-fail-under=100`) and frontend (Vitest v8, all thresholds 100) both fail CI below 100% line *and* branch coverage. Exclusions are limited to a short reviewed list: entrypoint `__main__` blocks, generated API client code and Alembic migrations. Migrations are covered instead by an upgrade/downgrade round-trip test. Model calls and Docling are faked at a single seam each, using Pydantic AI's `TestModel`/`FunctionModel` and a fake converter. Tests against real providers run in a separate marked suite outside the gate. Don't add ad-hoc `pragma: no cover`; write the test or change the design.
