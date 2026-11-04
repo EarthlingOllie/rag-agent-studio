@@ -8,6 +8,13 @@ A studio where Organisations build Agents grounded in a Knowledge Base, inside i
 The tenant. Owns Members, Projects and Provider Credentials.
 _Avoid_: Tenant, account, company
 
+**Theme**:
+An Organisation's visual styling for embedded Agents. An Agent may override its colours and avatar.
+_Avoid_: Branding, skin, styles
+
+**Retention Window**:
+How long an Organisation keeps Message text before it is purged. Aggregate metrics are kept.
+
 **Member**:
 A person who signs in to the Studio and belongs to one or more Organisations.
 _Avoid_: User, admin
@@ -44,6 +51,10 @@ _Avoid_: Corpus, index, vector store
 A file uploaded into a Project's Knowledge Base.
 _Avoid_: File, upload, source
 
+**Tag**:
+A label on Documents that an Agent can use to limit which Documents it retrieves from.
+_Avoid_: Category, folder, label
+
 **Chunk**:
 A retrievable passage of a Document.
 _Avoid_: Segment, passage, node
@@ -62,7 +73,7 @@ _Avoid_: Bot, chatbot, assistant
 The single editable, unpublished configuration of an Agent or of Project Instructions.
 
 **Version**:
-An immutable, numbered snapshot of a Draft, created by publishing it.
+An immutable, numbered snapshot of a Draft, created by publishing it. An Agent's Version pins exactly one Project Instructions Version.
 _Avoid_: Revision, release
 
 **Live Version**:
@@ -78,6 +89,12 @@ The place in the Studio where Members chat with a Draft. Its Conversations are e
 **Embed Snippet**:
 The code an Organisation pastes into its site to show an Agent.
 _Avoid_: Embed link, widget code
+
+**Operational Settings**:
+An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits and Token Budget.
+
+**Token Budget**:
+The maximum tokens an Agent may consume per day before it stops answering Visitors.
 
 **Allowed Origins**:
 The sites permitted to display an Agent through its Embed Snippet.

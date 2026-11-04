@@ -1,0 +1,3 @@
+# AWS runtime: ECS Fargate, RDS, Redis broker, single fck-nat
+
+The platform runs as three ECS Fargate services (`api`; `worker`, which runs Docling and embeddings; and `beat`). They use RDS Postgres with pgvector, ElastiCache Redis as both the Celery broker and the rate-limit store, and S3 for Documents. Locally, RustFS stands in for S3. We chose Redis over SQS because Celery's SQS transport is weaker and Redis is already needed for rate limiting. Private subnets egress through a single `fck-nat` instance rather than a managed NAT gateway, to keep an ephemeral demo environment cheap; a variable switches to a managed NAT. One region, with environment-parameterised root modules (`envs/demo`) over reusable modules.
