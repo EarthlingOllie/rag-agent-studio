@@ -1,6 +1,6 @@
 # Slice specs
 
-One spec per delivery slice in [`docs/plan.md`](../plan.md). Specs use the vocabulary in [`GLOSSARY.md`](../../GLOSSARY.md) and follow the ADRs in [`docs/adr/`](../adr).
+One spec per delivery slice in [`docs/plan.md`](../plan.md), split into tickets under [`docs/tickets/`](../tickets/README.md). Specs use the vocabulary in [`GLOSSARY.md`](../../GLOSSARY.md) and follow the ADRs in [`docs/adr/`](../adr).
 
 | # | Spec |
 |---|---|
