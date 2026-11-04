@@ -181,7 +181,7 @@ These were not explicitly settled during the design interview. They are the defa
 
 ## 7. Delivery slices
 
-Each slice is a vertical increment. It merges only with green CI, 100% coverage, glossary and ADRs updated, and a short demo note in the PR.
+Each slice has a detailed spec in [`docs/specs/`](./specs/README.md). Each slice is a vertical increment. It merges only with green CI, 100% coverage, glossary and ADRs updated, and a short demo note in the PR.
 
 ### Slice 1: Skeleton, CI, auth and tenancy
 - Monorepo scaffolding, `docker compose`, Makefile, and settings via `pydantic-settings`.
