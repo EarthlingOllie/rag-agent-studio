@@ -567,6 +567,51 @@ export interface paths {
         patch: operations["changeMemberRole"];
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Theme
+         * @description The Organisation's Theme; the default until an Owner saves one. Any Member can read it.
+         */
+        get: operations["getTheme"];
+        /**
+         * Save Theme
+         * @description Replaces the Theme. It applies at once. Colours that fail contrast are saved: the
+         *     Studio warns about them but never blocks.
+         */
+        put: operations["saveTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/themes/fonts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Fonts
+         * @description The Google Fonts a Theme may use, the default first.
+         */
+        get: operations["listThemeFonts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -654,6 +699,22 @@ export interface components {
             /** Code */
             code: string;
         };
+        /**
+         * ColourToken
+         * @description A colour token's light-mode value and its dark-mode value.
+         */
+        ColourToken: {
+            /**
+             * Dark
+             * @example #4f46e5
+             */
+            dark: string;
+            /**
+             * Light
+             * @example #4f46e5
+             */
+            light: string;
+        };
         /** CompletePasswordResetRequest */
         CompletePasswordResetRequest: {
             /** Password */
@@ -692,6 +753,21 @@ export interface components {
         ErrorResponse: {
             /** Detail */
             detail: string;
+        };
+        /**
+         * Font
+         * @enum {string}
+         */
+        Font: "Inter" | "Roboto" | "Open Sans" | "Lato" | "Source Sans 3" | "Nunito" | "Work Sans" | "IBM Plex Sans" | "Merriweather" | "Lora" | "Source Serif 4" | "JetBrains Mono";
+        /**
+         * FontCategory
+         * @enum {string}
+         */
+        FontCategory: "sans-serif" | "serif" | "monospace";
+        /** FontOut */
+        FontOut: {
+            category: components["schemas"]["FontCategory"];
+            family: components["schemas"]["Font"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -795,6 +871,16 @@ export interface components {
             /** Link */
             link: string;
         };
+        /**
+         * LauncherPosition
+         * @enum {string}
+         */
+        LauncherPosition: "bottom-right" | "bottom-left";
+        /**
+         * LauncherType
+         * @enum {string}
+         */
+        LauncherType: "bubble" | "inline";
         /** MemberOut */
         MemberOut: {
             /** Email */
@@ -928,6 +1014,54 @@ export interface components {
              * Format: uuid
              */
             organisation_id: string;
+        };
+        /**
+         * ThemeColours
+         * @description The colour tokens. ``on_*`` colours are for text and icons on the colour they name.
+         */
+        ThemeColours: {
+            accent: components["schemas"]["ColourToken"];
+            muted: components["schemas"]["ColourToken"];
+            on_primary: components["schemas"]["ColourToken"];
+            on_surface: components["schemas"]["ColourToken"];
+            primary: components["schemas"]["ColourToken"];
+            surface: components["schemas"]["ColourToken"];
+        };
+        /**
+         * ThemeMode
+         * @enum {string}
+         */
+        ThemeMode: "light" | "dark" | "auto";
+        /** ThemeOut */
+        ThemeOut: {
+            colours: components["schemas"]["ThemeColours"];
+            font: components["schemas"]["Font"];
+            launcher_position: components["schemas"]["LauncherPosition"];
+            launcher_type: components["schemas"]["LauncherType"];
+            mode: components["schemas"]["ThemeMode"];
+            /**
+             * Radius
+             * @description Corner radius in pixels.
+             */
+            radius: number;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /**
+         * ThemeSettings
+         * @description Everything an Owner sets on the Theme.
+         */
+        ThemeSettings: {
+            colours: components["schemas"]["ThemeColours"];
+            font: components["schemas"]["Font"];
+            launcher_position: components["schemas"]["LauncherPosition"];
+            launcher_type: components["schemas"]["LauncherType"];
+            mode: components["schemas"]["ThemeMode"];
+            /**
+             * Radius
+             * @description Corner radius in pixels.
+             */
+            radius: number;
         };
         /** ThrottledResponse */
         ThrottledResponse: {
@@ -2406,6 +2540,119 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saveTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThemeSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listThemeFonts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FontOut"][];
                 };
             };
         };

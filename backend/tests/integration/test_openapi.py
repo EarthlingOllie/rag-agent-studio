@@ -45,6 +45,9 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "changeMemberRole": ("/api/organisations/{organisation_id}/members/{member_id}", "patch"),
         "removeMember": ("/api/organisations/{organisation_id}/members/{member_id}", "delete"),
         "leaveOrganisation": ("/api/organisations/{organisation_id}/leave", "post"),
+        "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
+        "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
+        "listThemeFonts": ("/api/themes/fonts", "get"),
     }
 
 

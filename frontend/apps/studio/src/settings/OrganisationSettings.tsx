@@ -6,6 +6,7 @@ import { type Session, useMe } from "../auth/session";
 import { AuditPage } from "./AuditPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
 import { MembersPage } from "./MembersPage";
+import { ThemePage } from "./ThemePage";
 
 const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
 
@@ -83,7 +84,10 @@ function LeaveOrganisation({ organisationId, organisationName }: { organisationI
   );
 }
 
-/** Organisation settings, with a tab per area. The Members and Audit tabs are shown to Owners only. */
+/**
+ * Organisation settings, with a tab per area. Every Member sees General and Theme (Editors view
+ * the Theme without editing it); the Members and Audit tabs are shown to Owners only.
+ */
 export function OrganisationSettingsLayout() {
   const { organisationId, isOwner } = useOrganisation();
   return (
@@ -94,6 +98,9 @@ export function OrganisationSettingsLayout() {
       <nav aria-label="Organisation settings" className="mt-4 flex gap-2 border-b border-slate-200 pb-2">
         <Link to="/organisations/$organisationId/settings" params={{ organisationId }} activeOptions={{ exact: true }} className={TAB}>
           General
+        </Link>
+        <Link to="/organisations/$organisationId/settings/theme" params={{ organisationId }} className={TAB}>
+          Theme
         </Link>
         {isOwner && (
           <>
@@ -126,4 +133,9 @@ export function AuditSettingsPage() {
 export function MembersSettingsPage() {
   const { organisationId, memberId, isOwner } = useOrganisation();
   return <MembersPage organisationId={organisationId} memberId={memberId} isOwner={isOwner} />;
+}
+
+export function ThemeSettingsPage() {
+  const { organisationId, isOwner } = useOrganisation();
+  return <ThemePage organisationId={organisationId} isOwner={isOwner} />;
 }

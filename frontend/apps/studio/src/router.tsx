@@ -18,6 +18,7 @@ import {
   GeneralSettingsPage,
   MembersSettingsPage,
   OrganisationSettingsLayout,
+  ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
 import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
@@ -91,6 +92,7 @@ const membersSettingsRoute = createRoute({
   path: "/members",
   component: MembersSettingsPage,
 });
+const themeSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/theme", component: ThemeSettingsPage });
 const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
 const securityRoute = createRoute({
@@ -111,7 +113,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     organisationRoute.addChildren([
       projectsRoute,
-      settingsRoute.addChildren([generalSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
+      settingsRoute.addChildren([generalSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,
     ]),
