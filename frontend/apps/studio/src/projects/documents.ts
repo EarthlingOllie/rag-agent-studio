@@ -77,8 +77,9 @@ function putFile(url: string, file: File, contentType: string, onProgress: (perc
     const request = new XMLHttpRequest();
     request.open("PUT", url);
     request.setRequestHeader("Content-Type", contentType);
+    // Measured against the file's own size, which is known even when the event's total isn't.
     request.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+      onProgress(Math.min(100, Math.round((100 * event.loaded) / Math.max(file.size, 1))));
     });
     request.addEventListener("load", () => {
       resolve(request.status >= 200 && request.status < 300);

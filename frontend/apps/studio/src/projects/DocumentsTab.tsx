@@ -49,7 +49,8 @@ function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
   }
 
   function onChange(event: ChangeEvent<HTMLInputElement>) {
-    onFiles([...(event.target.files ?? [])]);
+    // A file input always has a file list; it is only null on other input types.
+    onFiles([...(event.target.files as FileList)]);
     event.target.value = "";
   }
 
