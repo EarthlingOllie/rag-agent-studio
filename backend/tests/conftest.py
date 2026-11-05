@@ -10,7 +10,6 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -23,6 +22,7 @@ from fastapi import FastAPI
 from app.core.clock import Clock
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
+from tests.fakes.clock import ControllableClock
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
@@ -68,7 +68,19 @@ def settings_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 async def app(settings_env: pytest.MonkeyPatch, database_schema: None) -> AsyncIterator[FastAPI]:
     application = create_app()
     async with LifespanManager(application):
+        # Sign-in failure counters live in the shared test Redis; each test starts without any.
+        redis = application.state.redis
+        async for key in redis.scan_iter(match="sign-in-failures:*"):
+            await redis.delete(key)
         yield application
+
+
+@pytest.fixture
+def clock(app: FastAPI) -> ControllableClock:
+    """Replaces the app's system clock with one the test moves forward by hand."""
+    controllable = ControllableClock()
+    app.state.clock = controllable
+    return controllable
 
 
 ClientFactory = Callable[[], Awaitable[httpx.AsyncClient]]
@@ -157,27 +169,6 @@ def outbox(app: FastAPI) -> OutboxMailer:
     mailer = app.state.mailer
     assert isinstance(mailer, OutboxMailer)
     return mailer
-
-
-class ControllableClock:
-    """A clock that stands still until a test moves it."""
-
-    def __init__(self) -> None:
-        self._now = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
-
-    def now(self) -> datetime:
-        return self._now
-
-    def advance(self, by: timedelta) -> None:
-        self._now += by
-
-
-@pytest.fixture
-def clock(app: FastAPI) -> ControllableClock:
-    """Replaces the app's system clock with one the test controls."""
-    controllable = ControllableClock()
-    app.state.clock = controllable
-    return controllable
 
 
 def _clock_is_a_clock(clock: ControllableClock) -> Clock:

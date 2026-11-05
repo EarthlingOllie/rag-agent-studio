@@ -39,6 +39,10 @@ _Avoid_: Invitation code, join request
 The link that accepts an Invite. It works once and expires; a person without an account creates one from it and joins in one step, and an existing Member just gains the Membership. An Owner can get a new link for a pending Invite, which stops the old one working.
 _Avoid_: Join link, magic link
 
+**Lockout**:
+A temporary block on signing in, after too many failed attempts for one account or from one IP address. Before it, each further attempt must wait a little longer. A Lockout of a Member's account is recorded as an Audit Event in each of their Organisations.
+_Avoid_: Ban, suspension, block
+
 **Owner**:
 A Member role that can manage Provider Credentials, Members and Organisation settings, as well as everything an Editor can.
 

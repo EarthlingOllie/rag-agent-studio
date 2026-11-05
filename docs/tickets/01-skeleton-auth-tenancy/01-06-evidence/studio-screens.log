@@ -1,0 +1,8 @@
+$ node shot0106.mjs <locked demo email> <org> <owner session> (Studio at http://localhost:35106, real stack)
+locked account, right password: Too many failed sign-in attempts. Sign-in is locked for 14 minutes. Try again after that.
+unknown email attempt 1: Email or password is incorrect.
+unknown email attempt 2: Email or password is incorrect.
+unknown email attempt 3: Email or password is incorrect.
+unknown email attempt 4: Too many failed sign-in attempts. Wait 1 second, then try again.
+Audit tab shows member.locked_out: true
+exit=0

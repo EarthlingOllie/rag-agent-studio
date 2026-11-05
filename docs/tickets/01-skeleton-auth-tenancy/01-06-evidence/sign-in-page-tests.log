@@ -1,0 +1,17 @@
+# fresh clone at 655bfaa
+$ pnpm exec vitest run apps/studio/src/auth/SignInPage.test.tsx --reporter=verbose
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > signing in opens the Member's Organisation 408ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > says the email or password is incorrect without saying which 146ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > explains a lockout and how long it lasts 151ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > rounds a lockout's remaining time up to whole minutes 139ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > says a lockout ending within the minute lasts 1 minute 127ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > asks the Member to wait out a short delay 128ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > says 1 second for a one-second delay 169ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > reports a 429 without the throttling details as an unexpected failure 154ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > reports a 429 with other JSON as an unexpected failure 151ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > reports an unreachable API as an unexpected failure 135ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > reports an unexpected failure 125ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > shows progress while signing in 143ms
+ ✓ apps/studio/src/auth/SignInPage.test.tsx > links to sign-up and to the system status page 57ms
+      Tests  13 passed (13)
+exit=0

@@ -7,7 +7,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": process.env.API_PROXY_TARGET ?? "http://localhost:8000",
+      // xfwd passes the browser's IP on (X-Forwarded-For); the API counts failed sign-ins per IP.
+      "/api": { target: process.env.API_PROXY_TARGET ?? "http://localhost:8000", xfwd: true },
     },
   },
 });
