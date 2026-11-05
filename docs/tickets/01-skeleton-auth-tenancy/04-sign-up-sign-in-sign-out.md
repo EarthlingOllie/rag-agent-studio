@@ -8,7 +8,7 @@
 - [01-01: Walking skeleton](01-walking-skeleton.md)
 - [01-02: Remaining CI gates and Playwright harness](02-ci-gates-playwright-harness.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Sign-up creates the Organisation, the Member and an Owner membership in one transaction
 - [ ] Passwords are hashed with argon2id; sessions are opaque, stored in Redis and held in an httpOnly, Secure, SameSite=Lax cookie that is rotated on sign-in
