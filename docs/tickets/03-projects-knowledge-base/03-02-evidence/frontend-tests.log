@@ -1,0 +1,31 @@
+$ make test-frontend (fresh clone at 97718d3; second attempt, the first had one timing failure in AcceptInvitePage under load average 17)
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test <scratchpad>/clean0302/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 <scratchpad>/clean0302/frontend
+      Coverage enabled with v8
+
+
+ Test Files  25 passed (25)
+      Tests  251 passed (251)
+   Start at  11:19:50
+   Duration  54.02s (tests 61%, environment 22%, setup 8%, import 6%, worker 2%, transform 1%)
+
+    Isolate  25 workers spawned · ~1.50s startup each (spawn + environment, per file)
+             at least ~10.98s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+40 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 1226/1226 )
+Branches     : 100% ( 688/688 )
+Functions    : 100% ( 485/485 )
+Lines        : 100% ( 1075/1075 )
+================================================================================
+exit=0

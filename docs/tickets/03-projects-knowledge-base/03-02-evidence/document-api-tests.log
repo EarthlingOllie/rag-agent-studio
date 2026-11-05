@@ -1,0 +1,61 @@
+$ uv run pytest -v --no-cov tests/integration/test_documents.py tests/integration/test_chunk_storage.py tests/integration/test_object_store.py tests/unit/test_chunking.py tests/unit/test_docling_converter.py tests/unit/test_ingestion_ports.py tests/integration/test_worker_entrypoint.py tests/integration/test_openapi.py tests/integration/test_migrations.py (fresh clone at b0e206b)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- <scratchpad>/clean0302/backend/.venv/bin/python
+rootdir: <scratchpad>/clean0302/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 47 items
+
+tests/integration/test_documents.py::test_an_editor_uploads_a_document_that_goes_from_queued_to_ready PASSED [  2%]
+tests/integration/test_documents.py::test_a_ready_document_lists_its_chunks_with_headings_and_pages PASSED [  4%]
+tests/integration/test_documents.py::test_the_status_endpoint_reports_each_documents_status PASSED [  6%]
+tests/integration/test_documents.py::test_documents_are_counted_on_their_project PASSED [  8%]
+tests/integration/test_documents.py::test_each_supported_file_type_can_be_uploaded[guide.pdf] PASSED [ 10%]
+tests/integration/test_documents.py::test_each_supported_file_type_can_be_uploaded[notes.DOCX] PASSED [ 12%]
+tests/integration/test_documents.py::test_each_supported_file_type_can_be_uploaded[deck.pptx] PASSED [ 14%]
+tests/integration/test_documents.py::test_each_supported_file_type_can_be_uploaded[page.html] PASSED [ 17%]
+tests/integration/test_documents.py::test_each_supported_file_type_can_be_uploaded[page.htm] PASSED [ 19%]
+tests/integration/test_documents.py::test_each_supported_file_type_can_be_uploaded[a.markdown] PASSED [ 21%]
+tests/integration/test_documents.py::test_an_unsupported_file_type_is_refused_before_upload[sheet.xlsx] PASSED [ 23%]
+tests/integration/test_documents.py::test_an_unsupported_file_type_is_refused_before_upload[photo.png] PASSED [ 25%]
+tests/integration/test_documents.py::test_an_unsupported_file_type_is_refused_before_upload[README] PASSED [ 27%]
+tests/integration/test_documents.py::test_a_file_over_the_size_limit_is_refused_before_upload PASSED [ 29%]
+tests/integration/test_documents.py::test_the_browsers_content_hash_is_checked_against_the_stored_file PASSED [ 31%]
+tests/integration/test_documents.py::test_an_upload_is_confirmed_only_once_after_the_file_arrives PASSED [ 34%]
+tests/integration/test_documents.py::test_an_upload_is_confirmed_only_in_its_own_project PASSED [ 36%]
+tests/integration/test_documents.py::test_an_archived_project_takes_no_uploads PASSED [ 38%]
+tests/integration/test_documents.py::test_document_routes_of_an_unknown_project_or_document_are_not_found PASSED [ 40%]
+tests/integration/test_documents.py::test_chunks_are_no_longer_than_the_chunk_size_setting PASSED [ 42%]
+tests/integration/test_chunk_storage.py::test_chunks_store_a_vector_of_the_models_dimension_and_a_full_text_index PASSED [ 44%]
+tests/integration/test_chunk_storage.py::test_chunk_vectors_have_an_hnsw_index_per_model_and_text_a_gin_index PASSED [ 46%]
+tests/integration/test_chunk_storage.py::test_ingestion_runs_once_per_upload PASSED [ 48%]
+tests/integration/test_object_store.py::test_an_object_is_stored_read_and_deleted[rustfs] PASSED [ 51%]
+tests/integration/test_object_store.py::test_an_object_is_stored_read_and_deleted[memory] PASSED [ 53%]
+tests/integration/test_object_store.py::test_a_browser_puts_a_file_to_a_presigned_url PASSED [ 55%]
+tests/integration/test_object_store.py::test_presigned_urls_are_signed_for_the_public_endpoint PASSED [ 57%]
+tests/integration/test_object_store.py::test_preparing_creates_a_missing_bucket_once PASSED [ 59%]
+tests/integration/test_object_store.py::test_storage_errors_other_than_a_missing_object_are_raised PASSED [ 61%]
+tests/integration/test_object_store.py::test_a_document_uploaded_through_rustfs_becomes_ready PASSED [ 63%]
+tests/unit/test_chunking.py::test_a_word_document_is_chunked_by_section_with_its_heading_path PASSED [ 65%]
+tests/unit/test_chunking.py::test_a_slide_deck_is_chunked_per_slide_with_page_numbers PASSED [ 68%]
+tests/unit/test_chunking.py::test_no_chunk_is_longer_than_the_tokenizers_limit[12] PASSED [ 70%]
+tests/unit/test_chunking.py::test_no_chunk_is_longer_than_the_tokenizers_limit[20] PASSED [ 72%]
+tests/unit/test_docling_converter.py::test_docling_converts_markdown_with_its_headings PASSED [ 74%]
+tests/unit/test_docling_converter.py::test_docling_converts_a_word_document PASSED [ 76%]
+tests/unit/test_ingestion_ports.py::test_production_uses_s3_docling_and_the_local_embedding_model PASSED [ 78%]
+tests/unit/test_ingestion_ports.py::test_tests_use_the_in_memory_store_and_the_fakes PASSED [ 80%]
+tests/unit/test_ingestion_ports.py::test_a_task_needs_the_adapters_installed PASSED [ 82%]
+tests/integration/test_worker_entrypoint.py::test_worker_entrypoint_points_celery_at_the_configured_broker PASSED [ 85%]
+tests/integration/test_worker_entrypoint.py::test_beat_schedules_the_worker_health_check PASSED [ 87%]
+tests/integration/test_worker_entrypoint.py::test_worker_entrypoint_fails_fast_naming_a_missing_setting PASSED [ 89%]
+tests/integration/test_worker_entrypoint.py::test_the_worker_knows_every_table_its_tasks_write_to PASSED [ 91%]
+tests/integration/test_openapi.py::test_openapi_document_describes_every_endpoint PASSED [ 93%]
+tests/integration/test_openapi.py::test_openapi_document_is_rendered_deterministically PASSED [ 95%]
+tests/integration/test_migrations.py::test_migrations_upgrade_to_head_and_downgrade_to_base PASSED [ 97%]
+tests/integration/test_migrations.py::test_the_migrations_match_the_models PASSED [100%]
+
+============================= 47 passed in 23.36s ==============================
+{"timestamp": "2026-11-05T11:38:04.693751+00:00", "level": "ERROR", "logger": "opentelemetry.sdk._shared_internal", "message": "Exception while exporting Span.", "service": "migrations", "exception": "Traceback (most recent call last):\n  File \"<scratchpad>/clean0302/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/_shared_internal/__init__.py\", line 187, in _export\n    self._exporter.export(batch)\n    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"<scratchpad>/clean0302/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/trace/export/__init__.py\", line 311, in export\n    self.out.write(self.formatter(span))\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\nValueError: I/O operation on closed file."}
+exit=0
