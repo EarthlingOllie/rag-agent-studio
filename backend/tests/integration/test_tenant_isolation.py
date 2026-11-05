@@ -78,6 +78,25 @@ async def _another_owner(owner: SignedUpMember, add_member: MemberFactory) -> Pr
     return {}, None
 
 
+async def _new_credential_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {
+        "name": f"Isolation {uuid.uuid4().hex[:12]}",
+        "provider": "openai",
+        "api_key": "sk-isolation-test-only-0000",
+    }
+
+
+async def _a_credential(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    _, body = await _new_credential_body(owner, add_member)
+    response = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/credentials", json=body
+    )
+    assert response.status_code == 201, response.text
+    return {"credential_id": response.json()["id"]}, {"api_key": "sk-isolation-rotated-0001"}
+
+
+_CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events", OWNER),
@@ -101,6 +120,14 @@ ORGANISATION_SCOPED_ROUTES = [
         "DELETE", "/api/organisations/{organisation_id}/members/{member_id}", OWNER, _an_editor
     ),
     ScopedRoute("POST", "/api/organisations/{organisation_id}/leave", EDITOR, _another_owner),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/credentials", EDITOR),
+    ScopedRoute(
+        "POST", "/api/organisations/{organisation_id}/credentials", OWNER, _new_credential_body
+    ),
+    ScopedRoute("GET", _CREDENTIAL, EDITOR, _a_credential),
+    ScopedRoute("POST", f"{_CREDENTIAL}/check", OWNER, _a_credential),
+    ScopedRoute("POST", f"{_CREDENTIAL}/rotate", OWNER, _a_credential),
+    ScopedRoute("DELETE", _CREDENTIAL, OWNER, _a_credential),
 ]
 OWNER_ONLY_ROUTES = [route for route in ORGANISATION_SCOPED_ROUTES if route.role is OWNER]
 

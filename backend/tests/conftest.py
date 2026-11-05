@@ -45,6 +45,7 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOCAL_KEY_WRAPPER_KEY", TEST_LOCAL_KEY_WRAPPER_KEY)
     monkeypatch.setenv("MAILER", "outbox")
     monkeypatch.setenv("STUDIO_URL", STUDIO_URL)
+    monkeypatch.setenv("CREDENTIAL_VERIFIER", "fake")
 
 
 @pytest.fixture(scope="session")

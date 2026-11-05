@@ -15,6 +15,7 @@ import { SignUpPage } from "./auth/SignUpPage";
 import { AcceptInvitePage } from "./invites/AcceptInvitePage";
 import {
   AuditSettingsPage,
+  CredentialsSettingsPage,
   GeneralSettingsPage,
   MembersSettingsPage,
   OrganisationSettingsLayout,
@@ -91,6 +92,11 @@ const membersSettingsRoute = createRoute({
   path: "/members",
   component: MembersSettingsPage,
 });
+const credentialsSettingsRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/credentials",
+  component: CredentialsSettingsPage,
+});
 const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
 const securityRoute = createRoute({
@@ -111,7 +117,7 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     organisationRoute.addChildren([
       projectsRoute,
-      settingsRoute.addChildren([generalSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
+      settingsRoute.addChildren([generalSettingsRoute, credentialsSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,
     ]),

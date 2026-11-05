@@ -243,6 +243,9 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+kms = [
+    { name = "mypy-boto3-kms" },
+]
 sesv2 = [
     { name = "mypy-boto3-sesv2" },
 ]
@@ -852,6 +855,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mypy-boto3-kms"
+version = "1.43.119"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/ba/cc48df9eede29ed98e3cc1cffefa00cad04be527960d166ee065208ec5cd/mypy_boto3_kms-1.43.119.tar.gz", hash = "sha256:97b5eb15dfb9acba25478aa4545a5ce836ccd1d79b561e27796c5138242acb75", size = 31374, upload-time = "2026-10-26T21:49:59.343Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/f9/a9dda5f96744068113c29edee3abb1438f113a87f808cf608f054032a733/mypy_boto3_kms-1.43.119-py3-none-any.whl", hash = "sha256:e37f770110e493097a233ab94c692bbbac26359433939509182b29fb138e59e0", size = 39775, upload-time = "2026-10-26T21:49:57.934Z" },
+]
+
+[[package]]
 name = "mypy-boto3-sesv2"
 version = "1.43.110"
 source = { registry = "https://pypi.org/simple" }
@@ -1327,7 +1339,7 @@ dependencies = [
 dev = [
     { name = "aiosmtpd" },
     { name = "asgi-lifespan" },
-    { name = "boto3-stubs", extra = ["sesv2"] },
+    { name = "boto3-stubs", extra = ["kms", "sesv2"] },
     { name = "celery-types" },
     { name = "mypy" },
     { name = "pytest" },
@@ -1359,7 +1371,7 @@ requires-dist = [
 dev = [
     { name = "aiosmtpd", specifier = ">=1.4.6" },
     { name = "asgi-lifespan", specifier = ">=2.1.0" },
-    { name = "boto3-stubs", extras = ["sesv2"], specifier = ">=1.43.124" },
+    { name = "boto3-stubs", extras = ["kms", "sesv2"], specifier = ">=1.43.124" },
     { name = "celery-types", specifier = ">=0.26.0" },
     { name = "mypy", specifier = ">=2.4.1" },
     { name = "pytest", specifier = ">=9.2.0" },

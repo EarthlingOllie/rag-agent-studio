@@ -12,6 +12,7 @@ from pydantic import (
     SecretStr,
     ValidationError,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -45,11 +46,21 @@ class Settings(BaseSettings):
     sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
     # How long a password-checked sign-in waits for its MFA code.
     mfa_pending_ttl_seconds: int = Field(default=5 * 60, gt=0)
-    # Wraps the data keys of envelope-encrypted secrets. Only the local static-key wrapper
-    # exists so far; AWS KMS arrives with the AWS deployment (spec 09).
-    key_wrapper: Literal["local"] = "local"
+    # Wraps the data keys of envelope-encrypted secrets (TOTP secrets, Provider Credentials):
+    # the local static-key wrapper (`docker compose`, tests) or AWS KMS (AWS).
+    key_wrapper: Literal["local", "kms"] = "local"
     # The local wrapper's key: 32 random bytes, base64-encoded (`openssl rand -base64 32`).
     local_key_wrapper_key: SecretStr
+    # The KMS key that wraps data keys, by ARN or alias; required when KEY_WRAPPER=kms.
+    kms_key_id: str | None = None
+    # KMS region; unset means boto3's default (AWS_REGION).
+    kms_region: str | None = None
+    # How Provider Credentials are checked when saved: a live call to the provider, or the
+    # fake verifier (`docker compose`, tests), which passes every key except those starting
+    # `fake-fail-<reason>`, which fail with that reason.
+    credential_verifier: Literal["live", "fake"] = "live"
+    # How long a live credential check waits for the provider.
+    credential_check_timeout_seconds: float = Field(default=10.0, gt=0)
     # How long a password reset link works.
     password_reset_ttl_seconds: int = Field(default=60 * 60, gt=0)
     # How long an invite link works.
@@ -79,6 +90,12 @@ class Settings(BaseSettings):
         if len(key) != 32:
             raise ValueError("must be 32 bytes, base64-encoded")
         return value
+
+    @model_validator(mode="after")
+    def _kms_has_a_key(self) -> "Settings":
+        if self.key_wrapper == "kms" and not self.kms_key_id:
+            raise ValueError("KMS_KEY_ID is required when KEY_WRAPPER is kms")
+        return self
 
 
 def load_settings() -> Settings:

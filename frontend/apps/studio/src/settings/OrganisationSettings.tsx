@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
 import { AuditPage } from "./AuditPage";
+import { CredentialsPage } from "./CredentialsPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
 import { MembersPage } from "./MembersPage";
 
@@ -83,7 +84,7 @@ function LeaveOrganisation({ organisationId, organisationName }: { organisationI
   );
 }
 
-/** Organisation settings, with a tab per area. The Members and Audit tabs are shown to Owners only. */
+/** Organisation settings, with a tab per area. Every Member sees Credentials; Members and Audit are shown to Owners only. */
 export function OrganisationSettingsLayout() {
   const { organisationId, isOwner } = useOrganisation();
   return (
@@ -94,6 +95,9 @@ export function OrganisationSettingsLayout() {
       <nav aria-label="Organisation settings" className="mt-4 flex gap-2 border-b border-slate-200 pb-2">
         <Link to="/organisations/$organisationId/settings" params={{ organisationId }} activeOptions={{ exact: true }} className={TAB}>
           General
+        </Link>
+        <Link to="/organisations/$organisationId/settings/credentials" params={{ organisationId }} className={TAB}>
+          Credentials
         </Link>
         {isOwner && (
           <>
@@ -126,4 +130,9 @@ export function AuditSettingsPage() {
 export function MembersSettingsPage() {
   const { organisationId, memberId, isOwner } = useOrganisation();
   return <MembersPage organisationId={organisationId} memberId={memberId} isOwner={isOwner} />;
+}
+
+export function CredentialsSettingsPage() {
+  const { organisationId, isOwner } = useOrganisation();
+  return <CredentialsPage organisationId={organisationId} isOwner={isOwner} />;
 }

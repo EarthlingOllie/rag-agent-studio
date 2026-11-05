@@ -439,6 +439,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Credentials
+         * @description The Organisation's Provider Credentials, by name. Open to every Member.
+         */
+        get: operations["listCredentials"];
+        put?: never;
+        /**
+         * Create Credential
+         * @description Checks the key with the provider, then stores it encrypted. A failed check stores nothing.
+         */
+        post: operations["createCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Credential */
+        get: operations["getCredential"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Credential
+         * @description Deletes the credential, unless something still references it (409 lists what does).
+         */
+        delete: operations["deleteCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Credential
+         * @description Checks the stored key with the provider again; the outcome is on the credential.
+         */
+        post: operations["checkCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate Credential
+         * @description Replaces the key, keeping the credential's identity. A failed check keeps the old key.
+         */
+        post: operations["rotateCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/invites": {
         parameters: {
             query?: never;
@@ -567,6 +652,26 @@ export interface paths {
         patch: operations["changeMemberRole"];
         trace?: never;
     };
+    "/api/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Providers
+         * @description The capability registry: each provider, its auth kinds, and its models per capability.
+         */
+        get: operations["listProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -638,6 +743,22 @@ export interface components {
             /** Type */
             type: string;
         };
+        /**
+         * AuthKind
+         * @enum {string}
+         */
+        AuthKind: "api_key" | "aws_role" | "aws_access_keys";
+        /**
+         * Capability
+         * @enum {string}
+         */
+        Capability: "chat" | "embeddings" | "rerank";
+        /** CapabilityModelsOut */
+        CapabilityModelsOut: {
+            capability: components["schemas"]["Capability"];
+            /** Models */
+            models: components["schemas"]["ModelOut"][];
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -649,6 +770,18 @@ export interface components {
         ChangeRoleRequest: {
             role: components["schemas"]["Role"];
         };
+        /** CheckFailedResponse */
+        CheckFailedResponse: {
+            /** Detail */
+            detail: string;
+            reason: components["schemas"]["CheckFailure"];
+        };
+        /**
+         * CheckFailure
+         * @description Why a credential check failed, in terms an Owner can act on.
+         * @enum {string}
+         */
+        CheckFailure: "invalid_key" | "missing_model_access" | "quota_exceeded" | "provider_unreachable";
         /** CodeRequest */
         CodeRequest: {
             /** Code */
@@ -661,6 +794,23 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** CreateCredentialRequest */
+        CreateCredentialRequest: {
+            /**
+             * Api Key
+             * Format: password
+             */
+            api_key: string;
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][] | null;
+            /** Name */
+            name: string;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "anthropic" | "openai" | "voyage";
+        };
         /** CreateInviteRequest */
         CreateInviteRequest: {
             /** Email */
@@ -671,6 +821,54 @@ export interface components {
              * @default true
              */
             send_email: boolean;
+        };
+        /** CredentialInUseResponse */
+        CredentialInUseResponse: {
+            /** Detail */
+            detail: string;
+            /** References */
+            references: components["schemas"]["CredentialReferenceOut"][];
+        };
+        /** CredentialOut */
+        CredentialOut: {
+            auth_kind: components["schemas"]["AuthKind"];
+            /** Capabilities */
+            capabilities: components["schemas"]["Capability"][];
+            check_failure: components["schemas"]["CheckFailure"] | null;
+            /**
+             * Check Status
+             * @enum {string}
+             */
+            check_status: "passed" | "failed";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Last Checked At
+             * Format: date-time
+             */
+            last_checked_at: string;
+            /** Masked Suffix */
+            masked_suffix: string;
+            /** Name */
+            name: string;
+            provider: components["schemas"]["Provider"];
+        };
+        /** CredentialReferenceOut */
+        CredentialReferenceOut: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
         };
         /** DisableRequest */
         DisableRequest: {
@@ -835,6 +1033,13 @@ export interface components {
             /** Recovery Codes Remaining */
             recovery_codes_remaining: number;
         };
+        /** ModelOut */
+        ModelOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** OrganisationMemberOut */
         OrganisationMemberOut: {
             /** Email */
@@ -874,6 +1079,21 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * Provider
+         * @enum {string}
+         */
+        Provider: "anthropic" | "openai" | "bedrock" | "voyage";
+        /** ProviderOut */
+        ProviderOut: {
+            /** Auth Kinds */
+            auth_kinds: components["schemas"]["AuthKind"][];
+            /** Capabilities */
+            capabilities: components["schemas"]["CapabilityModelsOut"][];
+            id: components["schemas"]["Provider"];
+            /** Name */
+            name: string;
+        };
         /** RecoveryCodesResponse */
         RecoveryCodesResponse: {
             /** Recovery Codes */
@@ -892,6 +1112,14 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "editor";
+        /** RotateCredentialRequest */
+        RotateCredentialRequest: {
+            /**
+             * Api Key
+             * Format: password
+             */
+            api_key: string;
+        };
         /** SessionResponse */
         SessionResponse: {
             /**
@@ -1981,6 +2209,328 @@ export interface operations {
             };
         };
     };
+    listCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description The provider check failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckFailedResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another credential in this Organisation already has that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This credential is still in use. Move these items to another credential first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialInUseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    checkCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rotateCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RotateCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description The provider check failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckFailedResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listInvites: {
         parameters: {
             query?: never;
@@ -2392,6 +2942,44 @@ export interface operations {
             };
             /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"][];
+                };
+            };
+            /** @description Not signed in */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
