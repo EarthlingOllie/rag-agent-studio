@@ -278,17 +278,27 @@ async def test_saving_the_same_theme_records_nothing(owner: SignedUpMember) -> N
     assert unchanged.json()["updated_at"] is None
 
 
-async def test_owners_saving_at_once_both_succeed_and_one_theme_wins(
-    owner: SignedUpMember, member_factory: MemberFactory
+async def test_owners_saving_at_once_apply_one_after_the_other(
+    tenant_factory: TenantFactory, member_factory: MemberFactory
 ) -> None:
-    co_owner = await member_factory(owner, "owner")
-    path = theme_path(owner.organisation_id)
+    """Two Owners save the first Theme at the same moment, in ten Organisations at once. Each
+    save succeeds, and the second one's Audit Event describes the Theme the first one saved."""
+    pairs = []
+    for _ in range(10):
+        owner = await tenant_factory()
+        pairs.append((owner, await member_factory(owner, "owner")))
 
     answers = await asyncio.gather(
-        owner.client.put(path, json=a_theme(radius=1)),
-        co_owner.client.put(path, json=a_theme(radius=2)),
+        *(
+            member.client.put(theme_path(owner.organisation_id), json=a_theme(radius=radius))
+            for owner, co_owner in pairs
+            for member, radius in ((owner, 1), (co_owner, 2))
+        )
     )
 
-    assert [answer.status_code for answer in answers] == [200, 200]
-    assert (await theme_of(owner))["radius"] in {1, 2}
-    assert len(await theme_events(owner)) == 2
+    assert [answer.status_code for answer in answers] == [200] * 20
+    for owner, _ in pairs:
+        newest, oldest = await theme_events(owner)
+        assert oldest["before"] == {"radius": 12}
+        assert newest["before"] == oldest["after"]
+        assert (await theme_of(owner))["radius"] == newest["after"]["radius"]
