@@ -86,6 +86,12 @@ services:
     ports: ["9000:9000", "9001:9001"]
     volumes:
       - rustfs-data:/data
+    # The image has no health check; the API and worker wait for this one.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:9000/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
   mailpit:
     image: axllent/mailpit:v1.27
