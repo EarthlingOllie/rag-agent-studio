@@ -1,10 +1,11 @@
 """Whether the live suite can get the Hugging Face models a test needs.
 
 A test that needs a model calls ``require_models``. It runs when the model is already on disk
-(the worker image bundles them; see the Dockerfile) or Hugging Face answers. Otherwise it is
-skipped with the reason, so a run without network access says what it didn't cover instead of
-failing on the download. ``LIVE_REQUIRE_MODELS=1`` turns that skip into a failure, for runs
-that must cover everything (a release check, or a machine that should have the models).
+(the worker image bundles them; see the Dockerfile) or can be downloaded from Hugging Face.
+Otherwise it is skipped with the reason, so a run without network access says what it didn't
+cover instead of failing on the download. ``LIVE_REQUIRE_MODELS=1`` turns that skip into a
+failure, for runs that must cover everything (a release check, or a machine that should have
+the models).
 """
 
 import os
@@ -32,14 +33,13 @@ def _on_disk(repo_id: str) -> bool:
 
 
 def _unreachable(repo_id: str) -> str | None:
-    """Why Hugging Face can't serve the model, or None when it can."""
-    url = f"https://huggingface.co/api/models/{repo_id}"
+    """Why the model can't be downloaded, or None once it is. Downloading it, rather than only
+    asking Hugging Face's API about it, also catches a network that reaches huggingface.co but
+    not the CDN its weight files are served from."""
     try:
-        response = httpx.head(url, timeout=10, follow_redirects=True)
-    except httpx.HTTPError as error:
-        return f"{url}: {type(error).__name__}: {error}"
-    if response.status_code >= 400:
-        return f"{url}: HTTP {response.status_code}"
+        snapshot_download(repo_id)
+    except Exception as error:  # any failure means "can't be had here"
+        return f"https://huggingface.co/{repo_id}: {type(error).__name__}: {str(error)[:300]}"
     return None
 
 

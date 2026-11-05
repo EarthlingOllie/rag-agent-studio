@@ -36,7 +36,8 @@ test.describe("OCR toggle", () => {
     await tabs.getByRole("link", { name: "Documents" }).click();
     await row.getByRole("button", { name: "Retry northwind-staff-handbook.md" }).click();
     await expect(row.getByRole("cell", { name: /Ready/ })).toBeVisible({ timeout: 60_000 });
-    expect(Number(await row.getByRole("cell").nth(2).textContent())).toBeGreaterThan(0);
+    // Cells: Select, Name, Status, Tags, Chunks.
+    expect(Number(await row.getByRole("cell").nth(4).textContent())).toBeGreaterThan(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 });

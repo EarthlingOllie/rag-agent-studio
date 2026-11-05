@@ -200,7 +200,7 @@ A per-Project setting, off by default. When it is on, ingestion also reads text 
 _Avoid_: Text recognition, scan mode
 
 **Retry**:
-Sending a Ready or Failed Document through ingestion again, with its Project's current settings. Its Chunks keep serving until the new ones replace them.
+Sending a Ready or Failed Document's current edition through ingestion again, with its Project's current settings. Its Chunks keep serving until the new ones replace them. Not while the Document, or a new edition of it, is still being processed.
 _Avoid_: Reprocess, re-ingest, re-run
 
 **Content hash**:
