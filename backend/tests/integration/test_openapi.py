@@ -103,6 +103,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "startPlaygroundConversation": (f"{_PLAYGROUND}", "post"),
         "getPlaygroundConversation": (f"{_PLAYGROUND}/{{conversation_id}}", "get"),
         "sendPlaygroundMessage": (f"{_PLAYGROUND}/{{conversation_id}}/messages", "post"),
+        "getPlaygroundTrace": (
+            f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
+            "get",
+        ),
     }
 
 

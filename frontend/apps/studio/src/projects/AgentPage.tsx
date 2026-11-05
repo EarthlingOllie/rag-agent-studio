@@ -1,9 +1,10 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
+import { type SubmitEvent, useCallback, useState } from "react";
 
 import { FormError, formValues } from "../auth/AuthLayout";
-import { type Agent, agentFailure, askPlayground, startConversation, useAgent, useSaveDraft } from "./agents";
+import { type Agent, type Citation, agentFailure, askPlayground, startConversation, useAgent, useSaveDraft } from "./agents";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
+import { TraceDrawer } from "./TraceDrawer";
 
 function useAgentParams() {
   return useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId" });
@@ -74,7 +75,36 @@ function DraftForm({ agent, organisationId }: { agent: Agent; organisationId: st
   );
 }
 
-type ChatMessage = { role: "user" | "assistant"; content: string; usage?: string };
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  usage?: string;
+  citations?: Citation[];
+  // Set once the answer is saved, so its Trace can be opened.
+  messageId?: string;
+};
+
+/** Where a citation chip leads: the cited Chunk in the Document viewer. */
+function chunkHref(organisationId: string, projectId: string, citation: Citation): string {
+  return `/organisations/${organisationId}/projects/${projectId}/documents/${citation.document_id}#chunk-${citation.chunk_id}`;
+}
+
+function Sources({ citations, organisationId, projectId }: { citations: Citation[]; organisationId: string; projectId: string }) {
+  return (
+    <ul aria-label="Sources" className="mt-2 flex flex-wrap gap-2">
+      {citations.map((citation) => (
+        <li key={citation.chunk_id}>
+          <a
+            href={chunkHref(organisationId, projectId, citation)}
+            className="inline-flex gap-1 rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-900 underline-offset-2 hover:underline"
+          >
+            <span className="font-semibold">{citation.label}</span> <span>{citation.document_name}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** Chat with the Agent's Draft. The answer streams in token by token. */
 function Playground({ agent, organisationId }: { agent: Agent; organisationId: string }) {
@@ -83,6 +113,10 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [question, setQuestion] = useState("");
+  const [tracing, setTracing] = useState<string | null>(null);
+  const closeTrace = useCallback(() => {
+    setTracing(null);
+  }, []);
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
 
   function appendToAnswer(update: (answer: ChatMessage) => ChatMessage) {
@@ -96,11 +130,19 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
     try {
       const conversation = conversationId ?? (await startConversation(path)).id;
       setConversationId(conversation);
-      const done = await askPlayground({ ...path, conversation_id: conversation }, question, (text) => {
-        appendToAnswer((answer) => ({ ...answer, content: answer.content + text }));
-      });
+      const done = await askPlayground(
+        { ...path, conversation_id: conversation },
+        question,
+        (text) => {
+          appendToAnswer((answer) => ({ ...answer, content: answer.content + text }));
+        },
+        (citation) => {
+          appendToAnswer((answer) => ({ ...answer, citations: [...(answer.citations ?? []), citation] }));
+        },
+      );
       appendToAnswer((answer) => ({
         ...answer,
+        messageId: done.message_id,
         usage: `${String(done.input_tokens)} input and ${String(done.output_tokens)} output tokens · ${String(done.latency_ms)} ms`,
       }));
     } catch (failure) {
@@ -133,7 +175,19 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
             className={`rounded px-3 py-2 text-sm ${message.role === "user" ? "bg-slate-100" : "border border-slate-200 bg-white"}`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
+            {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}
             {message.usage && <p className="mt-1 text-xs text-slate-700">{message.usage}</p>}
+            {message.messageId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTracing(message.messageId ?? null);
+                }}
+                className="mt-1 text-xs text-slate-700 underline"
+              >
+                Trace
+              </button>
+            )}
           </li>
         ))}
       </ol>
@@ -157,6 +211,9 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
           {pending ? "Answering…" : "Send"}
         </button>
       </form>
+      {tracing && conversationId && (
+        <TraceDrawer path={{ ...path, conversation_id: conversationId, message_id: tracing }} onClose={closeTrace} />
+      )}
     </section>
   );
 }

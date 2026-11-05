@@ -12,7 +12,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -26,7 +26,8 @@ from app.core.clock import Clock, get_clock
 from app.documents.ports import IngestionPorts
 from app.playground import service
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
-from app.runtime.runtime import TokenEvent
+from app.retrieval.service import ExcludedReason
+from app.runtime.runtime import CitationEvent, TokenEvent
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 
@@ -69,6 +70,39 @@ class ConversationOut(BaseModel):
     created_at: datetime
     last_activity_at: datetime
     messages: list[MessageOut]
+
+
+class TracedChunkOut(BaseModel):
+    chunk_id: uuid.UUID
+    document_id: uuid.UUID
+    # Null once the Chunk's Document edition is replaced or deleted.
+    document_name: str | None
+    text: str | None
+    # The weighted reciprocal rank fusion score, and the relevance the minimum applies to.
+    score: float
+    relevance: float
+    # The number in the Chunk's label ([C1] is rank 1); null when it wasn't given to the model.
+    rank: int | None
+    cited: bool
+    excluded_reason: ExcludedReason | None
+
+
+class TraceOut(BaseModel):
+    """Why an answer came out as it did: the model, its usage, cost and latency, and every
+    Chunk retrieval found, given to the model (cited or not) or left out with the reason."""
+
+    message_id: uuid.UUID
+    config_source: str | None
+    model_provider: str | None
+    model_name: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cost_usd: Decimal | None
+    first_token_ms: int | None
+    latency_ms: int | None
+    # True when no Chunk reached the minimum score, so the answer is the fallback text.
+    fallback: bool
+    chunks: list[TracedChunkOut]
 
 
 class SendMessageRequest(BaseModel):
@@ -141,6 +175,59 @@ async def get_conversation(
     return _out(conversation, messages)
 
 
+@router.get(
+    "/conversations/{conversation_id}/messages/{message_id}/trace",
+    operation_id="getPlaygroundTrace",
+    responses=NOT_FOUND_RESPONSE,
+)
+async def get_trace(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+) -> TraceOut:
+    """The Trace of one of the Agent's answers in the Playground Conversation."""
+    try:
+        message, chunks = await service.get_trace(
+            db, scope, project_id, agent_id, conversation_id, message_id
+        )
+    except (
+        ProjectNotFoundError,
+        AgentNotFoundError,
+        service.ConversationNotFoundError,
+        service.MessageNotFoundError,
+    ):
+        raise not_found() from None
+    return TraceOut(
+        message_id=message.id,
+        config_source=message.config_source,
+        model_provider=message.model_provider,
+        model_name=message.model_name,
+        input_tokens=message.input_tokens,
+        output_tokens=message.output_tokens,
+        cost_usd=message.cost_usd,
+        first_token_ms=message.first_token_ms,
+        latency_ms=message.latency_ms,
+        fallback=all(c.retrieval.rank is None for c in chunks),
+        chunks=[
+            TracedChunkOut(
+                chunk_id=c.retrieval.chunk_id,
+                document_id=c.retrieval.document_id,
+                document_name=c.document_name,
+                text=c.text,
+                score=c.retrieval.score,
+                relevance=c.retrieval.relevance,
+                rank=c.retrieval.rank,
+                cited=c.retrieval.cited,
+                excluded_reason=cast(ExcludedReason | None, c.retrieval.excluded_reason),
+            )
+            for c in chunks
+        ],
+    )
+
+
 def _sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
@@ -193,6 +280,17 @@ async def send_message(
         ):
             if isinstance(event, TokenEvent):
                 yield _sse("token", {"text": event.text})
+            elif isinstance(event, CitationEvent):
+                yield _sse(
+                    "citation",
+                    {
+                        "label": event.label,
+                        "chunk_id": str(event.chunk.chunk_id),
+                        "document_id": str(event.chunk.document_id),
+                        "document_name": event.chunk.document_name,
+                        "rank": event.chunk.rank,
+                    },
+                )
             else:
                 yield _sse(
                     "done",

@@ -34,27 +34,43 @@ async def save_draft(
     return await member.client.put(agents_path(member, project_id, agent_id, "draft"), json=draft)
 
 
-async def use_default_model(owner: SignedUpMember, model: str = "gpt-4.1-mini") -> None:
-    """Adds an OpenAI credential (fake verifier) and makes ``model`` the Default Model."""
+async def use_default_model(owner: SignedUpMember, model: str = "gpt-4.1-mini") -> str:
+    """Adds an OpenAI credential (fake verifier) and makes ``model`` the Default Model.
+    Returns the credential's ID."""
     credential = await added(owner, provider="openai", api_key=OPENAI_KEY)
     response = await owner.client.put(
         f"/api/organisations/{owner.organisation_id}/default-model",
         json={"credential_id": credential["id"], "model": model},
     )
     assert response.status_code == 200, response.text
+    return str(credential["id"])
 
 
-def answer_with(app: FastAPI, stream: StreamFunction) -> list[str]:
+def answer_with(app: FastAPI, stream: StreamFunction, *, structured: bool = False) -> list[str]:
     """Every chat model the gateway builds becomes a ``FunctionModel`` streaming ``stream``.
+    With ``structured`` the model supports structured (JSON schema) output, so ``stream`` must
+    stream the JSON of a cited answer; without it, the model answers in plain text.
     Returns the list the gateway appends "provider:model" to for each model it builds."""
     built: list[str] = []
 
     def chat(provider: Provider, secret: str, model: str) -> FunctionModel:
         built.append(f"{provider}:{model}")
-        return FunctionModel(stream_function=stream, model_name=model)
+        return FunctionModel(
+            stream_function=stream,
+            model_name=model,
+            profile={"supports_json_schema_output": structured},
+        )
 
     app.state.model_gateway.adapters = FakeModelAdapters(chat=chat)
     return built
+
+
+def trace_path(
+    member: SignedUpMember, project_id: str, agent_id: str, conversation_id: str, message_id: str
+) -> str:
+    return playground_path(
+        member, project_id, agent_id, conversation_id, "messages", message_id, "trace"
+    )
 
 
 def playground_path(member: SignedUpMember, project_id: str, agent_id: str, *rest: str) -> str:

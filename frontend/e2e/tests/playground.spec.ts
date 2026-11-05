@@ -58,7 +58,24 @@ test.describe("Agent and Playground", () => {
     const answer = messages.getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
     await expect(answer).toContainText(/\d+ input and \d+ output tokens · \d+ ms/);
+    // The fake model cites the first Chunk it is given: a chip links to it in the Document viewer.
+    const chip = answer.getByRole("list", { name: "Sources" }).getByRole("link", { name: /^C1 northwind-staff-handbook\.md$/ });
+    await expect(chip).toHaveAttribute("href", /\/projects\/[0-9a-f-]+\/documents\/[0-9a-f-]+#chunk-[0-9a-f-]+$/);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // The Trace shows the model, usage, cost, latency and the Chunks retrieved, the cited one first.
+    await answer.getByRole("button", { name: "Trace" }).click();
+    const trace = page.getByRole("dialog", { name: "Trace" });
+    await expect(trace.getByText("anthropic · claude-haiku-4-5")).toBeVisible({ timeout: 15_000 });
+    await expect(trace.getByText(/^\d+ input · \d+ output$/)).toBeVisible();
+    await expect(trace.getByText(/^\$\d/)).toBeVisible();
+    await expect(trace.getByText(/ms to the first token · \d+ ms in all/)).toBeVisible();
+    const firstChunk = trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row").nth(1);
+    await expect(firstChunk.getByRole("cell").first()).toHaveText("C1");
+    await expect(firstChunk.getByRole("cell").last()).toHaveText("Cited");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    await trace.getByRole("button", { name: "Close" }).click();
+    await expect(trace).toBeHidden();
 
     // The reload keeps the Draft.
     await page.reload();

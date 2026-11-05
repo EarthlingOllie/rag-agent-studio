@@ -7,12 +7,13 @@ chat builder (for example one returning a Pydantic AI ``FunctionModel``).
 import hashlib
 import math
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 
 from pydantic_ai.embeddings import EmbeddingModel, EmbeddingResult, EmbeddingSettings
 from pydantic_ai.embeddings.result import EmbedInputType
+from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, UserPromptPart
 from pydantic_ai.models import Model
-from pydantic_ai.models.test import TestModel
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.credentials.registry import Provider
 from app.gateway.ports import RankedDocument, Reranker
@@ -21,9 +22,34 @@ FAKE_DIMENSIONS = 16
 ChatBuilder = Callable[[Provider, str, str], Model]
 
 
+def _given_chunks(messages: list[ModelMessage]) -> bool:
+    """Whether the question holds retrieved Chunks: a line starting with the label [C1]."""
+    return any(
+        isinstance(part, UserPromptPart) and "\n[C1] " in str(part.content)
+        for part in messages[-1].parts
+    )
+
+
 def fake_chat(provider: Provider, secret: str, model: str) -> Model:
-    """A Pydantic AI ``TestModel`` that says which provider and model it stands in for."""
-    return TestModel(custom_output_text=f"Fake reply from {provider}:{model}.", model_name=model)
+    """A Pydantic AI ``FunctionModel`` that says which provider and model it stands in for, and
+    cites the first Chunk ([C1]) when it is given retrieved Chunks. It answers in plain text."""
+
+    def reply(messages: list[ModelMessage]) -> str:
+        cites = " [C1]" if _given_chunks(messages) else ""
+        return f"Fake reply from {provider}:{model}.{cites}"
+
+    def complete(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        return ModelResponse(parts=[TextPart(reply(messages))])
+
+    async def stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+        yield reply(messages)
+
+    return FunctionModel(
+        complete,
+        stream_function=stream,
+        model_name=model,
+        profile={"supports_json_schema_output": False},
+    )
 
 
 def _hash_vector(text: str) -> list[float]:

@@ -18,9 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, Retrieval
 from app.agents.service import get_agent
-from app.conversations.models import DRAFT, Conversation, Message, MessageRole
+from app.conversations.models import DRAFT, Conversation, Message, MessageRetrieval, MessageRole
 from app.core.clock import Clock
 from app.default_model.service import CurrentDefault, read_default
+from app.documents.models import Chunk, Document
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.pricing.service import credential_pricing, price_table
@@ -29,8 +30,12 @@ from app.projects.models import Project
 from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
 from app.runtime.prompt import Turn
-from app.runtime.runtime import DoneEvent, TokenEvent, run_turn
+from app.runtime.runtime import CitationEvent, DoneEvent, TokenEvent, run_turn
 from app.tenancy.repository import OrganisationScope
+
+
+class MessageNotFoundError(Exception):
+    """No answer with that ID in the Conversation."""
 
 
 class ConversationNotFoundError(Exception):
@@ -148,6 +153,76 @@ async def prepare_turn(
     )
 
 
+def _retrievals(
+    organisation_id: uuid.UUID, message_id: uuid.UUID, done: DoneEvent
+) -> list[MessageRetrieval]:
+    """The answer's Trace rows: the Chunks given to the model, then those left out."""
+    cited = {chunk.chunk_id for chunk in done.cited}
+    rows = [
+        MessageRetrieval(
+            chunk_id=c.chunk_id,
+            document_id=c.document_id,
+            score=c.score,
+            relevance=c.relevance,
+            rank=c.rank,
+            cited=c.chunk_id in cited,
+            excluded_reason=None,
+        )
+        for c in done.retrieved
+    ] + [
+        MessageRetrieval(
+            chunk_id=e.chunk_id,
+            document_id=e.document_id,
+            score=e.score,
+            relevance=e.relevance,
+            rank=None,
+            cited=False,
+            excluded_reason=e.reason,
+        )
+        for e in done.excluded
+    ]
+    for position, row in enumerate(rows):
+        row.organisation_id = organisation_id
+        row.message_id = message_id
+        row.position = position
+    return rows
+
+
+@dataclass(frozen=True)
+class TracedChunk:
+    """A Chunk retrieval of an answer, with its Chunk's text and Document's name when the
+    Chunk still exists."""
+
+    retrieval: MessageRetrieval
+    document_name: str | None
+    text: str | None
+
+
+async def get_trace(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID,
+) -> tuple[Message, list[TracedChunk]]:
+    """An answer of the Playground Conversation and its Chunk retrievals, in Trace order."""
+    _, messages = await get_conversation(session, scope, project_id, agent_id, conversation_id)
+    message = next(
+        (m for m in messages if m.id == message_id and m.role == MessageRole.ASSISTANT), None
+    )
+    if message is None:
+        raise MessageNotFoundError
+    rows = await session.execute(
+        select(MessageRetrieval, Document.name, Chunk.text)
+        .outerjoin(Chunk, Chunk.id == MessageRetrieval.chunk_id)
+        .outerjoin(Document, Document.id == MessageRetrieval.document_id)
+        .where(MessageRetrieval.message_id == message.id)
+        .order_by(MessageRetrieval.position)
+    )
+    return message, [TracedChunk(row, name, text) for row, name, text in rows]
+
+
 @dataclass(frozen=True)
 class Answered:
     message_id: uuid.UUID
@@ -167,8 +242,9 @@ async def answer(
     gateway: ModelGateway,
     embedders: dict[str, Embedder],
     clock: Clock,
-) -> AsyncIterator[TokenEvent | Answered]:
-    """Streams the answer's tokens, then saves the answer and ends with ``Answered``."""
+) -> AsyncIterator[TokenEvent | CitationEvent | Answered]:
+    """Streams the answer's tokens and citations, then saves the answer, with what retrieval
+    found for it, and ends with ``Answered``."""
     started = time.perf_counter()
     first_token_ms: int | None = None
     default = prepared.default
@@ -191,6 +267,9 @@ async def answer(
                     first_token_ms = _elapsed_ms(started)
                 yield event
                 continue
+            if isinstance(event, CitationEvent):
+                yield event
+                continue
             latency_ms = _elapsed_ms(started)
             now = clock.now()
             usage = TokenUsage(event.input_tokens, event.output_tokens)
@@ -210,6 +289,8 @@ async def answer(
                 cost_usd=cost(pricing, default.model, usage, now, await price_table(session)),
             )
             session.add(message)
+            await session.flush()
+            session.add_all(_retrievals(prepared.organisation_id, message.id, event))
             conversation = await session.get_one(Conversation, prepared.conversation_id)
             conversation.last_activity_at = now
             await session.commit()
