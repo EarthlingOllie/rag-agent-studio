@@ -20,12 +20,12 @@ test("signed-out visitors cannot open an Organisation page directly", async () =
   expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
 });
 
-test("the shell has Projects and Organisation settings placeholders", async () => {
+test("the shell links the Projects list and Organisation settings", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/");
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(screen.getByText(/No Projects yet/)).toBeInTheDocument();
+  expect(await screen.findByText(/No Projects yet/)).toBeInTheDocument();
   const nav = screen.getByRole("navigation", { name: "Organisation" });
 
   await userEvent.click(within(nav).getByRole("link", { name: "Organisation settings" }));

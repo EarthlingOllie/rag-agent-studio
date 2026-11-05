@@ -1,0 +1,54 @@
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/api:0301
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/typing_inspection-0.4.5.dist-info/METADATA │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/tzlocal-5.4.5.dist-info/METADATA           │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/urllib3-2.8.0.dist-info/METADATA           │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/uvicorn-0.54.0.dist-info/METADATA          │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/uvloop-0.23.0.dist-info/METADATA           │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/vine-5.1.0.dist-info/METADATA              │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/watchfiles-1.3.0.dist-info/METADATA        │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/wcwidth-0.9.4.dist-info/METADATA           │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/websockets-17.4.dist-info/METADATA         │ python-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼────────────┼─────────────────┼─────────┤
+│ opt/venv/lib/python3.13/site-packages/wrapt-2.5.2.dist-info/METADATA             │ python-pkg │        0        │    -    │
+└──────────────────────────────────────────────────────────────────────────────────┴────────────┴─────────────────┴─────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+exit code: 0
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/studio:0301
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yaml-ast-parser@0.0.43/node_modules/yaml-ast-parser/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yargs-parser@21.1.1/node_modules/yargs-parser/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yargs-parser@22.0.0/node_modules/yargs-parser/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yargs@18.2.0/node_modules/yargs/package.json              │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yocto-queue@0.1.0/node_modules/yocto-queue/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/zod-validation-error@4.0.2_zod@4.6.7/node_modules/zod-va- │ node-pkg │        0        │    -    │
+│ lidation-error/package.json                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/zod@4.6.7/node_modules/zod/package.json                   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ opt/yarn-v1.22.22/package.json                                                   │ node-pkg │        0        │    -    │
+└──────────────────────────────────────────────────────────────────────────────────┴──────────┴─────────────────┴─────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+exit code: 0

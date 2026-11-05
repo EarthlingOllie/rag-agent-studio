@@ -46,6 +46,18 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "changeMemberRole": ("/api/organisations/{organisation_id}/members/{member_id}", "patch"),
         "removeMember": ("/api/organisations/{organisation_id}/members/{member_id}", "delete"),
         "leaveOrganisation": ("/api/organisations/{organisation_id}/leave", "post"),
+        "listProjects": ("/api/organisations/{organisation_id}/projects", "get"),
+        "createProject": ("/api/organisations/{organisation_id}/projects", "post"),
+        "getProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "get"),
+        "updateProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "patch"),
+        "archiveProject": (
+            "/api/organisations/{organisation_id}/projects/{project_id}/archive",
+            "post",
+        ),
+        "restoreProject": (
+            "/api/organisations/{organisation_id}/projects/{project_id}/restore",
+            "post",
+        ),
     }
 
 

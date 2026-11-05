@@ -80,6 +80,10 @@ _Avoid_: Activity, history, log
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
 _Avoid_: Disable, soft delete
 
+**Restore**:
+To bring an archived Project back to the Projects list so it serves again. Only Owners can restore.
+_Avoid_: Unarchive, undelete
+
 ## Models
 
 **Provider Credential**:
