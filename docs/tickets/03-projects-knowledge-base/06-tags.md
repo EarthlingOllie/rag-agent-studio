@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Tags can be created, renamed and deleted per Project
 - [ ] Several Tags can be applied to a Document, and Tags can be bulk-applied to many Documents
