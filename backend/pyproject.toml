@@ -39,6 +39,10 @@ filterwarnings = [
     "error",
     # Celery's Redis result backend still calls redis-py's deprecated setex (celery/celery#9xxx upstream).
     "ignore:Call to deprecated setex:DeprecationWarning",
+    # Celery's Redis result backend opens a pub/sub connection per thread-local backend when a
+    # task is sent, and never closes it; it is collected at an arbitrary later point in the run.
+    "ignore:unclosed <socket.socket:ResourceWarning",
+    "ignore:Exception ignored in. <socket.socket:pytest.PytestUnraisableExceptionWarning",
 ]
 
 [tool.coverage.run]
