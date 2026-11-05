@@ -118,11 +118,11 @@ async def complete_password_reset(
 
 @router.patch("/me", operation_id="updateProfile")
 async def update_profile(
-    body: UpdateProfileRequest, member: CurrentMember, db: Db
+    body: UpdateProfileRequest, member: CurrentMember, request: Request, db: Db
 ) -> SessionResponse:
     """Edits the signed-in Member's Profile."""
     await service.rename(db, member, name=body.name)
-    return await session_response(db, member)
+    return await session_response(request, db, member)
 
 
 @router.post(

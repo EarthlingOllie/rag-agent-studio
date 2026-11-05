@@ -18,6 +18,7 @@ from app.auth.throttle import SignInThrottle
 from app.core.clock import Clock, get_clock
 from app.core.deps import get_db
 from app.core.settings import Settings
+from app.tenancy.active import ActiveOrganisations
 from app.tenancy.models import Member, Role
 from app.tenancy.repository import list_memberships
 
@@ -74,6 +75,10 @@ class MembershipOut(BaseModel):
 class SessionResponse(BaseModel):
     member: MemberOut
     organisations: list[MembershipOut]
+    active_organisation_id: uuid.UUID | None = Field(
+        description="The Organisation the Studio opens: the one the Member last switched to, "
+        "or their first. Null when they belong to none."
+    )
 
 
 class ErrorResponse(BaseModel):
@@ -115,14 +120,18 @@ async def current_member(db: Db, sessions: Sessions, token: SessionToken = None)
 CurrentMember = Annotated[Member, Depends(current_member)]
 
 
-async def session_response(db: AsyncSession, member: Member) -> SessionResponse:
+async def session_response(request: Request, db: AsyncSession, member: Member) -> SessionResponse:
     memberships = await list_memberships(db, member)
+    active = await ActiveOrganisations(request.app.state.redis).active(
+        member.id, [m.organisation_id for m in memberships]
+    )
     return SessionResponse(
         member=MemberOut(id=member.id, name=member.name, email=member.email),
         organisations=[
             MembershipOut(id=m.organisation_id, name=m.organisation_name, role=m.role)
             for m in memberships
         ],
+        active_organisation_id=active,
     )
 
 
@@ -171,7 +180,7 @@ async def sign_up(
     except service.EmailAlreadyRegisteredError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
     await start_session(response, request, sessions, member, token)
-    return await session_response(db, member)
+    return await session_response(request, db, member)
 
 
 class MfaChallengeResponse(BaseModel):
@@ -258,7 +267,7 @@ async def sign_in(
         )
         return challenge
     await start_session(response, request, sessions, member, token)
-    return await session_response(db, member)
+    return await session_response(request, db, member)
 
 
 async def finish_mfa_sign_in(
@@ -274,7 +283,7 @@ async def finish_mfa_sign_in(
         MFA_PENDING_COOKIE, path=MFA_PENDING_COOKIE_PATH, secure=True, httponly=True, samesite="lax"
     )
     await start_session(response, request, sessions, member, old_session)
-    return await session_response(db, member)
+    return await session_response(request, db, member)
 
 
 @router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT, operation_id="signOut")
@@ -290,5 +299,5 @@ async def sign_out(response: Response, sessions: Sessions, token: SessionToken =
     responses={401: {"model": ErrorResponse, "description": NOT_SIGNED_IN}},
     operation_id="getMe",
 )
-async def me(member: CurrentMember, db: Db) -> SessionResponse:
-    return await session_response(db, member)
+async def me(member: CurrentMember, request: Request, db: Db) -> SessionResponse:
+    return await session_response(request, db, member)

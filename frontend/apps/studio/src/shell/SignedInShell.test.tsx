@@ -74,7 +74,7 @@ test("says when the API cannot be reached", async () => {
 });
 
 test("tells a Member with no Organisation that they don't belong to one", async () => {
-  fakeAuthApi({ signedInAs: { ...adaSession, organisations: [] } });
+  fakeAuthApi({ signedInAs: { ...adaSession, organisations: [], active_organisation_id: null } });
   renderStudio("/");
 
   expect(await screen.findByText("You don't belong to any Organisation yet.")).toHaveRole("status");

@@ -8,6 +8,7 @@ export type Session = Schemas["SessionResponse"];
 export const adaSession: Session = {
   member: { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace", email: "ada@example.test" },
   organisations: [{ id: "0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02", name: "Analytical Engines", role: "owner" }],
+  active_organisation_id: "0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02",
 };
 
 /**

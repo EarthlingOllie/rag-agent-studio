@@ -721,6 +721,19 @@
       },
       "SessionResponse": {
         "properties": {
+          "active_organisation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Organisation the Studio opens: the one the Member last switched to, or their first. Null when they belong to none.",
+            "title": "Active Organisation Id"
+          },
           "member": {
             "$ref": "#/components/schemas/MemberOut"
           },
@@ -734,7 +747,8 @@
         },
         "required": [
           "member",
-          "organisations"
+          "organisations",
+          "active_organisation_id"
         ],
         "title": "SessionResponse",
         "type": "object"
@@ -792,6 +806,20 @@
           "organisation_name"
         ],
         "title": "SignUpRequest",
+        "type": "object"
+      },
+      "SwitchOrganisationRequest": {
+        "properties": {
+          "organisation_id": {
+            "format": "uuid",
+            "title": "Organisation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organisation_id"
+        ],
+        "title": "SwitchOrganisationRequest",
         "type": "object"
       },
       "ThrottledResponse": {
@@ -989,6 +1017,68 @@
         "summary": "Update Profile",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/auth/me/active-organisation": {
+      "put": {
+        "description": "Makes one of the Member's Organisations the active one, remembered across sign-ins.\n\nAn Organisation the Member doesn't belong to is 404, the same as one that doesn't exist.",
+        "operationId": "switchOrganisation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchOrganisationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Switch Organisation",
+        "tags": [
+          "organisations"
         ]
       }
     },
