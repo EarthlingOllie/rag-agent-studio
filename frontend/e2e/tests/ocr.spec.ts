@@ -10,6 +10,8 @@ test.describe("OCR toggle", () => {
     signedInPage: page,
     makeAxeBuilder,
   }) => {
+    // Two ingestion runs (upload, then retry) through the worker.
+    test.slow();
     await page.goto("/");
     await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
     const form = page.getByRole("form", { name: "New Project" });
