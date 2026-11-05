@@ -1,0 +1,13 @@
+$ make help
+  help             List targets
+  dev              Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio)
+  down             Stop the stack
+  services         Start only Postgres and Redis, for running the test suites on the host
+  install          Install backend and frontend dependencies
+  test             Run every test suite with the 100% coverage gate
+  test-backend     Backend tests against real Postgres and Redis (start them with `make services`)
+  test-frontend    Studio and API client tests
+  lint             Lint and type-check backend and frontend
+  gen-client       Regenerate the TypeScript API client from the backend's OpenAPI schema
+  check-client     Fail if the committed API client differs from a fresh generation
+  migrate          Apply database migrations to the running stack
