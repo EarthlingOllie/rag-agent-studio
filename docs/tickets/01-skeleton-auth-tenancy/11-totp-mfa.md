@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-04: Sign up, sign in, sign out](04-sign-up-sign-in-sign-out.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The envelope-encryption module provides seal and open with AES-256-GCM, a fresh data key per record, a versioned format and a local key wrapper; tamper detection is tested
 - [ ] Enrolment shows a QR code and requires a confirming code; ten single-use recovery codes are shown once and stored hashed
