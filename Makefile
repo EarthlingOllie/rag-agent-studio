@@ -5,7 +5,7 @@ SHELL := /bin/bash
 COMPOSE ?= docker compose
 API_CLIENT_DIR := frontend/packages/api-client
 
-.PHONY: help dev down services install test test-backend test-frontend lint lint-backend lint-frontend \
+.PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval
 
 help: ## List targets
@@ -17,8 +17,8 @@ dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, w
 down: ## Stop the stack
 	$(COMPOSE) down
 
-services: ## Start only Postgres and Redis, for running the test suites on the host
-	$(COMPOSE) up -d --wait postgres redis
+services: ## Start only Postgres, Redis and RustFS, for running the test suites on the host
+	$(COMPOSE) up -d --wait postgres redis rustfs
 
 install: ## Install backend and frontend dependencies
 	cd backend && uv sync --frozen
@@ -28,6 +28,9 @@ test: test-backend test-frontend ## Run every test suite with the 100% coverage 
 
 test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`)
 	cd backend && uv run pytest
+
+test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models; outside the coverage gate)
+	cd backend && uv run --group pdf pytest -m live --no-cov tests/live
 
 test-frontend: ## Studio and API client tests
 	cd frontend && pnpm test

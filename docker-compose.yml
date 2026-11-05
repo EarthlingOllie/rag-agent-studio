@@ -4,6 +4,11 @@ name: rag-agent-studio
 x-backend: &backend
   build:
     context: ./backend
+    args:
+      # PDF conversion (Docling's layout models, PyTorch CPU) and the bundled models make the
+      # image large; set these to false in .env for a lighter image without PDF support.
+      WITH_PDF: ${WITH_PDF:-true}
+      BUNDLE_MODELS: ${BUNDLE_MODELS:-true}
   environment:
     ENVIRONMENT: local
     DATABASE_URL: postgresql+asyncpg://studio:studio@postgres:5432/studio
@@ -24,10 +29,25 @@ x-backend: &backend
     SMTP_HOST: mailpit
     SMTP_PORT: "1025"
     STUDIO_URL: ${STUDIO_URL:-http://localhost:5173}
+    # Uploaded Documents go to RustFS. Browsers PUT to presigned URLs on the Studio's origin,
+    # whose dev proxy forwards /studio-documents to RustFS.
+    OBJECT_STORE: s3
+    OBJECT_STORE_BUCKET: studio-documents
+    OBJECT_STORE_CREATE_BUCKET: "true"
+    OBJECT_STORE_ENDPOINT_URL: http://rustfs:9000
+    OBJECT_STORE_PUBLIC_ENDPOINT_URL: ${STUDIO_URL:-http://localhost:5173}
+    OBJECT_STORE_ACCESS_KEY_ID: studio
+    OBJECT_STORE_SECRET_ACCESS_KEY: studio-secret
+    # Docling converts uploads, and the local Embedding Model (bundled in the image) embeds
+    # them. EMBEDDER=fake in .env uses the deterministic embedder instead (no model download).
+    DOCUMENT_CONVERTER: ${DOCUMENT_CONVERTER:-docling}
+    EMBEDDER: ${EMBEDDER:-local}
   depends_on:
     postgres:
       condition: service_healthy
     redis:
+      condition: service_healthy
+    rustfs:
       condition: service_healthy
     mailpit:
       condition: service_started
@@ -94,6 +114,7 @@ services:
       context: ./frontend
     environment:
       API_PROXY_TARGET: http://api:8000
+      OBJECT_STORE_PROXY_TARGET: http://rustfs:9000
     ports: ["5173:5173"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]

@@ -9,8 +9,11 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# PDF conversion needs Docling's PDF backend and layout models (PyTorch, CPU build).
+ARG WITH_PDF=true
+
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project $([ "$WITH_PDF" = "true" ] && echo --group pdf)
 
 # Runtime stage: the virtualenv and the app only. uv, pip and pip's vendored libraries are
 # not needed at runtime, and the Trivy gate (security.yml) rejects their known CVEs.
@@ -34,6 +37,21 @@ WORKDIR /app
 COPY alembic.ini ./
 COPY app ./app
 COPY migrations ./migrations
+
+# The local Embedding Model, its tokenizer and (with PDF) Docling's layout models are downloaded
+# at build time, so the worker doesn't fetch them at startup.
+ARG WITH_PDF=true
+ARG BUNDLE_MODELS=true
+ENV HF_HOME=/opt/models/huggingface \
+    FASTEMBED_CACHE_PATH=/opt/models/fastembed \
+    DOCLING_ARTIFACTS_PATH=/opt/models/docling
+RUN mkdir -p /opt/models \
+    && if [ "$BUNDLE_MODELS" = "true" ]; then \
+        python -c "from app.embeddings.local import LocalEmbedder as E; e = E(); e.embed_passages(['warm up']); e.tokenizer(512)" \
+        && if [ "$WITH_PDF" = "true" ]; then \
+            python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'))"; \
+        fi; \
+    fi
 
 RUN useradd --system --uid 10001 studio
 USER studio
