@@ -628,3 +628,20 @@ async def test_the_invite_lifetime_follows_the_setting(
     assert (await look_up(client, token)).status_code == 200
     clock.advance(timedelta(seconds=1))
     assert (await look_up(client, token)).status_code == 404
+
+
+async def test_an_owner_cannot_revoke_or_renew_another_organisations_invite(
+    tenant_factory: TenantFactory, client: httpx.AsyncClient
+) -> None:
+    first, second = await tenant_factory(), await tenant_factory()
+    body = await invite_ok(first, unique_email())
+    # The other Owner uses their own Organisation's path with the first one's invite ID.
+    path = f"{invites_path(second.organisation_id)}/{body['invite']['id']}"
+
+    revoked = await second.client.delete(path)
+    renewed = await second.client.post(f"{path}/renew", json={})
+
+    assert (revoked.status_code, revoked.json()) == (404, {"detail": "Not found"})
+    assert (renewed.status_code, renewed.json()) == (404, {"detail": "Not found"})
+    assert [i["id"] for i in await pending(first)] == [body["invite"]["id"]]
+    assert (await look_up(client, token_from(body["link"]))).status_code == 200
