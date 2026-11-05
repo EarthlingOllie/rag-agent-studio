@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-08: Invites and joining an Organisation](08-invites-joining.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Members list shows each Member's role
 - [ ] Owners can change roles and remove Members, and any Member can leave
