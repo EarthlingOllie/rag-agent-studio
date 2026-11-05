@@ -45,7 +45,9 @@ ARG BUNDLE_MODELS=true
 ENV HF_HOME=/opt/models/huggingface \
     FASTEMBED_CACHE_PATH=/opt/models/fastembed \
     DOCLING_ARTIFACTS_PATH=/opt/models/docling
-RUN mkdir -p /opt/models \
+# The Docling folder always exists: Docling refuses an artifacts path that isn't a directory, even for
+# formats that need no models, so an image built without the models still converts Markdown, DOCX and PPTX.
+RUN mkdir -p /opt/models/docling \
     && if [ "$BUNDLE_MODELS" = "true" ]; then \
         python -c "from app.embeddings.local import LocalEmbedder as E; e = E(); e.embed_passages(['warm up']); e.tokenizer(512)" \
         && if [ "$WITH_PDF" = "true" ]; then \
