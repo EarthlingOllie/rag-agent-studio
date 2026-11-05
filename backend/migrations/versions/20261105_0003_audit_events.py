@@ -42,8 +42,13 @@ def upgrade() -> None:
         sa.Column("before", postgresql.JSONB(), nullable=True),
         sa.Column("after", postgresql.JSONB(), nullable=True),
         sa.Column(
-            "occurred_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+            "occurred_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.clock_timestamp(),
+            nullable=False,
         ),
+        sa.Column("sequence", sa.BigInteger(), sa.Identity(), nullable=False),
+        sa.UniqueConstraint("sequence", name="uq_audit_events_sequence"),
     )
     op.create_index(
         "ix_audit_events_organisation_id_occurred_at",
