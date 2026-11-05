@@ -1,0 +1,25 @@
+# Sandbox-only override: images built by build.sh (the committed Dockerfiles plus the proxy CA),
+# and host ports moved so this stack runs beside other tickets' stacks on the same Docker daemon.
+services:
+  postgres:
+    ports: !override ["51432:5432"]
+  redis:
+    ports: !override ["51379:6379"]
+  rustfs:
+    ports: !override ["51900:9000", "51901:9001"]
+  mailpit:
+    ports: !override ["51025:1025", "51825:8025"]
+  api:
+    image: rag-agent-studio/api:0202
+    pull_policy: never
+    ports: !override ["51800:8000"]
+  worker:
+    image: rag-agent-studio/api:0202
+    pull_policy: never
+  beat:
+    image: rag-agent-studio/api:0202
+    pull_policy: never
+  studio:
+    image: rag-agent-studio/studio:0202
+    pull_policy: never
+    ports: !override ["51173:5173"]

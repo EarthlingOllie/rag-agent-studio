@@ -119,8 +119,24 @@ The last four characters of a Provider Credential's secret: all of the secret th
 _Avoid_: Hint, preview, redacted key
 
 **Credential check**:
-A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable).
+A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region.
 _Avoid_: Validation, test call, ping
+
+**Bedrock role**:
+An IAM role in an Owner's AWS account that the platform assumes to call Bedrock. The preferred way to connect Bedrock, because no secret is stored; access keys are the fallback.
+_Avoid_: Cross-account key, IAM credential, assume-role key
+
+**External ID**:
+A stable, unguessable value the platform generates once per Organisation and passes whenever it assumes that Organisation's Bedrock role. The role's trust policy requires it, so no other customer can get the platform to assume the role.
+_Avoid_: Shared secret, tenant key, role token
+
+**Trust policy**:
+The policy on a Bedrock role that names the platform's AWS principal and requires the Organisation's External ID. The Studio shows it, ready to paste into AWS.
+_Avoid_: Role policy, assume-role document
+
+**Assumed-role session**:
+Temporary AWS credentials the platform gets by assuming a Bedrock role. Cached per role and External ID, and renewed shortly before it expires.
+_Avoid_: STS token, temporary key
 
 **Rotation**:
 Replacing a Provider Credential's secret while keeping its identity, so everything that references it keeps working.

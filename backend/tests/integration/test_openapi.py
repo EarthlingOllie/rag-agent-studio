@@ -54,6 +54,11 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "deleteCredential": (_CREDENTIAL, "delete"),
         "checkCredential": (f"{_CREDENTIAL}/check", "post"),
         "rotateCredential": (f"{_CREDENTIAL}/rotate", "post"),
+        "createBedrockCredential": (
+            "/api/organisations/{organisation_id}/credentials/bedrock",
+            "post",
+        ),
+        "getBedrockSetup": ("/api/organisations/{organisation_id}/bedrock-setup", "get"),
         "listCredentialModels": (f"{_CREDENTIAL}/models/{{capability}}", "get"),
         "listProviders": ("/api/providers", "get"),
         "getDefaultModel": ("/api/organisations/{organisation_id}/default-model", "get"),
