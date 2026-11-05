@@ -1,0 +1,12 @@
+$ make audit && make secret-scan (in a fresh clone of ticket/01-10-org-switcher at a64503d; TEST_DATABASE_URL=…/studio_test_c0110 TEST_REDIS_URL=…/11)
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+gitleaks git --redact --no-banner .
+[90m5:39AM[0m [32mINF[0m [1m96 commits scanned.[0m
+[90m5:39AM[0m [32mINF[0m [1mscanned ~5321938 bytes (5.32 MB) in 447ms[0m
+[90m5:39AM[0m [32mINF[0m [1mno leaks found[0m
+exit 0

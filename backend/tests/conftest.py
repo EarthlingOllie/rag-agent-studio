@@ -173,3 +173,15 @@ def outbox(app: FastAPI) -> OutboxMailer:
 
 def _clock_is_a_clock(clock: ControllableClock) -> Clock:
     return clock  # mypy checks the fake satisfies the port
+
+
+async def join_organisation(owner: SignedUpMember, member: SignedUpMember, role: str) -> None:
+    """Brings an existing Member into the Owner's Organisation through an accepted invite link."""
+    invited = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/invites",
+        json={"email": member.email, "role": role, "send_email": False},
+    )
+    assert invited.status_code == 201, invited.text
+    token = invited.json()["link"].split("token=", 1)[1]
+    accepted = await member.client.post("/api/invites/accept", json={"token": token})
+    assert accepted.status_code == 200, accepted.text

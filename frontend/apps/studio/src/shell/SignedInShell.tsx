@@ -1,6 +1,7 @@
 import { Link, Navigate, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 
 import { type Session, useMe, useSignOut } from "../auth/session";
+import { OrganisationSwitcher } from "./OrganisationSwitcher";
 
 function Centered({ children, role }: { children: string; role: "status" | "alert" }) {
   return (
@@ -19,14 +20,14 @@ export function SignedInShell() {
   return <Outlet />;
 }
 
-/** `/`: opens the Member's first Organisation. */
+/** `/`: opens the active Organisation: the one the Member last switched to, or their first. */
 export function HomeRedirect() {
   const { data } = useMe();
-  const first = (data as Session).organisations[0];
-  if (first === undefined) {
+  const active = (data as Session).active_organisation_id;
+  if (active === null) {
     return <Centered role="status">You don't belong to any Organisation yet.</Centered>;
   }
-  return <Navigate to="/organisations/$organisationId/projects" params={{ organisationId: first.id }} />;
+  return <Navigate to="/organisations/$organisationId/projects" params={{ organisationId: active }} />;
 }
 
 function SignOutButton() {
@@ -72,7 +73,7 @@ export function OrganisationShell() {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-6">
             <span className="font-semibold">RAG Agent Studio</span>
-            {organisation && <span className="text-sm text-slate-700">{organisation.name}</span>}
+            <OrganisationSwitcher session={session} organisationId={organisationId} />
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-700">{session.member.name}</span>

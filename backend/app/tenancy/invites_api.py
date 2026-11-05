@@ -284,7 +284,7 @@ async def accept_invite(
             f"This invite is for {exc.invited_email}. Sign in with that email to accept it.",
         ) from None
     await start_session(response, request, sessions, member, token)
-    return await session_response(db, member)
+    return await session_response(request, db, member)
 
 
 class InviteSignUpRequest(BaseModel):
@@ -321,4 +321,4 @@ async def sign_up_with_invite(
     except EmailAlreadyRegisteredError:
         raise HTTPException(status.HTTP_409_CONFLICT, ACCOUNT_EXISTS) from None
     await start_session(response, request, sessions, member, token)
-    return await session_response(db, member)
+    return await session_response(request, db, member)

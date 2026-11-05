@@ -141,3 +141,20 @@ export function useChangePassword() {
     },
   });
 }
+
+/** Makes one of the Member's Organisations the active one; the API remembers it across sign-ins. */
+export function useSwitchOrganisation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (organisationId: string) => {
+      const { data, response } = await api.PUT("/api/auth/me/active-organisation", {
+        body: { organisation_id: organisationId },
+      });
+      if (!data) throw new AuthRequestError(response.status);
+      return data;
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(ME_QUERY_KEY, session);
+    },
+  });
+}
