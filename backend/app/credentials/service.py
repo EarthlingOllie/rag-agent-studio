@@ -55,6 +55,19 @@ def _context(organisation_id: uuid.UUID, credential_id: uuid.UUID) -> bytes:
     return f"provider-credential:{organisation_id}:{credential_id}".encode()
 
 
+def seal_secret(
+    envelope: EnvelopeEncryption, organisation_id: uuid.UUID, credential_id: uuid.UUID, secret: str
+) -> bytes:
+    """Seals a credential's secret, bound to the credential and its Organisation."""
+    return envelope.seal(secret.encode(), context=_context(organisation_id, credential_id))
+
+
+def open_secret(envelope: EnvelopeEncryption, credential: ProviderCredential) -> str:
+    """The credential's secret in plain text. Only the model gateway and checks need it."""
+    context = _context(credential.organisation_id, credential.id)
+    return envelope.open(credential.secret_sealed, context=context).decode()
+
+
 def _suffix(secret: str) -> str:
     return secret[-SUFFIX_LENGTH:]
 
@@ -179,8 +192,8 @@ class Credentials:
             name=new.name,
             provider=new.provider,
             auth_kind=AuthKind.API_KEY,
-            secret_sealed=self._envelope.seal(
-                new.api_key.encode(), context=_context(scope.organisation_id, credential_id)
+            secret_sealed=seal_secret(
+                self._envelope, scope.organisation_id, credential_id, new.api_key
             ),
             masked_suffix=_suffix(new.api_key),
             capabilities=[str(c) for c in capabilities],
@@ -209,16 +222,14 @@ class Credentials:
         )
         return existing is not None
 
-    def _open(self, credential: ProviderCredential) -> str:
-        context = _context(credential.organisation_id, credential.id)
-        return self._envelope.open(credential.secret_sealed, context=context).decode()
-
     async def recheck(
         self, scope: OrganisationScope, credential_id: uuid.UUID
     ) -> ProviderCredential:
         """Checks the stored secret again and records the outcome on the credential."""
         credential = await self.get(scope, credential_id, for_update=True)
-        result = await self._verifier.check(Provider(credential.provider), self._open(credential))
+        result = await self._verifier.check(
+            Provider(credential.provider), open_secret(self._envelope, credential)
+        )
         self._apply(credential, result)
         if result.failure is None:
             await self._record(scope, "credential.checked", credential.id, after={"status": PASSED})
@@ -247,8 +258,8 @@ class Credentials:
             details = _summary(credential) | {"attempted_suffix": _suffix(api_key)}
             raise await self._check_failed(scope, credential.id, details, result.failure)
         before = {"masked_suffix": credential.masked_suffix}
-        credential.secret_sealed = self._envelope.seal(
-            api_key.encode(), context=_context(credential.organisation_id, credential.id)
+        credential.secret_sealed = seal_secret(
+            self._envelope, credential.organisation_id, credential.id, api_key
         )
         credential.masked_suffix = _suffix(api_key)
         credential.secret_set_at = self._clock.now()

@@ -1,0 +1,16 @@
+# commit aa17f5d, fresh clone; images from build.sh (tag 0203)
+$ STUDIO_URL=http://localhost:51173 docker compose -p rag0203 -f docker-compose.yml -f compose.sandbox.yml down -v && ... up -d --wait  (fresh volumes)
+ Container rag0203-beat-1 Healthy 
+ Container rag0203-api-1 Healthy 
+ Container rag0203-studio-1 Healthy 
+[exit code 0]
+rag0203-studio-1 rag-agent-studio/studio:0203 Up 3 seconds (healthy)
+rag0203-beat-1 rag-agent-studio/api:0203 Up 17 seconds
+rag0203-api-1 rag-agent-studio/api:0203 Up 18 seconds (healthy)
+rag0203-worker-1 rag-agent-studio/api:0203 Up 17 seconds
+rag0203-redis-1 redis:7.4.2-alpine Up 20 seconds (healthy)
+rag0203-postgres-1 pgvector/pgvector:0.8.1-pg16 Up 21 seconds (healthy)
+rag0203-rustfs-1 rustfs/rustfs:1.0.4 Up 21 seconds
+rag0203-mailpit-1 axllent/mailpit:v1.27 Up 20 seconds (healthy)
+rag0203-redis redis:7.4.2-alpine Up 31 minutes
+rag0203-pg pgvector/pgvector:0.8.1-pg16 Up 31 minutes

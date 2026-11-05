@@ -1,0 +1,15 @@
+# commit ed6a69a, branch worktree
+$ python docs/tickets/02-provider-credentials-theme/02-03-evidence/mutate.py .
+CAUGHT: gateway builds a model for a capability the credential wasn't given (backend/app/gateway/gateway.py)
+CAUGHT: gateway builds a model its provider doesn't offer for the capability (backend/app/gateway/gateway.py)
+CAUGHT: fake adapters ignore the chat model a test injects (backend/app/gateway/fakes.py)
+CAUGHT: live OpenAI chat model is built without the credential's key (backend/app/gateway/live.py)
+CAUGHT: model list ignores the capabilities the credential was given (backend/app/credentials/registry.py)
+CAUGHT: Default Model is not registered as a credential reference (backend/app/main.py)
+CAUGHT: Editors may set the Default Model (backend/app/default_model/api.py)
+CAUGHT: changing the Default Model is not audited (backend/app/default_model/service.py)
+CAUGHT: the Studio picker offers credentials without chat (frontend/apps/studio/src/settings/ModelsPage.tsx)
+CAUGHT: the Studio sends the first model, not the chosen one (frontend/apps/studio/src/settings/ModelsPage.tsx)
+10/10 mutations caught
+unmodified code: passes
+[exit code 0]

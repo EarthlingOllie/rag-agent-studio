@@ -507,6 +507,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/models/{capability}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Credential Models
+         * @description The models this credential offers for a capability: empty unless the credential was
+         *     given that capability. Open to every Member, for model pickers.
+         */
+        get: operations["listCredentialModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/credentials/{credential_id}/rotate": {
         parameters: {
             query?: never;
@@ -521,6 +542,30 @@ export interface paths {
          * @description Replaces the key, keeping the credential's identity. A failed check keeps the old key.
          */
         post: operations["rotateCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/default-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Default Model
+         * @description The Organisation's Default Model, or null until an Owner sets one. Open to every Member.
+         */
+        get: operations["getDefaultModel"];
+        /**
+         * Set Default Model
+         * @description Sets the Default Model to one of a chat-capable credential's chat models.
+         */
+        put: operations["setDefaultModel"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1056,6 +1101,26 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** DefaultModelOut */
+        DefaultModelOut: {
+            /**
+             * Credential Id
+             * Format: uuid
+             */
+            credential_id: string;
+            /** Credential Name */
+            credential_name: string;
+            /** Model */
+            model: string;
+            /** Model Name */
+            model_name: string;
+            provider: components["schemas"]["Provider"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** DisableRequest */
         DisableRequest: {
             /** Code */
@@ -1384,6 +1449,16 @@ export interface components {
             member: components["schemas"]["MemberOut"];
             /** Organisations */
             organisations: components["schemas"]["MembershipOut"][];
+        };
+        /** SetDefaultModelRequest */
+        SetDefaultModelRequest: {
+            /**
+             * Credential Id
+             * Format: uuid
+             */
+            credential_id: string;
+            /** Model */
+            model: string;
         };
         /** SignInRequest */
         SignInRequest: {
@@ -2789,6 +2864,48 @@ export interface operations {
             };
         };
     };
+    listCredentialModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                capability: components["schemas"]["Capability"];
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rotateCredential: {
         parameters: {
             query?: never;
@@ -2848,6 +2965,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getDefaultModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefaultModelOut"] | null;
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setDefaultModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDefaultModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefaultModelOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a chat model of this Organisation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -7,6 +7,7 @@ import { AuditPage } from "./AuditPage";
 import { CredentialsPage } from "./CredentialsPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
 import { MembersPage } from "./MembersPage";
+import { ModelsPage } from "./ModelsPage";
 import { ThemePage } from "./ThemePage";
 import { useSetMfaPolicy } from "./mfaPolicy";
 
@@ -126,7 +127,7 @@ function LeaveOrganisation({ organisationId, organisationName }: { organisationI
 }
 
 /**
- * Organisation settings, with a tab per area. Every Member sees General, Credentials and Theme
+ * Organisation settings, with a tab per area. Every Member sees General, Credentials, Models and Theme
  * (Editors view the Theme without editing it); the Members and Audit tabs are shown to Owners only.
  */
 export function OrganisationSettingsLayout() {
@@ -142,6 +143,9 @@ export function OrganisationSettingsLayout() {
         </Link>
         <Link to="/organisations/$organisationId/settings/credentials" params={{ organisationId }} className={TAB}>
           Credentials
+        </Link>
+        <Link to="/organisations/$organisationId/settings/models" params={{ organisationId }} className={TAB}>
+          Models
         </Link>
         <Link to="/organisations/$organisationId/settings/theme" params={{ organisationId }} className={TAB}>
           Theme
@@ -192,4 +196,9 @@ export function CredentialsSettingsPage() {
 export function ThemeSettingsPage() {
   const { organisationId, isOwner } = useOrganisation();
   return <ThemePage organisationId={organisationId} isOwner={isOwner} />;
+}
+
+export function ModelsSettingsPage() {
+  const { organisationId, isOwner } = useOrganisation();
+  return <ModelsPage organisationId={organisationId} isOwner={isOwner} />;
 }

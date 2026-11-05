@@ -18,6 +18,7 @@ import {
   CredentialsSettingsPage,
   GeneralSettingsPage,
   MembersSettingsPage,
+  ModelsSettingsPage,
   OrganisationSettingsLayout,
   ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
@@ -125,6 +126,7 @@ const credentialsSettingsRoute = createRoute({
   path: "/credentials",
   component: CredentialsSettingsPage,
 });
+const modelsSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/models", component: ModelsSettingsPage });
 const themeSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/theme", component: ThemeSettingsPage });
 const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
@@ -153,7 +155,7 @@ const routeTree = rootRoute.addChildren([
         conversationsTabRoute,
         analyticsTabRoute,
       ]),
-      settingsRoute.addChildren([generalSettingsRoute, credentialsSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
+      settingsRoute.addChildren([generalSettingsRoute, credentialsSettingsRoute, modelsSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,
     ]),
