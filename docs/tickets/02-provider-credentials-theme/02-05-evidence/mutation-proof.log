@@ -1,0 +1,23 @@
+$ python3 mutate.py /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0205   # at 864d38d; Postgres/Redis: compose project rag0205 (:55432, :56379/14)
+caught   Editors can save the Theme (backend/app/theme/api.py)
+caught   Theme change not audited (backend/app/theme/service.py)
+caught   Audit records the whole Theme instead of what changed (backend/app/theme/service.py)
+caught   No-op save is audited (backend/app/theme/service.py)
+caught   Organisation row not locked on save (backend/app/theme/service.py)
+caught   Hex colours not validated (backend/app/theme/schema.py)
+caught   Colours not lower-cased (backend/app/theme/schema.py)
+caught   Radius upper bound off (backend/app/theme/schema.py)
+caught   Theme read from another Organisation (backend/app/theme/service.py)
+caught   Luminance uses the wrong linear threshold (frontend/packages/ui/src/contrast.ts)
+caught   Contrast ignores the 0.05 flare term (frontend/packages/ui/src/contrast.ts)
+caught   Text pairs need only 3:1 (frontend/packages/ui/src/contrast.ts)
+caught   Auto mode checks light only (frontend/packages/ui/src/theme.ts)
+caught   Resolution always takes the light value (frontend/packages/ui/src/theme.ts)
+caught   Radius resolved without a unit (frontend/packages/ui/src/theme.ts)
+caught   Contrast warnings block saving (frontend/apps/studio/src/settings/ThemePage.tsx)
+caught   Preview shows the saved Theme, not the draft (frontend/apps/studio/src/settings/ThemePage.tsx)
+caught   Editors can edit the form (frontend/apps/studio/src/settings/ThemePage.tsx)
+caught   Theme tab hidden from Editors (frontend/apps/studio/src/settings/OrganisationSettings.tsx)
+19/19 mutations caught
+unmodified code: backend passes, frontend passes
+# exit code: 0
