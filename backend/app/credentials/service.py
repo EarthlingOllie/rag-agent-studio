@@ -361,7 +361,9 @@ class Credentials:
     ) -> CheckResult:
         """Checks a stored credential again, however it authenticates."""
         if credential.auth_kind == AuthKind.API_KEY:
-            return await self._verifier.check(Provider(credential.provider), open_secret(self._envelope, credential))
+            return await self._verifier.check(
+                Provider(credential.provider), open_secret(self._envelope, credential)
+            )
         capabilities = [Capability(c) for c in credential.capabilities]
         region = str(credential.region)
         if credential.auth_kind == AuthKind.AWS_ROLE:
