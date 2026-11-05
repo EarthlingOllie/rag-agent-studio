@@ -7,10 +7,10 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] A duplicate content hash is refused, with a link to the existing Document
-- [ ] Delete removes the Chunks in the same transaction and schedules deletion of stored files, and is audited
-- [ ] Replacing an edition stages new Chunks and swaps them atomically on Ready; the Document keeps its identity and Tags, and the old Chunks serve until the swap
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A duplicate content hash is refused, with a link to the existing Document
+- [x] Delete removes the Chunks in the same transaction and schedules deletion of stored files, and is audited
+- [x] Replacing an edition stages new Chunks and swaps them atomically on Ready; the Document keeps its identity and Tags, and the old Chunks serve until the swap
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

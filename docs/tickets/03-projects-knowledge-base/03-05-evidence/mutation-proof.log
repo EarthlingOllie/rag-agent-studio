@@ -1,0 +1,19 @@
+$ cd backend && python ../docs/tickets/03-projects-knowledge-base/03-05-evidence/mutate.py
+ 1. CAUGHT  app/documents/service.py: 'if duplicate is not None:' -> 'if False:'
+ 2. CAUGHT  app/documents/service.py: 'StagedEdition.status != DocumentStatus.FAILED,' -> 'StagedEdition.status == DocumentStatus.FAILED,'
+ 3. CAUGHT  app/documents/service.py: 'await store.delete(pending["object_key"])' -> '(removed)'
+ 4. CAUGHT  app/documents/service.py: 'action="document.deleted",' -> 'action="document.removed",'
+ 5. CAUGHT  app/documents/api.py: 'await enqueue_object_deletion(keys)' -> '(removed)'
+ 6. CAUGHT  app/documents/service.py: 'keys += stored_keys(staged.object_key)' -> '(removed)'
+ 7. CAUGHT  app/documents/service.py: 'project = await projects.active_project(session, scope, project_id)' -> 'project = await projects.get_project(session, scop'
+ 8. CAUGHT  app/documents/pipeline.py: 'replaced = await _swap(session, document) if job.staged else []' -> 'replaced = []'
+ 9. CAUGHT  app/documents/pipeline.py: 'delete(Chunk).where(Chunk.document_id == document.id, Chunk.edition !=' -> 'delete(Chunk).where(Chunk.document_id == document.'
+10. CAUGHT  app/documents/pipeline.py: 'elif replaced:' -> '(removed)'
+11. CAUGHT  app/documents/pipeline.py: 'if job.staged:' -> '(removed)'
+12. CAUGHT  app/documents/service.py: 'if document.status not in FINAL_STATUSES or (' -> 'if False and ('
+13. CAUGHT  app/documents/service.py: 'staged.edition = document.edition + 1' -> 'staged.edition = document.edition'
+14. CAUGHT  app/documents/pipeline.py: 'if document is None:' -> 'if False:'
+
+14/14 mutations caught
+unmodified code: passes
+exit 0
