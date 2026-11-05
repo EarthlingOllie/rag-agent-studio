@@ -26,6 +26,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base, IdMixin
 from app.embeddings.registry import EMBEDDING_MODELS
 
+# Referenced as objects, so the worker (which loads no routers) has these tables registered too.
+from app.projects.models import Project
+from app.tenancy.models import Organisation
+
 NAME_MAX = 255
 MIME_MAX = 255
 
@@ -44,10 +48,10 @@ class Document(IdMixin, Base):
     __tablename__ = "documents"
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
     )
     project_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+        ForeignKey(Project.id, ondelete="CASCADE"), index=True
     )
     name: Mapped[str] = mapped_column(String(NAME_MAX))
     mime_type: Mapped[str] = mapped_column(String(MIME_MAX))
@@ -75,10 +79,10 @@ class Chunk(IdMixin, Base):
     )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
     )
     project_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+        ForeignKey(Project.id, ondelete="CASCADE"), index=True
     )
     document_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("documents.id", ondelete="CASCADE"), index=True

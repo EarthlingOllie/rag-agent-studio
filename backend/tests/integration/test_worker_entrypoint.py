@@ -1,6 +1,7 @@
 """The worker and Beat entrypoint validates settings before connecting to the broker."""
 
 import importlib
+import subprocess
 import sys
 from types import ModuleType
 
@@ -39,3 +40,21 @@ def test_worker_entrypoint_fails_fast_naming_a_missing_setting(
 
     with pytest.raises(SettingsError, match=r"REDIS_URL: Field required"):
         _import_worker_entrypoint()
+
+
+def test_the_worker_knows_every_table_its_tasks_write_to() -> None:
+    """The worker imports only its tasks, not the API's routers, so the models those tasks use
+    must bring in every table their foreign keys point at."""
+    check = (
+        "import app.documents.tasks\n"
+        "from app.core.db import Base\n"
+        "for table in Base.metadata.tables.values():\n"
+        "    for key in table.foreign_keys:\n"
+        "        key.column\n"
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-c", check], capture_output=True, text=True, check=False
+    )
+
+    assert result.returncode == 0, result.stderr
