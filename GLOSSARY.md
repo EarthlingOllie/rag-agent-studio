@@ -23,6 +23,10 @@ _Avoid_: User, admin
 A Member's place in one Organisation, with a role: Owner or Editor. Signing up creates an Organisation and an Owner Membership for the new Member.
 _Avoid_: Seat, account
 
+**Lockout**:
+A temporary block on signing in, after too many failed attempts for one account or from one IP address. Before it, each further attempt must wait a little longer. A Lockout of a Member's account is recorded as an Audit Event in each of their Organisations.
+_Avoid_: Ban, suspension, block
+
 **Owner**:
 A Member role that can manage Provider Credentials, Members and Organisation settings, as well as everything an Editor can.
 

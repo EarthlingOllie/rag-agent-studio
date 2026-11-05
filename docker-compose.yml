@@ -10,6 +10,9 @@ x-backend: &backend
     REDIS_URL: redis://redis:6379/0
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+    # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.
+    # Local only: a deployment lists just its load balancers here.
+    FORWARDED_ALLOW_IPS: "*"
   depends_on:
     postgres:
       condition: service_healthy

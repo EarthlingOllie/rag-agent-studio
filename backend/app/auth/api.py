@@ -5,11 +5,14 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.datastructures import Address
 
 from app.auth import service
 from app.auth.sessions import SESSION_COOKIE, SessionStore
+from app.auth.throttle import SignInThrottle
 from app.core.deps import get_db
 from app.core.settings import Settings
 from app.tenancy.models import Member, Role
@@ -18,6 +21,9 @@ from app.tenancy.repository import list_memberships
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 SIGN_IN_FAILED = "Email or password is incorrect"
+SIGN_IN_THROTTLED = "Too many failed sign-in attempts"
+# ASGI servers may leave the client unset (a Unix socket, for example); they share one counter.
+_UNKNOWN_CLIENT = Address("unknown", 0)
 NOT_SIGNED_IN = "Not signed in"
 
 # Deliberately loose: one @, no spaces, a dot in the domain. Delivery is the real check.
@@ -71,13 +77,26 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
+class ThrottledResponse(BaseModel):
+    detail: str
+    locked: bool = Field(description="True for a lockout; false for a short delay between attempts")
+    retry_after_seconds: int = Field(description="Seconds until sign-in can be tried again")
+
+
 def get_session_store(request: Request) -> SessionStore:
     settings: Settings = request.app.state.settings
     return SessionStore(request.app.state.redis, settings.session_ttl_seconds)
 
 
+def get_sign_in_throttle(request: Request) -> SignInThrottle:
+    return SignInThrottle(
+        request.app.state.redis, request.app.state.clock, request.app.state.settings
+    )
+
+
 Db = Annotated[AsyncSession, Depends(get_db)]
 Sessions = Annotated[SessionStore, Depends(get_session_store)]
+Throttle = Annotated[SignInThrottle, Depends(get_sign_in_throttle)]
 SessionToken = Annotated[str | None, Cookie(alias=SESSION_COOKIE, include_in_schema=False)]
 
 
@@ -154,7 +173,11 @@ async def sign_up(
 
 @router.post(
     "/sign-in",
-    responses={401: {"model": ErrorResponse, "description": SIGN_IN_FAILED}},
+    responses={
+        401: {"model": ErrorResponse, "description": SIGN_IN_FAILED},
+        429: {"model": ThrottledResponse, "description": SIGN_IN_THROTTLED},
+    },
+    response_model=SessionResponse,
     operation_id="signIn",
 )
 async def sign_in(
@@ -163,9 +186,31 @@ async def sign_in(
     response: Response,
     db: Db,
     sessions: Sessions,
+    throttle: Throttle,
     token: SessionToken = None,
-) -> SessionResponse:
-    member = await service.authenticate(db, email=body.email, password=body.password)
+) -> SessionResponse | JSONResponse:
+    """Signs a Member in. Repeated failures per account or IP are delayed, then locked out."""
+    try:
+        member = await service.sign_in(
+            db,
+            throttle,
+            request.app.state.clock,
+            email=body.email,
+            password=body.password,
+            ip=(request.client or _UNKNOWN_CLIENT).host,
+        )
+    except service.SignInThrottledError as throttled:
+        refusal = throttled.refusal
+        content = ThrottledResponse(
+            detail=SIGN_IN_THROTTLED,
+            locked=refusal.locked,
+            retry_after_seconds=refusal.retry_after_seconds,
+        )
+        return JSONResponse(
+            content.model_dump(),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(refusal.retry_after_seconds)},
+        )
     if member is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, SIGN_IN_FAILED)
     await _start_session(response, request, sessions, member, token)

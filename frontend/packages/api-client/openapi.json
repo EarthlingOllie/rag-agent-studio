@@ -228,6 +228,31 @@
         "title": "SignUpRequest",
         "type": "object"
       },
+      "ThrottledResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "locked": {
+            "description": "True for a lockout; false for a short delay between attempts",
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "retry_after_seconds": {
+            "description": "Seconds until sign-in can be tried again",
+            "title": "Retry After Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detail",
+          "locked",
+          "retry_after_seconds"
+        ],
+        "title": "ThrottledResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -348,6 +373,7 @@
     },
     "/api/auth/sign-in": {
       "post": {
+        "description": "Signs a Member in. Repeated failures per account or IP are delayed, then locked out.",
         "operationId": "signIn",
         "requestBody": {
           "content": {
@@ -389,6 +415,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThrottledResponse"
+                }
+              }
+            },
+            "description": "Too many failed sign-in attempts"
           }
         },
         "summary": "Sign In",

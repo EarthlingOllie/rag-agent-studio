@@ -1,3 +1,4 @@
+import type { Schemas } from "@studio/api-client";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
@@ -37,6 +38,91 @@ test("says the email or password is incorrect without saying which", async () =>
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Email or password is incorrect.");
   expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+});
+
+function throttle(body: Schemas["ThrottledResponse"]) {
+  server.use(
+    http.post("*/api/auth/sign-in", () =>
+      HttpResponse.json(body, { status: 429, headers: { "Retry-After": String(body.retry_after_seconds) } }),
+    ),
+  );
+}
+
+test("explains a lockout and how long it lasts", async () => {
+  throttle({ detail: "Too many failed sign-in attempts", locked: true, retry_after_seconds: 900 });
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Too many failed sign-in attempts. Sign-in is locked for 15 minutes. Try again after that.",
+  );
+  expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+});
+
+test("rounds a lockout's remaining time up to whole minutes", async () => {
+  throttle({ detail: "Too many failed sign-in attempts", locked: true, retry_after_seconds: 61 });
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in is locked for 2 minutes.");
+});
+
+test("says a lockout ending within the minute lasts 1 minute", async () => {
+  throttle({ detail: "Too many failed sign-in attempts", locked: true, retry_after_seconds: 5 });
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in is locked for 1 minute.");
+});
+
+test("asks the Member to wait out a short delay", async () => {
+  throttle({ detail: "Too many failed sign-in attempts", locked: false, retry_after_seconds: 4 });
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Too many failed sign-in attempts. Wait 4 seconds, then try again.",
+  );
+});
+
+test("says 1 second for a one-second delay", async () => {
+  throttle({ detail: "Too many failed sign-in attempts", locked: false, retry_after_seconds: 1 });
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Wait 1 second, then try again.");
+});
+
+test("reports a 429 without the throttling details as an unexpected failure", async () => {
+  server.use(http.post("*/api/auth/sign-in", () => new HttpResponse("Slow down", { status: 429 })));
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+});
+
+test("reports a 429 with other JSON as an unexpected failure", async () => {
+  server.use(http.post("*/api/auth/sign-in", () => HttpResponse.json({ detail: "Slow down" }, { status: 429 })));
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+});
+
+test("reports an unreachable API as an unexpected failure", async () => {
+  server.use(http.post("*/api/auth/sign-in", () => HttpResponse.error()));
+  renderStudio("/sign-in");
+
+  await signIn();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
 });
 
 test("reports an unexpected failure", async () => {

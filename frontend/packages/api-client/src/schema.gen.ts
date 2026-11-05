@@ -30,7 +30,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign In */
+        /**
+         * Sign In
+         * @description Signs a Member in. Repeated failures per account or IP are delayed, then locked out.
+         */
         post: operations["signIn"];
         delete?: never;
         options?: never;
@@ -235,6 +238,21 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** ThrottledResponse */
+        ThrottledResponse: {
+            /** Detail */
+            detail: string;
+            /**
+             * Locked
+             * @description True for a lockout; false for a short delay between attempts
+             */
+            locked: boolean;
+            /**
+             * Retry After Seconds
+             * @description Seconds until sign-in can be tried again
+             */
+            retry_after_seconds: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -343,6 +361,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many failed sign-in attempts */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThrottledResponse"];
                 };
             };
         };

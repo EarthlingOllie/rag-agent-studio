@@ -19,6 +19,7 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 
 from app.main import create_app
+from tests.fakes.clock import ControllableClock
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
@@ -57,7 +58,19 @@ def settings_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 async def app(settings_env: pytest.MonkeyPatch, database_schema: None) -> AsyncIterator[FastAPI]:
     application = create_app()
     async with LifespanManager(application):
+        # Sign-in failure counters live in the shared test Redis; each test starts without any.
+        redis = application.state.redis
+        async for key in redis.scan_iter(match="sign-in-failures:*"):
+            await redis.delete(key)
         yield application
+
+
+@pytest.fixture
+def clock(app: FastAPI) -> ControllableClock:
+    """Replaces the app's system clock with one the test moves forward by hand."""
+    controllable = ControllableClock()
+    app.state.clock = controllable
+    return controllable
 
 
 ClientFactory = Callable[[], Awaitable[httpx.AsyncClient]]

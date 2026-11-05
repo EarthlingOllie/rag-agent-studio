@@ -11,6 +11,7 @@ from redis.asyncio import Redis
 
 from app.api import health
 from app.auth import api as auth_api
+from app.core.clock import SystemClock
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
@@ -30,6 +31,7 @@ def _lifespan(
         settings = load_settings()
         configure_telemetry(settings, "api", extra_span_processors=extra_span_processors)
         app.state.settings = settings
+        app.state.clock = SystemClock()
         configure_celery(settings)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)

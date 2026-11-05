@@ -2,11 +2,24 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { SubmitEvent } from "react";
 
 import { AuthLayout, Field, FormError, formValues, SubmitButton } from "./AuthLayout";
-import { AuthRequestError, useSignIn } from "./session";
+import { AuthRequestError, type Throttled, throttledDetails, useSignIn } from "./session";
+
+function plural(count: number, unit: string): string {
+  return `${String(count)} ${unit}${count === 1 ? "" : "s"}`;
+}
+
+function throttledMessage({ locked, retry_after_seconds: seconds }: Throttled): string {
+  const wait = locked
+    ? `Sign-in is locked for ${plural(Math.ceil(seconds / 60), "minute")}. Try again after that.`
+    : `Wait ${plural(seconds, "second")}, then try again.`;
+  return `Too many failed sign-in attempts. ${wait}`;
+}
 
 function errorMessage(error: Error | null): string | undefined {
   if (error === null) return undefined;
   if (error instanceof AuthRequestError && error.status === 401) return "Email or password is incorrect.";
+  const throttled = throttledDetails(error);
+  if (throttled) return throttledMessage(throttled);
   return "Something went wrong. Try again.";
 }
 
