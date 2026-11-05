@@ -241,3 +241,20 @@ async def test_document_routes_of_an_unknown_project_or_document_are_not_found(
     ]
 
     assert {(a.status_code, a.json()["detail"]) for a in answers} == {(404, "Not found")}
+
+
+async def test_chunks_are_no_longer_than_the_chunk_size_setting(
+    app: FastAPI, owner: SignedUpMember, settings_env: pytest.MonkeyPatch
+) -> None:
+    # The fake embedder's tokenizer counts words, so the setting is in words here.
+    settings_env.setenv("CHUNK_MAX_TOKENS", "8")
+    project_id = await create_project(owner)
+    words = " ".join(f"word{n}" for n in range(30))
+
+    document = await upload(app, owner, project_id, "long.md", f"# Long\n\n{words}".encode())
+
+    listed = await chunks(owner, project_id, document["id"])
+    assert len(listed) >= 4
+    # Each Chunk plus its heading fits in 8 words, and together they hold the whole text.
+    assert max(len(c["text"].split()) + 1 for c in listed) <= 8
+    assert " ".join(c["text"] for c in listed).split() == words.split()
