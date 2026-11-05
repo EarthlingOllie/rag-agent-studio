@@ -1,0 +1,48 @@
+# GitHub Actions runs on ticket/09-02-network-module (via the GitHub Actions API), commit afe600f = the implementation commit
+# sha	workflow	status	conclusion	url
+afe600f	guardrails-eval	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708312
+afe600f	frontend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708281
+afe600f	infra	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708279
+afe600f	deploy	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708323
+afe600f	backend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708194
+afe600f	security	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708191
+afe600f	e2e	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41948708348
+e858c27	e2e	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579807
+e858c27	guardrails-eval	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579752
+e858c27	frontend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579816
+e858c27	infra	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579863
+e858c27	deploy	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579810
+e858c27	security	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579805
+e858c27	backend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41947579827
+
+# infra run 41948708279: job 'fmt, validate, tflint, checkov, terraform test' = success; job 'terraform plan (demo)' = skipped (pull_request only, AWS_DEPLOY_ROLE_ARN unset)
+# Excerpt of the gate job log (job 126987228247):
+== infra/modules/network/
+Success! The configuration is valid.
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+tests/contract.tftest.hcl... pass
+Success! 16 passed, 0 failed.
+...
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+terraform scan results:
+Passed checks: 45, Failed checks: 0, Skipped checks: 3
+
+# The final commit (ticket status done + this evidence folder) changes only docs; its runs are on GitHub under the same branch.
