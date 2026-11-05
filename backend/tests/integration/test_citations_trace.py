@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
 
+from app.conversations.models import Message
 from tests.agents import (
     answer_with,
     ask,
@@ -221,9 +222,41 @@ async def test_a_fallback_reply_is_traced_with_the_chunks_it_left_out(
     body = trace.json()
     assert body["fallback"] is True
     assert (body["input_tokens"], body["output_tokens"]) == (0, 0)
-    assert Decimal(body["cost_usd"]) == 0
+    # A plain decimal, not "0E-9": the Studio shows it as it comes.
+    assert body["cost_usd"] == "0.000000000"
+    # No model was asked, so the Trace names none.
+    assert (body["model_provider"], body["model_name"]) == (None, None)
     assert len(body["chunks"]) == len(FILES)
     assert {c["excluded_reason"] for c in body["chunks"]} == {"below_min_score"}
+
+
+async def test_an_answer_saved_without_retrievals_is_not_traced_as_a_fallback(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # An answer from before Message retrievals were saved: it has no retrieval rows.
+    project_id, agent_id = await two_document_agent(app, owner)
+    conversation = await start_conversation(owner, project_id, agent_id)
+    async with app.state.sessionmaker() as session:
+        message = Message(
+            organisation_id=uuid.UUID(owner.organisation_id),
+            conversation_id=uuid.UUID(conversation["id"]),
+            role="assistant",
+            content="Leave is 25 days.",
+            model_provider="openai",
+            model_name="gpt-4.1-mini",
+        )
+        session.add(message)
+        await session.commit()
+        message_id = str(message.id)
+
+    trace = await owner.client.get(
+        trace_path(owner, project_id, agent_id, conversation["id"], message_id)
+    )
+
+    assert trace.status_code == 200, trace.text
+    body = trace.json()
+    assert body["fallback"] is False
+    assert body["chunks"] == []
 
 
 async def test_the_cost_is_worked_out_with_the_credentials_prices(

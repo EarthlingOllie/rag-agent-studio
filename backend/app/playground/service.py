@@ -280,13 +280,15 @@ async def answer(
                 role=MessageRole.ASSISTANT,
                 content=event.answer,
                 config_source=DRAFT,
-                model_provider=default.credential.provider,
-                model_name=default.model,
+                # A fallback reply asked no model, so it names none.
+                model_provider=None if event.fallback else default.credential.provider,
+                model_name=None if event.fallback else default.model,
                 input_tokens=event.input_tokens,
                 output_tokens=event.output_tokens,
                 first_token_ms=first_token_ms if first_token_ms is not None else latency_ms,
                 latency_ms=latency_ms,
                 cost_usd=cost(pricing, default.model, usage, now, await price_table(session)),
+                fallback=event.fallback,
             )
             session.add(message)
             await session.flush()

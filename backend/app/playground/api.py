@@ -16,7 +16,7 @@ from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, PlainSerializer, StringConstraints
 
 from app.agents.api import ARCHIVED_RESPONSE, NOT_FOUND_RESPONSE, archived, not_found
 from app.agents.service import AgentNotFoundError
@@ -47,6 +47,11 @@ Question = Annotated[
 ]
 
 
+# US dollars as a plain decimal string: "0.000000000", never the exponent form "0E-9" that
+# str() gives a zero read back from Numeric(18, 9).
+Dollars = Annotated[Decimal, PlainSerializer(lambda d: format(d, "f"), return_type=str)]
+
+
 class MessageOut(BaseModel):
     id: uuid.UUID
     role: str
@@ -60,7 +65,7 @@ class MessageOut(BaseModel):
     output_tokens: int | None
     first_token_ms: int | None
     latency_ms: int | None
-    cost_usd: Decimal | None
+    cost_usd: Dollars | None
 
 
 class ConversationOut(BaseModel):
@@ -97,7 +102,7 @@ class TraceOut(BaseModel):
     model_name: str | None
     input_tokens: int | None
     output_tokens: int | None
-    cost_usd: Decimal | None
+    cost_usd: Dollars | None
     first_token_ms: int | None
     latency_ms: int | None
     # True when no Chunk reached the minimum score, so the answer is the fallback text.
@@ -210,7 +215,7 @@ async def get_trace(
         cost_usd=message.cost_usd,
         first_token_ms=message.first_token_ms,
         latency_ms=message.latency_ms,
-        fallback=all(c.retrieval.rank is None for c in chunks),
+        fallback=message.fallback,
         chunks=[
             TracedChunkOut(
                 chunk_id=c.retrieval.chunk_id,

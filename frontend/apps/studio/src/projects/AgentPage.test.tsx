@@ -152,7 +152,12 @@ test("the Trace of a fallback reply says no Chunk was relevant enough, and Escap
     trace: () =>
       HttpResponse.json({
         ...hrTrace,
-        cost_usd: null,
+        // What the API gave for a zero cost before it sent plain decimals.
+        cost_usd: "0E-9",
+        model_provider: null,
+        model_name: null,
+        input_tokens: 0,
+        output_tokens: 0,
         fallback: true,
         chunks: hrTrace.chunks.slice(2),
       }),
@@ -162,12 +167,22 @@ test("the Trace of a fallback reply says no Chunk was relevant enough, and Escap
 
   const drawer = await screen.findByRole("dialog", { name: "Trace" });
   expect(await within(drawer).findByText(/No Chunk reached the minimum score/)).toBeInTheDocument();
-  expect(within(drawer).getByText("Unknown")).toBeInTheDocument();
+  expect(within(drawer).getByText("None (fallback)")).toBeInTheDocument();
+  expect(within(drawer).getByText("$0")).toBeInTheDocument();
   // Other keys leave it open.
   await userEvent.keyboard("a");
   expect(screen.getByRole("dialog", { name: "Trace" })).toBeInTheDocument();
   await userEvent.keyboard("{Escape}");
   expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+});
+
+test("the Trace of an answer whose model has no known price shows the cost as unknown", async () => {
+  await askLeave({ trace: () => HttpResponse.json({ ...hrTrace, cost_usd: null }) });
+
+  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  expect(await within(drawer).findByText("Unknown")).toBeInTheDocument();
 });
 
 test("a Trace that can't be loaded says so", async () => {

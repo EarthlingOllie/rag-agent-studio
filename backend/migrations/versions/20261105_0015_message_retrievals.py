@@ -1,4 +1,5 @@
-"""Message retrievals: each Chunk retrieval found for an answer, for the Trace.
+"""Message retrievals: each Chunk retrieval found for an answer, for the Trace, and whether
+the answer was the fallback text.
 
 Revision ID: 0015_message_retrievals
 Revises: 0014_staged_editions
@@ -17,6 +18,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.add_column(
+        "messages",
+        sa.Column("fallback", sa.Boolean(), server_default=sa.false(), nullable=False),
+    )
     op.create_table(
         "message_retrievals",
         sa.Column("id", sa.Uuid(), primary_key=True),
@@ -59,3 +64,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("message_retrievals")
+    op.drop_column("messages", "fallback")

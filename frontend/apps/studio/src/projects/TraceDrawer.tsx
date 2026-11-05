@@ -23,16 +23,24 @@ function outcome(chunk: TraceChunk): string {
   return chunk.cited ? "Cited" : "Given, not cited";
 }
 
-/** US dollars as the API gives them, without trailing zeros: "0.000057600" is "$0.0000576". */
+/** US dollars to the nano-dollar, without trailing zeros: "0.000057600" is "$0.0000576" and a
+ * zero, even in exponent form ("0E-9"), is "$0". */
 function dollars(amount: string | null): string {
   if (amount === null) return "Unknown";
-  return `$${amount.replace(/\.?0+$/, "")}`;
+  return `$${Number(amount).toFixed(9).replace(/\.?0+$/, "")}`;
+}
+
+/** A fallback reply asked no model, so its model provider and name are both null. */
+function model(trace: Trace): string {
+  if (trace.model_name === null) return "None (fallback)";
+  return `${String(trace.model_provider)} · ${trace.model_name}`;
 }
 
 function TraceBody({ trace }: { trace: Trace }) {
   const facts: [string, string][] = [
-    // An answer always has its model, tokens and latency; only the cost can be unknown.
-    ["Model", `${String(trace.model_provider)} · ${String(trace.model_name)}`],
+    // An answer always has its tokens and latency; a fallback reply names no model, and the
+    // cost is unknown when the model has no price.
+    ["Model", model(trace)],
     ["Tokens", `${String(trace.input_tokens)} input · ${String(trace.output_tokens)} output`],
     ["Cost", dollars(trace.cost_usd)],
     ["Latency", `${String(trace.first_token_ms)} ms to the first token · ${String(trace.latency_ms)} ms in all`],

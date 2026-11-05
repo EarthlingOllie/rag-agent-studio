@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -75,6 +76,9 @@ class Message(IdMixin, Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     # US dollars, from ``app.pricing.table.cost``; None when no price is known.
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    # True when no Chunk reached the minimum score, so the answer is the fallback text and no
+    # model was asked (its model is then null).
+    fallback: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
 class MessageRetrieval(IdMixin, Base):
