@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A per-Project OCR toggle exists, off by default
 - [ ] The converter receives the OCR option (tested through the fake), and a live-suite test processes a scanned PDF
