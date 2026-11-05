@@ -220,6 +220,21 @@ _Avoid_: Bot, chatbot, assistant
 **Draft**:
 The single editable, unpublished configuration of an Agent or of Project Instructions.
 
+**AgentConfig**:
+Everything in an Agent's Draft or Version that shapes how it answers: its Behaviour (system prompt and model settings), Retrieval (top-k and search settings), Experience and Guardrails settings. Operational Settings and the Theme are not part of it.
+_Avoid_: Agent settings, agent options
+
+**Public ID**:
+An Agent's unguessable identifier, used by its Embed Snippet. Separate from its internal ID.
+_Avoid_: Embed key, slug
+
+**Top-k**:
+How many of the best-scoring Chunks an Agent is given with each question.
+
+**Spotlighting**:
+Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.
+_Avoid_: Sandboxing, quoting
+
 **Version**:
 An immutable, numbered snapshot of a Draft, created by publishing it. An Agent's Version pins exactly one Project Instructions Version.
 _Avoid_: Revision, release
@@ -241,6 +256,9 @@ To freeze a Draft into a new Version and make it the Live Version for an Agent, 
 
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.
+
+**Playground Conversation**:
+A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
 
 **Embed Snippet**:
 The code an Organisation pastes into its site to show an Agent.
