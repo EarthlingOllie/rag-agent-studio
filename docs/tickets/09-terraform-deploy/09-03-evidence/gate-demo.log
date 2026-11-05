@@ -1,0 +1,172 @@
+$ gate.sh  # (script: gate.sh)
+### kms: rotation turned off
+<   enable_key_rotation     = true
+>   enable_key_rotation     = false
+  run "every_key_rotates_yearly"... fail
+  run "rotation_period_is_configurable"... fail
+tests/contract.tftest.hcl... fail
+Failure! 10 passed, 2 failed.
+exit=1
+
+### kms: key policy opened to every AWS principal
+<       Principal = { AWS = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root" }
+>       Principal = { AWS = "*" }
+  run "key_policy_trusts_only_this_account"... fail
+tests/contract.tftest.hcl... fail
+Failure! 11 passed, 1 failed.
+exit=1
+
+### database: storage encryption off
+<   storage_encrypted     = true
+>   storage_encrypted     = false
+  run "runs_postgres_16_encrypted_private_with_backups"... fail
+tests/contract.tftest.hcl... fail
+Failure! 22 passed, 1 failed.
+exit=1
+
+### database: publicly accessible
+<   publicly_accessible    = false
+>   publicly_accessible    = true
+  run "runs_postgres_16_encrypted_private_with_backups"... fail
+tests/contract.tftest.hcl... fail
+Failure! 22 passed, 1 failed.
+exit=1
+
+### database: backups off
+<   backup_retention_period    = var.backup_retention_days
+>   backup_retention_period    = 0
+  run "runs_postgres_16_encrypted_private_with_backups"... fail
+  run "production_toggles_turn_on_protection"... fail
+tests/contract.tftest.hcl... fail
+Failure! 21 passed, 2 failed.
+exit=1
+
+### database: Postgres 15
+<   family      = "postgres16"
+>   family      = "postgres15"
+  run "requires_tls_and_admits_only_listed_clients"... fail
+tests/contract.tftest.hcl... fail
+Failure! 22 passed, 1 failed.
+exit=1
+
+### database: TLS no longer forced
+<     value = "1"
+>     value = "0"
+  run "requires_tls_and_admits_only_listed_clients"... fail
+tests/contract.tftest.hcl... fail
+Failure! 22 passed, 1 failed.
+exit=1
+
+### database: ingress from the whole VPC CIDR
+<   referenced_security_group_id = each.value
+>   cidr_ipv4                    = "10.0.0.0/16"
+  run "requires_tls_and_admits_only_listed_clients"... fail
+tests/contract.tftest.hcl... fail
+Failure! 22 passed, 1 failed.
+exit=1
+
+### cache: transit encryption preferred, not required
+<   transit_encryption_mode    = "required"
+>   transit_encryption_mode    = "preferred"
+  run "encrypts_in_transit_and_at_rest_with_auth_on"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### cache: at-rest encryption off
+<   at_rest_encryption_enabled = "true"
+>   at_rest_encryption_enabled = "false"
+  run "encrypts_in_transit_and_at_rest_with_auth_on"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### cache: auth token in state
+<   auth_token_wo              = local.generated_auth_token
+>   auth_token                 = local.generated_auth_token
+  run "encrypts_in_transit_and_at_rest_with_auth_on"... fail
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 18 skipped.
+exit=1
+
+### cache: secret written with a different version
+<   secret_string_wo_version = var.auth_token_version
+>   secret_string_wo_version = 1
+  run "auth_token_version_bumps_both_writes"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: public policies allowed
+<   block_public_policy     = true
+>   block_public_policy     = false
+  run "both_buckets_are_private_and_encrypted"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: Documents on S3-managed keys
+<       sse_algorithm     = "aws:kms"
+>       sse_algorithm     = "AES256"
+  run "both_buckets_are_private_and_encrypted"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: CORS open to any origin
+<     allowed_origins = [var.documents_cors_allowed_origin]
+>     allowed_origins = ["*"]
+  run "documents_cors_allows_only_the_cloudfront_origin"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: CORS allows DELETE
+<     allowed_methods = ["GET", "PUT"]
+>     allowed_methods = ["GET", "PUT", "DELETE"]
+  run "documents_cors_allows_only_the_cloudfront_origin"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: OAC stops signing
+<   signing_behavior                  = "always"
+>   signing_behavior                  = "never"
+  run "static_assets_are_readable_only_by_the_cloudfront_distribution"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: static reads not tied to the distribution
+<     Condition = { StringEquals = { "AWS:SourceArn" = var.static_assets_distribution_arn } }
+>     Condition = {}
+  run "static_assets_are_readable_only_by_the_cloudfront_distribution"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+### storage: TLS deny dropped
+<       Condition = { Bool = { "aws:SecureTransport" = "false" } }
+>       Condition = { Bool = { "aws:SecureTransport" = "true" } }
+  run "every_bucket_refuses_requests_without_tls"... fail
+tests/contract.tftest.hcl... fail
+Failure! 18 passed, 1 failed.
+exit=1
+
+after restore, kms: Success! 12 passed, 0 failed.
+after restore, database: Success! 23 passed, 0 failed.
+after restore, cache: Success! 19 passed, 0 failed.
+after restore, storage: Success! 19 passed, 0 failed.
+### checkov: the justified skips are load-bearing (each removed in turn)
+$ checkov -d cache (without the CKV2_AWS_50 skip)
+Passed checks: 16, Failed checks: 1, Skipped checks: 2
+Check: CKV2_AWS_50: "Ensure AWS ElastiCache Redis cluster with Multi-AZ Automatic Failover feature set to enabled"
+exit=1
+$ checkov -d database (without the CKV_AWS_293 skip)
+Passed checks: 24, Failed checks: 1, Skipped checks: 5
+Check: CKV_AWS_293: "Ensure that AWS database instances have deletion protection enabled"
+exit=1
+$ checkov -d storage (without the CKV_AWS_145 skip)
+Passed checks: 27, Failed checks: 1, Skipped checks: 8
+Check: CKV_AWS_145: "Ensure that S3 buckets are encrypted with KMS by default"
+exit=1

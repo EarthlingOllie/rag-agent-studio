@@ -7,12 +7,14 @@
 **Blocked by:**
 - [09-02: Network module](02-network-module.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] RDS runs Postgres 16, encrypted, private, with backups
-- [ ] ElastiCache has encryption in transit and at rest, and auth enabled
-- [ ] Buckets are private and encrypted; the Documents bucket's CORS rule allows only the CloudFront origin; static assets use origin access control
-- [ ] The KMS key has rotation enabled
-- [ ] `terraform test` asserts each of these
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] RDS runs Postgres 16, encrypted, private, with backups
+- [x] ElastiCache has encryption in transit and at rest, and auth enabled
+- [x] Buckets are private and encrypted; the Documents bucket's CORS rule allows only the CloudFront origin; static assets use origin access control
+- [x] The KMS key has rotation enabled
+- [x] `terraform test` asserts each of these
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+
+Evidence: [09-03-evidence](09-03-evidence/README.md)

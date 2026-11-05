@@ -1,0 +1,37 @@
+$ python3 -I tagcheck.py <aws provider 6.72.0 schema: terraform providers schema -json> infra/modules
+== kms
+resource                                                   taggable  sets tags  asserted
+aws_kms_key.this                                           True      True       True
+aws_kms_alias.this                                         False     False      False
+== database
+resource                                                   taggable  sets tags  asserted
+aws_db_subnet_group.this                                   True      True       True
+aws_security_group.this                                    True      True       True
+aws_vpc_security_group_ingress_rule.clients                True      True       True
+aws_db_parameter_group.this                                True      True       True
+aws_secretsmanager_secret.master_password                  True      True       True
+aws_secretsmanager_secret_version.master_password          False     False      False
+aws_db_instance.this                                       True      True       True
+== cache
+resource                                                   taggable  sets tags  asserted
+aws_elasticache_subnet_group.this                          True      True       True
+aws_security_group.this                                    True      True       True
+aws_vpc_security_group_ingress_rule.clients                True      True       True
+aws_secretsmanager_secret.auth_token                       True      True       True
+aws_secretsmanager_secret_version.auth_token               False     False      False
+aws_elasticache_replication_group.this                     True      True       True
+== storage
+resource                                                   taggable  sets tags  asserted
+aws_s3_bucket.this                                         True      True       True
+aws_s3_bucket_public_access_block.this                     False     False      False
+aws_s3_bucket_ownership_controls.this                      False     False      False
+aws_s3_bucket_server_side_encryption_configuration.documents False     False      False
+aws_s3_bucket_server_side_encryption_configuration.static  False     False      False
+aws_s3_bucket_cors_configuration.documents                 False     False      False
+aws_cloudfront_origin_access_control.static                False     False      False
+aws_s3_bucket_policy.documents                             False     False      False
+aws_s3_bucket_policy.static                                False     False      False
+aws_s3_bucket_lifecycle_configuration.this                 False     False      False
+
+25 resources, 13 taggable, 0 missing tags or a tag assertion
+exit=0
