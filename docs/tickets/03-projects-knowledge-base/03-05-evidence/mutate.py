@@ -14,7 +14,8 @@ MUTATIONS = [
      "        StagedEdition.status == DocumentStatus.FAILED,", T),
     ("app/documents/service.py", "        await store.delete(pending[\"object_key\"])\n", "", T),
     # Delete
-    ("app/documents/service.py", "    await session.execute(delete(Chunk).where(Chunk.document_id == document.id))\n", "", T),
+    # No mutation removes the explicit Chunk delete in delete_document: that is equivalent, because
+    # chunks.document_id is ON DELETE CASCADE and the Document is deleted in the same transaction.
     ("app/documents/service.py", "        action=\"document.deleted\",", "        action=\"document.removed\",", T),
     ("app/documents/api.py", "    await enqueue_object_deletion(keys)\n", "", T),
     ("app/documents/service.py", "        keys += stored_keys(staged.object_key)\n", "", T),

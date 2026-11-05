@@ -49,6 +49,8 @@ async def test_uploading_an_identical_file_is_refused_with_a_link_to_the_existin
         "document_name": "handbook.md",
     }
     assert [d["id"] for d in await documents(owner, project_id)] == [existing["id"]]
+    # The refused copy is discarded: only the existing Document's original and markdown are kept.
+    assert len(stored(app)) == 2
 
 
 # Deleting
@@ -177,6 +179,8 @@ async def test_a_newer_edition_replaces_the_document_in_place(
         "Everyone gets 28 days of annual leave.",
         "Claim in 30 days.",
     ]
+    # The old edition's Chunk rows are gone, not just hidden.
+    assert await chunk_rows(app, original["id"]) == 2
     # Only the new edition's original and markdown are kept; the old edition's are deleted.
     kept = stored(app)
     assert len(kept) == 2
