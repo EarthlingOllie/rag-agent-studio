@@ -1,0 +1,13 @@
++ gitleaks git --redact --no-banner --log-opts=HEAD .   (this branch's history only)
+7:31PM INF 93 commits scanned.
+7:31PM INF scanned ~6126970 bytes (6.13 MB) in 1.28s
+7:31PM INF no leaks found
+exit 0
++ make audit AUDIT_REQUIREMENTS=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/req-0403.txt
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/req-0403.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/req-0403.txt"
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit 0
