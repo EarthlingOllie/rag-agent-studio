@@ -10,9 +10,12 @@ dependencies = [
     "boto3>=1.43.124",
     "celery[redis]>=5.6.3",
     "cryptography>=50.0.2",
+    "docling-slim[feat-chunking,format-docx,format-html,format-markdown,format-pptx]>=2.147.0",
     "fastapi>=0.162.0",
+    "fastembed>=0.9.1",
     "httpx>=0.28.1",
     "logfire[celery,fastapi,httpx,sqlalchemy]>=5.4.0",
+    "pgvector>=0.4.1",
     "pydantic-ai-slim[anthropic,openai]>=2.66.0",
     "pydantic-settings>=2.16.2",
     "pyotp>=2.10.0",
@@ -25,11 +28,28 @@ dependencies = [
 [tool.uv]
 package = false
 
+# PyTorch from its CPU-only index: the PyPI wheels bundle CUDA, which the worker doesn't use.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
 [dependency-groups]
+# PDF conversion: Docling's PDF backend and its layout models (PyTorch, CPU build). Heavy, so it
+# is its own group: the worker image installs it; tests and the API don't need it.
+pdf = [
+    "docling-slim[format-pdf,models-local]>=2.147.0",
+    "torch>=2.2.2",
+    "torchvision>=0.17",
+]
 dev = [
     "aiosmtpd>=1.4.6",
     "asgi-lifespan>=2.1.0",
-    "boto3-stubs[kms,sesv2]>=1.43.124",
+    "boto3-stubs[kms,s3,sesv2]>=1.43.124",
     "celery-types>=0.26.0",
     "mypy>=2.4.1",
     "pytest>=9.2.0",
@@ -42,7 +62,7 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-addopts = "--strict-markers --cov=app --cov-branch --cov-report=term-missing --cov-report=xml"
+addopts = "-m 'not live' --strict-markers --cov=app --cov-branch --cov-report=term-missing --cov-report=xml"
 markers = ["live: calls real external providers; runs outside the coverage gate"]
 filterwarnings = [
     "error",
@@ -52,6 +72,8 @@ filterwarnings = [
     # task is sent, and never closes it; it is collected at an arbitrary later point in the run.
     "ignore:unclosed <socket.socket:ResourceWarning",
     "ignore:Exception ignored in. <socket.socket:pytest.PytestUnraisableExceptionWarning",
+    # Docling's own PDF pipeline reads its deprecated `generate_table_images` option (live suite only).
+    "ignore:This field is deprecated. Use `generate_page_images=True`:DeprecationWarning",
 ]
 
 [tool.coverage.run]
@@ -59,7 +81,9 @@ branch = true
 # SQLAlchemy's async layer runs ORM code in greenlets; without this those lines go unmeasured.
 concurrency = ["greenlet", "thread"]
 source = ["app"]
-omit = ["migrations/*"]
+# The local Embedding Model needs its model downloaded from Hugging Face, so its adapter is
+# exercised by the live suite (tests/live) instead, as the spec's live suite intends.
+omit = ["migrations/*", "app/embeddings/local.py"]
 
 [tool.coverage.report]
 fail_under = 100

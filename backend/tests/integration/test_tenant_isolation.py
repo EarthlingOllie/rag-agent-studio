@@ -30,6 +30,7 @@ from app.core.db import Base
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
+from tests import documents
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory, join_organisation
 
 Prepared = tuple[dict[str, str], dict[str, Any] | None]
@@ -167,12 +168,40 @@ async def _an_archived_project(owner: SignedUpMember, add_member: MemberFactory)
 
 PROJECTS = "/api/organisations/{organisation_id}/projects"
 
+
+async def _an_upload_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"filename": "a.md", "size_bytes": 3}
+
+
+async def _an_uploaded_file(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    started = await documents.start_upload(owner, project_id, "a.md", 3)
+    ticket = started.json()
+    await documents.put_to_memory_store(
+        documents.app_of(owner), ticket["url"], b"abc", ticket["content_type"]
+    )
+    return {"project_id": project_id}, {"upload_id": ticket["upload_id"]}
+
+
+async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    document = await documents.upload(documents.app_of(owner), owner, project_id, "a.md", b"abc")
+    return {"project_id": project_id, "document_id": document["id"]}, None
+
+
 # Routes that act on one Project. They are also checked at the Project level below.
 PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}", EDITOR, _a_project),
     ScopedRoute("PATCH", PROJECTS + "/{project_id}", EDITOR, _a_project_to_rename),
     ScopedRoute("POST", PROJECTS + "/{project_id}/archive", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/restore", OWNER, _an_archived_project),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/uploads", EDITOR, _an_upload_to_start),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/documents", EDITOR, _an_uploaded_file),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/documents", EDITOR, _a_project),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/documents/statuses", EDITOR, _a_project),
+    ScopedRoute(
+        "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
+    ),
 ]
 
 
@@ -467,12 +496,11 @@ async def test_a_project_is_not_found_through_another_organisation_of_the_same_m
     member, other = two_organisations.member, two_organisations.other
     # The Project belongs to ``member``'s own Organisation; they are an Owner of both.
     prepared = await route.prepare(member, member_factory)
-    _, body = prepared
+    params, body = prepared
+    unknown_project = {**params, "project_id": str(uuid.uuid4())}
 
     crossed = await _call(member.client, route, other.organisation_id, prepared)
-    unknown = await _call(
-        member.client, route, other.organisation_id, ({"project_id": str(uuid.uuid4())}, body)
-    )
+    unknown = await _call(member.client, route, other.organisation_id, (unknown_project, body))
     through_its_own = await _call(member.client, route, member.organisation_id, prepared)
 
     assert (crossed.status_code, crossed.json()) == (404, {"detail": "Not found"})

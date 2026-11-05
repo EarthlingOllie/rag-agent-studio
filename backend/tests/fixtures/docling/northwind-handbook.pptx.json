@@ -1,0 +1,439 @@
+{
+ "body": {
+  "children": [
+   {
+    "$ref": "#/groups/0"
+   },
+   {
+    "$ref": "#/groups/1"
+   },
+   {
+    "$ref": "#/groups/3"
+   },
+   {
+    "$ref": "#/groups/5"
+   }
+  ],
+  "content_layer": "body",
+  "label": "unspecified",
+  "name": "_root_",
+  "self_ref": "#/body"
+ },
+ "form_items": [],
+ "furniture": {
+  "children": [],
+  "content_layer": "furniture",
+  "label": "unspecified",
+  "name": "_root_",
+  "self_ref": "#/furniture"
+ },
+ "groups": [
+  {
+   "children": [
+    {
+     "$ref": "#/texts/0"
+    },
+    {
+     "$ref": "#/texts/1"
+    }
+   ],
+   "content_layer": "body",
+   "label": "chapter",
+   "name": "slide-0",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "self_ref": "#/groups/0"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/2"
+    },
+    {
+     "$ref": "#/groups/2"
+    }
+   ],
+   "content_layer": "body",
+   "label": "chapter",
+   "name": "slide-1",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "self_ref": "#/groups/1"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/3"
+    },
+    {
+     "$ref": "#/texts/4"
+    }
+   ],
+   "content_layer": "body",
+   "label": "list",
+   "name": "list",
+   "parent": {
+    "$ref": "#/groups/1"
+   },
+   "self_ref": "#/groups/2"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/5"
+    },
+    {
+     "$ref": "#/groups/4"
+    }
+   ],
+   "content_layer": "body",
+   "label": "chapter",
+   "name": "slide-2",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "self_ref": "#/groups/3"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/6"
+    }
+   ],
+   "content_layer": "body",
+   "label": "list",
+   "name": "list",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "self_ref": "#/groups/4"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/7"
+    },
+    {
+     "$ref": "#/groups/6"
+    }
+   ],
+   "content_layer": "body",
+   "label": "chapter",
+   "name": "slide-3",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "self_ref": "#/groups/5"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/8"
+    }
+   ],
+   "content_layer": "body",
+   "label": "list",
+   "name": "list",
+   "parent": {
+    "$ref": "#/groups/5"
+   },
+   "self_ref": "#/groups/6"
+  }
+ ],
+ "key_value_items": [],
+ "name": "northwind-handbook",
+ "origin": {
+  "binary_hash": 6916739886097349183,
+  "filename": "northwind-handbook.pptx",
+  "mimetype": "application/vnd.openxmlformats-officedocument.presentationml.template"
+ },
+ "pages": {
+  "1": {
+   "page_no": 1,
+   "size": {
+    "height": 6858000.0,
+    "width": 9144000.0
+   }
+  },
+  "2": {
+   "page_no": 2,
+   "size": {
+    "height": 6858000.0,
+    "width": 9144000.0
+   }
+  },
+  "3": {
+   "page_no": 3,
+   "size": {
+    "height": 6858000.0,
+    "width": 9144000.0
+   }
+  },
+  "4": {
+   "page_no": 4,
+   "size": {
+    "height": 6858000.0,
+    "width": 9144000.0
+   }
+  }
+ },
+ "pictures": [],
+ "schema_name": "DoclingDocument",
+ "tables": [],
+ "texts": [
+  {
+   "children": [],
+   "content_layer": "body",
+   "label": "title",
+   "orig": "Northwind staff handbook",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 3600450.0,
+      "coord_origin": "TOPLEFT",
+      "l": 685800.0,
+      "r": 8458200.0,
+      "t": 2130425.0
+     },
+     "charspan": [
+      0,
+      24
+     ],
+     "page_no": 1
+    }
+   ],
+   "self_ref": "#/texts/0",
+   "text": "Northwind staff handbook"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "label": "paragraph",
+   "orig": "Synthetic sample for tests",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 5638800.0,
+      "coord_origin": "TOPLEFT",
+      "l": 1371600.0,
+      "r": 7772400.0,
+      "t": 3886200.0
+     },
+     "charspan": [
+      0,
+      26
+     ],
+     "page_no": 1
+    }
+   ],
+   "self_ref": "#/texts/1",
+   "text": "Synthetic sample for tests"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "label": "title",
+   "orig": "Annual leave",
+   "parent": {
+    "$ref": "#/groups/1"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 1417638.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 274638.0
+     },
+     "charspan": [
+      0,
+      12
+     ],
+     "page_no": 2
+    }
+   ],
+   "self_ref": "#/texts/2",
+   "text": "Annual leave"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "enumerated": false,
+   "label": "list_item",
+   "marker": "",
+   "orig": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays.",
+   "parent": {
+    "$ref": "#/groups/2"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 6126163.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 1600200.0
+     },
+     "charspan": [
+      0,
+      88
+     ],
+     "page_no": 2
+    }
+   ],
+   "self_ref": "#/texts/3",
+   "text": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays."
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "enumerated": false,
+   "label": "list_item",
+   "marker": "",
+   "orig": "Book leave in the HR portal at least two weeks ahead. Your manager approves it.",
+   "parent": {
+    "$ref": "#/groups/2"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 6126163.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 1600200.0
+     },
+     "charspan": [
+      0,
+      79
+     ],
+     "page_no": 2
+    }
+   ],
+   "self_ref": "#/texts/4",
+   "text": "Book leave in the HR portal at least two weeks ahead. Your manager approves it."
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "label": "title",
+   "orig": "Expenses",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 1417638.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 274638.0
+     },
+     "charspan": [
+      0,
+      8
+     ],
+     "page_no": 3
+    }
+   ],
+   "self_ref": "#/texts/5",
+   "text": "Expenses"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "enumerated": false,
+   "label": "list_item",
+   "marker": "",
+   "orig": "Claim expenses within 30 days with a receipt. Travel is booked through the travel desk.",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 6126163.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 1600200.0
+     },
+     "charspan": [
+      0,
+      87
+     ],
+     "page_no": 3
+    }
+   ],
+   "self_ref": "#/texts/6",
+   "text": "Claim expenses within 30 days with a receipt. Travel is booked through the travel desk."
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "label": "title",
+   "orig": "Working from home",
+   "parent": {
+    "$ref": "#/groups/5"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 1417638.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 274638.0
+     },
+     "charspan": [
+      0,
+      17
+     ],
+     "page_no": 4
+    }
+   ],
+   "self_ref": "#/texts/7",
+   "text": "Working from home"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "enumerated": false,
+   "label": "list_item",
+   "marker": "",
+   "orig": "You can work from home up to three days a week. Agree the days with your team.",
+   "parent": {
+    "$ref": "#/groups/6"
+   },
+   "prov": [
+    {
+     "bbox": {
+      "b": 6126163.0,
+      "coord_origin": "TOPLEFT",
+      "l": 457200.0,
+      "r": 8686800.0,
+      "t": 1600200.0
+     },
+     "charspan": [
+      0,
+      78
+     ],
+     "page_no": 4
+    }
+   ],
+   "self_ref": "#/texts/8",
+   "text": "You can work from home up to three days a week. Agree the days with your team."
+  }
+ ],
+ "version": "1.11.0"
+}

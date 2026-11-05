@@ -187,6 +187,18 @@ _Avoid_: Corpus, index, vector store
 A file uploaded into a Project's Knowledge Base.
 _Avoid_: File, upload, source
 
+**Document status**:
+Where a Document is in ingestion: Queued (uploaded, waiting for the worker), Processing (being converted, chunked and embedded), Ready (its Chunks are stored and retrievable) or Failed (with a readable reason).
+_Avoid_: State, phase, job status
+
+**Ingestion**:
+Turning an uploaded Document into Chunks: convert it with Docling, store the markdown, chunk it with the Embedding Model's tokenizer, embed the Chunks and write them in one transaction.
+_Avoid_: Indexing, processing pipeline, import
+
+**Content hash**:
+The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
+_Avoid_: Checksum, fingerprint, etag
+
 **Tag**:
 A label on Documents that an Agent can use to limit which Documents it retrieves from.
 _Avoid_: Category, folder, label

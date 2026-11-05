@@ -1,0 +1,123 @@
+"""Documents and their Chunks. Both carry the Organisation and Project they belong to, so every
+query is filtered by an ordinary ``project_id`` (ADR-0001)."""
+
+import enum
+import uuid
+from datetime import datetime
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    BigInteger,
+    Computed,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    cast,
+    func,
+    literal,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.db import Base, IdMixin
+from app.embeddings.registry import EMBEDDING_MODELS
+
+# Referenced as objects, so the worker (which loads no routers) has these tables registered too.
+from app.projects.models import Project
+from app.tenancy.models import Organisation
+
+NAME_MAX = 255
+MIME_MAX = 255
+
+
+class DocumentStatus(enum.StrEnum):
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+
+
+FINAL_STATUSES = frozenset({DocumentStatus.READY, DocumentStatus.FAILED})
+
+
+class Document(IdMixin, Base):
+    __tablename__ = "documents"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Project.id, ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(NAME_MAX))
+    mime_type: Mapped[str] = mapped_column(String(MIME_MAX))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    # SHA-256 of the uploaded bytes, hex.
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    # The original file in the object store.
+    object_key: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default=DocumentStatus.QUEUED)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    # The converted markdown in the object store, once converted.
+    markdown_key: Mapped[str | None] = mapped_column(Text)
+    edition: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Chunk(IdMixin, Base):
+    __tablename__ = "chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "edition", "embedding_model_id", "ordinal", name="uq_chunks_position"
+        ),
+        Index("ix_chunks_search_vector", "search_vector", postgresql_using="gin"),
+    )
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Project.id, ondelete="CASCADE"), index=True
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), index=True
+    )
+    edition: Mapped[int] = mapped_column(Integer)
+    # Position in the Document, from 0.
+    ordinal: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    # The headings above the Chunk, outermost first.
+    heading_path: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    # Pages the Chunk comes from; empty for formats without pages (Markdown, HTML, DOCX).
+    page_start: Mapped[int | None] = mapped_column(Integer)
+    page_end: Mapped[int | None] = mapped_column(Integer)
+    # The vector's size depends on the Embedding Model, so the column has no fixed dimension.
+    embedding: Mapped[list[float]] = mapped_column(Vector())
+    embedding_model_id: Mapped[str] = mapped_column(String(100))
+    # Full-text search over the Chunk; 'simple' because Knowledge Bases are multilingual.
+    search_vector: Mapped[str] = mapped_column(
+        TSVECTOR, Computed("to_tsvector('simple'::regconfig, text)", persisted=True)
+    )
+
+
+def _hnsw_index(model_id: str, dimension: int) -> Index:
+    """An HNSW index over one Embedding Model's vectors. Vectors of different models differ in
+    size, so each model gets its own partial index on the column cast to its dimension."""
+    slug = model_id.replace("-", "_").replace(".", "_")
+    label = f"embedding_{slug}"
+    return Index(
+        f"ix_chunks_embedding_hnsw_{slug}",
+        cast(Chunk.embedding, Vector(dimension)).label(label),
+        postgresql_using="hnsw",
+        postgresql_ops={label: "vector_cosine_ops"},
+        postgresql_where=Chunk.embedding_model_id == literal(model_id),
+    )
+
+
+for _model in EMBEDDING_MODELS.values():
+    _hnsw_index(_model.id, _model.dimension)

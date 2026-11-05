@@ -7,6 +7,7 @@ from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
+from app.embeddings.registry import DEFAULT_MODEL_ID
 
 NAME_MAX = 200
 DESCRIPTION_MAX = 2000
@@ -22,3 +23,5 @@ class Project(IdMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="")
     # Set while the Project is archived: hidden from the main list, and it stops serving.
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Embedding Model the Project's Chunks are embedded with; the local model by default.
+    embedding_model_id: Mapped[str] = mapped_column(String(100), default=DEFAULT_MODEL_ID)

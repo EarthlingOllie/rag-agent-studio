@@ -1,0 +1,102 @@
+{
+ "documents": [
+  {
+   "id": "0005db4a-894d-4119-95a2-7f7eaddb8517",
+   "name": "northwind-staff-handbook.md",
+   "mime_type": "text/markdown",
+   "size_bytes": 1346,
+   "content_hash": "1c7ccd653300e1842d5c4d5e5a75249ce404332d99ee6c78109a24470b6e1972",
+   "status": "ready",
+   "error_message": null,
+   "edition": 1,
+   "chunk_count": 7,
+   "created_at": "2026-11-05T11:12:23.347888Z",
+   "updated_at": "2026-11-05T11:12:23.541328Z"
+  }
+ ],
+ "chunks": [
+  {
+   "id": "ac67d5e4-2ad0-41c9-adeb-b97758680900",
+   "ordinal": 0,
+   "text": "Northwind Traders is a fictional speciality food importer. This handbook is synthetic sample content for the RAG Agent Studio demo; any resemblance to a real company is coincidental.",
+   "heading_path": [
+    "Northwind Traders staff handbook"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  },
+  {
+   "id": "7d476213-d82b-4382-a79d-8ee0cbaa6ebe",
+   "ordinal": 1,
+   "text": "Our core hours are 10:00 to 16:00, Monday to Friday. Outside core hours you can start and finish when it suits you, as long as you work 37.5 hours a week.",
+   "heading_path": [
+    "Northwind Traders staff handbook",
+    "Working hours"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  },
+  {
+   "id": "5b199e4f-977c-408d-8094-405a6a760c2a",
+   "ordinal": 2,
+   "text": "Everyone gets 25 days of annual leave a year, plus public holidays. Leave builds up from your first day. Book leave in the HR portal at least two weeks ahead; your manager approves it.\nYou can carry up to five unused days into the next year. They must be used by the end of March.",
+   "heading_path": [
+    "Northwind Traders staff handbook",
+    "Annual leave"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  },
+  {
+   "id": "35ddc6ba-c9d3-4118-af05-5cd9258a2e78",
+   "ordinal": 3,
+   "text": "If you are ill, tell your manager before 10:00 on your first day off. For absences longer than seven days, upload a fit note to the HR portal.",
+   "heading_path": [
+    "Northwind Traders staff handbook",
+    "Sickness"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  },
+  {
+   "id": "85fbd92f-a078-4882-ada8-54fe342adf29",
+   "ordinal": 4,
+   "text": "Claim expenses within 30 days, with a receipt, through the finance portal. Travel is booked through the travel desk. Economy class is standard for flights under six hours.",
+   "heading_path": [
+    "Northwind Traders staff handbook",
+    "Expenses"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  },
+  {
+   "id": "1a05f875-576f-4ae1-9048-702ece733cf6",
+   "ordinal": 5,
+   "text": "You can work from home up to three days a week. Agree the days with your team, and keep your calendar up to date so colleagues know where to find you.",
+   "heading_path": [
+    "Northwind Traders staff handbook",
+    "Working from home"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  },
+  {
+   "id": "e41237f9-ddc8-4f5a-b758-60081b29744d",
+   "ordinal": 6,
+   "text": "Everyone gets a laptop, a headset and a monitor. Report lost or stolen equipment to the IT service desk within 24 hours.",
+   "heading_path": [
+    "Northwind Traders staff handbook",
+    "Equipment"
+   ],
+   "page_start": null,
+   "page_end": null,
+   "embedding_model_id": "multilingual-e5-small"
+  }
+ ]
+}

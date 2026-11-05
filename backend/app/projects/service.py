@@ -17,6 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
+from app.documents.models import Document
 from app.projects.models import Project
 from app.tenancy.repository import OrganisationScope
 
@@ -42,10 +43,20 @@ class ProjectSummary:
     agent_count: int
 
 
-async def _summaries(projects: list[Project]) -> list[ProjectSummary]:
-    # Documents arrive in ticket 03-02 and Agents in 04-01; each adds its count here. Until
-    # then every Project has none.
-    return [ProjectSummary(project, document_count=0, agent_count=0) for project in projects]
+async def _summaries(session: AsyncSession, projects: list[Project]) -> list[ProjectSummary]:
+    # Agents arrive in ticket 04-01, which adds their count here. Until then there are none.
+    counts: dict[uuid.UUID, int] = {}
+    if projects:
+        rows = await session.execute(
+            select(Document.project_id, func.count())
+            .where(Document.project_id.in_([project.id for project in projects]))
+            .group_by(Document.project_id)
+        )
+        counts = {project_id: count for project_id, count in rows}
+    return [
+        ProjectSummary(project, document_count=counts.get(project.id, 0), agent_count=0)
+        for project in projects
+    ]
 
 
 async def list_projects(
@@ -59,11 +70,11 @@ async def list_projects(
         .where(Project.organisation_id == scope.organisation_id, archived_filter)
         .order_by(func.lower(Project.name), Project.created_at)
     )
-    return await _summaries(list(projects))
+    return await _summaries(session, list(projects))
 
 
-async def summarise(project: Project) -> ProjectSummary:
-    (summary,) = await _summaries([project])
+async def summarise(session: AsyncSession, project: Project) -> ProjectSummary:
+    (summary,) = await _summaries(session, [project])
     return summary
 
 

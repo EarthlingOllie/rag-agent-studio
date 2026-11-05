@@ -46,6 +46,11 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MAILER", "outbox")
     monkeypatch.setenv("STUDIO_URL", STUDIO_URL)
     monkeypatch.setenv("CREDENTIAL_VERIFIER", "fake")
+    # Ingestion runs through the in-memory object store, the fake converter and the
+    # deterministic embedder; tests that need RustFS switch OBJECT_STORE to s3.
+    monkeypatch.setenv("OBJECT_STORE", "memory")
+    monkeypatch.setenv("DOCUMENT_CONVERTER", "fake")
+    monkeypatch.setenv("EMBEDDER", "fake")
     monkeypatch.setenv("MODEL_GATEWAY", "fake")
 
 

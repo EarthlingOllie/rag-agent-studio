@@ -1,0 +1,19 @@
+$ python mutate.py (worktree at 97718d3 plus the new chunk-size test; TEST_DATABASE_URL …/studio_test, Redis DB 15)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+ 1. CAUGHT  app/documents/pipeline.py: 'await _set_status(session, document, DocumentStatus.READY, markdown=ma' -> 'await _set_status(session, document, DocumentStatu'  [tests/integration/test_documents.py]
+ 2. CAUGHT  app/documents/service.py: 'digest = hashlib.sha256(data).hexdigest()' -> 'digest = hashlib.md5(data).hexdigest()  # noqa: S3'  [tests/integration/test_documents.py]
+ 3. CAUGHT  app/documents/service.py: 'if content_hash is not None and content_hash.lower() != digest:' -> 'if False:'  [tests/integration/test_documents.py]
+ 4. CAUGHT  app/documents/service.py: 'project = await projects.active_project(session, scope, project_id)' -> 'project = await projects.get_project(session, scop'  [tests/integration/test_documents.py]
+ 5. CAUGHT  app/documents/service.py: 'if size_bytes > max_bytes:' -> 'if size_bytes > max_bytes + 1:'  [tests/integration/test_documents.py]
+ 6. CAUGHT  app/documents/service.py: 'await redis.delete(key)' -> '(removed)'  [tests/integration/test_documents.py]
+ 7. CAUGHT  app/documents/chunking.py: 'chunker = HybridChunker(tokenizer=tokenizer)' -> 'chunker = HybridChunker(tokenizer=type(tokenizer)('  [tests/unit/test_chunking.py]
+ 8. CAUGHT  app/documents/chunking.py: 'heading_path=list(meta.headings or []),' -> 'heading_path=[],'  [tests/unit/test_chunking.py tests/integration/test_documents.py]
+ 9. CAUGHT  app/documents/pipeline.py: 'tokenizer = embedder.tokenizer(min(chunk_max_tokens, embedder.model.ma' -> 'tokenizer = embedder.tokenizer(embedder.model.max_'  [tests/integration/test_documents.py]
+10. CAUGHT  migrations/versions/20261105_0008_documents.py: 'sa.Computed("to_tsvector(\'simple\'::regconfig, text)", persisted=True)' -> 'sa.Computed("to_tsvector(\'simple\'::regconfig, \'\')"'  [tests/integration/test_migrations.py tests/integration/test_chunk_storage.py]
+11. CAUGHT  migrations/versions/20261105_0008_documents.py: 'USING hnsw ((embedding::vector(384)) vector_cosine_ops)' -> 'USING hnsw ((embedding::vector(384)) vector_l2_ops'  [tests/integration/test_migrations.py tests/integration/test_chunk_storage.py]
+12. CAUGHT  app/projects/service.py: 'ProjectSummary(project, document_count=counts.get(project.id, 0), agen' -> 'ProjectSummary(project, document_count=0, agent_co'  [tests/integration/test_documents.py]
+13. CAUGHT  app/documents/converter.py: 'if paragraph and (heading or not line.strip()):' -> 'if paragraph and heading:'  [tests/integration/test_documents.py]
+14. CAUGHT  app/storage/s3.py: 'if error.response.get("Error", {}).get("Code") in _MISSING:' -> 'if False:'  [tests/integration/test_object_store.py]
+
+14/14 mutations caught
+unmodified code: passes
