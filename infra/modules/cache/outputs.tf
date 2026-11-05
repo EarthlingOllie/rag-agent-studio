@@ -27,3 +27,8 @@ output "security_group_id" {
   description = "Security group on the cache."
   value       = aws_security_group.this.id
 }
+
+output "admitted_client_security_group_ids" {
+  description = "Client security groups admitted on the Redis port, keyed by client name, as the ingress rules record them."
+  value       = { for k, r in aws_vpc_security_group_ingress_rule.clients : k => r.referenced_security_group_id }
+}

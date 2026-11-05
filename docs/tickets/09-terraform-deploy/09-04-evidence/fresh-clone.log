@@ -1,0 +1,284 @@
+$ git clone --branch ticket/09-04-compute-module https://github.com/EarthlingOllie/rag-agent-studio fc0904 && cd fc0904
+$ git rev-parse HEAD
+3620733eacb4fbfe503b895cb37fee42ea78ada0
+$ make infra-check   # TF_CLI_CONFIG_FILE points at the checksum-verified provider mirror (see provider-mirror.log in 09-02-evidence)
+terraform fmt -check -recursive -diff infra
+infra/tests/backend.test.sh
+ok   demo: S3 backend with native locking
+scripts/ci/tests/plan-gate.test.sh
+ok   runs_when_the_secret_is_set_and_infra_changed
+ok   runs_when_the_infra_workflow_changed
+ok   skips_without_the_secret
+ok   skips_when_no_infrastructure_changed
+ok   fails_when_the_state_bucket_is_missing
+ok   fails_when_the_base_commit_is_unknown
+ok   rejects_missing_arguments
+== infra/bootstrap/
+Success! The configuration is valid.
+
+tests/bootstrap.tftest.hcl... in progress
+  run "names_the_state_bucket_after_the_account"... pass
+  run "versions_the_state_bucket"... pass
+  run "encrypts_the_state_bucket_with_a_rotating_key"... pass
+  run "keeps_the_state_bucket_private_and_tls_only"... pass
+  run "outputs_a_native_locking_backend_configuration"... pass
+  run "lets_only_this_repository_assume_the_deploy_role"... pass
+  run "lets_the_deploy_role_use_the_state_and_manage_prefixed_iam_only"... pass
+  run "rejects_a_name_prefix_that_would_let_the_role_manage_itself"... pass
+tests/bootstrap.tftest.hcl... tearing down
+tests/bootstrap.tftest.hcl... pass
+
+Success! 8 passed, 0 failed.
+== infra/envs/demo/
+Success! The configuration is valid.
+
+tests/demo.tftest.hcl... in progress
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "wires_the_data_modules_into_the_environment"... pass
+  run "wires_the_compute_module_into_the_data_modules"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/demo.tftest.hcl... tearing down
+tests/demo.tftest.hcl... pass
+
+Success! 4 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "encrypts_in_transit_and_at_rest_with_auth_on"... pass
+  run "keeps_the_auth_token_out_of_state_and_in_secrets_manager"... pass
+  run "auth_token_version_bumps_both_writes"... pass
+  run "is_private_and_admits_only_listed_clients"... pass
+  run "admits_no_one_without_clients"... pass
+  run "demo_runs_one_cheap_node_with_snapshots"... pass
+  run "replicas_turn_on_failover"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_redis_6"... pass
+  run "rejects_a_non_elasticache_node_type"... pass
+  run "rejects_negative_replicas"... pass
+  run "rejects_more_than_five_replicas"... pass
+  run "rejects_turning_snapshots_off"... pass
+  run "rejects_snapshot_retention_over_35_days"... pass
+  run "rejects_a_single_subnet"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_a_zero_auth_token_version"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 19 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "creates_the_github_oidc_provider"... pass
+  run "trusts_only_this_repository"... pass
+  run "narrows_trust_to_chosen_subjects"... pass
+  run "reuses_an_existing_oidc_provider"... pass
+  run "attaches_the_chosen_managed_policies"... pass
+  run "attaches_no_inline_policy_by_default"... pass
+  run "attaches_the_inline_policy"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_a_wildcard_repository"... pass
+  run "rejects_a_wildcard_subject"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 11 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "runs_postgres_16_encrypted_private_with_backups"... pass
+  run "requires_tls_and_admits_only_listed_clients"... pass
+  run "admits_no_one_without_clients"... pass
+  run "keeps_the_password_out_of_state_and_in_secrets_manager"... pass
+  run "password_version_bumps_both_writes"... pass
+  run "demo_defaults_are_cheap_and_destroyable"... pass
+  run "production_toggles_turn_on_protection"... pass
+  run "outputs_the_connection_details"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_postgres_15"... pass
+  run "rejects_turning_backups_off"... pass
+  run "rejects_backup_retention_over_35_days"... pass
+  run "rejects_a_single_subnet"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_a_non_rds_instance_class"... pass
+  run "rejects_storage_under_the_gp3_minimum"... pass
+  run "rejects_an_invalid_database_name"... pass
+  run "rejects_a_reserved_master_username"... pass
+  run "rejects_a_malformed_master_username"... pass
+  run "rejects_a_fractional_password_version"... pass
+  run "rejects_a_zero_password_version"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 23 passed, 0 failed.
+== infra/modules/ecr/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "scans_every_image_on_push"... pass
+  run "expires_untagged_and_old_images"... pass
+  run "lifecycle_limits_are_configurable"... pass
+  run "tags_are_immutable_and_images_encrypted_with_the_data_key"... pass
+  run "force_delete_lets_one_destroy_remove_everything"... pass
+  run "outputs_each_repository_url_and_arn"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_no_repositories"... pass
+  run "rejects_an_uppercase_repository_name"... pass
+  run "rejects_keeping_no_tagged_images"... pass
+  run "rejects_a_fractional_untagged_expiry"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 14 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... pass
+  run "services_reach_only_their_data_stores_and_https"... pass
+  run "deployments_roll_back_and_beat_never_runs_twice"... pass
+  run "outputs_the_cluster_services_and_the_bedrock_trust_principal"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer"... pass
+  run "rejects_an_unknown_cpu_value"... pass
+  run "accepts_every_fargate_cpu_size"... pass
+  run "accepts_4_vcpu_tasks"... pass
+  run "rejects_a_missing_service_size"... pass
+  run "rejects_two_beats"... pass
+  run "rejects_a_negative_count"... pass
+  run "rejects_the_latest_tag"... pass
+  run "rejects_an_image_from_outside_ecr"... pass
+  run "rejects_a_repository_arn_that_is_not_ecr"... pass
+  run "rejects_keeping_logs_forever"... pass
+  run "rejects_a_logfire_secret_that_is_not_a_secret_arn"... pass
+  run "rejects_a_header_name_with_spaces"... pass
+  run "rejects_fractional_secret_versions"... pass
+  run "rejects_a_single_public_subnet"... pass
+  run "rejects_no_private_subnets"... pass
+  run "rejects_arns_of_the_wrong_kind"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "alb_deletion_protection_is_off_for_the_demo_and_can_be_turned_on"... pass
+  run "the_demo_alb_can_be_destroyed_in_one_run"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 43 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "every_key_rotates_yearly"... pass
+  run "key_policy_trusts_only_this_account"... pass
+  run "outputs_name_each_key_from_the_prefix"... pass
+  run "outputs_each_key_arn"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rotation_period_is_configurable"... pass
+  run "rejects_a_rotation_period_aws_does_not_allow"... pass
+  run "rejects_a_rotation_period_over_the_aws_maximum"... pass
+  run "rejects_a_deletion_window_under_seven_days"... pass
+  run "rejects_a_deletion_window_over_thirty_days"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 12 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 16 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "both_buckets_are_private_and_encrypted"... pass
+  run "documents_cors_allows_only_the_cloudfront_origin"... pass
+  run "documents_allow_no_cross_origin_requests_until_the_origin_is_known"... pass
+  run "rejects_a_wildcard_cors_origin"... pass
+  run "rejects_a_plain_http_cors_origin"... pass
+  run "rejects_a_cors_origin_with_a_path"... pass
+  run "rejects_a_wildcard_subdomain_cors_origin"... pass
+  run "static_assets_are_readable_only_by_the_cloudfront_distribution"... pass
+  run "static_assets_are_readable_by_no_one_until_the_distribution_is_known"... pass
+  run "every_bucket_refuses_requests_without_tls"... pass
+  run "rejects_a_distribution_arn_that_is_not_cloudfront"... pass
+  run "abandoned_uploads_are_cleaned_up"... pass
+  run "outputs_what_the_ecs_and_cdn_modules_need"... pass
+  run "buckets_keep_their_objects_on_destroy_by_default"... pass
+  run "force_destroy_empties_buckets_on_destroy"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 19 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+terraform scan results:
+
+Passed checks: 253, Failed checks: 0, Skipped checks: 45
+
+
+exit=0
+$ git status --short
