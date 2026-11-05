@@ -7,7 +7,7 @@
 **Blocked by:**
 - [02-03: Model gateway and Default Model](03-model-gateway-default-model.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The price table lives in the repo as data with effective-from dates and is loaded on migrate
 - [ ] Owners can override input, output and cached-token prices per credential
