@@ -9,6 +9,7 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -18,6 +19,8 @@ from alembic.config import Config
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 
+from app.core.clock import Clock
+from app.mail.outbox import OutboxMailer
 from app.main import create_app
 
 TEST_DATABASE_URL = os.environ.get(
@@ -27,6 +30,8 @@ TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 # HTTPS, so the client's cookie jar sends the Secure session cookie back.
 BASE_URL = "https://testserver"
+# Where links in emails point.
+STUDIO_URL = "https://studio.example.test"
 
 
 def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -34,6 +39,8 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("REDIS_URL", TEST_REDIS_URL)
     monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "true")
+    monkeypatch.setenv("MAILER", "outbox")
+    monkeypatch.setenv("STUDIO_URL", STUDIO_URL)
 
 
 @pytest.fixture(scope="session")
@@ -138,3 +145,36 @@ def tenant_factory(new_client: ClientFactory) -> TenantFactory:
 async def owner(tenant_factory: TenantFactory) -> SignedUpMember:
     """A signed-in Owner of a new Organisation."""
     return await tenant_factory()
+
+
+@pytest.fixture
+def outbox(app: FastAPI) -> OutboxMailer:
+    """The in-memory mailer the app sends through in tests; read sent emails from it."""
+    mailer = app.state.mailer
+    assert isinstance(mailer, OutboxMailer)
+    return mailer
+
+
+class ControllableClock:
+    """A clock that stands still until a test moves it."""
+
+    def __init__(self) -> None:
+        self._now = datetime(2026, 11, 5, 9, 0, tzinfo=UTC)
+
+    def now(self) -> datetime:
+        return self._now
+
+    def advance(self, by: timedelta) -> None:
+        self._now += by
+
+
+@pytest.fixture
+def clock(app: FastAPI) -> ControllableClock:
+    """Replaces the app's system clock with one the test controls."""
+    controllable = ControllableClock()
+    app.state.clock = controllable
+    return controllable
+
+
+def _clock_is_a_clock(clock: ControllableClock) -> Clock:
+    return clock  # mypy checks the fake satisfies the port

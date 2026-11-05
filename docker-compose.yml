@@ -10,11 +10,18 @@ x-backend: &backend
     REDIS_URL: redis://redis:6379/0
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+    # Email goes to Mailpit; read it at http://localhost:8025.
+    MAILER: smtp
+    SMTP_HOST: mailpit
+    SMTP_PORT: "1025"
+    STUDIO_URL: ${STUDIO_URL:-http://localhost:5173}
   depends_on:
     postgres:
       condition: service_healthy
     redis:
       condition: service_healthy
+    mailpit:
+      condition: service_started
 
 services:
   postgres:
