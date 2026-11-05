@@ -1,0 +1,25 @@
+# API container started without DATABASE_URL (REDIS_URL set): startup aborts naming the missing setting
+$ docker run --rm -e REDIS_URL=redis://redis:6379/0 rag-agent-studio-api
+    return await anext(self.gen)
+  File "/app/app/main.py", line 17, in lifespan
+    settings = load_settings()
+  File "/app/app/core/settings.py", line 32, in load_settings
+    raise SettingsError(f"Invalid service settings. {problems}") from None
+app.core.settings.SettingsError: Invalid service settings. DATABASE_URL: Field required
+
+ERROR:    Application startup failed. Exiting.
+exit=3
+
+# API container with an invalid REDIS_URL and a non-positive timeout
+$ docker run --rm -e DATABASE_URL=postgresql+asyncpg://studio:studio@postgres:5432/studio -e REDIS_URL=not-a-url -e WORKER_HEALTH_TIMEOUT_SECONDS=0 rag-agent-studio-api
+app.core.settings.SettingsError: Invalid service settings. REDIS_URL: Input should be a valid URL, relative URL without a base; WORKER_HEALTH_TIMEOUT_SECONDS: Input should be greater than 0
+
+ERROR:    Application startup failed. Exiting.
+exit=3
+
+# Worker started without any settings: exits before connecting to the broker
+$ docker run --rm rag-agent-studio-api celery -A app.worker.main worker
+    raise SettingsError(f"Invalid service settings. {problems}") from None
+app.core.settings.SettingsError: Invalid service settings. DATABASE_URL: Field required; REDIS_URL: Field required
+
+exit=2

@@ -1,0 +1,17 @@
+$ git rev-parse HEAD
+820d78637060320270a5ef829d20d59961a93ed6
+$ make lint
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+23 files already formatted
+Success: no issues found in 23 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+> tsc
+
+exit=0

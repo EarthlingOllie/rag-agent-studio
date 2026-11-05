@@ -1,0 +1,57 @@
+# Sandbox note: images were built from backend/Dockerfile and frontend/Dockerfile with the sandbox's TLS-intercepting proxy CA added (see README). Then:
+$ docker compose up -d --no-build --wait
+ Container rag-agent-studio-postgres-1 Waiting 
+ Container rag-agent-studio-api-1 Healthy 
+ Container rag-agent-studio-studio-1 Healthy 
+ Container rag-agent-studio-beat-1 Healthy 
+ Container rag-agent-studio-postgres-1 Healthy 
+ Container rag-agent-studio-mailpit-1 Healthy 
+ Container rag-agent-studio-rustfs-1 Healthy 
+ Container rag-agent-studio-worker-1 Healthy 
+ Container rag-agent-studio-redis-1 Healthy 
+
+$ docker compose ps
+SERVICE    IMAGE                          STATUS                    PORTS
+api        rag-agent-studio-api           Up 7 minutes (healthy)    0.0.0.0:8000->8000/tcp
+beat       rag-agent-studio-beat          Up 7 minutes              8000/tcp
+mailpit    axllent/mailpit:v1.27          Up 7 minutes (healthy)    0.0.0.0:1025->1025/tcp, 0.0.0.0:8025->8025/tcp, 1110/tcp
+postgres   pgvector/pgvector:0.8.1-pg16   Up 18 minutes (healthy)   0.0.0.0:5432->5432/tcp
+redis      redis:7.4.2-alpine             Up 18 minutes (healthy)   0.0.0.0:6379->6379/tcp
+rustfs     rustfs/rustfs:1.0.4            Up 7 minutes              0.0.0.0:9000-9001->9000-9001/tcp
+studio     rag-agent-studio-studio        Up 6 minutes              0.0.0.0:5173->5173/tcp
+worker     rag-agent-studio-worker        Up 5 minutes              8000/tcp
+
+$ curl -s localhost:8000/api/health
+{"status":"ok","checks":{"database":"ok","redis":"ok"}}
+$ curl -s localhost:8000/api/health/worker
+{"status":"ok","reply":"pong"}
+$ curl -s localhost:5173/api/health/worker   # through the Studio's Vite proxy
+{"status":"ok","reply":"pong"}
+$ curl -s -o /dev/null -w '%{http_code}\n' localhost:8025   # Mailpit UI
+200
+$ curl -s -o /dev/null -w '%{http_code}\n' localhost:9000/health   # RustFS
+200
+$ docker compose exec postgres psql -U studio -d studio -c "select extname, extversion from pg_extension where extname='vector'"
+ extname | extversion 
+---------+------------
+ vector  | 0.8.1
+(1 row)
+
+
+$ docker compose logs worker | grep health_check
+worker-1  | [2026-11-05 00:22:19,282: INFO/MainProcess] Task worker.health_check[24dbb939-a4bd-4540-bf47-e21984e3e686] received
+worker-1  | [2026-11-05 00:22:19,284: INFO/ForkPoolWorker-2] Task worker.health_check[24dbb939-a4bd-4540-bf47-e21984e3e686] succeeded in 0.0013482640001711843s: 'pong'
+worker-1  | [2026-11-05 00:24:33,733: INFO/MainProcess] Task worker.health_check[14f7b917-3d6d-4868-8597-9c9e17cd26e6] received
+worker-1  | [2026-11-05 00:24:33,735: INFO/ForkPoolWorker-2] Task worker.health_check[14f7b917-3d6d-4868-8597-9c9e17cd26e6] succeeded in 0.0014908820000982814s: 'pong'
+worker-1  | [2026-11-05 00:24:33,796: INFO/MainProcess] Task worker.health_check[38bf04a3-e611-4d7e-acc5-117c483f9859] received
+worker-1  | [2026-11-05 00:24:33,798: INFO/ForkPoolWorker-2] Task worker.health_check[38bf04a3-e611-4d7e-acc5-117c483f9859] succeeded in 0.0009930869998697744s: 'pong'
+
+$ docker compose logs beat
+beat-1  |     . broker -> redis://:**@redis:6379/0
+beat-1  |     . loader -> celery.loaders.app.AppLoader
+beat-1  |     . scheduler -> celery.beat.PersistentScheduler
+beat-1  |     . db -> /tmp/celerybeat-schedule
+beat-1  |     . logfile -> [stderr]@%INFO
+beat-1  |     . maxinterval -> 5.00 minutes (300s)
+beat-1  | [2026-11-05 00:17:19,241: INFO/MainProcess] beat: Starting...
+beat-1  | [2026-11-05 00:22:19,269: INFO/MainProcess] Scheduler: Sending due task worker-health-check (worker.health_check)

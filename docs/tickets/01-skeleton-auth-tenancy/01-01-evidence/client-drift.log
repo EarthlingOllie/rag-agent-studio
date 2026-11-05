@@ -1,0 +1,80 @@
+$ make check-client   # clean checkout
+cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
+cd frontend && pnpm gen-client
+
+> rag-agent-studio-frontend@ gen-client /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+> pnpm --filter @studio/api-client generate
+
+
+> @studio/api-client@ generate /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend/packages/api-client
+> openapi-typescript ./openapi.json --output ./src/schema.gen.ts
+
+✨ openapi-typescript 7.13.0
+🚀 ./openapi.json → ./src/schema.gen.ts [28.2ms]
+API client is up to date.
+exit=0
+
+# Simulate backend contract drift: add a field to HealthResponse without regenerating the committed client
+diff --git a/backend/app/api/health.py b/backend/app/api/health.py
+index bc3cc5b..ff3e88f 100644
+--- a/backend/app/api/health.py
++++ b/backend/app/api/health.py
+@@ -26,6 +26,7 @@ class HealthChecks(BaseModel):
+ class HealthResponse(BaseModel):
+     status: CheckStatus
+     checks: HealthChecks
++    version: str = "0.1.0"
+ 
+ 
+ def get_engine(request: Request) -> AsyncEngine:
+$ make check-client
+cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
+cd frontend && pnpm gen-client
+
+> rag-agent-studio-frontend@ gen-client /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+> pnpm --filter @studio/api-client generate
+
+
+> @studio/api-client@ generate /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend/packages/api-client
+> openapi-typescript ./openapi.json --output ./src/schema.gen.ts
+
+✨ openapi-typescript 7.13.0
+🚀 ./openapi.json → ./src/schema.gen.ts [28.1ms]
+ M frontend/packages/api-client/openapi.json
+ M frontend/packages/api-client/src/schema.gen.ts
+diff --git a/frontend/packages/api-client/openapi.json b/frontend/packages/api-client/openapi.json
+index b419053..4030e9a 100644
+--- a/frontend/packages/api-client/openapi.json
++++ b/frontend/packages/api-client/openapi.json
+@@ -39,6 +39,11 @@
+             ],
+             "title": "Status",
+             "type": "string"
++          },
++          "version": {
++            "default": "0.1.0",
++            "title": "Version",
++            "type": "string"
+           }
+         },
+         "required": [
+diff --git a/frontend/packages/api-client/src/schema.gen.ts b/frontend/packages/api-client/src/schema.gen.ts
+index 057ff46..e21d7a1 100644
+--- a/frontend/packages/api-client/src/schema.gen.ts
++++ b/frontend/packages/api-client/src/schema.gen.ts
+@@ -66,6 +66,11 @@ export interface components {
+              * @enum {string}
+              */
+             status: "ok" | "error";
++            /**
++             * Version
++             * @default 0.1.0
++             */
++            version: string;
+         };
+         /** WorkerHealthResponse */
+         WorkerHealthResponse: {
+The committed API client is out of date. Run 'make gen-client' and commit the result.
+make: *** [Makefile:48: check-client] Error 1
+exit=2
+# reverted

@@ -1,0 +1,25 @@
+# 1. Automated round-trip test (part of make test-backend / CI), run alone from the fresh clone
+$ cd backend && uv run pytest --no-cov -v tests/integration/test_migrations.py
+tests/integration/test_migrations.py::test_migrations_upgrade_to_head_and_downgrade_to_base PASSED [100%]
+============================== 1 passed in 0.25s ===============================
+
+# 2. Same round trip by hand against the compose stack's database
+$ docker compose exec api alembic current
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+0001 (head)
+$ docker compose exec api alembic downgrade base
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0001 -> , Enable the pgvector extension.
+$ docker compose exec api alembic current
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+$ docker compose exec api alembic upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001, Enable the pgvector extension.
+$ docker compose exec api alembic current
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+0001 (head)
