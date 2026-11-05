@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+/* Rendered markdown (the Document viewer). Tailwind's reset removes element styles, so the
+   elements Docling's markdown uses get theirs back here. */
+@layer components {
+  .markdown > * + * { @apply mt-3; }
+  .markdown h1 { @apply text-xl font-semibold; }
+  .markdown h2 { @apply text-lg font-semibold; }
+  .markdown h3, .markdown h4, .markdown h5, .markdown h6 { @apply font-semibold; }
+  .markdown ul { @apply list-disc pl-5; }
+  .markdown ol { @apply list-decimal pl-5; }
+  .markdown table { @apply border-collapse; }
+  .markdown th, .markdown td { @apply border border-slate-300 px-2 py-1 text-left align-top; }
+  .markdown code { @apply rounded bg-slate-100 px-1; }
+  .markdown pre { @apply overflow-auto rounded bg-slate-100 p-3; }
+  .markdown a { @apply underline; }
+  .markdown img { @apply max-w-full; }
+}

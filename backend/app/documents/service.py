@@ -322,17 +322,61 @@ async def get_document(
     return document
 
 
-async def list_chunks(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
-) -> list[Chunk]:
-    """The current edition's Chunks, in Document order."""
+@dataclass(frozen=True)
+class OpenedDocument:
+    document: Document
+    chunk_count: int
+    # The converted markdown; ``None`` until the Document has been converted.
+    markdown: str | None
+    # A newer edition being ingested, if any.
+    replacement: StagedEdition | None
+
+
+async def open_document(
+    session: AsyncSession,
+    store: ObjectStore,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+) -> OpenedDocument:
+    """One Document, with its Chunk count and the markdown Docling converted it to."""
     document = await get_document(session, scope, project_id, document_id)
-    chunks = await session.scalars(
-        select(Chunk)
-        .where(Chunk.document_id == document.id, Chunk.edition == document.edition)
-        .order_by(Chunk.ordinal)
+    chunk_count = await session.scalar(
+        select(func.count()).where(
+            Chunk.document_id == document.id, Chunk.edition == document.edition
+        )
     )
-    return list(chunks)
+    markdown = None
+    if document.markdown_key is not None:
+        markdown = (await store.get(document.markdown_key)).decode()
+    replacement = await session.get(StagedEdition, document.id)
+    return OpenedDocument(document, chunk_count or 0, markdown, replacement)
+
+
+@dataclass(frozen=True)
+class ChunkPage:
+    chunks: list[Chunk]
+    # How many Chunks the current edition has in all.
+    total: int
+
+
+async def list_chunks(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    *,
+    offset: int,
+    limit: int,
+) -> ChunkPage:
+    """A page of the current edition's Chunks, in Document order."""
+    document = await get_document(session, scope, project_id, document_id)
+    current = (Chunk.document_id == document.id, Chunk.edition == document.edition)
+    total = await session.scalar(select(func.count()).where(*current))
+    chunks = await session.scalars(
+        select(Chunk).where(*current).order_by(Chunk.ordinal).offset(offset).limit(limit)
+    )
+    return ChunkPage(list(chunks), total or 0)
 
 
 async def delete_document(

@@ -309,6 +309,10 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", PROJECTS + "/{project_id}/documents", EDITOR, _an_uploaded_file),
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents", EDITOR, _a_project),
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents/statuses", EDITOR, _a_project),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
+    ScopedRoute(
+        "GET", PROJECTS + "/{project_id}/documents/{document_id}/download", EDITOR, _a_document
+    ),
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),

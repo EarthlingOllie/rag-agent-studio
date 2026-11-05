@@ -1,4 +1,4 @@
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import {
   type ChangeEvent,
   type DragEvent,
@@ -25,7 +25,7 @@ import { TagsPanel } from "./TagsPanel";
 /** The file types the API accepts, for the file picker. */
 const ACCEPT = ".pdf,.docx,.pptx,.html,.htm,.md,.markdown,.txt";
 
-const STATUS_LABELS: Record<DocumentStatus, string> = {
+export const STATUS_LABELS: Record<DocumentStatus, string> = {
   queued: "Queued",
   processing: "Processing",
   ready: "Ready",
@@ -475,7 +475,19 @@ function DocumentRows({
                 />
               )}
             </td>
-            <td className="py-2">{document.name}</td>
+            <td className="py-2">
+              <Link
+                to="/organisations/$organisationId/projects/$projectId/documents/$documentId"
+                params={{
+                  organisationId: scope.organisationId,
+                  projectId: scope.projectId,
+                  documentId: document.id,
+                }}
+                className="underline"
+              >
+                {document.name}
+              </Link>
+            </td>
             <td>
               {STATUS_LABELS[document.status]}
               {document.error_message && (

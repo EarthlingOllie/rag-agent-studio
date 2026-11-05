@@ -203,6 +203,13 @@ _Avoid_: Indexing, processing pipeline, import
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
 
+**Document viewer**:
+The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
+_Avoid_: Document preview, inspector, detail page
+
+**Heading path**:
+The headings above a Chunk in its Document, outermost first, shown as `Leave › Annual leave`. It is embedded with the Chunk so retrieval knows its context.
+_Avoid_: Breadcrumb, section, context
 **Duplicate**:
 An upload whose Content hash matches a Document already in the Project (its current Edition, or a Staged edition still being ingested). It is refused, naming the Document that has the content. A Failed Document or Failed Staged edition holds no content, so its file is not a Duplicate and can be uploaded again, as a new Document or as the next Edition.
 _Avoid_: Copy, clash, repeat upload
