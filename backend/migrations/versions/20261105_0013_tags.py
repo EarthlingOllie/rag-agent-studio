@@ -1,7 +1,7 @@
 """Tags, scoped to a Project, and the Tags applied to Documents.
 
-Revision ID: 0012_tags
-Revises: 0011_documents
+Revision ID: 0013_tags
+Revises: 0012_agents_conversations
 Create Date: 2026-11-05
 """
 
@@ -11,8 +11,8 @@ from typing import Any
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0012_tags"
-down_revision: str | None = "0011_documents"
+revision: str = "0013_tags"
+down_revision: str | None = "0012_agents_conversations"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

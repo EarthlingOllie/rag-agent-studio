@@ -10,7 +10,7 @@ Branch `ticket/03-06-tags`, based on `origin/candidate` at `0a6a9e7` (03-02 merg
   - `models.py`: `Tag` (Organisation, Project, name; unique per Project ignoring case through the index `uq_tags_project_name` on `(project_id, lower(name))`) and `DocumentTag` (the many-to-many link, carrying the Organisation like every non-platform table; deleting a Document or a Tag removes the link by `ON DELETE CASCADE`).
   - `service.py`: list (with each Tag's Document count), create, rename, delete, set one Document's Tags, bulk add/remove on many Documents. Everything finds the Project inside the caller's Organisation; changes go through `active_project`, so an archived Project's Tags are read-only. A Tag or Document ID from another Project is "not in this Project".
   - `api.py`: the routes below. Any Member (Editor or Owner) may use them, as with Documents.
-  - `migrations/versions/20261105_0012_tags.py`: `tags` and `document_tags`, revising `0011_documents`.
+  - `migrations/versions/20261105_0013_tags.py`: `tags` and `document_tags`, revising `0012_agents_conversations` (re-parented when candidate gained 04-01).
   - `app/documents/`: `DocumentOut` gains `tags` (id and name, by name). `GET …/documents` gains `q` (part of the name, ignoring case; `%` and `_` are literal), `status` (repeatable: any of) and `tag_id` (repeatable: all of).
 - **Studio** (`frontend/apps/studio/src/projects/`):
   - `TagsPanel.tsx` + `tags.ts`: the Tags region on the Documents tab: each Tag with its Document count, Rename (inline), Delete (with a confirmation naming how many Documents it leaves), and New Tag. The API's reasons (duplicate name, archived Project) are shown.
@@ -66,4 +66,4 @@ No dependency or lockfile changed on this branch, so `make audit` and the Trivy 
 - **Bulk semantics.** A Tag in both `add` and `remove` is removed (documented in the API schema). Bulk requests are capped at 500 Documents and 100 Tags per list. A tag name is at most 50 characters. These limits are my choice; the spec sets none.
 - **Filter semantics.** Several `status` values match any of them; several `tag_id` values match Documents that carry all of them (the Studio sends at most one of each). The status poll (`/documents/statuses`) is not filtered; it only updates rows already listed.
 - **Audit Events.** Spec 03 lists the audited Knowledge Base actions (Project lifecycle, Embedding Model changes, Document deletes); Tag changes are not among them, so none are recorded.
-- **Migration number.** `0012_tags` revises `0011_documents`. Tickets 03-03, 03-04, 03-05 and 03-08 are building in parallel and may add their own `0012`; whichever merges second re-parents its migration, as 03-02 did.
+- **Migration number.** 04-01 merged first with `0012_agents_conversations`, so this branch's migration became `0013_tags` revising it (one Alembic head). Tickets building in parallel that add their own migration re-parent the same way.

@@ -54,3 +54,7 @@ class LocalEmbedder:
     def embed_passages(self, texts: list[str]) -> list[list[float]]:
         prefixed = [LOCAL_MODEL.passage_prefix + text for text in texts]
         return [vector.tolist() for vector in self._embedding.passage_embed(prefixed)]
+
+    def embed_query(self, text: str) -> list[float]:
+        (vector,) = self._embedding.query_embed([LOCAL_MODEL.query_prefix + text])
+        return [float(value) for value in vector]
