@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-01: Walking skeleton](01-walking-skeleton.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] FastAPI, SQLAlchemy, Celery and HTTP client instrumentation is enabled
 - [ ] The exporter is chosen by settings: Logfire when a token is present, console otherwise
