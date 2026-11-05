@@ -1285,6 +1285,11 @@ export interface components {
         /** Behaviour */
         "Behaviour-Input": {
             /**
+             * Fallback Text
+             * @default Sorry, I don't know the answer to that.
+             */
+            fallback_text: string;
+            /**
              * System Prompt
              * @default
              */
@@ -1292,6 +1297,11 @@ export interface components {
         };
         /** Behaviour */
         "Behaviour-Output": {
+            /**
+             * Fallback Text
+             * @default Sorry, I don't know the answer to that.
+             */
+            fallback_text: string;
             /**
              * System Prompt
              * @default
@@ -2035,6 +2045,16 @@ export interface components {
         /** Retrieval */
         "Retrieval-Input": {
             /**
+             * Hybrid Weight
+             * @default 0.5
+             */
+            hybrid_weight: number;
+            /**
+             * Min Score
+             * @default 0
+             */
+            min_score: number;
+            /**
              * Top K
              * @default 5
              */
@@ -2042,6 +2062,16 @@ export interface components {
         };
         /** Retrieval */
         "Retrieval-Output": {
+            /**
+             * Hybrid Weight
+             * @default 0.5
+             */
+            hybrid_weight: number;
+            /**
+             * Min Score
+             * @default 0
+             */
+            min_score: number;
             /**
              * Top K
              * @default 5

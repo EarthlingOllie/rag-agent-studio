@@ -12,7 +12,10 @@ export const hrHelper: Agent = {
   name: "HR helper",
   created_at: "2026-11-05T09:00:00Z",
   archived_at: null,
-  draft: { behaviour: { system_prompt: "Answer from the handbook." }, retrieval: { top_k: 5 } },
+  draft: {
+    behaviour: { system_prompt: "Answer from the handbook.", fallback_text: "Ask HR, please." },
+    retrieval: { top_k: 5, hybrid_weight: 0.7, min_score: 0.25 },
+  },
   draft_updated_at: "2026-11-05T09:00:00Z",
 };
 
@@ -24,7 +27,9 @@ const done = {
   output_tokens: 6,
   first_token_ms: 40,
   latency_ms: 85,
-  chunks: [{ chunk_id: "f0000000-0000-4000-8000-000000000001", score: 0.92, rank: 1 }],
+  fallback: false,
+  chunks: [{ chunk_id: "f0000000-0000-4000-8000-000000000001", score: 0.92, relevance: 0.81, rank: 1 }],
+  excluded: [],
 };
 
 function sse(event: string, data: unknown) {
@@ -68,7 +73,10 @@ export function fakeAgentsApi(
         id: `a9e00000-0000-4000-8000-0000000001${String(agents.length).padStart(2, "0")}`,
         project_id: params.projectId as string,
         name: body.name,
-        draft: { behaviour: { system_prompt: "" }, retrieval: { top_k: 5 } },
+        draft: {
+          behaviour: { system_prompt: "", fallback_text: "Sorry, I don't know the answer to that." },
+          retrieval: { top_k: 5, hybrid_weight: 0.5, min_score: 0 },
+        },
       };
       agents.push(created);
       return HttpResponse.json(created, { status: 201 });

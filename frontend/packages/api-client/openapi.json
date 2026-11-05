@@ -316,6 +316,13 @@
       "Behaviour-Input": {
         "additionalProperties": false,
         "properties": {
+          "fallback_text": {
+            "default": "Sorry, I don't know the answer to that.",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Fallback Text",
+            "type": "string"
+          },
           "system_prompt": {
             "default": "",
             "maxLength": 20000,
@@ -329,6 +336,13 @@
       "Behaviour-Output": {
         "additionalProperties": false,
         "properties": {
+          "fallback_text": {
+            "default": "Sorry, I don't know the answer to that.",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Fallback Text",
+            "type": "string"
+          },
           "system_prompt": {
             "default": "",
             "maxLength": 20000,
@@ -337,7 +351,8 @@
           }
         },
         "required": [
-          "system_prompt"
+          "system_prompt",
+          "fallback_text"
         ],
         "title": "Behaviour",
         "type": "object"
@@ -2171,6 +2186,20 @@
       "Retrieval-Input": {
         "additionalProperties": false,
         "properties": {
+          "hybrid_weight": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Hybrid Weight",
+            "type": "number"
+          },
+          "min_score": {
+            "default": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Score",
+            "type": "number"
+          },
           "top_k": {
             "default": 5,
             "maximum": 20.0,
@@ -2185,6 +2214,20 @@
       "Retrieval-Output": {
         "additionalProperties": false,
         "properties": {
+          "hybrid_weight": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Hybrid Weight",
+            "type": "number"
+          },
+          "min_score": {
+            "default": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Min Score",
+            "type": "number"
+          },
           "top_k": {
             "default": 5,
             "maximum": 20.0,
@@ -2194,7 +2237,9 @@
           }
         },
         "required": [
-          "top_k"
+          "top_k",
+          "hybrid_weight",
+          "min_score"
         ],
         "title": "Retrieval",
         "type": "object"

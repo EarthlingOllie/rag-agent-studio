@@ -2,7 +2,9 @@
 send a question, answered as a Server-Sent Events stream. Editors and Owners may use them.
 
 The stream sends ``token`` events (``{"text": …}``) as the answer arrives, then one ``done``
-event with the saved Message's ID, its token counts and latency.
+event with the saved Message's ID, its token counts and latency, whether the answer is the
+Agent's fallback text, the Chunks the model was given and the Chunks retrieval left out (with
+the reason: below the minimum score, or outside top-k).
 """
 
 import json
@@ -200,9 +202,24 @@ async def send_message(
                         "output_tokens": event.event.output_tokens,
                         "first_token_ms": event.first_token_ms,
                         "latency_ms": event.latency_ms,
+                        "fallback": event.event.fallback,
                         "chunks": [
-                            {"chunk_id": str(c.chunk_id), "score": c.score, "rank": c.rank}
+                            {
+                                "chunk_id": str(c.chunk_id),
+                                "score": c.score,
+                                "relevance": c.relevance,
+                                "rank": c.rank,
+                            }
                             for c in event.event.retrieved
+                        ],
+                        "excluded": [
+                            {
+                                "chunk_id": str(e.chunk_id),
+                                "score": e.score,
+                                "relevance": e.relevance,
+                                "reason": e.reason,
+                            }
+                            for e in event.event.excluded
                         ],
                     },
                 )
