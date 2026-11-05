@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-08: Invites and joining an Organisation](08-invites-joining.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Members with several memberships see a switcher, and their choice persists across reloads
 - [ ] Organisation-scoped routes carry the active Organisation, and switching never shows another Organisation's data
