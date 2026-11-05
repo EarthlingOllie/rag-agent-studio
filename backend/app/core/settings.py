@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     local_key_wrapper_key: SecretStr
     # How long a password reset link works.
     password_reset_ttl_seconds: int = Field(default=60 * 60, gt=0)
+    # How long an invite link works.
+    invite_ttl_seconds: int = Field(default=7 * 24 * 60 * 60, gt=0)
     # The Studio's public address; links in emails point here.
     studio_url: HttpUrl = HttpUrl("http://localhost:5173")
     # Which mailer adapter sends email: in-memory outbox (tests), SMTP (Mailpit) or AWS SES.

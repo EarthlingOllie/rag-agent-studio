@@ -29,11 +29,17 @@ MESSAGE_FIELD_PATTERN = rf"(?:^|[._ -]){_MESSAGE_FIELD_NAMES}\Z"
 # The same names as keys inside a JSON-encoded attribute, so the scrubber parses and walks it.
 _MESSAGE_FIELD_IN_JSON = rf'"{_MESSAGE_FIELD_NAMES}"\s*:'
 MESSAGE_PATTERNS = (MESSAGE_FIELD_PATTERN, _MESSAGE_FIELD_IN_JSON)
-_MESSAGE_FIELD_RE = re.compile(MESSAGE_FIELD_PATTERN, re.IGNORECASE)
+# Link tokens (invites, password resets) travel in request bodies under a key ending in
+# ``token``. Like Message fields they are matched by key, so ``max_tokens`` or ``token_budget``
+# keep their values.
+TOKEN_FIELD_PATTERN = r"(?:^|[._ -])token\Z"  # noqa: S105 (a pattern)
+TOKEN_PATTERNS = (TOKEN_FIELD_PATTERN, r'"(?:\w+_)?token"\s*:')
+_KEY_ONLY_RE = re.compile(rf"{MESSAGE_FIELD_PATTERN}|{TOKEN_FIELD_PATTERN}", re.IGNORECASE)
 
 
 def _keep_prose_mentioning_messages(match: logfire.ScrubMatch) -> Any:
-    """Redact every match except a plain value that merely ends with a word like "message".
+    """Redact every match except a plain value that merely ends with a word like "message" or
+    "token".
 
     Logfire matches each pattern against keys and values alike. A Message field is identified
     by its key, so a value such as "Visitor sent a message" is kept. The scrubber reports the
@@ -41,13 +47,13 @@ def _keep_prose_mentioning_messages(match: logfire.ScrubMatch) -> Any:
     """
     matched_text = match.pattern_match.string
     on_key = bool(match.path) and matched_text == match.path[-1]
-    if not on_key and _MESSAGE_FIELD_RE.fullmatch(match.pattern_match.group(0)):
+    if not on_key and _KEY_ONLY_RE.fullmatch(match.pattern_match.group(0)):
         return match.value
     return None
 
 
 SCRUBBING = logfire.ScrubbingOptions(
-    extra_patterns=MESSAGE_PATTERNS, callback=_keep_prose_mentioning_messages
+    extra_patterns=(*MESSAGE_PATTERNS, *TOKEN_PATTERNS), callback=_keep_prose_mentioning_messages
 )
 
 _SCRUBBED_MARK = "[Scrubbed due to "

@@ -31,6 +31,14 @@ _Avoid_: Recovery link, magic link
 A Member's place in one Organisation, with a role: Owner or Editor. Signing up creates an Organisation and an Owner Membership for the new Member.
 _Avoid_: Seat, account
 
+**Invite**:
+An Owner's offer of a Membership with a chosen role, addressed to one email. It comes as an Invite Link, emailed or copied by the Owner. It is pending until the invited person accepts it or an Owner revokes it.
+_Avoid_: Invitation code, join request
+
+**Invite Link**:
+The link that accepts an Invite. It works once and expires; a person without an account creates one from it and joins in one step, and an existing Member just gains the Membership. An Owner can get a new link for a pending Invite, which stops the old one working.
+_Avoid_: Join link, magic link
+
 **Lockout**:
 A temporary block on signing in, after too many failed attempts for one account or from one IP address. Before it, each further attempt must wait a little longer. A Lockout of a Member's account is recorded as an Audit Event in each of their Organisations.
 _Avoid_: Ban, suspension, block

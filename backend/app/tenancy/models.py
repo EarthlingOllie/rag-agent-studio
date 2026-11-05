@@ -7,8 +7,9 @@ read only through repository functions that take an ``OrganisationScope``.
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
@@ -23,6 +24,10 @@ PLATFORM_TABLES = frozenset(
 class Role(enum.StrEnum):
     OWNER = "owner"
     EDITOR = "editor"
+
+
+def _role_type() -> Enum:
+    return Enum(Role, name="role", values_callable=lambda roles: [r.value for r in roles])
 
 
 class Organisation(IdMixin, Base):
@@ -50,6 +55,39 @@ class Membership(IdMixin, Base):
     member_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("members.id", ondelete="CASCADE"), index=True
     )
-    role: Mapped[Role] = mapped_column(
-        Enum(Role, name="role", values_callable=lambda roles: [r.value for r in roles])
+    role: Mapped[Role] = mapped_column(_role_type())
+
+
+class Invite(IdMixin, Base):
+    """An invitation to join an Organisation with a role, addressed to one email.
+
+    Only the SHA-256 of the link's token is stored. An Invite is pending until it is accepted
+    or revoked, and its link works only while it is pending and before ``expires_at``.
+    """
+
+    __tablename__ = "invites"
+    __table_args__ = (
+        # One pending Invite per email in an Organisation.
+        Index(
+            "uq_invites_pending_email",
+            "organisation_id",
+            "email",
+            unique=True,
+            postgresql_where=text("accepted_at IS NULL AND revoked_at IS NULL"),
+        ),
     )
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    # Normalised like ``members.email``.
+    email: Mapped[str] = mapped_column(String(320))
+    role: Mapped[Role] = mapped_column(_role_type())
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    invited_by_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("members.id", ondelete="CASCADE"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    accepted_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("members.id", ondelete="SET NULL")
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

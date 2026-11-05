@@ -1,0 +1,20 @@
+$ bash -c cd frontend && pnpm build (in a fresh clone of ticket/01-08-invites at 4aee765; TEST_DATABASE_URL=…/studio_test_c0108 TEST_REDIS_URL=…/7)
+
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0108/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0108/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 172 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-ItCA0RKD.css   14.73 kB │ gzip:   3.74 kB
+dist/assets/index-BGLPZzN8.js   383.81 kB │ gzip: 117.55 kB
+
+✓ built in 475ms
+exit 0

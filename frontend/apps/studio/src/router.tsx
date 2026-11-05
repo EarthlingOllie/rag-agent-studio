@@ -12,7 +12,13 @@ import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { SignInPage } from "./auth/SignInPage";
 import { SignUpPage } from "./auth/SignUpPage";
-import { AuditSettingsPage, GeneralSettingsPage, OrganisationSettingsLayout } from "./settings/OrganisationSettings";
+import { AcceptInvitePage } from "./invites/AcceptInvitePage";
+import {
+  AuditSettingsPage,
+  GeneralSettingsPage,
+  MembersSettingsPage,
+  OrganisationSettingsLayout,
+} from "./settings/OrganisationSettings";
 import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
 import { SecurityPage } from "./security/SecurityPage";
@@ -57,6 +63,14 @@ const resetPasswordRoute = createRoute({
     typeof search.token === "string" ? { token: search.token } : {},
   component: ResetPasswordPage,
 });
+const acceptInviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/accept-invite",
+  // The invite link carries the token as `?token=`.
+  validateSearch: (search: Record<string, unknown>): { token?: string } =>
+    typeof search.token === "string" ? { token: search.token } : {},
+  component: AcceptInvitePage,
+});
 const signedInRoute = createRoute({ getParentRoute: () => rootRoute, id: "signed-in", component: SignedInShell });
 const homeRoute = createRoute({ getParentRoute: () => signedInRoute, path: "/", component: HomeRedirect });
 const organisationRoute = createRoute({
@@ -72,6 +86,11 @@ const settingsRoute = createRoute({
   component: OrganisationSettingsLayout,
 });
 const generalSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/", component: GeneralSettingsPage });
+const membersSettingsRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/members",
+  component: MembersSettingsPage,
+});
 const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
 const securityRoute = createRoute({
@@ -87,7 +106,16 @@ const routeTree = rootRoute.addChildren([
   mfaChallengeRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
-  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute]), profileRoute, securityRoute])]),
+  acceptInviteRoute,
+  signedInRoute.addChildren([
+    homeRoute,
+    organisationRoute.addChildren([
+      projectsRoute,
+      settingsRoute.addChildren([generalSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
+      profileRoute,
+      securityRoute,
+    ]),
+  ]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {

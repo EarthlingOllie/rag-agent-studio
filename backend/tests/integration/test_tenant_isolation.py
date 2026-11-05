@@ -39,10 +39,31 @@ class ScopedRoute:
         return f"{self.method} {self.path}"
 
 
+async def _new_invite_body(owner: SignedUpMember) -> Prepared:
+    return {}, {"email": f"isolation-{uuid.uuid4().hex[:12]}@example.test", "role": "editor"}
+
+
+async def _pending_invite(owner: SignedUpMember) -> Prepared:
+    _, body = await _new_invite_body(owner)
+    response = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/invites", json=body
+    )
+    assert response.status_code == 201, response.text
+    return {"invite_id": response.json()["invite"]["id"]}, {}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}"),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events"),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets"),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/invites"),
+    ScopedRoute("POST", "/api/organisations/{organisation_id}/invites", _new_invite_body),
+    ScopedRoute(
+        "DELETE", "/api/organisations/{organisation_id}/invites/{invite_id}", _pending_invite
+    ),
+    ScopedRoute(
+        "POST", "/api/organisations/{organisation_id}/invites/{invite_id}/renew", _pending_invite
+    ),
 ]
 
 
@@ -61,9 +82,11 @@ async def test_another_tenants_resources_are_not_found(
     owner, outsider = await tenant_factory(), await tenant_factory()
     prepared = await route.prepare(owner)
 
-    own = await _call(owner.client, route, owner.organisation_id, prepared)
+    # The outsider goes first, so a route that changes or removes the resource is still
+    # checked against a resource that exists.
     other = await _call(outsider.client, route, owner.organisation_id, prepared)
     missing = await _call(outsider.client, route, str(uuid.uuid4()), prepared)
+    own = await _call(owner.client, route, owner.organisation_id, prepared)
 
     assert own.status_code < 400, own.text
     assert other.status_code == 404
