@@ -571,6 +571,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Credential Prices
+         * @description The prices of every model the credential offers: the platform price in effect now, the
+         *     credential's override, and the price that applies. Open to every Member.
+         */
+        get: operations["listCredentialPrices"];
+        /**
+         * Override Credential Prices
+         * @description Overrides the credential's prices for one model, for negotiated rates. Owners only.
+         */
+        put: operations["overrideCredentialPrices"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/credentials/{credential_id}/rotate": {
         parameters: {
             query?: never;
@@ -1312,6 +1337,28 @@ export interface components {
             /** Role Arn */
             role_arn: string | null;
         };
+        /** CredentialPricesOut */
+        CredentialPricesOut: {
+            /**
+             * Credential Id
+             * Format: uuid
+             */
+            credential_id: string;
+            /**
+             * Currency
+             * @default USD
+             * @constant
+             */
+            currency: "USD";
+            /** Models */
+            models: components["schemas"]["ModelPricesOut"][];
+            /**
+             * Unit
+             * @default per million tokens
+             * @constant
+             */
+            unit: "per million tokens";
+        };
         /** CredentialReferenceOut */
         CredentialReferenceOut: {
             /** Id */
@@ -1602,6 +1649,26 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ModelPricesOut */
+        ModelPricesOut: {
+            capability: components["schemas"]["Capability"];
+            effective: components["schemas"]["OptionalPricesOut"];
+            /** Model */
+            model: string;
+            /** Model Name */
+            model_name: string;
+            override: components["schemas"]["OptionalPricesOut"] | null;
+            platform: components["schemas"]["PricesOut"] | null;
+        };
+        /** OptionalPricesOut */
+        OptionalPricesOut: {
+            /** Cached Input */
+            cached_input: string | null;
+            /** Input */
+            input: string | null;
+            /** Output */
+            output: string | null;
+        };
         /** OrganisationMemberOut */
         OrganisationMemberOut: {
             /** Email */
@@ -1636,6 +1703,21 @@ export interface components {
             require_mfa: boolean;
             role: components["schemas"]["Role"];
         };
+        /**
+         * OverridePricesRequest
+         * @description A model's prices for this credential. A price left out (or null) keeps the platform's;
+         *     leaving all three out clears the override.
+         */
+        OverridePricesRequest: {
+            /** Cached Input */
+            cached_input?: number | string | null;
+            /** Input */
+            input?: number | string | null;
+            /** Model */
+            model: string;
+            /** Output */
+            output?: number | string | null;
+        };
         /** PasswordResetAccepted */
         PasswordResetAccepted: {
             /** Detail */
@@ -1645,6 +1727,15 @@ export interface components {
         PasswordResetRequest: {
             /** Email */
             email: string;
+        };
+        /** PricesOut */
+        PricesOut: {
+            /** Cached Input */
+            cached_input: string;
+            /** Input */
+            input: string;
+            /** Output */
+            output: string;
         };
         /** ProjectOut */
         ProjectOut: {
@@ -3324,6 +3415,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listCredentialPrices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialPricesOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overrideCredentialPrices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverridePricesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelPricesOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a model this credential offers */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

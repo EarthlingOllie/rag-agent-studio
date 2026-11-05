@@ -1,0 +1,21 @@
+# commit e7e3c20, fresh clone of ticket/02-04-price-table-overrides
+$ cd frontend && pnpm build
+
+> rag-agent-studio-frontend@ build <scratch>/clean0204/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build <scratch>/clean0204/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 191 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-BM0kuaAY.css   17.96 kB │ gzip:   4.33 kB
+dist/assets/index-BPnBwD_6.js   442.93 kB │ gzip: 130.23 kB
+
+✓ built in 441ms
+[exit code 0]

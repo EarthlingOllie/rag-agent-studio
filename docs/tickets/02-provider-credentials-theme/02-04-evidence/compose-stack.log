@@ -1,0 +1,62 @@
+# commit e7e3c20, fresh clone; images from build.sh (tag 0204)
+$ STUDIO_URL=http://localhost:52173 docker compose -p rag0204 -f docker-compose.yml -f compose.sandbox.yml down -v && ... up -d --wait  (fresh volumes)
+ Container rag0204-mailpit-1 Started 
+ Container rag0204-postgres-1 Started 
+ Container rag0204-rustfs-1 Started 
+ Container rag0204-redis-1 Started 
+ Container rag0204-postgres-1 Healthy 
+ Container rag0204-postgres-1 Healthy 
+ Container rag0204-postgres-1 Healthy 
+ Container rag0204-redis-1 Healthy 
+ Container rag0204-redis-1 Healthy 
+ Container rag0204-redis-1 Healthy 
+ Container rag0204-api-1 Started 
+ Container rag0204-worker-1 Started 
+ Container rag0204-beat-1 Started 
+ Container rag0204-api-1 Healthy 
+ Container rag0204-studio-1 Started 
+ Container rag0204-postgres-1 Healthy 
+ Container rag0204-mailpit-1 Healthy 
+ Container rag0204-worker-1 Healthy 
+ Container rag0204-beat-1 Healthy 
+ Container rag0204-redis-1 Healthy 
+ Container rag0204-api-1 Healthy 
+ Container rag0204-rustfs-1 Healthy 
+ Container rag0204-studio-1 Healthy 
+[exit code 0]
+rag0204-studio-1 rag-agent-studio/studio:0204 Up 3 seconds (healthy)
+rag0204-worker-1 rag-agent-studio/api:0204 Up 13 seconds
+rag0204-api-1 rag-agent-studio/api:0204 Up 13 seconds (healthy)
+rag0204-beat-1 rag-agent-studio/api:0204 Up 13 seconds
+rag0204-redis-1 redis:7.4.2-alpine Up 16 seconds (healthy)
+rag0204-postgres-1 pgvector/pgvector:0.8.1-pg16 Up 17 seconds (healthy)
+rag0204-rustfs-1 rustfs/rustfs:1.0.4 Up 16 seconds
+rag0204-mailpit-1 axllent/mailpit:v1.27 Up 17 seconds (healthy)
+rag0204-redis redis:7.4-alpine Up 39 minutes
+rag0204-pg pgvector/pgvector:0.8.1-pg16 Up 39 minutes
+
+# The API container ran 'alembic upgrade head' on start; the repo's price table is loaded:
+$ docker exec rag0204-postgres-1 psql -U studio -d studio -c "SELECT provider, model, effective_from::date, input, output, cached_input FROM model_prices ORDER BY provider, model"
+ provider  |                   model                   | effective_from |   input   |  output   | cached_input 
+-----------+-------------------------------------------+----------------+-----------+-----------+--------------
+ anthropic | claude-haiku-4-5                          | 2025-10-15     |  1.000000 |  5.000000 |     0.100000
+ anthropic | claude-opus-4-1                           | 2025-08-05     | 15.000000 | 75.000000 |     1.500000
+ anthropic | claude-sonnet-4-5                         | 2025-09-29     |  3.000000 | 15.000000 |     0.300000
+ bedrock   | amazon.nova-pro-v1:0                      | 2024-12-03     |  0.800000 |  3.200000 |     0.200000
+ bedrock   | amazon.titan-embed-text-v2:0              | 2024-04-30     |  0.020000 |  0.000000 |     0.020000
+ bedrock   | anthropic.claude-haiku-4-5-20251001-v1:0  | 2025-10-15     |  1.000000 |  5.000000 |     0.100000
+ bedrock   | anthropic.claude-sonnet-4-5-20250929-v1:0 | 2025-09-29     |  3.000000 | 15.000000 |     0.300000
+ bedrock   | cohere.embed-multilingual-v3              | 2023-11-13     |  0.100000 |  0.000000 |     0.100000
+ openai    | gpt-4.1                                   | 2025-04-14     |  2.000000 |  8.000000 |     0.500000
+ openai    | gpt-4.1-mini                              | 2025-04-14     |  0.400000 |  1.600000 |     0.100000
+ openai    | gpt-4o-mini                               | 2024-07-18     |  0.150000 |  0.600000 |     0.075000
+ openai    | text-embedding-3-large                    | 2024-01-25     |  0.130000 |  0.000000 |     0.130000
+ openai    | text-embedding-3-small                    | 2024-01-25     |  0.020000 |  0.000000 |     0.020000
+ voyage    | rerank-2.5                                | 2025-08-11     |  0.050000 |  0.000000 |     0.050000
+ voyage    | rerank-2.5-lite                           | 2025-08-11     |  0.020000 |  0.000000 |     0.020000
+ voyage    | voyage-3.5                                | 2025-05-20     |  0.060000 |  0.000000 |     0.060000
+ voyage    | voyage-3.5-lite                           | 2025-05-20     |  0.020000 |  0.000000 |     0.020000
+ voyage    | voyage-multilingual-2                     | 2024-06-10     |  0.120000 |  0.000000 |     0.120000
+(18 rows)
+
+[exit code 0]

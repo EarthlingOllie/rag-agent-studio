@@ -1,7 +1,7 @@
 """Documents and Chunks, and each Project's Embedding Model.
 
-Revision ID: 0010_documents
-Revises: 0009_bedrock_credentials
+Revision ID: 0011_documents
+Revises: 0010_price_table
 Create Date: 2026-11-05
 """
 
@@ -13,8 +13,8 @@ from alembic import op
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0010_documents"
-down_revision: str | None = "0009_bedrock_credentials"
+revision: str = "0011_documents"
+down_revision: str | None = "0010_price_table"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -13,6 +13,8 @@ from app.core.settings import load_settings
 from app.credentials import models as credential_models
 from app.default_model import models as default_model_models
 from app.documents import models as document_models
+from app.pricing import models as pricing_models
+from app.pricing.sync import sync_price_table
 from app.projects import models as project_models
 from app.tenancy import models as tenancy_models
 from app.theme import models as theme_models
@@ -29,6 +31,7 @@ _MODEL_MODULES = (
     credential_models,
     default_model_models,
     document_models,
+    pricing_models,
     project_models,
     theme_models,
 )
@@ -50,6 +53,8 @@ def _run_sync_migrations(connection: Connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
+        # The platform price table is data in the repo: reload it on every migrate.
+        sync_price_table(connection)
 
 
 async def run_migrations_online() -> None:
