@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StringConstraints
 from redis.asyncio import Redis
 
@@ -13,9 +14,16 @@ from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings
 from app.documents import service
-from app.documents.models import MIME_MAX, NAME_MAX, Chunk, Document, DocumentStatus
+from app.documents.models import (
+    MIME_MAX,
+    NAME_MAX,
+    Chunk,
+    Document,
+    DocumentStatus,
+    StagedEdition,
+)
 from app.documents.ports import IngestionPorts
-from app.documents.tasks import enqueue_ingestion
+from app.documents.tasks import enqueue_ingestion, enqueue_object_deletion
 from app.projects.api import PROJECT_ARCHIVED
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.storage.port import ObjectStore
@@ -33,6 +41,12 @@ UNSUPPORTED_TYPE = (
 UPLOAD_NOT_FOUND = "This upload wasn't found or has expired. Start the upload again."
 FILE_NOT_UPLOADED = "The file hasn't reached storage yet. Upload it, then confirm."
 HASH_MISMATCH = "The uploaded file doesn't match its content hash. Upload it again."
+DOCUMENT_BUSY = "This Document is still being processed. Try again once it is Ready or Failed."
+
+
+def duplicate_message(existing_name: str) -> str:
+    return f"This file is already in the Project as {existing_name}."
+
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
 
@@ -65,6 +79,29 @@ _NOT_FOUND = (404, NOT_FOUND)
 _ARCHIVED = (409, PROJECT_ARCHIVED)
 
 
+class UploadConflictResponse(BaseModel):
+    detail: str
+    # When the file is a duplicate: the Document that already has the same content.
+    document_id: uuid.UUID | None = None
+    document_name: str | None = None
+
+
+_DUPLICATE = "The file is a duplicate of a Document in the Project (``document_id`` names it)."
+_UPLOAD_CONFLICT: dict[str, Any] = {
+    "model": UploadConflictResponse,
+    "description": f"{PROJECT_ARCHIVED} / {FILE_NOT_UPLOADED} / {UPLOAD_NOT_FOUND} / {_DUPLICATE}",
+}
+
+
+def _duplicate(error: service.DuplicateDocumentError) -> JSONResponse:
+    content = UploadConflictResponse(
+        detail=duplicate_message(error.existing.name),
+        document_id=error.existing.id,
+        document_name=error.existing.name,
+    )
+    return JSONResponse(content.model_dump(mode="json"), status_code=status.HTTP_409_CONFLICT)
+
+
 class StartUploadRequest(BaseModel):
     filename: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX)
@@ -87,6 +124,17 @@ class ConfirmUploadRequest(BaseModel):
     content_hash: Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{64}$")] | None = None
 
 
+class ReplacementOut(BaseModel):
+    """A newer edition uploaded to replace the Document. While it is Queued or Processing the
+    current edition keeps serving; when it is Ready it becomes the Document's edition. A Failed
+    one leaves the Document as it was."""
+
+    edition: int
+    name: str
+    status: DocumentStatus
+    error_message: str | None
+
+
 class DocumentOut(BaseModel):
     id: uuid.UUID
     name: str
@@ -103,6 +151,7 @@ class DocumentOut(BaseModel):
     tags: list[TagRef]
     created_at: datetime
     updated_at: datetime
+    replacement: ReplacementOut | None
 
 
 class DocumentStatusOut(BaseModel):
@@ -110,6 +159,7 @@ class DocumentStatusOut(BaseModel):
     status: DocumentStatus
     error_message: str | None
     chunk_count: int
+    replacement: ReplacementOut | None
 
 
 class ChunkOut(BaseModel):
@@ -122,7 +172,23 @@ class ChunkOut(BaseModel):
     embedding_model_id: str
 
 
-def _document_out(document: Document, chunk_count: int, tags: list[Tag]) -> DocumentOut:
+def _replacement_out(staged: StagedEdition | None) -> ReplacementOut | None:
+    if staged is None:
+        return None
+    return ReplacementOut(
+        edition=staged.edition,
+        name=staged.name,
+        status=DocumentStatus(staged.status),
+        error_message=staged.error_message,
+    )
+
+
+def _document_out(
+    document: Document,
+    chunk_count: int,
+    tags: list[Tag],
+    staged: StagedEdition | None = None,
+) -> DocumentOut:
     return DocumentOut(
         id=document.id,
         name=document.name,
@@ -136,6 +202,7 @@ def _document_out(document: Document, chunk_count: int, tags: list[Tag]) -> Docu
         tags=[tag_ref(tag) for tag in tags],
         created_at=document.created_at,
         updated_at=document.updated_at,
+        replacement=_replacement_out(staged),
     )
 
 
@@ -210,12 +277,11 @@ async def start_upload(
     "/documents",
     status_code=status.HTTP_201_CREATED,
     operation_id="confirmDocumentUpload",
-    responses=_errors(
-        _NOT_FOUND,
-        _ARCHIVED,
-        (409, f"{FILE_NOT_UPLOADED} / {UPLOAD_NOT_FOUND}"),
-        (422, HASH_MISMATCH),
-    ),
+    response_model=DocumentOut,
+    responses={
+        **_errors(_NOT_FOUND, (422, HASH_MISMATCH)),
+        409: _UPLOAD_CONFLICT,
+    },
 )
 async def confirm_upload(
     project_id: uuid.UUID,
@@ -224,9 +290,10 @@ async def confirm_upload(
     db: Db,
     redis: RedisDep,
     store: StoreDep,
-) -> DocumentOut:
+) -> DocumentOut | JSONResponse:
     """Records the uploaded file's content hash, creates the Document as Queued and starts
-    ingestion. The Document then moves to Processing and Ready (or Failed)."""
+    ingestion. The Document then moves to Processing and Ready (or Failed). A file whose content
+    is already in the Project is refused, naming the Document that has it."""
     try:
         document = await service.confirm_upload(
             db,
@@ -247,6 +314,8 @@ async def confirm_upload(
         raise HTTPException(status.HTTP_409_CONFLICT, FILE_NOT_UPLOADED) from None
     except service.ContentHashMismatchError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
+    except service.DuplicateDocumentError as duplicate:
+        return _duplicate(duplicate)
     queued = _document_out(document, chunk_count=0, tags=[])
     await enqueue_ingestion(document.id)
     return queued
@@ -279,7 +348,8 @@ async def list_documents(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     tags = await tags_of(db, [s.document.id for s in summaries])
     return [
-        _document_out(s.document, s.chunk_count, tags.get(s.document.id, [])) for s in summaries
+        _document_out(s.document, s.chunk_count, tags.get(s.document.id, []), s.replacement)
+        for s in summaries
     ]
 
 
@@ -301,6 +371,7 @@ async def list_document_statuses(
             status=DocumentStatus(s.document.status),
             error_message=s.document.error_message,
             chunk_count=s.chunk_count,
+            replacement=_replacement_out(s.replacement),
         )
         for s in summaries
     ]
@@ -318,3 +389,87 @@ async def list_chunks(
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     return [_chunk_out(chunk) for chunk in chunks]
+
+
+@router.delete(
+    "/documents/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="deleteDocument",
+    responses=_errors(_NOT_FOUND, _ARCHIVED),
+)
+async def delete_document(
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
+) -> None:
+    """Deletes the Document and its Chunks: it stops being retrieved at once. Its stored files
+    are deleted in the background. Records ``document.deleted``."""
+    try:
+        keys = await service.delete_document(db, scope, project_id, document_id, now=clock.now())
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    await enqueue_object_deletion(keys)
+
+
+@router.post(
+    "/documents/{document_id}/editions",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="replaceDocument",
+    response_model=DocumentOut,
+    responses={
+        **_errors(_NOT_FOUND, (422, HASH_MISMATCH)),
+        409: {
+            **_UPLOAD_CONFLICT,
+            "description": f"{_UPLOAD_CONFLICT['description']} / {DOCUMENT_BUSY}",
+        },
+    },
+)
+async def replace_document(
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    body: ConfirmUploadRequest,
+    scope: Scope,
+    db: Db,
+    redis: RedisDep,
+    store: StoreDep,
+) -> DocumentOut | JSONResponse:
+    """Confirms an uploaded file as the Document's newer edition and starts ingesting it. The
+    current edition keeps serving until the new one is Ready; then the new one replaces it in
+    place, keeping the Document's ID and Tags. Refused while the Document is being processed."""
+    try:
+        replacement = await service.replace_document(
+            db,
+            redis,
+            store,
+            scope,
+            project_id,
+            document_id,
+            upload_id=body.upload_id,
+            content_hash=body.content_hash,
+        )
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    except service.DocumentBusyError:
+        raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_BUSY) from None
+    except service.UploadNotFoundError:
+        raise HTTPException(status.HTTP_409_CONFLICT, UPLOAD_NOT_FOUND) from None
+    except service.FileNotUploadedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, FILE_NOT_UPLOADED) from None
+    except service.ContentHashMismatchError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
+    except service.DuplicateDocumentError as duplicate:
+        return _duplicate(duplicate)
+    document = replacement.document
+    tags = await tags_of(db, [document.id])
+    accepted = _document_out(
+        document,
+        await service.chunk_count(db, document),
+        tags.get(document.id, []),
+        replacement.staged,
+    )
+    if replacement.discarded:
+        await enqueue_object_deletion(replacement.discarded)
+    await enqueue_ingestion(document.id)
+    return accepted

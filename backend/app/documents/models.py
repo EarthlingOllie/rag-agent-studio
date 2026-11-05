@@ -72,6 +72,36 @@ class Document(IdMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class StagedEdition(Base):
+    """A newer edition of a Document, uploaded to replace it and being ingested. Its Chunks are
+    written under its own edition number, which nothing reads until the swap makes it the
+    Document's edition; until then the Document's current Chunks keep serving. At most one per
+    Document: a Failed one is overwritten by the next replacement."""
+
+    __tablename__ = "staged_editions"
+
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True
+    )
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Project.id, ondelete="CASCADE"), index=True
+    )
+    edition: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(NAME_MAX))
+    mime_type: Mapped[str] = mapped_column(String(MIME_MAX))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    object_key: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default=DocumentStatus.QUEUED)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Chunk(IdMixin, Base):
     __tablename__ = "chunks"
     __table_args__ = (

@@ -91,6 +91,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listEmbeddingModels": ("/api/organisations/{organisation_id}/embedding-models", "get"),
         "setProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "put"),
         "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
+        "deleteDocument": (f"{_PROJECT}/documents/{{document_id}}", "delete"),
+        "replaceDocument": (f"{_PROJECT}/documents/{{document_id}}/editions", "post"),
         "listTags": (f"{_PROJECT}/tags", "get"),
         "createTag": (f"{_PROJECT}/tags", "post"),
         "renameTag": (f"{_PROJECT}/tags/{{tag_id}}", "patch"),
