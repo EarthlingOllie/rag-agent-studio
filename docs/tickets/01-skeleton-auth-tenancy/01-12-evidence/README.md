@@ -46,7 +46,7 @@ Each log starts with its commands and ends with its exit code. Backend tests use
   - The sandbox's Chrome was used through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, with `--trace off` because the shared disk was nearly full.
 - **`make image-scan`** rebuilds the images first, without the proxy CA, which can't download in this sandbox. The log runs the target's Trivy commands against the images `build.sh` built from the same clone.
 - **gitleaks** was run on this branch's commits (`origin/candidate..HEAD`). The full-history scan belongs to CI.
-- **GitHub CI** is not part of this evidence. No PR was opened (the task said not to), so the workflows haven't run on this branch beyond push triggers.
+- **GitHub CI could not run.** Every workflow ran green on the claim commit `998c592`. On `0e7e67f`, `30b6727` and `8b31d3c`, every workflow fails within about a second, including `infra`, `deploy` and `guardrails-eval`, which this ticket doesn't touch. Their jobs end before any step starts. Runs on other tickets' branches from 06:42 UTC onward (02-01, 02-05, 03-01) fail the same way. This looks like a repository-wide runner problem, such as an exhausted Actions quota, rather than this branch. The local runs above are the evidence: the same `make` targets, from a fresh clone. CI should be re-run when runners are available. No PR was opened (the task said not to).
 - **Screenshots** were taken by [shots.mjs](shots.mjs) against the running stack, after the e2e run, from the clone's `frontend` folder.
 
 ## Files
