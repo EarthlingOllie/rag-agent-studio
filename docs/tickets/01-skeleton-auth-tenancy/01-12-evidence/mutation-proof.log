@@ -1,0 +1,20 @@
+$ TEST_DATABASE_URL=…/studio_test_w0112 TEST_REDIS_URL=redis://localhost:6390/2 python3 mutate.py   (branch worktree at 30b6727)
+every named test passes on the unmodified code
+CAUGHT: policy: Members without MFA are let in  [backend: test_members_without_mfa_are_refused_every_organisation_route]
+CAUGHT: policy: MFA checked only on Owner-only routes  [backend: test_the_api_lets_a_member_in_once_they_enrol]
+CAUGHT: an Owner without MFA may require it  [backend: test_an_owner_without_mfa_cannot_require_it]
+CAUGHT: policy change not audited  [backend: test_policy_changes_are_audit_events]
+CAUGHT: a no-op change is audited  [backend: test_policy_changes_are_audit_events]
+CAUGHT: MFA can be disabled while required  [backend: test_a_member_cannot_disable_mfa_while_an_organisation_requires_it]
+CAUGHT: only the first requiring Organisation named  [backend: test_every_requiring_organisation_is_named_when_disabling_is_refused]
+CAUGHT: /me never reports MFA  [backend: test_me_says_whether_the_member_has_mfa]
+CAUGHT: /me never reports the policy  [backend: test_owners_turn_the_policy_on_and_off_in_organisation_settings]
+CAUGHT: Studio: no redirect to enrolment  [frontend: every page of the Organisation leads to enrolment]
+CAUGHT: Studio: navigation not limited while enrolment is due  [frontend: guided through enrolment first]
+CAUGHT: Studio: session not refreshed after enrolling  [frontend: guided through enrolment first]
+CAUGHT: Studio: session not refreshed after a policy change  [frontend: an Owner requires MFA in Organisation settings]
+CAUGHT: Studio: the API's refusal message is dropped  [frontend: can't turn MFA off while an Organisation requires it]
+CAUGHT: Studio: Editors get the policy button  [frontend: Editors see the policy but can't change it]
+15/15 mutations caught
+unmodified code: backend tests exit 0, Studio tests exit 0
+exit code: 0
