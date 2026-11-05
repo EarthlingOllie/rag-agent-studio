@@ -52,6 +52,8 @@ The branch was brought up to date by merging `origin/ticket/01-05-audit-events` 
 - **Test fix.** `test_mfa.py::test_the_audit_event_targets_the_member` picked the Member's first Audit Event; with 01-05's real audit module that is `organisation.created`, so it now filters on `mfa.enrolled`.
 - Settings, `.env.example`, compose, `docs/development.md` and the router combine both sides; the API client is regenerated.
 
+A final merge took candidate `c603cb0` (01-05's squash merge); 01-05's evidence files were taken from candidate. One full run with the shared test Redis DB 7 had two unrelated failures (`test_mfa.py::test_a_pending_sign_in_expires`, `test_password_reset.py::test_changing_the_password_uses_up_outstanding_reset_links`, both 401s from sessions disappearing); those files passed twice on rerun, and the full suite passed on an unused Redis DB 12. Best guess: another parallel ticket's run shared Redis DB 7.
+
 Logs after the merge: [merge-backend-tests.log](merge-backend-tests.log) (172 passed, 100% line and branch coverage) and [merge-frontend-tests.log](merge-frontend-tests.log) (84 passed). Lint and `mypy --strict` pass. Playwright e2e after the merge is left to CI.
 
 ## Files
