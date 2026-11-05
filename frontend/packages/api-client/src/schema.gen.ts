@@ -868,7 +868,8 @@ export interface paths {
         };
         /**
          * List Documents
-         * @description The Project's Documents, newest first.
+         * @description The Project's Documents, newest first, optionally searched by name and filtered by
+         *     status and Tag.
          */
         get: operations["listDocuments"];
         put?: never;
@@ -905,6 +906,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Tag Documents
+         * @description Applies Tags to, and takes Tags off, many Documents at once.
+         */
+        post: operations["bulkTagDocuments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
         parameters: {
             query?: never;
@@ -918,6 +939,26 @@ export interface paths {
          */
         get: operations["listChunks"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Document Tags
+         * @description Sets the Document's Tags to exactly the ones given; answers with them, by name.
+         */
+        put: operations["setDocumentTags"];
         post?: never;
         delete?: never;
         options?: never;
@@ -944,6 +985,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tags
+         * @description The Project's Tags by name, with how many Documents carry each.
+         */
+        get: operations["listTags"];
+        put?: never;
+        /**
+         * Create Tag
+         * @description Creates a Tag. Names are unique in the Project, ignoring case.
+         */
+        post: operations["createTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Tag
+         * @description Deletes a Tag and takes it off every Document. The Documents stay.
+         */
+        delete: operations["deleteTag"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename Tag
+         * @description Renames a Tag. Documents keep it.
+         */
+        patch: operations["renameTag"];
         trace?: never;
     };
     "/api/organisations/{organisation_id}/projects/{project_id}/uploads": {
@@ -1120,6 +1209,15 @@ export interface components {
             platform_principal: string;
             /** Trust Policy */
             trust_policy: string;
+        };
+        /** BulkTagRequest */
+        BulkTagRequest: {
+            /** Add */
+            add?: string[];
+            /** Document Ids */
+            document_ids: string[];
+            /** Remove */
+            remove?: string[];
         };
         /**
          * Capability
@@ -1422,6 +1520,8 @@ export interface components {
             /** Size Bytes */
             size_bytes: number;
             status: components["schemas"]["DocumentStatus"];
+            /** Tags */
+            tags: components["schemas"]["TagRef"][];
             /**
              * Updated At
              * Format: date-time
@@ -1445,6 +1545,11 @@ export interface components {
              */
             id: string;
             status: components["schemas"]["DocumentStatus"];
+        };
+        /** DocumentTagsRequest */
+        DocumentTagsRequest: {
+            /** Tag Ids */
+            tag_ids: string[];
         };
         /** EnrolmentResponse */
         EnrolmentResponse: {
@@ -1878,6 +1983,41 @@ export interface components {
              * Format: uuid
              */
             organisation_id: string;
+        };
+        /** TagOut */
+        TagOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Document Count */
+            document_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * TagRef
+         * @description A Tag as shown on a Document.
+         */
+        TagRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** TagRequest */
+        TagRequest: {
+            /** Name */
+            name: string;
         };
         /**
          * ThemeColours
@@ -4395,7 +4535,14 @@ export interface operations {
     };
     listDocuments: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Part of the name, ignoring case. */
+                q?: string | null;
+                /** @description Only Documents with any of these statuses. */
+                status?: components["schemas"]["DocumentStatus"][] | null;
+                /** @description Only Documents with every one of these Tags. */
+                tag_id?: string[] | null;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -4529,6 +4676,58 @@ export interface operations {
             };
         };
     };
+    bulkTagDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkTagRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description One or more of these Tags aren't in this Project. / One or more of these Documents aren't in this Project. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listChunks: {
         parameters: {
             query?: never;
@@ -4567,6 +4766,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setDocumentTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagRef"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description One or more of these Tags aren't in this Project. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4611,6 +4865,205 @@ export interface operations {
                 };
             };
             /** @description This Project isn't archived. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project already has a Tag with that name. / This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                tag_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    renameTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                tag_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project already has a Tag with that name. / This Project is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;

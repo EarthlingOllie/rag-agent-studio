@@ -16,6 +16,7 @@ from app.documents import models as document_models
 from app.pricing import models as pricing_models
 from app.pricing.sync import sync_price_table
 from app.projects import models as project_models
+from app.tags import models as tag_models
 from app.tenancy import models as tenancy_models
 from app.theme import models as theme_models
 
@@ -31,6 +32,7 @@ _MODEL_MODULES = (
     credential_models,
     default_model_models,
     document_models,
+    tag_models,
     pricing_models,
     project_models,
     theme_models,
