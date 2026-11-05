@@ -31,6 +31,7 @@ import {
   ProjectLayout,
 } from "./projects/ProjectPage";
 import { DocumentsTab } from "./projects/DocumentsTab";
+import { DocumentViewer } from "./projects/DocumentViewer";
 import { ProjectsPage } from "./projects/ProjectsPage";
 import { HomeRedirect, OrganisationShell, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
@@ -98,6 +99,11 @@ const projectRoute = createRoute({
   component: ProjectLayout,
 });
 const documentsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/", component: DocumentsTab });
+const documentViewerRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/documents/$documentId",
+  component: DocumentViewer,
+});
 const instructionsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/instructions",
@@ -152,6 +158,7 @@ const routeTree = rootRoute.addChildren([
       projectsRoute,
       projectRoute.addChildren([
         documentsTabRoute,
+        documentViewerRoute,
         instructionsTabRoute,
         agentsTabRoute,
         agentRoute,

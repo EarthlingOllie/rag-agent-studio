@@ -69,6 +69,27 @@ async def test_a_browser_puts_a_file_to_a_presigned_url() -> None:
     assert await store.get(key) == b"%PDF-1.4"
 
 
+async def test_a_browser_downloads_a_file_from_a_presigned_url_under_its_name() -> None:
+    store = rustfs()
+    await store.prepare()
+    key = f"tests/{uuid.uuid4()}"
+    await store.put(key, b"%PDF-1.4", content_type="application/octet-stream")
+
+    url = store.presign_get(
+        key, filename='Café "menu" 2026.pdf', content_type="application/pdf", expires_in=60
+    )
+    async with httpx.AsyncClient() as browser:
+        got = await browser.get(url)
+
+    assert got.status_code == 200, got.text
+    assert got.content == b"%PDF-1.4"
+    assert got.headers["content-type"] == "application/pdf"
+    assert got.headers["content-disposition"] == (
+        'attachment; filename="Caf_ _menu_ 2026.pdf"; '
+        "filename*=UTF-8''Caf%C3%A9%20%22menu%22%202026.pdf"
+    )
+
+
 async def test_presigned_urls_are_signed_for_the_public_endpoint() -> None:
     store = S3ObjectStore(
         bucket=BUCKET,
@@ -78,10 +99,12 @@ async def test_presigned_urls_are_signed_for_the_public_endpoint() -> None:
         **RUSTFS_KEYS,
     )
 
-    url = store.presign_put("a/b.md", content_type="text/markdown", expires_in=60)
+    put = store.presign_put("a/b.md", content_type="text/markdown", expires_in=60)
+    get = store.presign_get("a/b.md", filename="b.md", content_type="text/markdown", expires_in=60)
 
-    assert url.startswith(f"http://localhost:5173/{BUCKET}/a/b.md?")
-    assert "X-Amz-Signature=" in url
+    for url in (put, get):
+        assert url.startswith(f"http://localhost:5173/{BUCKET}/a/b.md?")
+        assert "X-Amz-Signature=" in url
 
 
 async def test_preparing_creates_a_missing_bucket_once() -> None:
@@ -141,8 +164,18 @@ async def test_a_document_uploaded_through_rustfs_becomes_ready(rustfs_app: Fast
             f"{documents}/documents", json={"upload_id": ticket["upload_id"]}
         )
         listed = (await studio.get(f"{documents}/documents")).json()
+        document = f"{documents}/documents/{confirmed.json()['id']}"
+        opened = (await studio.get(document)).json()
+        redirect = await studio.get(f"{document}/download")
+        original = await browser.get(redirect.headers["location"])
 
     assert (started.status_code, put.status_code, confirmed.status_code) == (201, 200, 201)
     assert [(d["name"], d["status"], d["chunk_count"]) for d in listed] == [
         ("leave.md", "ready", 1)
     ]
+    # The viewer reads the converted markdown back from RustFS ...
+    assert opened["markdown"] == "## Leave\n\nEveryone gets 25 days."
+    # ... and the original downloads from RustFS through the presigned GET.
+    assert (redirect.status_code, original.status_code) == (307, 200)
+    assert original.content == data
+    assert original.headers["content-disposition"].startswith('attachment; filename="leave.md"')
