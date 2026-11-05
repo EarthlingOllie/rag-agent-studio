@@ -1,0 +1,7 @@
+# make image-scan (image-scan.log) fails only on 7 secret-scanner hits in the anthropic 2.5.0 SDK docstrings (not secrets; dependency unchanged by this branch). Vulnerability scan alone:
+$ trivy image --scanners vuln --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/api:0305
+│ rag-agent-studio/api:0305 (debian 13.7)                                          │   debian   │        0        │
+exit 0
+$ trivy image --scanners vuln --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/studio:0305
+│ rag-agent-studio/studio:0305 (debian 12.15)                                      │  debian  │        0        │
+exit 0

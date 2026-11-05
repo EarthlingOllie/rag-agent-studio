@@ -999,7 +999,8 @@ export interface paths {
         /**
          * Confirm Upload
          * @description Records the uploaded file's content hash, creates the Document as Queued and starts
-         *     ingestion. The Document then moves to Processing and Ready (or Failed).
+         *     ingestion. The Document then moves to Processing and Ready (or Failed). A file whose content
+         *     is already in the Project is refused, naming the Document that has it.
          */
         post: operations["confirmDocumentUpload"];
         delete?: never;
@@ -1049,6 +1050,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Document
+         * @description Deletes the Document and its Chunks: it stops being retrieved at once. Its stored files
+         *     are deleted in the background. Records ``document.deleted``.
+         */
+        delete: operations["deleteDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
         parameters: {
             query?: never;
@@ -1063,6 +1085,28 @@ export interface paths {
         get: operations["listChunks"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/editions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replace Document
+         * @description Confirms an uploaded file as the Document's newer edition and starts ingesting it. The
+         *     current edition keeps serving until the new one is Ready; then the new one replaces it in
+         *     place, keeping the Document's ID and Tags. Refused while the Document is being processed.
+         */
+        post: operations["replaceDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1774,6 +1818,7 @@ export interface components {
             mime_type: string;
             /** Name */
             name: string;
+            replacement: components["schemas"]["ReplacementOut"] | null;
             /** Size Bytes */
             size_bytes: number;
             status: components["schemas"]["DocumentStatus"];
@@ -1801,6 +1846,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            replacement: components["schemas"]["ReplacementOut"] | null;
             status: components["schemas"]["DocumentStatus"];
         };
         /** DocumentTagsRequest */
@@ -2289,6 +2335,21 @@ export interface components {
              */
             send_email: boolean;
         };
+        /**
+         * ReplacementOut
+         * @description A newer edition uploaded to replace the Document. While it is Queued or Processing the
+         *     current edition keeps serving; when it is Ready it becomes the Document's edition. A Failed
+         *     one leaves the Document as it was.
+         */
+        ReplacementOut: {
+            /** Edition */
+            edition: number;
+            /** Error Message */
+            error_message: string | null;
+            /** Name */
+            name: string;
+            status: components["schemas"]["DocumentStatus"];
+        };
         /** Retrieval */
         "Retrieval-Input": {
             /**
@@ -2571,6 +2632,15 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+        };
+        /** UploadConflictResponse */
+        UploadConflictResponse: {
+            /** Detail */
+            detail: string;
+            /** Document Id */
+            document_id?: string | null;
+            /** Document Name */
+            document_name?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -5432,13 +5502,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. */
+            /** @description This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["UploadConflictResponse"];
                 };
             };
             /** @description The uploaded file doesn't match its content hash. Upload it again. */
@@ -5545,6 +5615,55 @@ export interface operations {
             };
         };
     };
+    deleteDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listChunks: {
         parameters: {
             query?: never;
@@ -5583,6 +5702,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replaceDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). / This Document is still being processed. Try again once it is Ready or Failed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadConflictResponse"];
+                };
+            };
+            /** @description The uploaded file doesn't match its content hash. Upload it again. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

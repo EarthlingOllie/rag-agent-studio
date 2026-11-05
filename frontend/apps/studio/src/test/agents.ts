@@ -76,7 +76,11 @@ export const hrHelper: Agent = {
   name: "HR helper",
   created_at: "2026-11-05T09:00:00Z",
   archived_at: null,
-  draft: { ...defaultDraft, behaviour: { ...defaultDraft.behaviour, system_prompt: "Answer from the handbook." } },
+  draft: {
+    ...defaultDraft,
+    behaviour: { ...defaultDraft.behaviour, system_prompt: "Answer from the handbook.", fallback_text: "Ask HR, please." },
+    retrieval: { ...defaultDraft.retrieval, hybrid_weight: 0.7, min_score: 0.25 },
+  },
   draft_updated_at: "2026-11-05T09:00:00Z",
 };
 
@@ -88,7 +92,9 @@ const done = {
   output_tokens: 6,
   first_token_ms: 40,
   latency_ms: 85,
-  chunks: [{ chunk_id: "f0000000-0000-4000-8000-000000000001", score: 0.92, rank: 1 }],
+  fallback: false,
+  chunks: [{ chunk_id: "f0000000-0000-4000-8000-000000000001", score: 0.92, relevance: 0.81, rank: 1 }],
+  excluded: [],
 };
 
 function sse(event: string, data: unknown) {

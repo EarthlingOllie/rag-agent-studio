@@ -63,8 +63,14 @@ async def test_the_draft_is_saved_and_read_back_exactly(owner: SignedUpMember) -
         "behaviour": {
             **DEFAULT_DRAFT["behaviour"],
             "system_prompt": "# Role\n\nAnswer **briefly**.\n\n- Cite the handbook\n",
+            "fallback_text": "I don't know; ask HR.",
         },
-        "retrieval": {**DEFAULT_DRAFT["retrieval"], "top_k": 3},
+        "retrieval": {
+            **DEFAULT_DRAFT["retrieval"],
+            "top_k": 3,
+            "hybrid_weight": 0.7,
+            "min_score": 0.25,
+        },
     }
 
     saved = await save_draft(owner, project_id, agent["id"], draft)
@@ -81,6 +87,12 @@ async def test_the_draft_is_saved_and_read_back_exactly(owner: SignedUpMember) -
     [
         {"retrieval": {"top_k": 0}},
         {"retrieval": {"top_k": 21}},
+        {"retrieval": {"hybrid_weight": -0.1}},
+        {"retrieval": {"hybrid_weight": 1.1}},
+        {"retrieval": {"min_score": -0.1}},
+        {"retrieval": {"min_score": 1.1}},
+        {"behaviour": {"fallback_text": ""}},
+        {"behaviour": {"fallback_text": "x" * 2_001}},
         {"behaviour": {"system_prompt": "x" * 20_001}},
         {"behaviour": {"system_prompt": "Hi", "temperature": 2}},
         {"behaviour": {"system_prompt": "Hi", "creativity": 1}},
