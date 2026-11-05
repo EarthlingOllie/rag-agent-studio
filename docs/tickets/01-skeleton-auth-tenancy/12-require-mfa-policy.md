@@ -8,7 +8,7 @@
 - [01-09: Member management and role enforcement](09-member-management-roles.md)
 - [01-11: TOTP MFA](11-totp-mfa.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Owner toggle is in Organisation settings
 - [ ] Members without MFA are redirected to enrolment, and the API refuses that Organisation's routes until they enrol
