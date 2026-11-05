@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
@@ -25,3 +25,6 @@ class Project(IdMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Embedding Model the Project's Chunks are embedded with; the local model by default.
     embedding_model_id: Mapped[str] = mapped_column(String(100), default=DEFAULT_MODEL_ID)
+    # Whether ingestion runs OCR, so scanned PDFs become readable. Off by default: OCR is slow,
+    # and most Projects' files carry their own text.
+    ocr_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())

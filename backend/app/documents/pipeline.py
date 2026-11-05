@@ -1,7 +1,8 @@
 """Ingestion: one Document from Queued to Ready.
 
 1. Set Processing.
-2. Fetch the original and convert it through the document-converter port.
+2. Fetch the original and convert it through the document-converter port, with OCR only if
+   the Project's flag is on.
 3. Store the converted markdown.
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
 5. Embed the Chunks through the embedder port, in batches.
@@ -14,6 +15,8 @@ transient ones; the ingestion Guardrail scan joins between steps 5 and 6 in tick
 import asyncio
 import logging
 import uuid
+from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -33,11 +36,19 @@ def markdown_key(document: Document) -> str:
     return f"{document.object_key}.converted.md"
 
 
-async def _start(session: AsyncSession, document_id: uuid.UUID) -> tuple[Document, str] | None:
+@dataclass(frozen=True)
+class _Started:
+    document: Document
+    # The Project's settings, read when the Document is claimed.
+    embedding_model_id: str
+    ocr: bool
+
+
+async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Started | None:
     """Claims a Queued Document by setting it to Processing; ``None`` if it isn't Queued."""
     row = (
         await session.execute(
-            select(Document, Project.embedding_model_id)
+            select(Document, Project.embedding_model_id, Project.ocr_enabled)
             .join(Project, Project.id == Document.project_id)
             .where(Document.id == document_id)
             .with_for_update(of=Document)
@@ -45,12 +56,12 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> tuple[Documen
     ).one_or_none()
     if row is None or row[0].status != DocumentStatus.QUEUED:
         return None
-    document, embedding_model_id = row
+    document, embedding_model_id, ocr = row
     document.status = DocumentStatus.PROCESSING
     document.attempt_count += 1
     document.updated_at = func.now()
     await session.commit()
-    return document, embedding_model_id
+    return _Started(document, embedding_model_id, ocr)
 
 
 def _embed(ports: IngestionPorts, model_id: str, drafts: list[ChunkDraft]) -> list[list[float]]:
@@ -73,10 +84,12 @@ async def ingest(
         started = await _start(session, document_id)
     if started is None:
         return
-    document, model_id = started
+    document, model_id = started.document, started.embedding_model_id
     try:
         original = await ports.object_store.get(document.object_key)
-        converted = await asyncio.to_thread(ports.converter.convert, original, document.name)
+        converted = await asyncio.to_thread(
+            partial(ports.converter.convert, ocr=started.ocr), original, document.name
+        )
         await ports.object_store.put(
             markdown_key(document),
             converted.export_to_markdown().encode(),

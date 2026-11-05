@@ -833,7 +833,8 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Renames the Project or edits its description. An archived Project is refused.
+         * @description Renames the Project, edits its description or turns OCR on or off. An archived Project
+         *     is refused.
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -919,6 +920,28 @@ export interface paths {
         get: operations["listChunks"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Document
+         * @description Processes a Ready or Failed Document again, with the Project's current settings (such as
+         *     OCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving
+         *     until the new ones replace them.
+         */
+        post: operations["retryDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1761,6 +1784,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Ocr Enabled */
+            ocr_enabled: boolean;
         };
         /**
          * Provider
@@ -1956,6 +1981,8 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+            /** Ocr Enabled */
+            ocr_enabled?: boolean | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -4553,6 +4580,57 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retryDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Document is still being processed. Retry it once it is Ready or Failed. / This Project is archived. An Owner can restore it. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

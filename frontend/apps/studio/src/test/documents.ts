@@ -29,10 +29,13 @@ export function aDocument(overrides: Partial<ProjectDocument> = {}): ProjectDocu
 
 const NEXT: Partial<Record<ProjectDocument["status"], ProjectDocument["status"]>> = { queued: "processing", processing: "ready" };
 
+export const IN_PROGRESS = "This Document is still being processed. Retry it once it is Ready or Failed.";
+
 /**
  * A stateful stand-in for the Documents API and the object store. Starting an upload refuses
  * what the API refuses; the PUT goes to a fake storage host; confirming adds a Queued Document.
- * Each poll of the status endpoint moves every unfinished Document one step on, to Ready.
+ * Retrying a Ready or Failed Document sets it back to Queued. Each poll of the status endpoint
+ * moves every unfinished Document one step on, to Ready.
  */
 export function fakeDocumentsApi(options: { documents?: ProjectDocument[] } = {}) {
   let documents = [...(options.documents ?? [])];
@@ -43,7 +46,7 @@ export function fakeDocumentsApi(options: { documents?: ProjectDocument[] } = {}
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/statuses", () => {
       documents = documents.map((document) => {
         const status = NEXT[document.status];
-        return status ? { ...document, status, chunk_count: status === "ready" ? 4 : 0 } : document;
+        return status ? { ...document, status, error_message: null, chunk_count: status === "ready" ? 4 : 0 } : document;
       });
       requests.push({ route: "statuses" });
       return HttpResponse.json(
@@ -83,6 +86,15 @@ export function fakeDocumentsApi(options: { documents?: ProjectDocument[] } = {}
       });
       documents = [created, ...documents];
       return HttpResponse.json(created, { status: 201 });
+    }),
+    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/retry", ({ params }) => {
+      const documentId = params.documentId as string;
+      requests.push({ route: "retry", body: documentId });
+      const document = documents.find((candidate) => candidate.id === documentId) as ProjectDocument;
+      if (!["ready", "failed"].includes(document.status)) return HttpResponse.json({ detail: IN_PROGRESS }, { status: 409 });
+      const queued: ProjectDocument = { ...document, status: "queued", error_message: null };
+      documents = documents.map((candidate) => (candidate.id === documentId ? queued : candidate));
+      return HttpResponse.json(queued, { status: 202 });
     }),
   );
   return { requests };

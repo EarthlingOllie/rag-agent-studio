@@ -88,7 +88,7 @@ class ReplayConverter:
     def __init__(self) -> None:
         self.received: list[tuple[str, bytes]] = []
 
-    def convert(self, data: bytes, filename: str) -> DoclingDocument:
+    def convert(self, data: bytes, filename: str, *, ocr: bool) -> DoclingDocument:
         self.received.append((filename, data))
         recorded = FIXTURES / "docling" / "northwind-handbook.pdf.json"
         return DoclingDocument.model_validate(json.loads(recorded.read_text()))

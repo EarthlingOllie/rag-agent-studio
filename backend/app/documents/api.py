@@ -30,6 +30,9 @@ UNSUPPORTED_TYPE = (
 UPLOAD_NOT_FOUND = "This upload wasn't found or has expired. Start the upload again."
 FILE_NOT_UPLOADED = "The file hasn't reached storage yet. Upload it, then confirm."
 HASH_MISMATCH = "The uploaded file doesn't match its content hash. Upload it again."
+DOCUMENT_IN_PROGRESS = (
+    "This Document is still being processed. Retry it once it is Ready or Failed."
+)
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
 
@@ -243,6 +246,31 @@ async def confirm_upload(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
     queued = _document_out(document, chunk_count=0)
     await enqueue_ingestion(document.id)
+    return queued
+
+
+@router.post(
+    "/documents/{document_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="retryDocument",
+    responses=_errors(_NOT_FOUND, (409, f"{DOCUMENT_IN_PROGRESS} / {PROJECT_ARCHIVED}")),
+)
+async def retry_document(
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
+) -> DocumentOut:
+    """Processes a Ready or Failed Document again, with the Project's current settings (such as
+    OCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving
+    until the new ones replace them."""
+    try:
+        summary = await service.retry(db, scope, project_id, document_id)
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    except service.DocumentInProgressError:
+        raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_IN_PROGRESS) from None
+    queued = _document_out(summary.document, summary.chunk_count)
+    await enqueue_ingestion(summary.document.id)
     return queued
 
 

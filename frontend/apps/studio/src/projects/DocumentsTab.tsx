@@ -1,7 +1,17 @@
 import { useParams } from "@tanstack/react-router";
 import { type ChangeEvent, type DragEvent, useState } from "react";
 
-import { type DocumentStatus, type ProjectDocument, type Upload, useDocuments, useUploads } from "./documents";
+import { FormError } from "../auth/AuthLayout";
+import {
+  type DocumentStatus,
+  FINAL_STATUSES,
+  type ProjectDocument,
+  retryFailure,
+  type Upload,
+  useDocuments,
+  useRetryDocument,
+  useUploads,
+} from "./documents";
 import { useProject } from "./projects";
 import { useOrganisationRole } from "./ProjectsPage";
 
@@ -76,7 +86,7 @@ function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
   );
 }
 
-function DocumentRows({ documents }: { documents: ProjectDocument[] }) {
+function DocumentRows({ documents, retry }: { documents: ProjectDocument[]; retry: ReturnType<typeof useRetryDocument> | undefined }) {
   return (
     <table className="w-full text-left text-sm">
       <caption className="sr-only">Documents</caption>
@@ -97,6 +107,19 @@ function DocumentRows({ documents }: { documents: ProjectDocument[] }) {
             <td>
               {STATUS_LABELS[document.status]}
               {document.error_message && <span className="block text-red-700">{document.error_message}</span>}
+              {retry && FINAL_STATUSES.includes(document.status) && (
+                <button
+                  type="button"
+                  aria-label={`Retry ${document.name}`}
+                  disabled={retry.isPending}
+                  onClick={() => {
+                    retry.mutate(document.id);
+                  }}
+                  className="ml-2 text-slate-700 underline disabled:opacity-50"
+                >
+                  Retry
+                </button>
+              )}
             </td>
             <td>{document.chunk_count}</td>
             <td>{formatSize(document.size_bytes)}</td>
@@ -114,6 +137,7 @@ export function DocumentsTab() {
   const project = useProject(organisationId, projectId);
   const documents = useDocuments(organisationId, projectId);
   const { uploads, upload } = useUploads(organisationId, projectId);
+  const retry = useRetryDocument(organisationId, projectId);
   const archived = project.data?.archived_at != null;
 
   let list;
@@ -124,7 +148,8 @@ export function DocumentsTab() {
   } else if (documents.data.length === 0) {
     list = <p className="text-slate-700">No Documents yet. Upload files to build this Project's Knowledge Base.</p>;
   } else {
-    list = <DocumentRows documents={documents.data} />;
+    // Retry reprocesses a Document with the Project's current settings, such as OCR.
+    list = <DocumentRows documents={documents.data} retry={archived ? undefined : retry} />;
   }
 
   return (
@@ -140,6 +165,7 @@ export function DocumentsTab() {
           ))}
         </ul>
       )}
+      <FormError message={retryFailure(retry.error)} />
       {list}
     </section>
   );

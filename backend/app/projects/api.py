@@ -49,6 +49,8 @@ class ProjectOut(BaseModel):
     agent_count: int
     # The Embedding Model the Project's Documents are embedded with.
     embedding_model_id: str
+    # Whether ingestion runs OCR on the Project's files, so scanned PDFs become readable.
+    ocr_enabled: bool
 
 
 class CreateProjectRequest(BaseModel):
@@ -61,6 +63,9 @@ class UpdateProjectRequest(BaseModel):
 
     name: ProjectName | None = None
     description: ProjectDescription | None = None
+    # Turns OCR on or off for Documents processed from now on. Retry reprocesses an existing
+    # Document with the new setting.
+    ocr_enabled: bool | None = None
 
 
 def _out(summary: service.ProjectSummary) -> ProjectOut:
@@ -74,6 +79,7 @@ def _out(summary: service.ProjectSummary) -> ProjectOut:
         document_count=summary.document_count,
         agent_count=summary.agent_count,
         embedding_model_id=project.embedding_model_id,
+        ocr_enabled=project.ocr_enabled,
     )
 
 
@@ -125,10 +131,16 @@ async def get_project(project_id: uuid.UUID, scope: Scope, db: Db) -> ProjectOut
 async def update_project(
     project_id: uuid.UUID, body: UpdateProjectRequest, scope: Scope, db: Db
 ) -> ProjectOut:
-    """Renames the Project or edits its description. An archived Project is refused."""
+    """Renames the Project, edits its description or turns OCR on or off. An archived Project
+    is refused."""
     try:
         project = await service.update_project(
-            db, scope, project_id, name=body.name, description=body.description
+            db,
+            scope,
+            project_id,
+            name=body.name,
+            description=body.description,
+            ocr_enabled=body.ocr_enabled,
         )
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None

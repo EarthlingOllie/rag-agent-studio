@@ -7,6 +7,9 @@
    against the one the browser sent, if any), creates the Document as Queued, and enqueues
    ingestion.
 
+``retry`` sends a Ready or Failed Document through ingestion again, with the Project's current
+settings (its OCR flag, for one).
+
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
 through ``active_project``, so an archived Project takes none.
 """
@@ -60,6 +63,10 @@ class FileNotUploadedError(Exception):
 
 class ContentHashMismatchError(Exception):
     """The stored bytes don't hash to the content hash the browser sent."""
+
+
+class DocumentInProgressError(Exception):
+    """The Document is Queued or Processing, so it can't be retried yet."""
 
 
 class DocumentNotFoundError(Exception):
@@ -203,3 +210,32 @@ async def list_chunks(
         .order_by(Chunk.ordinal)
     )
     return list(chunks)
+
+
+async def retry(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+) -> DocumentSummary:
+    """Sets a Ready or Failed Document back to Queued, for the caller to enqueue ingestion. Its
+    current Chunks keep serving until the new ones replace them. Refused for an archived
+    Project, and for a Document that is still Queued or Processing."""
+    project = await projects.active_project(session, scope, project_id)
+    document = await session.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.project_id == project.id)
+        .with_for_update()
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    if document.status not in (DocumentStatus.READY, DocumentStatus.FAILED):
+        raise DocumentInProgressError
+    document.status = DocumentStatus.QUEUED
+    document.error_message = None
+    document.updated_at = func.now()
+    await session.commit()
+    await session.refresh(document)
+    chunk_count = await session.scalar(
+        select(func.count()).where(
+            Chunk.document_id == document.id, Chunk.edition == document.edition
+        )
+    )
+    return DocumentSummary(document, chunk_count or 0)
