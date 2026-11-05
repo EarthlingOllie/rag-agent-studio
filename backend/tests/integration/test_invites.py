@@ -131,7 +131,12 @@ async def test_an_invited_person_without_an_account_creates_one_and_joins(
     assert session["member"]["email"] == email.lower()
     assert session["member"]["name"] == "New Person"
     assert session["organisations"] == [
-        {"id": owner.organisation_id, "name": owner.organisation_name, "role": "editor"}
+        {
+            "id": owner.organisation_id,
+            "name": owner.organisation_name,
+            "role": "editor",
+            "mfa_required": False,
+        }
     ]
     assert (await client.get("/api/auth/me")).json() == session
     signed_in = await client.post(
@@ -160,11 +165,13 @@ async def test_an_existing_member_accepts_and_gains_the_membership(
             "id": colleague.organisation_id,
             "name": colleague.organisation_name,
             "role": "owner",
+            "mfa_required": False,
         },
         owner.organisation_id: {
             "id": owner.organisation_id,
             "name": owner.organisation_name,
             "role": "owner",
+            "mfa_required": False,
         },
     }
     joined = await colleague.client.get(f"/api/organisations/{owner.organisation_id}")

@@ -1,7 +1,7 @@
 import { type ReactNode, type SubmitEvent, useId, useState } from "react";
 
 import { FormError, formValues } from "../auth/AuthLayout";
-import { AuthRequestError } from "../auth/session";
+import { AuthRequestError, type Session, useMe } from "../auth/session";
 import {
   type Enrolment,
   type MfaStatus,
@@ -18,7 +18,24 @@ const SECONDARY_BUTTON = "rounded border border-slate-400 px-4 py-2 text-sm hove
 function errorMessage(error: Error | null, incorrect: string): string | undefined {
   if (error === null) return undefined;
   if (error instanceof AuthRequestError && error.status === 400) return incorrect;
-  return "Something went wrong. Try again.";
+  const detail = error instanceof AuthRequestError && error.status === 409 ? (Object(error.body) as { detail?: unknown }).detail : undefined;
+  return typeof detail === "string" ? detail : "Something went wrong. Try again.";
+}
+
+/** Names each Organisation that requires MFA while the Member doesn't have it yet. */
+function RequiredNotice() {
+  const session = useMe().data as Session;
+  if (session.member.mfa_enabled) return null;
+  const requiring = session.organisations.filter((organisation) => organisation.mfa_required);
+  return (
+    <>
+      {requiring.map((organisation) => (
+        <p key={organisation.id} className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {organisation.name} requires two-factor authentication. Set it up to continue.
+        </p>
+      ))}
+    </>
+  );
 }
 
 function Input({ label, name, type = "text", autoComplete, inputMode }: {
@@ -231,6 +248,7 @@ export function SecurityPage() {
         Security
       </h1>
       <p className="mt-2 text-slate-700">Settings for your own account, in every Organisation you belong to.</p>
+      <RequiredNotice />
       {content}
     </section>
   );

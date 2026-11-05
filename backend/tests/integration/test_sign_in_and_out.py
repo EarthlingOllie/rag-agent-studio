@@ -20,7 +20,12 @@ async def test_a_member_signs_in_with_email_and_password(
     assert response.json() == {
         "member": {"id": owner.member_id, "name": owner.name, "email": owner.email},
         "organisations": [
-            {"id": owner.organisation_id, "name": owner.organisation_name, "role": "owner"}
+            {
+                "id": owner.organisation_id,
+                "name": owner.organisation_name,
+                "role": "owner",
+                "mfa_required": False,
+            }
         ],
         "active_organisation_id": owner.organisation_id,
     }
