@@ -1,0 +1,19 @@
+# GitHub Actions runs on ticket/09-04-compute-module (fetched with mcp__github__actions_list / get_job_logs)
+head 3620733eacb4fbfe503b895cb37fee42ea78ada0 (push, "Ticket 09-04: compute and ECR modules ...")
+  infra            41957427109  success   fmt, validate, tflint, checkov, terraform test (make infra-check, provider from the public registry)
+  backend          41957427292  success
+  frontend         41957427078  success
+  e2e              41957427145  success
+  deploy           41957427125  success   images built; push, apply and destroy skipped (no AWS secrets)
+  guardrails-eval  41957427002  success
+  security         41957427171  failure   only job "gitleaks (full history)" failed; pip-audit/pnpm audit and Trivy succeeded
+
+  gitleaks log: "58 commits scanned ... leaks found: 2 ... make: *** [Makefile:82: secret-scan] Error 1"
+  Reproduced locally (`gitleaks git -v .` in a fresh clone): both findings are fake test values
+  ("sk-before-1234", "sk-after-5678") in backend/tests/integration/test_audit_events.py lines 148/154 at
+  commit 15952996, which belongs ONLY to the parallel branch ticket/01-05-audit-events
+  (`git branch -a --contains 15952996` -> ticket/01-05-audit-events; `git merge-base --is-ancestor 15952996 HEAD` -> not in
+  this branch). `gitleaks git` scans every fetched ref, so another ticket's branch fails this branch's job.
+  No file this ticket changes is involved; ticket 01-05 must allowlist those fingerprints in .gitleaksignore.
+
+claim 9a71040d4957d0c1eb21a2b51de1af9d2f0428a4: all 7 workflows success (infra 41955202244).
