@@ -20,6 +20,12 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "signIn": ("/api/auth/sign-in", "post"),
         "signOut": ("/api/auth/sign-out", "post"),
         "getMe": ("/api/auth/me", "get"),
+        "getMfaStatus": ("/api/auth/mfa", "get"),
+        "startMfaEnrolment": ("/api/auth/mfa/enrolment", "post"),
+        "confirmMfaEnrolment": ("/api/auth/mfa/enrolment/confirm", "post"),
+        "verifyMfa": ("/api/auth/mfa/verify", "post"),
+        "replaceRecoveryCodes": ("/api/auth/mfa/recovery-codes", "post"),
+        "disableMfa": ("/api/auth/mfa/disable", "post"),
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
     }
 

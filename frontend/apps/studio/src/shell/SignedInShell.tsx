@@ -89,6 +89,9 @@ export function OrganisationShell() {
             <Link to="/organisations/$organisationId/settings" params={{ organisationId }} className={NAV_LINK}>
               Organisation settings
             </Link>
+            <Link to="/organisations/$organisationId/security" params={{ organisationId }} className={NAV_LINK}>
+              Security
+            </Link>
           </nav>
           <main className="min-w-0 flex-1">
             <Outlet />

@@ -4,11 +4,13 @@ Tests talk to the FastAPI app through an in-process async HTTP client, against r
 Postgres and Redis (``docker compose up postgres redis`` locally, service containers in CI).
 """
 
+import base64
 import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -18,12 +20,15 @@ from alembic.config import Config
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 
+from app.core.clock import ControllableClock, get_clock
 from app.main import create_app
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
 )
 TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+# 32 bytes, base64: the local static-key wrapper's key for the test run.
+TEST_LOCAL_KEY_WRAPPER_KEY = base64.b64encode(b"test-only-local-key-wrapper-key!").decode()
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 # HTTPS, so the client's cookie jar sends the Secure session cookie back.
 BASE_URL = "https://testserver"
@@ -34,6 +39,7 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("REDIS_URL", TEST_REDIS_URL)
     monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "true")
+    monkeypatch.setenv("LOCAL_KEY_WRAPPER_KEY", TEST_LOCAL_KEY_WRAPPER_KEY)
 
 
 @pytest.fixture(scope="session")
@@ -138,3 +144,11 @@ def tenant_factory(new_client: ClientFactory) -> TenantFactory:
 async def owner(tenant_factory: TenantFactory) -> SignedUpMember:
     """A signed-in Owner of a new Organisation."""
     return await tenant_factory()
+
+
+@pytest.fixture
+def clock(app: FastAPI) -> ControllableClock:
+    """Replaces the system clock with one the test moves by hand."""
+    controllable = ControllableClock(datetime(2026, 11, 5, 12, 0, 10, tzinfo=UTC))
+    app.dependency_overrides[get_clock] = lambda: controllable
+    return controllable
