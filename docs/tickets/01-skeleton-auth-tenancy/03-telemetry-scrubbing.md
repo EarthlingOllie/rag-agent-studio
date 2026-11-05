@@ -7,12 +7,14 @@
 **Blocked by:**
 - [01-01: Walking skeleton](01-walking-skeleton.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] FastAPI, SQLAlchemy, Celery and HTTP client instrumentation is enabled
-- [ ] The exporter is chosen by settings: Logfire when a token is present, console otherwise
-- [ ] A scrubbing processor removes Message bodies, cookies, authorisation headers and secret-like attributes
-- [ ] A test captures spans with an in-memory exporter and proves the scrubbing works
-- [ ] Services emit structured JSON logs
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] FastAPI, SQLAlchemy, Celery and HTTP client instrumentation is enabled
+- [x] The exporter is chosen by settings: Logfire when a token is present, console otherwise
+- [x] A scrubbing processor removes Message bodies, cookies, authorisation headers and secret-like attributes
+- [x] A test captures spans with an in-memory exporter and proves the scrubbing works
+- [x] Services emit structured JSON logs
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+
+Evidence: [01-03-evidence/README.md](01-03-evidence/README.md)
