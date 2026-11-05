@@ -33,6 +33,13 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
         "listAuditEvents": ("/api/organisations/{organisation_id}/audit-events", "get"),
         "getAuditFacets": ("/api/organisations/{organisation_id}/audit-events/facets", "get"),
+        "listInvites": ("/api/organisations/{organisation_id}/invites", "get"),
+        "createInvite": ("/api/organisations/{organisation_id}/invites", "post"),
+        "revokeInvite": ("/api/organisations/{organisation_id}/invites/{invite_id}", "delete"),
+        "renewInvite": ("/api/organisations/{organisation_id}/invites/{invite_id}/renew", "post"),
+        "lookUpInvite": ("/api/invites/lookup", "post"),
+        "acceptInvite": ("/api/invites/accept", "post"),
+        "signUpWithInvite": ("/api/invites/sign-up", "post"),
     }
 
 

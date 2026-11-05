@@ -6,6 +6,7 @@ import json
 import threading
 from collections.abc import AsyncIterator, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import logfire
@@ -23,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from app.main import create_app
 from app.worker.celery_app import celery_app
-from tests.conftest import TEST_REDIS_URL
+from tests.conftest import TEST_REDIS_URL, new_member_details
 
 
 @pytest.fixture
@@ -139,6 +140,7 @@ BEARER_TOKEN = "bearer-token-91c2"
 API_KEY = "api-key-55d0"
 SESSION_ID = "session-id-c4e8"
 PASSWORD = "hunter2-b61f"  # gitleaks:allow (fake test value)
+RESET_TOKEN = "made-up-reset-token-6f2d8c"
 SENSITIVE = (MESSAGE_TEXT, COOKIE_VALUE, BEARER_TOKEN, API_KEY, SESSION_ID, PASSWORD)
 
 
@@ -317,3 +319,35 @@ async def test_task_spans_never_contain_the_message_text_a_task_carries(
     spans = exporter.get_finished_spans()
     assert {"apply_async/test.reply", "run/test.reply"} <= {span.name for span in spans}
     assert MESSAGE_TEXT not in "\n".join(span.to_json() for span in spans)
+
+
+async def test_link_tokens_in_request_bodies_are_never_exported(
+    settings_env: pytest.MonkeyPatch, database_schema: None, exporter: InMemorySpanExporter
+) -> None:
+    """Invite and reset links carry their token in the request body; spans must not."""
+    application = create_app(extra_span_processors=[SimpleSpanProcessor(exporter)])
+    async with LifespanManager(application):
+        transport = httpx.ASGITransport(app=application)
+        async with httpx.AsyncClient(transport=transport, base_url="https://testserver") as client:
+            owner = await client.post("/api/auth/sign-up", json=new_member_details())
+            organisation_id = owner.json()["organisations"][0]["id"]
+            created = await client.post(
+                f"/api/organisations/{organisation_id}/invites",
+                json={"email": new_member_details()["email"], "role": "editor"},
+            )
+            invite_token = parse_qs(urlparse(created.json()["link"]).query)["token"][0]
+            client.cookies.clear()
+            looked_up = await client.post("/api/invites/lookup", json={"token": invite_token})
+            joined = await client.post(
+                "/api/invites/sign-up",
+                json={"token": invite_token, "name": "Invited", "password": PASSWORD},
+            )
+            reset = await client.post(
+                "/api/auth/password-reset/complete",
+                json={"token": RESET_TOKEN, "password": PASSWORD},
+            )
+
+    assert (looked_up.status_code, joined.status_code, reset.status_code) == (200, 201, 400)
+    exported = "\n".join(span.to_json() for span in exporter.get_finished_spans())
+    assert invite_token not in exported
+    assert RESET_TOKEN not in exported

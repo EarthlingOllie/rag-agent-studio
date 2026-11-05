@@ -21,6 +21,7 @@ from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
 from app.tenancy import api as tenancy_api
+from app.tenancy import invites_api
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.include_router(account_api.router)
     app.include_router(tenancy_api.router)
     app.include_router(audit_api.router)
+    app.include_router(invites_api.owner_router)
+    app.include_router(invites_api.router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app
