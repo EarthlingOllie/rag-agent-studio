@@ -1,34 +1,56 @@
 """FastAPI application. Settings are loaded and validated when the app starts."""
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+import logging
+from collections.abc import AsyncIterator, Callable, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
+import logfire
 from fastapi import FastAPI
+from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.api import health
 from app.core.db import create_engine
+from app.core.logs import configure_logging
 from app.core.settings import load_settings
+from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
 from app.worker.celery_app import configure_celery
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    settings = load_settings()
-    app.state.settings = settings
-    configure_celery(settings)
-    app.state.engine = create_engine(settings)
-    app.state.redis = Redis.from_url(str(settings.redis_url))
-    try:
-        yield
-    finally:
-        await app.state.redis.aclose()
-        await app.state.engine.dispose()
+logger = logging.getLogger(__name__)
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(title="RAG Agent Studio API", version="0.1.0", lifespan=lifespan)
+def _lifespan(
+    extra_span_processors: Sequence[SpanProcessor],
+) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        configure_logging("api")
+        settings = load_settings()
+        configure_telemetry(settings, "api", extra_span_processors=extra_span_processors)
+        app.state.settings = settings
+        configure_celery(settings)
+        app.state.engine = create_engine(settings)
+        instrument_engine(app.state.engine)
+        app.state.redis = Redis.from_url(str(settings.redis_url))
+        logger.info("API started", extra={"environment": settings.environment})
+        try:
+            yield
+        finally:
+            await app.state.redis.aclose()
+            await app.state.engine.dispose()
+            flush_telemetry()
+
+    return lifespan
+
+
+def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAPI:
+    """Build the API. ``extra_span_processors`` receive spans next to the configured exporter."""
+    app = FastAPI(
+        title="RAG Agent Studio API", version="0.1.0", lifespan=_lifespan(extra_span_processors)
+    )
     app.include_router(health.router)
+    # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
+    logfire.instrument_fastapi(app, capture_headers=True)
     return app
 
 

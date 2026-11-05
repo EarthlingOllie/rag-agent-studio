@@ -8,6 +8,8 @@ dependencies = [
     "asyncpg>=0.32.0",
     "celery[redis]>=5.6.3",
     "fastapi>=0.162.0",
+    "httpx>=0.28.1",
+    "logfire[celery,fastapi,httpx,sqlalchemy]>=5.4.0",
     "pydantic-settings>=2.16.2",
     "redis>=8.1.0",
     "sqlalchemy[asyncio]>=2.1.8",
@@ -21,7 +23,6 @@ package = false
 dev = [
     "asgi-lifespan>=2.1.0",
     "celery-types>=0.26.0",
-    "httpx>=0.28.1",
     "mypy>=2.4.1",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
@@ -64,10 +65,16 @@ target-version = "py313"
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF", "N", "S", "PT"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# Tests assert, hold fake secrets, and start the services as processes.
+"tests/**" = ["S101", "S105", "S603"]
 
 [tool.mypy]
 strict = true
 python_version = "3.13"
 plugins = ["pydantic.mypy"]
 files = ["app", "tests", "migrations"]
+
+[tool.logfire]
+# Instrumentation is attached when the app is built; it records once `configure_telemetry`
+# runs at startup with validated settings, so the early-instrumentation warning is expected.
+ignore_no_config = true
