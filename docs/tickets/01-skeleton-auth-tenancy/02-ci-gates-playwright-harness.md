@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-01: Walking skeleton](01-walking-skeleton.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Security workflow runs gitleaks, pip-audit, pnpm audit and Trivy against the built images
 - [ ] Infra workflow runs fmt, validate, tflint, checkov and `terraform test`, all passing on stub modules
