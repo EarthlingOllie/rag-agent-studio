@@ -64,7 +64,7 @@ jobs:
           done
 
   terraform:
-    name: ${{ inputs.action }} envs/demo
+    name: Apply or destroy envs/demo
     if: github.event_name == 'workflow_dispatch' && inputs.action != 'build'
     needs: images
     runs-on: ubuntu-latest
