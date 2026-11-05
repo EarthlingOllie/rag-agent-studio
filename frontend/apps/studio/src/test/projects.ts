@@ -46,8 +46,9 @@ const ARCHIVED_AT = "2026-11-05T09:00:00Z";
  * A stateful stand-in for the Projects API: creating, editing, archiving and restoring change
  * what it lists, and it refuses what the real API refuses. Records the requests it receives.
  */
-export function fakeProjectsApi(options: { projects?: Project[] } = {}) {
+export function fakeProjectsApi(options: { projects?: Project[]; instructions?: Record<string, string> } = {}) {
   let projects = [...(options.projects ?? [hrProject, salesProject, oldProject])];
+  const instructions: Record<string, string> = { ...options.instructions };
   const requests: { route: string; projectId?: string; body?: unknown }[] = [];
   const find = (id: string) => projects.find((project) => project.id === id);
   const notFound = () => HttpResponse.json({ detail: "Not found" }, { status: 404 });
@@ -98,6 +99,19 @@ export function fakeProjectsApi(options: { projects?: Project[] } = {}) {
       const project = find(projectId) as Project;
       if (project.archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
       return replace({ ...project, archived_at: ARCHIVED_AT });
+    }),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/instructions", ({ params }) => {
+      const projectId = params.projectId as string;
+      return find(projectId) ? HttpResponse.json({ markdown: instructions[projectId] ?? "" }) : notFound();
+    }),
+    http.put("*/api/organisations/:organisationId/projects/:projectId/instructions", async ({ params, request }) => {
+      const projectId = params.projectId as string;
+      const body = (await request.json()) as Schemas["ProjectInstructions"];
+      requests.push({ route: "instructions", projectId, body });
+      if ((find(projectId) as Project).archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
+      if (body.markdown.length > 20_000) return HttpResponse.json({ detail: [{ msg: "too long" }] }, { status: 422 });
+      instructions[projectId] = body.markdown;
+      return HttpResponse.json({ markdown: body.markdown });
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/restore", ({ params }) => {
       const projectId = params.projectId as string;

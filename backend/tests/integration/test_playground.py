@@ -158,6 +158,25 @@ async def test_the_model_receives_the_draft_the_chunks_and_the_history_in_order(
     )
 
 
+async def test_the_project_instructions_reach_the_model_before_the_system_prompt(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, echo)
+    member, project_id, agent_id = await ready_agent(app, owner)
+    instructions = "# House rules\n\n- Answer in **British English**.\n"
+    saved = await member.client.put(
+        f"{project_path(member, project_id)}/instructions", json={"markdown": instructions}
+    )
+    assert saved.status_code == 200, saved.text
+    await save_draft(member, project_id, agent_id, {"behaviour": {"system_prompt": "Be brief."}})
+    conversation = await start_conversation(member, project_id, agent_id)
+
+    response = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
+
+    parts = json.loads(parse_sse(response.text)[0][1]["text"])
+    assert [part[2] for part in parts[:3]] == [PREAMBLE, instructions, "Be brief."]
+
+
 async def test_an_unanswered_question_is_not_remembered(
     app: FastAPI, owner: SignedUpMember
 ) -> None:

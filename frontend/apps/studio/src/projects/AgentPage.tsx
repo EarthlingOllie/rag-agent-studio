@@ -1,3 +1,4 @@
+import { MarkdownEditor } from "@studio/ui";
 import { Link, useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
@@ -32,19 +33,12 @@ function DraftForm({ agent, organisationId }: { agent: Agent; organisationId: st
         Draft
       </h2>
       <FormError message={agentFailure(save.error)} />
-      <div>
-        <label htmlFor="system-prompt" className="block text-sm font-medium">
-          System prompt
-        </label>
-        <textarea
-          id="system-prompt"
-          name="system_prompt"
-          rows={8}
-          maxLength={20000}
-          defaultValue={agent.draft.behaviour.system_prompt}
-          className={`${INPUT} font-mono text-sm`}
-        />
-      </div>
+      <MarkdownEditor
+        label="System prompt"
+        name="system_prompt"
+        maxLength={20000}
+        defaultValue={agent.draft.behaviour.system_prompt}
+      />
       <div>
         <label htmlFor="top-k" className="block text-sm font-medium">
           Chunks per answer (top-k)

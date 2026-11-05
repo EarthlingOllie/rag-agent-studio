@@ -11,6 +11,8 @@ from app.embeddings.registry import DEFAULT_MODEL_ID
 
 NAME_MAX = 200
 DESCRIPTION_MAX = 2000
+# The same limit as an Agent's system prompt.
+INSTRUCTIONS_MAX = 20_000
 
 
 class Project(IdMixin, Base):
@@ -25,3 +27,6 @@ class Project(IdMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Embedding Model the Project's Chunks are embedded with; the local model by default.
     embedding_model_id: Mapped[str] = mapped_column(String(100), default=DEFAULT_MODEL_ID)
+    # The Project Instructions: one markdown Draft every Agent in the Project follows, stored
+    # exactly as written. Spec 05 adds its Versions.
+    instructions: Mapped[str] = mapped_column(Text, default="", server_default="")

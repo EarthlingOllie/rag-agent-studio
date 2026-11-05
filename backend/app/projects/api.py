@@ -12,7 +12,7 @@ from pydantic import BaseModel, StringConstraints
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.projects import service
-from app.projects.models import DESCRIPTION_MAX, NAME_MAX, Project
+from app.projects.models import DESCRIPTION_MAX, INSTRUCTIONS_MAX, NAME_MAX, Project
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope, Scope
 
@@ -177,3 +177,46 @@ async def restore_project(
     except service.ProjectNotArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_NOT_ARCHIVED) from None
     return await _respond(db, project)
+
+
+class ProjectInstructions(BaseModel):
+    """The Project Instructions: markdown every Agent in the Project follows, kept exactly."""
+
+    markdown: Annotated[str, StringConstraints(max_length=INSTRUCTIONS_MAX)]
+
+
+@router.get(
+    "/projects/{project_id}/instructions",
+    operation_id="getProjectInstructions",
+    responses=_NOT_FOUND,
+)
+async def get_project_instructions(
+    project_id: uuid.UUID, scope: Scope, db: Db
+) -> ProjectInstructions:
+    """The Project Instructions, archived Project or not."""
+    try:
+        project = await service.get_project(db, scope, project_id)
+    except service.ProjectNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    return ProjectInstructions(markdown=project.instructions)
+
+
+@router.put(
+    "/projects/{project_id}/instructions",
+    operation_id="saveProjectInstructions",
+    responses={**_NOT_FOUND, **_ARCHIVED},
+)
+async def save_project_instructions(
+    project_id: uuid.UUID, body: ProjectInstructions, scope: Scope, db: Db, clock: ClockDep
+) -> ProjectInstructions:
+    """Replaces the Project Instructions; records ``project.instructions_updated`` when they
+    change. An archived Project is refused."""
+    try:
+        project = await service.save_instructions(
+            db, scope, project_id, body.markdown, now=clock.now()
+        )
+    except service.ProjectNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except service.ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    return ProjectInstructions(markdown=project.instructions)

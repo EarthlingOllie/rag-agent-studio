@@ -21,7 +21,8 @@ test("the Agent page shows the Draft beside the Playground", async () => {
   renderStudio(agentPage);
 
   expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByLabelText("System prompt")).toHaveValue("Answer from the handbook.");
+  // The system prompt is in the markdown editor, formatted.
+  expect(screen.getByRole("textbox", { name: "System prompt" })).toHaveTextContent("Answer from the handbook.");
   expect(screen.getByLabelText("Chunks per answer (top-k)")).toHaveValue(5);
   expect(screen.getByRole("heading", { level: 2, name: "Playground" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "All Agents" })).toHaveAttribute(
@@ -33,7 +34,9 @@ test("the Agent page shows the Draft beside the Playground", async () => {
 test("an Editor edits the system prompt and top-k and saves the Draft, keeping its other settings", async () => {
   const { requests } = setUp();
   renderStudio(agentPage);
-  const prompt = await screen.findByLabelText("System prompt", {}, { timeout: 5000 });
+  await screen.findByRole("textbox", { name: "System prompt" }, { timeout: 5000 });
+  await userEvent.click(screen.getByRole("button", { name: "Markdown" }));
+  const prompt = screen.getByRole("textbox", { name: "System prompt (Markdown)" });
 
   await userEvent.clear(prompt);
   await userEvent.type(prompt, "# Role{enter}{enter}Be brief.");

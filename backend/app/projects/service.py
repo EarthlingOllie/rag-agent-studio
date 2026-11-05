@@ -201,3 +201,30 @@ async def restore_project(
     )
     await session.commit()
     return project
+
+
+async def save_instructions(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    markdown: str,
+    *,
+    now: datetime,
+) -> Project:
+    """Replaces the Project Instructions and records ``project.instructions_updated`` when
+    the text changed. Archived Projects are refused."""
+    project = await active_project(session, scope, project_id, lock=True)
+    if project.instructions != markdown:
+        await audit.record(
+            session,
+            organisation_id=scope.organisation_id,
+            actor_id=scope.member_id,
+            action="project.instructions_updated",
+            target=audit.AuditTarget("project", project.id),
+            before={"instructions": project.instructions},
+            after={"instructions": markdown},
+            occurred_at=now,
+        )
+        project.instructions = markdown
+    await session.commit()
+    return project

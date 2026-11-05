@@ -34,7 +34,7 @@ test("a Project page has a tab for each area, with placeholders until each featu
   expect(within(tabs).getByRole("link", { name: "Documents" })).toHaveAttribute("aria-current", "page");
 
   const placeholders: [string, RegExp][] = [
-    ["Instructions", /Project Instructions, the text every Agent in this Project follows/],
+    ["Instructions", /the shared rules every Agent in this Project follows/],
     ["Agents", /No Agents yet/],
     ["Conversations", /No Conversations yet/],
     ["Analytics", /Analytics for this Project's Agents/],

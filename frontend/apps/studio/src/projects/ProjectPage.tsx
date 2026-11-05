@@ -225,14 +225,6 @@ function TabPlaceholder({ title, children }: { title: string; children: string }
   );
 }
 
-export function InstructionsTab() {
-  return (
-    <TabPlaceholder title="Instructions">
-      Project Instructions, the text every Agent in this Project follows, arrive in a later release.
-    </TabPlaceholder>
-  );
-}
-
 export function ConversationsTab() {
   return (
     <TabPlaceholder title="Conversations">
