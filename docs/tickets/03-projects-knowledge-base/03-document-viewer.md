@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Rendered markdown appears beside the Chunk list, with each Chunk's heading path and page range
 - [ ] The original file downloads through a presigned GET
