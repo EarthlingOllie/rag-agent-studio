@@ -29,8 +29,8 @@ test: test-backend test-frontend ## Run every test suite with the 100% coverage 
 test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`)
 	cd backend && uv run pytest
 
-test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models; outside the coverage gate)
-	cd backend && uv run --group pdf pytest -m live --no-cov tests/live
+test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
+	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
 
 test-frontend: ## Studio and API client tests
 	cd frontend && pnpm test

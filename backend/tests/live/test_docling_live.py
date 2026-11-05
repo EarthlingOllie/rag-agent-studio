@@ -1,7 +1,8 @@
 """Live suite: real Docling on the sample PDF, DOCX and PPTX, then chunked as ingestion does.
 
 Run with ``make test-live``. PDF needs Docling's layout models (the ``pdf`` dependency group and
-a Hugging Face download, or the worker image, which bundles them).
+a Hugging Face download, or the worker image, which bundles them); without them the PDF case is
+skipped with the reason, unless ``LIVE_REQUIRE_MODELS=1``.
 """
 
 from pathlib import Path
@@ -11,6 +12,7 @@ import pytest
 from app.documents.chunking import chunk_document
 from app.documents.converter import DoclingConverter
 from app.embeddings.fake import WordTokenizer
+from tests.live.models import DOCLING_LAYOUT, require_models
 
 SAMPLES = Path(__file__).parents[1] / "fixtures" / "documents"
 
@@ -21,6 +23,8 @@ pytestmark = pytest.mark.live
     "sample", ["northwind-handbook.pdf", "northwind-handbook.docx", "northwind-handbook.pptx"]
 )
 def test_real_docling_converts_and_chunks_the_sample(sample: str) -> None:
+    if sample.endswith(".pdf"):
+        require_models(DOCLING_LAYOUT)
     converted = DoclingConverter().convert((SAMPLES / sample).read_bytes(), sample)
 
     markdown = converted.export_to_markdown()

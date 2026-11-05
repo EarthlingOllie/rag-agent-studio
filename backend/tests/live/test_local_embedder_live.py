@@ -1,13 +1,20 @@
 """Live suite: the local Embedding Model (multilingual-e5-small through fastembed) and its
-tokenizer, downloaded from Hugging Face on first use. Run with ``make test-live``."""
+tokenizer, downloaded from Hugging Face on first use. Run with ``make test-live``. Skipped with
+the reason when the model can't be had, unless ``LIVE_REQUIRE_MODELS=1``."""
 
 import math
 
 import pytest
 
 from app.embeddings.local import LocalEmbedder
+from tests.live.models import LOCAL_EMBEDDING_MODEL, require_models
 
 pytestmark = pytest.mark.live
+
+
+@pytest.fixture(autouse=True)
+def _model_available() -> None:
+    require_models(LOCAL_EMBEDDING_MODEL)
 
 
 def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension() -> None:

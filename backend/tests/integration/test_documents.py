@@ -2,7 +2,11 @@
 ingestion runs eagerly through the fake converter and the deterministic embedder. Outcomes are
 observed through the API: the Document list, the status endpoint and the Chunk list."""
 
+import json
+from pathlib import Path
+
 import pytest
+from docling_core.types.doc.document import DoclingDocument
 from fastapi import FastAPI
 
 from tests.conftest import MemberFactory, SignedUpMember
@@ -72,6 +76,45 @@ async def test_a_ready_document_lists_its_chunks_with_headings_and_pages(
         "Claim expenses within 30 days.",
     ]
     assert {c["embedding_model_id"] for c in listed} == {"multilingual-e5-small"}
+
+
+FIXTURES = Path(__file__).parents[1] / "fixtures"
+
+
+class ReplayConverter:
+    """Returns Docling's output for the sample PDF, from ``tests/fixtures/docling``, and keeps
+    what it was asked to convert."""
+
+    def __init__(self) -> None:
+        self.received: list[tuple[str, bytes]] = []
+
+    def convert(self, data: bytes, filename: str) -> DoclingDocument:
+        self.received.append((filename, data))
+        recorded = FIXTURES / "docling" / "northwind-handbook.pdf.json"
+        return DoclingDocument.model_validate(json.loads(recorded.read_text()))
+
+
+async def test_an_uploaded_pdf_becomes_ready_with_chunks_from_its_pages(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    converter = ReplayConverter()
+    app.state.ingestion.converter = converter
+    pdf = (FIXTURES / "documents" / "northwind-handbook.pdf").read_bytes()
+
+    document = await upload(app, owner, project_id, "northwind-handbook.pdf", pdf)
+
+    assert converter.received == [("northwind-handbook.pdf", pdf)]
+    assert document["mime_type"] == "application/pdf"
+    (listed,) = await documents(owner, project_id)
+    assert (listed["status"], listed["chunk_count"]) == ("ready", 3)
+    listed_chunks = await chunks(owner, project_id, document["id"])
+    assert [(c["heading_path"][-1], c["page_start"], c["page_end"]) for c in listed_chunks] == [
+        ("Annual leave", 1, 1),
+        ("Expenses", 2, 2),
+        ("Working from home", 2, 2),
+    ]
+    assert "25 days of annual leave" in listed_chunks[0]["text"]
 
 
 async def test_the_status_endpoint_reports_each_documents_status(

@@ -2,6 +2,9 @@
 
 ``tests/fixtures/docling/*.json`` are what real Docling made of the sample DOCX and PPTX
 (``tests/fixtures/record_docling_output.py``), so chunking is tested without running Docling.
+The PDF one is hand-built in the shape Docling's PDF pipeline produces
+(``tests/fixtures/build_pdf_docling_fixture.py``) until it can be recorded: recording it needs
+Docling's layout model from Hugging Face.
 """
 
 import json
@@ -47,6 +50,20 @@ def test_a_slide_deck_is_chunked_per_slide_with_page_numbers() -> None:
         (["Expenses"], 3, 3),
         (["Working from home"], 4, 4),
     ]
+
+
+def test_a_pdf_is_chunked_by_heading_with_the_pages_each_chunk_came_from() -> None:
+    drafts = chunk_document(recorded("northwind-handbook.pdf"), WordTokenizer(max_tokens=64))
+
+    # Docling's PDF pipeline finds the title and flat section headers, and a page per PDF page.
+    assert [(d.heading_path, d.page_start, d.page_end) for d in drafts] == [
+        (["Northwind staff handbook", "Annual leave"], 1, 1),
+        (["Northwind staff handbook", "Expenses"], 2, 2),
+        (["Northwind staff handbook", "Working from home"], 2, 2),
+    ]
+    assert drafts[1].text == (
+        "Claim expenses within 30 days with a receipt. Travel is booked through the travel desk."
+    )
 
 
 @pytest.mark.parametrize("max_tokens", [12, 20])
