@@ -8,7 +8,7 @@
 - [04-03: Hybrid retrieval and fallback](03-hybrid-retrieval-fallback.md)
 - [02-04: Price table and overrides](../02-provider-credentials-theme/04-price-table-overrides.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Citations come from structured output where supported, falling back to label parsing, and resolve to Chunks
 - [ ] Citation events are streamed, and Playground chips link to the Document viewer
