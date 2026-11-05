@@ -1,0 +1,20 @@
+$ cd frontend && pnpm build (fresh clone of ticket/01-09-member-management at 2c113e7; TEST_DATABASE_URL=…/studio_test_c0109 TEST_REDIS_URL=…/8)
+
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0109/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0109/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 174 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-CcrMCRuE.css   15.00 kB │ gzip:   3.76 kB
+dist/assets/index-DNH4B_s7.js   389.09 kB │ gzip: 118.43 kB
+
+✓ built in 598ms
+exit 0
