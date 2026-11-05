@@ -8,11 +8,11 @@
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 - [02-03: Model gateway and Default Model](../02-provider-credentials-theme/03-model-gateway-default-model.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] An Embedding Model registry records provider, dimension and tokenizer for each model
-- [ ] New Projects default to the local model, and a provider model can be chosen from embedding-capable credentials, registering a reference
-- [ ] Changing the model is refused while the Project has Documents
-- [ ] A retrieval probe endpoint returns the top-k Chunks by vector, for tests and diagnostics
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] An Embedding Model registry records provider, dimension and tokenizer for each model
+- [x] New Projects default to the local model, and a provider model can be chosen from embedding-capable credentials, registering a reference
+- [x] Changing the model is refused while the Project has Documents
+- [x] A retrieval probe endpoint returns the top-k Chunks by vector, for tests and diagnostics
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
