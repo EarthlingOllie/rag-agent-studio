@@ -7,10 +7,10 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] Rendered markdown appears beside the Chunk list, with each Chunk's heading path and page range
-- [ ] The original file downloads through a presigned GET
-- [ ] The Chunk list paginates for large Documents
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Rendered markdown appears beside the Chunk list, with each Chunk's heading path and page range
+- [x] The original file downloads through a presigned GET
+- [x] The Chunk list paginates for large Documents
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

@@ -1,22 +1,19 @@
-+ make secret-scan audit   # HEAD 5a31695
++ make secret-scan audit   # HEAD d3d241d
 gitleaks git --redact --no-banner .
-[90m3:18PM[0m [32mINF[0m [1m177 commits scanned.[0m
-[90m3:18PM[0m [32mINF[0m [1mscanned ~9805691 bytes (9.81 MB) in 2.96s[0m
-[90m3:18PM[0m [33mWRN[0m [1mleaks found: 1[0m
+[90m10:32PM[0m [32mINF[0m [1m232 commits scanned.[0m
+[90m10:32PM[0m [32mINF[0m [1mscanned ~12487511 bytes (12.49 MB) in 2.91s[0m
+[90m10:32PM[0m [33mWRN[0m [1mleaks found: 1[0m
 make: *** [Makefile:87: secret-scan] Error 1
-exit 2
-
-# The one leak above is in commit a7613be, on another ticket's branch in this shared clone (+ticket/03-09-provider-embedding-models ), not on this branch. This branch's own history:
-+ gitleaks git --redact --no-banner --log-opts=HEAD .
-[90m3:18PM[0m [32mINF[0m [1m89 commits scanned.[0m
-[90m3:18PM[0m [32mINF[0m [1mscanned ~5943308 bytes (5.94 MB) in 3.05s[0m
-[90m3:18PM[0m [32mINF[0m [1mno leaks found[0m
-exit 0
-+ make audit AUDIT_REQUIREMENTS=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/0303-req.txt
-cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/0303-req.txt" \
-	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/0303-req.txt"
+secret-scan exit code: 2
++ gitleaks git --redact --no-banner --log-opts=HEAD .   # this branch's history only
+[90m10:32PM[0m [32mINF[0m [1m118 commits scanned.[0m
+[90m10:32PM[0m [32mINF[0m [1mscanned ~7612328 bytes (7.61 MB) in 2.67s[0m
+[90m10:32PM[0m [32mINF[0m [1mno leaks found[0m
+exit code: 0
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 No known vulnerabilities found
 cd frontend && pnpm audit --audit-level low
 No known vulnerabilities found
-exit 0
+audit exit code: 0
