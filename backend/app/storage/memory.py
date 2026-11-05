@@ -7,10 +7,12 @@ from app.storage.port import ObjectNotFoundError
 
 class InMemoryObjectStore:
     """Objects in a dict. Presigned URLs use the ``memory://`` scheme; a test "uploads" by
-    calling ``put`` with the key, as the browser would PUT to the URL."""
+    calling ``put`` with the key, as the browser would PUT to the URL. Set ``failure`` to make
+    reads raise it."""
 
     def __init__(self) -> None:
         self.objects: dict[str, tuple[bytes, str]] = {}
+        self.failure: Exception | None = None
 
     async def prepare(self) -> None:
         return None
@@ -22,6 +24,8 @@ class InMemoryObjectStore:
         self.objects[key] = (data, content_type)
 
     async def get(self, key: str) -> bytes:
+        if self.failure is not None:
+            raise self.failure
         try:
             return self.objects[key][0]
         except KeyError:

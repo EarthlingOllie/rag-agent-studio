@@ -132,10 +132,19 @@ async def test_the_status_endpoint_reports_each_documents_status(
         {
             "id": second["id"],
             "status": "failed",
-            "error_message": "This Document couldn't be processed. Try uploading it again.",
+            "error_message": "This file couldn't be converted. Retry it, or upload a fixed copy.",
+            "error_category": "conversion",
+            "attempt_count": 1,
             "chunk_count": 0,
         },
-        {"id": first["id"], "status": "ready", "error_message": None, "chunk_count": 1},
+        {
+            "id": first["id"],
+            "status": "ready",
+            "error_message": None,
+            "error_category": None,
+            "attempt_count": 1,
+            "chunk_count": 1,
+        },
     ]
 
 

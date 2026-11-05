@@ -907,6 +907,10 @@
       },
       "DocumentOut": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
           "chunk_count": {
             "title": "Chunk Count",
             "type": "integer"
@@ -923,6 +927,16 @@
           "edition": {
             "title": "Edition",
             "type": "integer"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "error_message": {
             "anyOf": [
@@ -969,6 +983,8 @@
           "content_hash",
           "status",
           "error_message",
+          "error_category",
+          "attempt_count",
           "edition",
           "chunk_count",
           "created_at",
@@ -989,9 +1005,23 @@
       },
       "DocumentStatusOut": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
           "chunk_count": {
             "title": "Chunk Count",
             "type": "integer"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "error_message": {
             "anyOf": [
@@ -1017,6 +1047,8 @@
           "id",
           "status",
           "error_message",
+          "error_category",
+          "attempt_count",
           "chunk_count"
         ],
         "title": "DocumentStatusOut",
@@ -1057,6 +1089,17 @@
         ],
         "title": "ErrorResponse",
         "type": "object"
+      },
+      "FailureCategory": {
+        "description": "Why a Document failed, so an Editor knows whether to fix the file or retry it.",
+        "enum": [
+          "unsupported_content",
+          "conversion",
+          "provider",
+          "quota"
+        ],
+        "title": "FailureCategory",
+        "type": "string"
       },
       "Font": {
         "enum": [
@@ -1942,6 +1985,21 @@
         "title": "SetDefaultModelRequest",
         "type": "object"
       },
+      "SetDocumentQuotaRequest": {
+        "properties": {
+          "document_quota": {
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Document Quota",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_quota"
+        ],
+        "title": "SetDocumentQuotaRequest",
+        "type": "object"
+      },
       "SignInRequest": {
         "properties": {
           "email": {
@@ -2266,6 +2324,37 @@
           }
         },
         "title": "UpdateProjectRequest",
+        "type": "object"
+      },
+      "UploadLimitsOut": {
+        "properties": {
+          "accepted_extensions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accepted Extensions",
+            "type": "array"
+          },
+          "document_quota": {
+            "title": "Document Quota",
+            "type": "integer"
+          },
+          "documents_counted": {
+            "title": "Documents Counted",
+            "type": "integer"
+          },
+          "max_upload_bytes": {
+            "title": "Max Upload Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted_extensions",
+          "max_upload_bytes",
+          "document_quota",
+          "documents_counted"
+        ],
+        "title": "UploadLimitsOut",
         "type": "object"
       },
       "ValidationError": {
@@ -5645,6 +5734,90 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/document-quota": {
+      "put": {
+        "description": "Sets how many Documents the Project may hold, not counting Failed ones (Owners only).\nDocuments it already holds are kept when the quota is lowered.",
+        "operationId": "setDocumentQuota",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDocumentQuotaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadLimitsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Document Quota",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents": {
       "get": {
         "description": "The Project's Documents, newest first.",
@@ -5776,7 +5949,17 @@
                 }
               }
             },
-            "description": "The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again."
+            "description": "The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / This Project has reached its Document quota."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The file is larger than the upload limit."
           },
           "422": {
             "content": {
@@ -5941,6 +6124,90 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
+      "post": {
+        "description": "Puts a Failed Document back to Queued and processes it again, from the stored file.",
+        "operationId": "retryDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only a Failed Document can be retried. / This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
       "post": {
         "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``.",
@@ -6027,7 +6294,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/uploads": {
       "post": {
-        "description": "Checks the file type and size, then answers with a presigned URL to PUT the file to.",
+        "description": "Checks the file type and size, and that the Project's Document quota has room, then\nanswers with a presigned URL to PUT the file to.",
         "operationId": "startDocumentUpload",
         "parameters": [
           {
@@ -6090,7 +6357,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it."
+            "description": "This Project has reached its Document quota."
           },
           "413": {
             "content": {
@@ -6124,6 +6391,70 @@
           }
         },
         "summary": "Start Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/uploads/limits": {
+      "get": {
+        "description": "What an upload must satisfy: its type, its size, and room in the Document quota. The\nStudio checks files against these before uploading them.",
+        "operationId": "getUploadLimits",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadLimitsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Upload Limits",
         "tags": [
           "documents"
         ]

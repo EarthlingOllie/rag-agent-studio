@@ -11,6 +11,11 @@ from docling_core.transforms.chunker.tokenizer.base import BaseTokenizer
 from app.embeddings.registry import EmbeddingModel
 
 
+class EmbeddingProviderError(Exception):
+    """The Embedding Model's provider failed or didn't answer. Treated as transient: ingestion
+    retries it with backoff before giving up."""
+
+
 class Embedder(Protocol):
     @property
     def model(self) -> EmbeddingModel: ...
@@ -20,5 +25,6 @@ class Embedder(Protocol):
         ...
 
     def embed_passages(self, texts: list[str]) -> list[list[float]]:
-        """One vector per text, in order, each ``model.dimension`` long."""
+        """One vector per text, in order, each ``model.dimension`` long. Raises
+        ``EmbeddingProviderError`` when the provider fails."""
         ...

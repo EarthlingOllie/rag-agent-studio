@@ -15,9 +15,15 @@ from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 
 
+class UnsupportedContentError(Exception):
+    """The file's content can't be read: encrypted, damaged, or not what its type says."""
+
+
 class DocumentConverter(Protocol):
     def convert(self, data: bytes, filename: str) -> DoclingDocument:
-        """The file's structure (headings, text, pages). ``filename`` gives the format."""
+        """The file's structure (headings, text, pages). ``filename`` gives the format. Raises
+        ``UnsupportedContentError`` for content it can't read; any other error is a failed
+        conversion."""
         ...
 
 
@@ -48,7 +54,9 @@ class FakeConverter:
         if self.failure is not None:
             raise self.failure
         document = DoclingDocument(name=PurePath(filename).stem)
-        pages = data.decode("utf-8", errors="replace").split("\f")
+        # Postgres text can't hold NUL, which binary files read as text would bring.
+        text = data.decode("utf-8", errors="replace").replace("\x00", "")
+        pages = text.split("\f")
         for page_no, page in enumerate(pages, start=1):
             document.add_page(page_no=page_no, size=Size(width=595, height=842))
             paragraph: list[str] = []

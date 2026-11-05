@@ -189,6 +189,19 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _a_failed_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    app = documents.app_of(owner)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    document = await documents.upload(app, owner, project_id, "a.md", b"abc")
+    app.state.ingestion.converter.failure = None
+    return {"project_id": project_id, "document_id": document["id"]}, None
+
+
+async def _a_new_quota(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"document_quota": 10}
+
+
 # Routes that act on one Project. They are also checked at the Project level below.
 PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}", EDITOR, _a_project),
@@ -201,6 +214,14 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents/statuses", EDITOR, _a_project),
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
+    ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/uploads/limits", EDITOR, _a_project),
+    ScopedRoute("PUT", PROJECTS + "/{project_id}/document-quota", OWNER, _a_new_quota),
+    ScopedRoute(
+        "POST",
+        PROJECTS + "/{project_id}/documents/{document_id}/retry",
+        EDITOR,
+        _a_failed_document,
     ),
 ]
 

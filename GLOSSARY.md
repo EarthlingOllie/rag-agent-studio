@@ -199,6 +199,18 @@ _Avoid_: Indexing, processing pipeline, import
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
 
+**Failure category**:
+What kind of failure set a Document to Failed, shown with its readable message: unsupported content (the file isn't what its type says, or has no readable text), conversion error (the converter couldn't convert it, or processing went wrong), provider error (the Embedding Model's provider kept failing after the automatic retries) or quota (the Project's Document quota had no room for it).
+_Avoid_: Error code, error type, failure reason
+
+**Retry**:
+Processing a Failed Document again from its stored file, without uploading it again. An Editor retries by hand; a transient failure (a provider error) is retried automatically, after an exponential backoff, up to a fixed number of attempts.
+_Avoid_: Reprocess, re-ingest, re-run
+
+**Document quota**:
+The most Documents a Project may hold, not counting Failed ones. Uploads beyond it are refused with a clear message, and a Document processed when the Project is already full fails with the quota category. Every Project starts at 500; an Owner can change it.
+_Avoid_: Document limit, storage limit, cap
+
 **Tag**:
 A label on Documents that an Agent can use to limit which Documents it retrieves from.
 _Avoid_: Category, folder, label

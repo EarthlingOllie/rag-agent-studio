@@ -1,14 +1,16 @@
 """Uploading Documents: presign, direct upload, confirm. And reading Documents and Chunks.
 
-1. ``start_upload`` checks the file type and size, and answers with a presigned PUT URL. The
+1. ``start_upload`` checks the file type and size, and that the Project's Document quota has
+   room, and answers with a presigned PUT URL. The
    pending upload is remembered in Redis until the URL expires.
 2. The browser PUTs the file straight to the object store.
-3. ``confirm_upload`` reads the stored file, computes its SHA-256 content hash (checking it
-   against the one the browser sent, if any), creates the Document as Queued, and enqueues
-   ingestion.
+3. ``confirm_upload`` reads the stored file, checks its real size and the quota again, computes
+   its SHA-256 content hash (checking it against the one the browser sent, if any), creates the
+   Document as Queued, and enqueues ingestion.
 
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
-through ``active_project``, so an archived Project takes none.
+through ``active_project``, so an archived Project takes none. A Failed Document can be retried,
+which queues it for ingestion again.
 """
 
 import hashlib
@@ -16,34 +18,19 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import PurePath
 
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.documents.limits import documents_counted, mime_type_for
 from app.documents.models import Chunk, Document, DocumentStatus
 from app.projects import service as projects
+from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
 from app.tenancy.repository import OrganisationScope
 
-# The file types a Document can be uploaded from, by extension, with the MIME type stored.
-SUPPORTED_TYPES: dict[str, str] = {
-    ".pdf": "application/pdf",
-    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ".html": "text/html",
-    ".htm": "text/html",
-    ".md": "text/markdown",
-    ".markdown": "text/markdown",
-    ".txt": "text/plain",
-}
-
 _PENDING = "document-upload:{}"
-
-
-class UnsupportedFileTypeError(Exception):
-    """The file's extension isn't one a Document can be made from."""
 
 
 class FileTooLargeError(Exception):
@@ -66,19 +53,24 @@ class DocumentNotFoundError(Exception):
     """No Document with that ID in the Project."""
 
 
+class QuotaReachedError(Exception):
+    """The Project already holds as many Documents as its quota allows."""
+
+    def __init__(self, quota: int) -> None:
+        super().__init__(quota)
+        self.quota = quota
+
+
+class DocumentNotFailedError(Exception):
+    """Only a Failed Document can be retried."""
+
+
 @dataclass(frozen=True)
 class PendingUpload:
     upload_id: uuid.UUID
     url: str
     content_type: str
     expires_at: datetime
-
-
-def mime_type_for(filename: str) -> str:
-    try:
-        return SUPPORTED_TYPES[PurePath(filename).suffix.lower()]
-    except KeyError:
-        raise UnsupportedFileTypeError from None
 
 
 async def start_upload(
@@ -98,6 +90,7 @@ async def start_upload(
     content_type = mime_type_for(filename)
     if size_bytes > max_bytes:
         raise FileTooLargeError
+    await _check_quota(session, project)
     upload_id = uuid.uuid4()
     object_key = f"organisations/{scope.organisation_id}/projects/{project.id}/{upload_id}"
     pending = {"name": filename, "mime_type": content_type, "object_key": object_key}
@@ -122,9 +115,11 @@ async def confirm_upload(
     *,
     upload_id: uuid.UUID,
     content_hash: str | None,
+    max_bytes: int,
 ) -> Document:
-    """Creates the Document as Queued; the caller enqueues ingestion after this commits."""
-    project = await projects.active_project(session, scope, project_id)
+    """Creates the Document as Queued; the caller enqueues ingestion after this commits. The
+    Project stays locked until then, so concurrent confirms can't overfill its quota."""
+    project = await projects.active_project(session, scope, project_id, lock=True)
     key = _PENDING.format(f"{project.id}:{upload_id}")
     raw = await redis.get(key)
     if raw is None:
@@ -134,6 +129,12 @@ async def confirm_upload(
         data = await store.get(pending["object_key"])
     except ObjectNotFoundError:
         raise FileNotUploadedError from None
+    if len(data) > max_bytes:
+        # The presigned URL can't bound the size, so a file larger than it claimed is removed.
+        await store.delete(pending["object_key"])
+        await redis.delete(key)
+        raise FileTooLargeError
+    await _check_quota(session, project)
     digest = hashlib.sha256(data).hexdigest()
     if content_hash is not None and content_hash.lower() != digest:
         raise ContentHashMismatchError
@@ -152,6 +153,62 @@ async def confirm_upload(
     session.add(document)
     await session.commit()
     await redis.delete(key)
+    await session.refresh(document)
+    return document
+
+
+async def _check_quota(session: AsyncSession, project: Project) -> None:
+    if await documents_counted(session, project.id) >= project.document_quota:
+        raise QuotaReachedError(project.document_quota)
+
+
+@dataclass(frozen=True)
+class UploadLimits:
+    max_upload_bytes: int
+    document_quota: int
+    documents_counted: int
+
+
+async def upload_limits(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, max_bytes: int
+) -> UploadLimits:
+    project = await projects.get_project(session, scope, project_id)
+    return UploadLimits(
+        max_upload_bytes=max_bytes,
+        document_quota=project.document_quota,
+        documents_counted=await documents_counted(session, project.id),
+    )
+
+
+async def set_document_quota(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, quota: int
+) -> None:
+    """Sets how many Documents the Project may hold. Lowering it below what the Project holds
+    keeps those Documents; only new uploads, and Documents processed later, are refused."""
+    project = await projects.get_project(session, scope, project_id, lock=True)
+    project.document_quota = quota
+    await session.commit()
+
+
+async def retry_document(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+) -> Document:
+    """Puts a Failed Document back to Queued; the caller enqueues ingestion after this commits."""
+    project = await projects.active_project(session, scope, project_id)
+    document = await session.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.project_id == project.id)
+        .with_for_update()
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    if document.status != DocumentStatus.FAILED:
+        raise DocumentNotFailedError
+    document.status = DocumentStatus.QUEUED
+    document.error_message = None
+    document.error_category = None
+    document.updated_at = func.now()
+    await session.commit()
     await session.refresh(document)
     return document
 
