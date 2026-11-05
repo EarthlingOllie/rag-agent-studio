@@ -1,0 +1,21 @@
+# commit aa17f5d, fresh clone of ticket/02-03-model-gateway-default-model
+$ cd frontend && pnpm build
+
+> rag-agent-studio-frontend@ build <scratch>/clean0203/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build <scratch>/clean0203/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 189 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-wzei0YyY.css   17.27 kB │ gzip:   4.22 kB
+dist/assets/index-Cn5CX-sv.js   435.82 kB │ gzip: 128.63 kB
+
+✓ built in 975ms
+[exit code 0]
