@@ -71,6 +71,8 @@ filterwarnings = [
     # task is sent, and never closes it; it is collected at an arbitrary later point in the run.
     "ignore:unclosed <socket.socket:ResourceWarning",
     "ignore:Exception ignored in. <socket.socket:pytest.PytestUnraisableExceptionWarning",
+    # Docling's own PDF pipeline reads its deprecated `generate_table_images` option (live suite only).
+    "ignore:This field is deprecated. Use `generate_page_images=True`:DeprecationWarning",
 ]
 
 [tool.coverage.run]
