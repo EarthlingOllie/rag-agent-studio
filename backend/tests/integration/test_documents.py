@@ -134,8 +134,15 @@ async def test_the_status_endpoint_reports_each_documents_status(
             "status": "failed",
             "error_message": "This Document couldn't be processed. Try uploading it again.",
             "chunk_count": 0,
+            "replacement": None,
         },
-        {"id": first["id"], "status": "ready", "error_message": None, "chunk_count": 1},
+        {
+            "id": first["id"],
+            "status": "ready",
+            "error_message": None,
+            "chunk_count": 1,
+            "replacement": None,
+        },
     ]
 
 

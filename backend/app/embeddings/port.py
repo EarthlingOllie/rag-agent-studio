@@ -22,3 +22,7 @@ class Embedder(Protocol):
     def embed_passages(self, texts: list[str]) -> list[list[float]]:
         """One vector per text, in order, each ``model.dimension`` long."""
         ...
+
+    def embed_query(self, text: str) -> list[float]:
+        """The vector a search for ``text`` compares Chunk vectors against."""
+        ...

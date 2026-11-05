@@ -181,7 +181,7 @@ async def test_a_document_still_being_processed_cant_be_retried(
 
     assert retried.status_code == 409
     assert retried.json() == {
-        "detail": "This Document is still being processed. Retry it once it is Ready or Failed."
+        "detail": "This Document is still being processed. Try again once it is Ready or Failed."
     }
 
 

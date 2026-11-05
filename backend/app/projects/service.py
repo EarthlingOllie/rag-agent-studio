@@ -15,8 +15,10 @@ from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app import audit
+from app.agents.models import Agent
 from app.documents.models import Document
 from app.projects.models import Project
 from app.tenancy.repository import OrganisationScope
@@ -44,19 +46,29 @@ class ProjectSummary:
 
 
 async def _summaries(session: AsyncSession, projects: list[Project]) -> list[ProjectSummary]:
-    # Agents arrive in ticket 04-01, which adds their count here. Until then there are none.
-    counts: dict[uuid.UUID, int] = {}
-    if projects:
-        rows = await session.execute(
-            select(Document.project_id, func.count())
-            .where(Document.project_id.in_([project.id for project in projects]))
-            .group_by(Document.project_id)
-        )
-        counts = {project_id: count for project_id, count in rows}
+    ids = [project.id for project in projects]
+    documents: dict[uuid.UUID, int] = {}
+    agents: dict[uuid.UUID, int] = {}
+    if ids:
+        documents = await _counts(session, Document.project_id, ids)
+        agents = await _counts(session, Agent.project_id, ids)
     return [
-        ProjectSummary(project, document_count=counts.get(project.id, 0), agent_count=0)
+        ProjectSummary(
+            project,
+            document_count=documents.get(project.id, 0),
+            agent_count=agents.get(project.id, 0),
+        )
         for project in projects
     ]
+
+
+async def _counts(
+    session: AsyncSession, column: InstrumentedAttribute[uuid.UUID], ids: list[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    rows = await session.execute(
+        select(column, func.count()).where(column.in_(ids)).group_by(column)
+    )
+    return {project_id: count for project_id, count in rows}
 
 
 async def list_projects(
