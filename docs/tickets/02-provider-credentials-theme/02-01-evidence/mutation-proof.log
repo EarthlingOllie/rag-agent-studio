@@ -1,0 +1,30 @@
+$ python3 docs/tickets/02-provider-credentials-theme/02-01-evidence/mutate.py <worktree>
+# worktree at 482707e; TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:47432/studio_test_m0201
+caught    A failed check still stores the credential  (backend/app/credentials/service.py)
+caught    Rotation stores the new key despite a failed check  (backend/app/credentials/service.py)
+caught    Rotation gives the credential a new identity  (backend/app/credentials/service.py)
+caught    Masked suffix shows 8 characters  (backend/app/credentials/service.py)
+caught    Re-check doesn't record a failure  (backend/app/credentials/service.py)
+caught    Re-check checks a key other than the stored one  (backend/app/credentials/service.py)
+caught    Delete ignores references  (backend/app/credentials/service.py)
+caught    Deletion not audited  (backend/app/credentials/service.py)
+caught    Create not audited  (backend/app/credentials/service.py)
+caught    Duplicate name allowed  (backend/app/credentials/service.py)
+caught    Unsupported capabilities accepted  (backend/app/credentials/service.py)
+caught    Credentials of every Organisation listed  (backend/app/credentials/service.py)
+caught    Editors can add credentials  (backend/app/credentials/api.py)
+caught    Response carries the sealed secret  (backend/app/credentials/api.py)
+caught    Malformed key echoed back  (backend/app/credentials/api.py)
+caught    Failure reasons not typed  (backend/app/credentials/api.py)
+caught    401 treated as missing model access  (backend/app/credentials/http_verifier.py)
+caught    Network errors raise  (backend/app/credentials/http_verifier.py)
+caught    KMS refusal leaks as ClientError  (backend/app/crypto/kms_key_wrapper.py)
+caught    KMS wrap without encryption context  (backend/app/crypto/kms_key_wrapper.py)
+caught    Owner controls shown to Editors  (frontend/apps/studio/src/settings/CredentialsPage.tsx)
+caught    Failure reason not shown  (frontend/apps/studio/src/settings/credentials.ts)
+caught    Bedrock offered in the API-key wizard  (frontend/apps/studio/src/settings/CredentialsPage.tsx)
+caught    Delete without confirming  (frontend/apps/studio/src/settings/CredentialsPage.tsx)
+caught    References not listed on a refused delete  (frontend/apps/studio/src/settings/CredentialsPage.tsx)
+unmodified code passes: True
+25/25 mutations caught
+exit code: 0
