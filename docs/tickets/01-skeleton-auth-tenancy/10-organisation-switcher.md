@@ -7,10 +7,10 @@
 **Blocked by:**
 - [01-08: Invites and joining an Organisation](08-invites-joining.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] Members with several memberships see a switcher, and their choice persists across reloads
-- [ ] Organisation-scoped routes carry the active Organisation, and switching never shows another Organisation's data
-- [ ] Isolation tests cover a Member who belongs to two Organisations
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Members with several memberships see a switcher, and their choice persists across reloads
+- [x] Organisation-scoped routes carry the active Organisation, and switching never shows another Organisation's data
+- [x] Isolation tests cover a Member who belongs to two Organisations
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

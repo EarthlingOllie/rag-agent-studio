@@ -1,0 +1,68 @@
+$ python3 mutate.py <worktree>   (in the branch worktree; the code is identical to a64503d, which was committed straight after this run; TEST_DATABASE_URL=…/studio_test_0110 TEST_REDIS_URL=…/10)
+== mutation: switching to an Organisation the Member doesn't belong to is allowed  (backend/app/tenancy/switcher_api.py)
+   CAUGHT; failing tests:
+     test_switching_to_an_organisation_the_member_does_not_belong_to_is_not_found
+     test_a_remembered_organisation_the_member_has_left_is_not_active
+== mutation: the choice is not remembered  (backend/app/tenancy/switcher_api.py)
+   CAUGHT; failing tests:
+     test_a_member_of_two_organisations_switches_and_the_choice_is_remembered
+     test_switching_is_per_member
+== mutation: a remembered Organisation the Member left stays active  (backend/app/tenancy/active.py)
+   CAUGHT; failing tests:
+     test_a_remembered_organisation_the_member_has_left_is_not_active
+== mutation: the active Organisation is always the first  (backend/app/tenancy/active.py)
+   CAUGHT; failing tests:
+     test_a_member_of_two_organisations_switches_and_the_choice_is_remembered
+     test_switching_is_per_member
+== mutation: one choice shared by every Member  (backend/app/tenancy/active.py)
+   CAUGHT; failing tests:
+     test_switching_is_per_member
+== mutation: /me doesn't report the active Organisation  (backend/app/auth/api.py)
+   CAUGHT; failing tests:
+     test_a_new_member_starts_in_the_organisation_they_created
+     test_a_member_of_two_organisations_switches_and_the_choice_is_remembered
+     test_switching_is_per_member
+     test_switching_to_an_organisation_the_member_does_not_belong_to_is_not_found
+     test_a_remembered_organisation_the_member_has_left_is_not_active
+     test_a_member_signs_in_with_email_and_password
+== mutation: an Organisation's invite reachable through the Member's other Organisation  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_one_organisations_resources_are_not_found_through_the_members_other_organisation[DELETE /api/organisations/{organisation_id}/invites/{invite_id}]
+     test_one_organisations_resources_are_not_found_through_the_members_other_organisation[POST /api/organisations/{organisation_id}/invites/{invite_id}/renew]
+     test_an_owner_cannot_revoke_or_renew_another_organisations_invite
+== mutation: the invite list shows every Organisation the Member belongs to  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_a_member_of_two_organisations_sees_each_ones_data_only_in_it
+== mutation: Studio: no switcher for Members of two Organisations  (frontend/apps/studio/src/shell/OrganisationSwitcher.tsx)
+   CAUGHT; failing tests:
+     a Member of several Organisations sees a switcher listing them, with the open one chosen 238ms
+     after switching, nothing from the previous Organisation is shown while the new one's data loads 241ms
+     an Organisation's address keeps it open across reloads, whichever one is remembered 40ms
+     on an Organisation the Member doesn't belong to, the switcher offers their own 30ms
+     says when switching failed and stays in the same Organisation 48ms
+     switching opens the other Organisation, remembers it, and shows only its data 328ms
+     the Studio opens the Organisation the Member last switched to 132ms
+     the switcher is disabled while a switch is under way 46ms
+== mutation: Studio: `/` ignores the remembered Organisation  (frontend/apps/studio/src/shell/SignedInShell.tsx)
+   CAUGHT; failing tests:
+     the Studio opens the Organisation the Member last switched to 96ms
+== mutation: Studio: switching doesn't open the chosen Organisation  (frontend/apps/studio/src/shell/OrganisationSwitcher.tsx)
+   CAUGHT; failing tests:
+     after switching, nothing from the previous Organisation is shown while the new one's data loads 1190ms
+     on an Organisation the Member doesn't belong to, the switcher offers their own 1065ms
+     switching opens the other Organisation, remembers it, and shows only its data 1445ms
+== mutation: Studio: switching isn't sent to the API  (frontend/apps/studio/src/auth/session.ts)
+   CAUGHT; failing tests:
+     after switching, nothing from the previous Organisation is shown while the new one's data loads 1212ms
+     on an Organisation the Member doesn't belong to, the switcher offers their own 1065ms
+     switching opens the other Organisation, remembers it, and shows only its data 1291ms
+== mutation: Studio: invites cached across Organisations  (frontend/apps/studio/src/invites/invites.ts)
+   CAUGHT; failing tests:
+     after switching, nothing from the previous Organisation is shown while the new one's data loads 1229ms
+== mutation: Studio: a failed switch isn't reported  (frontend/apps/studio/src/shell/OrganisationSwitcher.tsx)
+   CAUGHT; failing tests:
+     says when switching failed and stays in the same Organisation 1057ms
+
+14/14 mutations caught
+unmodified backend: 78 passed in 38.52s
+unmodified studio: Tests  60 passed (60)
