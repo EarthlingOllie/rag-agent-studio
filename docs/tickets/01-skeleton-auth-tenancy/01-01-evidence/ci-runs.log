@@ -1,5 +1,11 @@
 # GitHub Actions runs on branch ticket/01-01-walking-skeleton (read via the GitHub API)
 
+## Commit 196bc63 ("Format worker health route"; includes the worker health task-failure fix 5ece02a)  -- both green
+backend   run 41941689400  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41941689400
+  job checks: Install, Lint, Type check, Tests (15 passed incl. task-failure path), 100% coverage gate -> success
+frontend  run 41941689384  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41941689384
+  job checks + api-client-drift (regenerated client for the updated 503 description)  -> success
+
 ## Commit 820d786 ("Ignore Celery's unclosed result-backend pub/sub sockets...")  -- both green
 backend   run 41940922662  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41940922662
   job checks: Install, Lint (ruff), Type check (mypy --strict),

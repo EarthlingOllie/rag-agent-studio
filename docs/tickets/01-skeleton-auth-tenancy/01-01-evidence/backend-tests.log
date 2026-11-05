@@ -1,5 +1,5 @@
 $ git rev-parse HEAD
-5ece02a430732794fe5945563c73d9007b6985fa
+196bc63c24b5ddc5dd86e58d1a753c4257339e8d
 $ make test-backend  (Postgres+pgvector and Redis from make services)
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
@@ -40,5 +40,5 @@ app/worker/tasks.py            4      0      0      0   100%
 TOTAL                        131      0      8      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-============================== 15 passed in 3.61s ==============================
+============================== 15 passed in 3.69s ==============================
 exit=0

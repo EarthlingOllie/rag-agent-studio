@@ -1,5 +1,5 @@
 $ git rev-parse HEAD
-5ece02a430732794fe5945563c73d9007b6985fa
+196bc63c24b5ddc5dd86e58d1a753c4257339e8d
 $ make test-frontend
 cd frontend && pnpm test
 
@@ -13,8 +13,8 @@ cd frontend && pnpm test
 
  Test Files  2 passed (2)
       Tests  8 passed (8)
-   Start at  00:28:43
-   Duration  1.92s (environment 40%, tests 36%, setup 14%, import 5%, worker 3%, transform 2%)
+   Start at  00:29:10
+   Duration  2.25s (environment 39%, tests 38%, setup 14%, import 5%, worker 2%, transform 2%)
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.

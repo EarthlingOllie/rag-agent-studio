@@ -1,19 +1,20 @@
 $ git rev-parse HEAD
-5ece02a430732794fe5945563c73d9007b6985fa
+196bc63c24b5ddc5dd86e58d1a753c4257339e8d
 $ make lint
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
-E501 Line too long (124 > 100)
-  --> app/api/health.py:89:101
-   |
-87 |     "/worker",
-88 |     response_model=WorkerHealthResponse,
-89 |     responses={503: {"model": WorkerHealthResponse, "description": "No worker replied in time, or the health task failed"}},
-   |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
-90 |     operation_id="getWorkerHealth",
-91 | )
-   |
+All checks passed!
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+23 files already formatted
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Success: no issues found in 23 source files
+cd frontend && pnpm lint && pnpm typecheck
 
-Found 1 error.
-make: *** [Makefile:38: lint-backend] Error 1
-exit=2
+> rag-agent-studio-frontend@ lint /home/user/rag-agent-studio/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /home/user/rag-agent-studio/frontend
+> tsc
+
+exit=0
