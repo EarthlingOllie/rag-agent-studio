@@ -1,5 +1,5 @@
 import type { Schemas } from "@studio/api-client";
-import { screen, waitFor, within } from "@testing-library/react";
+import { configure, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
@@ -7,6 +7,10 @@ import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeProjectsApi, hrProject, type Project, salesProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
+
+// The Project page loads lazily; on a loaded machine its first render can take over the default
+// one second, so this file waits longer before a `findBy` gives up (vitest isolates each file).
+configure({ asyncUtilTimeout: 5000 });
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const projectPage = (projectId: string) => `/organisations/${organisationId}/projects/${projectId}`;
