@@ -10,3 +10,9 @@
 # The same made-up keys as they landed on candidate in the squash merge of PR #11.
 c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_events.py:generic-api-key:148
 c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_events.py:generic-api-key:154
+# Ticket 02-01 (branch ticket/02-01-api-key-provider-credentials): made-up Provider Credential keys
+# the credential tests save through the fake verifier, and the test-only local key wrapper key
+# ("test-only-local-key-wrapper-key!" in base64). None is a real secret.
+aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/integration/test_tenant_isolation.py:generic-api-key:95
+aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:frontend/apps/studio/src/settings/CredentialsPage.test.tsx:generic-api-key:261
+aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/unit/test_http_credential_verifier.py:generic-api-key:125
