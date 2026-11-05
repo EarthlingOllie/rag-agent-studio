@@ -14,7 +14,8 @@ function OcrSetting({ project, organisationId }: { project: Project; organisatio
       <label className="flex items-center gap-2">
         <input
           type="checkbox"
-          checked={project.ocr_enabled}
+          // While a change saves (the box is disabled meanwhile), it shows the setting asked for.
+          checked={update.isPending ? !project.ocr_enabled : project.ocr_enabled}
           disabled={archived || update.isPending}
           onChange={(event) => {
             update.mutate({ ocr_enabled: event.target.checked });

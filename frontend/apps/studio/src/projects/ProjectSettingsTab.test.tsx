@@ -63,6 +63,7 @@ test("the toggle is disabled while saving, and a refused change says why and kee
   await userEvent.click(await screen.findByRole("checkbox", { name: OCR }));
 
   expect(screen.getByRole("checkbox", { name: OCR })).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: OCR })).toBeChecked();
   expect(await screen.findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
   expect(screen.getByRole("checkbox", { name: OCR })).not.toBeChecked();
   expect(screen.getByRole("checkbox", { name: OCR })).toBeEnabled();
