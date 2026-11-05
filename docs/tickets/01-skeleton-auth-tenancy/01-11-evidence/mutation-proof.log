@@ -1,0 +1,81 @@
+$ (branch worktree @ f9e1acf) python3 mutate.py <worktree>   # the script follows the output
+
+CAUGHT: TOTP window of 0 steps instead of 1
+    FAILED tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted[-1-True] | 1 failed, 1 passed in 1.12s
+CAUGHT: TOTP window of 2 steps
+    FAILED tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted[-2-False] | 1 failed in 0.69s
+CAUGHT: A TOTP code can be replayed (both guards removed)
+    FAILED tests/integration/test_mfa.py::test_a_code_cannot_be_used_twice - asse... | 1 failed in 1.01s
+CAUGHT: Recovery codes are never used up
+    FAILED tests/integration/test_mfa.py::test_a_recovery_code_completes_sign_in_once | 1 failed in 0.81s
+CAUGHT: Recovery codes stored in the clear
+    FAILED tests/integration/test_mfa.py::test_recovery_codes_and_the_totp_secret_are_not_stored_in_the_clear | 1 failed in 0.63s
+CAUGHT: Sign-in ignores MFA
+    FAILED tests/integration/test_mfa.py::test_sign_in_for_an_mfa_member_is_pending_until_a_code_is_given | 1 failed in 0.83s
+CAUGHT: Enrolment needs no confirming code
+    FAILED tests/integration/test_mfa.py::test_enrolment_needs_a_confirming_code | 1 failed in 0.52s
+CAUGHT: Disabling skips the password
+    FAILED tests/integration/test_mfa.py::test_disabling_mfa_needs_the_password_and_a_code | 1 failed in 0.60s
+CAUGHT: Disabling skips the code
+    FAILED tests/integration/test_mfa.py::test_disabling_mfa_needs_the_password_and_a_code | 1 failed in 0.75s
+CAUGHT: Disabling is not audited
+    FAILED tests/integration/test_mfa.py::test_enrolment_disabling_and_recovery_code_use_are_audit_events | 1 failed in 1.07s
+CAUGHT: Recovery-code use is not audited
+    FAILED tests/integration/test_mfa.py::test_enrolment_disabling_and_recovery_code_use_are_audit_events | 1 failed in 1.07s
+CAUGHT: Wrong codes don't count towards the limit
+    FAILED tests/integration/test_mfa.py::test_five_wrong_codes_end_the_pending_sign_in | 1 failed in 0.78s
+CAUGHT: Envelope ignores the context (seal and open)
+    FAILED tests/unit/test_envelope_encryption.py::test_a_record_moved_to_another_context_does_not_open | 1 failed in 0.10s
+CAUGHT: Unknown versions accepted
+    FAILED tests/unit/test_envelope_encryption.py::test_unknown_format_versions_are_refused | 1 failed in 0.05s
+CAUGHT: One data key reused for every record
+    FAILED tests/unit/test_envelope_encryption.py::test_every_record_gets_a_fresh_256_bit_data_key | 1 failed in 0.09s
+Unmodified code: 54 passed in 21.95s
+git status (must be clean): ?? docs/tickets/01-skeleton-auth-tenancy/01-11-evidence/
+
+
+exit code: 0
+
+----- mutate.py -----
+"""Apply one mutation at a time to the 01-11 code, run the tests that should catch it, restore."""
+import subprocess, sys, os
+os.chdir(sys.argv[1] + "/backend")
+env = dict(os.environ, TEST_DATABASE_URL="postgresql+asyncpg://studio:studio@localhost:5432/studio_test_0111", TEST_REDIS_URL="redis://localhost:6379/11")
+M = [
+ ("TOTP window of 0 steps instead of 1", "app/auth/mfa.py", "WINDOW_STEPS = 1", "WINDOW_STEPS = 0", "tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted"),
+ ("TOTP window of 2 steps", "app/auth/mfa.py", "WINDOW_STEPS = 1", "WINDOW_STEPS = 2", "tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted"),
+ ("A TOTP code can be replayed (both guards removed)", "app/auth/mfa.py", [("if last_used is not None and step <= last_used:", "if False:"), ("or_(MfaFactor.last_used_step.is_(None), MfaFactor.last_used_step < step),", "")], None, "tests/integration/test_mfa.py::test_a_code_cannot_be_used_twice"),
+ ("Recovery codes are never used up", "app/auth/mfa.py", "                RecoveryCode.used_at.is_(None),\n            )\n            .values(used_at=self._clock.now())", "            )\n            .values(created_at=RecoveryCode.created_at)", "tests/integration/test_mfa.py::test_a_recovery_code_completes_sign_in_once"),
+ ("Recovery codes stored in the clear", "app/auth/mfa.py", "    return hashlib.sha256(normalised.encode()).hexdigest()", "    return normalised", "tests/integration/test_mfa.py::test_recovery_codes_and_the_totp_secret_are_not_stored_in_the_clear"),
+ ("Sign-in ignores MFA", "app/auth/api.py", "    if await Mfa(db, request.app.state.envelope, clock).is_enabled(member.id):", "    if False:", "tests/integration/test_mfa.py::test_sign_in_for_an_mfa_member_is_pending_until_a_code_is_given"),
+ ("Enrolment needs no confirming code", "app/auth/mfa.py", "        if not await self._accept_totp(factor, code):\n            raise CodeIncorrectError\n        factor.confirmed_at", "        factor.confirmed_at", "tests/integration/test_mfa.py::test_enrolment_needs_a_confirming_code"),
+ ("Disabling skips the password", "app/auth/mfa.py", "        if not verify_password(member.password_hash, password):\n            raise CodeIncorrectError\n", "", "tests/integration/test_mfa.py::test_disabling_mfa_needs_the_password_and_a_code"),
+ ("Disabling skips the code", "app/auth/mfa.py", "        if not await self._accept_code(factor, code):\n            await self._session.commit()\n            raise CodeIncorrectError\n        await self._session.execute(delete(RecoveryCode).where(RecoveryCode.member_id == member.id))\n        await self._session.delete", "        await self._session.execute(delete(RecoveryCode).where(RecoveryCode.member_id == member.id))\n        await self._session.delete", "tests/integration/test_mfa.py::test_disabling_mfa_needs_the_password_and_a_code"),
+ ("Disabling is not audited", "app/auth/mfa.py", '        await self._audit(member.id, "mfa.disabled", {"mfa_enabled": True}, {"mfa_enabled": False})\n', "", "tests/integration/test_mfa.py::test_enrolment_disabling_and_recovery_code_use_are_audit_events"),
+ ("Recovery-code use is not audited", "app/auth/mfa.py", "        await self._audit(\n            member_id, \"mfa.recovery_code_used\"", "        None and self._audit(\n            member_id, \"mfa.recovery_code_used\"", "tests/integration/test_mfa.py::test_enrolment_disabling_and_recovery_code_use_are_audit_events"),
+ ("Wrong codes don't count towards the limit", "app/auth/mfa_api.py", "        await pending.record_failure(pending_token)\n", "", "tests/integration/test_mfa.py::test_five_wrong_codes_end_the_pending_sign_in"),
+ ("Envelope ignores the context (seal and open)", "app/crypto/envelope.py", [("encrypt(nonce, plaintext, header + context)", "encrypt(nonce, plaintext, header)"), ("decrypt(nonce, ciphertext, header + context)", "decrypt(nonce, ciphertext, header)")], None, "tests/unit/test_envelope_encryption.py::test_a_record_moved_to_another_context_does_not_open"),
+ ("Unknown versions accepted", "app/crypto/envelope.py", "if version != FORMAT_VERSION:", "if False:", "tests/unit/test_envelope_encryption.py::test_unknown_format_versions_are_refused"),
+ ("One data key reused for every record", "app/crypto/envelope.py", "        data_key = AESGCM.generate_key(bit_length=DATA_KEY_BYTES * 8)\n", "        data_key = b'k' * DATA_KEY_BYTES\n", "tests/unit/test_envelope_encryption.py::test_every_record_gets_a_fresh_256_bit_data_key"),
+]
+ok = True
+for name, path, old, new, tests in M:
+    src = open(path).read()
+    pairs = old if new is None else [(old, new)]
+    mutated = src
+    for o, n in pairs:
+        assert mutated.count(o) == 1, (name, o)
+        mutated = mutated.replace(o, n)
+    open(path, "w").write(mutated)
+    try:
+        r = subprocess.run(["uv", "run", "pytest", "-q", "--no-cov", "-x", *tests.split()], capture_output=True, text=True, env=env)
+    finally:
+        open(path, "w").write(src)
+    summary = [l for l in r.stdout.splitlines() if l.startswith(("FAILED", "ERROR"))][:1] + r.stdout.strip().splitlines()[-1:]
+    caught = r.returncode != 0
+    ok &= caught
+    print(f"{'CAUGHT' if caught else 'MISSED'}: {name}\n    {' | '.join(summary)}")
+r = subprocess.run(["uv", "run", "pytest", "-q", "--no-cov", "tests/integration/test_mfa.py", "tests/unit"], capture_output=True, text=True, env=env)
+print("Unmodified code:", r.stdout.strip().splitlines()[-1])
+print("git status (must be clean):", subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout or "clean")
+sys.exit(0 if ok and r.returncode == 0 else 1)

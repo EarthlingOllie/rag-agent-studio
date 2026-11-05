@@ -26,6 +26,7 @@ export function Field({
   type = "text",
   autoComplete,
   minLength,
+  inputMode,
   defaultValue,
 }: {
   label: string;
@@ -33,6 +34,7 @@ export function Field({
   type?: string;
   autoComplete: string;
   minLength?: number;
+  inputMode?: "numeric";
   defaultValue?: string;
 }) {
   return (
@@ -47,6 +49,7 @@ export function Field({
         autoComplete={autoComplete}
         required
         {...(minLength === undefined ? {} : { minLength })}
+        {...(inputMode === undefined ? {} : { inputMode })}
         {...(defaultValue === undefined ? {} : { defaultValue })}
         className="mt-1 block w-full rounded border border-slate-400 px-3 py-2 focus:outline-2 focus:outline-slate-900"
       />

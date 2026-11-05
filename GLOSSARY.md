@@ -37,6 +37,14 @@ A Member role that can manage Provider Credentials, Members and Organisation set
 **Editor**:
 A Member role that can manage Projects, Documents and Agents.
 
+**MFA**:
+Multi-factor authentication: a Member's sign-in also needs a code from an authenticator app (TOTP). It belongs to the Member, so it applies in every Organisation they belong to.
+_Avoid_: 2FA, two-step verification (fine in Studio copy, not in code or docs)
+
+**Recovery Code**:
+One of ten single-use codes a Member gets when they turn MFA on, to sign in without their authenticator app. Shown once; making new ones stops the old ones working.
+_Avoid_: Backup code
+
 **Audit Event**:
 An append-only record of who changed what in an Organisation, and when.
 _Avoid_: Activity, history, log

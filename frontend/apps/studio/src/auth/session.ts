@@ -47,8 +47,27 @@ export function useSignUp() {
   return useStartSession((body: SignUpDetails) => api.POST("/api/auth/sign-up", { body }));
 }
 
+/** What a correct password leads to: a session, or (for a Member with MFA) a code challenge. */
+export type SignInOutcome = { mfaRequired: false; session: Session } | { mfaRequired: true };
+
 export function useSignIn() {
-  return useStartSession((body: SignInDetails) => api.POST("/api/auth/sign-in", { body }));
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: SignInDetails): Promise<SignInOutcome> => {
+      const { data, response } = await api.POST("/api/auth/sign-in", { body });
+      if (data === undefined) throw new AuthRequestError(response.status);
+      if ("mfa_required" in data) return { mfaRequired: true };
+      return { mfaRequired: false, session: data };
+    },
+    onSuccess: (outcome) => {
+      if (!outcome.mfaRequired) queryClient.setQueryData(ME_QUERY_KEY, outcome.session);
+    },
+  });
+}
+
+/** Finishes an MFA-pending sign-in with an authenticator or recovery code. */
+export function useVerifyMfa() {
+  return useStartSession((code: string) => api.POST("/api/auth/mfa/verify", { body: { code } }));
 }
 
 export function useSignOut() {
