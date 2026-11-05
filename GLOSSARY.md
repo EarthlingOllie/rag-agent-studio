@@ -199,6 +199,18 @@ _Avoid_: Indexing, processing pipeline, import
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
 
+**Duplicate**:
+An upload whose Content hash matches a Document already in the Project (its current Edition, or a Staged edition still being ingested). It is refused, naming the Document that has the content. A Failed Document or Failed Staged edition holds no content, so its file is not a Duplicate and can be uploaded again, as a new Document or as the next Edition.
+_Avoid_: Copy, clash, repeat upload
+
+**Edition**:
+One uploaded version of a Document's file, numbered from 1. Only the current Edition is kept (ADR-0003 versions Agents, not Documents); uploading a newer Edition replaces it in place, keeping the Document's identity and Tags.
+_Avoid_: Document version, revision
+
+**Staged edition**:
+A newer Edition being ingested. Its Chunks are written under its own Edition number while the current Edition keeps serving; when it is Ready it is swapped in, and the old Chunks removed, in one transaction. A Failed one leaves the Document as it was.
+_Avoid_: Draft edition, pending upload, shadow copy
+
 **Tag**:
 A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay.
 _Avoid_: Category, folder, label
