@@ -1,9 +1,9 @@
-$ TEST_DATABASE_URL=…@localhost:45732/studio_test_c0302 TEST_REDIS_URL=redis://localhost:46679/13 TEST_OBJECT_STORE_URL=http://localhost:49300 make test-backend (fresh clone at b0e206b)
+$ make test-backend   # branch worktree at 9175dd9, git status: 0 changed files (= the pushed commit)
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
 platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
-rootdir: <scratchpad>/clean0302/backend
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302/backend
 configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
@@ -154,5 +154,5 @@ app/worker/tasks.py                    4      0      0      0   100%
 TOTAL                               3354      0    316      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-================ 604 passed, 5 deselected in 555.54s (0:09:15) =================
+================ 604 passed, 5 deselected in 473.59s (0:07:53) =================
 exit=0

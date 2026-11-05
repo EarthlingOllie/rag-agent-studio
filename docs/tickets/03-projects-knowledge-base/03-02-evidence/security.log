@@ -1,15 +1,12 @@
-$ make audit
+$ make secret-scan audit   # branch worktree at 9175dd9
+gitleaks git --redact --no-banner .
+[90m12:05PM[0m [32mINF[0m [1m148 commits scanned.[0m
+[90m12:05PM[0m [32mINF[0m [1mscanned ~8376669 bytes (8.38 MB) in 1.36s[0m
+[90m12:05PM[0m [32mINF[0m [1mno leaks found[0m
 cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
 	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
-Installed 28 packages in 249ms
 No known vulnerabilities found
 cd frontend && pnpm audit --audit-level low
 No known vulnerabilities found
-exit=0
-
-$ gitleaks git --redact --no-banner --log-opts=origin/candidate..HEAD .
-[90m11:21AM[0m [32mINF[0m [1m5 commits scanned.[0m
-[90m11:21AM[0m [32mINF[0m [1mscanned ~309245 bytes (309.24 KB) in 239ms[0m
-[90m11:21AM[0m [32mINF[0m [1mno leaks found[0m
 exit=0

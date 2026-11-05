@@ -7,14 +7,14 @@
 **Blocked by:**
 - [03-01: Projects and Project page shell](01-projects-shell.md)
 
-**Status:** done
+**Status:** in-progress
 
 - [x] The object-store port has an S3/RustFS adapter and an in-memory fake
 - [x] The upload flow is presign, then direct upload, then confirm; a SHA-256 content hash is recorded
 - [x] Celery ingestion runs Docling (faked in tests), `HybridChunker` with a tokenizer matched to the Embedding Model, the local embedder, and a transactional Chunk write
 - [x] Chunks store the vector, Embedding Model ID and `tsvector`, with HNSW and GIN indexes
 - [x] The Document list shows live status by polling
-- [x] A recorded Docling output fixture is committed, and a live-suite test runs real Docling on the sample files
+- [ ] A recorded Docling output fixture is committed, and a live-suite test runs real Docling on the sample files
 - [x] End-to-end: upload the seed handbook → Ready
 - [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
 - [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

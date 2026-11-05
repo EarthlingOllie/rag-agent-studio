@@ -1,59 +1,153 @@
-$ E2E_BASE_URL=http://localhost:45473 E2E_MAILPIT_URL=http://localhost:48325 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e   (fresh clone at 97718d3; stack: compose project rag0302 for Postgres+pgvector, Redis, RustFS, Mailpit; API, worker and Studio run on the host from this clone with hoststack.env)
-<scratchpad>/clean0302/backend/.venv/bin/python <scratchpad>/clean0302/backend/.venv/bin/celery -A app.worker.main --quiet worker --loglevel=INFO --concurrency=2 
-<scratchpad>/clean0302/backend/.venv/bin/python3 -m app.serve 48300 
-<scratchpad>/clean0302/backend/.venv/bin/python <scratchpad>/clean0302/backend/.venv/bin/celery -A app.worker.main --quiet worker --loglevel=INFO --concurrency=2 
-<scratchpad>/clean0302/backend/.venv/bin/python <scratchpad>/clean0302/backend/.venv/bin/celery -A app.worker.main --quiet worker --loglevel=INFO --concurrency=2 
-SERVICE    IMAGE                          STATUS
-mailpit    axllent/mailpit:v1.27          Up 15 minutes (healthy)
-postgres   pgvector/pgvector:0.8.1-pg16   Up About an hour (healthy)
-redis      redis:7.4.2-alpine             Up About an hour (healthy)
-rustfs     rustfs/rustfs:1.0.4            Up About an hour
+$ WITH_PDF=false BUNDLE_MODELS=false EMBEDDER=fake STUDIO_URL=http://localhost:45473 E2E_BASE_URL=http://localhost:45473 E2E_MAILPIT_URL=http://localhost:48325 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome  make e2e COMPOSE="docker compose -p rag0302 -f docker-compose.yml -f /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/e0302/compose.sandbox.yml"   # fresh clone at 47e4b6a; images from build.sh (images.log)
+docker compose -p rag0302 -f docker-compose.yml -f /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/e0302/compose.sandbox.yml up -d --build --wait
+ Network rag0302_default Creating 
+ Volume rag0302_postgres-data Creating 
+ Volume rag0302_postgres-data Creating 
+ Network rag0302_default Creating 
+ Volume rag0302_rustfs-data Creating 
+ Volume rag0302_rustfs-data Creating 
+ Volume rag0302_postgres-data Created 
+ Volume rag0302_postgres-data Created 
+ Volume rag0302_rustfs-data Created 
+ Volume rag0302_rustfs-data Created 
+ Network rag0302_default Created 
+ Network rag0302_default Created 
+ Container rag0302-postgres-1 Creating 
+ Container rag0302-rustfs-1 Creating 
+ Container rag0302-mailpit-1 Creating 
+ Container rag0302-redis-1 Creating 
+ Container rag0302-mailpit-1 Created 
+ Container rag0302-rustfs-1 Created 
+ Container rag0302-postgres-1 Created 
+ Container rag0302-redis-1 Created 
+ Container rag0302-beat-1 Creating 
+ Container rag0302-worker-1 Creating 
+ Container rag0302-api-1 Creating 
+ Container rag0302-beat-1 Created 
+ Container rag0302-worker-1 Created 
+ Container rag0302-api-1 Created 
+ Container rag0302-studio-1 Creating 
+ Container rag0302-studio-1 Created 
+ Container rag0302-redis-1 Starting 
+ Container rag0302-mailpit-1 Starting 
+ Container rag0302-postgres-1 Starting 
+ Container rag0302-rustfs-1 Starting 
+ Container rag0302-redis-1 Started 
+ Container rag0302-mailpit-1 Started 
+ Container rag0302-postgres-1 Started 
+ Container rag0302-rustfs-1 Started 
+ Container rag0302-postgres-1 Waiting 
+ Container rag0302-redis-1 Waiting 
+ Container rag0302-rustfs-1 Waiting 
+ Container rag0302-rustfs-1 Waiting 
+ Container rag0302-postgres-1 Waiting 
+ Container rag0302-redis-1 Waiting 
+ Container rag0302-rustfs-1 Waiting 
+ Container rag0302-postgres-1 Waiting 
+ Container rag0302-redis-1 Waiting 
+ Container rag0302-redis-1 Healthy 
+ Container rag0302-redis-1 Healthy 
+ Container rag0302-redis-1 Healthy 
+ Container rag0302-postgres-1 Healthy 
+ Container rag0302-postgres-1 Healthy 
+ Container rag0302-postgres-1 Healthy 
+ Container rag0302-rustfs-1 Healthy 
+ Container rag0302-beat-1 Starting 
+ Container rag0302-rustfs-1 Healthy 
+ Container rag0302-api-1 Starting 
+ Container rag0302-rustfs-1 Healthy 
+ Container rag0302-worker-1 Starting 
+ Container rag0302-beat-1 Started 
+ Container rag0302-api-1 Started 
+ Container rag0302-api-1 Waiting 
+ Container rag0302-worker-1 Started 
+ Container rag0302-api-1 Healthy 
+ Container rag0302-studio-1 Starting 
+ Container rag0302-studio-1 Started 
+ Container rag0302-redis-1 Waiting 
+ Container rag0302-api-1 Waiting 
+ Container rag0302-worker-1 Waiting 
+ Container rag0302-mailpit-1 Waiting 
+ Container rag0302-postgres-1 Waiting 
+ Container rag0302-studio-1 Waiting 
+ Container rag0302-rustfs-1 Waiting 
+ Container rag0302-beat-1 Waiting 
+ Container rag0302-worker-1 Healthy 
+ Container rag0302-rustfs-1 Healthy 
+ Container rag0302-beat-1 Healthy 
+ Container rag0302-redis-1 Healthy 
+ Container rag0302-mailpit-1 Healthy 
+ Container rag0302-postgres-1 Healthy 
+ Container rag0302-api-1 Healthy 
+ Container rag0302-studio-1 Healthy 
+cd frontend && pnpm e2e
 
-> rag-agent-studio-frontend@ e2e <scratchpad>/clean0302/frontend
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/e2e0302/frontend
 > playwright test
 
 
 Running 39 tests using 2 workers
 
-  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (959ms)
-  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.7s)
-  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (602ms)
-  ✓   5 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (438ms)
-  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (400ms)
-  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (3ms)
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (837ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.6s)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (427ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (493ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (405ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (4ms)
   ✓   4 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.4s)
-  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (211ms)
-  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (222ms)
-  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (227ms)
-  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (6.0s)
-  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (4.5s)
-  ✓  14 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (3.5s)
-  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.2s)
-  ✓  13 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (6.9s)
-  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.5s)
-  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.3s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (90ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (228ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (203ms)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (4.2s)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (3.2s)
+  ✓  14 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (2.7s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (1.6s)
+  ✓  13 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (6.6s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.3s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.4s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (2.7s)
   ✓  17 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (7.4s)
-  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (3.9s)
-  ✓  20 [studio] › e2e/tests/documents.spec.ts:9:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (7.4s)
-  ✓  21 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (13.0s)
-  ✓  22 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (13.0s)
-  ✓  23 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (8.5s)
-  ✓  24 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (12.3s)
-  ✓  25 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (17.2s)
-  ✓  26 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (10.9s)
-  ✓  27 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (5.7s)
-  ✓  28 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (6.7s)
-  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (5.8s)
-  ✓  29 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (11.5s)
-  ✓  31 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.6s)
-  ✓  33 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.0s)
-  ✓  34 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (3.9s)
-  ✓  32 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (11.3s)
+  ✓  20 [studio] › e2e/tests/documents.spec.ts:9:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (6.3s)
+  ✓  21 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (9.1s)
+  ✓  22 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (9.5s)
+  ✓  23 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (6.0s)
+  ✓  24 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (6.6s)
+  ✓  25 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (10.0s)
+  ✓  26 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (7.3s)
+  ✓  27 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (3.7s)
+  ✓  28 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (4.3s)
+  ✓  29 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (7.6s)
+  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (4.9s)
+  ✓  32 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.3s)
+  ✓  33 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.4s)
+  ✓  34 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (4.3s)
+  ✓  31 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (11.9s)
   ✓  36 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.2s)
-  ✓  37 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (2.7s)
-  ✓  35 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (14.6s)
+  ✓  37 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (2.8s)
   ✓  38 [studio] › e2e/tests/theme.spec.ts:51:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (7.0s)
-  ✓  39 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (4.2s)
+  ✓  35 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (17.1s)
+  ✓  39 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (5.7s)
 
-  39 passed (1.9m)
+  39 passed (1.5m)
+--- stack after the run
+SERVICE    IMAGE                          STATUS
+api        rag-agent-studio/api:0302      Up About a minute (healthy)
+beat       rag-agent-studio/api:0302      Up About a minute
+mailpit    axllent/mailpit:v1.27          Up About a minute (healthy)
+postgres   pgvector/pgvector:0.8.1-pg16   Up About a minute (healthy)
+redis      redis:7.4.2-alpine             Up About a minute (healthy)
+rustfs     rustfs/rustfs:1.0.4            Up About a minute (healthy)
+studio     rag-agent-studio/studio:0302   Up About a minute (healthy)
+worker     rag-agent-studio/api:0302      Up About a minute
 exit=0
+--- worker log: documents.ingest and Docling in the worker container
+{"timestamp": "2026-11-05T11:49:39.619030+00:00", "level": "INFO", "logger": "celery.worker.strategy", "message": "Task documents.ingest[a3507192-02d3-495e-84b7-62c2836dc83d] received", "service": "worker", "data": {"id": "a3507192-02d3-495e-84b7-62c2836dc83d", "name": "documents.ingest", "args": "[
+{"timestamp": "2026-11-05T11:49:40.238071+00:00", "level": "INFO", "logger": "docling.datamodel.document", "message": "detected formats: [<InputFormat.MD: 'md'>]", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f7d589f9c62"}
+{"timestamp": "2026-11-05T11:49:40.239166+00:00", "level": "INFO", "logger": "docling.document_converter", "message": "Going to convert document batch...", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f7d589f9c62"}
+{"timestamp": "2026-11-05T11:49:40.239687+00:00", "level": "INFO", "logger": "docling.document_converter", "message": "Initializing pipeline for SimplePipeline with options hash d81866ffabc9bacf2fd3249db0fe02d2", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f
+{"timestamp": "2026-11-05T11:49:40.249110+00:00", "level": "INFO", "logger": "docling.models.factories.base_factory", "message": "Loading plugin 'docling_defaults'", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f7d589f9c62"}
+{"timestamp": "2026-11-05T11:49:40.251636+00:00", "level": "INFO", "logger": "docling.models.factories", "message": "Registered picture descriptions: ['picture_description_vlm_engine', 'vlm', 'api']", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f7d589f9c62"}
+{"timestamp": "2026-11-05T11:49:40.252476+00:00", "level": "INFO", "logger": "docling.pipeline.base_pipeline", "message": "Processing document northwind-staff-handbook.md", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f7d589f9c62"}
+{"timestamp": "2026-11-05T11:49:40.259501+00:00", "level": "INFO", "logger": "docling.document_converter", "message": "Finished converting document northwind-staff-handbook.md in 0.02 sec.", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6ab4f7d589f9c62"}
+{"timestamp": "2026-11-05T11:49:40.344038+00:00", "level": "INFO", "logger": "celery.app.trace", "message": "Task documents.ingest[a3507192-02d3-495e-84b7-62c2836dc83d] succeeded in 0.7220949929997005s: [Redacted]", "service": "worker", "trace_id": "01a1ab8b0e3e12c63ce88889611297d7", "span_id": "c6a
+{"name": "run/documents.ingest", "context": {"trace_id": "0x01a1ab8b0e3e12c63ce88889611297d7", "span_id": "0xc6ab4f7d589f9c62", "trace_state": "[]"}, "kind": "SpanKind.CONSUMER", "parent_id": "0x5b30831c72ed3e08", "start_time": "2026-11-05T11:49:39.622160Z", "end_time": "2026-11-05T11:49:40.344362Z"

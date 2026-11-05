@@ -1,71 +1,78 @@
-$ cd backend && uv run pytest -m live --no-cov -v tests/live   (fresh clone; WITHOUT the pdf group: 'make test-live' adds --group pdf, i.e. PyTorch, which this sandbox's disk can't hold, and Hugging Face is blocked by the egress proxy)
+$ make test-live   # branch worktree (uncommitted: the pyproject.toml warning filter committed next), pdf group installed (torch 2.15.0+cpu)
+cd backend && uv run --group pdf pytest -m live --no-cov tests/live
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
-platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- <scratchpad>/clean0302/backend/.venv/bin/python
-rootdir: <scratchpad>/clean0302/backend
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302/backend
 configfile: pyproject.toml
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collecting ... collected 5 items
+collected 5 items
 
-tests/live/test_docling_live.py::test_real_docling_converts_and_chunks_the_sample[northwind-handbook.pdf] FAILED [ 20%]
-tests/live/test_docling_live.py::test_real_docling_converts_and_chunks_the_sample[northwind-handbook.docx] PASSED [ 40%]
-tests/live/test_docling_live.py::test_real_docling_converts_and_chunks_the_sample[northwind-handbook.pptx] PASSED [ 60%]
-tests/live/test_local_embedder_live.py::test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension FAILED [ 80%]
-tests/live/test_local_embedder_live.py::test_the_chunker_counts_tokens_with_the_models_own_tokenizer FAILED [100%]
+tests/live/test_docling_live.py F..                                      [ 60%]
+tests/live/test_local_embedder_live.py FF                                [100%]
 
 =================================== FAILURES ===================================
 ___ test_real_docling_converts_and_chunks_the_sample[northwind-handbook.pdf] ___
 
-    # SPDX-FileCopyrightText: The Docling Contributors
-    # SPDX-License-Identifier: MIT
-    from __future__ import annotations
-    import sys
-    import warnings
-    from collections.abc import Iterable, Iterator
-    from io import BytesIO
-    from pathlib import Path
-    from typing import TYPE_CHECKING, Optional, Union
-    from docling_core.types.doc import BoundingBox, CoordOrigin, Size
-    from docling_core.types.doc.page import (
-        PdfCellRenderingMode,
-        PdfTextCell,
-        SegmentedPdfPage,
-        TextCell,
-    )
-    from PIL import Image
-    from docling.backend.pdf_backend import PdfDocumentBackend, PdfPageBackend
-    from docling.datamodel.accelerator_options import AcceleratorOptions
-    from docling.datamodel.backend_options import (
-        PdfBackendOptions,
-        ThreadedDoclingParseBackendOptions,
-    )
-    from docling.exceptions import DocumentLoadError
-    from docling.utils.pdf_outline import (
-        _PdfOutlineItem,
-        extract_outline_from_docling_parse,
-    )
-    # docling-parse is installed by the `format-pdf-docling` extra, but
-    # DocumentConverter imports every backend eagerly, so a module-level import here
-    # breaks `import docling` on installs that omit the extra - the slim packages in
-    # particular. Guard it like the email, opendocument, and xbrl backends do, and
-    # surface the failure only when this backend is actually used.
-    # See https://github.com/docling-project/docling/issues/3613.
-    _DOCLING_PARSE_AVAILABLE: bool = False
-    _DOCLING_PARSE_IMPORT_ERROR: ImportError | None = None
-    try:  # pragma: no cover - import-time guard
->       from docling_parse.pdf_parser import (
-            ContentConfig,
-            ContentLevel,
-            DecodeConfig,
-            DoclingThreadedPdfParser,
-            PageParseResult,
-            RenderConfig,
-            ThreadedPdfParserConfig,
-        )
-E       ModuleNotFoundError: No module named 'docling_parse'
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+>           yield
 
-.venv/lib/python3.13/site-packages/docling/backend/docling_parse_backend.py:43: ModuleNotFoundError
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:250: in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py:256: in handle_request
+    raise exc from None
+.venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py:236: in handle_request
+    response = connection.handle_request(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <TunnelHTTPConnection ['http://127.0.0.1:35843', HTTP/1.1, CLOSED, Request Count: 1]>
+request = <Request [b'GET']>
+
+    def handle_request(self, request: Request) -> Response:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("connect", None)
+    
+        with self._connect_lock:
+            if not self._connected:
+                target = b"%b:%d" % (self._remote_origin.host, self._remote_origin.port)
+    
+                connect_url = URL(
+                    scheme=self._proxy_origin.scheme,
+                    host=self._proxy_origin.host,
+                    port=self._proxy_origin.port,
+                    target=target,
+                )
+                connect_headers = merge_headers(
+                    [(b"Host", target), (b"Accept", b"*/*")], self._proxy_headers
+                )
+                connect_request = Request(
+                    method=b"CONNECT",
+                    url=connect_url,
+                    headers=connect_headers,
+                    extensions=request.extensions,
+                )
+                connect_response = self._connection.handle_request(
+                    connect_request
+                )
+    
+                if connect_response.status < 200 or connect_response.status > 299:
+                    reason_bytes = connect_response.extensions.get("reason_phrase", b"")
+                    reason_str = reason_bytes.decode("ascii", errors="ignore")
+                    msg = "%d %s" % (connect_response.status, reason_str)
+                    self._connection.close()
+>                   raise ProxyError(msg)
+E                   httpcore.ProxyError: 403 Forbidden
+
+.venv/lib/python3.13/site-packages/httpcore/_sync/http_proxy.py:297: ProxyError
 
 The above exception was the direct cause of the following exception:
 
@@ -95,39 +102,115 @@ app/documents/converter.py:33: in convert
 .venv/lib/python3.13/site-packages/docling/document_converter.py:786: in convert_all
     for conv_res in conv_res_iter:
                     ^^^^^^^^^^^^^
-.venv/lib/python3.13/site-packages/docling/document_converter.py:901: in _convert
-    for input_batch in chunkify(
-.venv/lib/python3.13/site-packages/docling/utils/utils.py:19: in chunkify
-    for first in iterator:  # Take the first element from the iterator
-                 ^^^^^^^^
-.venv/lib/python3.13/site-packages/docling/datamodel/document.py:888: in docs
-    yield InputDocument(
-.venv/lib/python3.13/site-packages/docling/datamodel/document.py:198: in __init__
-    self._init_doc(backend, path_or_stream)
-.venv/lib/python3.13/site-packages/docling/datamodel/document.py:318: in _init_doc
-    self._backend = backend(self, path_or_stream=path_or_stream)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/docling/document_converter.py:925: in _convert
+    for item in map(
+.venv/lib/python3.13/site-packages/docling/document_converter.py:985: in _process_indexed_document
+    conv_res = self._process_document(
+.venv/lib/python3.13/site-packages/docling/document_converter.py:1003: in _process_document
+    conv_res = self._execute_pipeline(
+.venv/lib/python3.13/site-packages/docling/document_converter.py:1036: in _execute_pipeline
+    pipeline = self._get_pipeline(in_doc.format)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/docling/document_converter.py:955: in _get_pipeline
+    self.initialized_pipelines[cache_key] = pipeline_class(
+.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py:627: in __init__
+    self._init_models()
+.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py:659: in _init_models
+    self.layout_model = layout_factory.create_instance(
+.venv/lib/python3.13/site-packages/docling/models/factories/base_factory.py:61: in create_instance
+    return _cls(options=options, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/docling/models/stages/layout/layout_object_detection_model.py:52: in __init__
+    self.engine.initialize()
+.venv/lib/python3.13/site-packages/docling/models/inference_engines/object_detection/transformers_engine.py:127: in initialize
+    model_folder = self._resolve_model_folder(
+.venv/lib/python3.13/site-packages/docling/models/inference_engines/common/hf_vision_base.py:71: in _resolve_model_folder
+    return resolve_model_artifacts_path(
+.venv/lib/python3.13/site-packages/docling/models/inference_engines/vlm/_utils.py:220: in resolve_model_artifacts_path
+    return download_fn(repo_id, revision)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/docling/models/inference_engines/common/hf_vision_base.py:63: in download_wrapper
+    return self.download_models(
+.venv/lib/python3.13/site-packages/docling/models/utils/hf_model_download.py:144: in download_models
+    return download_hf_model(
+.venv/lib/python3.13/site-packages/docling/models/utils/hf_model_download.py:116: in download_hf_model
+    download_path = snapshot_download(
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_http.py:266: in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/_snapshot_download.py:277: in snapshot_download
+    repo_info = api.repo_info(repo_id=repo_id, repo_type=repo_type, revision=revision)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/hf_api.py:3643: in repo_info
+    return method(
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/hf_api.py:3322: in model_info
+    r = get_session().get(path, headers=headers, timeout=timeout, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1053: in get
+    return self.request(
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:249: in handle_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/contextlib.py:162: in __exit__
+    self.gen.throw(value)
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <docling.backend.docling_parse_backend.ThreadedDoclingParseDocumentBackend object at 0x7fc58356a510>
-in_doc = InputDocument(file=PurePosixPath('northwind-handbook.pdf'), document_hash='a0b1b72dc968ed5f1957f1026862099e7eeaa2fe9fb...223372036854775807, page_range=(1, 9223372036854775807)), format=<InputFormat.PDF: 'pdf'>, filesize=1314, page_count=0)
-path_or_stream = <_io.BytesIO object at 0x7fc58144ebb0>, options = None
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+            yield
+        except Exception as exc:
+            mapped_exc = None
+    
+            for from_exc, to_exc in HTTPCORE_EXC_MAP.items():
+                if not isinstance(exc, from_exc):
+                    continue
+                # We want to map to the most specific exception we can find.
+                # Eg if `exc` is an `httpcore.ReadTimeout`, we want to map to
+                # `httpx.ReadTimeout`, not just `httpx.TimeoutException`.
+                if mapped_exc is None or issubclass(to_exc, mapped_exc):
+                    mapped_exc = to_exc
+    
+            if mapped_exc is None:  # pragma: no cover
+                raise
+    
+            message = str(exc)
+>           raise mapped_exc(message) from exc
+E           httpx.ProxyError: 403 Forbidden
 
-    def __init__(
-        self,
-        in_doc: InputDocument,
-        path_or_stream: Union[BytesIO, Path],
-        options: Optional[PdfBackendOptions] = None,
-    ):
-        if not _DOCLING_PARSE_AVAILABLE:
->           raise ImportError(_INSTALL_HINT) from _DOCLING_PARSE_IMPORT_ERROR
-E           ImportError: The 'docling-parse' package is required to parse PDF files with this backend. Install it with `pip install 'docling-slim[format-pdf-docling]'`.
-
-.venv/lib/python3.13/site-packages/docling/backend/docling_parse_backend.py:304: ImportError
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:118: ProxyError
+------------------------------ Captured log call -------------------------------
+WARNING  docling.models.stages.ocr.auto_ocr_model:auto_ocr_model.py:232 No OCR engine found. Please review the install details.
 ___ test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension ____
 
     def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension() -> None:
         embedder = LocalEmbedder()
+    
 >       first, second, unrelated = embedder.embed_passages(
             [
                 "Everyone gets 25 days of annual leave.",
@@ -164,6 +247,7 @@ kwargs = {'local_files_only': False}
     def download_model(cls, model: T, cache_dir: str, retries: int = 3, **kwargs: Any) -> Path:
         """
         Downloads a model from HuggingFace Hub or Google Cloud Storage.
+    
         Args:
             model (T): The model description.
                 Example:
@@ -180,6 +264,7 @@ kwargs = {'local_files_only': False}
                 ```
             cache_dir (str): The path to the cache directory.
             retries: (int): The number of times to retry (including the first attempt)
+    
         Returns:
             Path: The path to the downloaded model directory.
         """
@@ -194,13 +279,16 @@ kwargs = {'local_files_only': False}
         retries = 1 if local_files_only else retries
         hf_source = model.sources.hf
         url_source = model.sources.url
+    
         extra_patterns = [model.model_file]
         extra_patterns.extend(model.additional_files)
+    
         # Only a cached file that is present but does not match its recorded size needs
         # force_download: the hub's cache check is existence-only, so a plain snapshot_download
         # would keep the truncated blob. Every other probe failure (a missing file, an absent
         # cache) is served by an ordinary download, which re-uses what is already on disk.
         force_download = False
+    
         if hf_source:
             try:
                 cache_kwargs = deepcopy(kwargs)
@@ -223,11 +311,14 @@ kwargs = {'local_files_only': False}
                 pass
             finally:
                 enable_progress_bars()
+    
         sleep = 3.0
         while retries > 0:
             retries -= 1
+    
             if hf_source and not local_files_only:
                 # we have already tried loading with `local_files_only=True` via hf and we failed
+    
                 # Merged into kwargs so a caller-supplied force_download can't raise a
                 # duplicate keyword error. Cleared straight away: force_download deletes the
                 # partially fetched `.incomplete` file, so leaving it on would make every
@@ -274,6 +365,7 @@ kwargs = {'local_files_only': False}
                         deprecated_tar_struct=True,
                         local_files_only=True,
                     )
+    
             if local_files_only:
                 logger.error("Could not find model in cache_dir")
                 break
@@ -283,17 +375,18 @@ kwargs = {'local_files_only': False}
                 )
                 time.sleep(sleep)
                 sleep *= 3
+    
 >       raise ValueError(f"Could not load model {model.model} from any source.")
 E       ValueError: Could not load model intfloat/multilingual-e5-small from any source.
 
 .venv/lib/python3.13/site-packages/fastembed/common/model_management.py:752: ValueError
 ----------------------------- Captured stderr call -----------------------------
-2026-11-05 11:21:38.942 | ERROR    | fastembed.common.model_management:download_model:712 - Could not download model from HuggingFace: 403 Forbidden Falling back to other sources.
-2026-11-05 11:21:38.942 | ERROR    | fastembed.common.model_management:download_model:746 - Could not download model from either source, sleeping for 3.0 seconds, 2 retries left.
-2026-11-05 11:21:42.181 | ERROR    | fastembed.common.model_management:download_model:712 - Could not download model from HuggingFace: 403 Forbidden Falling back to other sources.
-2026-11-05 11:21:42.182 | ERROR    | fastembed.common.model_management:download_model:746 - Could not download model from either source, sleeping for 9.0 seconds, 1 retries left.
-2026-11-05 11:21:51.421 | ERROR    | fastembed.common.model_management:download_model:712 - Could not download model from HuggingFace: 403 Forbidden Falling back to other sources.
-2026-11-05 11:21:51.421 | ERROR    | fastembed.common.model_management:download_model:746 - Could not download model from either source, sleeping for 27.0 seconds, 0 retries left.
+2026-11-05 11:54:25.766 | ERROR    | fastembed.common.model_management:download_model:712 - Could not download model from HuggingFace: 403 Forbidden Falling back to other sources.
+2026-11-05 11:54:25.767 | ERROR    | fastembed.common.model_management:download_model:746 - Could not download model from either source, sleeping for 3.0 seconds, 2 retries left.
+2026-11-05 11:54:29.028 | ERROR    | fastembed.common.model_management:download_model:712 - Could not download model from HuggingFace: 403 Forbidden Falling back to other sources.
+2026-11-05 11:54:29.029 | ERROR    | fastembed.common.model_management:download_model:746 - Could not download model from either source, sleeping for 9.0 seconds, 1 retries left.
+2026-11-05 11:54:38.289 | ERROR    | fastembed.common.model_management:download_model:712 - Could not download model from HuggingFace: 403 Forbidden Falling back to other sources.
+2026-11-05 11:54:38.289 | ERROR    | fastembed.common.model_management:download_model:746 - Could not download model from either source, sleeping for 27.0 seconds, 0 retries left.
 _________ test_the_chunker_counts_tokens_with_the_models_own_tokenizer _________
 
     @contextlib.contextmanager
@@ -321,9 +414,11 @@ request = <Request [b'HEAD']>
     def handle_request(self, request: Request) -> Response:
         timeouts = request.extensions.get("timeout", {})
         timeout = timeouts.get("connect", None)
+    
         with self._connect_lock:
             if not self._connected:
                 target = b"%b:%d" % (self._remote_origin.host, self._remote_origin.port)
+    
                 connect_url = URL(
                     scheme=self._proxy_origin.scheme,
                     host=self._proxy_origin.host,
@@ -342,6 +437,7 @@ request = <Request [b'HEAD']>
                 connect_response = self._connection.handle_request(
                     connect_request
                 )
+    
                 if connect_response.status < 200 or connect_response.status > 299:
                     reason_bytes = connect_response.extensions.get("reason_phrase", b"")
                     reason_str = reason_bytes.decode("ascii", errors="ignore")
@@ -371,16 +467,21 @@ pretrained_model_name_or_path = 'intfloat/multilingual-e5-small', kwargs = {}
         subfolder = kwargs.pop("subfolder", "")
         from_pipeline = kwargs.pop("_from_pipeline", None)
         from_auto_class = kwargs.pop("_from_auto", False)
+    
         gguf_file = kwargs.get("gguf_file")
+    
         if trust_remote_code is True:
             logger.warning(
                 "The argument `trust_remote_code` is to be used with Auto classes. It has no effect here and is"
                 " ignored."
             )
+    
         user_agent = {"file_type": "config", "from_auto_class": from_auto_class}
         if from_pipeline is not None:
             user_agent["using_pipeline"] = from_pipeline
+    
         pretrained_model_name_or_path = str(pretrained_model_name_or_path)
+    
         is_local = os.path.isdir(pretrained_model_name_or_path)
         if os.path.isfile(os.path.join(subfolder, pretrained_model_name_or_path)):
             # Special case when pretrained_model_name_or_path is a local file
@@ -388,6 +489,7 @@ pretrained_model_name_or_path = 'intfloat/multilingual-e5-small', kwargs = {}
             is_local = True
         else:
             configuration_file = kwargs.pop("_configuration_file", CONFIG_NAME) if gguf_file is None else gguf_file
+    
             try:
                 # Load from local folder or from cache or download from model Hub and cache
 >               resolved_config_file = cached_file(
@@ -465,6 +567,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
             yield
         except Exception as exc:
             mapped_exc = None
+    
             for from_exc, to_exc in HTTPCORE_EXC_MAP.items():
                 if not isinstance(exc, from_exc):
                     continue
@@ -473,8 +576,10 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
                 # `httpx.ReadTimeout`, not just `httpx.TimeoutException`.
                 if mapped_exc is None or issubclass(to_exc, mapped_exc):
                     mapped_exc = to_exc
+    
             if mapped_exc is None:  # pragma: no cover
                 raise
+    
             message = str(exc)
 >           raise mapped_exc(message) from exc
 E           httpx.ProxyError: 403 Forbidden
@@ -522,16 +627,21 @@ pretrained_model_name_or_path = 'intfloat/multilingual-e5-small', kwargs = {}
         subfolder = kwargs.pop("subfolder", "")
         from_pipeline = kwargs.pop("_from_pipeline", None)
         from_auto_class = kwargs.pop("_from_auto", False)
+    
         gguf_file = kwargs.get("gguf_file")
+    
         if trust_remote_code is True:
             logger.warning(
                 "The argument `trust_remote_code` is to be used with Auto classes. It has no effect here and is"
                 " ignored."
             )
+    
         user_agent = {"file_type": "config", "from_auto_class": from_auto_class}
         if from_pipeline is not None:
             user_agent["using_pipeline"] = from_pipeline
+    
         pretrained_model_name_or_path = str(pretrained_model_name_or_path)
+    
         is_local = os.path.isdir(pretrained_model_name_or_path)
         if os.path.isfile(os.path.join(subfolder, pretrained_model_name_or_path)):
             # Special case when pretrained_model_name_or_path is a local file
@@ -539,6 +649,7 @@ pretrained_model_name_or_path = 'intfloat/multilingual-e5-small', kwargs = {}
             is_local = True
         else:
             configuration_file = kwargs.pop("_configuration_file", CONFIG_NAME) if gguf_file is None else gguf_file
+    
             try:
                 # Load from local folder or from cache or download from model Hub and cache
                 resolved_config_file = cached_file(
@@ -574,5 +685,7 @@ E               OSError: Can't load the configuration of 'intfloat/multilingual-
 FAILED tests/live/test_docling_live.py::test_real_docling_converts_and_chunks_the_sample[northwind-handbook.pdf]
 FAILED tests/live/test_local_embedder_live.py::test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension
 FAILED tests/live/test_local_embedder_live.py::test_the_chunker_counts_tokens_with_the_models_own_tokenizer
-========================= 3 failed, 2 passed in 43.31s =========================
-exit=0
+========================= 3 failed, 2 passed in 43.58s =========================
+make: *** [Makefile:33: test-live] Error 1
+exit=2
+pdf group importable 2.15.0+cpu
