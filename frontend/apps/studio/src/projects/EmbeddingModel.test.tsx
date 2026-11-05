@@ -1,5 +1,5 @@
 import type { Schemas } from "@studio/api-client";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
@@ -132,9 +132,9 @@ test("an unusable choice shows why, and a failure without a reason says to try a
   let attempt = 0;
   fakeEmbeddingApi(() => {
     attempt += 1;
-    return attempt === 1
-      ? HttpResponse.json({ detail: "This credential can't be used for embeddings." }, { status: 422 })
-      : HttpResponse.json({ detail: "Boom" }, { status: 500 });
+    if (attempt === 1) return HttpResponse.json({ detail: "This credential can't be used for embeddings." }, { status: 422 });
+    if (attempt === 2) return HttpResponse.json({ detail: "Boom" }, { status: 500 });
+    return HttpResponse.json({ detail: [{ loc: ["body", "model_id"], msg: "Field required" }] }, { status: 422 });
   });
   renderStudio(projectPage(salesProject.id));
   const setting = await screen.findByRole("region", { name: "Embedding Model" });
@@ -144,6 +144,13 @@ test("an unusable choice shows why, and a failure without a reason says to try a
   expect(await within(setting).findByRole("alert")).toHaveTextContent("This credential can't be used for embeddings.");
 
   await userEvent.click(within(setting).getByRole("button", { name: "Use this model" }));
+  expect(await within(setting).findByText("Something went wrong. Try again.")).toBeInTheDocument();
+
+  // A validation error's detail is a list, not a reason to show.
+  await userEvent.click(within(setting).getByRole("button", { name: "Use this model" }));
+  await waitFor(() => {
+    expect(attempt).toBe(3);
+  });
   expect(await within(setting).findByText("Something went wrong. Try again.")).toBeInTheDocument();
 });
 

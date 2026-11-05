@@ -86,6 +86,9 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listDocuments": (f"{_PROJECT}/documents", "get"),
         "listDocumentStatuses": (f"{_PROJECT}/documents/statuses", "get"),
         "listChunks": (f"{_PROJECT}/documents/{{document_id}}/chunks", "get"),
+        "listEmbeddingModels": ("/api/organisations/{organisation_id}/embedding-models", "get"),
+        "setProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "put"),
+        "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
     }
 
 
