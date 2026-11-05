@@ -51,6 +51,7 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OBJECT_STORE", "memory")
     monkeypatch.setenv("DOCUMENT_CONVERTER", "fake")
     monkeypatch.setenv("EMBEDDER", "fake")
+    monkeypatch.setenv("MODEL_GATEWAY", "fake")
 
 
 @pytest.fixture(scope="session")

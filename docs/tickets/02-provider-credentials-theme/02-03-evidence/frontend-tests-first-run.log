@@ -1,0 +1,41 @@
+# commit ed6a69a, fresh clone of ticket/02-03-model-gateway-default-model
+$ make test-frontend
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test <scratch>/clean0203/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 <scratch>/clean0203/frontend
+      Coverage enabled with v8
+
+ ❯ apps/studio/src/projects/ProjectPage.test.tsx (9 tests | 1 failed) 14714ms
+   × a Project page has a tab for each area, with placeholders until each feature arrives 5131ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/studio/src/projects/ProjectPage.test.tsx > a Project page has a tab for each area, with placeholders until each feature arrives
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/studio/src/projects/ProjectPage.test.tsx:17:1
+     15| };
+     16|
+     17| test("a Project page has a tab for each area, with placeholders until …
+       | ^
+     18|   fakeAuthApi({ signedInAs: editorSession });
+     19|   fakeProjectsApi();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 24 passed (25)
+      Tests  1 failed | 248 passed (249)
+   Start at  10:37:21
+   Duration  140.47s (tests 57%, environment 24%, setup 8%, import 6%, transform 4%, worker 2%)
+
+    Isolate  25 workers spawned · ~4.19s startup each (spawn + environment, per file)
+             at least ~30.76s faster with isolate: false — reuses workers across files instead of one per file
+
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:33: test-frontend] Error 1
+[exit code 2]

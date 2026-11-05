@@ -195,6 +195,35 @@
         "title": "AuthKind",
         "type": "string"
       },
+      "BedrockSetupOut": {
+        "description": "What an Owner pastes into AWS to let the platform assume their role.",
+        "properties": {
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "permissions_policy": {
+            "title": "Permissions Policy",
+            "type": "string"
+          },
+          "platform_principal": {
+            "title": "Platform Principal",
+            "type": "string"
+          },
+          "trust_policy": {
+            "title": "Trust Policy",
+            "type": "string"
+          }
+        },
+        "required": [
+          "external_id",
+          "platform_principal",
+          "trust_policy",
+          "permissions_policy"
+        ],
+        "title": "BedrockSetupOut",
+        "type": "object"
+      },
       "Capability": {
         "enum": [
           "chat",
@@ -280,7 +309,9 @@
           "invalid_key",
           "missing_model_access",
           "quota_exceeded",
-          "provider_unreachable"
+          "provider_unreachable",
+          "role_not_assumable",
+          "wrong_region"
         ],
         "title": "CheckFailure",
         "type": "string"
@@ -434,6 +465,112 @@
           "upload_id"
         ],
         "title": "ConfirmUploadRequest",
+        "type": "object"
+      },
+      "CreateBedrockAccessKeysRequest": {
+        "description": "A Bedrock credential reached with an IAM user's access keys (the fallback).",
+        "properties": {
+          "access_key_id": {
+            "pattern": "^[A-Z0-9]{16,128}$",
+            "title": "Access Key Id",
+            "type": "string"
+          },
+          "auth_kind": {
+            "const": "aws_access_keys",
+            "title": "Auth Kind",
+            "type": "string"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Capability"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "pattern": "^[a-z]{2}(-[a-z]+)+-[0-9]{1,2}$",
+            "title": "Region",
+            "type": "string"
+          },
+          "secret_access_key": {
+            "format": "password",
+            "title": "Secret Access Key",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "auth_kind",
+          "name",
+          "access_key_id",
+          "secret_access_key",
+          "region"
+        ],
+        "title": "CreateBedrockAccessKeysRequest",
+        "type": "object"
+      },
+      "CreateBedrockRoleRequest": {
+        "description": "A Bedrock credential the platform reaches by assuming an IAM role (recommended).",
+        "properties": {
+          "auth_kind": {
+            "const": "aws_role",
+            "title": "Auth Kind",
+            "type": "string"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Capability"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "pattern": "^[a-z]{2}(-[a-z]+)+-[0-9]{1,2}$",
+            "title": "Region",
+            "type": "string"
+          },
+          "role_arn": {
+            "maxLength": 2048,
+            "pattern": "^arn:aws(-[a-z]+)*:iam::[0-9]{12}:role/[A-Za-z0-9_+=,.@/-]+$",
+            "title": "Role Arn",
+            "type": "string"
+          }
+        },
+        "required": [
+          "auth_kind",
+          "name",
+          "role_arn",
+          "region"
+        ],
+        "title": "CreateBedrockRoleRequest",
         "type": "object"
       },
       "CreateCredentialRequest": {
@@ -594,8 +731,15 @@
             "type": "string"
           },
           "masked_suffix": {
-            "title": "Masked Suffix",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Masked Suffix"
           },
           "name": {
             "title": "Name",
@@ -603,6 +747,28 @@
           },
           "provider": {
             "$ref": "#/components/schemas/Provider"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "role_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Arn"
           }
         },
         "required": [
@@ -611,6 +777,8 @@
           "provider",
           "auth_kind",
           "masked_suffix",
+          "role_arn",
+          "region",
           "capabilities",
           "check_status",
           "check_failure",
@@ -641,6 +809,45 @@
           "name"
         ],
         "title": "CredentialReferenceOut",
+        "type": "object"
+      },
+      "DefaultModelOut": {
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "credential_name": {
+            "title": "Credential Name",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "credential_name",
+          "provider",
+          "model",
+          "model_name",
+          "updated_at"
+        ],
+        "title": "DefaultModelOut",
         "type": "object"
       },
       "DisableRequest": {
@@ -1502,6 +1709,27 @@
           "active_organisation_id"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "SetDefaultModelRequest": {
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "model"
+        ],
+        "title": "SetDefaultModelRequest",
         "type": "object"
       },
       "SignInRequest": {
@@ -3191,6 +3419,70 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/bedrock-setup": {
+      "get": {
+        "description": "The Organisation's external ID, and the trust and permissions policies to paste into\nthe IAM role the platform will assume.",
+        "operationId": "getBedrockSetup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BedrockSetupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Bedrock Setup",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/credentials": {
       "get": {
         "description": "The Organisation's Provider Credentials, by name. Open to every Member.",
@@ -3336,6 +3628,115 @@
           }
         },
         "summary": "Create Credential",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/bedrock": {
+      "post": {
+        "description": "Adds a Bedrock credential: an IAM role the platform assumes with the Organisation's\nexternal ID (recommended: no secret is stored), or access keys. The platform checks role\nassumption (or the keys), then model access, before storing anything.",
+        "operationId": "createBedrockCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "aws_access_keys": "#/components/schemas/CreateBedrockAccessKeysRequest",
+                    "aws_role": "#/components/schemas/CreateBedrockRoleRequest"
+                  },
+                  "propertyName": "auth_kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateBedrockRoleRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateBedrockAccessKeysRequest"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckFailedResponse"
+                }
+              }
+            },
+            "description": "The provider check failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Another credential in this Organisation already has that name."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Bedrock Credential",
         "tags": [
           "credentials"
         ]
@@ -3553,6 +3954,82 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/models/{capability}": {
+      "get": {
+        "description": "The models this credential offers for a capability: empty unless the credential was\ngiven that capability. Open to every Member, for model pickers.",
+        "operationId": "listCredentialModels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Capability"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModelOut"
+                  },
+                  "title": "Response Listcredentialmodels",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credential Models",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/credentials/{credential_id}/rotate": {
       "post": {
         "description": "Replaces the key, keeping the credential's identity. A failed check keeps the old key.",
@@ -3644,6 +4121,140 @@
         "summary": "Rotate Credential",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/default-model": {
+      "get": {
+        "description": "The Organisation's Default Model, or null until an Owner sets one. Open to every Member.",
+        "operationId": "getDefaultModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DefaultModelOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getdefaultmodel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Default Model",
+        "tags": [
+          "models"
+        ]
+      },
+      "put": {
+        "description": "Sets the Default Model to one of a chat-capable credential's chat models.",
+        "operationId": "setDefaultModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDefaultModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultModelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a chat model of this Organisation"
+          }
+        },
+        "summary": "Set Default Model",
+        "tags": [
+          "models"
         ]
       }
     },

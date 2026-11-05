@@ -1,0 +1,33 @@
+# commit aa17f5d, fresh clone (pulled from ed6a69a)
+$ bash docs/tickets/02-provider-credentials-theme/02-03-evidence/build.sh <clone> 0203
+#17 CACHED
+#18 DONE 0.1s
+#19 DONE 0.0s
+#20 DONE 0.2s
+#21 naming to docker.io/rag-agent-studio/api:0203 done
+#21 DONE 0.4s
+#1 DONE 0.0s
+#2 DONE 0.0s
+#3 DONE 0.0s
+#4 DONE 0.0s
+#5 DONE 0.0s
+#6 DONE 0.0s
+#7 DONE 0.0s
+#5 DONE 0.0s
+#6 DONE 0.0s
+#8 CACHED
+#9 CACHED
+#10 CACHED
+#11 CACHED
+#12 CACHED
+#13 CACHED
+#14 CACHED
+#15 CACHED
+#16 DONE 0.1s
+#17 CACHED
+#18 CACHED
+#19 DONE 2.8s
+#20 DONE 0.2s
+#21 naming to docker.io/rag-agent-studio/studio:0203 done
+#21 DONE 16.0s
+[exit code 0]

@@ -11,6 +11,7 @@ from app.core.db import Base, create_engine
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.credentials import models as credential_models
+from app.default_model import models as default_model_models
 from app.documents import models as document_models
 from app.projects import models as project_models
 from app.tenancy import models as tenancy_models
@@ -26,6 +27,7 @@ _MODEL_MODULES = (
     audit_models,
     auth_models,
     credential_models,
+    default_model_models,
     document_models,
     project_models,
     theme_models,

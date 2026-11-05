@@ -10,8 +10,9 @@ import json
 import httpx
 import pytest
 
+from app.core.clock import SystemClock
 from app.core.settings import Settings
-from app.credentials.adapters import build_verifier
+from app.credentials.adapters import LiveCredentialVerifier, build_verifier
 from app.credentials.http_verifier import HttpCredentialVerifier
 from app.credentials.registry import Provider
 from app.credentials.verifier import (
@@ -129,11 +130,11 @@ def _settings(**values: str) -> Settings:
 
 @pytest.mark.parametrize(
     ("setting", "adapter"),
-    [("live", HttpCredentialVerifier), ("fake", FakeCredentialVerifier)],
+    [("live", LiveCredentialVerifier), ("fake", FakeCredentialVerifier)],
 )
 async def test_settings_select_the_verifier(setting: str, adapter: type[object]) -> None:
     async with httpx.AsyncClient() as client:
-        verifier = build_verifier(_settings(credential_verifier=setting), client)
+        verifier = build_verifier(_settings(credential_verifier=setting), client, SystemClock())
 
     assert isinstance(verifier, adapter)
 

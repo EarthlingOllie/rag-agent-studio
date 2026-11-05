@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 import httpx
+import httpx2
 import logfire
 from fastapi import APIRouter, FastAPI
 from opentelemetry.sdk.trace import SpanProcessor
@@ -23,8 +24,11 @@ from app.credentials import api as credentials_api
 from app.credentials.adapters import build_verifier
 from app.credentials.references import ReferenceRegistry
 from app.crypto.adapters import build_envelope
+from app.default_model import api as default_model_api
+from app.default_model.service import default_model_references
 from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
+from app.gateway.adapters import build_model_gateway
 from app.mail.factory import build_mailer
 from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
@@ -48,6 +52,7 @@ ROUTERS: Sequence[APIRouter] = (
     switcher_api.router,
     credentials_api.router,
     credentials_api.providers_router,
+    default_model_api.router,
     theme_api.router,
     theme_api.fonts_router,
     projects_api.router,
@@ -76,17 +81,25 @@ def _lifespan(
         app.state.provider_http = httpx.AsyncClient(
             timeout=settings.credential_check_timeout_seconds
         )
-        app.state.credential_verifier = build_verifier(settings, app.state.provider_http)
+        app.state.credential_verifier = build_verifier(
+            settings, app.state.provider_http, app.state.clock
+        )
         # Ingestion tasks enqueued from here run in the worker; in tests they run eagerly in
         # this process and use these same adapters.
         app.state.ingestion = build_ports(settings)
         install_ports(app.state.ingestion)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
+        # Pydantic AI's provider clients take httpx2 clients; every model call shares this one.
+        app.state.model_http = httpx2.AsyncClient(timeout=settings.model_timeout_seconds)
+        app.state.model_gateway = build_model_gateway(
+            settings, app.state.envelope, app.state.model_http
+        )
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield
         finally:
+            await app.state.model_http.aclose()
             await app.state.provider_http.aclose()
             await app.state.redis.aclose()
             await app.state.engine.dispose()
@@ -102,6 +115,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     )
     # Consumers of Provider Credentials register their "who references me" sources here.
     app.state.credential_references = ReferenceRegistry()
+    app.state.credential_references.register(default_model_references)
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.

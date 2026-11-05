@@ -16,6 +16,7 @@ dependencies = [
     "httpx>=0.28.1",
     "logfire[celery,fastapi,httpx,sqlalchemy]>=5.4.0",
     "pgvector>=0.4.1",
+    "pydantic-ai-slim[anthropic,openai]>=2.66.0",
     "pydantic-settings>=2.16.2",
     "pyotp>=2.10.0",
     "redis>=8.1.0",
