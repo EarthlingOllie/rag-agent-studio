@@ -1,7 +1,9 @@
 """The deterministic hash-based embedder: the test fake for the embedder port.
 
 The same text always gives the same unit-length vector, and different texts almost always give
-different ones. Tokens are whitespace-separated words, so tests can reason about Chunk sizes.
+different ones. A query is hashed like a passage, so it matches a Chunk only by having exactly
+the Chunk's embedded text. Tokens are whitespace-separated words, so tests can reason about
+Chunk sizes.
 """
 
 import hashlib
@@ -58,3 +60,8 @@ class HashEmbedder:
     def embed_passages(self, texts: list[str]) -> list[list[float]]:
         prefix = self._model.passage_prefix
         return [hash_vector(prefix + text, self._model.dimension) for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        # Hashed like a passage, so a query equal to a Chunk's embedded text finds that Chunk
+        # with a score of 1: tests can say which Chunk is the relevant one.
+        return self.embed_passages([text])[0]

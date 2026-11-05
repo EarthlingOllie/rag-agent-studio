@@ -5,8 +5,10 @@ import asyncio
 from alembic import context
 from sqlalchemy.engine import Connection
 
+from app.agents import models as agent_models
 from app.audit import models as audit_models
 from app.auth import models as auth_models
+from app.conversations import models as conversation_models
 from app.core.db import Base, create_engine
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
@@ -25,6 +27,8 @@ if config.attributes.get("configure_logger", True):
 
 # Every model registers its table on Base.metadata; importing the modules is enough.
 _MODEL_MODULES = (
+    agent_models,
+    conversation_models,
     tenancy_models,
     audit_models,
     auth_models,

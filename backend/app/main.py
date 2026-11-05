@@ -11,6 +11,7 @@ from fastapi import APIRouter, FastAPI
 from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
+from app.agents import api as agents_api
 from app.api import health
 from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
@@ -30,6 +31,7 @@ from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
 from app.gateway.adapters import build_model_gateway
 from app.mail.factory import build_mailer
+from app.playground import api as playground_api
 from app.pricing import api as pricing_api
 from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
@@ -59,6 +61,8 @@ ROUTERS: Sequence[APIRouter] = (
     theme_api.fonts_router,
     projects_api.router,
     documents_api.router,
+    agents_api.router,
+    playground_api.router,
 )
 
 

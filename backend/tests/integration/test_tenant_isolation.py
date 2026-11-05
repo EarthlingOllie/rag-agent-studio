@@ -189,6 +189,49 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _new_agent_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"name": "Isolation Agent"}
+
+
+async def _an_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _new_agent_body(owner, add_member)
+    created = await owner.client.post(
+        PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}/agents",
+        json=body,
+    )
+    assert created.status_code == 201, created.text
+    return params | {"agent_id": created.json()["id"]}, None
+
+
+async def _an_agent_draft(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"retrieval": {"top_k": 3}}
+
+
+async def _a_playground_conversation(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    started = await owner.client.post(
+        _AGENT.format(organisation_id=owner.organisation_id, **params) + "/playground/conversations"
+    )
+    assert started.status_code == 201, started.text
+    return params | {"conversation_id": started.json()["id"]}, None
+
+
+async def _a_playground_question(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # Answering needs a Default Model; the gateway's fake chat model answers.
+    params, body = await _a_chat_model_choice(owner, add_member)
+    response = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/default-model", json=body
+    )
+    assert response.status_code == 200, response.text
+    params, _ = await _a_playground_conversation(owner, add_member)
+    return params, {"content": "Hello?"}
+
+
+_AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
+_CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
+
+
 # Routes that act on one Project. They are also checked at the Project level below.
 PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}", EDITOR, _a_project),
@@ -202,6 +245,13 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/agents", EDITOR, _a_project),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/agents", EDITOR, _new_agent_body),
+    ScopedRoute("GET", _AGENT, EDITOR, _an_agent),
+    ScopedRoute("PUT", _AGENT + "/draft", EDITOR, _an_agent_draft),
+    ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
+    ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
+    ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),
 ]
 
 
