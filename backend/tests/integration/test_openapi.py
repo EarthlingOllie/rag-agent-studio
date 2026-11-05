@@ -6,6 +6,8 @@ from app.openapi import render_openapi
 
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 _PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
+_AGENT = f"{_PROJECT}/agents/{{agent_id}}"
+_PLAYGROUND = f"{_AGENT}/playground/conversations"
 
 
 def test_openapi_document_describes_every_endpoint() -> None:
@@ -89,6 +91,19 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listEmbeddingModels": ("/api/organisations/{organisation_id}/embedding-models", "get"),
         "setProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "put"),
         "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
+        "listTags": (f"{_PROJECT}/tags", "get"),
+        "createTag": (f"{_PROJECT}/tags", "post"),
+        "renameTag": (f"{_PROJECT}/tags/{{tag_id}}", "patch"),
+        "deleteTag": (f"{_PROJECT}/tags/{{tag_id}}", "delete"),
+        "setDocumentTags": (f"{_PROJECT}/documents/{{document_id}}/tags", "put"),
+        "bulkTagDocuments": (f"{_PROJECT}/documents/tags", "post"),
+        "listAgents": (f"{_PROJECT}/agents", "get"),
+        "createAgent": (f"{_PROJECT}/agents", "post"),
+        "getAgent": (f"{_AGENT}", "get"),
+        "saveAgentDraft": (f"{_AGENT}/draft", "put"),
+        "startPlaygroundConversation": (f"{_PLAYGROUND}", "post"),
+        "getPlaygroundConversation": (f"{_PLAYGROUND}/{{conversation_id}}", "get"),
+        "sendPlaygroundMessage": (f"{_PLAYGROUND}/{{conversation_id}}/messages", "post"),
     }
 
 

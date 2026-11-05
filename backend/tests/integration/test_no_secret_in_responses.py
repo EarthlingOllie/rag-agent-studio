@@ -29,6 +29,9 @@ ALLOWED = {
     # Spec 01: a Member enrolling in TOTP MFA is shown their own new secret once, to type
     # into an authenticator app. It is not a Provider Credential.
     ("EnrolmentResponse", "secret"): "a Member's own TOTP secret, shown once at enrolment",
+    # Spec 04: how many model tokens an answer used; counts, not access tokens.
+    ("MessageOut", "input_tokens"): "the number of input tokens a model call used",
+    ("MessageOut", "output_tokens"): "the number of output tokens a model call used",
 }
 
 

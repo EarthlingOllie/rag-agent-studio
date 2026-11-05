@@ -235,10 +235,6 @@ export function InstructionsTab() {
   );
 }
 
-export function AgentsTab() {
-  return <TabPlaceholder title="Agents">No Agents yet. Agents that answer from this Project arrive in a later release.</TabPlaceholder>;
-}
-
 export function ConversationsTab() {
   return (
     <TabPlaceholder title="Conversations">

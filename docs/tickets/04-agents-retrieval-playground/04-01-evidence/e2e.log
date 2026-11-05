@@ -1,0 +1,167 @@
+docker compose -p rag0401 -f docker-compose.yml -f docs/tickets/04-agents-retrieval-playground/04-01-evidence/compose.sandbox.yml up -d --build --wait
+ Volume rag0401_rustfs-data Creating 
+ Volume rag0401_rustfs-data Creating 
+ Network rag0401_default Creating 
+ Network rag0401_default Creating 
+ Volume rag0401_postgres-data Creating 
+ Volume rag0401_postgres-data Creating 
+ Volume rag0401_postgres-data Created 
+ Volume rag0401_postgres-data Created 
+ Volume rag0401_rustfs-data Created 
+ Volume rag0401_rustfs-data Created 
+ Network rag0401_default Created 
+ Network rag0401_default Created 
+ Container rag0401-mailpit-1 Creating 
+ Container rag0401-rustfs-1 Creating 
+ Container rag0401-redis-1 Creating 
+ Container rag0401-postgres-1 Creating 
+ Container rag0401-mailpit-1 Created 
+ Container rag0401-rustfs-1 Created 
+ Container rag0401-redis-1 Created 
+ Container rag0401-postgres-1 Created 
+ Container rag0401-beat-1 Creating 
+ Container rag0401-api-1 Creating 
+ Container rag0401-worker-1 Creating 
+ Container rag0401-beat-1 Created 
+ Container rag0401-api-1 Created 
+ Container rag0401-studio-1 Creating 
+ Container rag0401-worker-1 Created 
+ Container rag0401-studio-1 Created 
+ Container rag0401-postgres-1 Starting 
+ Container rag0401-mailpit-1 Starting 
+ Container rag0401-rustfs-1 Starting 
+ Container rag0401-redis-1 Starting 
+ Container rag0401-postgres-1 Started 
+ Container rag0401-mailpit-1 Started 
+ Container rag0401-rustfs-1 Started 
+ Container rag0401-redis-1 Started 
+ Container rag0401-postgres-1 Waiting 
+ Container rag0401-redis-1 Waiting 
+ Container rag0401-rustfs-1 Waiting 
+ Container rag0401-postgres-1 Waiting 
+ Container rag0401-redis-1 Waiting 
+ Container rag0401-rustfs-1 Waiting 
+ Container rag0401-redis-1 Waiting 
+ Container rag0401-rustfs-1 Waiting 
+ Container rag0401-postgres-1 Waiting 
+ Container rag0401-rustfs-1 Healthy 
+ Container rag0401-rustfs-1 Healthy 
+ Container rag0401-rustfs-1 Healthy 
+ Container rag0401-redis-1 Healthy 
+ Container rag0401-redis-1 Healthy 
+ Container rag0401-redis-1 Healthy 
+ Container rag0401-postgres-1 Healthy 
+ Container rag0401-worker-1 Starting 
+ Container rag0401-postgres-1 Healthy 
+ Container rag0401-api-1 Starting 
+ Container rag0401-postgres-1 Healthy 
+ Container rag0401-beat-1 Starting 
+ Container rag0401-worker-1 Started 
+ Container rag0401-api-1 Started 
+ Container rag0401-api-1 Waiting 
+ Container rag0401-beat-1 Started 
+ Container rag0401-api-1 Healthy 
+ Container rag0401-studio-1 Starting 
+ Container rag0401-studio-1 Started 
+ Container rag0401-rustfs-1 Waiting 
+ Container rag0401-redis-1 Waiting 
+ Container rag0401-beat-1 Waiting 
+ Container rag0401-postgres-1 Waiting 
+ Container rag0401-worker-1 Waiting 
+ Container rag0401-api-1 Waiting 
+ Container rag0401-studio-1 Waiting 
+ Container rag0401-mailpit-1 Waiting 
+ Container rag0401-redis-1 Healthy 
+ Container rag0401-rustfs-1 Healthy 
+ Container rag0401-mailpit-1 Healthy 
+ Container rag0401-worker-1 Healthy 
+ Container rag0401-api-1 Healthy 
+ Container rag0401-postgres-1 Healthy 
+ Container rag0401-beat-1 Healthy 
+ Container rag0401-studio-1 Healthy 
+cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-04-01/frontend
+> playwright test
+
+
+Running 43 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (1.6s)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (365ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (3.1s)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (603ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (812ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   5 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (2.2s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (450ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (226ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (233ms)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (7.4s)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (10.1s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (9.7s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (6.9s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (4.8s)
+  ✓  14 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (21.2s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.0s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (6.1s)
+  ✓  18 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (12.0s)
+  ✓  20 [studio] › e2e/tests/documents.spec.ts:9:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (10.7s)
+  ✓  21 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (14.0s)
+  ✓  22 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (23.4s)
+  ✓  23 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (28.3s)
+  ✓  24 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (17.4s)
+  ✓  25 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (20.0s)
+  ✓  27 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (18.2s)
+  ✘  26 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (31.9s)
+  ✓  29 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (10.4s)
+  ✓  28 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (22.7s)
+  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (16.1s)
+  ✓  32 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (15.3s)
+  ✓  31 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (28.0s)
+  ✓  33 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (3.6s)
+  ✓  35 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (4.0s)
+  ✓  36 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (8.6s)
+  ✓  34 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (20.7s)
+  ✓  37 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (17.9s)
+  ✓  38 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (29.4s)
+  ✓  40 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.6s)
+  ✓  39 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (25.2s)
+  ✓  41 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (4.5s)
+  ✓  42 [studio] › e2e/tests/theme.spec.ts:51:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (12.1s)
+  ✓  43 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (9.7s)
+
+
+  1) [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Password')
+
+
+      75 |   await page.getByRole("button", { name: "Sign out" }).click();
+      76 |   await page.getByLabel("Email").fill(member.email);
+    > 77 |   await page.getByLabel("Password").fill(member.password);
+         |                                     ^
+      78 |   await page.getByRole("button", { name: "Sign in" }).click();
+      79 |   await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+      80 | });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-04-01/frontend/e2e/tests/mfa.spec.ts:77:37
+
+    Error Context: test-results/tests-mfa-a-Member-enrols--8906a-ery-code-then-turns-MFA-off-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-mfa-a-Member-enrols--8906a-ery-code-then-turns-MFA-off-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-mfa-a-Member-enrols--8906a-ery-code-then-turns-MFA-off-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off 
+  42 passed (4.5m)
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:103: e2e] Error 1
