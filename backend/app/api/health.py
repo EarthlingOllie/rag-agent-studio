@@ -86,7 +86,12 @@ def get_settings(request: Request) -> Settings:
 @router.get(
     "/worker",
     response_model=WorkerHealthResponse,
-    responses={503: {"model": WorkerHealthResponse, "description": "No worker replied in time, or the health task failed"}},
+    responses={
+        503: {
+            "model": WorkerHealthResponse,
+            "description": "No worker replied in time, or the health task failed",
+        }
+    },
     operation_id="getWorkerHealth",
 )
 async def get_worker_health(

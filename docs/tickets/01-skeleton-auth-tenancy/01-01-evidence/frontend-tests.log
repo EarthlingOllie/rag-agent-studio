@@ -1,20 +1,20 @@
 $ git rev-parse HEAD
-820d78637060320270a5ef829d20d59961a93ed6
+5ece02a430732794fe5945563c73d9007b6985fa
 $ make test-frontend
 cd frontend && pnpm test
 
-> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+> rag-agent-studio-frontend@ test /home/user/rag-agent-studio/frontend
 > vitest run --coverage
 
 
- RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+ RUN  v5.1.0 /home/user/rag-agent-studio/frontend
       Coverage enabled with v8
 
 
  Test Files  2 passed (2)
       Tests  8 passed (8)
-   Start at  00:23:37
-   Duration  1.78s (environment 42%, tests 34%, setup 13%, import 5%, transform 3%, worker 3%)
+   Start at  00:28:43
+   Duration  1.92s (environment 40%, tests 36%, setup 14%, import 5%, worker 3%, transform 2%)
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.

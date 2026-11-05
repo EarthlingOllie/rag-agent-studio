@@ -1,17 +1,19 @@
 $ git rev-parse HEAD
-820d78637060320270a5ef829d20d59961a93ed6
+5ece02a430732794fe5945563c73d9007b6985fa
 $ make lint
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
-All checks passed!
-23 files already formatted
-Success: no issues found in 23 source files
-cd frontend && pnpm lint && pnpm typecheck
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+E501 Line too long (124 > 100)
+  --> app/api/health.py:89:101
+   |
+87 |     "/worker",
+88 |     response_model=WorkerHealthResponse,
+89 |     responses={503: {"model": WorkerHealthResponse, "description": "No worker replied in time, or the health task failed"}},
+   |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+90 |     operation_id="getWorkerHealth",
+91 | )
+   |
 
-> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
-> eslint . --max-warnings=0
-
-
-> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
-> tsc
-
-exit=0
+Found 1 error.
+make: *** [Makefile:38: lint-backend] Error 1
+exit=2

@@ -1,22 +1,23 @@
-$ git rev-parse HEAD  (fresh clone of ticket/01-01-walking-skeleton)
-820d78637060320270a5ef829d20d59961a93ed6
-$ make test-backend  (Postgres+pgvector and Redis from 'make services')
+$ git rev-parse HEAD
+5ece02a430732794fe5945563c73d9007b6985fa
+$ make test-backend  (Postgres+pgvector and Redis from make services)
 cd backend && uv run pytest
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
 platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
-rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/backend
+rootdir: /home/user/rag-agent-studio/backend
 configfile: pyproject.toml
 testpaths: tests
 plugins: anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 14 items
+collected 15 items
 
-tests/integration/test_health.py ...                                     [ 21%]
-tests/integration/test_migrations.py .                                   [ 28%]
-tests/integration/test_openapi.py ..                                     [ 42%]
-tests/integration/test_settings.py ..                                    [ 57%]
-tests/integration/test_worker_entrypoint.py ...                          [ 78%]
-tests/integration/test_worker_health.py ...                              [100%]
+tests/integration/test_health.py ...                                     [ 20%]
+tests/integration/test_migrations.py .                                   [ 26%]
+tests/integration/test_openapi.py ..                                     [ 40%]
+tests/integration/test_settings.py ..                                    [ 53%]
+tests/integration/test_worker_entrypoint.py ...                          [ 73%]
+tests/integration/test_worker_health.py ....                             [100%]
 
 ================================ tests coverage ================================
 _______________ coverage: platform linux, python 3.13.18-final-0 _______________
@@ -25,7 +26,7 @@ Name                       Stmts   Miss Branch BrPart  Cover   Missing
 ----------------------------------------------------------------------
 app/__init__.py                0      0      0      0   100%
 app/api/__init__.py            0      0      0      0   100%
-app/api/health.py             62      0      6      0   100%
+app/api/health.py             65      0      8      0   100%
 app/core/__init__.py           0      0      0      0   100%
 app/core/db.py                 4      0      0      0   100%
 app/core/settings.py          17      0      0      0   100%
@@ -36,8 +37,8 @@ app/worker/celery_app.py       8      0      0      0   100%
 app/worker/main.py             3      0      0      0   100%
 app/worker/tasks.py            4      0      0      0   100%
 ----------------------------------------------------------------------
-TOTAL                        128      0      6      0   100%
+TOTAL                        131      0      8      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-============================== 14 passed in 2.43s ==============================
+============================== 15 passed in 3.61s ==============================
 exit=0
