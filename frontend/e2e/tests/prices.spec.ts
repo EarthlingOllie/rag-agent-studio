@@ -32,7 +32,7 @@ test.describe("prices", () => {
     // A negotiated input price; the other two keep the platform price.
     await page.getByRole("button", { name: "Override prices: Claude Sonnet 4.5" }).click();
     const form = page.getByRole("form", { name: "Override prices for Claude Sonnet 4.5" });
-    await form.getByLabel("Input").fill("2.25");
+    await form.getByLabel("Input", { exact: true }).fill("2.25");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await form.getByRole("button", { name: "Save prices" }).click();
     await expect(page.getByRole("status")).toHaveText("Prices for Claude Sonnet 4.5 saved.");
