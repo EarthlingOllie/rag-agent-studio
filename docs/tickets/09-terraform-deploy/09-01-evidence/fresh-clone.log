@@ -1,0 +1,48 @@
+$ git clone --branch ticket/09-01-state-bootstrap-oidc https://github.com/EarthlingOllie/rag-agent-studio fresh && cd fresh && make infra-check
+# HEAD 5e81d76; untracked before: 0
+terraform fmt -check -recursive -diff infra
+infra/tests/backend.test.sh
+ok   demo: S3 backend with native locking
+scripts/ci/tests/plan-gate.test.sh
+ok   runs_when_the_secret_is_set_and_infra_changed
+ok   runs_when_the_infra_workflow_changed
+ok   skips_without_the_secret
+ok   skips_when_no_infrastructure_changed
+ok   fails_when_the_state_bucket_is_missing
+ok   fails_when_the_base_commit_is_unknown
+ok   rejects_missing_arguments
+== infra/bootstrap/
+Success! The configuration is valid.
+Success! 8 passed, 0 failed.
+== infra/envs/demo/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+Success! 11 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+Success! 2 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+Passed checks: 28, Failed checks: 0, Skipped checks: 3
+exit=0

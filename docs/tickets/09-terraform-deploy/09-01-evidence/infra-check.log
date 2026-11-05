@@ -1,0 +1,137 @@
+$ make infra-check   # branch ticket/09-01-state-bootstrap-oidc @ 5e81d76, 2026-11-05T01:28:41Z
+# terraform v1.13.4, TFLint version 0.59.1, checkov 3.4.3
+terraform fmt -check -recursive -diff infra
+infra/tests/backend.test.sh
+ok   demo: S3 backend with native locking
+scripts/ci/tests/plan-gate.test.sh
+ok   runs_when_the_secret_is_set_and_infra_changed
+ok   runs_when_the_infra_workflow_changed
+ok   skips_without_the_secret
+ok   skips_when_no_infrastructure_changed
+ok   fails_when_the_state_bucket_is_missing
+ok   fails_when_the_base_commit_is_unknown
+ok   rejects_missing_arguments
+== infra/bootstrap/
+Success! The configuration is valid.
+
+tests/bootstrap.tftest.hcl... in progress
+  run "names_the_state_bucket_after_the_account"... pass
+  run "versions_the_state_bucket"... pass
+  run "encrypts_the_state_bucket_with_a_rotating_key"... pass
+  run "keeps_the_state_bucket_private_and_tls_only"... pass
+  run "outputs_a_native_locking_backend_configuration"... pass
+  run "lets_only_this_repository_assume_the_deploy_role"... pass
+  run "lets_the_deploy_role_use_the_state_and_manage_prefixed_iam_only"... pass
+  run "rejects_a_name_prefix_that_would_let_the_role_manage_itself"... pass
+tests/bootstrap.tftest.hcl... tearing down
+tests/bootstrap.tftest.hcl... pass
+
+Success! 8 passed, 0 failed.
+== infra/envs/demo/
+Success! The configuration is valid.
+
+tests/demo.tftest.hcl... in progress
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/demo.tftest.hcl... tearing down
+tests/demo.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "creates_the_github_oidc_provider"... pass
+  run "trusts_only_this_repository"... pass
+  run "narrows_trust_to_chosen_subjects"... pass
+  run "reuses_an_existing_oidc_provider"... pass
+  run "attaches_the_chosen_managed_policies"... pass
+  run "attaches_no_inline_policy_by_default"... pass
+  run "attaches_the_inline_policy"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_a_wildcard_repository"... pass
+  run "rejects_a_wildcard_subject"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 11 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+terraform scan results:
+
+Passed checks: 28, Failed checks: 0, Skipped checks: 3
+
+
+exit=0

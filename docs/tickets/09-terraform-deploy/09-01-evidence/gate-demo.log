@@ -1,0 +1,82 @@
+$ docs/tickets/09-terraform-deploy/09-01-evidence/gate-demo.sh .   # @ 5e81d76
+== Trust any repository
+   change: infra/modules/ci-oidc/main.tf: sed 's/"repo:${var.github_repository}:${claim}"/"repo:*:${claim}"/'
+   $ D=infra/modules/ci-oidc; terraform -chdir=$D init -backend=false -input=false >/dev/null && terraform -chdir=$D test -no-color
+     run "trusts_only_this_repository"... fail
+   Error: Test assertion failed
+     run "narrows_trust_to_chosen_subjects"... fail
+   Error: Test assertion failed
+   Failure! 9 passed, 2 failed.
+   exit=1
+
+== Drop the audience condition
+   change: infra/modules/ci-oidc/main.tf: sed '/StringEquals = /d'
+   $ D=infra/modules/ci-oidc; terraform -chdir=$D init -backend=false -input=false >/dev/null && terraform -chdir=$D test -no-color
+     run "trusts_only_this_repository"... fail
+   Failure! 2 passed, 1 failed, 8 skipped.
+   exit=1
+
+== Suspend state versioning
+   change: infra/bootstrap/main.tf: sed '/versioning_configuration {/,/}/ s/status = "Enabled"/status = "Suspended"/'
+   $ D=infra/bootstrap; terraform -chdir=$D init -backend=false -input=false >/dev/null && terraform -chdir=$D test -no-color
+     run "versions_the_state_bucket"... fail
+   Error: Test assertion failed
+   Failure! 7 passed, 1 failed.
+   exit=1
+
+== Encrypt state with SSE-S3 instead of KMS
+   change: infra/bootstrap/main.tf: sed 's/sse_algorithm     = "aws:kms"/sse_algorithm     = "AES256"/'
+   $ D=infra/bootstrap; terraform -chdir=$D init -backend=false -input=false >/dev/null && terraform -chdir=$D test -no-color
+     run "encrypts_the_state_bucket_with_a_rotating_key"... fail
+   Error: Test assertion failed
+   Failure! 7 passed, 1 failed.
+   exit=1
+
+== Allow a public bucket policy
+   change: infra/bootstrap/main.tf: sed 's/block_public_policy     = true/block_public_policy     = false/'
+   $ D=infra/bootstrap; terraform -chdir=$D init -backend=false -input=false >/dev/null && terraform -chdir=$D test -no-color
+     run "keeps_the_state_bucket_private_and_tls_only"... fail
+   Error: Test assertion failed
+   Failure! 7 passed, 1 failed.
+   exit=1
+
+== Turn off key rotation (terraform test)
+   change: infra/bootstrap/main.tf: sed 's/enable_key_rotation     = true/enable_key_rotation     = false/'
+   $ D=infra/bootstrap; terraform -chdir=$D init -backend=false -input=false >/dev/null && terraform -chdir=$D test -no-color
+     run "encrypts_the_state_bucket_with_a_rotating_key"... fail
+   Error: Test assertion failed
+   Failure! 7 passed, 1 failed.
+   exit=1
+
+== Turn off key rotation (checkov)
+   change: infra/bootstrap/main.tf: sed 's/enable_key_rotation     = true/enable_key_rotation     = false/'
+   $ cd infra && checkov --config-file .checkov.yaml
+   Passed checks: 27, Failed checks: 1, Skipped checks: 3
+   Check: CKV_AWS_7: "Ensure rotation for customer created CMKs is enabled"
+   exit=1
+
+== Turn off native locking
+   change: infra/envs/demo/backend.tf: sed 's/use_lockfile = true/use_lockfile = false/'
+   $ infra/tests/backend.test.sh infra
+   FAIL demo: use_lockfile = true is missing
+   exit=1
+
+== Lock with DynamoDB instead
+   change: infra/envs/demo/backend.tf: sed 's/use_lockfile = true/dynamodb_table = "locks"/'
+   $ infra/tests/backend.test.sh infra
+   FAIL demo: use_lockfile = true is missing
+   FAIL demo: dynamodb_table, bucket, encrypt and kms_key_id must not be set (native locking; bucket from -backend-config; the bucket's KMS default encryption applies)
+   exit=1
+
+== Plan even without the secret
+   change: scripts/ci/plan-gate.sh: sed 's/if \[ -z "${AWS_ROLE_ARN:-}" \]; then/if false; then/'
+   $ scripts/ci/tests/plan-gate.test.sh
+   FAIL skips_without_the_secret: expected run=false, got: run=true
+   exit=1
+
+== Plan on every pull request
+   change: scripts/ci/plan-gate.sh: sed 's/if ! grep -Eq/if false \&\& grep -Eq/'
+   $ scripts/ci/tests/plan-gate.test.sh
+   FAIL skips_when_no_infrastructure_changed: expected run=false, got: run=true
+   exit=1
+

@@ -1,0 +1,18 @@
+# GitHub Actions on branch ticket/09-01-state-bootstrap-oidc, commit 5e81d76 (push event), read through the GitHub API.
+infra            run 41948762039  success
+  fmt, validate, tflint, checkov, terraform test   success  (job 126987406625)
+  Should terraform plan run?                       skipped  (push event; plan-gate runs on pull requests only)
+  terraform plan (demo)                            skipped  (needs plan-gate run == 'true')
+backend          run 41948762199  success
+frontend         run 41948762086  success
+deploy           run 41948762193  success
+security         run 41948762060  success
+guardrails-eval  run 41948762058  success
+e2e              run 41948763659  in progress when this log was taken (no e2e-relevant files changed)
+
+# Tail of job 126987406625, "Run every infrastructure gate" (GitHub's runner, real registry, tflint --init with GITHUB_TOKEN):
+2026-11-05T01:29:11.3922665Z cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+2026-11-05T01:29:11.4233286Z Installing "aws" plugin...
+2026-11-05T01:29:12.7778076Z Installed "aws" (source: github.com/terraform-linters/tflint-ruleset-aws, version: 0.50.0)
+2026-11-05T01:29:18.8499462Z cd infra && checkov --config-file .checkov.yaml
+2026-11-05T01:29:28.0551860Z Passed checks: 28, Failed checks: 0, Skipped checks: 3

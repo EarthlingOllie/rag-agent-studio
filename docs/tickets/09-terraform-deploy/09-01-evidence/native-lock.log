@@ -1,0 +1,27 @@
+# Local moto S3 (moto[server]==5.1.4 on 127.0.0.1:5055) stands in for the bootstrap's bucket. No AWS account.
+$ docs/tickets/09-terraform-deploy/09-01-evidence/native-lock-demo.sh . moto.log   # @ 5e81d76
+$ curl -X PUT http://127.0.0.1:5055/rag-agent-studio-tfstate-123456789012   # create the state bucket in local moto S3
+HTTP 200
+
+$ terraform init -input=false -backend-config=bucket=... (backend.tf unchanged: key + use_lockfile = true)
+Initializing the backend...
+Successfully configured the backend "s3"! Terraform will automatically
+use this backend unless the backend configuration changes.
+If you ever set or change modules or backend configuration for Terraform,
+exit=0
+
+$ terraform plan -input=false (takes and releases the native lock)
+exit=0
+
+$ grep tflock moto.log   # S3 requests moto served for the lock object
+  "PUT /rag-agent-studio-tfstate-123456789012/envs/demo/terraform.tfstate.tflock?x-id=PutObject HTTP/1.1" 200
+  "GET /rag-agent-studio-tfstate-123456789012/envs/demo/terraform.tfstate.tflock?x-id=GetObject HTTP/1.1" 200
+  "DELETE /rag-agent-studio-tfstate-123456789012/envs/demo/terraform.tfstate.tflock?x-id=DeleteObject HTTP/1.1" 204
+
+$ put a foreign lock object, as a concurrent run would, then plan again
+HTTP 200
+  Error: Error acquiring the state lock
+  Error message: operation error S3: PutObject, https response error
+  StatusCode: 412, RequestID: , HostID: , api error PreconditionFailed: At
+exit=1
+script exit=0

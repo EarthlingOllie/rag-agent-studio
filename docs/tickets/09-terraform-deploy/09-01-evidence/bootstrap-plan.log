@@ -1,0 +1,391 @@
+# Plan only, against local moto (STS, IAM, KMS, S3 endpoints via AWS_ENDPOINT_URL). Fake credentials; no AWS account; never applied.
+$ cd infra/bootstrap && AWS_ENDPOINT_URL=http://127.0.0.1:5055 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test terraform plan -input=false -refresh=false
+data.aws_caller_identity.current: Reading...
+data.aws_partition.current: Reading...
+data.aws_partition.current: Read complete after 0s [id=aws]
+data.aws_caller_identity.current: Read complete after 0s [id=123456789012]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_kms_alias.state will be created
+  + resource "aws_kms_alias" "state" {
+      + arn            = (known after apply)
+      + id             = (known after apply)
+      + name           = "alias/rag-agent-studio-tfstate"
+      + name_prefix    = (known after apply)
+      + region         = "eu-west-2"
+      + target_key_arn = (known after apply)
+      + target_key_id  = (known after apply)
+    }
+
+  # aws_kms_key.state will be created
+  + resource "aws_kms_key" "state" {
+      + arn                                = (known after apply)
+      + bypass_policy_lockout_safety_check = false
+      + customer_master_key_spec           = "SYMMETRIC_DEFAULT"
+      + deletion_window_in_days            = 30
+      + description                        = "Encrypts Terraform state for rag-agent-studio."
+      + enable_key_rotation                = true
+      + id                                 = (known after apply)
+      + is_enabled                         = true
+      + key_id                             = (known after apply)
+      + key_usage                          = "ENCRYPT_DECRYPT"
+      + multi_region                       = (known after apply)
+      + policy                             = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "kms:*"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + AWS = "arn:aws:iam::123456789012:root"
+                        }
+                      + Resource  = "*"
+                      + Sid       = "AccountAdministersKey"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + region                             = "eu-west-2"
+      + rotation_period_in_days            = (known after apply)
+      + tags_all                           = {
+          + "Environment" = "shared"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "rag-agent-studio"
+        }
+    }
+
+  # aws_s3_bucket.state will be created
+  + resource "aws_s3_bucket" "state" {
+      + acceleration_status         = (known after apply)
+      + acl                         = (known after apply)
+      + arn                         = (known after apply)
+      + bucket                      = "rag-agent-studio-tfstate-123456789012"
+      + bucket_domain_name          = (known after apply)
+      + bucket_namespace            = (known after apply)
+      + bucket_prefix               = (known after apply)
+      + bucket_region               = (known after apply)
+      + bucket_regional_domain_name = (known after apply)
+      + force_destroy               = false
+      + hosted_zone_id              = (known after apply)
+      + id                          = (known after apply)
+      + object_lock_enabled         = (known after apply)
+      + policy                      = (known after apply)
+      + region                      = "eu-west-2"
+      + request_payer               = (known after apply)
+      + tags_all                    = {
+          + "Environment" = "shared"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "rag-agent-studio"
+        }
+      + website_domain              = (known after apply)
+      + website_endpoint            = (known after apply)
+
+      + cors_rule (known after apply)
+
+      + grant (known after apply)
+
+      + lifecycle_rule (known after apply)
+
+      + logging (known after apply)
+
+      + object_lock_configuration (known after apply)
+
+      + replication_configuration (known after apply)
+
+      + server_side_encryption_configuration (known after apply)
+
+      + versioning (known after apply)
+
+      + website (known after apply)
+    }
+
+  # aws_s3_bucket_lifecycle_configuration.state will be created
+  + resource "aws_s3_bucket_lifecycle_configuration" "state" {
+      + bucket                                 = (known after apply)
+      + expected_bucket_owner                  = (known after apply)
+      + id                                     = (known after apply)
+      + region                                 = "eu-west-2"
+      + transition_default_minimum_object_size = "all_storage_classes_128K"
+
+      + rule {
+          + id     = "expire-old-state-versions"
+          + status = "Enabled"
+            # (1 unchanged attribute hidden)
+
+          + abort_incomplete_multipart_upload {
+              + days_after_initiation = 7
+            }
+
+          + filter {
+                # (1 unchanged attribute hidden)
+            }
+
+          + noncurrent_version_expiration {
+              + noncurrent_days = 90
+            }
+        }
+    }
+
+  # aws_s3_bucket_ownership_controls.state will be created
+  + resource "aws_s3_bucket_ownership_controls" "state" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = "eu-west-2"
+
+      + rule {
+          + object_ownership = "BucketOwnerEnforced"
+        }
+    }
+
+  # aws_s3_bucket_policy.state will be created
+  + resource "aws_s3_bucket_policy" "state" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + policy = (known after apply)
+      + region = "eu-west-2"
+    }
+
+  # aws_s3_bucket_public_access_block.state will be created
+  + resource "aws_s3_bucket_public_access_block" "state" {
+      + block_public_acls       = true
+      + block_public_policy     = true
+      + bucket                  = (known after apply)
+      + id                      = (known after apply)
+      + ignore_public_acls      = true
+      + region                  = "eu-west-2"
+      + restrict_public_buckets = true
+    }
+
+  # aws_s3_bucket_server_side_encryption_configuration.state will be created
+  + resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = "eu-west-2"
+
+      + rule {
+          + blocked_encryption_types = (known after apply)
+          + bucket_key_enabled       = true
+
+          + apply_server_side_encryption_by_default {
+              + kms_master_key_id = (known after apply)
+              + sse_algorithm     = "aws:kms"
+            }
+        }
+    }
+
+  # aws_s3_bucket_versioning.state will be created
+  + resource "aws_s3_bucket_versioning" "state" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = "eu-west-2"
+
+      + versioning_configuration {
+          + mfa_delete = (known after apply)
+          + status     = "Enabled"
+        }
+    }
+
+  # module.ci_oidc.aws_iam_openid_connect_provider.github[0] will be created
+  + resource "aws_iam_openid_connect_provider" "github" {
+      + arn             = (known after apply)
+      + client_id_list  = [
+          + "sts.amazonaws.com",
+        ]
+      + id              = (known after apply)
+      + tags            = {
+          + "Environment" = "shared"
+          + "ManagedBy"   = "terraform"
+          + "Module"      = "ci-oidc"
+          + "Project"     = "rag-agent-studio"
+        }
+      + tags_all        = {
+          + "Environment" = "shared"
+          + "ManagedBy"   = "terraform"
+          + "Module"      = "ci-oidc"
+          + "Project"     = "rag-agent-studio"
+        }
+      + thumbprint_list = (known after apply)
+      + url             = "https://token.actions.githubusercontent.com"
+    }
+
+  # module.ci_oidc.aws_iam_role.deploy will be created
+  + resource "aws_iam_role" "deploy" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = (known after apply)
+      + create_date           = (known after apply)
+      + description           = "Assumed by GitHub Actions in EarthlingOllie/rag-agent-studio through OIDC."
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "rag-agent-studio-github-deploy"
+      + name_prefix           = (known after apply)
+      + path                  = "/"
+      + tags                  = {
+          + "Environment" = "shared"
+          + "ManagedBy"   = "terraform"
+          + "Module"      = "ci-oidc"
+          + "Project"     = "rag-agent-studio"
+        }
+      + tags_all              = {
+          + "Environment" = "shared"
+          + "ManagedBy"   = "terraform"
+          + "Module"      = "ci-oidc"
+          + "Project"     = "rag-agent-studio"
+        }
+      + unique_id             = (known after apply)
+
+      + inline_policy (known after apply)
+    }
+
+  # module.ci_oidc.aws_iam_role_policy.inline[0] will be created
+  + resource "aws_iam_role_policy" "inline" {
+      + id          = (known after apply)
+      + name        = "rag-agent-studio-github-deploy"
+      + name_prefix = (known after apply)
+      + policy      = (known after apply)
+      + role        = (known after apply)
+    }
+
+  # module.ci_oidc.aws_iam_role_policy_attachment.managed["arn:aws:iam::aws:policy/PowerUserAccess"] will be created
+  + resource "aws_iam_role_policy_attachment" "managed" {
+      + id         = (known after apply)
+      + policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
+      + role       = "rag-agent-studio-github-deploy"
+    }
+
+Plan: 13 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + backend_config      = {
+      + bucket       = "rag-agent-studio-tfstate-123456789012"
+      + region       = "eu-west-2"
+      + use_lockfile = true
+    }
+  + deploy_policy       = {
+      + Statement = [
+          + {
+              + Action   = "s3:ListBucket"
+              + Effect   = "Allow"
+              + Resource = (known after apply)
+              + Sid      = "ListStateBucket"
+            },
+          + {
+              + Action   = [
+                  + "s3:GetObject",
+                  + "s3:PutObject",
+                  + "s3:DeleteObject",
+                ]
+              + Effect   = "Allow"
+              + Resource = (known after apply)
+              + Sid      = "ReadWriteStateAndLockFiles"
+            },
+          + {
+              + Action   = [
+                  + "kms:Decrypt",
+                  + "kms:Encrypt",
+                  + "kms:GenerateDataKey",
+                ]
+              + Effect   = "Allow"
+              + Resource = (known after apply)
+              + Sid      = "UseStateKey"
+            },
+          + {
+              + Action   = [
+                  + "iam:AttachRolePolicy",
+                  + "iam:CreatePolicy",
+                  + "iam:CreatePolicyVersion",
+                  + "iam:CreateRole",
+                  + "iam:DeletePolicy",
+                  + "iam:DeletePolicyVersion",
+                  + "iam:DeleteRole",
+                  + "iam:DeleteRolePolicy",
+                  + "iam:DetachRolePolicy",
+                  + "iam:GetPolicy",
+                  + "iam:GetPolicyVersion",
+                  + "iam:GetRole",
+                  + "iam:GetRolePolicy",
+                  + "iam:ListAttachedRolePolicies",
+                  + "iam:ListInstanceProfilesForRole",
+                  + "iam:ListPolicyVersions",
+                  + "iam:ListRolePolicies",
+                  + "iam:ListRoleTags",
+                  + "iam:PassRole",
+                  + "iam:PutRolePolicy",
+                  + "iam:TagPolicy",
+                  + "iam:TagRole",
+                  + "iam:UntagPolicy",
+                  + "iam:UntagRole",
+                  + "iam:UpdateAssumeRolePolicy",
+                  + "iam:UpdateRole",
+                ]
+              + Effect   = "Allow"
+              + Resource = [
+                  + "arn:aws:iam::123456789012:role/studio-*",
+                  + "arn:aws:iam::123456789012:policy/studio-*",
+                ]
+              + Sid      = "ManagePrefixedIamResources"
+            },
+          + {
+              + Action   = [
+                  + "s3:DeleteBucket",
+                  + "s3:DeleteBucketPolicy",
+                  + "s3:PutBucketPolicy",
+                  + "s3:PutBucketVersioning",
+                  + "s3:PutEncryptionConfiguration",
+                  + "s3:PutBucketPublicAccessBlock",
+                  + "s3:PutLifecycleConfiguration",
+                  + "kms:DisableKey",
+                  + "kms:DisableKeyRotation",
+                  + "kms:PutKeyPolicy",
+                  + "kms:ScheduleKeyDeletion",
+                ]
+              + Effect   = "Deny"
+              + Resource = [
+                  + (known after apply),
+                  + (known after apply),
+                ]
+              + Sid      = "ProtectStateBucketAndKey"
+            },
+        ]
+      + Version   = "2012-10-17"
+    }
+  + deploy_role_arn     = (known after apply)
+  + deploy_trust_policy = {
+      + Statement = [
+          + {
+              + Action    = "sts:AssumeRoleWithWebIdentity"
+              + Condition = {
+                  + StringEquals = {
+                      + "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+                    }
+                  + StringLike   = {
+                      + "token.actions.githubusercontent.com:sub" = [
+                          + "repo:EarthlingOllie/rag-agent-studio:ref:refs/heads/*",
+                          + "repo:EarthlingOllie/rag-agent-studio:pull_request",
+                          + "repo:EarthlingOllie/rag-agent-studio:environment:*",
+                        ]
+                    }
+                }
+              + Effect    = "Allow"
+              + Principal = {
+                  + Federated = (known after apply)
+                }
+              + Sid       = "GitHubActionsThisRepositoryOnly"
+            },
+        ]
+      + Version   = "2012-10-17"
+    }
+  + state_bucket_name   = "rag-agent-studio-tfstate-123456789012"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.
+exit=0
