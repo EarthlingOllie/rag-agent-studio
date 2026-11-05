@@ -1,21 +1,21 @@
-# fresh git clone of ticket/01-05-audit-events at 7075bcc; TEST_DATABASE_URL=…/studio_test_fc0105 TEST_REDIS_URL=…/11
+# fresh git clone of ticket/01-05-audit-events at a342f69; TEST_DATABASE_URL=…/studio_test_fc2_0105 TEST_REDIS_URL=…/14
 $ make test-frontend
 cd frontend && pnpm test
 
-> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105r2/frontend
 > vitest run --coverage
 
 
- RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105r2/frontend
       Coverage enabled with v8
 
 
  Test Files  6 passed (6)
       Tests  38 passed (38)
-   Start at  02:50:17
-   Duration  15.36s (tests 46%, environment 31%, setup 10%, import 6%, transform 5%, worker 3%)
+   Start at  03:13:33
+   Duration  11.72s (tests 48%, environment 30%, setup 10%, import 5%, transform 4%, worker 3%)
 
-Environment  jsdom was created 6 times · 11.46s total, 31% of tracked time
+Environment  jsdom was created 6 times · 8.54s total, 30% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
 

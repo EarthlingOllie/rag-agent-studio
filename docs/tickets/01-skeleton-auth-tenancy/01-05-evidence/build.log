@@ -1,11 +1,11 @@
-# fresh git clone of ticket/01-05-audit-events at 7075bcc; TEST_DATABASE_URL=…/studio_test_fc0105 TEST_REDIS_URL=…/11
-$ bash -c cd frontend && pnpm build
+# fresh git clone of ticket/01-05-audit-events at a342f69; TEST_DATABASE_URL=…/studio_test_fc2_0105 TEST_REDIS_URL=…/14
+$ cd frontend && pnpm build
 
-> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105r2/frontend
 > pnpm --filter @studio/studio build
 
 
-> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend/apps/studio
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105r2/frontend/apps/studio
 > vite build
 
 vite v8.3.5 building client environment for production...
@@ -17,5 +17,5 @@ dist/index.html                   0.40 kB │ gzip:   0.26 kB
 dist/assets/index-cchmCego.css   13.35 kB │ gzip:   3.45 kB
 dist/assets/index-DsrMIwKy.js   354.31 kB │ gzip: 111.83 kB
 
-✓ built in 1.55s
+✓ built in 767ms
 exit=0

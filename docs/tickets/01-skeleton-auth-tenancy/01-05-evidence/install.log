@@ -1,9 +1,10 @@
-# fresh git clone of ticket/01-05-audit-events at 7075bcc; TEST_DATABASE_URL=…/studio_test_fc0105 TEST_REDIS_URL=…/11
+# fresh git clone of ticket/01-05-audit-events at a342f69; TEST_DATABASE_URL=…/studio_test_fc2_0105 TEST_REDIS_URL=…/14
 $ make install
 cd backend && uv sync --frozen
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 Using CPython 3.13.18 interpreter at: /usr/local/bin/python3
 Creating virtual environment at: .venv
-Installed 92 packages in 236ms
+Installed 92 packages in 169ms
  + alembic==1.20.1
  + amqp==5.4.2
  + annotated-doc==0.0.5
@@ -102,7 +103,7 @@ Lockfile is up to date, resolution step is skipped
 Progress: resolved 1, reused 0, downloaded 0, added 0
 Packages: +336
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Progress: resolved 336, reused 329, downloaded 0, added 0
+Progress: resolved 336, reused 335, downloaded 0, added 335
 Progress: resolved 336, reused 335, downloaded 0, added 336, done
 
 devDependencies:
@@ -127,5 +128,5 @@ devDependencies:
 + vite 8.3.5
 + vitest 5.1.0
 
-Done in 2.7s using pnpm v10.28.0
+Done in 1.8s using pnpm v10.28.0
 exit=0
