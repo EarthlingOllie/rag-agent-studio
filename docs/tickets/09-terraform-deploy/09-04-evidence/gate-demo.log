@@ -1,0 +1,204 @@
+$ docs/tickets/09-terraform-deploy/09-04-evidence/gate.sh
+### ecr: scan on push off
+<     scan_on_push = true
+>     scan_on_push = false
+  run "scans_every_image_on_push"... fail
+tests/contract.tftest.hcl... fail
+Failure! 13 passed, 1 failed.
+exit=1
+
+### ecr: mutable tags
+<   image_tag_mutability = "IMMUTABLE"
+>   image_tag_mutability = "MUTABLE"
+  run "tags_are_immutable_and_images_encrypted_with_the_data_key"... fail
+tests/contract.tftest.hcl... fail
+Failure! 13 passed, 1 failed.
+exit=1
+
+### ecr: untagged images kept forever (lifecycle rule 1 dropped to 3650 days)
+<         selection    = { tagStatus = "untagged", countType = "sinceImagePushed", countUnit = "days", countNumber = var.untagged_expiry_days }
+>         selection    = { tagStatus = "untagged", countType = "sinceImagePushed", countUnit = "days", countNumber = 3650 }
+  run "expires_untagged_and_old_images"... fail
+  run "lifecycle_limits_are_configurable"... fail
+tests/contract.tftest.hcl... fail
+Failure! 12 passed, 2 failed.
+exit=1
+
+### ecr: images on AWS-managed encryption
+<     encryption_type = "KMS"
+>     encryption_type = "AES256"
+  run "tags_are_immutable_and_images_encrypted_with_the_data_key"... fail
+tests/contract.tftest.hcl... fail
+Failure! 13 passed, 1 failed.
+exit=1
+
+### ecs: x86 tasks
+<     cpu_architecture        = "ARM64"
+>     cpu_architecture        = "X86_64"
+  run "runs_api_worker_and_beat_on_arm64_fargate"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: task size ignores the variable
+<   memory                   = tostring(var.task_sizes[each.key].memory)
+>   memory                   = "8192"
+  run "runs_api_worker_and_beat_on_arm64_fargate"... fail
+  run "task_sizes_and_counts_are_variables"... fail
+  run "accepts_every_fargate_cpu_size"... fail
+  run "accepts_4_vcpu_tasks"... fail
+exit=1
+
+### ecs: assume-role without an external ID
+<             Null            = { "sts:ExternalId" = "false" }
+>             Null            = { "sts:ExternalId" = "true" }
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: assume-role in this account allowed
+<             StringNotEquals = { "aws:ResourceAccount" = local.account_id }
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: worker given the credentials key
+<       Statement = local.documents_statements
+>       Statement = concat(local.documents_statements, [{ Sid = "X", Effect = "Allow", Action = "kms:Decrypt", Resource = var.credentials_key_arn }])
+  run "the_worker_reads_documents_and_never_touches_credentials"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: Documents wildcard actions
+<       Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+>       Action   = "s3:*"
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... fail
+  run "the_worker_reads_documents_and_never_touches_credentials"... fail
+tests/contract.tftest.hcl... fail
+Failure! 41 passed, 2 failed.
+exit=1
+
+### ecs: task trust without the source-account condition
+<         StringEquals = { "aws:SourceAccount" = local.account_id }
+>         StringEquals = {}
+  run "each_service_has_its_own_least_privilege_task_role"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: ALB open to the internet
+<   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront.id
+>   cidr_ipv4         = "0.0.0.0/0"
+  run "only_cloudfront_can_reach_the_alb"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: listener forwards without the header
+<     type = "fixed-response"
+>     type = "forward"
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: header rule matches any value
+<       values           = [terraform_data.origin_secret.output]
+>       values           = ["*"]
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: API tasks get public IPs
+<     assign_public_ip = false
+>     assign_public_ip = true
+  run "services_reach_only_their_data_stores_and_https"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: session secret written into state
+<   secret_string_wo         = replace("${uuid()}${uuid()}", "-", "")
+>   secret_string            = replace("${uuid()}${uuid()}", "-", "")
+  run "runs_api_worker_and_beat_on_arm64_fargate"... fail
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 42 skipped.
+exit=1
+
+### ecs: Beat given the database password
+<     beat = merge({
+>     beat = merge({ DATABASE_PASSWORD = var.database.password_secret_arn,
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... fail
+  run "each_service_has_its_own_least_privilege_execution_role"... fail
+tests/contract.tftest.hcl... fail
+Failure! 41 passed, 2 failed.
+exit=1
+
+### ecs: execution role may read every secret
+<         Resource = values(local.secrets[k])
+>         Resource = "*"
+  run "each_service_has_its_own_least_privilege_execution_role"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: KMS decrypt outside Secrets Manager
+<         Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.${local.region}.amazonaws.com" } }
+>         Condition = {}
+  run "each_service_has_its_own_least_privilege_execution_role"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: logs kept forever
+<   retention_in_days = var.log_retention_days
+>   retention_in_days = 0
+  run "every_service_logs_to_its_own_log_group_with_retention"... fail
+  run "log_retention_is_configurable"... fail
+tests/contract.tftest.hcl... fail
+Failure! 41 passed, 2 failed.
+exit=1
+
+### ecs: writable root filesystem
+<     readonlyRootFilesystem = true
+>     readonlyRootFilesystem = false
+  run "containers_run_with_a_read_only_root_filesystem"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: Beat rolls with two schedulers
+<   deployment_maximum_percent         = each.key == "beat" ? 100 : 200
+>   deployment_maximum_percent         = 200
+  run "deployments_roll_back_and_beat_never_runs_twice"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: egress to Postgres from Beat
+<     { for k in ["api", "worker"] : "${k}-postgres" => { service = k, port = var.database.port, cidr = null, security_group = var.database.security_group_id } },
+>     { for k in local.services : "${k}-postgres" => { service = k, port = var.database.port, cidr = null, security_group = var.database.security_group_id } },
+  run "services_reach_only_their_data_stores_and_https"... fail
+tests/contract.tftest.hcl... fail
+Failure! 42 passed, 1 failed.
+exit=1
+
+### ecs: without the CKV2_AWS_20 skip
+Passed checks: 0, Failed checks: 1, Skipped checks: 0
+Check: CKV2_AWS_20: "Ensure that ALB redirects HTTP requests into HTTPS ones"
+	FAILED for resource: module.ecs.aws_lb.this
+
+### ecs: without the CKV_AWS_2 skip
+Passed checks: 0, Failed checks: 1, Skipped checks: 0
+Check: CKV_AWS_2: "Ensure ALB protocol is HTTPS"
+	FAILED for resource: module.ecs.aws_lb_listener.http
+
+### ecs: without the CKV_AWS_260 skip
+Passed checks: 13, Failed checks: 1, Skipped checks: 0
+Check: CKV_AWS_260: "Ensure no security groups allow ingress from 0.0.0.0:0 to port 80"
+	FAILED for resource: module.ecs.aws_vpc_security_group_ingress_rule.alb
+
