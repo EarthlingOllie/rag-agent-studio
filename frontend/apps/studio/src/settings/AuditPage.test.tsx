@@ -52,7 +52,7 @@ test("Editors don't see the Audit tab", async () => {
 
   expect(within(tabs).getByRole("link", { name: "General" })).toBeInTheDocument();
   expect(within(tabs).queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
-  expect(screen.getByText(/Members, roles and security settings/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Leave Analytical Engines" })).toBeInTheDocument();
 });
 
 test("an Editor who opens the Audit address is told it is for Owners, and nothing is requested", async () => {

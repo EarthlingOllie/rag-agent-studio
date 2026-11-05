@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { expiredInvite, fakeInvitesApi, graceInvite, linkFor, organisationId } from "../test/invites";
+import { fakeMembersApi } from "../test/members";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -12,6 +13,10 @@ const editorSession = {
   ...adaSession,
   organisations: adaSession.organisations.map((organisation) => ({ ...organisation, role: "editor" as const })),
 };
+
+beforeEach(() => {
+  fakeMembersApi();
+});
 
 function pendingRows() {
   const [, ...body] = within(screen.getByRole("table", { name: "Pending invites" })).getAllByRole("row");
@@ -188,7 +193,7 @@ test("an Owner revokes a pending invite", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Revoke invite for grace@example.test" }));
 
   expect(api.revoked).toEqual([graceInvite.id]);
-  await screen.findByRole("cell", { name: "Owner" });
+  await within(screen.getByRole("table", { name: "Pending invites" })).findByRole("cell", { name: "Owner" });
   await expect.poll(pendingRows).toEqual([["charles@example.test", "Owner", "Ada Lovelace", "Expired"]]);
 });
 

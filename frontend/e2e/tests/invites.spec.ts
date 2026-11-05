@@ -10,6 +10,8 @@ async function openMembers(page: Page) {
   await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
   await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Members" }).click();
   await expect(page.getByRole("form", { name: "Invite someone" })).toBeVisible();
+  // Wait for the Members list, so its loading status has gone before the invite's status appears.
+  await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
 }
 
 test.describe("invites", () => {

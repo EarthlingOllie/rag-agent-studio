@@ -1,0 +1,11 @@
+$ make install (fresh clone of ticket/01-09-member-management at 2c113e7; TEST_DATABASE_URL=…/studio_test_c0109 TEST_REDIS_URL=…/8)
+cd backend && uv sync --frozen
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Checked 106 packages in 0.84ms
+cd frontend && pnpm install --frozen-lockfile
+Scope: all 3 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 660ms using pnpm v10.28.0
+exit 0

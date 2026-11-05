@@ -9,7 +9,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AsyncExitStack
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import httpx
@@ -173,6 +173,29 @@ def outbox(app: FastAPI) -> OutboxMailer:
 
 def _clock_is_a_clock(clock: ControllableClock) -> Clock:
     return clock  # mypy checks the fake satisfies the port
+
+
+MemberFactory = Callable[[SignedUpMember, str], Awaitable[SignedUpMember]]
+
+
+@pytest.fixture
+def member_factory(tenant_factory: TenantFactory) -> MemberFactory:
+    """Adds a new signed-in Member to the Owner's Organisation with a role, through an invite.
+
+    The new Member also owns the Organisation they signed up with; the returned
+    ``organisation_id`` and ``organisation_name`` are the Owner's.
+    """
+
+    async def join(owner: SignedUpMember, role: str) -> SignedUpMember:
+        joiner = await tenant_factory()
+        await join_organisation(owner, joiner, role)
+        return replace(
+            joiner,
+            organisation_id=owner.organisation_id,
+            organisation_name=owner.organisation_name,
+        )
+
+    return join
 
 
 async def join_organisation(owner: SignedUpMember, member: SignedUpMember, role: str) -> None:
