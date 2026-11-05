@@ -83,13 +83,14 @@ test("a file of an unsupported type is refused before upload, and the others sti
   renderStudio(documentsTab());
   expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
 
-  await userEvent.upload(await screen.findByLabelText("Choose files to upload"), [file("sheet.xlsx"), file("ok.md")], {
+  await userEvent.upload(await screen.findByLabelText("Choose files to upload"), [file("sheet.xlsx"), file("README"), file("ok.md")], {
     applyAccept: false,
   });
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(UNSUPPORTED);
+  const refused = await screen.findAllByRole("alert");
+  expect(refused.map((alert) => alert.textContent)).toEqual([UNSUPPORTED, UNSUPPORTED]);
   expect(await (await documentsTable()).findByRole("cell", { name: "ok.md" })).toBeInTheDocument();
-  // The refused file never reached the API.
+  // The refused files never reached the API.
   expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([{ filename: "ok.md", size_bytes: 20 }]);
 });
 
