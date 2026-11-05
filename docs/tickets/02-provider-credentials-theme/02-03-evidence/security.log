@@ -1,0 +1,12 @@
+# commit aa17f5d, fresh clone of ticket/02-03-model-gateway-default-model
+$ make secret-scan audit
+gitleaks git --redact --no-banner .
+[90m10:52AM[0m [32mINF[0m [1m128 commits scanned.[0m
+[90m10:52AM[0m [32mINF[0m [1mscanned ~7577416 bytes (7.58 MB) in 746ms[0m
+[90m10:52AM[0m [32mINF[0m [1mno leaks found[0m
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+[exit code 0]

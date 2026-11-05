@@ -107,6 +107,16 @@ async def _new_bedrock_body(owner: SignedUpMember, add_member: MemberFactory) ->
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 
 
+async def _a_credential_to_list(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _a_credential(owner, add_member)
+    return params | {"capability": "chat"}, None
+
+
+async def _a_chat_model_choice(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _a_credential(owner, add_member)
+    return {}, {"credential_id": params["credential_id"], "model": "gpt-4.1"}
+
+
 async def _a_theme(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     theme = (await owner.client.get(f"/api/organisations/{owner.organisation_id}/theme")).json()
     del theme["updated_at"]
@@ -205,6 +215,11 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("POST", f"{_CREDENTIAL}/check", OWNER, _a_credential),
     ScopedRoute("POST", f"{_CREDENTIAL}/rotate", OWNER, _a_credential),
     ScopedRoute("DELETE", _CREDENTIAL, OWNER, _a_credential),
+    ScopedRoute("GET", f"{_CREDENTIAL}/models/{{capability}}", EDITOR, _a_credential_to_list),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/default-model", EDITOR),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/default-model", OWNER, _a_chat_model_choice
+    ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/theme", OWNER, _a_theme),
 ]

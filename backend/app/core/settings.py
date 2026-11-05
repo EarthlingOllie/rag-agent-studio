@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     bedrock_sts_region: str = "us-east-1"
     # Assumed-role sessions are reused until this long before they expire.
     bedrock_session_refresh_seconds: int = Field(default=5 * 60, ge=0)
+    # Which adapters the model gateway builds chat models, embedders and rerankers with: the
+    # providers' real clients, or the offline fakes (`docker compose`, tests).
+    model_gateway: Literal["live", "fake"] = "live"
+    # How long a call to a model provider may take.
+    model_timeout_seconds: float = Field(default=120.0, gt=0)
     # How long a password reset link works.
     password_reset_ttl_seconds: int = Field(default=60 * 60, gt=0)
     # How long an invite link works.

@@ -48,7 +48,7 @@ export class CredentialRequestError extends Error {
   }
 }
 
-function failed(response: Response, error: unknown): CredentialRequestError {
+export function failed(response: Response, error: unknown): CredentialRequestError {
   // `Object()` turns a missing or non-JSON body into an empty object.
   const body = Object(error) as { detail?: unknown; reason?: CheckFailure; references?: CredentialReference[] };
   const detail = typeof body.detail === "string" ? body.detail : undefined;

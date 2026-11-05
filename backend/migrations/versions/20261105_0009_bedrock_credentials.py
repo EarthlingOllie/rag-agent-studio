@@ -1,8 +1,8 @@
 """Bedrock credentials: IAM role credentials hold no secret, and each Organisation gets an
 external ID for its role trust policies.
 
-Revision ID: 0008_bedrock_credentials
-Revises: 0007_provider_credentials
+Revision ID: 0009_bedrock_credentials
+Revises: 0008_default_models
 Create Date: 2026-11-05
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0008_bedrock_credentials"
-down_revision: str | None = "0007_provider_credentials"
+revision: str = "0009_bedrock_credentials"
+down_revision: str | None = "0008_default_models"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

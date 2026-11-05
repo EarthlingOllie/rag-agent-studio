@@ -293,6 +293,7 @@ test("deleting a credential still in use is refused with the list of what uses i
         { kind: "agent", id: "a-1", name: "Sales bot" },
         { kind: "project", id: "p-1", name: "Handbook" },
         { kind: "guardrail", id: "g-1", name: "Classifier" },
+        { kind: "default_model", id: organisationId, name: "Default Model (GPT-4.1)" },
       ],
     },
   });
@@ -307,6 +308,7 @@ test("deleting a credential still in use is refused with the list of what uses i
     "Agent Sales bot",
     "Project Handbook",
     "guardrail Classifier",
+    "Organisation Default Model (GPT-4.1)",
   ]);
   expect(rows().map((row) => row[0])).toEqual(["Legal Voyage", "Marketing OpenAI"]);
 });

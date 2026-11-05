@@ -724,6 +724,45 @@
         "title": "CredentialReferenceOut",
         "type": "object"
       },
+      "DefaultModelOut": {
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "credential_name": {
+            "title": "Credential Name",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "credential_name",
+          "provider",
+          "model",
+          "model_name",
+          "updated_at"
+        ],
+        "title": "DefaultModelOut",
+        "type": "object"
+      },
       "DisableRequest": {
         "properties": {
           "code": {
@@ -1461,6 +1500,27 @@
           "active_organisation_id"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "SetDefaultModelRequest": {
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "model"
+        ],
+        "title": "SetDefaultModelRequest",
         "type": "object"
       },
       "SignInRequest": {
@@ -3628,6 +3688,82 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/models/{capability}": {
+      "get": {
+        "description": "The models this credential offers for a capability: empty unless the credential was\ngiven that capability. Open to every Member, for model pickers.",
+        "operationId": "listCredentialModels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Capability"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModelOut"
+                  },
+                  "title": "Response Listcredentialmodels",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credential Models",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/credentials/{credential_id}/rotate": {
       "post": {
         "description": "Replaces the key, keeping the credential's identity. A failed check keeps the old key.",
@@ -3719,6 +3855,140 @@
         "summary": "Rotate Credential",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/default-model": {
+      "get": {
+        "description": "The Organisation's Default Model, or null until an Owner sets one. Open to every Member.",
+        "operationId": "getDefaultModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DefaultModelOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getdefaultmodel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Default Model",
+        "tags": [
+          "models"
+        ]
+      },
+      "put": {
+        "description": "Sets the Default Model to one of a chat-capable credential's chat models.",
+        "operationId": "setDefaultModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDefaultModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultModelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a chat model of this Organisation"
+          }
+        },
+        "summary": "Set Default Model",
+        "tags": [
+          "models"
         ]
       }
     },

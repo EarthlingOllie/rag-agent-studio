@@ -15,6 +15,8 @@ x-backend: &backend
     # one starting `fake-fail-<reason>` (for Bedrock, a role name or secret access key starting
     # so). Set CREDENTIAL_VERIFIER=live in .env to call providers.
     CREDENTIAL_VERIFIER: ${CREDENTIAL_VERIFIER:-fake}
+    # Models are the gateway's offline fakes locally. Set MODEL_GATEWAY=live in .env to call providers.
+    MODEL_GATEWAY: ${MODEL_GATEWAY:-fake}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
     # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.

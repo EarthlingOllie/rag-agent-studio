@@ -65,6 +65,21 @@ def _context(organisation_id: uuid.UUID, credential_id: uuid.UUID) -> bytes:
     return f"provider-credential:{organisation_id}:{credential_id}".encode()
 
 
+def seal_secret(
+    envelope: EnvelopeEncryption, organisation_id: uuid.UUID, credential_id: uuid.UUID, secret: str
+) -> bytes:
+    """Seals a credential's secret, bound to the credential and its Organisation."""
+    return envelope.seal(secret.encode(), context=_context(organisation_id, credential_id))
+
+
+def open_secret(envelope: EnvelopeEncryption, credential: ProviderCredential) -> str:
+    """The credential's secret in plain text. Only the model gateway and checks need it, and
+    only for credentials with a secret: a Bedrock IAM role has none."""
+    context = _context(credential.organisation_id, credential.id)
+    sealed = cast(bytes, credential.secret_sealed)
+    return envelope.open(sealed, context=context).decode()
+
+
 def _suffix(secret: str) -> str:
     return secret[-SUFFIX_LENGTH:]
 
@@ -289,9 +304,7 @@ class Credentials:
         credential.secret_sealed = (
             None
             if secret is None
-            else self._envelope.seal(
-                secret.encode(), context=_context(scope.organisation_id, credential_id)
-            )
+            else seal_secret(self._envelope, scope.organisation_id, credential_id, secret)
         )
         credential.capabilities = [str(c) for c in capabilities]
         credential.check_status = PASSED
@@ -343,18 +356,12 @@ class Credentials:
         )
         return str(external_id)
 
-    def _open(self, credential: ProviderCredential) -> str:
-        context = _context(credential.organisation_id, credential.id)
-        # Only credentials with a secret are opened; a Bedrock IAM role has none.
-        sealed = cast(bytes, credential.secret_sealed)
-        return self._envelope.open(sealed, context=context).decode()
-
     async def _verify_stored(
         self, scope: OrganisationScope, credential: ProviderCredential
     ) -> CheckResult:
         """Checks a stored credential again, however it authenticates."""
         if credential.auth_kind == AuthKind.API_KEY:
-            return await self._verifier.check(Provider(credential.provider), self._open(credential))
+            return await self._verifier.check(Provider(credential.provider), open_secret(self._envelope, credential))
         capabilities = [Capability(c) for c in credential.capabilities]
         region = str(credential.region)
         if credential.auth_kind == AuthKind.AWS_ROLE:
@@ -365,7 +372,7 @@ class Credentials:
                 external_id=await self._external_id(scope),
             )
         else:
-            keys = json.loads(self._open(credential))
+            keys = json.loads(open_secret(self._envelope, credential))
             access = BedrockAccess(
                 region=region,
                 model_id=_check_model(capabilities),
@@ -410,8 +417,8 @@ class Credentials:
             details = _summary(credential) | {"attempted_suffix": _suffix(api_key)}
             raise await self._check_failed(scope, credential.id, details, result.failure)
         before = {"masked_suffix": credential.masked_suffix}
-        credential.secret_sealed = self._envelope.seal(
-            api_key.encode(), context=_context(credential.organisation_id, credential.id)
+        credential.secret_sealed = seal_secret(
+            self._envelope, credential.organisation_id, credential.id, api_key
         )
         credential.masked_suffix = _suffix(api_key)
         credential.secret_set_at = self._clock.now()

@@ -146,7 +146,7 @@ function CredentialActions({
   );
 }
 
-const KIND_NAMES: Record<string, string> = { agent: "Agent", project: "Project" };
+const KIND_NAMES: Record<string, string> = { agent: "Agent", project: "Project", default_model: "Organisation" };
 
 /** The refusal to delete a credential something still uses, listing what uses it. */
 function InUse({ name, error }: { name: string; error: CredentialRequestError }) {
