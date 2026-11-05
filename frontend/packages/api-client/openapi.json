@@ -234,6 +234,33 @@
         "title": "CodeRequest",
         "type": "object"
       },
+      "ColourToken": {
+        "description": "A colour token's light-mode value and its dark-mode value.",
+        "properties": {
+          "dark": {
+            "examples": [
+              "#4f46e5"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Dark",
+            "type": "string"
+          },
+          "light": {
+            "examples": [
+              "#4f46e5"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Light",
+            "type": "string"
+          }
+        },
+        "required": [
+          "light",
+          "dark"
+        ],
+        "title": "ColourToken",
+        "type": "object"
+      },
       "CompletePasswordResetRequest": {
         "properties": {
           "password": {
@@ -355,6 +382,49 @@
           "detail"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Font": {
+        "enum": [
+          "Inter",
+          "Roboto",
+          "Open Sans",
+          "Lato",
+          "Source Sans 3",
+          "Nunito",
+          "Work Sans",
+          "IBM Plex Sans",
+          "Merriweather",
+          "Lora",
+          "Source Serif 4",
+          "JetBrains Mono"
+        ],
+        "title": "Font",
+        "type": "string"
+      },
+      "FontCategory": {
+        "enum": [
+          "sans-serif",
+          "serif",
+          "monospace"
+        ],
+        "title": "FontCategory",
+        "type": "string"
+      },
+      "FontOut": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FontCategory"
+          },
+          "family": {
+            "$ref": "#/components/schemas/Font"
+          }
+        },
+        "required": [
+          "family",
+          "category"
+        ],
+        "title": "FontOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -588,6 +658,22 @@
         ],
         "title": "IssuedInviteOut",
         "type": "object"
+      },
+      "LauncherPosition": {
+        "enum": [
+          "bottom-right",
+          "bottom-left"
+        ],
+        "title": "LauncherPosition",
+        "type": "string"
+      },
+      "LauncherType": {
+        "enum": [
+          "bubble",
+          "inline"
+        ],
+        "title": "LauncherType",
+        "type": "string"
       },
       "MemberOut": {
         "properties": {
@@ -971,6 +1057,134 @@
           "organisation_id"
         ],
         "title": "SwitchOrganisationRequest",
+        "type": "object"
+      },
+      "ThemeColours": {
+        "description": "The colour tokens. ``on_*`` colours are for text and icons on the colour they name.",
+        "properties": {
+          "accent": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "muted": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "on_primary": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "on_surface": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "primary": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "surface": {
+            "$ref": "#/components/schemas/ColourToken"
+          }
+        },
+        "required": [
+          "primary",
+          "on_primary",
+          "surface",
+          "on_surface",
+          "accent",
+          "muted"
+        ],
+        "title": "ThemeColours",
+        "type": "object"
+      },
+      "ThemeMode": {
+        "enum": [
+          "light",
+          "dark",
+          "auto"
+        ],
+        "title": "ThemeMode",
+        "type": "string"
+      },
+      "ThemeOut": {
+        "properties": {
+          "colours": {
+            "$ref": "#/components/schemas/ThemeColours"
+          },
+          "font": {
+            "$ref": "#/components/schemas/Font"
+          },
+          "launcher_position": {
+            "$ref": "#/components/schemas/LauncherPosition"
+          },
+          "launcher_type": {
+            "$ref": "#/components/schemas/LauncherType"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ThemeMode"
+          },
+          "radius": {
+            "description": "Corner radius in pixels.",
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Radius",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "colours",
+          "radius",
+          "font",
+          "mode",
+          "launcher_type",
+          "launcher_position",
+          "updated_at"
+        ],
+        "title": "ThemeOut",
+        "type": "object"
+      },
+      "ThemeSettings": {
+        "description": "Everything an Owner sets on the Theme.",
+        "properties": {
+          "colours": {
+            "$ref": "#/components/schemas/ThemeColours"
+          },
+          "font": {
+            "$ref": "#/components/schemas/Font"
+          },
+          "launcher_position": {
+            "$ref": "#/components/schemas/LauncherPosition"
+          },
+          "launcher_type": {
+            "$ref": "#/components/schemas/LauncherType"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ThemeMode"
+          },
+          "radius": {
+            "description": "Corner radius in pixels.",
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Radius",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "colours",
+          "radius",
+          "font",
+          "mode",
+          "launcher_type",
+          "launcher_position"
+        ],
+        "title": "ThemeSettings",
         "type": "object"
       },
       "ThrottledResponse": {
@@ -3518,6 +3732,158 @@
         "summary": "Restore Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/theme": {
+      "get": {
+        "description": "The Organisation's Theme; the default until an Owner saves one. Any Member can read it.",
+        "operationId": "getTheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Theme",
+        "tags": [
+          "theme"
+        ]
+      },
+      "put": {
+        "description": "Replaces the Theme. It applies at once. Colours that fail contrast are saved: the\nStudio warns about them but never blocks.",
+        "operationId": "saveTheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Theme",
+        "tags": [
+          "theme"
+        ]
+      }
+    },
+    "/api/themes/fonts": {
+      "get": {
+        "description": "The Google Fonts a Theme may use, the default first.",
+        "operationId": "listThemeFonts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FontOut"
+                  },
+                  "title": "Response Listthemefonts",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Fonts",
+        "tags": [
+          "theme"
         ]
       }
     }

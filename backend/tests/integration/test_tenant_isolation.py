@@ -78,6 +78,13 @@ async def _another_owner(owner: SignedUpMember, add_member: MemberFactory) -> Pr
     return {}, None
 
 
+async def _a_theme(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    theme = (await owner.client.get(f"/api/organisations/{owner.organisation_id}/theme")).json()
+    del theme["updated_at"]
+    theme["radius"] = 3
+    return {}, theme
+
+
 async def _new_project_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {}, {"name": f"Isolation {uuid.uuid4().hex[:8]}", "description": "Scoped"}
 
@@ -157,6 +164,8 @@ ORGANISATION_SCOPED_ROUTES = [
         "DELETE", "/api/organisations/{organisation_id}/members/{member_id}", OWNER, _an_editor
     ),
     ScopedRoute("POST", "/api/organisations/{organisation_id}/leave", EDITOR, _another_owner),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),
+    ScopedRoute("PUT", "/api/organisations/{organisation_id}/theme", OWNER, _a_theme),
 ]
 OWNER_ONLY_ROUTES = [route for route in ORGANISATION_SCOPED_ROUTES if route.role is OWNER]
 

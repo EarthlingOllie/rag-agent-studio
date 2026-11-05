@@ -18,6 +18,7 @@ import {
   GeneralSettingsPage,
   MembersSettingsPage,
   OrganisationSettingsLayout,
+  ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
 import {
   AgentsTab,
@@ -118,6 +119,7 @@ const membersSettingsRoute = createRoute({
   path: "/members",
   component: MembersSettingsPage,
 });
+const themeSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/theme", component: ThemeSettingsPage });
 const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
 const securityRoute = createRoute({
@@ -145,7 +147,7 @@ const routeTree = rootRoute.addChildren([
         conversationsTabRoute,
         analyticsTabRoute,
       ]),
-      settingsRoute.addChildren([generalSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
+      settingsRoute.addChildren([generalSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,
     ]),

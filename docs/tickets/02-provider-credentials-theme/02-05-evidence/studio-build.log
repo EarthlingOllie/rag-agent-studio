@@ -1,0 +1,21 @@
+$ cd frontend && pnpm build
+# 2026-11-05T07:22:49Z in /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone-0205 at 864d38d
+
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone-0205/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone-0205/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 181 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-dUm3GsLK.css   16.99 kB │ gzip:   4.16 kB
+dist/assets/index-CeG7oEjN.js   404.64 kB │ gzip: 123.02 kB
+
+✓ built in 1.57s
+# exit code: 0

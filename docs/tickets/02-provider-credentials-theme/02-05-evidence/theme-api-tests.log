@@ -1,0 +1,51 @@
+$ cd backend && uv run pytest -v --no-cov tests/integration/test_theme.py tests/integration/test_tenant_isolation.py -k 'theme or Theme or every or declares'
+# 2026-11-05T07:22:53Z in /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone-0205 at 864d38d
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone-0205/backend/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone-0205/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 94 items / 58 deselected / 36 selected
+
+tests/integration/test_theme.py::test_a_new_organisation_has_the_default_theme PASSED [  2%]
+tests/integration/test_theme.py::test_the_font_allowlist_is_a_curated_list_of_google_fonts PASSED [  5%]
+tests/integration/test_theme.py::test_owners_save_every_part_of_the_theme_and_it_applies_at_once PASSED [  8%]
+tests/integration/test_theme.py::test_the_launcher_can_be_an_inline_container PASSED [ 11%]
+tests/integration/test_theme.py::test_saving_again_replaces_the_theme PASSED [ 13%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[colour name] PASSED [ 16%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[short hex] PASSED [ 19%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[not hex] PASSED [ 22%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[negative radius] PASSED [ 25%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[radius too large] PASSED [ 27%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[font off the allowlist] PASSED [ 30%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[unknown mode] PASSED [ 33%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[unknown launcher] PASSED [ 36%]
+tests/integration/test_theme.py::test_invalid_themes_are_refused_and_change_nothing[unknown position] PASSED [ 38%]
+tests/integration/test_theme.py::test_a_theme_must_name_every_colour_token PASSED [ 41%]
+tests/integration/test_theme.py::test_colours_that_fail_contrast_are_saved_because_contrast_only_warns PASSED [ 44%]
+tests/integration/test_theme.py::test_editors_view_the_theme_but_cannot_change_it PASSED [ 47%]
+tests/integration/test_theme.py::test_each_organisation_has_its_own_theme PASSED [ 50%]
+tests/integration/test_theme.py::test_theme_changes_are_audit_events_with_what_changed PASSED [ 52%]
+tests/integration/test_theme.py::test_saving_the_same_theme_records_nothing PASSED [ 55%]
+tests/integration/test_theme.py::test_owners_saving_at_once_apply_one_after_the_other PASSED [ 58%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[GET /api/organisations/{organisation_id}/theme] PASSED [ 61%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[PUT /api/organisations/{organisation_id}/theme] PASSED [ 63%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[GET /api/organisations/{organisation_id}/theme] PASSED [ 66%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[PUT /api/organisations/{organisation_id}/theme] PASSED [ 69%]
+tests/integration/test_tenant_isolation.py::test_editors_are_refused_owner_only_routes[PUT /api/organisations/{organisation_id}/theme] PASSED [ 72%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[GET /api/organisations/{organisation_id}] PASSED [ 75%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[POST /api/organisations/{organisation_id}/leave] PASSED [ 77%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[GET /api/organisations/{organisation_id}/theme] PASSED [ 80%]
+tests/integration/test_tenant_isolation.py::test_each_organisation_scoped_route_declares_its_role_with_one_policy PASSED [ 83%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-GET /api/organisations/{organisation_id}/theme] PASSED [ 86%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-PUT /api/organisations/{organisation_id}/theme] PASSED [ 88%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-GET /api/organisations/{organisation_id}/theme] PASSED [ 91%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-PUT /api/organisations/{organisation_id}/theme] PASSED [ 94%]
+tests/integration/test_tenant_isolation.py::test_every_organisation_scoped_route_is_in_the_isolation_test PASSED [ 97%]
+tests/integration/test_tenant_isolation.py::test_every_table_below_the_platform_level_carries_an_organisation_id PASSED [100%]
+
+====================== 36 passed, 58 deselected in 34.42s ======================
+# exit code: 0

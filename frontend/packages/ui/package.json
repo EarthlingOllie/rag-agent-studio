@@ -1,0 +1,13 @@
+{
+  "name": "@studio/ui",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@studio/api-client": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
+  }
+}

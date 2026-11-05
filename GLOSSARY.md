@@ -9,8 +9,28 @@ The tenant. Owns Members, Projects and Provider Credentials.
 _Avoid_: Tenant, account, company
 
 **Theme**:
-An Organisation's visual styling for embedded Agents. An Agent may override its colours and avatar.
+An Organisation's visual styling for embedded Agents: Colour Tokens, corner radius, a font from the Font Allowlist, a Theme Mode and a Launcher. Owners change it and every Member can view it; a saved change applies at once, with no publishing. An Agent may override its colours and avatar.
 _Avoid_: Branding, skin, styles
+
+**Colour Token**:
+A named Theme colour with a light-mode and a dark-mode value: primary, on-primary, surface, on-surface, accent and muted. An "on-" token is the text colour used on the token it names.
+_Avoid_: Palette entry, swatch
+
+**Font Allowlist**:
+The curated Google Fonts a Theme may use. The widget never loads a font from anywhere else.
+_Avoid_: Font list, web fonts
+
+**Theme Mode**:
+Whether the widget uses the Colour Tokens' light values, their dark values, or follows the Visitor's preference (automatic).
+_Avoid_: Colour scheme setting, dark mode toggle
+
+**Launcher**:
+How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat, or an inline container that shows it in place.
+_Avoid_: Chat button, trigger
+
+**Contrast Warning**:
+A notice that a pair of Colour Tokens falls below WCAG AA contrast (4.5:1 for text, 3:1 for the accent against the surface) in a mode the Theme shows. It warns and never blocks saving.
+_Avoid_: Contrast error, accessibility check
 
 **Retention Window**:
 How long an Organisation keeps Message text before it is purged. Aggregate metrics are kept.
