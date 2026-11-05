@@ -21,6 +21,8 @@ test.describe("Tags", () => {
     signedInPage: page,
     makeAxeBuilder,
   }) => {
+    // A long journey: three uploads through the real worker, then every Tag action and filter.
+    test.slow();
     await page.goto("/");
     await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
     const form = page.getByRole("form", { name: "New Project" });
