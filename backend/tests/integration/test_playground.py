@@ -27,6 +27,7 @@ from tests.agents import (
 )
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path, upload
+from tests.integration.test_provider_credentials import ANTHROPIC_KEY, added
 
 LEAVE = "Everyone gets 25 days of annual leave a year."
 
@@ -258,3 +259,76 @@ async def test_an_archived_projects_playground_is_closed(
     asked = await ask(member, project_id, agent_id, conversation["id"], "Hi")
 
     assert (started.status_code, asked.status_code) == (409, 409)
+
+
+async def settings_seen(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+    """Answers with the model settings it was called with and the questions it remembers."""
+    remembered = [
+        str(part.content)
+        for message in messages[:-1]
+        for part in message.parts
+        if part.part_kind == "user-prompt"
+    ]
+    yield json.dumps({"settings": info.model_settings, "remembered": remembered})
+
+
+async def test_the_draft_chooses_the_model_and_its_settings(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    built = answer_with(app, settings_seen)
+    member, project_id, agent_id = await ready_agent(app, owner)
+    claude = await added(owner, provider="anthropic", api_key=ANTHROPIC_KEY)
+    behaviour = {
+        "model": {"credential_id": claude["id"], "model": "claude-haiku-4-5"},
+        "temperature": 0.1,
+        "max_output_tokens": 300,
+    }
+    saved = await save_draft(member, project_id, agent_id, {"behaviour": behaviour})
+    assert saved.status_code == 200, saved.text
+    conversation = await start_conversation(member, project_id, agent_id)
+
+    response = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
+
+    seen = json.loads(parse_sse(response.text)[0][1]["text"])
+    assert seen["settings"] == {"temperature": 0.1, "max_tokens": 300}
+    # The Model override, not the Default Model (GPT-4.1 mini).
+    assert built == ["anthropic:claude-haiku-4-5"]
+    saved_conversation = await member.client.get(
+        playground_path(member, project_id, agent_id, conversation["id"])
+    )
+    answer = saved_conversation.json()["messages"][-1]
+    assert (answer["model_provider"], answer["model_name"]) == ("anthropic", "claude-haiku-4-5")
+
+
+async def test_a_model_override_needs_no_default_model(app: FastAPI, owner: SignedUpMember) -> None:
+    built = answer_with(app, three_tokens)
+    claude = await added(owner, provider="anthropic", api_key=ANTHROPIC_KEY)
+    project_id = await create_project(owner)
+    await upload(app, owner, project_id, "leave.txt", LEAVE.encode())
+    agent = await create_agent(owner, project_id)
+    model = {"credential_id": claude["id"], "model": "claude-sonnet-4-5"}
+    await save_draft(owner, project_id, agent["id"], {"behaviour": {"model": model}})
+    conversation = await start_conversation(owner, project_id, agent["id"])
+
+    response = await ask(owner, project_id, agent["id"], conversation["id"], "Hello?")
+
+    assert response.status_code == 200, response.text
+    assert built == ["anthropic:claude-sonnet-4-5"]
+
+
+async def test_only_the_remembered_turns_reach_the_model(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, settings_seen)
+    member, project_id, agent_id = await ready_agent(app, owner)
+    await save_draft(member, project_id, agent_id, {"behaviour": {"remembered_turns": 2}})
+    conversation = await start_conversation(member, project_id, agent_id)
+    for question in ["One?", "Two?", "Three?"]:
+        await ask(member, project_id, agent_id, conversation["id"], question)
+
+    response = await ask(member, project_id, agent_id, conversation["id"], "Four?")
+
+    assert json.loads(parse_sse(response.text)[0][1]["text"])["remembered"] == ["Two?", "Three?"]
+    await save_draft(member, project_id, agent_id, {"behaviour": {"remembered_turns": 0}})
+    forgetful = await ask(member, project_id, agent_id, conversation["id"], "Five?")
+    assert json.loads(parse_sse(forgetful.text)[0][1]["text"])["remembered"] == []

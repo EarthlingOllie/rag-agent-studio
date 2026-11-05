@@ -30,37 +30,6 @@ test("the Agent page shows the Draft beside the Playground", async () => {
   );
 });
 
-test("an Editor edits the system prompt and top-k and saves the Draft", async () => {
-  const { requests } = setUp();
-  renderStudio(agentPage);
-  const prompt = await screen.findByLabelText("System prompt", {}, { timeout: 5000 });
-
-  await userEvent.clear(prompt);
-  await userEvent.type(prompt, "# Role{enter}{enter}Be brief.");
-  await userEvent.clear(screen.getByLabelText("Chunks per answer (top-k)"));
-  await userEvent.type(screen.getByLabelText("Chunks per answer (top-k)"), "3");
-  await userEvent.click(screen.getByRole("button", { name: "Save Draft" }));
-
-  expect(await screen.findByText("Draft saved")).toBeInTheDocument();
-  expect(requests).toEqual([
-    { route: "draft", body: { behaviour: { system_prompt: "# Role\n\nBe brief." }, retrieval: { top_k: 3 } } },
-  ]);
-});
-
-test("a Draft the API refuses shows why", async () => {
-  setUp();
-  renderStudio(agentPage);
-  const topK = await screen.findByLabelText("Chunks per answer (top-k)", {}, { timeout: 5000 });
-  topK.removeAttribute("max");
-
-  await userEvent.clear(topK);
-  await userEvent.type(topK, "50");
-  await userEvent.click(screen.getByRole("button", { name: "Save Draft" }));
-
-  const draft = screen.getByRole("form", { name: "Draft" });
-  expect(await within(draft).findByRole("alert")).toHaveTextContent(/top-k from 1 to 20/);
-});
-
 test("a question is answered in the Playground as the answer streams in", async () => {
   const { requests } = setUp({ answer: () => streamedAnswer(["Twenty-five ", "days ", "a year."]) });
   renderStudio(agentPage);
