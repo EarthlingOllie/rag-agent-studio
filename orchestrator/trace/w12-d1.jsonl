@@ -1,0 +1,2 @@
+{"trigger":"blocked","dispatch":"w11-d1","question":"Should I merge #17-#20 into candidate on local results only? (worker read a user status question as its task)","answer":"Yes — user already authorised it; the status question was for the orchestrator","type":"human","at":"2026-11-05"}
+{"type":"dispatch","wave":12,"id":"w12-d1","title":"Merge PRs 17-20 on local evidence","topology":"single","iterations":1,"status":"done","dependsOn":["w11-d1"],"at":"2026-11-05"}

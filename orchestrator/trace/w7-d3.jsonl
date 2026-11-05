@@ -1,0 +1,3 @@
+{"type":"dispatch","wave":7,"id":"w7-d3-s1","title":"Build and evidence 01-07","topology":"generator-evaluator","iterations":1,"status":"done","dependsOn":[],"parent":"w7-d3"}
+{"type":"dispatch","wave":7,"id":"w7-d3-s2","title":"PR and merge 01-07","topology":"single","iterations":1,"status":"done","dependsOn":[],"parent":"w7-d3"}
+{"type":"dispatch","wave":7,"id":"w7-d3","title":"Ship ticket 01-07 mailer reset","topology":"chain","iterations":2,"status":"done","dependsOn":["w6-d3"],"stages":["w7-d3-s1:done","w7-d3-s2:done"],"at":"2026-11-05"}

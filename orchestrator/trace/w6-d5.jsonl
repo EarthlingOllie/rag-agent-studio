@@ -1,0 +1,3 @@
+{"type":"dispatch","wave":6,"id":"w6-d5-s1","title":"Build and evidence","topology":"generator-evaluator","iterations":1,"status":"done","dependsOn":[],"parent":"w6-d5"}
+{"type":"dispatch","wave":6,"id":"w6-d5-s2","title":"PR and merge","topology":"single","iterations":1,"status":"done","dependsOn":[],"parent":"w6-d5"}
+{"type":"dispatch","wave":6,"id":"w6-d5","title":"Ship ticket 09-04 compute","topology":"chain","iterations":2,"status":"done","dependsOn":["w5-d3"],"stages":["w6-d5-s1:done","w6-d5-s2:done"],"at":"2026-11-05"}

@@ -1,0 +1,4 @@
+{"type":"human","trigger":"ambiguity","dispatch":"w2-d1","question":"No claim/done convention in repo; which to use?","answer":"claim = Status in-progress pushed first on ticket branch; done = Status done in ticket PR","mode":"autonomous","at":"2026-11-05"}
+{"type":"dispatch","wave":2,"id":"w2-d1-s1","title":"Build and evidence 01-01","topology":"generator-evaluator","iterations":2,"status":"done","dependsOn":[],"parent":"w2-d1"}
+{"type":"dispatch","wave":2,"id":"w2-d1-s2","title":"PR and merge 01-01","topology":"single","iterations":1,"status":"done","dependsOn":[],"parent":"w2-d1"}
+{"type":"dispatch","wave":2,"id":"w2-d1","title":"Ship ticket 01-01 skeleton","topology":"chain","iterations":2,"status":"done","dependsOn":["w1-d1"],"stages":["w2-d1-s1:done","w2-d1-s2:done"],"at":"2026-11-05"}

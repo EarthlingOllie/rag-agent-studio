@@ -1,0 +1,4 @@
+{"type":"human","trigger":"blocked","dispatch":"w6-d4","question":"Which ticket is this dispatch meant to build? Stage task omitted the id.","answer":"01-11 TOTP MFA (orchestrator planning fault: stage tasks must name the ticket)","mode":"autonomous","at":"2026-11-05"}
+{"type":"dispatch","wave":7,"id":"w7-d4-s1","title":"Build and evidence 01-11","topology":"generator-evaluator","iterations":1,"status":"done","dependsOn":[],"parent":"w7-d4"}
+{"type":"dispatch","wave":7,"id":"w7-d4-s2","title":"PR and merge 01-11","topology":"single","iterations":1,"status":"done","dependsOn":[],"parent":"w7-d4"}
+{"type":"dispatch","wave":7,"id":"w7-d4","title":"Ship ticket 01-11 TOTP MFA","topology":"chain","iterations":2,"status":"done","dependsOn":["w6-d4"],"stages":["w7-d4-s1:done","w7-d4-s2:done"],"at":"2026-11-05"}

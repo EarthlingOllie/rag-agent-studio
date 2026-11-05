@@ -1,0 +1,285 @@
+flowchart TD
+  classDef done fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef blocked fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+  classDef exhausted fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef over_budget fill:#fef3c7,stroke:#d97706,stroke-dasharray:4 2,color:#78350f
+  classDef failed fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:4 2,color:#111827
+  classDef human fill:#ede9fe,stroke:#7c3aed,color:#3b0764
+  subgraph wave1["Wave 1 · 2026-11-05 · 1 done"]
+    direction TB
+    w1_d1["Map tickets and frontier<br/>w1-d1 · single ×1"]:::done
+  end
+  human_1(["human · ambiguity<br/>on w2-d1<br/>No claim/done convention in repo; which to use?<br/>→ claim = Status in-progress pushed first…"]):::human
+  subgraph wave2["Wave 2 · 2026-11-05 · 1 done"]
+    direction TB
+    subgraph w2_d1["Ship ticket 01-01 skeleton · w2-d1 · chain ×2"]
+      direction LR
+      w2_d1_s1["Build and evidence 01-01<br/>w2-d1-s1 · generator-evaluator ×2"]:::done
+      w2_d1_s2["PR and merge 01-01<br/>w2-d1-s2 · single ×1"]:::done
+      w2_d1_s1 --> w2_d1_s2
+    end
+    class w2_d1 done
+  end
+  subgraph wave3["Wave 3 · 2026-11-05 · 2 done"]
+    direction TB
+    subgraph w3_d1["Ship ticket 01-02 CI gates · w3-d1 · chain ×2"]
+      direction LR
+      w3_d1_s1["Build and evidence 01-02<br/>w3-d1-s1 · generator-evaluator ×1"]:::done
+      w3_d1_s2["PR and merge 01-02<br/>w3-d1-s2 · single ×1"]:::done
+      w3_d1_s1 --> w3_d1_s2
+    end
+    class w3_d1 done
+    subgraph w3_d2["Ship ticket 01-03 telemetry · w3-d2 · chain ×2"]
+      direction LR
+      w3_d2_s1["Build and evidence 01-03<br/>w3-d2-s1 · generator-evaluator ×1"]:::done
+      w3_d2_s2["PR and merge 01-03<br/>w3-d2-s2 · single ×1"]:::done
+      w3_d2_s1 --> w3_d2_s2
+    end
+    class w3_d2 done
+  end
+  subgraph wave4["Wave 4 · 2026-11-05 · 1 done"]
+    direction TB
+    subgraph w4_d3["Ship ticket 09-02 network · w4-d3 · chain ×2"]
+      direction LR
+      w4_d3_s1["Build and evidence 09-02<br/>w4-d3-s1 · generator-evaluator ×1"]:::done
+      w4_d3_s2["PR and merge 09-02<br/>w4-d3-s2 · single ×1"]:::done
+      w4_d3_s1 --> w4_d3_s2
+    end
+    class w4_d3 done
+  end
+  subgraph wave5["Wave 5 · 2026-11-05 · 3 done"]
+    direction TB
+    subgraph w5_d1["Resume ticket 01-04 auth · w5-d1 · chain ×2"]
+      direction LR
+      w5_d1_s1["Build and evidence 01-04<br/>w5-d1-s1 · generator-evaluator ×1"]:::done
+      w5_d1_s2["PR and merge 01-04<br/>w5-d1-s2 · single ×1"]:::done
+      w5_d1_s1 --> w5_d1_s2
+    end
+    class w5_d1 done
+    subgraph w5_d2["Resume ticket 09-01 TF bootstrap · w5-d2 · chain ×2"]
+      direction LR
+      w5_d2_s1["Build and evidence 09-01<br/>w5-d2-s1 · generator-evaluator ×2"]:::done
+      w5_d2_s2["PR and merge 09-01<br/>w5-d2-s2 · single ×1"]:::done
+      w5_d2_s1 --> w5_d2_s2
+    end
+    class w5_d2 done
+    subgraph w5_d3["Ship ticket 09-03 data modules · w5-d3 · chain ×2"]
+      direction LR
+      w5_d3_s1["Build and evidence 09-03<br/>w5-d3-s1 · generator-evaluator ×1"]:::done
+      w5_d3_s2["PR and merge 09-03<br/>w5-d3-s2 · single ×1"]:::done
+      w5_d3_s1 --> w5_d3_s2
+    end
+    class w5_d3 done
+  end
+  subgraph wave6["Wave 6 · 2026-11-05 · 3 done · 2 blocked"]
+    direction TB
+    subgraph w6_d1["Ship ticket 01-05 audit · w6-d1 · chain ×2"]
+      direction LR
+      w6_d1_s1["Build and evidence<br/>w6-d1-s1 · generator-evaluator ×2"]:::done
+      w6_d1_s2["PR and merge<br/>w6-d1-s2 · single ×1"]:::done
+      w6_d1_s1 --> w6_d1_s2
+    end
+    class w6_d1 done
+    subgraph w6_d2["Ship ticket 01-06 lockout · w6-d2 · chain ×2"]
+      direction LR
+      w6_d2_s1["Build and evidence<br/>w6-d2-s1 · generator-evaluator ×1"]:::done
+      w6_d2_s2["PR and merge<br/>w6-d2-s2 · single ×1"]:::done
+      w6_d2_s1 --> w6_d2_s2
+    end
+    class w6_d2 done
+    subgraph w6_d3["Ship ticket 01-07 mailer reset · w6-d3 · chain ×1 · blocked"]
+      direction LR
+      w6_d3_s1["Build and evidence<br/>w6-d3-s1 · generator-evaluator ×1<br/>blocked<br/>? Which ticket ID is this generator assig…"]:::blocked
+    end
+    class w6_d3 blocked
+    subgraph w6_d4["Ship ticket 01-11 TOTP MFA · w6-d4 · chain ×1 · blocked"]
+      direction LR
+      w6_d4_s1["Build and evidence<br/>w6-d4-s1 · generator-evaluator ×1<br/>blocked<br/>? Which ticket is this dispatch meant to …"]:::blocked
+    end
+    class w6_d4 blocked
+    subgraph w6_d5["Ship ticket 09-04 compute · w6-d5 · chain ×2"]
+      direction LR
+      w6_d5_s1["Build and evidence<br/>w6-d5-s1 · generator-evaluator ×1"]:::done
+      w6_d5_s2["PR and merge<br/>w6-d5-s2 · single ×1"]:::done
+      w6_d5_s1 --> w6_d5_s2
+    end
+    class w6_d5 done
+  end
+  subgraph wave7["Wave 7 · 2026-11-05 · 3 done"]
+    direction TB
+    subgraph w7_d3["Ship ticket 01-07 mailer reset · w7-d3 · chain ×2"]
+      direction LR
+      w7_d3_s1["Build and evidence 01-07<br/>w7-d3-s1 · generator-evaluator ×1"]:::done
+      w7_d3_s2["PR and merge 01-07<br/>w7-d3-s2 · single ×1"]:::done
+      w7_d3_s1 --> w7_d3_s2
+    end
+    class w7_d3 done
+    subgraph w7_d4["Ship ticket 01-11 TOTP MFA · w7-d4 · chain ×2"]
+      direction LR
+      w7_d4_s1["Build and evidence 01-11<br/>w7-d4-s1 · generator-evaluator ×1"]:::done
+      w7_d4_s2["PR and merge 01-11<br/>w7-d4-s2 · single ×1"]:::done
+      w7_d4_s1 --> w7_d4_s2
+    end
+    class w7_d4 done
+    subgraph w7_d5["Ship ticket 09-05 CDN · w7-d5 · chain ×2"]
+      direction LR
+      w7_d5_s1["Build and evidence 09-05<br/>w7-d5-s1 · generator-evaluator ×1"]:::done
+      w7_d5_s2["PR and merge 09-05<br/>w7-d5-s2 · single ×1"]:::done
+      w7_d5_s1 --> w7_d5_s2
+    end
+    class w7_d5 done
+  end
+  human_2(["human · blocked<br/>on w6-d4<br/>Which ticket is this dispatch meant to build? Stage task om…<br/>→ 01-11 TOTP MFA (orchestrator planning f…"]):::human
+  subgraph wave8["Wave 8 · 2026-11-05 · 1 done"]
+    direction TB
+    subgraph w8_d1["Ship ticket 01-08 invites · w8-d1 · chain ×2"]
+      direction LR
+      w8_d1_s1["Build and evidence 01-08<br/>w8-d1-s1 · generator-evaluator ×1"]:::done
+      w8_d1_s2["PR and merge 01-08<br/>w8-d1-s2 · single ×1"]:::done
+      w8_d1_s1 --> w8_d1_s2
+    end
+    class w8_d1 done
+  end
+  subgraph wave9["Wave 9 · 2026-11-05 · 2 done"]
+    direction TB
+    subgraph w9_d1["Ship ticket 01-09 members roles · w9-d1 · chain ×2"]
+      direction LR
+      w9_d1_s1["Build and evidence 01-09<br/>w9-d1-s1 · generator-evaluator ×1"]:::done
+      w9_d1_s2["PR and merge 01-09<br/>w9-d1-s2 · single ×1"]:::done
+      w9_d1_s1 --> w9_d1_s2
+    end
+    class w9_d1 done
+    subgraph w9_d2["Ship ticket 01-10 org switcher · w9-d2 · chain ×2"]
+      direction LR
+      w9_d2_s1["Build and evidence 01-10<br/>w9-d2-s1 · generator-evaluator ×1"]:::done
+      w9_d2_s2["PR and merge 01-10<br/>w9-d2-s2 · single ×1"]:::done
+      w9_d2_s1 --> w9_d2_s2
+    end
+    class w9_d2 done
+  end
+  subgraph wave10["Wave 10 · 2026-11-05 · 4 blocked"]
+    direction TB
+    subgraph w10_d1["Ship ticket 01-12 require mfa · w10-d1 · chain ×2 · blocked"]
+      direction LR
+      w10_d1_s1["Build and evidence 01-12<br/>w10-d1-s1 · generator-evaluator ×1"]:::done
+      w10_d1_s2["PR and merge 01-12<br/>w10-d1-s2 · single ×1<br/>blocked<br/>? Every GitHub Actions job in EarthlingOl…"]:::blocked
+      w10_d1_s1 --> w10_d1_s2
+    end
+    class w10_d1 blocked
+    subgraph w10_d2["Ship ticket 02-01 api key · w10-d2 · chain ×2 · blocked"]
+      direction LR
+      w10_d2_s1["Build and evidence 02-01<br/>w10-d2-s1 · generator-evaluator ×1"]:::done
+      w10_d2_s2["PR and merge 02-01<br/>w10-d2-s2 · single ×1<br/>blocked<br/>? GitHub Actions on EarthlingOllie/rag-ag…"]:::blocked
+      w10_d2_s1 --> w10_d2_s2
+    end
+    class w10_d2 blocked
+    subgraph w10_d3["Ship ticket 02-05 theme editor · w10-d3 · chain ×2 · blocked"]
+      direction LR
+      w10_d3_s1["Build and evidence 02-05<br/>w10-d3-s1 · generator-evaluator ×1"]:::done
+      w10_d3_s2["PR and merge 02-05<br/>w10-d3-s2 · single ×1<br/>blocked<br/>? Since about 07:33Z every GitHub Actions…"]:::blocked
+      w10_d3_s1 --> w10_d3_s2
+    end
+    class w10_d3 blocked
+    subgraph w10_d4["Ship ticket 03-01 projects page · w10-d4 · chain ×2 · blocked"]
+      direction LR
+      w10_d4_s1["Build and evidence 03-01<br/>w10-d4-s1 · generator-evaluator ×1"]:::done
+      w10_d4_s2["PR and merge 03-01<br/>w10-d4-s2 · single ×1<br/>blocked<br/>? GitHub Actions runners are unavailable …"]:::blocked
+      w10_d4_s1 --> w10_d4_s2
+    end
+    class w10_d4 blocked
+  end
+  human_3(["human · blocked<br/>on w10-d2<br/>Actions runners down repo-wide; restore or authorise mergin…<br/>→ User: OK to merge on local test results"]):::human
+  subgraph wave11["Wave 11 · 2026-11-05 · 1 blocked · 1 failed"]
+    direction TB
+    w11_d1["Merge PRs 17-20 on local evidence<br/>w11-d1 · single ×1<br/>blocked<br/>? PRs #17, #18, #19 and #20 are still ope…"]:::blocked
+    w11_d2["Merge PRs 17-20 on local evidence<br/>w11-d2 · single ×0<br/>failed"]:::failed
+  end
+  human_4(["human · blocked<br/>on w11-d1<br/>Should I merge #17-#20 into candidate on local results only…<br/>→ Yes — user already authorised it; the s…"]):::human
+  human_5(["human · blocked<br/>on w11-d1<br/>Should I merge #17-#20 into candidate on local results only…<br/>→ Yes — user already authorised it; the s…"]):::human
+  subgraph wave12["Wave 12 · 2026-11-05 · 1 done"]
+    direction TB
+    w12_d1["Merge PRs 17-20 on local evidence<br/>w12-d1 · single ×1"]:::done
+  end
+  subgraph wave13["Wave 13 · 2026-11-05 · 2 done · 1 blocked"]
+    direction TB
+    subgraph w13_d1["Ship ticket 02-02 bedrock credentials · w13-d1 · chain ×2"]
+      direction LR
+      w13_d1_s1["Build and evidence 02-02<br/>w13-d1-s1 · generator-evaluator ×1"]:::done
+      w13_d1_s2["PR and merge 02-02<br/>w13-d1-s2 · single ×1"]:::done
+      w13_d1_s1 --> w13_d1_s2
+    end
+    class w13_d1 done
+    subgraph w13_d2["Ship ticket 02-03 model gateway · w13-d2 · chain ×2"]
+      direction LR
+      w13_d2_s1["Build and evidence 02-03<br/>w13-d2-s1 · generator-evaluator ×1"]:::done
+      w13_d2_s2["PR and merge 02-03<br/>w13-d2-s2 · single ×1"]:::done
+      w13_d2_s1 --> w13_d2_s2
+    end
+    class w13_d2 done
+    subgraph w13_d3["Ship ticket 03-02 upload document · w13-d3 · chain ×1 · blocked"]
+      direction LR
+      w13_d3_s1["Build and evidence 03-02<br/>w13-d3-s1 · generator-evaluator ×3<br/>blocked<br/>? Criterion 6 of ticket 03-02 needs real …"]:::blocked
+    end
+    class w13_d3 blocked
+  end
+  subgraph wave14["Wave 14 · 2026-11-05 · 2 done"]
+    direction TB
+    subgraph w14_d1["Ship ticket 02-04 price table · w14-d1 · chain ×2"]
+      direction LR
+      w14_d1_s1["Build and evidence 02-04<br/>w14-d1-s1 · generator-evaluator ×1"]:::done
+      w14_d1_s2["PR and merge 02-04<br/>w14-d1-s2 · single ×1"]:::done
+      w14_d1_s1 --> w14_d1_s2
+    end
+    class w14_d1 done
+    subgraph w14_d2["Ship ticket 03-02 upload document · w14-d2 · chain ×2"]
+      direction LR
+      w14_d2_s1["Build and evidence 03-02<br/>w14-d2-s1 · generator-evaluator ×1"]:::done
+      w14_d2_s2["PR and merge 03-02<br/>w14-d2-s2 · single ×1"]:::done
+      w14_d2_s1 --> w14_d2_s2
+    end
+    class w14_d2 done
+  end
+  human_6(["human · blocked<br/>on w13-d3<br/>Criterion 6 of 03-02 needs real Docling models from hugging…<br/>→ Orchestrator best guess: disk freed (~1…"]):::human
+  human_7(["human · blocked<br/>on w10-d2<br/>Actions runners down repo-wide; restore or authorise mergin…"]):::human
+  w6_d4 --> human_2
+  w10_d2 --> human_3
+  human_3 -.-> w11_d1
+  w11_d1 --> human_4
+  w11_d1 --> human_5
+  human_4 -.-> w12_d1
+  human_5 -.-> w12_d1
+  w13_d3 --> human_6
+  w10_d2 --> human_7
+  w1_d1 --> w2_d1
+  w2_d1 --> w3_d1
+  w2_d1 --> w3_d2
+  w3_d1 --> w4_d3
+  %% w5-d1 depends on unknown w4-d1
+  %% w5-d2 depends on unknown w4-d2
+  w4_d3 --> w5_d3
+  w5_d1 --> w6_d1
+  w5_d1 --> w6_d2
+  w5_d1 --> w6_d3
+  w5_d1 --> w6_d4
+  w5_d3 --> w6_d5
+  w6_d3 --> w7_d3
+  w6_d4 --> w7_d4
+  w6_d5 --> w7_d5
+  w6_d1 --> w8_d1
+  w8_d1 --> w9_d1
+  w8_d1 --> w9_d2
+  w9_d1 --> w10_d1
+  w9_d1 --> w10_d2
+  w9_d1 --> w10_d3
+  w9_d1 --> w10_d4
+  w10_d1 --> w11_d1
+  w10_d2 --> w11_d1
+  w10_d3 --> w11_d1
+  w10_d4 --> w11_d1
+  w11_d1 --> w11_d2
+  w11_d1 --> w12_d1
+  w12_d1 --> w13_d1
+  w12_d1 --> w13_d2
+  w12_d1 --> w13_d3
+  w13_d2 --> w14_d1
+  w13_d3 --> w14_d2

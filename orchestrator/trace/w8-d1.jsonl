@@ -1,0 +1,3 @@
+{"type":"dispatch","wave":8,"id":"w8-d1-s1","title":"Build and evidence 01-08","topology":"generator-evaluator","iterations":1,"status":"done","dependsOn":[],"parent":"w8-d1"}
+{"type":"dispatch","wave":8,"id":"w8-d1-s2","title":"PR and merge 01-08","topology":"single","iterations":1,"status":"done","dependsOn":[],"parent":"w8-d1"}
+{"type":"dispatch","wave":8,"id":"w8-d1","title":"Ship ticket 01-08 invites","topology":"chain","iterations":2,"status":"done","dependsOn":["w6-d1"],"stages":["w8-d1-s1:done","w8-d1-s2:done"],"at":"2026-11-05"}

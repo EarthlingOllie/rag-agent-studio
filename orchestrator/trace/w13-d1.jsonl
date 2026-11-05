@@ -1,0 +1,3 @@
+{"type":"dispatch","wave":13,"id":"w13-d1-s1","title":"Build and evidence 02-02","topology":"generator-evaluator","iterations":1,"status":"done","dependsOn":[],"parent":"w13-d1"}
+{"type":"dispatch","wave":13,"id":"w13-d1-s2","title":"PR and merge 02-02","topology":"single","iterations":1,"status":"done","dependsOn":[],"parent":"w13-d1"}
+{"type":"dispatch","wave":13,"id":"w13-d1","title":"Ship ticket 02-02 bedrock credentials","topology":"chain","iterations":2,"status":"done","dependsOn":["w12-d1"],"stages":["w13-d1-s1:done","w13-d1-s2:done"],"at":"2026-11-05"}
