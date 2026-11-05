@@ -27,6 +27,7 @@ async def test_a_member_edits_their_name(owner: SignedUpMember) -> None:
         "id": owner.member_id,
         "name": "Ada King",
         "email": owner.email,
+        "mfa_enabled": False,
     }
     assert response.json()["organisations"][0]["id"] == owner.organisation_id
     me = await owner.client.get("/api/auth/me")

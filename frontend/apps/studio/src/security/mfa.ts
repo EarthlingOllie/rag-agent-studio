@@ -2,7 +2,7 @@ import type { Schemas } from "@studio/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
-import { AuthRequestError } from "../auth/session";
+import { AuthRequestError, ME_QUERY_KEY } from "../auth/session";
 
 export type MfaStatus = Schemas["MfaStatusResponse"];
 export type Enrolment = Schemas["EnrolmentResponse"];
@@ -22,12 +22,19 @@ export function useMfaStatus() {
   });
 }
 
-/** Mutations that change MFA refresh the status once they succeed. */
+/**
+ * Mutations that change MFA refresh the status once they succeed, and the session too: it says
+ * whether the Member has MFA, which an Organisation that requires it checks.
+ */
 function useMfaMutation<Variables, Result>(request: (variables: Variables) => Promise<Result>) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: request,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: MFA_QUERY_KEY }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: MFA_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY }),
+      ]),
   });
 }
 
@@ -49,7 +56,8 @@ export function useReplaceRecoveryCodes() {
 
 export function useDisableMfa() {
   return useMfaMutation(async (details: { password: string; code: string }) => {
-    const { response } = await api.POST("/api/auth/mfa/disable", { body: details });
-    if (!response.ok) throw new AuthRequestError(response.status);
+    const { error, response } = await api.POST("/api/auth/mfa/disable", { body: details });
+    // A 409 says why, for example which Organisations require MFA.
+    if (!response.ok) throw new AuthRequestError(response.status, error);
   });
 }

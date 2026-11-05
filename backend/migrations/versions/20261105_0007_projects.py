@@ -1,7 +1,7 @@
 """Projects.
 
 Revision ID: 0007_projects
-Revises: 0006_invites
+Revises: 0007_require_mfa_policy
 Create Date: 2026-11-05
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0007_projects"
-down_revision: str | None = "0006_invites"
+down_revision: str | None = "0007_require_mfa_policy"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

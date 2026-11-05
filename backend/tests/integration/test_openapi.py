@@ -32,6 +32,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "requestPasswordReset": ("/api/auth/password-reset", "post"),
         "completePasswordReset": ("/api/auth/password-reset/complete", "post"),
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
+        "setMfaPolicy": ("/api/organisations/{organisation_id}/mfa-policy", "put"),
         "listAuditEvents": ("/api/organisations/{organisation_id}/audit-events", "get"),
         "getAuditFacets": ("/api/organisations/{organisation_id}/audit-events/facets", "get"),
         "listInvites": ("/api/organisations/{organisation_id}/invites", "get"),

@@ -93,7 +93,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Disable */
+        /**
+         * Disable
+         * @description Turns MFA off with the password and a code, unless an Organisation requires it.
+         */
         post: operations["disableMfa"];
         delete?: never;
         options?: never;
@@ -567,6 +570,28 @@ export interface paths {
         patch: operations["changeMemberRole"];
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/mfa-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Mfa Policy
+         * @description Requires MFA of every Member, or stops requiring it (Owners only).
+         *
+         *     The Owner must have MFA themselves to turn the policy on.
+         */
+        put: operations["setMfaPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects": {
         parameters: {
             query?: never;
@@ -904,6 +929,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Mfa Enabled
+             * @description Whether the Member has turned MFA on
+             */
+            mfa_enabled: boolean;
             /** Name */
             name: string;
         };
@@ -915,6 +945,11 @@ export interface components {
              * @description The Organisation's ID
              */
             id: string;
+            /**
+             * Mfa Required
+             * @description The Organisation requires MFA: while the Member hasn't turned it on, its routes answer 403 and the Studio sends them to enrolment
+             */
+            mfa_required: boolean;
             /** Name */
             name: string;
             role: components["schemas"]["Role"];
@@ -927,6 +962,11 @@ export interface components {
              * @constant
              */
             mfa_required: true;
+        };
+        /** MfaPolicyRequest */
+        MfaPolicyRequest: {
+            /** Require Mfa */
+            require_mfa: boolean;
         };
         /** MfaStatusResponse */
         MfaStatusResponse: {
@@ -962,6 +1002,11 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Require Mfa
+             * @description Whether every Member must have MFA turned on
+             */
+            require_mfa: boolean;
             role: components["schemas"]["Role"];
         };
         /** PasswordResetAccepted */
@@ -1343,7 +1388,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description MFA is not enabled */
+            /** @description MFA is not enabled, or an Organisation of the Member requires it */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1987,6 +2032,15 @@ export interface operations {
                     "application/json": components["schemas"]["OrganisationOut"];
                 };
             };
+            /** @description This Organisation requires MFA. Turn on MFA for your account to continue. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not found */
             404: {
                 headers: {
@@ -2524,6 +2578,68 @@ export interface operations {
                 };
             };
             /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setMfaPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationOut"];
+                };
+            };
+            /** @description This Organisation requires MFA. Turn on MFA for your account to continue. Or, on an Owner-only route: Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Turn on MFA for your own account before requiring it. */
             409: {
                 headers: {
                     [name: string]: unknown;

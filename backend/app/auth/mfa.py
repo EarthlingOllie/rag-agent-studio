@@ -27,7 +27,7 @@ from app.auth.models import MfaFactor, RecoveryCode
 from app.auth.passwords import verify_password
 from app.core.clock import Clock
 from app.crypto.envelope import EnvelopeEncryption
-from app.tenancy.models import Member, Membership
+from app.tenancy.models import Member, Membership, Organisation
 
 ISSUER = "RAG Agent Studio"
 STEP_SECONDS = 30
@@ -54,6 +54,14 @@ class CodeIncorrectError(Exception):
     pass
 
 
+class MfaRequiredByOrganisationError(Exception):
+    """MFA can't be turned off: Organisations the Member belongs to require it."""
+
+    def __init__(self, organisation_names: list[str]) -> None:
+        super().__init__(organisation_names)
+        self.organisation_names = organisation_names
+
+
 @dataclass(frozen=True)
 class MfaStatus:
     enabled: bool
@@ -65,6 +73,14 @@ class Enrolment:
     secret: str
     otpauth_uri: str
     qr_code: str
+
+
+async def mfa_enabled(session: AsyncSession, member_id: uuid.UUID) -> bool:
+    """Whether the Member has a confirmed authenticator."""
+    confirmed = await session.scalar(
+        select(MfaFactor.confirmed_at).where(MfaFactor.member_id == member_id)
+    )
+    return confirmed is not None
 
 
 def _context(member_id: uuid.UUID) -> bytes:
@@ -155,8 +171,18 @@ class Mfa:
 
     async def disable(self, member: Member, *, password: str, code: str) -> None:
         """Turns MFA off; needs the password and a code. The password is checked first, so a
-        wrong password doesn't use up a code."""
+        wrong password doesn't use up a code. Refused while any of the Member's Organisations
+        requires MFA, before anything is checked or used up."""
         factor = await self._enabled_factor(member.id)
+        requiring = await self._session.scalars(
+            select(Organisation.name)
+            .join(Membership, Membership.organisation_id == Organisation.id)
+            .where(Membership.member_id == member.id, Organisation.require_mfa.is_(True))
+            .order_by(Membership.created_at, Organisation.name)
+        )
+        names = list(requiring)
+        if names:
+            raise MfaRequiredByOrganisationError(names)
         if not verify_password(member.password_hash, password):
             raise CodeIncorrectError
         if not await self._accept_code(factor, code):
