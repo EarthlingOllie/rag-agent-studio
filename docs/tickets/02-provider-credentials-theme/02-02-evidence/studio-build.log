@@ -1,0 +1,21 @@
+# commit c40e1d9, fresh clone
+$ pnpm build
+
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0202/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0202/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 187 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-36jMZ4Q8.css   17.47 kB │ gzip:   4.26 kB
+dist/assets/index-DikPnKB1.js   437.26 kB │ gzip: 129.47 kB
+
+✓ built in 1.43s
+EXIT 0
