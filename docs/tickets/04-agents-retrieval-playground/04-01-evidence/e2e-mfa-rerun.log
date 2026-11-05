@@ -1,0 +1,7 @@
+
+Running 2 tests using 1 worker
+
+  ✓  1 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (24.9s)
+  ✓  2 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (8.5s)
+
+  2 passed (37.7s)

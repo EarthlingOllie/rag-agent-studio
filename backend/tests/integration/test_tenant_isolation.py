@@ -189,6 +189,98 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _a_document_and_its_next_edition(
+    owner: SignedUpMember, add_member: MemberFactory
+) -> Prepared:
+    path, _ = await _a_document(owner, add_member)
+    started = await documents.start_upload(owner, path["project_id"], "b.md", 3)
+    ticket = started.json()
+    await documents.put_to_memory_store(
+        documents.app_of(owner), ticket["url"], b"xyz", ticket["content_type"]
+    )
+    return path, {"upload_id": ticket["upload_id"]}
+
+
+async def _a_new_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"name": f"Tag {uuid.uuid4().hex[:8]}"}
+
+
+async def _make_tag(owner: SignedUpMember, project_id: str) -> str:
+    response = await owner.client.post(
+        f"{documents.project_path(owner, project_id)}/tags", json={"name": "Isolation"}
+    )
+    assert response.status_code == 201, response.text
+    tag_id: str = response.json()["id"]
+    return tag_id
+
+
+async def _a_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    tag_id = await _make_tag(owner, project_id)
+    return {"project_id": project_id, "tag_id": tag_id}, {"name": "Renamed"}
+
+
+async def _a_document_and_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _a_document(owner, add_member)
+    tag_id = await _make_tag(owner, params["project_id"])
+    return params, {"tag_ids": [tag_id]}
+
+
+async def _documents_to_bulk_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_document_and_tag(owner, add_member)
+    assert body is not None
+    return {"project_id": params["project_id"]}, {
+        "document_ids": [params["document_id"]],
+        "add": body["tag_ids"],
+    }
+
+
+TAG = PROJECTS + "/{project_id}/tags/{tag_id}"
+
+
+async def _new_agent_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"name": "Isolation Agent"}
+
+
+async def _an_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _new_agent_body(owner, add_member)
+    created = await owner.client.post(
+        PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}/agents",
+        json=body,
+    )
+    assert created.status_code == 201, created.text
+    return params | {"agent_id": created.json()["id"]}, None
+
+
+async def _an_agent_draft(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"retrieval": {"top_k": 3}}
+
+
+async def _a_playground_conversation(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    started = await owner.client.post(
+        _AGENT.format(organisation_id=owner.organisation_id, **params) + "/playground/conversations"
+    )
+    assert started.status_code == 201, started.text
+    return params | {"conversation_id": started.json()["id"]}, None
+
+
+async def _a_playground_question(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # Answering needs a Default Model; the gateway's fake chat model answers.
+    params, body = await _a_chat_model_choice(owner, add_member)
+    response = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/default-model", json=body
+    )
+    assert response.status_code == 200, response.text
+    params, _ = await _a_playground_conversation(owner, add_member)
+    return params, {"content": "Hello?"}
+
+
+_AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
+_CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
+
+
 # Routes that act on one Project. They are also checked at the Project level below.
 PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}", EDITOR, _a_project),
@@ -206,6 +298,31 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),
+    ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
+    ScopedRoute(
+        "POST",
+        PROJECTS + "/{project_id}/documents/{document_id}/editions",
+        EDITOR,
+        _a_document_and_its_next_edition,
+    ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/tags", EDITOR, _a_project),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/tags", EDITOR, _a_new_tag),
+    ScopedRoute("PATCH", TAG, EDITOR, _a_tag),
+    ScopedRoute("DELETE", TAG, EDITOR, _a_tag),
+    ScopedRoute(
+        "PUT",
+        PROJECTS + "/{project_id}/documents/{document_id}/tags",
+        EDITOR,
+        _a_document_and_tag,
+    ),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/documents/tags", EDITOR, _documents_to_bulk_tag),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/agents", EDITOR, _a_project),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/agents", EDITOR, _new_agent_body),
+    ScopedRoute("GET", _AGENT, EDITOR, _an_agent),
+    ScopedRoute("PUT", _AGENT + "/draft", EDITOR, _an_agent_draft),
+    ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
+    ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
+    ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),
 ]
 
 

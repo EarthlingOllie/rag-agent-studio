@@ -206,9 +206,20 @@ _Avoid_: Document preview, inspector, detail page
 **Heading path**:
 The headings above a Chunk in its Document, outermost first, shown as `Leave › Annual leave`. It is embedded with the Chunk so retrieval knows its context.
 _Avoid_: Breadcrumb, section, context
+**Duplicate**:
+An upload whose Content hash matches a Document already in the Project (its current Edition, or a Staged edition still being ingested). It is refused, naming the Document that has the content. A Failed Document or Failed Staged edition holds no content, so its file is not a Duplicate and can be uploaded again, as a new Document or as the next Edition.
+_Avoid_: Copy, clash, repeat upload
+
+**Edition**:
+One uploaded version of a Document's file, numbered from 1. Only the current Edition is kept (ADR-0003 versions Agents, not Documents); uploading a newer Edition replaces it in place, keeping the Document's identity and Tags.
+_Avoid_: Document version, revision
+
+**Staged edition**:
+A newer Edition being ingested. Its Chunks are written under its own Edition number while the current Edition keeps serving; when it is Ready it is swapped in, and the old Chunks removed, in one transaction. A Failed one leaves the Document as it was.
+_Avoid_: Draft edition, pending upload, shadow copy
 
 **Tag**:
-A label on Documents that an Agent can use to limit which Documents it retrieves from.
+A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay.
 _Avoid_: Category, folder, label
 
 **Chunk**:
@@ -227,6 +238,43 @@ _Avoid_: Bot, chatbot, assistant
 
 **Draft**:
 The single editable, unpublished configuration of an Agent or of Project Instructions.
+
+**AgentConfig**:
+Everything in an Agent's Draft or Version that shapes how it answers: its Behaviour (system prompt and model settings), Retrieval (top-k and search settings), Experience and Guardrails settings. Operational Settings and the Theme are not part of it.
+_Avoid_: Agent settings, agent options
+
+**Public ID**:
+An Agent's unguessable identifier, used by its Embed Snippet. Separate from its internal ID.
+_Avoid_: Embed key, slug
+
+**Top-k**:
+How many of the best-scoring Chunks an Agent is given with each question.
+
+**Hybrid search**:
+Retrieval that runs semantic (vector) search and keyword (full-text) search over a Project's Chunks and fuses their rankings with weighted reciprocal rank fusion, so exact terms such as product codes are found as well as similar meanings.
+_Avoid_: Vector search (for the whole), combined search
+
+**Hybrid weighting**:
+The share of the fused score an Agent gives semantic search, from 0 (keyword search alone) to 1 (semantic search alone); keyword search has the rest.
+_Avoid_: Alpha, semantic ratio
+
+**Relevance**:
+How well a Chunk matches a question, from 0 to 1: the better of its semantic score (cosine similarity) and its keyword score (the share of the question's terms it contains). The Minimum Score is compared with it; the fused score only orders Chunks.
+
+**Minimum Score**:
+The Relevance a Chunk needs to be given to an Agent's model. When no Chunk reaches it, the Agent replies with its Fallback Text.
+_Avoid_: Cut-off, similarity threshold
+
+**Fallback Text**:
+What an Agent replies, in its own words, when retrieval finds nothing relevant. The model isn't asked.
+_Avoid_: Default answer, "I don't know" message
+
+**Excluded Chunk**:
+A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, or outside the Top-k. It feeds the Trace.
+
+**Spotlighting**:
+Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.
+_Avoid_: Sandboxing, quoting
 
 **Version**:
 An immutable, numbered snapshot of a Draft, created by publishing it. An Agent's Version pins exactly one Project Instructions Version.
@@ -249,6 +297,9 @@ To freeze a Draft into a new Version and make it the Live Version for an Agent, 
 
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.
+
+**Playground Conversation**:
+A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
 
 **Embed Snippet**:
 The code an Organisation pastes into its site to show an Agent.

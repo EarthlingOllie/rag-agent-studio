@@ -23,7 +23,8 @@ test.describe("Documents", () => {
     // The list polls the status endpoint until the Document is Ready, without a reload.
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
-    const chunks = Number(await row.getByRole("cell").nth(2).textContent());
+    // Columns: select, Name, Status, Tags, Chunks, Size.
+    const chunks = Number(await row.getByRole("cell").nth(4).textContent());
     expect(chunks).toBeGreaterThan(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 

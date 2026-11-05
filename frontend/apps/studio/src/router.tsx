@@ -22,8 +22,9 @@ import {
   OrganisationSettingsLayout,
   ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
+import { AgentPage } from "./projects/AgentPage";
+import { AgentsTab } from "./projects/AgentsTab";
 import {
-  AgentsTab,
   AnalyticsTab,
   ConversationsTab,
   InstructionsTab,
@@ -109,6 +110,7 @@ const instructionsTabRoute = createRoute({
   component: InstructionsTab,
 });
 const agentsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents", component: AgentsTab });
+const agentRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents/$agentId", component: AgentPage });
 const conversationsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/conversations",
@@ -159,6 +161,7 @@ const routeTree = rootRoute.addChildren([
         documentViewerRoute,
         instructionsTabRoute,
         agentsTabRoute,
+        agentRoute,
         conversationsTabRoute,
         analyticsTabRoute,
       ]),
