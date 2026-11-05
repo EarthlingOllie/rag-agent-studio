@@ -87,3 +87,23 @@ async def chunks(member: SignedUpMember, project_id: str, document_id: str) -> l
     assert response.status_code == 200, response.text
     listed: list[dict[str, Any]] = response.json()
     return listed
+
+
+async def replace(
+    app: FastAPI,
+    member: SignedUpMember,
+    project_id: str,
+    document_id: str,
+    filename: str,
+    data: bytes,
+) -> httpx.Response:
+    """Presign, PUT to the in-memory store, then confirm the file as the Document's new
+    edition; returns the confirmation's response."""
+    started = await start_upload(member, project_id, filename, len(data))
+    assert started.status_code == 201, started.text
+    ticket = started.json()
+    await put_to_memory_store(app, ticket["url"], data, ticket["content_type"])
+    return await member.client.post(
+        f"{project_path(member, project_id)}/documents/{document_id}/editions",
+        json={"upload_id": ticket["upload_id"]},
+    )

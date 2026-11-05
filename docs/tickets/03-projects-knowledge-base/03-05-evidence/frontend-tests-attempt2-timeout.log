@@ -1,0 +1,385 @@
+$ make test-frontend
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-03-05/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-03-05/frontend
+      Coverage enabled with v8
+
+ ❯ apps/studio/src/settings/BedrockCredentials.test.tsx (17 tests | 1 failed) 16680ms
+   × Bedrock is offered alongside the API-key providers 1691ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/studio/src/settings/BedrockCredentials.test.tsx > Bedrock is offered alongside the API-key providers
+TestingLibraryElementError: Unable to find role="region" and name "Add a credential"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-slate-50 text-slate-900"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"border-b border-slate-200 bg-white"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-6"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"font-semibold"[39m
+            [36m>[39m
+              [0mRAG Agent Studio[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-sm text-slate-700"[39m
+            [36m>[39m
+              [0mAnalytical Engines[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-4"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-sm text-slate-700"[39m
+            [36m>[39m
+              [0mAda Lovelace[0m
+            [36m</span>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"text-sm text-slate-700 underline"[39m
+              [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile"[39m
+            [36m>[39m
+              [0mProfile[0m
+            [36m</a>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mSign out[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mx-auto flex max-w-5xl gap-8 px-6 py-8"[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Organisation"[39m
+          [33mclass[39m=[32m"flex w-48 shrink-0 flex-col gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+            [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects"[39m
+          [36m>[39m
+            [0mProjects[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900 active"[39m
+            [33mdata-status[39m=[32m"active"[39m
+            [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings"[39m
+          [36m>[39m
+            [0mOrganisation settings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+            [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security"[39m
+          [36m>[39m
+            [0mSecurity[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"min-w-0 flex-1"[39m
+        [36m>[39m
+          [36m<section[39m
+            [33maria-labelledby[39m=[32m"page-heading"[39m
+          [36m>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"text-2xl font-semibold"[39m
+              [33mid[39m=[32m"page-heading"[39m
+            [36m>[39m
+              [0mOrganisation settings[0m
+            [36m</h1>[39m
+            [36m<nav[39m
+              [33maria-label[39m=[32m"Organisation settings"[39m
+              [33mclass[39m=[32m"mt-4 flex gap-2 border-b border-slate-200 pb-2"[39m
+            [36m>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings"[39m
+              [36m>[39m
+                [0mGeneral[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33maria-current[39m=[32m"page"[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900 active"[39m
+                [33mdata-status[39m=[32m"active"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/credentials"[39m
+              [36m>[39m
+                [0mCredentials[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/models"[39m
+              [36m>[39m
+                [0mModels[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/theme"[39m
+              [36m>[39m
+                [0mTheme[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/members"[39m
+              [36m>[39m
+                [0mMembers[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/audit"[39m
+              [36m>[39m
+                [0mAudit[0m
+              [36m</a>[39m
+            [36m</nav>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"mt-6"[39m
+            [36m>[39m
+              [36m<section[39m
+                [33maria-labelledby[39m=[32m"credentials-heading"[39m
+                [33mclass[39m=[32m"space-y-6"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"space-y-1"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-lg font-semibold"[39m
+                    [33mid[39m=[32m"credentials-heading"[39m
+                  [36m>[39m
+                    [0mProvider Credentials[0m
+                  [36m</h2>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm text-slate-700"[39m
+                  [36m>[39m
+                    [0mEach key is checked with its provider when it's saved, stored encrypted, and never shown again: only its last four characters are. Amazon Bedrock can instead connect through an IAM role in your AWS account, so no secret is stored.[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<p[39m
+                  [33mrole[39m=[32m"status"[39m
+                [36m>[39m
+                  [0mLoading credentials…[0m
+                [36m</p>[39m
+              [36m</section>[39m
+            [36m</div>[39m
+          [36m</section>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"min-h-screen bg-slate-50 text-slate-900"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"border-b border-slate-200 bg-white"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-6"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"font-semibold"[39m
+            [36m>[39m
+              [0mRAG Agent Studio[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-sm text-slate-700"[39m
+            [36m>[39m
+              [0mAnalytical Engines[0m
+            [36m</span>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-4"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-sm text-slate-700"[39m
+            [36m>[39m
+              [0mAda Lovelace[0m
+            [36m</span>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"text-sm text-slate-700 underline"[39m
+              [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile"[39m
+            [36m>[39m
+              [0mProfile[0m
+            [36m</a>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mSign out[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mx-auto flex max-w-5xl gap-8 px-6 py-8"[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Organisation"[39m
+          [33mclass[39m=[32m"flex w-48 shrink-0 flex-col gap-1"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+            [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects"[39m
+          [36m>[39m
+            [0mProjects[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33maria-current[39m=[32m"page"[39m
+            [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900 active"[39m
+            [33mdata-status[39m=[32m"active"[39m
+            [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings"[39m
+          [36m>[39m
+            [0mOrganisation settings[0m
+          [36m</a>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+            [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security"[39m
+          [36m>[39m
+            [0mSecurity[0m
+          [36m</a>[39m
+        [36m</nav>[39m
+        [36m<main[39m
+          [33mclass[39m=[32m"min-w-0 flex-1"[39m
+        [36m>[39m
+          [36m<section[39m
+            [33maria-labelledby[39m=[32m"page-heading"[39m
+          [36m>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"text-2xl font-semibold"[39m
+              [33mid[39m=[32m"page-heading"[39m
+            [36m>[39m
+              [0mOrganisation settings[0m
+            [36m</h1>[39m
+            [36m<nav[39m
+              [33maria-label[39m=[32m"Organisation settings"[39m
+              [33mclass[39m=[32m"mt-4 flex gap-2 border-b border-slate-200 pb-2"[39m
+            [36m>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings"[39m
+              [36m>[39m
+                [0mGeneral[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33maria-current[39m=[32m"page"[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900 active"[39m
+                [33mdata-status[39m=[32m"active"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/credentials"[39m
+              [36m>[39m
+                [0mCredentials[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/models"[39m
+              [36m>[39m
+                [0mModels[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/theme"[39m
+              [36m>[39m
+                [0mTheme[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/members"[39m
+              [36m>[39m
+                [0mMembers[0m
+              [36m</a>[39m
+              [36m<a[39m
+                [33mclass[39m=[32m"rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900"[39m
+                [33mhref[39m=[32m"/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/audit"[39m
+              [36m>[39m
+                [0mAudit[0m
+              [36m</a>[39m
+            [36m</nav>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"mt-6"[39m
+            [36m>[39m
+              [36m<section[39m
+                [33maria-labelledby[39m=[32m"credentials-heading"[39m
+                [33mclass[39m=[32m"space-y-6"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"space-y-1"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-lg font-semibold"[39m
+                    [33mid[39m=[32m"credentials-heading"[39m
+                  [36m>[39m
+                    [0mProvider Credentials[0m
+                  [36m</h2>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-sm text-slate-700"[39m
+                  [36m>[39m
+                    [0mEach key is checked with its provider when it's saved, stored encrypted, and never shown again: only its last four characters are. Amazon Bedrock can instead connect through an IAM role in your AWS account, so no secret is stored.[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<p[39m
+                  [33mrole[39m=[32m"status"[39m
+                [36m>[39m
+                  [0mLoading credentials…[0m
+                [36m</p>[39m
+              [36m</section>[39m
+            [36m</div>[39m
+          [36m</section>[39m
+        [36m</main>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ apps/studio/src/settings/BedrockCredentials.test.tsx:29:36
+     27|   fakeAuthApi({ signedInAs: adaSession });
+     28|   renderStudio(credentialsPath);
+     29|   const form = within(await screen.findByRole("region", { name: "Add a…
+       |                                    ^
+     30|
+     31|   expect(within(form.getByLabelText("Provider")).getAllByRole("option"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 27 passed (28)
+      Tests  1 failed | 302 passed (303)
+   Start at  17:56:34
+   Duration  98.63s (tests 65%, environment 20%, setup 6%, import 6%, worker 2%, transform 1%)
+
+    Isolate  28 workers spawned · ~2.24s startup each (spawn + environment, per file)
+             at least ~18.68s faster with isolate: false — reuses workers across files instead of one per file
+
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:36: test-frontend] Error 1
+exit 2

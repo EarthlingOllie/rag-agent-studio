@@ -1,0 +1,31 @@
+$ make test-frontend @ 8693632
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0403/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0403/frontend
+      Coverage enabled with v8
+
+
+ Test Files  31 passed (31)
+      Tests  322 passed (322)
+   Start at  20:22:11
+   Duration  154.43s (tests 63%, environment 20%, setup 8%, import 5%, transform 2%, worker 2%)
+
+    Isolate  31 workers spawned · ~3.26s startup each (spawn + environment, per file)
+             at least ~30.42s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+49 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 1720/1720 )
+Branches     : 100% ( 977/977 )
+Functions    : 100% ( 655/655 )
+Lines        : 100% ( 1502/1502 )
+================================================================================
+exit 0

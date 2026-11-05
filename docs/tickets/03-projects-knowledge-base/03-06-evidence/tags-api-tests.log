@@ -1,0 +1,25 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0306/backend/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0306/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 13 items
+
+tests/integration/test_tags.py::test_an_editor_creates_tags_listed_by_name PASSED [  7%]
+tests/integration/test_tags.py::test_tag_names_are_unique_in_a_project_ignoring_case PASSED [ 15%]
+tests/integration/test_tags.py::test_a_blank_or_overlong_tag_name_is_refused PASSED [ 23%]
+tests/integration/test_tags.py::test_an_editor_renames_a_tag_and_documents_keep_it PASSED [ 30%]
+tests/integration/test_tags.py::test_deleting_a_tag_takes_it_off_documents_which_stay PASSED [ 38%]
+tests/integration/test_tags.py::test_an_unknown_tag_cannot_be_renamed PASSED [ 46%]
+tests/integration/test_tags.py::test_several_tags_are_applied_to_a_document_and_can_be_cleared PASSED [ 53%]
+tests/integration/test_tags.py::test_a_tag_from_another_project_cannot_be_applied PASSED [ 61%]
+tests/integration/test_tags.py::test_tags_are_bulk_applied_to_and_removed_from_many_documents PASSED [ 69%]
+tests/integration/test_tags.py::test_bulk_tagging_refuses_documents_or_tags_outside_the_project PASSED [ 76%]
+tests/integration/test_tags.py::test_an_archived_projects_tags_can_be_read_but_not_changed PASSED [ 84%]
+tests/integration/test_tags.py::test_the_document_list_filters_by_name_status_and_tag PASSED [ 92%]
+tests/integration/test_tags.py::test_an_unknown_status_filter_is_refused PASSED [100%]
+
+============================= 13 passed in 11.80s ==============================
+exit=0
