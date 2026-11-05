@@ -3,6 +3,7 @@ import type { ReactNode, SubmitEvent } from "react";
 
 import { AuthLayout, Field, FormError, formValues, SubmitButton } from "../auth/AuthLayout";
 import { AuthRequestError, type Session, useMe, useSignIn, useSignOut, useVerifyMfa } from "../auth/session";
+import { signInErrorMessage } from "../auth/SignInPage";
 import { MIN_PASSWORD_LENGTH } from "../auth/SignUpPage";
 import {
   type InvitePreview,
@@ -166,15 +167,7 @@ function SignInToAccept({ preview }: { preview: InvitePreview }) {
     >
       <Invitation preview={preview} />
       <p className="text-sm text-slate-700">You already have an account. Sign in to accept.</p>
-      <FormError
-        message={
-          signIn.error === null
-            ? undefined
-            : statusOf(signIn.error) === 401
-              ? "Password is incorrect."
-              : SOMETHING_WRONG
-        }
-      />
+      <FormError message={signInErrorMessage(signIn.error)} />
       <Field label="Password" name="password" type="password" autoComplete="current-password" />
       <p className="-mt-2 text-sm">
         <Link to="/forgot-password" className="text-slate-700 underline">

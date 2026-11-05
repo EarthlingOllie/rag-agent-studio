@@ -24,10 +24,10 @@ from tests.conftest import (
     STUDIO_URL,
     TEST_DATABASE_URL,
     ClientFactory,
-    ControllableClock,
     SignedUpMember,
     TenantFactory,
 )
+from tests.fakes.clock import ControllableClock
 
 NEW_PASSWORD = "a long enough password 42"
 OTHER_PASSWORD = "a different password 77"

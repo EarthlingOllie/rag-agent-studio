@@ -167,12 +167,13 @@ test("a signed-out person with an account signs in on the page, then joins", asy
 });
 
 test.each([
-  [401, "Password is incorrect."],
-  [500, "Something went wrong. Try again."],
-])("signing in on the page can fail (%i)", async (status, message) => {
+  [401, { detail: "no" }, "Email or password is incorrect."],
+  [429, { detail: "no", locked: true, retry_after_seconds: 900 }, "Too many failed sign-in attempts. Sign-in is locked for 15 minutes."],
+  [500, { detail: "no" }, "Something went wrong. Try again."],
+])("signing in on the page can fail (%i)", async (status, body, message) => {
   fakeAuthApi();
   fakeAcceptApi({ token: TOKEN, preview: previewFor(adaSession.member.email, { account_exists: true }) });
-  server.use(http.post("*/api/auth/sign-in", () => HttpResponse.json({ detail: "no" }, { status })));
+  server.use(http.post("*/api/auth/sign-in", () => HttpResponse.json(body, { status })));
   renderStudio(path);
 
   await userEvent.type(await screen.findByLabelText("Password"), "wrong password!");

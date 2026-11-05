@@ -15,7 +15,8 @@ function throttledMessage({ locked, retry_after_seconds: seconds }: Throttled): 
   return `Too many failed sign-in attempts. ${wait}`;
 }
 
-function errorMessage(error: Error | null): string | undefined {
+/** What a failed sign-in tells the person; the accept-invite page shows the same. */
+export function signInErrorMessage(error: Error | null): string | undefined {
   if (error === null) return undefined;
   if (error instanceof AuthRequestError && error.status === 401) return "Email or password is incorrect.";
   const throttled = throttledDetails(error);
@@ -49,7 +50,7 @@ export function SignInPage() {
       }
     >
       <form onSubmit={onSubmit} className="space-y-4" aria-label="Sign in">
-        <FormError message={errorMessage(signIn.error)} />
+        <FormError message={signInErrorMessage(signIn.error)} />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="current-password" />
         <p className="-mt-2 text-sm">
