@@ -139,7 +139,7 @@
                 }
               }
             },
-            "description": "No worker replied in time"
+            "description": "No worker replied in time, or the health task failed"
           }
         },
         "summary": "Get Worker Health",

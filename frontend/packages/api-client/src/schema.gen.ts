@@ -133,7 +133,7 @@ export interface operations {
                     "application/json": components["schemas"]["WorkerHealthResponse"];
                 };
             };
-            /** @description No worker replied in time */
+            /** @description No worker replied in time, or the health task failed */
             503: {
                 headers: {
                     [name: string]: unknown;

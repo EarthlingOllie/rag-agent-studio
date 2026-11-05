@@ -9,7 +9,7 @@ from asgi_lifespan import LifespanManager
 from celery.contrib.testing.worker import start_worker
 
 from app.main import create_app
-from app.worker.celery_app import celery_app
+from app.worker.celery_app import HEALTH_CHECK_TASK, celery_app
 from tests.conftest import TEST_REDIS_URL
 
 
@@ -56,6 +56,20 @@ async def test_worker_health_is_unavailable_when_no_worker_replies(
     broker_client: httpx.AsyncClient,
 ) -> None:
     response = await broker_client.get("/api/health/worker")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "error", "reply": None}
+
+
+async def test_worker_health_is_unavailable_when_the_health_task_fails(
+    broker_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def failing_health_check() -> str:
+        raise RuntimeError("worker is broken")
+
+    monkeypatch.setattr(celery_app.tasks[HEALTH_CHECK_TASK], "run", failing_health_check)
+    with start_worker(celery_app, pool="solo", perform_ping_check=False, shutdown_timeout=10):
+        response = await broker_client.get("/api/health/worker")
 
     assert response.status_code == 503
     assert response.json() == {"status": "error", "reply": None}

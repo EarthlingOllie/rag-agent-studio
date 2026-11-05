@@ -86,7 +86,7 @@ def get_settings(request: Request) -> Settings:
 @router.get(
     "/worker",
     response_model=WorkerHealthResponse,
-    responses={503: {"model": WorkerHealthResponse, "description": "No worker replied in time"}},
+    responses={503: {"model": WorkerHealthResponse, "description": "No worker replied in time, or the health task failed"}},
     operation_id="getWorkerHealth",
 )
 async def get_worker_health(
@@ -103,4 +103,8 @@ async def get_worker_health(
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
             return WorkerHealthResponse(status="error", reply=None)
         await asyncio.sleep(WORKER_POLL_INTERVAL_SECONDS)
+    # ready() is also true for a failed task; only a successful one counts as a round trip.
+    if not await run_in_threadpool(result.successful):
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return WorkerHealthResponse(status="error", reply=None)
     return WorkerHealthResponse(status="ok", reply=str(result.result))
