@@ -20,6 +20,7 @@ from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
+from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
@@ -41,6 +42,7 @@ ROUTERS: Sequence[APIRouter] = (
     switcher_api.router,
     theme_api.router,
     theme_api.fonts_router,
+    projects_api.router,
 )
 
 

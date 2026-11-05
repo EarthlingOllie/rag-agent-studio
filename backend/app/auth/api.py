@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import Address
 
 from app.auth import service
-from app.auth.mfa import Mfa
+from app.auth.mfa import Mfa, mfa_enabled
 from app.auth.mfa_pending import MFA_PENDING_COOKIE, PendingSignIns
 from app.auth.sessions import SESSION_COOKIE, SessionStore
 from app.auth.throttle import SignInThrottle
@@ -64,12 +64,17 @@ class MemberOut(BaseModel):
     id: uuid.UUID
     name: str
     email: str
+    mfa_enabled: bool = Field(description="Whether the Member has turned MFA on")
 
 
 class MembershipOut(BaseModel):
     id: uuid.UUID = Field(description="The Organisation's ID")
     name: str
     role: Role
+    mfa_required: bool = Field(
+        description="The Organisation requires MFA: while the Member hasn't turned it on, its "
+        "routes answer 403 and the Studio sends them to enrolment"
+    )
 
 
 class SessionResponse(BaseModel):
@@ -126,9 +131,19 @@ async def session_response(request: Request, db: AsyncSession, member: Member) -
         member.id, [m.organisation_id for m in memberships]
     )
     return SessionResponse(
-        member=MemberOut(id=member.id, name=member.name, email=member.email),
+        member=MemberOut(
+            id=member.id,
+            name=member.name,
+            email=member.email,
+            mfa_enabled=await mfa_enabled(db, member.id),
+        ),
         organisations=[
-            MembershipOut(id=m.organisation_id, name=m.organisation_name, role=m.role)
+            MembershipOut(
+                id=m.organisation_id,
+                name=m.organisation_name,
+                role=m.role,
+                mfa_required=m.require_mfa,
+            )
             for m in memberships
         ],
         active_organisation_id=active,

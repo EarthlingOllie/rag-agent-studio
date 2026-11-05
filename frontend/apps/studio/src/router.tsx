@@ -20,7 +20,16 @@ import {
   OrganisationSettingsLayout,
   ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
-import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
+import {
+  AgentsTab,
+  AnalyticsTab,
+  ConversationsTab,
+  DocumentsTab,
+  InstructionsTab,
+  ProjectLayout,
+} from "./projects/ProjectPage";
+import { ProjectsPage } from "./projects/ProjectsPage";
+import { HomeRedirect, OrganisationShell, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
 import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
@@ -80,6 +89,24 @@ const organisationRoute = createRoute({
   component: OrganisationShell,
 });
 const projectsRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/projects", component: ProjectsPage });
+const projectRoute = createRoute({
+  getParentRoute: () => organisationRoute,
+  path: "/projects/$projectId",
+  component: ProjectLayout,
+});
+const documentsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/", component: DocumentsTab });
+const instructionsTabRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/instructions",
+  component: InstructionsTab,
+});
+const agentsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents", component: AgentsTab });
+const conversationsTabRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/conversations",
+  component: ConversationsTab,
+});
+const analyticsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/analytics", component: AnalyticsTab });
 const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
@@ -113,6 +140,13 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     organisationRoute.addChildren([
       projectsRoute,
+      projectRoute.addChildren([
+        documentsTabRoute,
+        instructionsTabRoute,
+        agentsTabRoute,
+        conversationsTabRoute,
+        analyticsTabRoute,
+      ]),
       settingsRoute.addChildren([generalSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,

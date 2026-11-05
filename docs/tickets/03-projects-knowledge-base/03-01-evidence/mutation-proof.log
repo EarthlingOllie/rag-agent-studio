@@ -1,0 +1,27 @@
+$ TEST_DATABASE_URL=…:45632/studio_test_w0301 TEST_REDIS_URL=…:46579/12 python3 mutate.py <worktree at 131488b>
+caught    Projects found in any Organisation  (backend/app/projects/service.py)
+caught    List shows every Organisation's Projects  (backend/app/projects/service.py)
+caught    Archived Projects stay in the main list  (backend/app/projects/service.py)
+caught    Not sorted by name  (backend/app/projects/service.py)
+caught    Archived Projects can be changed  (backend/app/projects/service.py)
+caught    Archive doesn't set archived_at  (backend/app/projects/service.py)
+caught    Restore of an active Project allowed  (backend/app/projects/service.py)
+caught    Restore keeps the Project archived  (backend/app/projects/service.py)
+caught    Rename ignores the name  (backend/app/projects/service.py)
+caught    Description not saved on edit  (backend/app/projects/service.py)
+caught    Creation not audited  (backend/app/projects/service.py)
+caught    Archive not audited  (backend/app/projects/service.py)
+caught    Restore audited with the wrong actor  (backend/app/projects/service.py)
+caught    Restore open to Editors  (backend/app/projects/api.py)
+caught    Names not trimmed  (backend/app/projects/api.py)
+caught    Archived Project answers 404 not 409  (backend/app/projects/api.py)
+caught    Restore offered to Editors in the list  (frontend/apps/studio/src/projects/ProjectsPage.tsx)
+caught    Restore offered to Editors on the page  (frontend/apps/studio/src/projects/ProjectPage.tsx)
+caught    Archive without confirming  (frontend/apps/studio/src/projects/ProjectPage.tsx)
+caught    A tab missing  (frontend/apps/studio/src/projects/ProjectPage.tsx)
+caught    Counts swapped  (frontend/apps/studio/src/projects/ProjectsPage.tsx)
+caught    Archived refusal shown as a generic error  (frontend/apps/studio/src/projects/projects.ts)
+caught    Lists not refreshed after a change  (frontend/apps/studio/src/projects/projects.ts)
+unmodified code passes: True
+23/23 mutations caught
+exit code: 0

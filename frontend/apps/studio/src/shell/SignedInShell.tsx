@@ -1,4 +1,4 @@
-import { Link, Navigate, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 
 import { type Session, useMe, useSignOut } from "../auth/session";
 import { OrganisationSwitcher } from "./OrganisationSwitcher";
@@ -66,6 +66,9 @@ export function OrganisationShell() {
   const session = data as Session;
   const { organisationId } = useParams({ from: "/signed-in/organisations/$organisationId" });
   const organisation = session.organisations.find((candidate) => candidate.id === organisationId);
+  // The Require MFA policy: until the Member turns MFA on, the Organisation offers only enrolment.
+  const mustEnrol = organisation !== undefined && organisation.mfa_required && !session.member.mfa_enabled;
+  const onSecurityPage = useLocation().pathname.endsWith("/security");
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -93,18 +96,26 @@ export function OrganisationShell() {
       {organisation ? (
         <div className="mx-auto flex max-w-5xl gap-8 px-6 py-8">
           <nav aria-label="Organisation" className="flex w-48 shrink-0 flex-col gap-1">
-            <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className={NAV_LINK}>
-              Projects
-            </Link>
-            <Link to="/organisations/$organisationId/settings" params={{ organisationId }} className={NAV_LINK}>
-              Organisation settings
-            </Link>
+            {!mustEnrol && (
+              <>
+                <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className={NAV_LINK}>
+                  Projects
+                </Link>
+                <Link to="/organisations/$organisationId/settings" params={{ organisationId }} className={NAV_LINK}>
+                  Organisation settings
+                </Link>
+              </>
+            )}
             <Link to="/organisations/$organisationId/security" params={{ organisationId }} className={NAV_LINK}>
               Security
             </Link>
           </nav>
           <main className="min-w-0 flex-1">
-            <Outlet />
+            {mustEnrol && !onSecurityPage ? (
+              <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
+            ) : (
+              <Outlet />
+            )}
           </main>
         </div>
       ) : (
@@ -117,19 +128,4 @@ export function OrganisationShell() {
       )}
     </div>
   );
-}
-
-function Placeholder({ title, children }: { title: string; children: string }) {
-  return (
-    <section aria-labelledby="page-heading">
-      <h1 id="page-heading" className="text-2xl font-semibold">
-        {title}
-      </h1>
-      <p className="mt-2 text-slate-700">{children}</p>
-    </section>
-  );
-}
-
-export function ProjectsPage() {
-  return <Placeholder title="Projects">No Projects yet. Projects arrive in a later release.</Placeholder>;
 }

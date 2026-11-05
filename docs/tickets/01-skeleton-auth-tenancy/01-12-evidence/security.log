@@ -1,0 +1,14 @@
+$ make audit
+(fresh clone at 30b6727)
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit code: 0
+
+$ gitleaks git --redact --no-banner --log-opts="origin/candidate..HEAD" .
+[90m7:05AM[0m [32mINF[0m [1m3 commits scanned.[0m
+[90m7:05AM[0m [32mINF[0m [1mscanned ~55000 bytes (55 KB) in 221ms[0m
+[90m7:05AM[0m [32mINF[0m [1mno leaks found[0m
+exit code: 0

@@ -12,8 +12,8 @@ const path = `/accept-invite?token=${TOKEN}`;
 const INVALID = "This invite link is invalid or has expired. Ask an Owner of the Organisation for a new one.";
 
 const newcomer: Session = {
-  member: { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a77", name: "Grace Hopper", email: "grace@example.test" },
-  organisations: [{ ...invitedOrganisation, role: "editor" }],
+  member: { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a77", name: "Grace Hopper", email: "grace@example.test", mfa_enabled: false },
+  organisations: [{ ...invitedOrganisation, role: "editor", mfa_required: false }],
   active_organisation_id: invitedOrganisation.id,
 };
 

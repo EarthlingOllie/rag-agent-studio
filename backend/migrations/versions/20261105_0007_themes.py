@@ -1,7 +1,7 @@
 """The Organisation's Theme.
 
 Revision ID: 0007_themes
-Revises: 0006_invites
+Revises: 0007_projects
 Create Date: 2026-11-05
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "0007_themes"
-down_revision: str | None = "0006_invites"
+down_revision: str | None = "0007_projects"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

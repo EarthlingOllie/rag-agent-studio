@@ -84,6 +84,10 @@ A Member ending their own Membership of an Organisation. Removing is an Owner en
 Multi-factor authentication: a Member's sign-in also needs a code from an authenticator app (TOTP). It belongs to the Member, so it applies in every Organisation they belong to.
 _Avoid_: 2FA, two-step verification (fine in Studio copy, not in code or docs)
 
+**Require MFA policy**:
+An Organisation setting, turned on or off by an Owner, that every Member must have MFA. While it is on, a Member without MFA can sign in but can do nothing in that Organisation until they turn MFA on, and no Member can turn MFA off while any of their Organisations has it on. An Owner must have MFA before turning it on.
+_Avoid_: Enforce 2FA, mandatory MFA, MFA enforcement
+
 **Recovery Code**:
 One of ten single-use codes a Member gets when they turn MFA on, to sign in without their authenticator app. Shown once; making new ones stops the old ones working.
 _Avoid_: Backup code
@@ -95,6 +99,10 @@ _Avoid_: Activity, history, log
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
 _Avoid_: Disable, soft delete
+
+**Restore**:
+To bring an archived Project back to the Projects list so it serves again. Only Owners can restore.
+_Avoid_: Unarchive, undelete
 
 ## Models
 
