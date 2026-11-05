@@ -200,7 +200,7 @@ The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirme
 _Avoid_: Checksum, fingerprint, etag
 
 **Tag**:
-A label on Documents that an Agent can use to limit which Documents it retrieves from.
+A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay.
 _Avoid_: Category, folder, label
 
 **Chunk**:
