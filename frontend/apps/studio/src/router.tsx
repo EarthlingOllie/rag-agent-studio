@@ -25,10 +25,10 @@ import {
   AgentsTab,
   AnalyticsTab,
   ConversationsTab,
-  DocumentsTab,
   InstructionsTab,
   ProjectLayout,
 } from "./projects/ProjectPage";
+import { DocumentsTab } from "./projects/DocumentsTab";
 import { ProjectsPage } from "./projects/ProjectsPage";
 import { HomeRedirect, OrganisationShell, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";

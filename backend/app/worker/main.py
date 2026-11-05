@@ -12,6 +12,7 @@ from celery.signals import setup_logging
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry
+from app.documents.ports import build_ports, install_ports
 from app.worker.celery_app import configure_celery
 
 SERVICE_NAME = "beat" if "beat" in sys.argv else "worker"
@@ -20,6 +21,8 @@ configure_logging(SERVICE_NAME)
 settings = load_settings()
 configure_telemetry(settings, SERVICE_NAME)
 app = configure_celery(settings)
+# The adapters ingestion runs through, chosen by the settings.
+install_ports(build_ports(settings))
 
 
 @setup_logging.connect(weak=False, dispatch_uid="app.worker.main.setup_logging")

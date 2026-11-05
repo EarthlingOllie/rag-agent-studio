@@ -15,6 +15,7 @@ export const hrProject: Project = {
   archived_at: null,
   document_count: 12,
   agent_count: 2,
+  embedding_model_id: "multilingual-e5-small",
 };
 
 export const salesProject: Project = {
@@ -25,6 +26,7 @@ export const salesProject: Project = {
   archived_at: null,
   document_count: 0,
   agent_count: 0,
+  embedding_model_id: "multilingual-e5-small",
 };
 
 export const oldProject: Project = {
@@ -35,6 +37,7 @@ export const oldProject: Project = {
   archived_at: "2026-10-20T08:00:00Z",
   document_count: 3,
   agent_count: 1,
+  embedding_model_id: "multilingual-e5-small",
 };
 
 const ARCHIVED_AT = "2026-11-05T09:00:00Z";
@@ -72,6 +75,7 @@ export function fakeProjectsApi(options: { projects?: Project[] } = {}) {
         archived_at: null,
         document_count: 0,
         agent_count: 0,
+        embedding_model_id: "multilingual-e5-small",
       };
       projects.push(created);
       return HttpResponse.json(created, { status: 201 });

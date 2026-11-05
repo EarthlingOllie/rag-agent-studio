@@ -6,7 +6,7 @@ from app.core.settings import Settings
 
 HEALTH_CHECK_TASK = "worker.health_check"
 
-celery_app = Celery("rag_agent_studio", include=["app.worker.tasks"])
+celery_app = Celery("rag_agent_studio", include=["app.worker.tasks", "app.documents.tasks"])
 
 
 def configure_celery(settings: Settings) -> Celery:

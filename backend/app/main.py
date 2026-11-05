@@ -23,6 +23,8 @@ from app.credentials import api as credentials_api
 from app.credentials.adapters import build_verifier
 from app.credentials.references import ReferenceRegistry
 from app.crypto.adapters import build_envelope
+from app.documents import api as documents_api
+from app.documents.ports import build_ports, install_ports
 from app.mail.factory import build_mailer
 from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
@@ -49,6 +51,7 @@ ROUTERS: Sequence[APIRouter] = (
     theme_api.router,
     theme_api.fonts_router,
     projects_api.router,
+    documents_api.router,
 )
 
 
@@ -74,6 +77,12 @@ def _lifespan(
             timeout=settings.credential_check_timeout_seconds
         )
         app.state.credential_verifier = build_verifier(settings, app.state.provider_http)
+        # Ingestion tasks enqueued from here run in the worker; in tests they run eagerly in
+        # this process and use these same adapters.
+        app.state.ingestion = build_ports(settings)
+        install_ports(app.state.ingestion)
+        if settings.object_store_create_bucket:
+            await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield

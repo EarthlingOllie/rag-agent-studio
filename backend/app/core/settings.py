@@ -75,6 +75,32 @@ class Settings(BaseSettings):
     smtp_timeout_seconds: float = Field(default=10.0, gt=0)
     # SES region; unset means boto3's default (AWS_REGION).
     ses_region: str | None = None
+    # Where uploaded files and converted markdown are kept: S3 (or RustFS, the same adapter with
+    # another endpoint) or the in-memory fake (tests).
+    object_store: Literal["s3", "memory"] = "s3"
+    object_store_bucket: str = "studio-documents"
+    # Create the bucket at startup if it's missing (RustFS starts empty). AWS buckets are
+    # created by Terraform, so this stays off there.
+    object_store_create_bucket: bool = False
+    # The S3 endpoint the API and worker use; unset means AWS S3. RustFS: http://rustfs:9000.
+    object_store_endpoint_url: HttpUrl | None = None
+    # The endpoint browsers upload to through presigned URLs; unset means the one above.
+    object_store_public_endpoint_url: HttpUrl | None = None
+    object_store_region: str = "us-east-1"
+    # Static keys (RustFS); unset means boto3's default credential chain (an AWS role).
+    object_store_access_key_id: str | None = None
+    object_store_secret_access_key: SecretStr | None = None
+    # How long a presigned upload URL works.
+    upload_url_ttl_seconds: int = Field(default=15 * 60, gt=0)
+    # The largest file a Document can be uploaded from.
+    max_upload_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
+    # Converts uploaded files to markdown and structure: Docling, or the fake (tests).
+    document_converter: Literal["docling", "fake"] = "docling"
+    # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
+    # deterministic hash-based fake (tests, and stacks that can't download the model).
+    embedder: Literal["local", "fake"] = "local"
+    # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
+    chunk_max_tokens: int = Field(default=256, gt=0)
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.

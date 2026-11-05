@@ -22,6 +22,7 @@ def test_worker_entrypoint_points_celery_at_the_configured_broker(
 
     assert entrypoint.app.conf.broker_url == TEST_REDIS_URL
     assert "worker.health_check" in entrypoint.app.tasks
+    assert "documents.ingest" in entrypoint.app.tasks
 
 
 def test_beat_schedules_the_worker_health_check(settings_env: pytest.MonkeyPatch) -> None:

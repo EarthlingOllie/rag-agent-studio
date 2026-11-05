@@ -225,14 +225,6 @@ function TabPlaceholder({ title, children }: { title: string; children: string }
   );
 }
 
-export function DocumentsTab() {
-  return (
-    <TabPlaceholder title="Documents">
-      No Documents yet. Uploading files to this Project's Knowledge Base arrives in a later release.
-    </TabPlaceholder>
-  );
-}
-
 export function InstructionsTab() {
   return (
     <TabPlaceholder title="Instructions">

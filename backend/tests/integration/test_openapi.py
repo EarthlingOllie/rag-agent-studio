@@ -5,6 +5,7 @@ import json
 from app.openapi import render_openapi
 
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
+_PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
 
 
 def test_openapi_document_describes_every_endpoint() -> None:
@@ -70,6 +71,11 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "/api/organisations/{organisation_id}/projects/{project_id}/restore",
             "post",
         ),
+        "startDocumentUpload": (f"{_PROJECT}/uploads", "post"),
+        "confirmDocumentUpload": (f"{_PROJECT}/documents", "post"),
+        "listDocuments": (f"{_PROJECT}/documents", "get"),
+        "listDocumentStatuses": (f"{_PROJECT}/documents/statuses", "get"),
+        "listChunks": (f"{_PROJECT}/documents/{{document_id}}/chunks", "get"),
     }
 
 

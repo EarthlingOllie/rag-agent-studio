@@ -1,0 +1,204 @@
+{
+ "body": {
+  "children": [
+   {
+    "$ref": "#/groups/0"
+   }
+  ],
+  "content_layer": "body",
+  "label": "unspecified",
+  "name": "_root_",
+  "self_ref": "#/body"
+ },
+ "form_items": [],
+ "furniture": {
+  "children": [],
+  "content_layer": "furniture",
+  "label": "unspecified",
+  "name": "_root_",
+  "self_ref": "#/furniture"
+ },
+ "groups": [
+  {
+   "children": [
+    {
+     "$ref": "#/texts/0"
+    }
+   ],
+   "content_layer": "body",
+   "label": "section",
+   "name": "header-0",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "self_ref": "#/groups/0"
+  }
+ ],
+ "key_value_items": [],
+ "name": "northwind-handbook",
+ "origin": {
+  "binary_hash": 5756386746399344828,
+  "filename": "northwind-handbook.docx",
+  "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+ },
+ "pages": {},
+ "pictures": [],
+ "schema_name": "DoclingDocument",
+ "tables": [],
+ "texts": [
+  {
+   "children": [
+    {
+     "$ref": "#/texts/1"
+    },
+    {
+     "$ref": "#/texts/4"
+    },
+    {
+     "$ref": "#/texts/6"
+    }
+   ],
+   "content_layer": "body",
+   "label": "section_header",
+   "level": 1,
+   "orig": "Northwind staff handbook",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "prov": [],
+   "self_ref": "#/texts/0",
+   "text": "Northwind staff handbook"
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/2"
+    },
+    {
+     "$ref": "#/texts/3"
+    }
+   ],
+   "content_layer": "body",
+   "label": "section_header",
+   "level": 2,
+   "orig": "Annual leave",
+   "parent": {
+    "$ref": "#/texts/0"
+   },
+   "prov": [],
+   "self_ref": "#/texts/1",
+   "text": "Annual leave"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "formatting": {
+    "bold": false,
+    "italic": false,
+    "script": "baseline",
+    "strikethrough": false,
+    "underline": false
+   },
+   "label": "text",
+   "orig": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays.",
+   "parent": {
+    "$ref": "#/texts/1"
+   },
+   "prov": [],
+   "self_ref": "#/texts/2",
+   "text": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays."
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "formatting": {
+    "bold": false,
+    "italic": false,
+    "script": "baseline",
+    "strikethrough": false,
+    "underline": false
+   },
+   "label": "text",
+   "orig": "Book leave in the HR portal at least two weeks ahead. Your manager approves it.",
+   "parent": {
+    "$ref": "#/texts/1"
+   },
+   "prov": [],
+   "self_ref": "#/texts/3",
+   "text": "Book leave in the HR portal at least two weeks ahead. Your manager approves it."
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/5"
+    }
+   ],
+   "content_layer": "body",
+   "label": "section_header",
+   "level": 2,
+   "orig": "Expenses",
+   "parent": {
+    "$ref": "#/texts/0"
+   },
+   "prov": [],
+   "self_ref": "#/texts/4",
+   "text": "Expenses"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "formatting": {
+    "bold": false,
+    "italic": false,
+    "script": "baseline",
+    "strikethrough": false,
+    "underline": false
+   },
+   "label": "text",
+   "orig": "Claim expenses within 30 days with a receipt. Travel is booked through the travel desk.",
+   "parent": {
+    "$ref": "#/texts/4"
+   },
+   "prov": [],
+   "self_ref": "#/texts/5",
+   "text": "Claim expenses within 30 days with a receipt. Travel is booked through the travel desk."
+  },
+  {
+   "children": [
+    {
+     "$ref": "#/texts/7"
+    }
+   ],
+   "content_layer": "body",
+   "label": "section_header",
+   "level": 2,
+   "orig": "Working from home",
+   "parent": {
+    "$ref": "#/texts/0"
+   },
+   "prov": [],
+   "self_ref": "#/texts/6",
+   "text": "Working from home"
+  },
+  {
+   "children": [],
+   "content_layer": "body",
+   "formatting": {
+    "bold": false,
+    "italic": false,
+    "script": "baseline",
+    "strikethrough": false,
+    "underline": false
+   },
+   "label": "text",
+   "orig": "You can work from home up to three days a week. Agree the days with your team.",
+   "parent": {
+    "$ref": "#/texts/6"
+   },
+   "prov": [],
+   "self_ref": "#/texts/7",
+   "text": "You can work from home up to three days a week. Agree the days with your team."
+  }
+ ],
+ "version": "1.11.0"
+}

@@ -47,6 +47,8 @@ class ProjectOut(BaseModel):
     archived_at: datetime | None
     document_count: int
     agent_count: int
+    # The Embedding Model the Project's Documents are embedded with.
+    embedding_model_id: str
 
 
 class CreateProjectRequest(BaseModel):
@@ -71,11 +73,12 @@ def _out(summary: service.ProjectSummary) -> ProjectOut:
         archived_at=project.archived_at,
         document_count=summary.document_count,
         agent_count=summary.agent_count,
+        embedding_model_id=project.embedding_model_id,
     )
 
 
-async def _respond(project: Project) -> ProjectOut:
-    return _out(await service.summarise(project))
+async def _respond(db: Db, project: Project) -> ProjectOut:
+    return _out(await service.summarise(db, project))
 
 
 @router.get("/projects", operation_id="listProjects", responses=_NOT_FOUND)
@@ -101,7 +104,7 @@ async def create_project(
     project = await service.create_project(
         db, scope, name=body.name, description=body.description, now=clock.now()
     )
-    return await _respond(project)
+    return await _respond(db, project)
 
 
 @router.get("/projects/{project_id}", operation_id="getProject", responses=_NOT_FOUND)
@@ -111,7 +114,7 @@ async def get_project(project_id: uuid.UUID, scope: Scope, db: Db) -> ProjectOut
         project = await service.get_project(db, scope, project_id)
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
-    return await _respond(project)
+    return await _respond(db, project)
 
 
 @router.patch(
@@ -131,7 +134,7 @@ async def update_project(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    return await _respond(project)
+    return await _respond(db, project)
 
 
 @router.post(
@@ -150,7 +153,7 @@ async def archive_project(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    return await _respond(project)
+    return await _respond(db, project)
 
 
 @router.post(
@@ -173,4 +176,4 @@ async def restore_project(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectNotArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_NOT_ARCHIVED) from None
-    return await _respond(project)
+    return await _respond(db, project)

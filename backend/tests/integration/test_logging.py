@@ -121,6 +121,7 @@ def _service_env() -> dict[str, str]:
         DATABASE_URL=TEST_DATABASE_URL,
         REDIS_URL=TEST_REDIS_URL,
         LOCAL_KEY_WRAPPER_KEY=TEST_LOCAL_KEY_WRAPPER_KEY,
+        OBJECT_STORE="memory",
         PYTHONUNBUFFERED="1",
     )
     return env

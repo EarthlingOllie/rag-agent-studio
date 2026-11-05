@@ -38,7 +38,7 @@ test("a Project page has a tab for each area, with placeholders until each featu
     ["Agents", /No Agents yet/],
     ["Conversations", /No Conversations yet/],
     ["Analytics", /Analytics for this Project's Agents/],
-    ["Documents", /No Documents yet/],
+    ["Documents", /No Documents yet\. Upload files/],
   ];
   for (const [tab, placeholder] of placeholders) {
     await userEvent.click(within(tabs).getByRole("link", { name: tab }));
