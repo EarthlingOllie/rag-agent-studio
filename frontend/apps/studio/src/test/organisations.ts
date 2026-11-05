@@ -10,6 +10,7 @@ export const differenceEngines: Schemas["MembershipOut"] = {
   id: "0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e09",
   name: "Difference Engines",
   role: "owner",
+  mfa_required: false,
 };
 
 /** Ada, who owns two Organisations; `active` is the one the API remembers. */

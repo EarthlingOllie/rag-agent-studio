@@ -24,8 +24,10 @@ from app.credentials.adapters import build_verifier
 from app.credentials.references import ReferenceRegistry
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
+from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
+from app.theme import api as theme_api
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,9 @@ ROUTERS: Sequence[APIRouter] = (
     switcher_api.router,
     credentials_api.router,
     credentials_api.providers_router,
+    theme_api.router,
+    theme_api.fonts_router,
+    projects_api.router,
 )
 
 

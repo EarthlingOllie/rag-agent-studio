@@ -1,0 +1,21 @@
+$ cd frontend && pnpm build
+(fresh clone of ticket/01-12-require-mfa-policy at 30b6727)
+
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone0112/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone0112/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 176 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.26 kB
+dist/assets/index-BzD7aarV.css   15.09 kB │ gzip:   3.78 kB
+dist/assets/index-BGoeGhaa.js   392.53 kB │ gzip: 119.14 kB
+
+✓ built in 600ms
+exit code: 0

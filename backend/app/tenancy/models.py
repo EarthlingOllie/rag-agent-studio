@@ -9,7 +9,17 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    false,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
@@ -34,6 +44,9 @@ class Organisation(IdMixin, Base):
     __tablename__ = "organisations"
 
     name: Mapped[str] = mapped_column(String(200))
+    # The Require MFA policy: while it is on, Members without MFA are refused this
+    # Organisation's routes until they enrol (``app.tenancy.policy``).
+    require_mfa: Mapped[bool] = mapped_column(Boolean, server_default=false(), default=False)
 
 
 class Member(IdMixin, Base):

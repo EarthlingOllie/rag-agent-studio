@@ -34,6 +34,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "requestPasswordReset": ("/api/auth/password-reset", "post"),
         "completePasswordReset": ("/api/auth/password-reset/complete", "post"),
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
+        "setMfaPolicy": ("/api/organisations/{organisation_id}/mfa-policy", "put"),
         "listAuditEvents": ("/api/organisations/{organisation_id}/audit-events", "get"),
         "getAuditFacets": ("/api/organisations/{organisation_id}/audit-events/facets", "get"),
         "listInvites": ("/api/organisations/{organisation_id}/invites", "get"),
@@ -54,6 +55,21 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "checkCredential": (f"{_CREDENTIAL}/check", "post"),
         "rotateCredential": (f"{_CREDENTIAL}/rotate", "post"),
         "listProviders": ("/api/providers", "get"),
+        "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
+        "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
+        "listThemeFonts": ("/api/themes/fonts", "get"),
+        "listProjects": ("/api/organisations/{organisation_id}/projects", "get"),
+        "createProject": ("/api/organisations/{organisation_id}/projects", "post"),
+        "getProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "get"),
+        "updateProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "patch"),
+        "archiveProject": (
+            "/api/organisations/{organisation_id}/projects/{project_id}/archive",
+            "post",
+        ),
+        "restoreProject": (
+            "/api/organisations/{organisation_id}/projects/{project_id}/restore",
+            "post",
+        ),
     }
 
 

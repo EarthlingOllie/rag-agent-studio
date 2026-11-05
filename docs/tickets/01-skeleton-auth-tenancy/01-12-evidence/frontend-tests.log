@@ -1,0 +1,31 @@
+$ make test-frontend
+(fresh clone of ticket/01-12-require-mfa-policy at 30b6727)
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone0112/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clone0112/frontend
+      Coverage enabled with v8
+
+
+ Test Files  17 passed (17)
+      Tests  160 passed (160)
+   Start at  06:58:48
+   Duration  62.80s (tests 58%, environment 24%, setup 7%, import 6%, transform 3%, worker 2%)
+
+    Isolate  17 workers spawned · ~2.79s startup each (spawn + environment, per file)
+             at least ~13.02s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+28 files fully covered.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 669/669 )
+Branches     : 100% ( 406/406 )
+Functions    : 100% ( 267/267 )
+Lines        : 100% ( 583/583 )
+================================================================================
+exit code: 0

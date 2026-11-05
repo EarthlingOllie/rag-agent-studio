@@ -300,6 +300,33 @@
         "title": "CodeRequest",
         "type": "object"
       },
+      "ColourToken": {
+        "description": "A colour token's light-mode value and its dark-mode value.",
+        "properties": {
+          "dark": {
+            "examples": [
+              "#4f46e5"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Dark",
+            "type": "string"
+          },
+          "light": {
+            "examples": [
+              "#4f46e5"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Light",
+            "type": "string"
+          }
+        },
+        "required": [
+          "light",
+          "dark"
+        ],
+        "title": "ColourToken",
+        "type": "object"
+      },
       "CompletePasswordResetRequest": {
         "properties": {
           "password": {
@@ -390,6 +417,27 @@
           "role"
         ],
         "title": "CreateInviteRequest",
+        "type": "object"
+      },
+      "CreateProjectRequest": {
+        "properties": {
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateProjectRequest",
         "type": "object"
       },
       "CredentialInUseResponse": {
@@ -563,6 +611,49 @@
           "detail"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Font": {
+        "enum": [
+          "Inter",
+          "Roboto",
+          "Open Sans",
+          "Lato",
+          "Source Sans 3",
+          "Nunito",
+          "Work Sans",
+          "IBM Plex Sans",
+          "Merriweather",
+          "Lora",
+          "Source Serif 4",
+          "JetBrains Mono"
+        ],
+        "title": "Font",
+        "type": "string"
+      },
+      "FontCategory": {
+        "enum": [
+          "sans-serif",
+          "serif",
+          "monospace"
+        ],
+        "title": "FontCategory",
+        "type": "string"
+      },
+      "FontOut": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FontCategory"
+          },
+          "family": {
+            "$ref": "#/components/schemas/Font"
+          }
+        },
+        "required": [
+          "family",
+          "category"
+        ],
+        "title": "FontOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -797,6 +888,22 @@
         "title": "IssuedInviteOut",
         "type": "object"
       },
+      "LauncherPosition": {
+        "enum": [
+          "bottom-right",
+          "bottom-left"
+        ],
+        "title": "LauncherPosition",
+        "type": "string"
+      },
+      "LauncherType": {
+        "enum": [
+          "bubble",
+          "inline"
+        ],
+        "title": "LauncherType",
+        "type": "string"
+      },
       "MemberOut": {
         "properties": {
           "email": {
@@ -808,6 +915,11 @@
             "title": "Id",
             "type": "string"
           },
+          "mfa_enabled": {
+            "description": "Whether the Member has turned MFA on",
+            "title": "Mfa Enabled",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -816,7 +928,8 @@
         "required": [
           "id",
           "name",
-          "email"
+          "email",
+          "mfa_enabled"
         ],
         "title": "MemberOut",
         "type": "object"
@@ -829,6 +942,11 @@
             "title": "Id",
             "type": "string"
           },
+          "mfa_required": {
+            "description": "The Organisation requires MFA: while the Member hasn't turned it on, its routes answer 403 and the Studio sends them to enrolment",
+            "title": "Mfa Required",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -840,7 +958,8 @@
         "required": [
           "id",
           "name",
-          "role"
+          "role",
+          "mfa_required"
         ],
         "title": "MembershipOut",
         "type": "object"
@@ -855,6 +974,19 @@
           }
         },
         "title": "MfaChallengeResponse",
+        "type": "object"
+      },
+      "MfaPolicyRequest": {
+        "properties": {
+          "require_mfa": {
+            "title": "Require Mfa",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "require_mfa"
+        ],
+        "title": "MfaPolicyRequest",
         "type": "object"
       },
       "MfaStatusResponse": {
@@ -938,6 +1070,11 @@
             "title": "Name",
             "type": "string"
           },
+          "require_mfa": {
+            "description": "Whether every Member must have MFA turned on",
+            "title": "Require Mfa",
+            "type": "boolean"
+          },
           "role": {
             "$ref": "#/components/schemas/Role"
           }
@@ -945,7 +1082,8 @@
         "required": [
           "id",
           "name",
-          "role"
+          "role",
+          "require_mfa"
         ],
         "title": "OrganisationOut",
         "type": "object"
@@ -975,6 +1113,59 @@
           "email"
         ],
         "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "properties": {
+          "agent_count": {
+            "title": "Agent Count",
+            "type": "integer"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "document_count": {
+            "title": "Document Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "created_at",
+          "archived_at",
+          "document_count",
+          "agent_count"
+        ],
+        "title": "ProjectOut",
         "type": "object"
       },
       "Provider": {
@@ -1173,6 +1364,134 @@
         "title": "SwitchOrganisationRequest",
         "type": "object"
       },
+      "ThemeColours": {
+        "description": "The colour tokens. ``on_*`` colours are for text and icons on the colour they name.",
+        "properties": {
+          "accent": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "muted": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "on_primary": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "on_surface": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "primary": {
+            "$ref": "#/components/schemas/ColourToken"
+          },
+          "surface": {
+            "$ref": "#/components/schemas/ColourToken"
+          }
+        },
+        "required": [
+          "primary",
+          "on_primary",
+          "surface",
+          "on_surface",
+          "accent",
+          "muted"
+        ],
+        "title": "ThemeColours",
+        "type": "object"
+      },
+      "ThemeMode": {
+        "enum": [
+          "light",
+          "dark",
+          "auto"
+        ],
+        "title": "ThemeMode",
+        "type": "string"
+      },
+      "ThemeOut": {
+        "properties": {
+          "colours": {
+            "$ref": "#/components/schemas/ThemeColours"
+          },
+          "font": {
+            "$ref": "#/components/schemas/Font"
+          },
+          "launcher_position": {
+            "$ref": "#/components/schemas/LauncherPosition"
+          },
+          "launcher_type": {
+            "$ref": "#/components/schemas/LauncherType"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ThemeMode"
+          },
+          "radius": {
+            "description": "Corner radius in pixels.",
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Radius",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "colours",
+          "radius",
+          "font",
+          "mode",
+          "launcher_type",
+          "launcher_position",
+          "updated_at"
+        ],
+        "title": "ThemeOut",
+        "type": "object"
+      },
+      "ThemeSettings": {
+        "description": "Everything an Owner sets on the Theme.",
+        "properties": {
+          "colours": {
+            "$ref": "#/components/schemas/ThemeColours"
+          },
+          "font": {
+            "$ref": "#/components/schemas/Font"
+          },
+          "launcher_position": {
+            "$ref": "#/components/schemas/LauncherPosition"
+          },
+          "launcher_type": {
+            "$ref": "#/components/schemas/LauncherType"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ThemeMode"
+          },
+          "radius": {
+            "description": "Corner radius in pixels.",
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Radius",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "colours",
+          "radius",
+          "font",
+          "mode",
+          "launcher_type",
+          "launcher_position"
+        ],
+        "title": "ThemeSettings",
+        "type": "object"
+      },
       "ThrottledResponse": {
         "properties": {
           "detail": {
@@ -1211,6 +1530,38 @@
           "name"
         ],
         "title": "UpdateProfileRequest",
+        "type": "object"
+      },
+      "UpdateProjectRequest": {
+        "description": "Only the fields given change.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateProjectRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -1521,6 +1872,7 @@
     },
     "/api/auth/mfa/disable": {
       "post": {
+        "description": "Turns MFA off with the password and a code, unless an Organisation requires it.",
         "operationId": "disableMfa",
         "requestBody": {
           "content": {
@@ -1554,7 +1906,7 @@
                 }
               }
             },
-            "description": "MFA is not enabled"
+            "description": "MFA is not enabled, or an Organisation of the Member requires it"
           },
           "422": {
             "content": {
@@ -2312,6 +2664,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Organisation requires MFA. Turn on MFA for your account to continue."
           },
           "404": {
             "content": {
@@ -3614,6 +3976,652 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/mfa-policy": {
+      "put": {
+        "description": "Requires MFA of every Member, or stops requiring it (Owners only).\n\nThe Owner must have MFA themselves to turn the policy on.",
+        "operationId": "setMfaPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Organisation requires MFA. Turn on MFA for your account to continue. Or, on an Owner-only route: Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Turn on MFA for your own account before requiring it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Mfa Policy",
+        "tags": [
+          "organisations"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects": {
+      "get": {
+        "description": "The Organisation's active Projects by name, or with ``archived=true`` its archived ones.",
+        "operationId": "listProjects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "List archived Projects instead.",
+            "in": "query",
+            "name": "archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "List archived Projects instead.",
+              "title": "Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectOut"
+                  },
+                  "title": "Response Listprojects",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Projects",
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "description": "Creates a Project; records ``project.created``.",
+        "operationId": "createProject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}": {
+      "get": {
+        "description": "The Project, archived or not.",
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project",
+        "tags": [
+          "projects"
+        ]
+      },
+      "patch": {
+        "description": "Renames the Project or edits its description. An archived Project is refused.",
+        "operationId": "updateProject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/archive": {
+      "post": {
+        "description": "Archives the Project: it leaves the main list and stops serving. Records\n``project.archived``.",
+        "operationId": "archiveProject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
+      "post": {
+        "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``.",
+        "operationId": "restoreProject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project isn't archived."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/theme": {
+      "get": {
+        "description": "The Organisation's Theme; the default until an Owner saves one. Any Member can read it.",
+        "operationId": "getTheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Theme",
+        "tags": [
+          "theme"
+        ]
+      },
+      "put": {
+        "description": "Replaces the Theme. It applies at once. Colours that fail contrast are saved: the\nStudio warns about them but never blocks.",
+        "operationId": "saveTheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ThemeSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Theme",
+        "tags": [
+          "theme"
+        ]
+      }
+    },
     "/api/providers": {
       "get": {
         "description": "The capability registry: each provider, its auth kinds, and its models per capability.",
@@ -3657,6 +4665,32 @@
         "summary": "List Providers",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/themes/fonts": {
+      "get": {
+        "description": "The Google Fonts a Theme may use, the default first.",
+        "operationId": "listThemeFonts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FontOut"
+                  },
+                  "title": "Response Listthemefonts",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Fonts",
+        "tags": [
+          "theme"
         ]
       }
     }

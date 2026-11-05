@@ -48,12 +48,13 @@ class MembershipSummary:
     organisation_id: uuid.UUID
     organisation_name: str
     role: Role
+    require_mfa: bool
 
 
 async def list_memberships(session: AsyncSession, member: Member) -> list[MembershipSummary]:
     """The Organisations a Member belongs to (platform level: it is the Member's own view)."""
     rows = await session.execute(
-        select(Organisation.id, Organisation.name, Membership.role)
+        select(Organisation.id, Organisation.name, Membership.role, Organisation.require_mfa)
         .join(Membership, Membership.organisation_id == Organisation.id)
         .where(Membership.member_id == member.id)
         .order_by(Membership.created_at, Organisation.name)

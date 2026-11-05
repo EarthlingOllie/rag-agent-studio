@@ -43,6 +43,7 @@ async def test_sign_up_makes_the_member_owner_of_a_new_organisation_and_signs_th
         "id": organisation_id,
         "name": "Analytical Engines",
         "role": "owner",
+        "require_mfa": False,
     }
 
 

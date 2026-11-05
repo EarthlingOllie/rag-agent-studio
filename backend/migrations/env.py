@@ -11,14 +11,23 @@ from app.core.db import Base, create_engine
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.credentials import models as credential_models
+from app.projects import models as project_models
 from app.tenancy import models as tenancy_models
+from app.theme import models as theme_models
 
 config = context.config
 if config.attributes.get("configure_logger", True):
     configure_logging("migrations")
 
 # Every model registers its table on Base.metadata; importing the modules is enough.
-_MODEL_MODULES = (tenancy_models, audit_models, auth_models, credential_models)
+_MODEL_MODULES = (
+    tenancy_models,
+    audit_models,
+    auth_models,
+    credential_models,
+    project_models,
+    theme_models,
+)
 target_metadata = Base.metadata
 
 

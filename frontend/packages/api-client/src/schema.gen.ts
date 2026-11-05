@@ -93,7 +93,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Disable */
+        /**
+         * Disable
+         * @description Turns MFA off with the password and a code, unless an Organisation requires it.
+         */
         post: operations["disableMfa"];
         delete?: never;
         options?: never;
@@ -652,6 +655,143 @@ export interface paths {
         patch: operations["changeMemberRole"];
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/mfa-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Mfa Policy
+         * @description Requires MFA of every Member, or stops requiring it (Owners only).
+         *
+         *     The Owner must have MFA themselves to turn the policy on.
+         */
+        put: operations["setMfaPolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Projects
+         * @description The Organisation's active Projects by name, or with ``archived=true`` its archived ones.
+         */
+        get: operations["listProjects"];
+        put?: never;
+        /**
+         * Create Project
+         * @description Creates a Project; records ``project.created``.
+         */
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project
+         * @description The Project, archived or not.
+         */
+        get: operations["getProject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Project
+         * @description Renames the Project or edits its description. An archived Project is refused.
+         */
+        patch: operations["updateProject"];
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Project
+         * @description Archives the Project: it leaves the main list and stops serving. Records
+         *     ``project.archived``.
+         */
+        post: operations["archiveProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Project
+         * @description Restores an archived Project to the main list (Owners only). Records
+         *     ``project.restored``.
+         */
+        post: operations["restoreProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Theme
+         * @description The Organisation's Theme; the default until an Owner saves one. Any Member can read it.
+         */
+        get: operations["getTheme"];
+        /**
+         * Save Theme
+         * @description Replaces the Theme. It applies at once. Colours that fail contrast are saved: the
+         *     Studio warns about them but never blocks.
+         */
+        put: operations["saveTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/providers": {
         parameters: {
             query?: never;
@@ -664,6 +804,26 @@ export interface paths {
          * @description The capability registry: each provider, its auth kinds, and its models per capability.
          */
         get: operations["listProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/themes/fonts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Fonts
+         * @description The Google Fonts a Theme may use, the default first.
+         */
+        get: operations["listThemeFonts"];
         put?: never;
         post?: never;
         delete?: never;
@@ -787,6 +947,22 @@ export interface components {
             /** Code */
             code: string;
         };
+        /**
+         * ColourToken
+         * @description A colour token's light-mode value and its dark-mode value.
+         */
+        ColourToken: {
+            /**
+             * Dark
+             * @example #4f46e5
+             */
+            dark: string;
+            /**
+             * Light
+             * @example #4f46e5
+             */
+            light: string;
+        };
         /** CompletePasswordResetRequest */
         CompletePasswordResetRequest: {
             /** Password */
@@ -821,6 +997,16 @@ export interface components {
              * @default true
              */
             send_email: boolean;
+        };
+        /** CreateProjectRequest */
+        CreateProjectRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
         };
         /** CredentialInUseResponse */
         CredentialInUseResponse: {
@@ -890,6 +1076,21 @@ export interface components {
         ErrorResponse: {
             /** Detail */
             detail: string;
+        };
+        /**
+         * Font
+         * @enum {string}
+         */
+        Font: "Inter" | "Roboto" | "Open Sans" | "Lato" | "Source Sans 3" | "Nunito" | "Work Sans" | "IBM Plex Sans" | "Merriweather" | "Lora" | "Source Serif 4" | "JetBrains Mono";
+        /**
+         * FontCategory
+         * @enum {string}
+         */
+        FontCategory: "sans-serif" | "serif" | "monospace";
+        /** FontOut */
+        FontOut: {
+            category: components["schemas"]["FontCategory"];
+            family: components["schemas"]["Font"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -993,6 +1194,16 @@ export interface components {
             /** Link */
             link: string;
         };
+        /**
+         * LauncherPosition
+         * @enum {string}
+         */
+        LauncherPosition: "bottom-right" | "bottom-left";
+        /**
+         * LauncherType
+         * @enum {string}
+         */
+        LauncherType: "bubble" | "inline";
         /** MemberOut */
         MemberOut: {
             /** Email */
@@ -1002,6 +1213,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Mfa Enabled
+             * @description Whether the Member has turned MFA on
+             */
+            mfa_enabled: boolean;
             /** Name */
             name: string;
         };
@@ -1013,6 +1229,11 @@ export interface components {
              * @description The Organisation's ID
              */
             id: string;
+            /**
+             * Mfa Required
+             * @description The Organisation requires MFA: while the Member hasn't turned it on, its routes answer 403 and the Studio sends them to enrolment
+             */
+            mfa_required: boolean;
             /** Name */
             name: string;
             role: components["schemas"]["Role"];
@@ -1025,6 +1246,11 @@ export interface components {
              * @constant
              */
             mfa_required: true;
+        };
+        /** MfaPolicyRequest */
+        MfaPolicyRequest: {
+            /** Require Mfa */
+            require_mfa: boolean;
         };
         /** MfaStatusResponse */
         MfaStatusResponse: {
@@ -1067,6 +1293,11 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Require Mfa
+             * @description Whether every Member must have MFA turned on
+             */
+            require_mfa: boolean;
             role: components["schemas"]["Role"];
         };
         /** PasswordResetAccepted */
@@ -1078,6 +1309,29 @@ export interface components {
         PasswordResetRequest: {
             /** Email */
             email: string;
+        };
+        /** ProjectOut */
+        ProjectOut: {
+            /** Agent Count */
+            agent_count: number;
+            /** Archived At */
+            archived_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string;
+            /** Document Count */
+            document_count: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /**
          * Provider
@@ -1157,6 +1411,54 @@ export interface components {
              */
             organisation_id: string;
         };
+        /**
+         * ThemeColours
+         * @description The colour tokens. ``on_*`` colours are for text and icons on the colour they name.
+         */
+        ThemeColours: {
+            accent: components["schemas"]["ColourToken"];
+            muted: components["schemas"]["ColourToken"];
+            on_primary: components["schemas"]["ColourToken"];
+            on_surface: components["schemas"]["ColourToken"];
+            primary: components["schemas"]["ColourToken"];
+            surface: components["schemas"]["ColourToken"];
+        };
+        /**
+         * ThemeMode
+         * @enum {string}
+         */
+        ThemeMode: "light" | "dark" | "auto";
+        /** ThemeOut */
+        ThemeOut: {
+            colours: components["schemas"]["ThemeColours"];
+            font: components["schemas"]["Font"];
+            launcher_position: components["schemas"]["LauncherPosition"];
+            launcher_type: components["schemas"]["LauncherType"];
+            mode: components["schemas"]["ThemeMode"];
+            /**
+             * Radius
+             * @description Corner radius in pixels.
+             */
+            radius: number;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /**
+         * ThemeSettings
+         * @description Everything an Owner sets on the Theme.
+         */
+        ThemeSettings: {
+            colours: components["schemas"]["ThemeColours"];
+            font: components["schemas"]["Font"];
+            launcher_position: components["schemas"]["LauncherPosition"];
+            launcher_type: components["schemas"]["LauncherType"];
+            mode: components["schemas"]["ThemeMode"];
+            /**
+             * Radius
+             * @description Corner radius in pixels.
+             */
+            radius: number;
+        };
         /** ThrottledResponse */
         ThrottledResponse: {
             /** Detail */
@@ -1176,6 +1478,16 @@ export interface components {
         UpdateProfileRequest: {
             /** Name */
             name: string;
+        };
+        /**
+         * UpdateProjectRequest
+         * @description Only the fields given change.
+         */
+        UpdateProjectRequest: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1438,7 +1750,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description MFA is not enabled */
+            /** @description MFA is not enabled, or an Organisation of the Member requires it */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2080,6 +2392,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganisationOut"];
+                };
+            };
+            /** @description This Organisation requires MFA. Turn on MFA for your account to continue. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -2960,6 +3281,452 @@ export interface operations {
             };
         };
     };
+    setMfaPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationOut"];
+                };
+            };
+            /** @description This Organisation requires MFA. Turn on MFA for your account to continue. Or, on an Owner-only route: Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Turn on MFA for your own account before requiring it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listProjects: {
+        parameters: {
+            query?: {
+                /** @description List archived Projects instead. */
+                archived?: boolean;
+            };
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    updateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archiveProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restoreProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project isn't archived. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saveTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThemeSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listProviders: {
         parameters: {
             query?: never;
@@ -2994,6 +3761,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listThemeFonts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FontOut"][];
                 };
             };
         };
