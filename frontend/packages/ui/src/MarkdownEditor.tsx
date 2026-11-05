@@ -116,7 +116,6 @@ function Toolbar({ editor, label, disabled }: { editor: Editor; label: string; d
         <button
           key={tool.label}
           type="button"
-          aria-label={tool.label}
           title={tool.label}
           aria-pressed={active[index]}
           disabled={disabled}
@@ -129,7 +128,9 @@ function Toolbar({ editor, label, disabled }: { editor: Editor; label: string; d
             tool.run(editor);
           }}
         >
-          {tool.text}
+          {/* The name is the hidden word, so the visible symbol never contradicts it. */}
+          <span aria-hidden="true">{tool.text}</span>
+          <span className="sr-only">{tool.label}</span>
         </button>
       ))}
     </div>

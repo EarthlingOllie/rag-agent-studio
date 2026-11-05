@@ -5,6 +5,7 @@ test.describe("Project Instructions", () => {
     signedInPage: page,
     makeAxeBuilder,
   }) => {
+    await page.goto("/");
     await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind HR");
