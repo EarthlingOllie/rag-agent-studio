@@ -202,6 +202,9 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/documents/{document_id}/retry", EDITOR, _a_document
+    ),
 ]
 
 
