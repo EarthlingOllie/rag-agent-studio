@@ -1,17 +1,200 @@
-$ docs/tickets/04-agents-retrieval-playground/04-07-evidence/build.sh $PWD 0407 @ round-2 working tree
+$ docs/tickets/04-agents-retrieval-playground/04-07-evidence/build.sh $PWD 0407 @ 89a46fe
++ docker build -t rag-agent-studio/api:0407 backend (WITH_PDF=false BUNDLE_MODELS=false, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 2.66kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 1.60MB 0.2s done
+#7 DONE 0.2s
+
+#8 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#8 CACHED
+
+#9 [stage-1  5/10] WORKDIR /app
+#9 CACHED
+
+#10 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#10 CACHED
+
+#11 [build 5/6] COPY pyproject.toml uv.lock ./
+#11 CACHED
+
+#12 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
 #12 CACHED
 
-#13 [install  6/10] COPY apps/studio/package.json apps/studio/
+#13 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
 #13 CACHED
 
-#14 [install  4/10] WORKDIR /app
+#14 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
 #14 CACHED
 
-#15 [install  9/10] RUN pnpm install --frozen-lockfile
+#15 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
 #15 CACHED
 
+#16 [build 4/6] WORKDIR /app
+#16 CACHED
+
+#17 [stage-1  6/10] COPY alembic.ini ./
+#17 CACHED
+
+#18 [stage-1  7/10] COPY app ./app
+#18 DONE 0.1s
+
+#19 [stage-1  8/10] COPY migrations ./migrations
+#19 DONE 0.1s
+
+#20 [stage-1  9/10] RUN mkdir -p /opt/models/docling     && if [ "false" = "true" ]; then         python -c "from app.embeddings.local import LocalEmbedder as E; e = E(); e.embed_passages(['warm up']); e.tokenizer(512)"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'))";         fi;     fi
+#20 DONE 0.2s
+
+#21 [stage-1 10/10] RUN useradd --system --uid 10001 studio
+#21 0.179 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.3s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 0.3s done
+#22 exporting manifest sha256:20bdc32d047309ba5f5a290351f164fe6fddf0ce949940188a25b7641d130f1f 0.0s done
+#22 exporting config sha256:fdde264312f786b253ed58f242061be2fa00b7d108a551caeae34bcb5f725052 0.0s done
+#22 exporting attestation manifest sha256:e6f7c4b8c99750ee42acd05b2cb0e7aef12a1902ac2d41d415145c90aa3b6d59 0.0s done
+#22 exporting manifest list sha256:e376159410498d7fb4edaf3350d3f535e4108e32d003480d352db4a3a83b0c17
+#22 exporting manifest list sha256:e376159410498d7fb4edaf3350d3f535e4108e32d003480d352db4a3a83b0c17 0.0s done
+#22 naming to docker.io/rag-agent-studio/api:0407 done
+#22 unpacking to docker.io/rag-agent-studio/api:0407
+#22 unpacking to docker.io/rag-agent-studio/api:0407 9.4s done
+#22 DONE 9.9s
++ docker build -t rag-agent-studio/studio:0407 frontend (sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 transferring dockerfile: 1.60kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 104B done
+#4 DONE 0.0s
+
+#5 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.1s
+
+#7 [internal] load build context
+#7 transferring context: 1.27MB 0.2s done
+#7 DONE 0.4s
+
+#8 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#8 CACHED
+
+#9 [install  3/10] RUN corepack enable
+#9 CACHED
+
+#10 [install  4/10] WORKDIR /app
+#10 CACHED
+
+#11 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#11 DONE 1.0s
+
+#12 [install  6/10] COPY apps/studio/package.json apps/studio/
+#12 DONE 0.1s
+
+#13 [install  7/10] COPY packages/api-client/package.json packages/api-client/
+#13 DONE 0.1s
+
+#14 [install  8/10] COPY packages/ui/package.json packages/ui/
+#14 DONE 0.0s
+
+#15 [install  9/10] RUN pnpm install --frozen-lockfile
+#15 0.636 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.28.0.tgz
+#15 2.474 Scope: all 4 workspace projects
+#15 2.651 Lockfile is up to date, resolution step is skipped
+#15 2.737 Progress: resolved 1, reused 0, downloaded 0, added 0
+#15 2.943 Packages: +336
+#15 2.943 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#15 3.394 
+#15 3.394    ╭───────────────────────────────────────────────╮
+#15 3.394    │                                               │
+#15 3.394    │     Update available! 10.28.0 → 12.16.1.      │
+#15 3.394    │     Changelog: https://pnpm.io/v/12.16.1      │
+#15 3.394    │   To update, run: corepack use pnpm@12.16.1   │
+#15 3.394    │                                               │
+#15 3.394    ╰───────────────────────────────────────────────╯
+#15 3.394 
+#15 3.748 Progress: resolved 336, reused 0, downloaded 8, added 7
+#15 4.750 Progress: resolved 336, reused 0, downloaded 39, added 39
+#15 5.756 Progress: resolved 336, reused 0, downloaded 73, added 73
+#15 6.759 Progress: resolved 336, reused 0, downloaded 98, added 98
+#15 7.760 Progress: resolved 336, reused 0, downloaded 128, added 128
+#15 8.762 Progress: resolved 336, reused 0, downloaded 156, added 156
+#15 9.776 Progress: resolved 336, reused 0, downloaded 166, added 162
+#15 10.78 Progress: resolved 336, reused 0, downloaded 187, added 188
+#15 11.78 Progress: resolved 336, reused 0, downloaded 210, added 211
+#15 12.78 Progress: resolved 336, reused 0, downloaded 243, added 244
+#15 13.78 Progress: resolved 336, reused 0, downloaded 249, added 247
+#15 14.80 Progress: resolved 336, reused 0, downloaded 263, added 259
+#15 15.82 Progress: resolved 336, reused 0, downloaded 286, added 287
+#15 16.84 Progress: resolved 336, reused 0, downloaded 305, added 302
+#15 17.84 Progress: resolved 336, reused 0, downloaded 335, added 335
+#15 17.85 Progress: resolved 336, reused 0, downloaded 335, added 336, done
+#15 18.09 
+#15 18.09 devDependencies:
+#15 18.09 + @axe-core/playwright 4.14.0
+#15 18.09 + @eslint/js 10.0.1
+#15 18.09 + @playwright/test 1.64.1
+#15 18.09 + @testing-library/jest-dom 7.0.1
+#15 18.09 + @testing-library/react 16.3.3
+#15 18.09 + @testing-library/user-event 14.6.8
+#15 18.09 + @types/node 22.20.5
+#15 18.09 + @types/react 19.3.0
+#15 18.09 + @types/react-dom 19.3.0
+#15 18.09 + @vitejs/plugin-react 6.2.1
+#15 18.09 + @vitest/coverage-v8 5.1.0
+#15 18.09 + eslint 10.14.0
+#15 18.09 + eslint-plugin-react-hooks 7.1.1
+#15 18.09 + globals 17.14.0
+#15 18.09 + jsdom 30.1.3
+#15 18.09 + msw 3.0.3
+#15 18.09 + typescript 6.0.3
+#15 18.09 + typescript-eslint 8.72.1
+#15 18.09 + vite 8.3.5
+#15 18.09 + vitest 5.1.0
+#15 18.09 
+#15 18.13 Done in 16.3s using pnpm v10.28.0
+#15 DONE 18.9s
+
 #16 [install 10/10] COPY . .
-#16 DONE 0.1s
+#16 DONE 0.3s
 
 #17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
 #17 CACHED
@@ -20,22 +203,20 @@ $ docs/tickets/04-agents-retrieval-playground/04-07-evidence/build.sh $PWD 0407 
 #18 CACHED
 
 #19 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
-#19 DONE 2.9s
+#19 DONE 2.2s
 
 #20 [stage-1 5/5] WORKDIR /app/apps/studio
 #20 DONE 0.2s
 
 #21 exporting to image
 #21 exporting layers
-#21 exporting layers 13.5s done
-#21 exporting manifest sha256:572fabde15dd90f1f32ae77dd75e294015e44664b085e345b5070f764b9fdd4d
-#21 exporting manifest sha256:572fabde15dd90f1f32ae77dd75e294015e44664b085e345b5070f764b9fdd4d 0.1s done
-#21 exporting config sha256:bdf88a8ad2b2d0fbfc9d062e7a9018b1fe8a9831a235054b460ff9650a2aa298 0.0s done
-#21 exporting attestation manifest sha256:ef28f14cfbea221149f5ae325aa06ee4917a7d2617776de02bc621c7985a8844
-#21 exporting attestation manifest sha256:ef28f14cfbea221149f5ae325aa06ee4917a7d2617776de02bc621c7985a8844 0.1s done
-#21 exporting manifest list sha256:2925ee349382093ee7fd5cdc6d02c17d4757eba808c39a00c988276faac41815 0.0s done
+#21 exporting layers 10.0s done
+#21 exporting manifest sha256:89524df7470a4f001fe67ce04371e9fee4a534a03a8917b340d8a2a23f88aba3 0.0s done
+#21 exporting config sha256:fe04c91df4057295d7e8dc29103e0ae30ee8a1499f732f2f8e057580b1d3fc37 0.0s done
+#21 exporting attestation manifest sha256:0594ad7275dfb0d52c4e64a7794cc7f8197dd7f6b32e0d8964a35e80dbbab12f 0.0s done
+#21 exporting manifest list sha256:3e8d99032a4daa63627e55ccbef2b57dd845b74c7cd6795d9c6fde7ee0d69e14 0.0s done
 #21 naming to docker.io/rag-agent-studio/studio:0407
-#21 naming to docker.io/rag-agent-studio/studio:0407 0.0s done
+#21 naming to docker.io/rag-agent-studio/studio:0407 done
 #21 unpacking to docker.io/rag-agent-studio/studio:0407
-#21 unpacking to docker.io/rag-agent-studio/studio:0407 7.0s done
-#21 DONE 20.8s
+#21 unpacking to docker.io/rag-agent-studio/studio:0407 3.7s done
+#21 DONE 13.9s

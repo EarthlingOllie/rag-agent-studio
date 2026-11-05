@@ -1,6 +1,6 @@
 # Evidence: ticket 04-07, Full AgentConfig editor
 
-Branch `ticket/04-07-full-agentconfig-editor`, from `origin/candidate` at `c1e455f` (04-01, the only blocker, merged). The claim commit `2ed4132`, the first on the branch, set Status `in-progress`.
+Branch `ticket/04-07-full-agentconfig-editor`, from `origin/candidate` at `c1e455f` (04-01, the only blocker, merged). `origin/candidate` at `a35cef1` (03-05 and 04-03) was merged in at `0944bfc`, and every check below was rerun on the merged tree. The claim commit `2ed4132`, the first on the branch, set Status `in-progress`.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to later tickets on purpose, plus best guesses recorded instead of asking.
 
@@ -67,15 +67,15 @@ All runs are local and sequential, from the committed tree (GitHub Actions is do
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against the `rag0407-pg` (pgvector), `rag0407-redis` and `rag0407-rustfs` containers | **1008 passed**, 5 deselected (live); coverage **100%** lines and branches (5074 statements, 464 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **32 files, 339 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0407-pg` (pgvector), `rag0407-redis` and `rag0407-rustfs` containers | **1052 passed**, 5 deselected (live); coverage **100%** lines and branches (5365 statements, 520 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **32 files, 349 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Security | `make audit` (pip-audit, pnpm audit); gitleaks over this branch's commits | no known vulnerabilities, no leaks | [security.log](security.log) |
+| Security | `make audit` (pip-audit, pnpm audit); gitleaks over this branch's commits not on candidate | no known vulnerabilities, no leaks | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0407`), on images rebuilt from the round-2 tree | **38 passed**, including `agent-config.spec.ts` and `playground.spec.ts`. 7 timed out, all in specs this ticket doesn't touch (invites, members, models, Bedrock, require-MFA), while the shared machine was at load average about 25 on 4 CPUs. Rerunning those 7 one at a time on the same stack (`pnpm e2e --last-failed --workers=1`) gave **7 passed**. So all 45 pass. | [e2e.log](e2e.log), [e2e-rerun.log](e2e-rerun.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0407`), on images built from the merged tree | **46 passed** in one run, including `agent-config.spec.ts`, `playground.spec.ts` and the merged `document-editions.spec.ts` | [e2e.log](e2e.log) |
 
-Round 2 (after the evaluator's review) reran the backend, frontend, lint, drift, image and e2e checks on the round-2 tree, which is the commit that adds this note. The security log is from `1a1ea6d`. Round 2 adds no dependencies.
+All logs are from the merged tree (`89a46fe`, the commit before the one adding them). After the merge one Studio fixture was put back to this branch's version: 04-03's "Ask HR, please." fallback text in the HR helper fixture belonged to its `DraftForm` tests, which `DraftEditor` replaces.
 
 ## Gaps and best guesses
 
@@ -86,7 +86,7 @@ Round 2 (after the evaluator's review) reran the backend, frontend, lint, drift,
   - Experience fields in the widget (06), and rating prompt timing (07).
   - Guardrail settings (08), stored only, as the criterion says.
   - Hybrid weighting, minimum score and fallback text are enforced by 04-03, which is built in parallel. Their fields here are copied verbatim from that branch, so the two merge cleanly.
-- **Merge note for 04-03.** 04-03 replies with the fallback text when retrieval returns no Chunks. This ticket's Playground tests and e2e therefore upload a Document before asking, so they hold once both tickets are merged. 04-03's Studio change to the old `DraftForm` is replaced by `DraftEditor` here; on a conflict, keep `DraftEditor`.
+- **Merged with 04-03.** 04-03 replies with the fallback text when retrieval returns no Chunks; `run_turn` now does that and also keeps the last `remembered_turns` turns with this ticket's model settings. 04-03's `DraftForm` and its two Studio tests are replaced by `DraftEditor` and its tests, which cover the same fields.
 - **Best guesses, recorded instead of asking:**
   - **Avatar** is an https URL. Uploading an avatar image is 02-06's storage, and the per-Agent Theme avatar override is Operational Settings in spec 06, so this field is the Experience avatar only.
   - **Temperature** is 0 to 1, the range every registered chat provider accepts (Anthropic's maximum is 1).
