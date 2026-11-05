@@ -124,6 +124,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", PROJECTS + "/{project_id}/restore", OWNER, _an_archived_project),
 ]
 
+
 async def _policy_left_off(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     # Leaving the policy off needs no MFA, so any Owner can call it.
     return {}, {"require_mfa": False}
