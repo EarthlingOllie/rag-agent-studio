@@ -35,7 +35,7 @@ variable "force_destroy" {
 }
 
 variable "documents_cors_allowed_origin" {
-  description = "The CloudFront origin (https://<distribution>.cloudfront.net, or the custom domain) that browsers upload Documents from with presigned URLs. Null means no cross-origin access at all, until the cdn module exists."
+  description = "The CloudFront origin (https://<distribution>.cloudfront.net, or the custom domain) that browsers upload Documents from with presigned URLs. Null means no cross-origin access at all. The demo passes the cdn module's url."
   type        = string
   default     = null
 
@@ -46,7 +46,7 @@ variable "documents_cors_allowed_origin" {
 }
 
 variable "static_assets_distribution_arn" {
-  description = "ARN of the CloudFront distribution allowed to read static assets through origin access control. Null means no one can read them yet, until the cdn module exists."
+  description = "ARN of the CloudFront distribution allowed to read static assets through origin access control. Null means no one can read them. The demo passes the cdn module's distribution."
   type        = string
   default     = null
 

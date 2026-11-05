@@ -25,3 +25,15 @@ variable "image_tag" {
   type        = string
   default     = "bootstrap"
 }
+
+variable "domain_name" {
+  description = "Optional custom domain for the demo, for example studio.example.com. Null serves on the distribution's *.cloudfront.net domain; a name adds an ACM certificate and Route 53 records (spec 09 story 20)."
+  type        = string
+  default     = null
+}
+
+variable "hosted_zone_name" {
+  description = "Public Route 53 hosted zone holding domain_name's records. Null means a zone named exactly domain_name."
+  type        = string
+  default     = null
+}

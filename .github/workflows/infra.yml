@@ -17,6 +17,10 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.11.32"
+      # The CloudFront Function tests (infra/modules/*/functions) use Node 22's coverage thresholds.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install Terraform, TFLint and Checkov
         run: scripts/ci/install-tools.sh terraform tflint checkov
       - name: Run every infrastructure gate

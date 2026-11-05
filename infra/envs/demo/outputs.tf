@@ -26,3 +26,18 @@ output "bedrock_trust_principal" {
   description = "API task role ARN: the principal an Organisation trusts, with its external ID, in a Bedrock role."
   value       = module.ecs.api_task_role_arn
 }
+
+output "cloudfront_url" {
+  description = "Public HTTPS URL of the Studio, widget and API. The deploy workflow prints it and smoke-checks it."
+  value       = module.cdn.url
+}
+
+output "cloudfront_distribution_id" {
+  description = "Distribution ID the deploy workflow invalidates after uploading static assets."
+  value       = module.cdn.distribution_id
+}
+
+output "static_bucket_name" {
+  description = "Bucket the deploy workflow uploads the Studio and widget builds to."
+  value       = module.storage.static_bucket_name
+}

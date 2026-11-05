@@ -42,3 +42,8 @@ output "static_bucket_regional_domain_name" {
   description = "Regional domain of the static assets bucket, for the CloudFront origin."
   value       = aws_s3_bucket.this["static"].bucket_regional_domain_name
 }
+
+output "static_assets_distribution_arn" {
+  description = "The only CloudFront distribution allowed to read static assets, or null for none."
+  value       = var.static_assets_distribution_arn
+}
