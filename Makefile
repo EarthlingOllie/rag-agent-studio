@@ -54,13 +54,15 @@ check-client: gen-client ## Fail if the committed API client differs from a fres
 migrate: ## Apply database migrations to the running stack
 	$(COMPOSE) exec api alembic upgrade head
 
-TF_ROOTS := $(sort $(dir $(wildcard infra/modules/*/main.tf infra/envs/*/main.tf)))
+TF_ROOTS := $(sort $(dir $(wildcard infra/bootstrap/main.tf infra/modules/*/main.tf infra/envs/*/main.tf)))
 IMAGE_TAG ?= local
 TRIVY_SEVERITY ?= HIGH,CRITICAL
 AUDIT_REQUIREMENTS ?= $(or $(RUNNER_TEMP),/tmp)/requirements-audit.txt
 
-infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on every module and environment
+infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on the bootstrap, every module and environment
 	terraform fmt -check -recursive -diff infra
+	infra/tests/backend.test.sh
+	scripts/ci/tests/plan-gate.test.sh
 	@set -e; for root in $(TF_ROOTS); do \
 		echo "== $$root"; \
 		terraform -chdir=$$root init -backend=false -input=false -no-color >/dev/null; \

@@ -1,4 +1,4 @@
-# Bundled Terraform ruleset with every rule on. Spec 09 adds the AWS ruleset once modules create AWS resources.
+# Bundled Terraform ruleset with every rule on, plus the AWS ruleset now that modules create AWS resources.
 config {
   call_module_type = "local"
 }
@@ -6,4 +6,10 @@ config {
 plugin "terraform" {
   enabled = true
   preset  = "all"
+}
+
+plugin "aws" {
+  enabled = true
+  version = "0.50.0"
+  source  = "github.com/terraform-linters/tflint-ruleset-aws"
 }

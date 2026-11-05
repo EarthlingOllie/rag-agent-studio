@@ -1,4 +1,5 @@
-# Demo environment (stub, ticket 01-02). Spec 09 adds the AWS provider, the S3 state backend and real resources.
+# Demo environment (stub, ticket 01-02). Spec 09 adds the AWS provider and real resources. State is in S3 (backend.tf).
+# The GitHub OIDC deploy role is not here: infra/bootstrap creates it once, before this environment can be planned.
 locals {
   name_prefix = "studio-${var.environment}"
   tags        = { Environment = var.environment, Project = "rag-agent-studio" }
@@ -42,12 +43,6 @@ module "ecs" {
 
 module "cdn" {
   source      = "../../modules/cdn"
-  name_prefix = local.name_prefix
-  tags        = local.tags
-}
-
-module "ci_oidc" {
-  source      = "../../modules/ci-oidc"
   name_prefix = local.name_prefix
   tags        = local.tags
 }

@@ -1,4 +1,4 @@
-# The demo environment wires every stub module with one shared prefix and tag set.
+# The demo environment wires every module with one shared prefix and tag set. CI access (ci-oidc) belongs to infra/bootstrap.
 run "wires_every_module_with_the_environment_prefix" {
   command = plan
 
@@ -6,7 +6,6 @@ run "wires_every_module_with_the_environment_prefix" {
     condition = output.module_names == {
       cache    = "studio-demo-cache"
       cdn      = "studio-demo-cdn"
-      ci_oidc  = "studio-demo-ci-oidc"
       database = "studio-demo-database"
       ecs      = "studio-demo-ecs"
       kms      = "studio-demo-kms"
