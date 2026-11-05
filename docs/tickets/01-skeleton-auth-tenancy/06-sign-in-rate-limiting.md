@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-04: Sign up, sign in, sign out](04-sign-up-sign-in-sign-out.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Redis counters per account and per IP apply a progressive delay, then a temporary lockout
 - [ ] The lockout expires as configured (tested with the controllable clock)
