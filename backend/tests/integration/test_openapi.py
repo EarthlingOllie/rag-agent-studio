@@ -6,6 +6,7 @@ from app.openapi import render_openapi
 
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 _PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
+_THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
 
 
 def test_openapi_document_describes_every_endpoint() -> None:
@@ -68,6 +69,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "setDefaultModel": ("/api/organisations/{organisation_id}/default-model", "put"),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
+        "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),
+        "confirmThemeImageUpload": (_THEME_IMAGE, "put"),
+        "removeThemeImage": (_THEME_IMAGE, "delete"),
+        "getThemeImage": (_THEME_IMAGE, "get"),
         "listThemeFonts": ("/api/themes/fonts", "get"),
         "listProjects": ("/api/organisations/{organisation_id}/projects", "get"),
         "createProject": ("/api/organisations/{organisation_id}/projects", "post"),
