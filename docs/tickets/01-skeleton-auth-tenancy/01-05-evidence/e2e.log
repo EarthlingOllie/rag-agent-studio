@@ -1,0 +1,46 @@
+# Sandbox equivalent of 'make e2e' from a fresh git clone at 7075bcc: docker-compose.yml plus the sandbox override sb0105/compose.sandbox.yml (images built from the committed Dockerfiles with the sandbox proxy CA added in the download stage; host ports moved so the stack runs beside other tickets' stacks; compose project rag0105). Chromium: the sandbox's preinstalled build via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, because Playwright's browser CDN is blocked here. E2E_BASE_URL=http://localhost:35173.
+$ docker compose up -d --no-build --force-recreate --wait
+ Container rag0105-worker-1 Healthy 
+ Container rag0105-redis-1 Healthy 
+ Container rag0105-beat-1 Healthy 
+ Container rag0105-studio-1 Healthy 
+exit=0
+$ docker compose ps
+api Up 15 seconds (healthy)
+beat Up 14 seconds
+mailpit Up 20 seconds (healthy)
+postgres Up 19 seconds (healthy)
+redis Up 19 seconds (healthy)
+rustfs Up 21 seconds
+studio Up 4 seconds (healthy)
+worker Up 16 seconds
+$ cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+> playwright test
+
+
+Running 19 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (1.2s)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (589ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (1.1s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (445ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (54ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (4.1s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (426ms)
+  ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (2.3s)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (276ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (246ms)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (5.5s)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (8.4s)
+  ✓  14 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.8s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (6.0s)
+  ✓  15 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.5s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (3.5s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (3.3s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.7s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (4.3s)
+
+  19 passed (40.0s)
+exit=0

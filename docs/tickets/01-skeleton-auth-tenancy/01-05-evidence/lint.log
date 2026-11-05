@@ -1,0 +1,16 @@
+# fresh git clone of ticket/01-05-audit-events at 7075bcc; TEST_DATABASE_URL=…/studio_test_fc0105 TEST_REDIS_URL=…/11
+$ make lint
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+49 files already formatted
+Success: no issues found in 49 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+> tsc
+
+exit=0
