@@ -1,0 +1,40 @@
+$ sign up demo-1793848746@example.test
+sign-up 201
+== wrong passwords for one account from 203.0.113.7, waiting out each delay
+attempt 1: 401 {"detail":"Email or password is incorrect"} 
+attempt 2: 401 {"detail":"Email or password is incorrect"} 
+attempt 3: 401 {"detail":"Email or password is incorrect"} 
+attempt 4: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":1} retry-after: 1
+attempt 5: 401 {"detail":"Email or password is incorrect"} 
+attempt 6: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":2} retry-after: 2
+attempt 7: 401 {"detail":"Email or password is incorrect"} 
+attempt 8: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":4} retry-after: 4
+attempt 9: 401 {"detail":"Email or password is incorrect"} 
+attempt 10: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":8} retry-after: 8
+attempt 11: 401 {"detail":"Email or password is incorrect"} 
+attempt 12: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":16} retry-after: 16
+attempt 13: 401 {"detail":"Email or password is incorrect"} 
+attempt 14: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":30} retry-after: 30
+attempt 15: 401 {"detail":"Email or password is incorrect"} 
+attempt 16: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":30} retry-after: 30
+attempt 17: 401 {"detail":"Email or password is incorrect"} 
+attempt 18: 429 {"detail":"Too many failed sign-in attempts","locked":true,"retry_after_seconds":900} retry-after: 900
+== the right password while locked
+429 {"detail":"Too many failed sign-in attempts","locked":true,"retry_after_seconds":900}
+== the right password from another IP (the account counter still applies)
+429 {"detail":"Too many failed sign-in attempts","locked":true,"retry_after_seconds":900}
+== an unknown email from a fresh IP gets the same first answers
+attempt 1: 401 {"detail":"Email or password is incorrect"}
+attempt 2: 401 {"detail":"Email or password is incorrect"}
+attempt 3: 401 {"detail":"Email or password is incorrect"}
+attempt 4: 429 {"detail":"Too many failed sign-in attempts","locked":false,"retry_after_seconds":1}
+== the Audit Event, as the Owner (still signed in from sign-up) lists it through the API
+{"items":[{"id":"81c753f3-ba9a-4bc2-9b35-4580d2bc9617","occurred_at":"2026-11-05T03:20:39.806408Z","actor":null,"action":"member.locked_out","target":{"type":"member","id":"da5bfb0e-2162-4e61-ab4a-ff800700edd8"},"before":null,"after":{"ip":"203.0.113.7","scope":"account","failures":10,"locked_until":"2026-11-05T03:35:39.805334+00:00"}}],"page":1,"page_size":25,"total":1}
+== Redis keys (hashed email, IPs as seen through X-Forwarded-For)
+sign-in-failures:account:7c52828f9d215a361d4200ebf3d5794007382fd683938a631a279c8faf6ac96c
+sign-in-failures:account:bee2f33f25ccef9602e17f9228ff2bf2629b9b7e703d98c7551e2d3f06357e14
+sign-in-failures:ip:172.19.0.1
+sign-in-failures:ip:192.0.2.44
+sign-in-failures:ip:203.0.113.7
+DEMO_EMAIL=demo-1793848746@example.test
+DEMO_ORG=5bdb2f65-1e6e-4672-8271-a5753bef5129

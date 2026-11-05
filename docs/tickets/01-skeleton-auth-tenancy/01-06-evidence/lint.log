@@ -1,0 +1,16 @@
+# fresh git clone of ticket/01-06-sign-in-rate-limiting at 655bfaa; TEST_DATABASE_URL=…/studio_test_fc0106 (new, empty database) TEST_REDIS_URL=…/7 (shared compose Postgres/Redis)
+$ make lint
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+54 files already formatted
+Success: no issues found in 54 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0106/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0106/frontend
+> tsc
+
+exit=0
