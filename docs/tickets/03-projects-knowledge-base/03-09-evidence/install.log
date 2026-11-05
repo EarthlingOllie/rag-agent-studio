@@ -1,12 +1,212 @@
-# fresh clone clean0309 at 7ad3df8
+# fresh clone clean0309 at 25e6cd1
 + make install
 cd backend && uv sync --frozen
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
-Checked 172 packages in 3ms
+Using CPython 3.13.18 interpreter at: /usr/local/bin/python3
+Creating virtual environment at: .venv
+Installed 172 packages in 685ms
+ + aiosmtpd==1.4.6
+ + alembic==1.20.1
+ + amqp==5.4.2
+ + annotated-doc==0.0.5
+ + annotated-types==0.8.0
+ + anthropic==2.5.0
+ + anyio==4.16.0
+ + argon2-cffi==25.1.0
+ + argon2-cffi-bindings==26.1.0
+ + asgi-lifespan==2.1.0
+ + asgiref==3.13.0
+ + ast-serialize==0.13.1
+ + asyncpg==0.32.0
+ + atpublic==9.0.0
+ + attrs==26.1.0
+ + beautifulsoup4==4.15.0
+ + billiard==4.3.2
+ + boto3==1.43.124
+ + boto3-stubs==1.43.124
+ + botocore==1.43.124
+ + botocore-stubs==1.43.124
+ + celery==5.6.3
+ + celery-types==0.26.0
+ + certifi==2026.10.23
+ + cffi==2.1.1
+ + charset-normalizer==3.5.2
+ + click==8.5.0
+ + click-didyoumean==0.3.1
+ + click-plugins==1.1.1.2
+ + click-repl==0.4.1
+ + coverage==7.17.2
+ + cryptography==50.0.2
+ + defusedxml==0.7.1
+ + dill==0.4.1
+ + doclang==0.9.0
+ + docling-core==2.106.0
+ + docling-slim==2.147.0
+ + docstring-parser==0.18.0
+ + executing==2.3.0
+ + fastapi==0.162.0
+ + fastembed==0.9.1
+ + filelock==4.2.9
+ + filetype==1.2.0
+ + flatbuffers==25.12.19
+ + fsspec==2026.9.0
+ + genai-prices==0.2.1
+ + googleapis-common-protos==1.76.0
+ + greenlet==3.5.6
+ + griffelib==2.4.1
+ + h11==0.16.0
+ + hf-xet==1.8.0
+ + httpcore==1.0.9
+ + httpcore2==2.16.0
+ + httptools==0.9.0
+ + httpx==0.28.1
+ + httpx2==2.16.0
+ + huggingface-hub==1.33.0
+ + idna==3.20
+ + iniconfig==2.3.1
+ + jiter==0.18.0
+ + jmespath==1.1.0
+ + jsonref==1.1.0
+ + jsonschema==4.26.0
+ + jsonschema-specifications==2025.9.1
+ + kombu==5.7.0
+ + langcodes==3.5.1
+ + latex2mathml==3.81.1
+ + librt==0.16.0
+ + logfire==5.4.0
+ + logfire-api==5.4.0
+ + logfire-sdk==5.4.0
+ + loguru==0.7.3
+ + lxml==6.1.3
+ + mako==1.4.3
+ + markdown-it-py==4.2.0
+ + marko==2.2.5
+ + markupsafe==3.0.4
+ + mdurl==0.1.2
+ + mmh3==5.3.1
+ + mpire==2.10.2
+ + multiprocess==0.70.19
+ + mypy==2.4.1
+ + mypy-boto3-kms==1.43.119
+ + mypy-boto3-s3==1.43.106
+ + mypy-boto3-sesv2==1.43.110
+ + mypy-extensions==1.2.0
+ + numpy==2.5.4
+ + onnxruntime==1.31.1
+ + openai==3.46.0
+ + opentelemetry-api==1.45.2
+ + opentelemetry-exporter-http-transport==0.66b2
+ + opentelemetry-exporter-otlp-common==0.66b2
+ + opentelemetry-exporter-otlp-proto-common==1.45.2
+ + opentelemetry-exporter-otlp-proto-http==1.45.2
+ + opentelemetry-instrumentation==0.66b2
+ + opentelemetry-instrumentation-asgi==0.66b2
+ + opentelemetry-instrumentation-celery==0.66b2
+ + opentelemetry-instrumentation-fastapi==0.66b2
+ + opentelemetry-instrumentation-httpx==0.66b2
+ + opentelemetry-instrumentation-sqlalchemy==0.66b2
+ + opentelemetry-proto==1.45.2
+ + opentelemetry-sdk==1.45.2
+ + opentelemetry-semantic-conventions==0.66b2
+ + opentelemetry-util-http==0.66b2
+ + packaging==26.3
+ + pandas==3.1.1
+ + pathspec==1.1.1
+ + pgvector==0.5.1
+ + pillow==13.0.0
+ + pluggy==1.7.0
+ + prompt-toolkit==3.0.53
+ + protobuf==7.36.2
+ + py-rust-stemmers==0.1.8
+ + pycparser==3.12
+ + pydantic==2.14.2
+ + pydantic-ai-slim==2.66.0
+ + pydantic-core==2.50.2
+ + pydantic-graph==2.66.0
+ + pydantic-settings==2.16.2
+ + pygments==2.21.0
+ + pylatexenc==2.11
+ + pyotp==2.10.0
+ + pytest==9.2.0
+ + pytest-asyncio==1.4.1.post1
+ + pytest-cov==7.1.0
+ + python-dateutil==2.9.0.post0
+ + python-docx==1.2.0
+ + python-dotenv==1.2.4
+ + python-pptx==1.0.2
+ + pyyaml==6.0.3
+ + redis==8.1.0
+ + referencing==0.37.0
+ + regex==2026.9.29
+ + requests==2.34.2
+ + rich==15.0.0
+ + rpds-py==2026.9.1
+ + ruff==0.17.3
+ + s3transfer==0.19.3
+ + safetensors==0.8.0
+ + segno==1.6.6
+ + semchunk==3.2.5
+ + shellingham==1.5.4
+ + six==1.17.0
+ + sniffio==1.3.1
+ + soupsieve==4.0.1
+ + sqlalchemy==2.1.8
+ + starlette==1.10.0
+ + tabulate==0.10.0
+ + tiktoken==0.14.0
+ + tokenizers==0.23.3
+ + tqdm==4.70.1
+ + transformers==5.22.1
+ + tree-sitter==0.26.0
+ + tree-sitter-c==0.24.2
+ + tree-sitter-javascript==0.25.0
+ + tree-sitter-python==0.25.0
+ + tree-sitter-typescript==0.23.2
+ + truststore==0.10.5
+ + typer==0.27.3
+ + types-s3transfer==0.19.3
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.5
+ + tzlocal==5.4.5
+ + urllib3==2.8.0
+ + uvicorn==0.54.0
+ + uvloop==0.23.0
+ + vine==5.1.0
+ + watchfiles==1.3.0
+ + wcwidth==0.9.4
+ + websockets==17.4
+ + wrapt==2.5.2
+ + xlsxwriter==3.3.1
 cd frontend && pnpm install --frozen-lockfile
 Scope: all 4 workspace projects
 Lockfile is up to date, resolution step is skipped
-Already up to date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +336
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 336, reused 280, downloaded 0, added 0
+Progress: resolved 336, reused 335, downloaded 0, added 336, done
 
-Done in 959ms using pnpm v10.28.0
+devDependencies:
++ @axe-core/playwright 4.14.0
++ @eslint/js 10.0.1
++ @playwright/test 1.64.1
++ @testing-library/jest-dom 7.0.1
++ @testing-library/react 16.3.3
++ @testing-library/user-event 14.6.8
++ @types/node 22.20.5
++ @types/react 19.3.0
++ @types/react-dom 19.3.0
++ @vitejs/plugin-react 6.2.1
++ @vitest/coverage-v8 5.1.0
++ eslint 10.14.0
++ eslint-plugin-react-hooks 7.1.1
++ globals 17.14.0
++ jsdom 30.1.3
++ msw 3.0.3
++ typescript 6.0.3
++ typescript-eslint 8.72.1
++ vite 8.3.5
++ vitest 5.1.0
+
+Done in 3.3s using pnpm v10.28.0
 exit 0

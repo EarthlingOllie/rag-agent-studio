@@ -1,4 +1,4 @@
-# fresh clone clean0309 at 7ad3df8
+# fresh clone clean0309 at 25e6cd1
 + make test-frontend
 cd frontend && pnpm test
 
@@ -11,12 +11,12 @@ cd frontend && pnpm test
 
 
  Test Files  32 passed (32)
-      Tests  327 passed (327)
-   Start at  21:39:27
-   Duration  103.77s (tests 62%, environment 20%, setup 7%, import 5%, transform 3%, worker 2%)
+      Tests  337 passed (337)
+   Start at  23:40:07
+   Duration  174.60s (tests 62%, environment 20%, setup 9%, import 5%, transform 2%, worker 1%)
 
-    Isolate  32 workers spawned · ~2.13s startup each (spawn + environment, per file)
-             at least ~20.56s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  32 workers spawned · ~3.64s startup each (spawn + environment, per file)
+             at least ~35.16s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
@@ -24,9 +24,9 @@ No files with missing coverage.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 1759/1759 )
-Branches     : 100% ( 1009/1009 )
-Functions    : 100% ( 670/670 )
-Lines        : 100% ( 1535/1535 )
+Statements   : 100% ( 1806/1806 )
+Branches     : 100% ( 1047/1047 )
+Functions    : 100% ( 687/687 )
+Lines        : 100% ( 1586/1586 )
 ================================================================================
 exit 0
