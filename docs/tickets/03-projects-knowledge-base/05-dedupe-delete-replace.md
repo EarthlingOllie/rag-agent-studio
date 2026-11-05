@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A duplicate content hash is refused, with a link to the existing Document
 - [ ] Delete removes the Chunks in the same transaction and schedules deletion of stored files, and is audited
