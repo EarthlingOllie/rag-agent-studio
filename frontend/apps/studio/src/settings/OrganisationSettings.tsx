@@ -2,6 +2,7 @@ import { Link, Outlet, useParams } from "@tanstack/react-router";
 
 import { type Session, useMe } from "../auth/session";
 import { AuditPage } from "./AuditPage";
+import { MembersPage } from "./MembersPage";
 
 const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
 
@@ -13,7 +14,7 @@ function useOrganisation() {
   return { organisationId, isOwner: role === "owner" };
 }
 
-/** Organisation settings, with a tab per area. The Audit tab is shown to Owners only. */
+/** Organisation settings, with a tab per area. The Members and Audit tabs are shown to Owners only. */
 export function OrganisationSettingsLayout() {
   const { organisationId, isOwner } = useOrganisation();
   return (
@@ -26,9 +27,14 @@ export function OrganisationSettingsLayout() {
           General
         </Link>
         {isOwner && (
-          <Link to="/organisations/$organisationId/settings/audit" params={{ organisationId }} className={TAB}>
-            Audit
-          </Link>
+          <>
+            <Link to="/organisations/$organisationId/settings/members" params={{ organisationId }} className={TAB}>
+              Members
+            </Link>
+            <Link to="/organisations/$organisationId/settings/audit" params={{ organisationId }} className={TAB}>
+              Audit
+            </Link>
+          </>
         )}
       </nav>
       <div className="mt-6">
@@ -45,4 +51,9 @@ export function GeneralSettingsPage() {
 export function AuditSettingsPage() {
   const { organisationId, isOwner } = useOrganisation();
   return <AuditPage organisationId={organisationId} isOwner={isOwner} />;
+}
+
+export function MembersSettingsPage() {
+  const { organisationId, isOwner } = useOrganisation();
+  return <MembersPage organisationId={organisationId} isOwner={isOwner} />;
 }
