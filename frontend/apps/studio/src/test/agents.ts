@@ -76,11 +76,7 @@ export const hrHelper: Agent = {
   name: "HR helper",
   created_at: "2026-11-05T09:00:00Z",
   archived_at: null,
-  draft: {
-    ...defaultDraft,
-    behaviour: { ...defaultDraft.behaviour, system_prompt: "Answer from the handbook.", fallback_text: "Ask HR, please." },
-    retrieval: { ...defaultDraft.retrieval, hybrid_weight: 0.7, min_score: 0.25 },
-  },
+  draft: { ...defaultDraft, behaviour: { ...defaultDraft.behaviour, system_prompt: "Answer from the handbook." } },
   draft_updated_at: "2026-11-05T09:00:00Z",
 };
 
