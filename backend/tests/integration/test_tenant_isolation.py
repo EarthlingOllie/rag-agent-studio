@@ -162,6 +162,10 @@ async def _a_project_to_rename(owner: SignedUpMember, add_member: MemberFactory)
     return {"project_id": await _make_project(owner)}, {"name": "Renamed"}
 
 
+async def _instructions_to_save(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"markdown": "# Rules"}
+
+
 async def _an_archived_project(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {"project_id": await _make_project(owner, archived=True)}, None
 
@@ -275,6 +279,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("PATCH", PROJECTS + "/{project_id}", EDITOR, _a_project_to_rename),
     ScopedRoute("POST", PROJECTS + "/{project_id}/archive", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/restore", OWNER, _an_archived_project),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/instructions", EDITOR, _a_project),
+    ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("POST", PROJECTS + "/{project_id}/uploads", EDITOR, _an_upload_to_start),
     ScopedRoute("POST", PROJECTS + "/{project_id}/documents", EDITOR, _an_uploaded_file),
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents", EDITOR, _a_project),
