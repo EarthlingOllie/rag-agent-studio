@@ -1,0 +1,24 @@
+$ make secret-scan   # whole clone: all remote branches
+gitleaks git --redact --no-banner .
+[90m2:57AM[0m [32mINF[0m [1m61 commits scanned.[0m
+[90m2:57AM[0m [32mINF[0m [1mscanned ~2502214 bytes (2.50 MB) in 504ms[0m
+[90m2:57AM[0m [33mWRN[0m [1mleaks found: 2[0m
+make: *** [Makefile:82: secret-scan] Error 1
+exit=2
+
+# The 2 findings above are in commit 1595299 on origin/ticket/01-05-audit-events (another ticket's branch), not on this branch:
+  origin/ticket/01-05-audit-events
+
+$ gitleaks git --redact --no-banner --log-opts="HEAD" .   # this branch history only
+[90m2:57AM[0m [32mINF[0m [1m26 commits scanned.[0m
+[90m2:57AM[0m [32mINF[0m [1mscanned ~1397736 bytes (1.40 MB) in 423ms[0m
+[90m2:57AM[0m [32mINF[0m [1mno leaks found[0m
+exit=0
+$ make audit
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit=0

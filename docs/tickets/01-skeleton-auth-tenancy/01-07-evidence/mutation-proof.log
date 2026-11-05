@@ -1,0 +1,65 @@
+$ sb0107/mutate.sh <worktree at d715317>   # each mutation is applied, the tests run, and the file is restored
+=== mutation: reset links reusable (backend/app/auth/service.py)
+FAILED tests/integration/test_password_reset.py::test_a_reset_link_works_only_once
+FAILED tests/integration/test_password_reset.py::test_completing_a_reset_uses_up_the_members_other_reset_links
+FAILED tests/integration/test_password_reset.py::test_changing_the_password_uses_up_outstanding_reset_links
+3 failed, 25 passed in 25.43s
+exit=1 (non-zero = mutation caught)
+=== mutation: reset links never expire (backend/app/auth/service.py)
+FAILED tests/integration/test_password_reset.py::test_a_reset_link_expires_after_an_hour
+1 failed, 27 passed in 15.52s
+exit=1 (non-zero = mutation caught)
+=== mutation: token stored in plain text (backend/app/auth/service.py)
+FAILED tests/integration/test_password_reset.py::test_a_member_resets_a_forgotten_password_by_emailed_link
+FAILED tests/integration/test_password_reset.py::test_a_reset_link_works_only_once
+FAILED tests/integration/test_password_reset.py::test_a_reset_link_expires_after_an_hour
+FAILED tests/integration/test_password_reset.py::test_completing_a_reset_uses_up_the_members_other_reset_links
+FAILED tests/integration/test_password_reset.py::test_a_reset_needs_a_password_of_at_least_twelve_characters
+FAILED tests/integration/test_password_reset.py::test_reset_tokens_are_stored_only_as_hashes
+FAILED tests/integration/test_password_reset.py::test_completing_a_reset_signs_the_member_out_everywhere
+FAILED tests/integration/test_password_audit_events.py::test_a_completed_reset_is_recorded
+exit=1 (non-zero = mutation caught)
+=== mutation: unknown email answered differently (backend/app/auth/account_api.py)
+FAILED tests/integration/test_password_reset.py::test_requesting_a_reset_answers_the_same_whether_or_not_the_email_is_registered
+1 failed, 27 passed in 19.52s
+exit=1 (non-zero = mutation caught)
+=== mutation: reset keeps other sessions (backend/app/auth/account_api.py)
+FAILED tests/integration/test_password_reset.py::test_completing_a_reset_signs_the_member_out_everywhere
+1 failed, 27 passed in 16.00s
+exit=1 (non-zero = mutation caught)
+=== mutation: password change keeps other sessions (backend/app/auth/account_api.py)
+FAILED tests/integration/test_profile.py::test_changing_the_password_ends_other_sessions_and_rotates_this_one
+1 failed, 27 passed in 11.24s
+exit=1 (non-zero = mutation caught)
+=== mutation: current password not checked (backend/app/auth/service.py)
+FAILED tests/integration/test_profile.py::test_a_wrong_current_password_changes_nothing
+FAILED tests/integration/test_password_audit_events.py::test_a_password_change_is_recorded_and_a_refused_one_is_not
+2 failed, 26 passed in 11.93s
+exit=1 (non-zero = mutation caught)
+=== mutation: reset not audited (backend/app/auth/service.py)
+FAILED tests/integration/test_password_audit_events.py::test_a_completed_reset_is_recorded
+1 failed, 27 passed in 17.27s
+exit=1 (non-zero = mutation caught)
+=== mutation: password change not audited (backend/app/auth/service.py)
+FAILED tests/integration/test_password_audit_events.py::test_a_password_change_is_recorded_and_a_refused_one_is_not
+1 failed, 27 passed in 24.03s
+exit=1 (non-zero = mutation caught)
+=== mutation: settings ignored by mailer factory (backend/app/mail/factory.py)
+FAILED tests/integration/test_mailer.py::test_the_smtp_mailer_delivers_reset_emails_when_settings_choose_it
+FAILED tests/integration/test_mailer.py::test_settings_choose_the_mailer[smtp-SmtpMailer]
+FAILED tests/integration/test_mailer.py::test_settings_choose_the_mailer[ses-SesMailer]
+3 failed, 25 passed in 20.53s
+exit=1 (non-zero = mutation caught)
+=== mutation: Profile sends no current password (frontend/apps/studio/src/profile/ProfilePage.tsx)
+ ❯ apps/studio/src/profile/ProfilePage.test.tsx (11 tests | 1 failed) 5030ms
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 33 passed (34)
+exit=1 (non-zero = mutation caught)
+=== mutation: no forgot-password link (frontend/apps/studio/src/auth/SignInPage.tsx)
+ ❯ apps/studio/src/auth/ForgotPasswordPage.test.tsx (4 tests | 1 failed) 1631ms
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 33 passed (34)
+exit=1 (non-zero = mutation caught)
+=== unmodified tree
+28 passed in 22.56s
+      Tests  34 passed (34)
