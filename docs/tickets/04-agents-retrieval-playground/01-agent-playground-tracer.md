@@ -8,7 +8,7 @@
 - [03-02: Upload a Document to Ready](../03-projects-knowledge-base/02-upload-document-to-ready.md)
 - [02-03: Model gateway and Default Model](../02-provider-credentials-theme/03-model-gateway-default-model.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The AgentConfig Pydantic model starts with system prompt and top-k, is stored on the Agent's Draft, and the Agent gets a public ID
 - [ ] The retrieval module runs vector search limited to the Project and its active Embedding Model
