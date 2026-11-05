@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-09: Member management and role enforcement](../01-skeleton-auth-tenancy/09-member-management-roles.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Projects can be created, renamed and described, and are listed with their counts
 - [ ] Archiving hides a Project from the main list and stops it serving; Owners can restore it
