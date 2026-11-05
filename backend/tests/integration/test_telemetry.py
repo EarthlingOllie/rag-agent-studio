@@ -346,8 +346,22 @@ async def test_link_tokens_in_request_bodies_are_never_exported(
                 "/api/auth/password-reset/complete",
                 json={"token": RESET_TOKEN, "password": PASSWORD},
             )
+        logfire.info(
+            "Agent settings",
+            settings={"token_budget": 5000, "max_tokens": 800, "invite_token": RESET_TOKEN},
+            note="Copy the token",
+        )
 
     assert (looked_up.status_code, joined.status_code, reset.status_code) == (200, 201, 400)
     exported = "\n".join(span.to_json() for span in exporter.get_finished_spans())
     assert invite_token not in exported
     assert RESET_TOKEN not in exported
+    # Only keys ending in "token" are redacted: settings that merely mention tokens are kept.
+    settings = next(span for span in exporter.get_finished_spans() if span.name == "Agent settings")
+    attributes = dict(settings.attributes or {})
+    assert json.loads(str(attributes["settings"])) == {
+        "token_budget": 5000,
+        "max_tokens": 800,
+        "invite_token": "[Scrubbed due to '_token']",
+    }
+    assert attributes["note"] == "Copy the token"
