@@ -7,3 +7,6 @@
 # reads every fetched branch, so these fingerprints fail every branch until they are allowlisted.
 15952996298f42d020159e30a60a6314a63ccadd:backend/tests/integration/test_audit_events.py:generic-api-key:148
 15952996298f42d020159e30a60a6314a63ccadd:backend/tests/integration/test_audit_events.py:generic-api-key:154
+# The same made-up keys as they landed on candidate in the squash merge of PR #11.
+c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_events.py:generic-api-key:148
+c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_events.py:generic-api-key:154
