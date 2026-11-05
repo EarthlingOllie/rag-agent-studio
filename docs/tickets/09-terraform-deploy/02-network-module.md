@@ -7,12 +7,14 @@
 **Blocked by:**
 - [01-02: Remaining CI gates and Playwright harness](../01-skeleton-auth-tenancy/02-ci-gates-playwright-harness.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] The VPC spans two AZs with public and private subnets
-- [ ] `fck-nat` is the default, with a managed-NAT toggle
-- [ ] VPC endpoints exist for S3, ECR, Logs and Secrets Manager
-- [ ] `terraform test` asserts the toggle and that private subnets have no public IPs
-- [ ] Every resource carries the standard tags
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The VPC spans two AZs with public and private subnets
+- [x] `fck-nat` is the default, with a managed-NAT toggle
+- [x] VPC endpoints exist for S3, ECR, Logs and Secrets Manager
+- [x] `terraform test` asserts the toggle and that private subnets have no public IPs
+- [x] Every resource carries the standard tags
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+
+Evidence: [09-02-evidence](09-02-evidence/README.md)
