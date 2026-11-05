@@ -1,0 +1,152 @@
+{
+  "components": {
+    "schemas": {
+      "HealthChecks": {
+        "properties": {
+          "database": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Database",
+            "type": "string"
+          },
+          "redis": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Redis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "database",
+          "redis"
+        ],
+        "title": "HealthChecks",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/HealthChecks"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "WorkerHealthResponse": {
+        "properties": {
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reply"
+        ],
+        "title": "WorkerHealthResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "RAG Agent Studio API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "A dependency is unreachable"
+          }
+        },
+        "summary": "Get Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/health/worker": {
+      "get": {
+        "description": "Enqueue the worker health task and wait for the worker's reply.",
+        "operationId": "getWorkerHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerHealthResponse"
+                }
+              }
+            },
+            "description": "No worker replied in time"
+          }
+        },
+        "summary": "Get Worker Health",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

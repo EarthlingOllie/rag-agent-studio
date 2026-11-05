@@ -1,0 +1,86 @@
+# Local stack: `make dev` starts everything below with one command.
+name: rag-agent-studio
+
+x-backend: &backend
+  build:
+    context: ./backend
+  environment:
+    ENVIRONMENT: local
+    DATABASE_URL: postgresql+asyncpg://studio:studio@postgres:5432/studio
+    REDIS_URL: redis://redis:6379/0
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg16
+    environment:
+      POSTGRES_USER: studio
+      POSTGRES_PASSWORD: studio
+      POSTGRES_DB: studio
+    ports: ["5432:5432"]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/create-test-database.sql:/docker-entrypoint-initdb.d/10-create-test-database.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studio -d studio"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.4.2-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  rustfs:
+    image: rustfs/rustfs:1.0.4
+    environment:
+      RUSTFS_ACCESS_KEY: studio
+      RUSTFS_SECRET_KEY: studio-secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - rustfs-data:/data
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["1025:1025", "8025:8025"]
+
+  api:
+    <<: *backend
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "app.worker.main", "worker", "--loglevel=INFO", "--concurrency=2"]
+
+  beat:
+    <<: *backend
+    command: ["celery", "-A", "app.worker.main", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+
+  studio:
+    build:
+      context: ./frontend
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports: ["5173:5173"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  rustfs-data:
