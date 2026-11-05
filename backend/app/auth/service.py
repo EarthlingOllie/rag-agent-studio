@@ -33,15 +33,26 @@ def normalise_email(email: str) -> str:
 async def sign_up(
     session: AsyncSession, *, name: str, email: str, password: str, organisation_name: str
 ) -> Member:
-    """Creates the Member, the Organisation and the Owner membership in one transaction."""
+    """Creates the Member, the Organisation, the Owner membership and the Audit Event of the
+    Organisation being created, in one transaction."""
     member = Member(name=name, email=normalise_email(email), password_hash=hash_password(password))
-    try:
-        async with session.begin():
-            await create_organisation_with_new_owner(
+    async with session.begin():
+        # Only the Member's insert can clash with a taken email; any other failure, such as
+        # the Audit Event's insert, propagates as itself and still rolls everything back.
+        try:
+            organisation = await create_organisation_with_new_owner(
                 session, organisation_name=organisation_name, owner=member
             )
-    except IntegrityError as exc:
-        raise EmailAlreadyRegisteredError from exc
+        except IntegrityError as exc:
+            raise EmailAlreadyRegisteredError from exc
+        await audit.record(
+            session,
+            organisation_id=organisation.id,
+            actor_id=member.id,
+            action="organisation.created",
+            target=audit.AuditTarget("organisation", organisation.id),
+            after={"name": organisation.name},
+        )
     return member
 
 

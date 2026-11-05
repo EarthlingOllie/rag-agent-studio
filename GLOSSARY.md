@@ -46,7 +46,7 @@ One of ten single-use codes a Member gets when they turn MFA on, to sign in with
 _Avoid_: Backup code
 
 **Audit Event**:
-An append-only record of who changed what in an Organisation, and when.
+An append-only record of who changed what in an Organisation, and when, with the values before and after the change. Secret-like values are never stored. Only Owners can see Audit Events.
 _Avoid_: Activity, history, log
 
 **Archive**:

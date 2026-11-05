@@ -10,6 +10,7 @@ from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.api import health
+from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
 from app.auth import api as auth_api
 from app.core.clock import SystemClock
@@ -63,6 +64,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.include_router(mfa_api.router)
     app.include_router(account_api.router)
     app.include_router(tenancy_api.router)
+    app.include_router(audit_api.router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app
