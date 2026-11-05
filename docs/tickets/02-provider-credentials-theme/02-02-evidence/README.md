@@ -7,6 +7,14 @@ Branch `ticket/02-02-bedrock-credentials`, based on `origin/candidate` at `c8c68
 
 The commit after these only adds this folder and sets the ticket's Status to `done`.
 
+**Merge with candidate.** `d245085` merges `origin/candidate` at `e3e1e9a` (02-03, model gateway and Default Model); `1098d2c` only reformats one line. Conflict resolution:
+- `.env.example`, `settings.py`, `main.py`, `test_openapi.py`: both sides kept (Bedrock settings and the model gateway).
+- `credentials/service.py`: Bedrock's `_store`/`_verify_stored` kept, now on candidate's `seal_secret`/`open_secret` helpers; `open_secret` tolerates the nullable `secret_sealed` type.
+- **Migration re-parented:** `0008_bedrock_credentials` is now `0009_bedrock_credentials`, after `0008_default_models` (one Alembic head).
+- **Model gateway:** a Bedrock IAM-role credential has no secret, so `ModelGateway` now refuses it with `UnsupportedCredentialError` before opening anything (`test_model_gateway.py::test_a_bedrock_role_credential_has_no_secret_to_open`, live and fake). Bedrock access-key credentials still reach the live adapters' existing "not available yet" refusal.
+
+Post-merge logs, all exit 0 on the tree of `1098d2c`: [post-merge-lint.log](post-merge-lint.log) (ruff, format, `mypy --strict`, eslint, tsc), [post-merge-backend.log](post-merge-backend.log) (674 passed, 100.00% line and branch), [post-merge-frontend.log](post-merge-frontend.log) (266 passed, coverage gate), [post-merge-e2e.log](post-merge-e2e.log) (fresh images and volumes, 40 passed). `make check-client` reported the API client up to date. No Terraform changed in this ticket, so infra checks were not rerun.
+
 **Where the logs come from.** Every log ran in a fresh `git clone` of the branch from GitHub. Each log names its commit in its header and ends with its exit code.
 - **At `daf9c6c`:** `frontend-tests.log` and `lint.log`.
 - **At `c40e1d9`:** everything else. Only a Studio test file changed after it.
@@ -48,8 +56,8 @@ The commit after these only adds this folder and sets the ticket's Status to `do
 
 - **No real AWS account, role or credentials.** STS and Bedrock are proven only with botocore `Stubber` (requests validated against the service models) and event hooks that simulate unreachable endpoints. Not proven against AWS: that `AssumeRole` with this trust policy succeeds, that the IAM action `bedrock:GetFoundationModelAvailability` is the right one to grant, and the exact error codes Bedrock returns for an unenabled model or region. No `@pytest.mark.live` test is included.
 - **`BEDROCK_PLATFORM_PRINCIPAL` is not wired into Terraform.** The compute module (09-04) should pass the API task role's ARN; that belongs to the deploy work, not this ticket.
-- **The assumed-role cache is not yet used for model calls.** The model gateway (02-03, building in parallel) can take `LiveCredentialVerifier.bedrock.sessions`.
-- **Migration numbering.** `0008_bedrock_credentials` follows `0007_provider_credentials`. A ticket merged in parallel that also adds a revision after it must re-parent one of them.
+- **Bedrock model calls are not built.** 02-03's gateway expected 02-02 to build Bedrock clients; this ticket's criteria cover storing and checking credentials only, so the gateway refuses Bedrock (role credentials explicitly, access keys in the live adapters). A follow-up should build Bedrock chat, embeddings and rerank adapters on `LiveCredentialVerifier.bedrock.sessions`.
+- **Migration numbering.** Resolved at merge: `0009_bedrock_credentials` follows `0008_default_models`. A ticket merged later that also branches from `0008_default_models` must re-parent.
 - **Images and stack.** Images were built from the committed Dockerfiles with only the sandbox proxy CA and proxy environment added to the first stage ([build.sh](build.sh)); the stack ran as project `rag0202` with [compose.sandbox.yml](compose.sandbox.yml) (Studio `51173`, API `51800`, Mailpit `51825`). Chrome came from `/usr/bin/google-chrome`. Trivy (`make image-scan`) was not run (disk nearly full, shared by parallel tickets).
 - **Flaky Studio test under load.** In the worktree, while the backend suite ran in parallel, `AcceptInvitePage.test.tsx`'s first test (unrelated to this ticket) timed out twice on its first `findByRole`. It passes alone, and the logged clean-clone run (no parallel load) passed 255/255. The 02-01 evidence records the same flake.
 - **Screenshots** were taken by [shots.mjs](shots.mjs) against the running stack (its Playwright import was pointed at the clone's `@playwright/test` when it ran).
