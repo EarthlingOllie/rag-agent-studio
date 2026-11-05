@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-02: Remaining CI gates and Playwright harness](../01-skeleton-auth-tenancy/02-ci-gates-playwright-harness.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A bootstrap root module creates a versioned, encrypted state bucket
 - [ ] The S3 backend uses native locking (`use_lockfile`)
