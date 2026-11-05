@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field, StringConstraints
 from redis.asyncio import Redis
 
@@ -154,6 +154,11 @@ class DocumentOut(BaseModel):
     replacement: ReplacementOut | None
 
 
+class DocumentDetailOut(DocumentOut):
+    # The markdown Docling converted the file to; null until the Document has been converted.
+    markdown: str | None
+
+
 class DocumentStatusOut(BaseModel):
     id: uuid.UUID
     status: DocumentStatus
@@ -170,6 +175,19 @@ class ChunkOut(BaseModel):
     page_start: int | None
     page_end: int | None
     embedding_model_id: str
+
+
+# The Chunk list's page size: the default, and the most one request may ask for.
+CHUNK_PAGE_DEFAULT = 50
+CHUNK_PAGE_MAX = 200
+
+
+class ChunkPageOut(BaseModel):
+    items: list[ChunkOut]
+    # How many Chunks the Document has in all.
+    total: int
+    offset: int
+    limit: int
 
 
 def _replacement_out(staged: StagedEdition | None) -> ReplacementOut | None:
@@ -377,18 +395,82 @@ async def list_document_statuses(
     ]
 
 
+@router.get("/documents/{document_id}", operation_id="getDocument", responses=_errors(_NOT_FOUND))
+async def get_document(
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db, store: StoreDep
+) -> DocumentDetailOut:
+    """One Document, with the markdown it was converted to: the Document viewer's left pane."""
+    try:
+        opened = await service.open_document(db, store, scope, project_id, document_id)
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    tags = await tags_of(db, [opened.document.id])
+    summary = _document_out(
+        opened.document,
+        opened.chunk_count,
+        tags.get(opened.document.id, []),
+        opened.replacement,
+    )
+    return DocumentDetailOut(**summary.model_dump(), markdown=opened.markdown)
+
+
+@router.get(
+    "/documents/{document_id}/download",
+    operation_id="downloadDocument",
+    status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+    response_class=RedirectResponse,
+    responses={
+        307: {"description": "Redirects to a short-lived presigned GET of the original file."},
+        **_errors(_NOT_FOUND),
+    },
+)
+async def download_document(
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    store: StoreDep,
+    settings: SettingsDep,
+) -> RedirectResponse:
+    """Downloads the original file: a redirect to a presigned GET on the object store, which
+    serves it as an attachment under the Document's name. A link to this route is enough."""
+    try:
+        document = await service.get_document(db, scope, project_id, document_id)
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    url = store.presign_get(
+        document.object_key,
+        filename=document.name,
+        content_type=document.mime_type,
+        expires_in=settings.download_url_ttl_seconds,
+    )
+    return RedirectResponse(url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+
 @router.get(
     "/documents/{document_id}/chunks", operation_id="listChunks", responses=_errors(_NOT_FOUND)
 )
 async def list_chunks(
-    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
-) -> list[ChunkOut]:
-    """The Document's Chunks in order, with heading path and pages."""
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=CHUNK_PAGE_MAX)] = CHUNK_PAGE_DEFAULT,
+) -> ChunkPageOut:
+    """A page of the Document's Chunks in order, with heading path and pages."""
     try:
-        chunks = await service.list_chunks(db, scope, project_id, document_id)
+        page = await service.list_chunks(
+            db, scope, project_id, document_id, offset=offset, limit=limit
+        )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
-    return [_chunk_out(chunk) for chunk in chunks]
+    return ChunkPageOut(
+        items=[_chunk_out(chunk) for chunk in page.chunks],
+        total=page.total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 @router.delete(
