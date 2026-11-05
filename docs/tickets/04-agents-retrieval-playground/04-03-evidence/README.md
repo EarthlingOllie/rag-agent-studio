@@ -1,6 +1,6 @@
 # Evidence: ticket 04-03, Hybrid retrieval and fallback
 
-Branch `ticket/04-03-hybrid-retrieval-fallback`, from `origin/candidate` at `59d696a` (04-01, the only blocker, merged). The claim commit, the first on the branch, set Status `in-progress`.
+Branch `ticket/04-03-hybrid-retrieval-fallback`, from `origin/candidate` at `59d696a` (04-01, the only blocker, merged), later updated from `origin/candidate` at `570cba4`. The claim commit, the first on the branch, set Status `in-progress`.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope this ticket leaves to later tickets on purpose, plus what this sandbox can't run.
 
@@ -61,19 +61,18 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results).
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). They were re-run on merge commit `8693632`, after merging `origin/candidate` at `c1e455f` (03-06 Tags). The merge was clean. Candidate then moved to `570cba4`, which adds only `docs/screenshots/`; after merging it (`48b16f0`), `make lint` was re-run and passed. Nothing else it touches is checked by a suite.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against the `rag0403` Postgres/pgvector, Redis and RustFS containers | **912 passed**, 5 deselected (live); coverage **100.00%** lines and branches (4754 statements, 448 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **30 files, 308 tests passed**; no files with missing coverage | [frontend-tests.log](frontend-tests.log) |
-| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0403` Postgres/pgvector, Redis and RustFS containers | **973 passed**, 5 deselected (live); coverage **100.00%** lines and branches (4997 statements, 466 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **31 files, 322 tests passed**; 100% coverage | [frontend-tests.log](frontend-tests.log) |
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 (at `8693632` and `48b16f0`) | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Security | gitleaks (this branch), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0403`) | **43 passed**, including `playground.spec.ts` | [e2e.log](e2e.log) |
-
-The backend log was captured on the working tree just before the implementation commit `fc52a38`. The code is unchanged since then; only evidence files and the ticket status were added.
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0403`) | **44 passed**, including `playground.spec.ts` and 03-06's `tags.spec.ts` | [e2e.log](e2e.log) |
+| Infra | terraform fmt/validate/test | not run: this ticket changes no infra | n/a |
 
 ## Gaps and best guesses
 
