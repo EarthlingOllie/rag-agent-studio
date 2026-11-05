@@ -31,10 +31,11 @@ function dollars(amount: string | null): string {
 
 function TraceBody({ trace }: { trace: Trace }) {
   const facts: [string, string][] = [
-    ["Model", `${trace.model_provider ?? "—"} · ${trace.model_name ?? "—"}`],
-    ["Tokens", `${String(trace.input_tokens ?? 0)} input · ${String(trace.output_tokens ?? 0)} output`],
+    // An answer always has its model, tokens and latency; only the cost can be unknown.
+    ["Model", `${String(trace.model_provider)} · ${String(trace.model_name)}`],
+    ["Tokens", `${String(trace.input_tokens)} input · ${String(trace.output_tokens)} output`],
     ["Cost", dollars(trace.cost_usd)],
-    ["Latency", `${String(trace.first_token_ms ?? 0)} ms to the first token · ${String(trace.latency_ms ?? 0)} ms in all`],
+    ["Latency", `${String(trace.first_token_ms)} ms to the first token · ${String(trace.latency_ms)} ms in all`],
   ];
   return (
     <div className="space-y-4">

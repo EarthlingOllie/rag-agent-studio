@@ -163,6 +163,9 @@ test("the Trace of a fallback reply says no Chunk was relevant enough, and Escap
   const drawer = await screen.findByRole("dialog", { name: "Trace" });
   expect(await within(drawer).findByText(/No Chunk reached the minimum score/)).toBeInTheDocument();
   expect(within(drawer).getByText("Unknown")).toBeInTheDocument();
+  // Other keys leave it open.
+  await userEvent.keyboard("a");
+  expect(screen.getByRole("dialog", { name: "Trace" })).toBeInTheDocument();
   await userEvent.keyboard("{Escape}");
   expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
 });

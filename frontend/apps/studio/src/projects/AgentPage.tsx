@@ -180,8 +180,9 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
             {message.messageId && (
               <button
                 type="button"
-                onClick={() => {
-                  setTracing(message.messageId ?? null);
+                value={message.messageId}
+                onClick={(event) => {
+                  setTracing(event.currentTarget.value);
                 }}
                 className="mt-1 text-xs text-slate-700 underline"
               >
