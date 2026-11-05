@@ -6,7 +6,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] One command starts Postgres with pgvector, Redis, RustFS, Mailpit, the API, the worker, Beat and the Studio
 - [ ] Make targets exist for dev, test, lint and client generation
