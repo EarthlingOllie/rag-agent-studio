@@ -56,7 +56,7 @@ test("Editors see the credentials but none of the Owner controls", async () => {
 
   expect(await screen.findByRole("table", { name: "Provider Credentials" })).toBeInTheDocument();
   expect(screen.getByText("Only Owners can add, check, rotate or delete credentials.")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Check .* now/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Check now: / })).not.toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Add a credential" })).not.toBeInTheDocument();
   expect(screen.getAllByRole("columnheader")).toHaveLength(6);
 });
@@ -220,7 +220,7 @@ test("an Owner re-checks a credential on demand", async () => {
   const api = fakeCredentialsApi();
   await openAsOwner();
 
-  await userEvent.click(screen.getByRole("button", { name: "Check Legal Voyage now" }));
+  await userEvent.click(screen.getByRole("button", { name: "Check now: Legal Voyage" }));
 
   expect(await screen.findByText("Legal Voyage passed its check.")).toBeInTheDocument();
   expect(api.checked).toEqual([legalVoyage.id]);
@@ -231,7 +231,7 @@ test("a re-check that fails shows the reason on the credential", async () => {
   fakeCredentialsApi({ recheck: "invalid_key" });
   await openAsOwner();
 
-  await userEvent.click(screen.getByRole("button", { name: "Check Marketing OpenAI now" }));
+  await userEvent.click(screen.getByRole("button", { name: "Check now: Marketing OpenAI" }));
 
   expect(
     await screen.findByText("Check failed: The provider rejected this API key. Check it was copied in full."),
@@ -244,7 +244,7 @@ test("a re-check the API refuses says something went wrong", async () => {
   server.use(http.post("*/api/organisations/:organisationId/credentials/:credentialId/check", () => new HttpResponse(null, { status: 500 })));
   await openAsOwner();
 
-  await userEvent.click(screen.getByRole("button", { name: "Check Marketing OpenAI now" }));
+  await userEvent.click(screen.getByRole("button", { name: "Check now: Marketing OpenAI" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
 });
@@ -253,7 +253,7 @@ test("an Owner rotates a key and the credential keeps its place", async () => {
   const api = fakeCredentialsApi();
   await openAsOwner();
 
-  await userEvent.click(screen.getByRole("button", { name: "Rotate the key of Marketing OpenAI" }));
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Marketing OpenAI" }));
   await userEvent.type(screen.getByLabelText("New API key for Marketing OpenAI"), "sk-proj-rotated-n3w1");
   await userEvent.click(screen.getByRole("button", { name: "Check and rotate" }));
 
@@ -266,7 +266,7 @@ test("an Owner rotates a key and the credential keeps its place", async () => {
 test("a rotation that fails its check keeps the form open and says why", async () => {
   fakeCredentialsApi();
   await openAsOwner();
-  await userEvent.click(screen.getByRole("button", { name: "Rotate the key of Marketing OpenAI" }));
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Marketing OpenAI" }));
   await userEvent.type(screen.getByLabelText("New API key for Marketing OpenAI"), "fail-invalid_key-new");
 
   await userEvent.click(screen.getByRole("button", { name: "Check and rotate" }));
@@ -281,10 +281,10 @@ test("an Owner deletes an unused credential after confirming", async () => {
   const api = fakeCredentialsApi();
   await openAsOwner();
 
-  await userEvent.click(screen.getByRole("button", { name: "Delete Legal Voyage" }));
+  await userEvent.click(screen.getByRole("button", { name: "Delete: Legal Voyage" }));
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(api.deleted).toEqual([]);
-  await userEvent.click(screen.getByRole("button", { name: "Delete Legal Voyage" }));
+  await userEvent.click(screen.getByRole("button", { name: "Delete: Legal Voyage" }));
   await userEvent.click(screen.getByRole("button", { name: "Yes, delete Legal Voyage" }));
 
   expect(await screen.findByText("Legal Voyage was deleted.")).toBeInTheDocument();
@@ -304,7 +304,7 @@ test("deleting a credential still in use is refused with the list of what uses i
   });
   await openAsOwner();
 
-  await userEvent.click(screen.getByRole("button", { name: "Delete Marketing OpenAI" }));
+  await userEvent.click(screen.getByRole("button", { name: "Delete: Marketing OpenAI" }));
   await userEvent.click(screen.getByRole("button", { name: "Yes, delete Marketing OpenAI" }));
 
   const alert = await screen.findByRole("alert");

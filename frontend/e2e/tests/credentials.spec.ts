@@ -47,12 +47,12 @@ test.describe("provider credentials", () => {
     await expect(page.locator("body")).not.toContainText(KEY.slice(0, -4));
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
-    await page.getByRole("button", { name: "Check Marketing OpenAI now" }).click();
+    await page.getByRole("button", { name: "Check now: Marketing OpenAI" }).click();
     await expect(page.getByText("Marketing OpenAI passed its check.")).toBeVisible();
 
     // Rotating keeps the credential and replaces the key.
     const before = await row.getByRole("cell").first().textContent();
-    await page.getByRole("button", { name: "Rotate the key of Marketing OpenAI" }).click();
+    await page.getByRole("button", { name: "Rotate key: Marketing OpenAI" }).click();
     await page.getByLabel("New API key for Marketing OpenAI").fill(ROTATED);
     await page.getByRole("button", { name: "Check and rotate" }).click();
     await expect(page.getByText("The key of Marketing OpenAI was checked and replaced.")).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("provider credentials", () => {
     expect(audit).toContain("credential.rotated");
     expect(audit).toContain("credential.check_failed");
 
-    await page.getByRole("button", { name: "Delete Marketing OpenAI" }).click();
+    await page.getByRole("button", { name: "Delete: Marketing OpenAI" }).click();
     await page.getByRole("button", { name: "Yes, delete Marketing OpenAI" }).click();
     await expect(page.getByText("Marketing OpenAI was deleted.")).toBeVisible();
     await expect(page.getByText("No credentials yet.")).toBeVisible();
@@ -110,6 +110,6 @@ test.describe("provider credentials", () => {
     await expect(row).toContainText("••••m3v8");
     await expect(page.getByText("Only Owners can add, check, rotate or delete credentials.")).toBeVisible();
     await expect(page.getByRole("region", { name: "Add a credential" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Delete Search embeddings" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Delete: Search embeddings" })).toHaveCount(0);
   });
 });

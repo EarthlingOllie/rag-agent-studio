@@ -114,13 +114,13 @@ function CredentialActions({
   }
   return (
     <div className="flex flex-wrap gap-2">
-      <button type="button" className={BUTTON} disabled={busy} aria-label={`Check ${credential.name} now`} onClick={onCheck}>
+      <button type="button" className={BUTTON} disabled={busy} aria-label={`Check now: ${credential.name}`} onClick={onCheck}>
         Check now
       </button>
       <button
         type="button"
         className={BUTTON}
-        aria-label={`Rotate the key of ${credential.name}`}
+        aria-label={`Rotate key: ${credential.name}`}
         onClick={() => {
           setMode("rotating");
         }}
@@ -130,7 +130,7 @@ function CredentialActions({
       <button
         type="button"
         className={BUTTON}
-        aria-label={`Delete ${credential.name}`}
+        aria-label={`Delete: ${credential.name}`}
         onClick={() => {
           setMode("deleting");
         }}
