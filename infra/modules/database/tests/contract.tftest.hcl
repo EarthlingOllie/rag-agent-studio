@@ -76,6 +76,11 @@ run "requires_tls_and_admits_only_listed_clients" {
   }
 
   assert {
+    condition     = output.admitted_client_security_group_ids == { for k, r in aws_vpc_security_group_ingress_rule.clients : k => r.referenced_security_group_id }
+    error_message = "The module must output which client security groups it admits."
+  }
+
+  assert {
     condition = alltrue([for r in aws_vpc_security_group_ingress_rule.clients :
       r.ip_protocol == "tcp" && r.from_port == 5432 && r.to_port == 5432 && r.cidr_ipv4 == null && r.cidr_ipv6 == null && r.security_group_id == aws_security_group.this.id
     ])
