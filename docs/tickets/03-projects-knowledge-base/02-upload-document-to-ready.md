@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-01: Projects and Project page shell](01-projects-shell.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The object-store port has an S3/RustFS adapter and an in-memory fake
 - [ ] The upload flow is presign, then direct upload, then confirm; a SHA-256 content hash is recorded
