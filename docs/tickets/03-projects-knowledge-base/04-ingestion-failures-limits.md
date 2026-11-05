@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] File type and size are validated before upload, and unsupported types are refused with a message
 - [ ] Failures are categorised (unsupported content, conversion, provider, quota) with readable messages
