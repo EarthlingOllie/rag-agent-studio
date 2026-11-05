@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-04: Sign up, sign in, sign out](04-sign-up-sign-in-sign-out.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The mailer port has SES, SMTP (Mailpit) and in-memory outbox adapters, selected by settings
 - [ ] Requesting a reset always returns the same response; reset links are single-use and expiring, and tokens are stored hashed
