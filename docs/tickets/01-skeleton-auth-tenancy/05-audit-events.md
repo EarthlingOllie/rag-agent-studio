@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-04: Sign up, sign in, sign out](04-sign-up-sign-in-sign-out.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The audit record operation stores actor, Organisation, action, target, before/after values and time in an append-only table
 - [ ] Secret-like fields are redacted before storage
