@@ -30,7 +30,8 @@ mock_provider "aws" {
 
   mock_resource "aws_s3_bucket" {
     defaults = {
-      arn = "arn:aws:s3:::studio-demo-documents-123456789012"
+      arn                         = "arn:aws:s3:::studio-demo-documents-123456789012"
+      bucket_regional_domain_name = "studio-demo-static-123456789012.s3.eu-west-2.amazonaws.com"
     }
   }
 
@@ -42,7 +43,8 @@ mock_provider "aws" {
 
   mock_resource "aws_lb" {
     defaults = {
-      arn = "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/studio-demo-ecs/0123456789abcdef"
+      arn      = "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/studio-demo-ecs/0123456789abcdef"
+      dns_name = "studio-demo-ecs-1234567890.eu-west-2.elb.amazonaws.com"
     }
   }
 
@@ -55,6 +57,21 @@ mock_provider "aws" {
   mock_resource "aws_lb_listener" {
     defaults = {
       arn = "arn:aws:elasticloadbalancing:eu-west-2:123456789012:listener/app/studio-demo-ecs/0123456789abcdef/0123456789abcdef"
+    }
+  }
+
+  # Real-looking CloudFront values, so the storage module's CORS origin and bucket policy validation run.
+  mock_resource "aws_cloudfront_distribution" {
+    defaults = {
+      arn            = "arn:aws:cloudfront::123456789012:distribution/E2EXAMPLE0ABCD"
+      domain_name    = "d111111abcdef8.cloudfront.net"
+      hosted_zone_id = "Z2FDTNDATAQYW2"
+    }
+  }
+
+  mock_resource "aws_cloudfront_function" {
+    defaults = {
+      arn = "arn:aws:cloudfront::123456789012:function/studio-demo-cdn-spa-fallback"
     }
   }
 
@@ -107,11 +124,6 @@ run "wires_the_data_modules_into_the_environment" {
   }
 
   assert {
-    condition     = module.storage.documents_cors_allowed_origin == null
-    error_message = "Until the cdn module exists, the Documents bucket must allow no cross-origin requests."
-  }
-
-  assert {
     condition     = module.kms.credentials_key_alias == "alias/studio-demo-kms-credentials"
     error_message = "The demo's Provider Credentials key must be named from the demo prefix."
   }
@@ -153,6 +165,48 @@ run "wires_the_compute_module_into_the_data_modules" {
   assert {
     condition     = keys(module.ecs.service_names) == ["api", "beat", "worker"] && var.image_tag == "bootstrap"
     error_message = "The demo must run the three services, at the bootstrap tag until the deploy workflow sets one."
+  }
+}
+
+run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb" {
+  command = apply
+
+  assert {
+    condition     = output.cloudfront_url == "https://d111111abcdef8.cloudfront.net" && output.cloudfront_url == module.cdn.url
+    error_message = "The environment must output the CloudFront URL (spec 09 outputs), on its default domain."
+  }
+
+  assert {
+    condition     = module.storage.documents_cors_allowed_origin == module.cdn.url
+    error_message = "Browsers may upload Documents to S3 only from the CloudFront origin (spec 09 story 10)."
+  }
+
+  assert {
+    condition     = module.storage.static_assets_distribution_arn == module.cdn.distribution_arn
+    error_message = "Only this distribution may read static assets, through origin access control."
+  }
+
+  assert {
+    condition     = module.cdn.api_origin_domain == module.ecs.alb_dns_name && module.ecs.alb_dns_name == "studio-demo-ecs-1234567890.eu-west-2.elb.amazonaws.com"
+    error_message = "The cdn's API origin must be the compute module's ALB."
+  }
+
+  assert {
+    condition     = output.cloudfront_distribution_id == module.cdn.distribution_id && module.cdn.certificate_arn == null
+    error_message = "The demo has no custom domain by default, and outputs the distribution ID for the deploy workflow's invalidations."
+  }
+}
+
+run "a_domain_name_adds_acm_and_route53_to_the_demo" {
+  command = plan
+
+  variables {
+    domain_name = "studio.example.com"
+  }
+
+  assert {
+    condition     = output.cloudfront_url == "https://studio.example.com"
+    error_message = "With domain_name set, the environment must serve on that domain."
   }
 }
 

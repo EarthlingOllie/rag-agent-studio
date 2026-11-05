@@ -183,6 +183,11 @@ run "static_assets_are_readable_only_by_the_cloudfront_distribution" {
     condition     = length(jsondecode(aws_s3_bucket_policy.static.policy).Statement) == 2 && aws_s3_bucket_policy.static.bucket == aws_s3_bucket.this["static"].id
     error_message = "The static bucket policy must hold only the TLS rule and the CloudFront grant."
   }
+
+  assert {
+    condition     = output.static_assets_distribution_arn == "arn:aws:cloudfront::123456789012:distribution/E2EXAMPLE12345"
+    error_message = "The module must output the distribution it trusts, so the environment can check the wiring."
+  }
 }
 
 run "static_assets_are_readable_by_no_one_until_the_distribution_is_known" {
@@ -191,6 +196,11 @@ run "static_assets_are_readable_by_no_one_until_the_distribution_is_known" {
   assert {
     condition     = length(jsondecode(aws_s3_bucket_policy.static.policy).Statement) == 1
     error_message = "Without a distribution ARN, the static bucket policy must grant nothing."
+  }
+
+  assert {
+    condition     = output.static_assets_distribution_arn == null
+    error_message = "Without a distribution ARN, the module must output that none is trusted."
   }
 }
 
