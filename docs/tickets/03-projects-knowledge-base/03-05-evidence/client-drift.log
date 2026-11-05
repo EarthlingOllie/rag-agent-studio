@@ -11,6 +11,6 @@ cd frontend && pnpm gen-client
 > openapi-typescript ./openapi.json --output ./src/schema.gen.ts
 
 ✨ openapi-typescript 7.13.0
-🚀 ./openapi.json → ./src/schema.gen.ts [673.8ms]
+🚀 ./openapi.json → ./src/schema.gen.ts [418.5ms]
 API client is up to date.
-exit 0
+exit=0

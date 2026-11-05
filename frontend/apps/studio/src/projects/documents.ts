@@ -14,11 +14,15 @@ export const STATUS_POLL_MS = 2000;
 
 export const FINAL_STATUSES: readonly DocumentStatus[] = ["ready", "failed"];
 
-const documentsKey = (organisationId: string, projectId: string) => ["documents", organisationId, projectId] as const;
+const documentsKey = (organisationId: string, projectId: string) =>
+  ["documents", organisationId, projectId] as const;
 
 function failed(response: Response, error: unknown): ProjectRequestError {
   const detail = (error as { detail?: unknown }).detail;
-  return new ProjectRequestError(response.status, typeof detail === "string" ? detail : undefined);
+  return new ProjectRequestError(
+    response.status,
+    typeof detail === "string" ? detail : undefined,
+  );
 }
 
 /**
@@ -30,9 +34,12 @@ export function useDocuments(organisationId: string, projectId: string) {
   const list = useQuery({
     queryKey: documentsKey(organisationId, projectId),
     queryFn: async (): Promise<ProjectDocument[]> => {
-      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/projects/{project_id}/documents", {
-        params: { path },
-      });
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents",
+        {
+          params: { path },
+        },
+      );
       if (!data) throw failed(response, error);
       return data;
     },
@@ -50,28 +57,47 @@ export function useDocuments(organisationId: string, projectId: string) {
     },
     enabled: inProgress,
     // Polling stops once every Document has reached Ready or Failed.
-    refetchInterval: (query) => (query.state.data?.every(isSettled) ? false : STATUS_POLL_MS),
+    refetchInterval: (query) =>
+      query.state.data?.every(isSettled) ? false : STATUS_POLL_MS,
   });
-  const latest = new Map((statuses.data ?? []).map((status) => [status.id, status]));
+  // Statuses read before the list was last read (say, before a new edition was uploaded) are
+  // older than the list, so they are left out until the next poll.
+  const fresh =
+    statuses.data !== undefined && statuses.dataUpdatedAt >= list.dataUpdatedAt;
+  const latest = new Map(
+    (fresh ? statuses.data : []).map((status) => [status.id, status]),
+  );
   const documents = list.data?.map((document) => {
     const status = latest.get(document.id);
     return status ? { ...document, ...status } : document;
   });
   // When a new edition becomes Ready its name, size and edition change: read the full list again.
   const swapped = (list.data ?? []).some(
-    (document) => document.replacement !== null && latest.has(document.id) && latest.get(document.id)?.replacement === null,
+    (document) =>
+      document.replacement !== null &&
+      latest.has(document.id) &&
+      latest.get(document.id)?.replacement === null,
   );
   const queryClient = useQueryClient();
   useEffect(() => {
-    if (swapped) void queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId), exact: true });
+    if (swapped)
+      void queryClient.invalidateQueries({
+        queryKey: documentsKey(organisationId, projectId),
+        exact: true,
+      });
   }, [swapped, queryClient, organisationId, projectId]);
   return { isError: list.isError, data: documents };
 }
 
 /** Whether the Document and any new edition of it are Ready or Failed: nothing left to poll for. */
-function isSettled(document: { status: DocumentStatus; replacement: Replacement | null }): boolean {
+function isSettled(document: {
+  status: DocumentStatus;
+  replacement: Replacement | null;
+}): boolean {
   return (
-    FINAL_STATUSES.includes(document.status) && (document.replacement === null || FINAL_STATUSES.includes(document.replacement.status))
+    FINAL_STATUSES.includes(document.status) &&
+    (document.replacement === null ||
+      FINAL_STATUSES.includes(document.replacement.status))
   );
 }
 
@@ -87,11 +113,22 @@ export function useDeleteDocument(organisationId: string, projectId: string) {
     mutationFn: async (documentId: string) => {
       const { error, response } = await api.DELETE(
         "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}",
-        { params: { path: { organisation_id: organisationId, project_id: projectId, document_id: documentId } } },
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              document_id: documentId,
+            },
+          },
+        },
       );
       if (!response.ok) throw failed(response, error);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId) }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: documentsKey(organisationId, projectId),
+      }),
   });
 }
 
@@ -115,14 +152,24 @@ export interface Upload {
 }
 
 /** PUTs the file to the presigned URL, reporting progress as a percentage. */
-function putFile(url: string, file: File, contentType: string, onProgress: (percent: number) => void): Promise<boolean> {
+function putFile(
+  url: string,
+  file: File,
+  contentType: string,
+  onProgress: (percent: number) => void,
+): Promise<boolean> {
   return new Promise((resolve) => {
     const request = new XMLHttpRequest();
     request.open("PUT", url);
     request.setRequestHeader("Content-Type", contentType);
     // Measured against the file's own size, which is known even when the event's total isn't.
     request.upload.addEventListener("progress", (event) => {
-      onProgress(Math.min(100, Math.round((100 * event.loaded) / Math.max(file.size, 1))));
+      onProgress(
+        Math.min(
+          100,
+          Math.round((100 * event.loaded) / Math.max(file.size, 1)),
+        ),
+      );
     });
     request.addEventListener("load", () => {
       resolve(request.status >= 200 && request.status < 300);
@@ -138,10 +185,19 @@ const TRY_AGAIN = "The upload failed. Try again.";
 
 /** Why a confirmation was refused, and for a duplicate, the Document that has the same content. */
 function refusal(response: Response, error: unknown): UploadState {
-  const conflict = error as Partial<Schemas["UploadConflictResponse"]> | undefined;
+  const conflict = error as
+    | Partial<Schemas["UploadConflictResponse"]>
+    | undefined;
   const message = failed(response, error).detail ?? TRY_AGAIN;
   if (conflict?.document_id) {
-    return { phase: "failed", message, existing: { id: conflict.document_id, name: conflict.document_name as string } };
+    return {
+      phase: "failed",
+      message,
+      existing: {
+        id: conflict.document_id,
+        name: conflict.document_name as string,
+      },
+    };
   }
   return { phase: "failed", message };
 }
@@ -156,46 +212,81 @@ export function useUploads(organisationId: string, projectId: string) {
   const path = { organisation_id: organisationId, project_id: projectId };
 
   const update = (key: string, state: UploadState) => {
-    setUploads((current) => current.map((upload) => (upload.key === key ? { ...upload, state } : upload)));
+    setUploads((current) =>
+      current.map((upload) =>
+        upload.key === key ? { ...upload, state } : upload,
+      ),
+    );
   };
 
-  async function uploadOne(key: string, file: File, replacing?: ProjectDocument) {
-    const started = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/uploads", {
-      params: { path },
-      body: { filename: file.name, size_bytes: file.size },
-    });
+  async function uploadOne(
+    key: string,
+    file: File,
+    replacing?: ProjectDocument,
+  ) {
+    const started = await api.POST(
+      "/api/organisations/{organisation_id}/projects/{project_id}/uploads",
+      {
+        params: { path },
+        body: { filename: file.name, size_bytes: file.size },
+      },
+    );
     if (!started.data) {
-      update(key, { phase: "failed", message: failed(started.response, started.error).detail ?? TRY_AGAIN });
+      update(key, {
+        phase: "failed",
+        message: failed(started.response, started.error).detail ?? TRY_AGAIN,
+      });
       return;
     }
     const ticket = started.data;
-    const stored = await putFile(ticket.url, file, ticket.content_type, (progress) => {
-      update(key, { phase: "uploading", progress });
-    });
+    const stored = await putFile(
+      ticket.url,
+      file,
+      ticket.content_type,
+      (progress) => {
+        update(key, { phase: "uploading", progress });
+      },
+    );
     if (!stored) {
       update(key, { phase: "failed", message: TRY_AGAIN });
       return;
     }
     const body = { upload_id: ticket.upload_id };
     const confirmed = replacing
-      ? await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/editions", {
-          params: { path: { ...path, document_id: replacing.id } },
-          body,
-        })
-      : await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/documents", { params: { path }, body });
+      ? await api.POST(
+          "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/editions",
+          {
+            params: { path: { ...path, document_id: replacing.id } },
+            body,
+          },
+        )
+      : await api.POST(
+          "/api/organisations/{organisation_id}/projects/{project_id}/documents",
+          { params: { path }, body },
+        );
     if (!confirmed.data) {
       update(key, refusal(confirmed.response, confirmed.error));
       return;
     }
     update(key, { phase: "uploaded" });
-    await queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId) });
+    await queryClient.invalidateQueries({
+      queryKey: documentsKey(organisationId, projectId),
+    });
   }
 
   function upload(files: File[]) {
-    const added = files.map((file) => ({ key: crypto.randomUUID(), name: file.name, file }));
+    const added = files.map((file) => ({
+      key: crypto.randomUUID(),
+      name: file.name,
+      file,
+    }));
     setUploads((current) => [
       ...current,
-      ...added.map(({ key, name }) => ({ key, name, state: { phase: "uploading", progress: 0 } as const })),
+      ...added.map(({ key, name }) => ({
+        key,
+        name,
+        state: { phase: "uploading", progress: 0 } as const,
+      })),
     ]);
     for (const { key, file } of added) void uploadOne(key, file);
   }
@@ -203,7 +294,15 @@ export function useUploads(organisationId: string, projectId: string) {
   /** Uploads a newer edition of the Document; its current edition serves until the new one is Ready. */
   function replace(document: ProjectDocument, file: File) {
     const key = crypto.randomUUID();
-    setUploads((current) => [...current, { key, name: file.name, replacing: document.name, state: { phase: "uploading", progress: 0 } }]);
+    setUploads((current) => [
+      ...current,
+      {
+        key,
+        name: file.name,
+        replacing: document.name,
+        state: { phase: "uploading", progress: 0 },
+      },
+    ]);
     void uploadOne(key, file, document);
   }
 

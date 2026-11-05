@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from pathlib import PurePath
 
 from redis.asyncio import Redis
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
@@ -191,7 +191,8 @@ async def _document_with_hash(
     session: AsyncSession, project_id: uuid.UUID, content_hash: str
 ) -> Document | None:
     """The Project's Document whose current edition, or whose staged edition still being
-    ingested, has this content hash."""
+    ingested, has this content hash. A Failed edition is not a Duplicate, so its file can be
+    uploaded again, as a new Document or as the next edition."""
     staged = select(StagedEdition.document_id).where(
         StagedEdition.project_id == project_id,
         StagedEdition.content_hash == content_hash,
@@ -201,7 +202,13 @@ async def _document_with_hash(
         select(Document)
         .where(
             Document.project_id == project_id,
-            or_(Document.content_hash == content_hash, Document.id.in_(staged)),
+            or_(
+                and_(
+                    Document.content_hash == content_hash,
+                    Document.status != DocumentStatus.FAILED,
+                ),
+                Document.id.in_(staged),
+            ),
         )
         .order_by(Document.created_at)
         .limit(1)

@@ -53,6 +53,38 @@ async def test_uploading_an_identical_file_is_refused_with_a_link_to_the_existin
     assert len(stored(app)) == 2
 
 
+async def test_a_failed_documents_file_can_be_uploaded_again_as_a_new_document(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    failed = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    app.state.ingestion.converter.failure = None
+
+    retried = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+
+    listed = {d["id"]: d["status"] for d in await documents(owner, project_id)}
+    assert listed == {failed["id"]: "failed", retried["id"]: "ready"}
+
+
+async def test_a_failed_documents_file_can_be_uploaded_again_as_its_new_edition(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    failed = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    app.state.ingestion.converter.failure = None
+
+    retried = await replace(app, owner, project_id, failed["id"], "handbook.md", HANDBOOK)
+
+    assert retried.status_code == 202, retried.text
+    (listed,) = await documents(owner, project_id)
+    assert (listed["edition"], listed["status"], listed["replacement"]) == (2, "ready", None)
+    assert texts(await chunks(owner, project_id, failed["id"])) == [
+        "Everyone gets 25 days of annual leave."
+    ]
+
+
 # Deleting
 
 

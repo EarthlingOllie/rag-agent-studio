@@ -200,7 +200,7 @@ The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirme
 _Avoid_: Checksum, fingerprint, etag
 
 **Duplicate**:
-An upload whose Content hash matches a Document already in the Project (its current Edition, or a Staged edition still being ingested). It is refused, naming the Document that has the content.
+An upload whose Content hash matches a Document already in the Project (its current Edition, or a Staged edition still being ingested). It is refused, naming the Document that has the content. A Failed Document or Failed Staged edition holds no content, so its file is not a Duplicate and can be uploaded again, as a new Document or as the next Edition.
 _Avoid_: Copy, clash, repeat upload
 
 **Edition**:

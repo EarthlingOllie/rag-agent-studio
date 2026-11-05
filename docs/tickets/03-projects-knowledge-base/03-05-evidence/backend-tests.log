@@ -1,4 +1,4 @@
-$ HEAD 9249724 (code and tests; only evidence files uncommitted)
+$ HEAD 02d05eb plus the round-2 changes (uncommitted at run time)
 $ TEST_OBJECT_STORE_URL=http://localhost:57900 TEST_DATABASE_URL=...@localhost:57732/studio_test TEST_REDIS_URL=redis://localhost:57679/15 make test-backend
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
@@ -9,26 +9,27 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 847 items / 5 deselected / 842 selected
+collected 849 items / 5 deselected / 844 selected
 
 tests/integration/test_audit_events.py ...................               [  2%]
 tests/integration/test_bedrock_credentials.py .......................... [  5%]
 ............                                                             [  6%]
 tests/integration/test_chunk_storage.py ...                              [  7%]
 tests/integration/test_default_model.py ....................             [  9%]
-tests/integration/test_document_editions.py ............                 [ 10%]
+tests/integration/test_document_editions.py ..............               [ 11%]
 tests/integration/test_documents.py .....................                [ 13%]
 tests/integration/test_health.py ...                                     [ 13%]
 tests/integration/test_invites.py ..............................         [ 17%]
 tests/integration/test_logging.py .......                                [ 18%]
-tests/integration/test_mailer.py ........                                [ 19%]
-tests/integration/test_members.py ...............                        [ 20%]
+tests/integration/test_mailer.py {"timestamp": "2026-11-05T19:23:30.604942+00:00", "level": "INFO", "logger": "mail.log", "message": "('127.0.0.1', 39902) connection lost", "service": "api"}
+........                                [ 19%]
+tests/integration/test_members.py ...............                        [ 21%]
 tests/integration/test_mfa.py .....................................      [ 25%]
 tests/integration/test_migrations.py ..                                  [ 25%]
 tests/integration/test_no_secret_in_responses.py ....                    [ 26%]
-tests/integration/test_object_store.py .......                           [ 26%]
+tests/integration/test_object_store.py .......                           [ 27%]
 tests/integration/test_openapi.py ..                                     [ 27%]
-tests/integration/test_organisation_switcher.py .......                  [ 27%]
+tests/integration/test_organisation_switcher.py .......                  [ 28%]
 tests/integration/test_password_audit_events.py ..                       [ 28%]
 tests/integration/test_password_reset.py ...........                     [ 29%]
 tests/integration/test_prices.py ...................................     [ 33%]
@@ -180,6 +181,5 @@ app/worker/tasks.py                       4      0      0      0   100%
 TOTAL                                  4407      0    436      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-================ 842 passed, 5 deselected in 1035.41s (0:17:15) ================
-{"name": "anthropic.messages.create", "context": {"trace_id": "0x01a1ad04411589442d4ae2cbb29567f5", "span_id": "0x4e13e68bbd34334e", "trace_state": "[]"}, "kind": "SpanKind.CLIENT", "parent_id": null, "start_time": "2026-11-05T18:41:39.605602Z", "end_time": "2026-11-05T18:41:40.179623Z", "status": {"status_code": "OK"}, "attributes": {"server.address": "api.anthropic.com", "server.port": 443, "http.request.method": "POST", "http.route": "/v1/messages", "gen_ai.provider.name": "anthropic", "gen_ai.operation.name": "chat", "gen_ai.request.model": "claude-haiku-4-5", "gen_ai.request.max_tokens": 64000, "gen_ai.request.stream": true, "logfire.span_type": "span", "logfire.msg": "anthropic.messages.create", "url.scheme": "https", "url.path": "/v1/messages", "url.full": "https://api.anthropic.com/v1/messages", "http.response.status_code": 200, "gen_ai.response.time_to_first_chunk": 0.572185131, "gen_ai.response.id": "msg_01", "gen_ai.response.model": "claude-haiku-4-5", "anthropic.message.stop_reason": "end_turn", "gen_ai.usage.input_tokens": 3, "gen_ai.usage.output_tokens": 1}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]", "host.name": "vm", "host.arch": "x86_64", "host.id": "d165c2d88d894a4787be219662b439ad", "os.type": "linux", "os.version": "6.18.44-fc-v236", "service.instance.id": "db68695e-df3e-4521-973c-23e468576b29", "service.version": "92497243813990ce99cf6b4bf6bbc38c203293ad", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "test", "logfire.version": "5.4.0", "process.pid": 8006}, "schema_url": ""}}
-exit 0
+================ 844 passed, 5 deselected in 907.37s (0:15:07) =================
+exit=0

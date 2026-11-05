@@ -15,4 +15,4 @@ cd frontend && pnpm lint && pnpm typecheck
 > rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-03-05/frontend
 > tsc
 
-exit 0
+exit=0
