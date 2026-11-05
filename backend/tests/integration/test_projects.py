@@ -67,10 +67,16 @@ async def test_a_new_project_has_no_description_unless_given(owner: SignedUpMemb
 
 
 async def test_projects_are_listed_by_name(owner: SignedUpMember) -> None:
-    for name in ("sales", "HR", "Product support"):
+    for name in ("sales", "HR", "apple pie", "Product support"):
         await create_project(owner, name)
 
-    assert [p["name"] for p in await listed(owner)] == ["HR", "Product support", "sales"]
+    # Upper and lower case sort together, whatever the database's collation.
+    assert [p["name"] for p in await listed(owner)] == [
+        "apple pie",
+        "HR",
+        "Product support",
+        "sales",
+    ]
 
 
 async def test_the_list_shows_only_this_organisations_projects(
