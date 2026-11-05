@@ -1,0 +1,59 @@
+name: infra
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: fmt, validate, tflint, checkov, terraform test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - name: Install Terraform, TFLint and Checkov
+        run: scripts/ci/install-tools.sh terraform tflint checkov
+      - name: Run every infrastructure gate
+        run: make infra-check
+
+  plan:
+    name: terraform plan (demo)
+    # Runs on pull requests only, and only does anything once the OIDC role secret exists (plan section 6).
+    if: github.event_name == 'pull_request'
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for AWS access
+        id: aws
+        run: |
+          if [ -n "$AWS_ROLE_ARN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=terraform plan skipped::The AWS_DEPLOY_ROLE_ARN secret is not configured, so there is nothing to plan against."
+          fi
+      - name: Install Terraform
+        if: steps.aws.outputs.configured == 'true'
+        run: scripts/ci/install-tools.sh terraform
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.aws.outputs.configured == 'true'
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform plan
+        if: steps.aws.outputs.configured == 'true'
+        working-directory: infra/envs/demo
+        run: terraform init -input=false && terraform plan -input=false

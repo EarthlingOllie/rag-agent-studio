@@ -1,0 +1,101 @@
+name: deploy
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Build images only, or also apply or destroy envs/demo"
+        type: choice
+        options: [build, apply, destroy]
+        default: build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
+  # Empty until spec 09 creates the OIDC role and ECR repositories; every AWS step is skipped while it is.
+  AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+
+jobs:
+  images:
+    name: Build images (push on main when AWS is configured)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for AWS access
+        id: aws
+        run: |
+          if [ -n "$AWS_ROLE_ARN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Push skipped::AWS secrets are not configured. Images are built but not pushed."
+          fi
+      - name: Build the API and Studio images
+        run: make images IMAGE_TAG=${{ github.sha }}
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.aws.outputs.configured == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Log in to ECR
+        id: ecr
+        if: steps.aws.outputs.configured == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Push images to ECR
+        if: steps.aws.outputs.configured == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          for image in api studio; do
+            docker tag "rag-agent-studio/$image:$TAG" "$REGISTRY/rag-agent-studio/$image:$TAG"
+            docker push "$REGISTRY/rag-agent-studio/$image:$TAG"
+          done
+
+  terraform:
+    name: Apply or destroy envs/demo
+    if: github.event_name == 'workflow_dispatch' && inputs.action != 'build'
+    needs: images
+    runs-on: ubuntu-latest
+    environment: demo
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for AWS access
+        id: aws
+        run: |
+          if [ -n "$AWS_ROLE_ARN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=${{ inputs.action }} skipped::AWS secrets are not configured, so nothing is applied or destroyed."
+          fi
+      - name: Install Terraform
+        if: steps.aws.outputs.configured == 'true'
+        run: scripts/ci/install-tools.sh terraform
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.aws.outputs.configured == 'true'
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform ${{ inputs.action }}
+        if: steps.aws.outputs.configured == 'true'
+        working-directory: infra/envs/demo
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          terraform init -input=false
+          terraform "$ACTION" -input=false -auto-approve

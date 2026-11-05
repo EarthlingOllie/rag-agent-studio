@@ -1,0 +1,43 @@
+# Gate demo: with the worker stopped, the stack fixture fails the studio project and names the failing check.
+$ docker compose stop worker
+ Container rag0102-worker-1 Stopping 
+ Container rag0102-worker-1 Stopped 
+$ cd frontend && E2E_BASE_URL=http://localhost:15173 E2E_STACK_TIMEOUT_MS=15000 pnpm exec playwright test --project=studio
+
+Running 2 tests using 1 worker
+
+  ✘  1 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (0ms)
+  ✘  2 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (0ms)
+
+
+  1) [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational 
+
+    Error: The stack at http://localhost:15173 was not healthy within 15000 ms: /api/health/worker answered 503
+
+
+      39 |     if (problem === null) return;
+      40 |     if (Date.now() >= deadline) {
+    > 41 |       throw new Error(`The stack at ${baseURL} was not healthy within ${String(timeoutMs)} ms: ${problem}`);
+         |             ^
+      42 |     }
+      43 |     await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      44 |   }
+
+    attachment #1: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-smoke-Studio-smoke-t-20409-s-every-service-operational-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-smoke-Studio-smoke-t-20409-s-every-service-operational-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations 
+
+exit=1
+$ docker compose start worker
+ Container rag0102-redis-1 Waiting 
+ Container rag0102-postgres-1 Waiting 
+ Container rag0102-redis-1 Healthy 
+ Container rag0102-postgres-1 Healthy 
+ Container rag0102-worker-1 Starting 
+ Container rag0102-worker-1 Started 
