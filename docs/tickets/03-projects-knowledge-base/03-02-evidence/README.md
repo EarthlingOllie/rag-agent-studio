@@ -1,6 +1,6 @@
 # Evidence: ticket 03-02, Upload a Document to Ready
 
-Branch `ticket/03-02-upload-document-ready`, based on `origin/candidate` at `c8c68ba` (03-01, 02-01 and 02-05 merged). The claim commit `35b16d2`, the first on the branch, set Status `in-progress`. The code is at `b0e206b`. The commit after it only adds this folder and the ticket status.
+Branch `ticket/03-02-upload-document-ready`, based on `origin/candidate` at `c8c68ba` (03-01, 02-01 and 02-05 merged). The claim commit `35b16d2`, the first on the branch, set Status `in-progress`. The code is at `b0e206b`. The commits after it add only this folder, the ticket status, and a `.gitleaksignore` entry for the compose development key that `hoststack.env` repeats.
 
 All logs come from a fresh `git clone` of the branch from GitHub (`clean0302`), with these exceptions:
 - `mutation-proof.log` ran in the branch worktree.
