@@ -334,7 +334,7 @@ test("an Editor uploads a new edition, and the old one shows as Ready until the 
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Name", "Status", "Chunks", "Size", "Actions"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size", "Actions"]);
 
   await userEvent.upload(
     table.getByLabelText("New edition of handbook.pdf"),
@@ -369,9 +369,10 @@ test("an Editor uploads a new edition, and the old one shows as Ready until the 
   expect(after.getByText("Ready")).toBeInTheDocument();
   expect(after.queryByText(/New edition 2/)).not.toBeInTheDocument();
   expect(await after.findByRole("cell", { name: "6" })).toBeInTheDocument();
+  // Upload IDs count every request; the list read comes first.
   expect(
     requests.filter((r) => r.route === "replace").map((r) => r.body),
-  ).toEqual([{ upload_id: "u1" }]);
+  ).toEqual([{ upload_id: "u2" }]);
 }, 15000);
 
 test("a second new edition shows as soon as it is uploaded, after the first has replaced the Document", async () => {
@@ -490,7 +491,7 @@ test("choosing no file for a new edition uploads nothing", async () => {
   expect(
     screen.queryByRole("list", { name: "Uploads" }),
   ).not.toBeInTheDocument();
-  expect(requests).toEqual([]);
+  expect(requests.filter((r) => r.route !== "list")).toEqual([]);
 });
 
 test("a Document still processing can be deleted but not replaced", async () => {
@@ -598,7 +599,7 @@ test("an archived Project's Documents can't be replaced or deleted", async () =>
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Name", "Status", "Chunks", "Size"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size"]);
   expect(
     table.queryByRole("button", { name: /Delete/ }),
   ).not.toBeInTheDocument();

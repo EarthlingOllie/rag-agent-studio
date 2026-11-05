@@ -108,8 +108,7 @@ export function useDocuments(
   useEffect(() => {
     if (swapped)
       void queryClient.invalidateQueries({
-        queryKey: documentsKey(organisationId, projectId),
-        exact: true,
+        queryKey: [...documentsKey(organisationId, projectId), "list"],
       });
   }, [swapped, queryClient, organisationId, projectId]);
   return { isError: list.isError, data: documents };
