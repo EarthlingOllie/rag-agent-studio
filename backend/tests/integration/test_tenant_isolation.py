@@ -41,6 +41,8 @@ class ScopedRoute:
 
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}"),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events"),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets"),
 ]
 
 

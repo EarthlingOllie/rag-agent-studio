@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import audit
 from app.auth.passwords import hash_password, verify_password
 from app.tenancy.models import Member
 from app.tenancy.repository import create_organisation_with_new_owner
@@ -24,12 +25,21 @@ def normalise_email(email: str) -> str:
 async def sign_up(
     session: AsyncSession, *, name: str, email: str, password: str, organisation_name: str
 ) -> Member:
-    """Creates the Member, the Organisation and the Owner membership in one transaction."""
+    """Creates the Member, the Organisation, the Owner membership and the Audit Event of the
+    Organisation being created, in one transaction."""
     member = Member(name=name, email=normalise_email(email), password_hash=hash_password(password))
     try:
         async with session.begin():
-            await create_organisation_with_new_owner(
+            organisation = await create_organisation_with_new_owner(
                 session, organisation_name=organisation_name, owner=member
+            )
+            await audit.record(
+                session,
+                organisation_id=organisation.id,
+                actor_id=member.id,
+                action="organisation.created",
+                target=audit.AuditTarget("organisation", organisation.id),
+                after={"name": organisation.name},
             )
     except IntegrityError as exc:
         raise EmailAlreadyRegisteredError from exc
