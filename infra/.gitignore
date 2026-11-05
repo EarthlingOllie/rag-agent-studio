@@ -2,5 +2,3 @@
 *.tfstate
 *.tfstate.*
 crash.log
-# Modules are libraries; the bootstrap is applied from a workstation, so provider pins live in versions.tf.
-.terraform.lock.hcl

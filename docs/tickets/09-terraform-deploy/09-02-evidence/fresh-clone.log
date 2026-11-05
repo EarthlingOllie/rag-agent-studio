@@ -1,0 +1,124 @@
+$ git clone --branch ticket/09-02-network-module https://github.com/EarthlingOllie/rag-agent-studio fc0902
+HEAD afe600f02bbf1009a4da48bb9e2f270cd796638c
+$ terraform version; tflint --version; checkov --version
+Terraform v1.13.4
+TFLint version 0.59.1
+3.4.3
+# AWS provider comes from a local filesystem mirror of releases.hashicorp.com (registry.terraform.io is blocked here); see provider-mirror.log
+$ TF_CLI_CONFIG_FILE=<mirror config> make infra-check
+terraform fmt -check -recursive -diff infra
+== infra/envs/demo/
+Success! The configuration is valid.
+
+tests/demo.tftest.hcl... in progress
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/demo.tftest.hcl... tearing down
+tests/demo.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 16 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+terraform scan results:
+
+Passed checks: 45, Failed checks: 0, Skipped checks: 3
+
+
+exit=0
+$ git status --porcelain
+(end of status)

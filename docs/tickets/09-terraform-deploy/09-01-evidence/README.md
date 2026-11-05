@@ -21,11 +21,11 @@ Branch `ticket/09-01-state-bootstrap-oidc`. Each local log starts with its comma
 - `plan-gate` and `terraform plan (demo)` running on a real pull request with the `AWS_DEPLOY_ROLE_ARN` secret and `TF_STATE_BUCKET` variable set, including the PR comment. No pull request was opened (this run may not open PRs), so on GitHub the gate itself has only been seen skipped on a push; its logic is covered by the script test.
 - Native locking against real S3 (shown here against moto's conditional writes).
 - Whether `PowerUserAccess` plus the inline policy is enough for tickets 09-02 to 09-06 to apply; later tickets may need to widen the IAM statement (for example instance profiles for `fck-nat`).
-- Provider lock files: `.terraform.lock.hcl` is git-ignored because the registry is blocked here and lock files with hashes for every platform could not be generated. Commit one for `infra/bootstrap` and `infra/envs/demo` with `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64` once registry access exists.
+- Provider lock files: after merging 09-02 the branch follows its convention and commits `.terraform.lock.hcl` for `infra/bootstrap` and `infra/modules/ci-oidc` (AWS 6.72.0, h1 hash plus a zh hash for every platform in the release's SHA256SUMS; see [09-02 provider-mirror.log](../09-02-evidence/provider-mirror.log)). Re-run `terraform providers lock` against the real registry to confirm the h1 hashes for non-linux platforms.
 
 ## Sandbox notes
 
-- `registry.terraform.io` is blocked here, so the AWS provider 6.70.0 was downloaded from `releases.hashicorp.com`, checksum-verified, and served through a `filesystem_mirror` in a scratch `TF_CLI_CONFIG_FILE`. CI uses the registry directly (green in [ci-runs.log](ci-runs.log)).
+- `registry.terraform.io` is blocked here, so the AWS provider (6.70.0 originally, 6.72.0 after merging 09-02) was downloaded from `releases.hashicorp.com`, checksum-verified, and served through a `filesystem_mirror` in a scratch `TF_CLI_CONFIG_FILE`. CI uses the registry directly (green in [ci-runs.log](ci-runs.log)).
 - The GitHub API is blocked here, so `tflint --init` could not download the AWS ruleset; the checksum-verified 0.50.0 release zip was unpacked into `~/.tflint.d/plugins`. CI installs it through `tflint --init` with `GITHUB_TOKEN`.
 - `infra.yml` and `deploy.yml` were linted with actionlint 1.7.7 without shellcheck (not installed).
 

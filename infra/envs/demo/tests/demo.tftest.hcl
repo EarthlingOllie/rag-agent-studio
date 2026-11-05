@@ -1,4 +1,7 @@
 # The demo environment wires every module with one shared prefix and tag set. CI access (ci-oidc) belongs to infra/bootstrap.
+# The network module creates AWS resources, so the AWS provider is mocked: nothing here calls AWS.
+mock_provider "aws" {}
+
 run "wires_every_module_with_the_environment_prefix" {
   command = plan
 
@@ -18,6 +21,16 @@ run "wires_every_module_with_the_environment_prefix" {
   assert {
     condition     = output.tags == { Environment = "demo", Project = "rag-agent-studio" }
     error_message = "The environment's tags must carry the environment and project."
+  }
+
+  assert {
+    condition     = module.network.nat_mode == "fck-nat"
+    error_message = "The demo environment must egress through fck-nat (ADR-0010)."
+  }
+
+  assert {
+    condition     = module.network.availability_zones == tolist(["eu-west-2a", "eu-west-2b"])
+    error_message = "The demo VPC must span two AZs of its region."
   }
 }
 

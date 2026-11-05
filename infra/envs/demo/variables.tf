@@ -8,3 +8,14 @@ variable "environment" {
     error_message = "environment must be demo."
   }
 }
+
+variable "aws_region" {
+  description = "AWS region for the demo environment. Matches the AWS_REGION default in the CI workflows."
+  type        = string
+  default     = "eu-west-2"
+
+  validation {
+    condition     = can(regex("^[a-z]{2}(-[a-z]+)+-[0-9]$", var.aws_region))
+    error_message = "aws_region must be an AWS region name such as eu-west-2."
+  }
+}
