@@ -109,6 +109,16 @@ async def test_an_owner_adds_an_api_key_credential_for_each_provider(
     assert await listed(owner) == [credential]
     one = await owner.client.get(credentials_path(owner.organisation_id, credential["id"]))
     assert one.json() == credential
+    (event,) = await audit_events(owner, "credential.created")
+    assert event["actor"]["id"] == owner.member_id
+    assert event["target"] == {"type": "provider_credential", "id": credential["id"]}
+    assert event["after"] == {
+        "name": "Marketing",
+        "provider": provider,
+        "auth_kind": "api_key",
+        "capabilities": capabilities,
+        "masked_suffix": suffix,
+    }
 
 
 async def test_a_credential_can_be_limited_to_some_of_its_providers_capabilities(
@@ -163,8 +173,10 @@ async def test_surrounding_whitespace_is_trimmed_from_a_key(owner: SignedUpMembe
 
 
 async def test_names_are_unique_within_an_organisation(
-    owner: SignedUpMember, tenant_factory: TenantFactory
+    app: FastAPI, owner: SignedUpMember, tenant_factory: TenantFactory
 ) -> None:
+    verifier = _Switchable()
+    app.state.credential_verifier = verifier
     await added(owner, name="Legal OpenAI", provider="openai", api_key=OPENAI_KEY)
     other = await tenant_factory()
 
@@ -176,6 +188,8 @@ async def test_names_are_unique_within_an_organisation(
         "detail": "Another credential in this Organisation already has that name."
     }
     assert elsewhere.status_code == 201
+    # A taken name is refused before the key is sent to the provider.
+    assert len(verifier.checked) == 2
 
 
 class _AddsTheSameNameWhileChecking:
