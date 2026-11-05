@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from huggingface_hub import snapshot_download
+from huggingface_hub import HfApi, hf_hub_url, snapshot_download
 
 # Docling's default PDF layout model, and the local Embedding Model with its tokenizer.
 DOCLING_LAYOUT = "docling-project/docling-layout-heron"
@@ -32,12 +32,30 @@ def _on_disk(repo_id: str) -> bool:
     return True
 
 
+WEIGHT_SUFFIXES = (".safetensors", ".onnx", ".bin", ".pt")
+
+
 def _unreachable(repo_id: str) -> str | None:
-    """Why the model can't be downloaded, or None once it is. Downloading it, rather than only
-    asking Hugging Face's API about it, also catches a network that reaches huggingface.co but
-    not the CDN its weight files are served from."""
+    """Why the model can't be downloaded, or None once it is.
+
+    Hugging Face serves weight files from a CDN, not huggingface.co, so a network can reach
+    the one but not the other. The first byte of each weight file is fetched with a short
+    timeout first: a blocked CDN then skips in seconds, where ``snapshot_download`` would retry
+    for a long time. Only then is the model downloaded.
+    """
     try:
+        files = HfApi().list_repo_files(repo_id)
+        for name in files:
+            if name.endswith(WEIGHT_SUFFIXES):
+                httpx.get(
+                    hf_hub_url(repo_id, name),
+                    headers={"Range": "bytes=0-0"},
+                    timeout=10,
+                    follow_redirects=True,
+                ).raise_for_status()
         snapshot_download(repo_id)
+    except httpx.HTTPError as error:
+        return f"{error.request.url.host}: {type(error).__name__}: {str(error)[:300]}"
     except Exception as error:  # any failure means "can't be had here"
         return f"https://huggingface.co/{repo_id}: {type(error).__name__}: {str(error)[:300]}"
     return None
@@ -78,6 +96,7 @@ def require_models(*repo_ids: str) -> None:
             continue
         message = (
             f"Hugging Face model {repo_id} is not on disk and can't be downloaded ({reason}). "
-            "Run the live suite where huggingface.co is reachable, or in the worker image."
+            "Run the live suite where huggingface.co and its CDN are reachable, or in the worker "
+            "image."
         )
         _skip_or_fail(message)
