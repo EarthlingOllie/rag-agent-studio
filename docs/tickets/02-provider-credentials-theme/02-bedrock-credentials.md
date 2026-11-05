@@ -7,7 +7,7 @@
 **Blocked by:**
 - [02-01: API-key Provider Credentials](01-api-key-credentials.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Role-based credentials use a role ARN plus a platform-generated, per-Organisation external ID, and the Studio shows the trust policy to paste
 - [ ] Access key, secret and region are accepted as a fallback
