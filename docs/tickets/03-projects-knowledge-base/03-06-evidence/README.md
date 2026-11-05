@@ -42,20 +42,20 @@ Branch `ticket/03-06-tags`, based on `origin/candidate` at `0a6a9e7` (03-02 merg
 
 ## Checks
 
-Run from this worktree at the feature head (`63d112a` plus this evidence), one suite at a time, against a compose project `rag0306` started with `compose.sandbox.yml` (ports moved so it runs beside other tickets' stacks).
+Re-run after merging `origin/candidate` at `59d696a` (04-01, Agents and the Playground) into this branch (merge commit `fe55ba5`; conflicts in the router list, the OpenAPI and isolation route tables, the MSW default handlers and the generated client were resolved by keeping both sides, and the client regenerated). Run from this worktree, one suite at a time, against a compose project `rag0306` started with `compose.sandbox.yml` (ports moved so it runs beside other tickets' stacks). The Tags API and isolation verbose logs are from the pre-merge run at `63d112a`; the full backend run below includes them.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend lint + types | `make lint` (ruff check, ruff format --check, mypy --strict; eslint, tsc) | pass | [lint.log](lint.log) |
-| Backend tests | `uv run pytest` with `TEST_DATABASE_URL`, `TEST_REDIS_URL`, `TEST_OBJECT_STORE_URL` pointing at `rag0306` (includes the Alembic up/down round-trip) | 875 passed, 5 deselected (`live`); **100% line and branch** (4438 statements, 420 branches) | [backend-tests.log](backend-tests.log) |
-| Tags API tests (verbose) | `pytest -v tests/integration/test_tags.py` | 13 passed | [tags-api-tests.log](tags-api-tests.log) |
-| Isolation suite, Tag routes (verbose) | `pytest -v tests/integration/test_tenant_isolation.py -k tag` | 42 passed | [isolation-tests.log](isolation-tests.log) |
-| Frontend tests | `make test-frontend` (`vitest run --coverage`) | 29 files, 308 tests passed; **100%** statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Lint + types | `make lint` (ruff check, ruff format --check, mypy --strict; eslint, tsc) | pass (mypy: 210 files) | [lint.log](lint.log) |
+| Backend tests | `uv run pytest` with `TEST_DATABASE_URL`, `TEST_REDIS_URL`, `TEST_OBJECT_STORE_URL` pointing at `rag0306` (includes the Alembic up/down round-trip; single head `0013_tags`) | 960 passed, 5 deselected (`live`); **100% line and branch** | [backend-tests.log](backend-tests.log) |
+| Tags API tests (verbose, pre-merge) | `pytest -v tests/integration/test_tags.py` | 13 passed | [tags-api-tests.log](tags-api-tests.log) |
+| Isolation suite, Tag routes (verbose, pre-merge) | `pytest -v tests/integration/test_tenant_isolation.py -k tag` | 42 passed | [isolation-tests.log](isolation-tests.log) |
+| Frontend tests | `make test-frontend` (`vitest run --coverage`) | 31 files, 322 tests passed; **100%** statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| End-to-end | `build.sh` images, then `docker compose -p rag0306 -f docker-compose.yml -f compose.sandbox.yml up -d --wait` and `pnpm e2e --workers=1` with [e2e.env](e2e.env) | 43 passed, including `tags.spec.ts` (with axe) | [stack-up.log](stack-up.log), [e2e.log](e2e.log) |
-| Secret scan | `gitleaks git --log-opts=HEAD` and `gitleaks dir` on this folder | no leaks | [secret-scan.log](secret-scan.log) |
+| End-to-end | `build.sh` images from the merged head, then `docker compose -p rag0306 -f docker-compose.yml -f compose.sandbox.yml up -d --wait` and `pnpm e2e --workers=1` with [e2e.env](e2e.env) | 44 passed, including `tags.spec.ts` (with axe) | [stack-up.log](stack-up.log), [e2e.log](e2e.log) |
+| Secret scan | `gitleaks git --log-opts=origin/candidate..HEAD` (and earlier `gitleaks dir` on this folder) | no leaks | [secret-scan.log](secret-scan.log) |
 
-No dependency or lockfile changed on this branch, so `make audit` and the Trivy image scan are unchanged from candidate and were not re-run.
+No dependency, lockfile or `infra/` file changed on this branch, so `make audit`, the Trivy image scan and `make infra-check` (terraform fmt/validate/test) are unchanged from candidate and were not re-run.
 
 ## Gaps and judgement calls
 
