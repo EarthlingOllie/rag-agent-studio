@@ -29,18 +29,37 @@ def test_open_returns_what_was_sealed() -> None:
     assert b"JBSWY3DPEHPK3PXP" not in sealed
 
 
-def test_every_record_gets_a_fresh_data_key_and_nonce() -> None:
-    envelope = _envelope()
+class RecordingWrapper:
+    """The local key wrapper, noting each data key it is asked to wrap."""
+
+    def __init__(self) -> None:
+        self._inner = LocalKeyWrapper(KEY_A)
+        self.data_keys: list[bytes] = []
+
+    @property
+    def key_id(self) -> str:
+        return self._inner.key_id
+
+    def wrap(self, data_key: bytes) -> bytes:
+        self.data_keys.append(data_key)
+        return self._inner.wrap(data_key)
+
+    def unwrap(self, key_id: str, wrapped: bytes) -> bytes:
+        return self._inner.unwrap(key_id, wrapped)
+
+
+def test_every_record_gets_a_fresh_256_bit_data_key() -> None:
+    wrapper = RecordingWrapper()
+    envelope = EnvelopeEncryption(wrapper)
 
     first = envelope.seal(b"same secret", context=CONTEXT)
     second = envelope.seal(b"same secret", context=CONTEXT)
 
     assert first != second
-    # The wrapped data keys differ, not just the nonces: the header up to the nonce differs.
-    assert (
-        first[: len(first) - 12 - 16 - len(b"same secret")]
-        != second[: len(second) - 12 - 16 - len(b"same secret")]
-    )
+    assert len(wrapper.data_keys) == 2
+    assert wrapper.data_keys[0] != wrapper.data_keys[1]
+    assert all(len(key) == 32 for key in wrapper.data_keys)
+    assert envelope.open(first, context=CONTEXT) == envelope.open(second, context=CONTEXT)
 
 
 def test_the_format_starts_with_version_1_and_names_the_wrapping_key() -> None:
