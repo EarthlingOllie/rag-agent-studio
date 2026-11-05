@@ -4,6 +4,19 @@ Branch `ticket/03-02-upload-document-ready`, based on `origin/candidate` at `c8c
 
 **Status: done, with one recorded gap for human review.** Criteria 1–5 and 7–9 are met and evidenced. Criterion 6 is met as far as this sandbox allows: Hugging Face is blocked by the sandbox's egress policy (proxy `403 Forbidden`), so the live-model runs are an explicit **GAP** with the exact commands to close it (see Gaps). Marking the ticket done with that gap is the orchestrator's recorded best guess, flagged for a human to confirm.
 
+Round 4 (update from `origin/candidate` at `2245f85`, which adds 02-02 Bedrock credentials and 02-03 the model gateway), merge commit `e0b2bbb`:
+- Conflicts resolved by keeping both sides: dependencies in `backend/pyproject.toml`, test settings in `backend/tests/conftest.py`, the model imports in `backend/migrations/env.py`, and imports and lifespan wiring in `backend/app/main.py` (ingestion ports and the model gateway both start). `uv.lock` was re-locked, and the API client regenerated.
+- The Documents migration was a second Alembic head after 02-02's `0009_bedrock_credentials`. It is now `0010_documents`, revising `0009_bedrock_credentials` (file `20261105_0010_documents.py`); the migration round-trip tests pass.
+- Every log below was re-run on the merged tree, worktree clean at `e0b2bbb`, with services from compose project `rag0302` (Postgres `45732`, Redis `46679`, RustFS `49300`, Mailpit `48325`):
+  - [backend-tests.log](backend-tests.log): `make test-backend`: **756 passed**, 5 live deselected, 100% line and branch (`TOTAL 3945 0 376 0`).
+  - [lint.log](lint.log): `make lint`: ruff, ruff format, `mypy --strict`, eslint and `tsc` clean.
+  - [client-drift.log](client-drift.log): `make check-client`: up to date.
+  - [frontend-tests.log](frontend-tests.log): `make test-frontend`: **279 passed**, 100% coverage.
+  - [images.log](images.log): both images rebuilt through `build.sh` (sandbox CA, `WITH_PDF=false BUNDLE_MODELS=false`).
+  - [e2e.log](e2e.log): `make e2e` on the containerised stack from those images: **41 passed**.
+  - Infra: no file under `infra/` changes on this branch, so the Terraform checks were not re-run.
+- Earlier rounds' counts in the table below are kept as they were recorded.
+
 Round 3 (criterion 6, offline) added, without touching application code:
 - `backend/tests/fixtures/docling/northwind-handbook.pdf.json`: Docling output for the sample PDF, **hand-built** in the shape Docling's PDF pipeline produces (`build_pdf_docling_fixture.py`), because recording it needs the layout model. `record_docling_output.py` now records all three samples and overwrites it with real output when run with network access.
 - `test_a_pdf_is_chunked_by_heading_with_the_pages_each_chunk_came_from` (converter-plus-chunker seam) and `test_an_uploaded_pdf_becomes_ready_with_chunks_from_its_pages` (API plus task seam: the sample PDF is uploaded, the converter port gets its bytes and returns the PDF fixture, and the Document is Ready with Chunks on pages 1 and 2).
