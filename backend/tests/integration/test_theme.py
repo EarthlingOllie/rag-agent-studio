@@ -298,7 +298,10 @@ async def test_owners_saving_at_once_apply_one_after_the_other(
 
     assert [answer.status_code for answer in answers] == [200] * 20
     for owner, _ in pairs:
-        newest, oldest = await theme_events(owner)
-        assert oldest["before"] == {"radius": 12}
-        assert newest["before"] == oldest["after"]
-        assert (await theme_of(owner))["radius"] == newest["after"]["radius"]
+        # Both events carry their request's time, so their listed order may not be the order
+        # they were applied in; the chain of before and after values is.
+        events = await theme_events(owner)
+        (first,) = [e for e in events if e["before"] == {"radius": 12}]
+        (second,) = [e for e in events if e is not first]
+        assert second["before"] == first["after"]
+        assert (await theme_of(owner))["radius"] == second["after"]["radius"]
