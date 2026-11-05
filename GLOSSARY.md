@@ -30,7 +30,7 @@ A Member role that can manage Provider Credentials, Members and Organisation set
 A Member role that can manage Projects, Documents and Agents.
 
 **Audit Event**:
-An append-only record of who changed what in an Organisation, and when.
+An append-only record of who changed what in an Organisation, and when, with the values before and after the change. Secret-like values are never stored. Only Owners can see Audit Events.
 _Avoid_: Activity, history, log
 
 **Archive**:

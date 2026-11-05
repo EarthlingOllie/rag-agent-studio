@@ -43,6 +43,13 @@ app.core.settings.SettingsError: Invalid service settings. DATABASE_URL: Field r
 - **Isolation test.** `backend/tests/integration/test_tenant_isolation.py` lists every Organisation-scoped route in `ORGANISATION_SCOPED_ROUTES` and checks that another tenant's Member gets 404 and a signed-out visitor 401. A guard test fails when the OpenAPI document has an `{organisation_id}` route that isn't listed, so adding a route means adding it there (with a `prepare` step if it needs resources inside the Organisation).
 - **Backend test fixtures** (`backend/tests/conftest.py`): `client` (HTTPS base URL, so the `Secure` cookie round-trips), `new_client` (another browser on the same app), `tenant_factory` (signs a new Member up in a fresh client, so they own a new Organisation) and `owner`. The test database is migrated to head once per run.
 
+## Audit Events
+
+- **Recording.** `app.audit.record(session, organisation_id=…, actor_id=…, action=…, target=AuditTarget(type, id), before=…, after=…)` adds an Audit Event to the caller's transaction, so the change and its event commit or roll back together. `actor_id` is `None` for events no Member caused. Actions are dotted names (`organisation.created`, the first one, is recorded at sign-up). Keys matching a secret-like pattern (`password`, `secret`, `token`, `api_key`, `credential`, `private_key`, `authorization`, `cookie`, `session`, `recovery_codes`, …) have their values replaced by `[Redacted]` at any depth before anything is stored.
+- **Append-only.** Migration `0003_audit` adds triggers that refuse `UPDATE`, `DELETE` and `TRUNCATE` on `audit_events`.
+- **Reading.** `GET /api/organisations/{organisation_id}/audit-events` (filters `actor_id`, `action`, `start` inclusive, `end` exclusive, both with a time zone; `page`, `page_size` up to 100; newest first) and `GET …/audit-events/facets` (the actors and actions present, for filter menus). Both are Owner-only through the `OwnerScope` dependency (`app/tenancy/policy.py`): an Editor gets `403 {"detail": "Only Owners can do this"}`, another tenant's Member 404.
+- **Studio.** Organisation settings has a General tab and, for Owners only, an Audit tab (`/organisations/$organisationId/settings/audit`). Its date filters are whole UTC days, both inclusive.
+
 ## Telemetry and logs
 
 The API, worker and Beat are traced with OpenTelemetry through the Logfire SDK (`backend/app/core/telemetry.py`). FastAPI requests, SQLAlchemy queries, Celery tasks (from the request that queues them through to the worker that runs them) and outbound `httpx` calls are instrumented.
