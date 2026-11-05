@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-01: Agent and Playground tracer](01-agent-playground-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Full-text and vector results are fused with weighted RRF using the hybrid-weight setting
 - [ ] When no Chunk passes the minimum score, the Agent replies with its fallback text
