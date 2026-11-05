@@ -17,3 +17,7 @@ head 3620733eacb4fbfe503b895cb37fee42ea78ada0 (push, "Ticket 09-04: compute and 
   No file this ticket changes is involved; ticket 01-05 must allowlist those fingerprints in .gitleaksignore.
 
 claim 9a71040d4957d0c1eb21a2b51de1af9d2f0428a4: all 7 workflows success (infra 41955202244).
+
+PR #8 (head 94fcfa6, merge d14fed3): all jobs success except "gitleaks (full history)", the same 2 findings from
+ticket/01-05-audit-events commit 15952996. Fix: both fingerprints added to .gitleaksignore (fake test values).
+Local re-run over all origin branches with the new .gitleaksignore: "66 commits scanned ... no leaks found", exit 0.
