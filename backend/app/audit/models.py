@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Identity, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,11 @@ class AuditEvent(IdMixin, Base):
     target_id: Mapped[str | None] = mapped_column(String(200))
     before: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     after: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # The time of the insert itself, not of the transaction start (``now()``), so events
+    # recorded in one transaction keep their order.
     occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), server_default=func.clock_timestamp()
     )
+    # Increases with every insert. It breaks ties between events with the same time, such as
+    # backfilled ones, so "newest first" is always the reverse order of recording.
+    sequence: Mapped[int] = mapped_column(BigInteger, Identity(), unique=True)

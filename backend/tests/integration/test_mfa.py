@@ -535,7 +535,10 @@ async def test_the_audit_event_targets_the_member(
 
     async with app.state.sessionmaker() as session:
         event = await session.scalar(
-            select(AuditEvent).where(AuditEvent.actor_id == uuid.UUID(owner.member_id))
+            select(AuditEvent).where(
+                AuditEvent.actor_id == uuid.UUID(owner.member_id),
+                AuditEvent.action == "mfa.enrolled",
+            )
         )
     assert event is not None
     assert (event.target_type, str(event.target_id)) == ("member", owner.member_id)

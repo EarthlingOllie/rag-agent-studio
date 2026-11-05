@@ -12,13 +12,8 @@ import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { SignInPage } from "./auth/SignInPage";
 import { SignUpPage } from "./auth/SignUpPage";
-import {
-  HomeRedirect,
-  OrganisationSettingsPage,
-  OrganisationShell,
-  ProjectsPage,
-  SignedInShell,
-} from "./shell/SignedInShell";
+import { AuditSettingsPage, GeneralSettingsPage, OrganisationSettingsLayout } from "./settings/OrganisationSettings";
+import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
 import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
@@ -74,8 +69,10 @@ const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
   path: "/settings",
-  component: OrganisationSettingsPage,
+  component: OrganisationSettingsLayout,
 });
+const generalSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/", component: GeneralSettingsPage });
+const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
 const securityRoute = createRoute({
   getParentRoute: () => organisationRoute,
@@ -90,7 +87,7 @@ const routeTree = rootRoute.addChildren([
   mfaChallengeRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
-  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute, profileRoute, securityRoute])]),
+  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute]), profileRoute, securityRoute])]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {

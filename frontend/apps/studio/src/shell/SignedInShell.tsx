@@ -132,7 +132,3 @@ function Placeholder({ title, children }: { title: string; children: string }) {
 export function ProjectsPage() {
   return <Placeholder title="Projects">No Projects yet. Projects arrive in a later release.</Placeholder>;
 }
-
-export function OrganisationSettingsPage() {
-  return <Placeholder title="Organisation settings">Members, roles and security settings will appear here.</Placeholder>;
-}

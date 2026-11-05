@@ -314,10 +314,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Audit Events
+         * @description The Organisation's Audit Events, newest first, filtered by actor, action and time.
+         */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/audit-events/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Audit Facets
+         * @description The actors and actions that appear in the Organisation's Audit Events, for filtering.
+         */
+        get: operations["getAuditFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AuditActorOut */
+        AuditActorOut: {
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** AuditEventOut */
+        AuditEventOut: {
+            /** Action */
+            action: string;
+            actor: components["schemas"]["AuditActorOut"] | null;
+            /** After */
+            after: {
+                [key: string]: unknown;
+            } | null;
+            /** Before */
+            before: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            target: components["schemas"]["AuditTargetOut"];
+        };
+        /** AuditEventPage */
+        AuditEventPage: {
+            /** Items */
+            items: components["schemas"]["AuditEventOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** AuditFacetsOut */
+        AuditFacetsOut: {
+            /** Actions */
+            actions: string[];
+            /** Actors */
+            actors: components["schemas"]["AuditActorOut"][];
+        };
+        /** AuditTargetOut */
+        AuditTargetOut: {
+            /** Id */
+            id: string | null;
+            /** Type */
+            type: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -1175,6 +1277,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganisationOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                actor_id?: string | null;
+                action?: string | null;
+                /** @description Only events at or after this time */
+                start?: string | null;
+                /** @description Only events before this time */
+                end?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventPage"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getAuditFacets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditFacetsOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not found */
