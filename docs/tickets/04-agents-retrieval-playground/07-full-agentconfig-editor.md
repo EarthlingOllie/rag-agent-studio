@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-01: Agent and Playground tracer](01-agent-playground-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] All configuration groups (behaviour, retrieval, experience, guardrails) are editable; guardrail settings are stored only, until spec 08
 - [ ] Validation against the capability registry gives clear messages
