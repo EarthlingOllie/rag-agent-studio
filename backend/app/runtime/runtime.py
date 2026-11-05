@@ -2,7 +2,9 @@
 
 It knows nothing about HTTP, the Playground or the widget: callers give it the Conversation's
 remembered turns, the AgentConfig, the Instructions text, the Visitor input, the chat model
-(from the model gateway) and a ``retrieve`` function bound to the Project. The Pydantic AI
+(from the model gateway) and a ``retrieve`` function bound to the Project. When retrieval finds
+no Chunk at or above the minimum score, the turn is the Agent's fallback text and the model
+isn't asked. The Pydantic AI
 agent it builds registers no tools (ADR-0007).
 """
 
@@ -13,7 +15,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
 from app.agents.config import AgentConfig, Retrieval
-from app.retrieval.service import Candidate, RetrievalResult
+from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.prompt import Turn, data_blocks, history
 
 Retrieve = Callable[[str, Retrieval], Awaitable[RetrievalResult]]
@@ -26,12 +28,16 @@ class TokenEvent:
 
 @dataclass(frozen=True)
 class DoneEvent:
-    """The end of the turn: the full answer, token usage and the Chunks the model was given."""
+    """The end of the turn: the full answer, token usage, the Chunks the model was given and
+    the Chunks retrieval left out. ``fallback`` is true when no Chunk reached the minimum score,
+    so the answer is the fallback text and the model wasn't asked."""
 
     answer: str
     input_tokens: int
     output_tokens: int
     retrieved: list[Candidate]
+    excluded: list[Excluded]
+    fallback: bool = False
 
 
 TurnEvent = TokenEvent | DoneEvent
@@ -47,6 +53,19 @@ async def run_turn(
     retrieve: Retrieve,
 ) -> AsyncIterator[TurnEvent]:
     retrieved = await retrieve(visitor_input, config.retrieval)
+    if not retrieved.candidates:
+        # Nothing relevant was found: say so in the Agent's words instead of letting it guess.
+        fallback_text = config.behaviour.fallback_text
+        yield TokenEvent(fallback_text)
+        yield DoneEvent(
+            answer=fallback_text,
+            input_tokens=0,
+            output_tokens=0,
+            retrieved=[],
+            excluded=retrieved.excluded,
+            fallback=True,
+        )
+        return
     agent = Agent(model)
     messages = history(instructions, config.behaviour.system_prompt, turns)
     question = data_blocks(retrieved.candidates, visitor_input)
@@ -61,4 +80,5 @@ async def run_turn(
         input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens,
         retrieved=retrieved.candidates,
+        excluded=retrieved.excluded,
     )

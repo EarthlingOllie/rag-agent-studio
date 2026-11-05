@@ -9,14 +9,21 @@ function useAgentParams() {
   return useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId" });
 }
 
-/** The Agent's Draft: its system prompt and how many Chunks it is given. */
+/**
+ * The Agent's Draft: its system prompt and how many Chunks it is given. Saving keeps the Draft's
+ * other settings as they are (the full editor arrives with ticket 04-07).
+ */
 function DraftForm({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const save = useSaveDraft(organisationId, agent.project_id, agent.id);
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = formValues(event.currentTarget, ["system_prompt", "top_k"]);
-    save.mutate({ behaviour: { system_prompt: values.system_prompt }, retrieval: { top_k: Number(values.top_k) } });
+    const { behaviour, retrieval } = agent.draft;
+    save.mutate({
+      behaviour: { ...behaviour, system_prompt: values.system_prompt },
+      retrieval: { ...retrieval, top_k: Number(values.top_k) },
+    });
   }
 
   return (

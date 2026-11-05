@@ -30,7 +30,7 @@ test("the Agent page shows the Draft beside the Playground", async () => {
   );
 });
 
-test("an Editor edits the system prompt and top-k and saves the Draft", async () => {
+test("an Editor edits the system prompt and top-k and saves the Draft, keeping its other settings", async () => {
   const { requests } = setUp();
   renderStudio(agentPage);
   const prompt = await screen.findByLabelText("System prompt", {}, { timeout: 5000 });
@@ -43,7 +43,13 @@ test("an Editor edits the system prompt and top-k and saves the Draft", async ()
 
   expect(await screen.findByText("Draft saved")).toBeInTheDocument();
   expect(requests).toEqual([
-    { route: "draft", body: { behaviour: { system_prompt: "# Role\n\nBe brief." }, retrieval: { top_k: 3 } } },
+    {
+      route: "draft",
+      body: {
+        behaviour: { system_prompt: "# Role\n\nBe brief.", fallback_text: "Ask HR, please." },
+        retrieval: { top_k: 3, hybrid_weight: 0.7, min_score: 0.25 },
+      },
+    },
   ]);
 });
 

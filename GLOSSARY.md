@@ -231,6 +231,28 @@ _Avoid_: Embed key, slug
 **Top-k**:
 How many of the best-scoring Chunks an Agent is given with each question.
 
+**Hybrid search**:
+Retrieval that runs semantic (vector) search and keyword (full-text) search over a Project's Chunks and fuses their rankings with weighted reciprocal rank fusion, so exact terms such as product codes are found as well as similar meanings.
+_Avoid_: Vector search (for the whole), combined search
+
+**Hybrid weighting**:
+The share of the fused score an Agent gives semantic search, from 0 (keyword search alone) to 1 (semantic search alone); keyword search has the rest.
+_Avoid_: Alpha, semantic ratio
+
+**Relevance**:
+How well a Chunk matches a question, from 0 to 1: the better of its semantic score (cosine similarity) and its keyword score (the share of the question's terms it contains). The Minimum Score is compared with it; the fused score only orders Chunks.
+
+**Minimum Score**:
+The Relevance a Chunk needs to be given to an Agent's model. When no Chunk reaches it, the Agent replies with its Fallback Text.
+_Avoid_: Cut-off, similarity threshold
+
+**Fallback Text**:
+What an Agent replies, in its own words, when retrieval finds nothing relevant. The model isn't asked.
+_Avoid_: Default answer, "I don't know" message
+
+**Excluded Chunk**:
+A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, or outside the Top-k. It feeds the Trace.
+
 **Spotlighting**:
 Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.
 _Avoid_: Sandboxing, quoting

@@ -9,10 +9,12 @@ import uuid
 from collections.abc import AsyncIterator
 from decimal import Decimal
 
+import pytest
 from fastapi import FastAPI
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
 
+from app.agents.config import DEFAULT_FALLBACK_TEXT
 from app.conversations.models import Message
 from app.runtime.prompt import PREAMBLE
 from tests.agents import (
@@ -27,6 +29,13 @@ from tests.agents import (
 )
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path, upload
+from tests.knowledge_base import (
+    FILES,
+    PRODUCT,
+    PRODUCT_QUESTION,
+    UNRELATED_QUESTION,
+    knowledge_base,
+)
 
 LEAVE = "Everyone gets 25 days of annual leave a year."
 
@@ -194,10 +203,10 @@ async def test_the_question_needs_a_default_model(app: FastAPI, owner: SignedUpM
     assert saved.json()["messages"] == []
 
 
-async def test_a_project_without_documents_still_answers(
+async def test_a_project_without_documents_replies_with_the_fallback_text(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
-    answer_with(app, echo)
+    answer_with(app, never_called)
     await use_default_model(owner)
     project_id = await create_project(owner)
     agent = await create_agent(owner, project_id)
@@ -206,9 +215,78 @@ async def test_a_project_without_documents_still_answers(
     response = await ask(owner, project_id, agent["id"], conversation["id"], "Hello?")
 
     events = parse_sse(response.text)
-    parts = json.loads(events[0][1]["text"])
-    assert parts[-1][2].startswith("<<<RETRIEVED_CHUNKS>>>\n\n<<<END_RETRIEVED_CHUNKS>>>")
-    assert events[-1][1]["chunks"] == []
+    assert events[0] == ("token", {"text": DEFAULT_FALLBACK_TEXT})
+    assert events[1][1]["fallback"] is True
+    assert (events[1][1]["chunks"], events[1][1]["excluded"]) == ([], [])
+
+
+async def never_called(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+    raise AssertionError("the model was asked")
+    yield ""  # pragma: no cover
+
+
+async def test_with_nothing_relevant_the_agent_replies_with_its_fallback_text(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, never_called)
+    await use_default_model(owner)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    saved = await save_draft(
+        owner,
+        project_id,
+        agent_id,
+        {"behaviour": {"fallback_text": "Ask HR, please."}, "retrieval": {"min_score": 0.3}},
+    )
+    assert saved.status_code == 200, saved.text
+    conversation = await start_conversation(owner, project_id, agent_id)
+
+    response = await ask(owner, project_id, agent_id, conversation["id"], UNRELATED_QUESTION)
+
+    assert response.status_code == 200, response.text
+    (token, (kind, done)) = parse_sse(response.text)
+    assert token == ("token", {"text": "Ask HR, please."})
+    assert kind == "done"
+    assert done["fallback"] is True
+    assert done["chunks"] == []
+    # Every Chunk found was left out, and the stream says why.
+    assert len(done["excluded"]) == len(FILES)
+    assert {e["reason"] for e in done["excluded"]} == {"below_min_score"}
+    assert all(e["relevance"] < 0.3 for e in done["excluded"])
+    assert (done["input_tokens"], done["output_tokens"]) == (0, 0)
+    saved_conversation = await owner.client.get(
+        playground_path(owner, project_id, agent_id, conversation["id"])
+    )
+    _, answer = saved_conversation.json()["messages"]
+    assert answer["id"] == done["message_id"]
+    assert answer["content"] == "Ask HR, please."
+    assert (answer["input_tokens"], answer["output_tokens"]) == (0, 0)
+    assert Decimal(answer["cost_usd"]) == 0
+
+
+async def test_a_relevant_chunk_above_the_minimum_score_reaches_the_model(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, echo)
+    await use_default_model(owner)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    await save_draft(owner, project_id, agent_id, {"retrieval": {"min_score": 0.3}})
+    conversation = await start_conversation(owner, project_id, agent_id)
+
+    response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
+
+    (_, token), (_, done) = parse_sse(response.text)
+    question = json.loads(token["text"])[-1][2]
+    # Found by keyword search alone, it is the one Chunk given to the model.
+    assert f"[C1] product.txt\n{PRODUCT}" in question
+    assert "[C2]" not in question
+    assert done["fallback"] is False
+    (chunk,) = done["chunks"]
+    assert chunk["rank"] == 1
+    assert chunk["relevance"] == pytest.approx(3 / 6)
+    assert {e["reason"] for e in done["excluded"]} == {"below_min_score"}
+    assert chunk["chunk_id"] not in {e["chunk_id"] for e in done["excluded"]}
 
 
 async def test_questions_must_not_be_empty(app: FastAPI, owner: SignedUpMember) -> None:

@@ -11,7 +11,10 @@ from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path
 from tests.integration.test_provider_credentials import audit_events
 
-DEFAULT_DRAFT = {"behaviour": {"system_prompt": ""}, "retrieval": {"top_k": 5}}
+DEFAULT_DRAFT: dict[str, dict[str, object]] = {
+    "behaviour": {"system_prompt": "", "fallback_text": "Sorry, I don't know the answer to that."},
+    "retrieval": {"top_k": 5, "hybrid_weight": 0.5, "min_score": 0.0},
+}
 
 
 async def test_an_editor_creates_an_agent_with_a_public_id_and_a_default_draft(
@@ -59,8 +62,11 @@ async def test_the_draft_is_saved_and_read_back_exactly(owner: SignedUpMember) -
     project_id = await create_project(owner)
     agent = await create_agent(owner, project_id)
     draft = {
-        "behaviour": {"system_prompt": "# Role\n\nAnswer **briefly**.\n\n- Cite the handbook\n"},
-        "retrieval": {"top_k": 3},
+        "behaviour": {
+            "system_prompt": "# Role\n\nAnswer **briefly**.\n\n- Cite the handbook\n",
+            "fallback_text": "I don't know; ask HR.",
+        },
+        "retrieval": {"top_k": 3, "hybrid_weight": 0.7, "min_score": 0.25},
     }
 
     saved = await save_draft(owner, project_id, agent["id"], draft)
@@ -77,6 +83,12 @@ async def test_the_draft_is_saved_and_read_back_exactly(owner: SignedUpMember) -
     [
         {"retrieval": {"top_k": 0}},
         {"retrieval": {"top_k": 21}},
+        {"retrieval": {"hybrid_weight": -0.1}},
+        {"retrieval": {"hybrid_weight": 1.1}},
+        {"retrieval": {"min_score": -0.1}},
+        {"retrieval": {"min_score": 1.1}},
+        {"behaviour": {"fallback_text": ""}},
+        {"behaviour": {"fallback_text": "x" * 2_001}},
         {"behaviour": {"system_prompt": "x" * 20_001}},
         {"behaviour": {"system_prompt": "Hi", "temperature": 2}},
         {"unknown_group": {}},
@@ -99,7 +111,10 @@ async def test_a_partial_draft_takes_defaults_for_the_rest(owner: SignedUpMember
 
     saved = await save_draft(owner, project_id, agent["id"], {"retrieval": {"top_k": 8}})
 
-    assert saved.json()["draft"] == {"behaviour": {"system_prompt": ""}, "retrieval": {"top_k": 8}}
+    assert saved.json()["draft"] == {
+        "behaviour": DEFAULT_DRAFT["behaviour"],
+        "retrieval": {**DEFAULT_DRAFT["retrieval"], "top_k": 8},
+    }
 
 
 @pytest.mark.parametrize("name", ["", "   ", "x" * 201])

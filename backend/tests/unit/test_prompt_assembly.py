@@ -24,7 +24,18 @@ async def echo(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[s
 
 
 def candidate(rank: int, text: str) -> Candidate:
-    return Candidate(uuid.uuid4(), uuid.uuid4(), f"doc-{rank}.md", text, [], 1 / rank, rank)
+    return Candidate(
+        chunk_id=uuid.uuid4(),
+        document_id=uuid.uuid4(),
+        document_name=f"doc-{rank}.md",
+        text=text,
+        heading_path=[],
+        score=1 / rank,
+        relevance=1 / rank,
+        semantic_score=1 / rank,
+        keyword_score=None,
+        rank=rank,
+    )
 
 
 async def test_the_prompt_is_assembled_in_a_fixed_order_with_spotlighted_data() -> None:
@@ -86,13 +97,18 @@ async def test_the_prompt_is_assembled_in_a_fixed_order_with_spotlighted_data() 
 
 
 async def test_empty_instructions_and_system_prompt_are_left_out() -> None:
-    async def nothing(query: str, settings: Retrieval) -> RetrievalResult:
-        return RetrievalResult([])
+    async def one_chunk(query: str, settings: Retrieval) -> RetrievalResult:
+        return RetrievalResult([candidate(1, "Leave is 25 days.")])
 
     events = [
         event
         async for event in run_turn(
-            [], AgentConfig(), "", "Hi", model=FunctionModel(stream_function=echo), retrieve=nothing
+            [],
+            AgentConfig(),
+            "",
+            "Hi",
+            model=FunctionModel(stream_function=echo),
+            retrieve=one_chunk,
         )
     ]
 
