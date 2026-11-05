@@ -88,6 +88,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listDocuments": (f"{_PROJECT}/documents", "get"),
         "listDocumentStatuses": (f"{_PROJECT}/documents/statuses", "get"),
         "listChunks": (f"{_PROJECT}/documents/{{document_id}}/chunks", "get"),
+        "deleteDocument": (f"{_PROJECT}/documents/{{document_id}}", "delete"),
+        "replaceDocument": (f"{_PROJECT}/documents/{{document_id}}/editions", "post"),
         "listTags": (f"{_PROJECT}/tags", "get"),
         "createTag": (f"{_PROJECT}/tags", "post"),
         "renameTag": (f"{_PROJECT}/tags/{{tag_id}}", "patch"),

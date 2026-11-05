@@ -189,6 +189,18 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _a_document_and_its_next_edition(
+    owner: SignedUpMember, add_member: MemberFactory
+) -> Prepared:
+    path, _ = await _a_document(owner, add_member)
+    started = await documents.start_upload(owner, path["project_id"], "b.md", 3)
+    ticket = started.json()
+    await documents.put_to_memory_store(
+        documents.app_of(owner), ticket["url"], b"xyz", ticket["content_type"]
+    )
+    return path, {"upload_id": ticket["upload_id"]}
+
+
 async def _a_new_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {"project_id": await _make_project(owner)}, {"name": f"Tag {uuid.uuid4().hex[:8]}"}
 
@@ -281,6 +293,13 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents/statuses", EDITOR, _a_project),
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
+    ),
+    ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
+    ScopedRoute(
+        "POST",
+        PROJECTS + "/{project_id}/documents/{document_id}/editions",
+        EDITOR,
+        _a_document_and_its_next_edition,
     ),
     ScopedRoute("GET", PROJECTS + "/{project_id}/tags", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/tags", EDITOR, _a_new_tag),

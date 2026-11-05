@@ -1178,6 +1178,16 @@
             "title": "Name",
             "type": "string"
           },
+          "replacement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplacementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "size_bytes": {
             "title": "Size Bytes",
             "type": "integer"
@@ -1210,7 +1220,8 @@
           "chunk_count",
           "tags",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "replacement"
         ],
         "title": "DocumentOut",
         "type": "object"
@@ -1247,6 +1258,16 @@
             "title": "Id",
             "type": "string"
           },
+          "replacement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplacementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "$ref": "#/components/schemas/DocumentStatus"
           }
@@ -1255,7 +1276,8 @@
           "id",
           "status",
           "error_message",
-          "chunk_count"
+          "chunk_count",
+          "replacement"
         ],
         "title": "DocumentStatusOut",
         "type": "object"
@@ -2246,6 +2268,41 @@
         "title": "RenewInviteRequest",
         "type": "object"
       },
+      "ReplacementOut": {
+        "description": "A newer edition uploaded to replace the Document. While it is Queued or Processing the\ncurrent edition keeps serving; when it is Ready it becomes the Document's edition. A Failed\none leaves the Document as it was.",
+        "properties": {
+          "edition": {
+            "title": "Edition",
+            "type": "integer"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          }
+        },
+        "required": [
+          "edition",
+          "name",
+          "status",
+          "error_message"
+        ],
+        "title": "ReplacementOut",
+        "type": "object"
+      },
       "Retrieval-Input": {
         "additionalProperties": false,
         "properties": {
@@ -2789,6 +2846,42 @@
           }
         },
         "title": "UpdateProjectRequest",
+        "type": "object"
+      },
+      "UploadConflictResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "UploadConflictResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -6887,7 +6980,7 @@
         ]
       },
       "post": {
-        "description": "Records the uploaded file's content hash, creates the Document as Queued and starts\ningestion. The Document then moves to Processing and Ready (or Failed).",
+        "description": "Records the uploaded file's content hash, creates the Document as Queued and starts\ningestion. The Document then moves to Processing and Ready (or Failed). A file whose content\nis already in the Project is refused, naming the Document that has it.",
         "operationId": "confirmDocumentUpload",
         "parameters": [
           {
@@ -6946,11 +7039,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/UploadConflictResponse"
                 }
               }
             },
-            "description": "The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again."
+            "description": "This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it)."
           },
           "422": {
             "content": {
@@ -7114,6 +7207,83 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}": {
+      "delete": {
+        "description": "Deletes the Document and its Chunks: it stops being retrieved at once. Its stored files\nare deleted in the background. Records ``document.deleted``.",
+        "operationId": "deleteDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
       "get": {
         "description": "The Document's Chunks in order, with heading path and pages.",
@@ -7187,6 +7357,100 @@
           }
         },
         "summary": "List Chunks",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/editions": {
+      "post": {
+        "description": "Confirms an uploaded file as the Document's newer edition and starts ingesting it. The\ncurrent edition keeps serving until the new one is Ready; then the new one replaces it in\nplace, keeping the Document's ID and Tags. Refused while the Document is being processed.",
+        "operationId": "replaceDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadConflictResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). / This Document is still being processed. Try again once it is Ready or Failed."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The uploaded file doesn't match its content hash. Upload it again."
+          }
+        },
+        "summary": "Replace Document",
         "tags": [
           "documents"
         ]
