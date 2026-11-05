@@ -1,0 +1,73 @@
+# Evidence: ticket 04-06, Citations and Trace drawer
+
+Branch `ticket/04-06-citations-trace-drawer`, from `origin/candidate` at `a35cef1` (both blockers, 04-03 and 02-04, merged and `done`). The claim commit, the first on the branch, set Status `in-progress`.
+
+**Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to later tickets on purpose, plus what this sandbox can't run.
+
+## What was built
+
+- **Citations** (`backend/app/runtime/citations.py`, `backend/app/runtime/runtime.py`).
+  - `run_turn` now streams `TokenEvent`s, then one `CitationEvent(label, chunk)` per cited Chunk (in order first cited, each Chunk once), then `DoneEvent`, which gains `cited`.
+  - **Structured output where supported:** when the chat model's Pydantic AI profile has `supports_json_schema_output` (OpenAI chat models; Anthropic models that support it), the agent is built with `output_type=NativeOutput(CitedAnswer)`, where `CitedAnswer = {answer: str, citations: list[str]}`. This is the provider's native JSON-schema output, **not an output tool**, so ADR-0007 (no tools) still holds; the unit test asserts no function or output tools and `output_mode == "native"`. The answer text is streamed as the partial JSON arrives (`stream_output`), so tokens still stream.
+  - **Label parsing fallback:** any other model answers in text and its citations are the `[C1]`-style labels written in it.
+  - Either way each label resolves back to the Chunk given to the model with that label; labels that match no Chunk (e.g. `[C9]`) are dropped.
+  - The platform preamble now asks the model to cite excerpts by their label in square brackets.
+- **Streaming:** the Playground SSE stream gains a `citation` event, `{label, chunk_id, document_id, document_name, rank}`, between the last `token` and `done`.
+- **Message retrievals** (`message_retrievals` table, migration `0015_message_retrievals`, model `MessageRetrieval` in `app/conversations/models.py`). Saved with the answer in the same transaction: one row per Chunk retrieval found, with `chunk_id`, `document_id`, `score` (fused RRF), `relevance`, `rank` (the label number; null if not given to the model), `cited`, `excluded_reason` (`below_min_score` / `outside_top_k`) and a `position` that orders the Trace. Chunk and Document IDs have no foreign keys, so a Trace outlives a replaced or deleted edition (its name and text then read as null).
+- **Cost:** unchanged from 04-01: `app.pricing.table.cost` with the credential's pricing (overrides included) and the price table, stored on `messages.cost_usd`. This ticket adds a test that proves it with an override, and shows it in the Trace.
+- **Trace endpoint:** `GET /api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages/{message_id}/trace` (`getPlaygroundTrace`, Editor or Owner). `TraceOut`: model provider and name, input/output tokens, `cost_usd`, `first_token_ms`, `latency_ms`, `config_source`, `fallback` and `chunks[]` (`chunk_id`, `document_id`, `document_name`, `text`, `score`, `relevance`, `rank`, `cited`, `excluded_reason`). 404 for a question (user Message), another Conversation's answer, an unknown ID, or another Organisation.
+- **Studio** (`frontend/apps/studio/src/projects/AgentPage.tsx`, `TraceDrawer.tsx`, `agents.ts`):
+  - Each answer shows its citations as **chips** ("C1 leave-policy.md") in a "Sources" list, linking to `/organisations/…/projects/…/documents/{document_id}#chunk-{chunk_id}`, the Document viewer route.
+  - A **Trace** button on each saved answer opens the **Trace drawer** (a `dialog` labelled "Trace"; Close button or Escape closes it): model, tokens, cost, latency, a fallback note, and the "Retrieved Chunks" table (Chunk label, Document, excerpt, score, relevance, outcome: Cited / Given, not cited / Excluded: below the minimum score / Excluded: outside top-k).
+- **Fake chat adapter** (`app/gateway/fakes.py`, used by `docker compose` and e2e): now a text-only `FunctionModel` that appends ` [C1]` when it is given retrieved Chunks, so the e2e stack produces a citation. Without Chunks it says exactly what it said before.
+- Generated API client regenerated (`make gen-client`).
+
+## Test seams
+
+The [shared test seams](../../../specs/README.md#shared-test-seams), as the spec's Testing Decisions name them (no human was available to confirm seams; these are the pre-agreed ones):
+
+- **API seam** (`backend/tests/integration/test_citations_trace.py`, plus updates in `test_playground.py`): in-process API against real Postgres/pgvector and Redis, the deterministic embedder, the fixture Knowledge Base, and a Pydantic AI `FunctionModel` (`answer_with(..., structured=True|False)` sets its profile).
+- **Runtime contract** (`tests/unit/test_prompt_assembly.py`): the prompt-assembly contract test, now also observing citation events; a new test for structured output.
+- **Network seam** (`AgentPage.test.tsx`): MSW streaming handler with `citation` events and a Trace handler.
+- **End-to-end** (`frontend/e2e/tests/playground.spec.ts`): against the docker compose stack, with axe scans of the chips and the open drawer.
+- Guards updated: `test_tenant_isolation.py` lists the Trace route (cross-tenant 404, Editor role), `test_openapi.py` lists `getPlaygroundTrace`, `test_no_secret_in_responses.py` allows `TraceOut.input_tokens/output_tokens` (counts, not secrets), `test_migrations.py` round-trips and checks models against migrations.
+
+## Acceptance criteria
+
+| # | Criterion | Evidence |
+|---|---|---|
+| 1 | Citations come from structured output where supported, falling back to label parsing, and resolve to Chunks | **Code:** `run_turn` picks `_stream_structured` (`NativeOutput(CitedAnswer)`) when `model.profile["supports_json_schema_output"]`, else `_stream_text` + `labels_in`; `resolve()` maps labels to `Candidate`s.<br>**Tests:**<br>• `test_structured_output_gives_the_citations_where_the_model_supports_it`: the model streams JSON whose answer mentions `[C1]` but whose `citations` is `["C2"]`; tokens stream the answer text in several pieces (not JSON), and the one citation is C2, resolved to the rank-2 Chunk's ID. Proves the structured path wins.<br>• `test_labels_in_a_text_answer_are_streamed_as_citations`: a text model writes `[C` / `1]` split across tokens, `[C9]` and `[C1]` again; exactly one citation, C1 → the rank-1 Chunk, `leave.txt`.<br>• `test_structured_output_uses_the_providers_json_schema_output_not_a_tool` (unit): no function or output tools, `output_mode == "native"`.<br>• `test_the_prompt_is_assembled_in_a_fixed_order_with_spotlighted_data`: labels in a text answer become C1, C2 citation events.<br>• `test_the_fake_chat_model_cites_the_first_chunk_it_is_given`. |
+| 2 | Citation events are streamed, and Playground chips link to the Document viewer | **Code:** SSE `citation` event in `app/playground/api.py`; `askPlayground(…, onCitation)` and `Sources` chips in `AgentPage.tsx`.<br>**Tests:**<br>• API: the event order `token… citation done` in `test_labels_in_a_text_answer_are_streamed_as_citations`; `test_an_editor_asks_the_draft_and_the_answer_streams_back` updated.<br>• Network seam: `an answer's citations are chips linking to the cited Chunk in the Document viewer` (exact href `/organisations/{o}/projects/{p}/documents/{document_id}#chunk-{chunk_id}`); `an answer without citations shows no sources`.<br>• E2E: `playground.spec.ts` finds the chip `C1 northwind-staff-handbook.md` in the answer's "Sources" list with a `/projects/…/documents/…#chunk-…` href; axe passes. |
+| 3 | Each Chunk's retrieval is saved with score, rank, cited flag and any excluded reason | **Code:** `MessageRetrieval` model + migration `0015`; `_retrievals()` in `app/playground/service.py`, written in the answer's transaction.<br>**Tests** (read back through the Trace API):<br>• `test_the_trace_shows_the_model_usage_and_every_chunk_retrieved`: all 6 fixture Chunks saved; the product Chunk with rank 1, `cited: true`, its streamed score and relevance and no reason; the other 5 `below_min_score`, rank null, not cited, ordered by score.<br>• `test_chunks_given_but_not_cited_and_chunks_outside_top_k_are_traced`: top-k 2, nothing cited → ranks 1 and 2 `cited: false`, the rest `outside_top_k`.<br>• `test_a_fallback_reply_is_traced_with_the_chunks_it_left_out`: a fallback reply still saves every excluded Chunk.<br>• `test_the_migrations_match_the_models`, `test_migrations_upgrade_to_head_and_downgrade_to_base`. |
+| 4 | Cost is computed with the cost function and stored on the Message | **Code:** `answer()` in `app/playground/service.py` calls `app.pricing.table.cost(credential_pricing(...), model, usage, now, price_table(...))` and stores `cost_usd` (from 04-01).<br>**Tests:**<br>• `test_the_cost_is_worked_out_with_the_credentials_prices`: an Owner overrides gpt-4.1-mini to $1 / $3 per million tokens; the Trace's and the saved Message's `cost_usd` equal exactly `(input·1 + output·3) / 10⁶`.<br>• `test_the_trace_shows_the_model_usage_and_every_chunk_retrieved`: platform price > 0. Fallback reply: cost 0. |
+| 5 | A Trace endpoint and a Trace drawer show all of the above | **Code:** `get_trace` route and `service.get_trace`; `TraceDrawer.tsx`.<br>**Tests:**<br>• API: the four Trace tests above (model, tokens, cost, first-token and total latency, fallback flag, every Chunk with Document name, text, score, relevance, rank, cited, reason); `test_traces_are_only_for_answers_in_the_conversation` (6 × 404 cases); tenant-isolation guard for the new route.<br>• Network seam: `the Trace drawer shows the model, usage, cost, latency and every Chunk retrieved` (exact table rows incl. a deleted Document), `the Trace of a fallback reply says no Chunk was relevant enough, and Escape closes it` (unknown cost), `a Trace that can't be loaded says so`.<br>• E2E: opens the Trace, sees `anthropic · claude-haiku-4-5`, tokens, a dollar cost, latency, and the first row `C1` … `Cited`; axe passes with the drawer open; Close hides it. |
+| 6 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams above. Backend gate: **100.00%** lines and branches (5342 statements, 520 branches). Frontend gate: **100%** (1807 statements, 1048 branches). See Results. |
+| 7 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | `GLOSSARY.md` gains **Chunk label**, **Citation** and **Message retrieval**; **Trace** is updated to what it now holds. No ADR changed: structured output uses native JSON-schema output rather than an output tool, so ADR-0007's "no tools" holds (asserted by the unit test). |
+
+## Results
+
+All local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). `origin/candidate` was still `a35cef1` when these ran.
+
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Backend tests + coverage gate | `make test-backend` against `rag0406-*` Postgres/pgvector, Redis, RustFS | 1021 passed, 5 deselected (live); coverage 100.00%; exit 0 | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | 31 files, 337 tests passed; 100% | [frontend-tests.log](frontend-tests.log) |
+| Lint and type-check | `make lint` (ruff, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
+| API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` | no leaks, no known vulnerabilities | [security.log](security.log) |
+| Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0406`) | **Final run: 45 passed, exit 0** (fresh stack after a container restart, lower load). Earlier runs under load average 19–25: `playground.spec.ts` passed every time; `tags.spec.ts` (03-06) timed out twice and passed on re-run (see gaps). All runs are in the log, the final one last. | [e2e.log](e2e.log) |
+| Infra | terraform | not run: no infra change | n/a |
+
+## Gaps and best guesses
+
+- **Document viewer route:** the chips link to `/organisations/{o}/projects/{p}/documents/{document_id}#chunk-{chunk_id}`, the route ticket 03-03 (Document viewer) adds. 03-03 is not yet merged into `candidate`, so until it is, that URL shows the Studio's not-found page; scrolling to the `#chunk-…` anchor is for the viewer to honour. The link is a plain `<a href>` so it does not depend on the route tree (a typed `<Link>` to a route that doesn't exist yet would not compile). Best guess, recorded instead of asking.
+- **Left to later tickets:** Guardrail outcomes in the Trace (spec 08); Version in the Trace (spec 05); provider errors as typed events (04-08); the `citations` on/off Retrieval setting and showing citations to Visitors (04-07 / spec 06); Tag-scoping and reranker exclusion reasons (04-04, 04-05) will add `excluded_reason` values; the column is a free string (40 chars) and the API type is the retrieval module's `ExcludedReason` literal, so they extend it there.
+- **Best guesses:**
+  - Citation events are sent after the last token rather than as each label appears: structured citations only exist once the JSON is complete, and one rule for both paths keeps the stream simple.
+  - `rank` is null for excluded Chunks (they were never given a label); `position` keeps retrieval's order for them.
+  - `fallback` in the Trace is derived (no Chunk was given to the model) rather than stored.
+  - The fake chat adapter changed from `TestModel` to a text-only `FunctionModel` so e2e has a citation; its reply without Chunks is unchanged, so existing tests that assert it still pass.
+  - Parallel tickets that also add migration `0015` will need to re-parent at merge, as 03-06 did.
+- **Flaky `tags.spec.ts` under load:** the machine's load average was 19–25 (four tickets building at once). 03-06's Tags journey failed at two different steps in two full runs and passed when re-run with the playground spec. This ticket changes no Tags or Documents code (`git diff origin/candidate -- frontend/apps/studio/src/projects/TagsPanel.tsx DocumentsTab.tsx frontend/e2e/tests/tags.spec.ts` is empty), so it is recorded as a pre-existing timing flake rather than fixed here. The final full run on a quieter machine passed all 45 tests.
+- **Sandbox limits** (as 04-03): images built with `WITH_PDF=false BUNDLE_MODELS=false`, e2e with `EMBEDDER=fake` (Hugging Face blocked). The live suite and Trivy scan were not run. No dependencies added.
