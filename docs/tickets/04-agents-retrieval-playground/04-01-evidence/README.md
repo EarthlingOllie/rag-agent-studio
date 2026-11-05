@@ -46,7 +46,19 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-RESULTS_PLACEHOLDER
+All runs are local (GitHub Actions is down; the user authorised merging on local results). Suites ran one at a time.
+
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Backend tests + coverage gate | `make test-backend` against the `rag0401` Postgres/pgvector, Redis and RustFS containers | **899 passed**, 5 deselected (live); coverage **100.00%** lines and branches (4671 statements, 426 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **30 files, 308 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
+| API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
+| Security | gitleaks (this branch), pip-audit, pnpm audit | no leaks, no known vulnerabilities | [security.log](security.log) |
+| Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` | **42 passed, 1 failed**; the new `playground.spec.ts` passed. The failure was the pre-existing `mfa.spec.ts` enrol test (01-11), a timing failure under machine load; it is untouched by this ticket and passed on re-run (2/2) | [e2e.log](e2e.log), [e2e-mfa-rerun.log](e2e-mfa-rerun.log) |
+
+The last line of `backend-tests.log` is a telemetry span the console exporter flushes at exit. It is from the gateway's fake Anthropic transport (`msg_01`), not a real provider call.
 
 ## Gaps and best guesses
 
@@ -65,6 +77,7 @@ RESULTS_PLACEHOLDER
 - **Best guess, recorded instead of asking.** A mid-stream provider failure currently ends the stream without a `done` event. The Studio shows "Something went wrong" and drops the half answer, and the question stays saved without an answer. The runtime skips such unanswered questions when building the remembered turns (`test_an_unanswered_question_is_not_remembered`). 04-08 turns provider failures into typed `error` events.
 - **Sandbox limits:**
   - The images are built with `WITH_PDF=false BUNDLE_MODELS=false` and the e2e stack runs `EMBEDDER=fake`, as in 03-02, because Hugging Face is blocked here.
+  - The Trivy image scan (`make image-scan`) was not run for this ticket: the sandbox images are built without PDF and models, so a scan would not represent the shipped image. The images change only by this ticket's Python and TypeScript sources, no new dependencies.
   - No live-suite test was added for a real chat model. That needs a real provider key, which this sandbox must not use.
   - The machine ran eight tickets' suites at once (load average 35–290 on 4 CPUs). Pre-existing tests timed out at random under that load in some runs; see the results above for what was done about it.
 
@@ -75,4 +88,4 @@ RESULTS_PLACEHOLDER
 | `build.sh` | Sandbox-only `make images`: the committed Dockerfiles plus the egress proxy CA, PDF and models off |
 | `compose.sandbox.yml`, `e2e.env` | Port and image override, and environment, for `make e2e` beside other tickets' stacks |
 | `images.log` | The two image builds |
-| `backend-tests.log`, `frontend-tests.log`, `lint.log`, `client-drift.log`, `e2e.log` | The runs summarised under Results |
+| `backend-tests.log`, `frontend-tests.log`, `lint.log`, `client-drift.log`, `security.log`, `e2e.log`, `e2e-mfa-rerun.log` | The runs summarised under Results |
