@@ -1,0 +1,75 @@
+$ (fresh clone @ f9e1acf) cd backend && TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:5432/studio_test_0111_clean TEST_REDIS_URL=redis://localhost:6379/11 uv run pytest -v --no-cov tests/unit/test_envelope_encryption.py tests/integration/test_mfa.py tests/integration/test_settings.py tests/integration/test_openapi.py
+
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0111/backend/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0111/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 60 items
+
+tests/unit/test_envelope_encryption.py::test_open_returns_what_was_sealed PASSED [  1%]
+tests/unit/test_envelope_encryption.py::test_every_record_gets_a_fresh_256_bit_data_key PASSED [  3%]
+tests/unit/test_envelope_encryption.py::test_the_format_starts_with_version_1_and_names_the_wrapping_key PASSED [  5%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[0] PASSED [  6%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[1] PASSED [  8%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[5] PASSED [ 10%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[30] PASSED [ 11%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[60] PASSED [ 13%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[-20] PASSED [ 15%]
+tests/unit/test_envelope_encryption.py::test_tampering_with_any_byte_is_detected[-1] PASSED [ 16%]
+tests/unit/test_envelope_encryption.py::test_truncated_records_are_refused PASSED [ 18%]
+tests/unit/test_envelope_encryption.py::test_a_record_moved_to_another_context_does_not_open PASSED [ 20%]
+tests/unit/test_envelope_encryption.py::test_a_record_sealed_under_another_key_does_not_open PASSED [ 21%]
+tests/unit/test_envelope_encryption.py::test_a_wrapped_key_under_the_right_key_id_but_tampered_is_refused PASSED [ 23%]
+tests/unit/test_envelope_encryption.py::test_unknown_format_versions_are_refused PASSED [ 25%]
+tests/unit/test_envelope_encryption.py::test_the_local_key_wrapper_needs_a_32_byte_base64_key[not base64!] PASSED [ 26%]
+tests/unit/test_envelope_encryption.py::test_the_local_key_wrapper_needs_a_32_byte_base64_key[c2hvcnQ=] PASSED [ 28%]
+tests/integration/test_mfa.py::test_the_test_totp_generator_matches_rfc_6238 PASSED [ 30%]
+tests/integration/test_mfa.py::test_a_new_member_has_mfa_off PASSED      [ 31%]
+tests/integration/test_mfa.py::test_mfa_routes_need_a_signed_in_member PASSED [ 33%]
+tests/integration/test_mfa.py::test_enrolment_shows_a_qr_code_for_an_otpauth_uri PASSED [ 35%]
+tests/integration/test_mfa.py::test_enrolment_needs_a_confirming_code PASSED [ 36%]
+tests/integration/test_mfa.py::test_confirming_without_starting_enrolment_is_refused PASSED [ 38%]
+tests/integration/test_mfa.py::test_starting_enrolment_again_replaces_the_unconfirmed_secret PASSED [ 40%]
+tests/integration/test_mfa.py::test_enrolling_twice_is_refused PASSED    [ 41%]
+tests/integration/test_mfa.py::test_ten_single_use_recovery_codes_are_shown_once PASSED [ 43%]
+tests/integration/test_mfa.py::test_recovery_codes_and_the_totp_secret_are_not_stored_in_the_clear PASSED [ 45%]
+tests/integration/test_mfa.py::test_sign_in_for_an_mfa_member_is_pending_until_a_code_is_given PASSED [ 46%]
+tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted[-2-False] PASSED [ 48%]
+tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted[-1-True] PASSED [ 50%]
+tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted[1-True] PASSED [ 51%]
+tests/integration/test_mfa.py::test_codes_one_step_either_side_are_accepted[2-False] PASSED [ 53%]
+tests/integration/test_mfa.py::test_a_wrong_code_keeps_the_sign_in_pending PASSED [ 55%]
+tests/integration/test_mfa.py::test_a_code_cannot_be_used_twice PASSED   [ 56%]
+tests/integration/test_mfa.py::test_five_wrong_codes_end_the_pending_sign_in PASSED [ 58%]
+tests/integration/test_mfa.py::test_verify_without_a_pending_sign_in_asks_to_sign_in_again PASSED [ 60%]
+tests/integration/test_mfa.py::test_a_recovery_code_completes_sign_in_once PASSED [ 61%]
+tests/integration/test_mfa.py::test_another_members_recovery_code_does_not_work PASSED [ 63%]
+tests/integration/test_mfa.py::test_disabling_mfa_needs_the_password_and_a_code PASSED [ 65%]
+tests/integration/test_mfa.py::test_a_wrong_password_with_a_good_code_does_not_use_the_code PASSED [ 66%]
+tests/integration/test_mfa.py::test_a_recovery_code_can_disable_mfa PASSED [ 68%]
+tests/integration/test_mfa.py::test_disabling_when_mfa_is_off_is_refused PASSED [ 70%]
+tests/integration/test_mfa.py::test_recovery_codes_can_be_replaced_with_a_code PASSED [ 71%]
+tests/integration/test_mfa.py::test_replacing_recovery_codes_needs_mfa_on PASSED [ 73%]
+tests/integration/test_mfa.py::test_enrolment_disabling_and_recovery_code_use_are_audit_events PASSED [ 75%]
+tests/integration/test_mfa.py::test_failed_attempts_record_no_audit_events PASSED [ 76%]
+tests/integration/test_mfa.py::test_audit_events_are_recorded_in_every_organisation_of_the_member PASSED [ 78%]
+tests/integration/test_mfa.py::test_the_audit_event_targets_the_member PASSED [ 80%]
+tests/integration/test_mfa.py::test_two_sign_ins_racing_with_one_code_let_only_one_in PASSED [ 81%]
+tests/integration/test_mfa.py::test_something_that_is_neither_kind_of_code_is_incorrect PASSED [ 83%]
+tests/integration/test_mfa.py::test_signing_in_again_on_a_signed_in_browser_ends_the_old_session_while_pending PASSED [ 85%]
+tests/integration/test_mfa.py::test_if_mfa_is_turned_off_while_a_sign_in_is_pending_it_must_start_again PASSED [ 86%]
+tests/integration/test_mfa.py::test_without_an_injected_clock_codes_follow_the_system_clock PASSED [ 88%]
+tests/integration/test_mfa.py::test_a_pending_sign_in_expires PASSED     [ 90%]
+tests/integration/test_settings.py::test_startup_fails_fast_naming_a_missing_required_setting PASSED [ 91%]
+tests/integration/test_settings.py::test_startup_fails_fast_naming_an_invalid_setting PASSED [ 93%]
+tests/integration/test_settings.py::test_startup_fails_fast_on_a_local_key_wrapper_key_that_is_not_32_bytes[not base64!] PASSED [ 95%]
+tests/integration/test_settings.py::test_startup_fails_fast_on_a_local_key_wrapper_key_that_is_not_32_bytes[c2hvcnQ=] PASSED [ 96%]
+tests/integration/test_openapi.py::test_openapi_document_describes_every_endpoint PASSED [ 98%]
+tests/integration/test_openapi.py::test_openapi_document_is_rendered_deterministically PASSED [100%]
+
+============================= 60 passed in 31.74s ==============================
+
+exit code: 0

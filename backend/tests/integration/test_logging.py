@@ -24,7 +24,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from app.main import create_app
 from app.worker.celery_app import celery_app
-from tests.conftest import TEST_DATABASE_URL, TEST_REDIS_URL
+from tests.conftest import TEST_DATABASE_URL, TEST_LOCAL_KEY_WRAPPER_KEY, TEST_REDIS_URL
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 MESSAGE_TEXT = "please cancel my order 8812"
@@ -120,6 +120,7 @@ def _service_env() -> dict[str, str]:
         ENVIRONMENT="test",
         DATABASE_URL=TEST_DATABASE_URL,
         REDIS_URL=TEST_REDIS_URL,
+        LOCAL_KEY_WRAPPER_KEY=TEST_LOCAL_KEY_WRAPPER_KEY,
         PYTHONUNBUFFERED="1",
     )
     return env
