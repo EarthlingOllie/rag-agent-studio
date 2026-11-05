@@ -8,7 +8,7 @@
 - [02-05: Theme editor](05-theme-editor.md)
 - [03-02: Upload a Document to Ready](../03-projects-knowledge-base/02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Logo and avatar are uploaded through presigned uploads via the object-store port, restricted by image type and size
 - [ ] Images show in the Theme preview
