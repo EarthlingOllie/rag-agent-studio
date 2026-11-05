@@ -13,8 +13,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
 
-# The MFA tables belong to the Member, so they sit at the platform level with ``members``.
-PLATFORM_TABLES = frozenset({"organisations", "members", "mfa_factors", "mfa_recovery_codes"})
+# Tables that belong to no single Organisation: Organisations themselves, Members (who can
+# belong to several) and per-Member auth state such as password reset tokens and MFA.
+PLATFORM_TABLES = frozenset(
+    {"organisations", "members", "password_reset_tokens", "mfa_factors", "mfa_recovery_codes"}
+)
 
 
 class Role(enum.StrEnum):

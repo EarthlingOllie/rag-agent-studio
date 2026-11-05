@@ -13,11 +13,18 @@ x-backend: &backend
     LOCAL_KEY_WRAPPER_KEY: ${LOCAL_KEY_WRAPPER_KEY:-bG9jYWwtZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldCE=}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+    # Email goes to Mailpit; read it at http://localhost:8025.
+    MAILER: smtp
+    SMTP_HOST: mailpit
+    SMTP_PORT: "1025"
+    STUDIO_URL: ${STUDIO_URL:-http://localhost:5173}
   depends_on:
     postgres:
       condition: service_healthy
     redis:
       condition: service_healthy
+    mailpit:
+      condition: service_started
 
 services:
   postgres:

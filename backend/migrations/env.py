@@ -17,7 +17,7 @@ if config.attributes.get("configure_logger", True):
     configure_logging("migrations")
 
 # Every model registers its table on Base.metadata; importing the modules is enough.
-_MODEL_MODULES = (tenancy_models, auth_models, audit_models)
+_MODEL_MODULES = (tenancy_models, audit_models, auth_models)
 target_metadata = Base.metadata
 
 

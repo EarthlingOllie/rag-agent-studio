@@ -22,7 +22,7 @@ import segno
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.audit.service import Target, record
+from app.audit.service import AuditTarget, record
 from app.auth.models import MfaFactor, RecoveryCode
 from app.auth.passwords import verify_password
 from app.core.clock import Clock
@@ -243,12 +243,12 @@ class Mfa:
             select(Membership.organisation_id).where(Membership.member_id == member_id)
         )
         for organisation_id in organisation_ids:
-            record(
+            await record(
                 self._session,
                 organisation_id=organisation_id,
-                actor_member_id=member_id,
+                actor_id=member_id,
                 action=action,
-                target=Target("member", member_id),
+                target=AuditTarget("member", member_id),
                 before=before,
                 after=after,
             )

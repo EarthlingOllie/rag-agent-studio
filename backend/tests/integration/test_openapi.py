@@ -26,6 +26,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "verifyMfa": ("/api/auth/mfa/verify", "post"),
         "replaceRecoveryCodes": ("/api/auth/mfa/recovery-codes", "post"),
         "disableMfa": ("/api/auth/mfa/disable", "post"),
+        "updateProfile": ("/api/auth/me", "patch"),
+        "changePassword": ("/api/auth/me/password", "post"),
+        "requestPasswordReset": ("/api/auth/password-reset", "post"),
+        "completePasswordReset": ("/api/auth/password-reset/complete", "post"),
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
     }
 

@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 
 import { MfaChallengePage } from "./auth/MfaChallengePage";
+import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { SignInPage } from "./auth/SignInPage";
 import { SignUpPage } from "./auth/SignUpPage";
 import {
@@ -17,6 +19,7 @@ import {
   ProjectsPage,
   SignedInShell,
 } from "./shell/SignedInShell";
+import { ProfilePage } from "./profile/ProfilePage";
 import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
 
@@ -46,6 +49,19 @@ const mfaChallengeRoute = createRoute({
   path: "/sign-in/mfa",
   component: MfaChallengePage,
 });
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  // The emailed link carries the token as `?token=`.
+  validateSearch: (search: Record<string, unknown>): { token?: string } =>
+    typeof search.token === "string" ? { token: search.token } : {},
+  component: ResetPasswordPage,
+});
 const signedInRoute = createRoute({ getParentRoute: () => rootRoute, id: "signed-in", component: SignedInShell });
 const homeRoute = createRoute({ getParentRoute: () => signedInRoute, path: "/", component: HomeRedirect });
 const organisationRoute = createRoute({
@@ -54,6 +70,7 @@ const organisationRoute = createRoute({
   component: OrganisationShell,
 });
 const projectsRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/projects", component: ProjectsPage });
+const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
   path: "/settings",
@@ -71,7 +88,9 @@ const routeTree = rootRoute.addChildren([
   signUpRoute,
   signInRoute,
   mfaChallengeRoute,
-  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute, securityRoute])]),
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute, profileRoute, securityRoute])]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {

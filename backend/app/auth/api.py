@@ -97,7 +97,7 @@ async def current_member(db: Db, sessions: Sessions, token: SessionToken = None)
 CurrentMember = Annotated[Member, Depends(current_member)]
 
 
-async def _session_response(db: AsyncSession, member: Member) -> SessionResponse:
+async def session_response(db: AsyncSession, member: Member) -> SessionResponse:
     memberships = await list_memberships(db, member)
     return SessionResponse(
         member=MemberOut(id=member.id, name=member.name, email=member.email),
@@ -108,7 +108,7 @@ async def _session_response(db: AsyncSession, member: Member) -> SessionResponse
     )
 
 
-async def _start_session(
+async def start_session(
     response: Response, request: Request, sessions: SessionStore, member: Member, old: str | None
 ) -> None:
     """Issues a new session token. Any session the browser already had is ended (rotation)."""
@@ -152,8 +152,8 @@ async def sign_up(
         )
     except service.EmailAlreadyRegisteredError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
-    await _start_session(response, request, sessions, member, token)
-    return await _session_response(db, member)
+    await start_session(response, request, sessions, member, token)
+    return await session_response(db, member)
 
 
 class MfaChallengeResponse(BaseModel):
@@ -216,8 +216,8 @@ async def sign_in(
             samesite="lax",
         )
         return challenge
-    await _start_session(response, request, sessions, member, token)
-    return await _session_response(db, member)
+    await start_session(response, request, sessions, member, token)
+    return await session_response(db, member)
 
 
 async def finish_mfa_sign_in(
@@ -232,8 +232,8 @@ async def finish_mfa_sign_in(
     response.delete_cookie(
         MFA_PENDING_COOKIE, path=MFA_PENDING_COOKIE_PATH, secure=True, httponly=True, samesite="lax"
     )
-    await _start_session(response, request, sessions, member, old_session)
-    return await _session_response(db, member)
+    await start_session(response, request, sessions, member, old_session)
+    return await session_response(db, member)
 
 
 @router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT, operation_id="signOut")
@@ -250,4 +250,4 @@ async def sign_out(response: Response, sessions: Sessions, token: SessionToken =
     operation_id="getMe",
 )
 async def me(member: CurrentMember, db: Db) -> SessionResponse:
-    return await _session_response(db, member)
+    return await session_response(db, member)

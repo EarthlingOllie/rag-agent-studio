@@ -1,0 +1,49 @@
+$ uv run pytest -v --no-cov tests/integration/test_password_reset.py tests/integration/test_profile.py tests/integration/test_password_audit_events.py tests/integration/test_mailer.py tests/integration/test_openapi.py tests/integration/test_migrations.py tests/integration/test_tenant_isolation.py
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0107/backend/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0107/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 36 items
+
+tests/integration/test_password_reset.py::test_a_member_resets_a_forgotten_password_by_emailed_link PASSED [  2%]
+tests/integration/test_password_reset.py::test_requesting_a_reset_answers_the_same_whether_or_not_the_email_is_registered PASSED [  5%]
+tests/integration/test_password_reset.py::test_a_reset_link_works_only_once PASSED [  8%]
+tests/integration/test_password_reset.py::test_a_reset_link_expires_after_an_hour PASSED [ 11%]
+tests/integration/test_password_reset.py::test_completing_a_reset_uses_up_the_members_other_reset_links PASSED [ 13%]
+tests/integration/test_password_reset.py::test_an_unknown_reset_token_is_refused PASSED [ 16%]
+tests/integration/test_password_reset.py::test_a_reset_needs_a_password_of_at_least_twelve_characters PASSED [ 19%]
+tests/integration/test_password_reset.py::test_reset_tokens_are_stored_only_as_hashes PASSED [ 22%]
+tests/integration/test_password_reset.py::test_completing_a_reset_signs_the_member_out_everywhere PASSED [ 25%]
+tests/integration/test_password_reset.py::test_a_failed_reset_email_is_logged_and_the_answer_is_unchanged PASSED [ 27%]
+tests/integration/test_password_reset.py::test_changing_the_password_uses_up_outstanding_reset_links PASSED [ 30%]
+tests/integration/test_profile.py::test_a_member_edits_their_name PASSED [ 33%]
+tests/integration/test_profile.py::test_a_name_must_not_be_blank PASSED  [ 36%]
+tests/integration/test_profile.py::test_editing_the_profile_needs_a_session PASSED [ 38%]
+tests/integration/test_profile.py::test_a_member_changes_their_password_with_their_current_one PASSED [ 41%]
+tests/integration/test_profile.py::test_a_wrong_current_password_changes_nothing PASSED [ 44%]
+tests/integration/test_profile.py::test_a_new_password_needs_at_least_twelve_characters PASSED [ 47%]
+tests/integration/test_profile.py::test_changing_the_password_ends_other_sessions_and_rotates_this_one PASSED [ 50%]
+tests/integration/test_password_audit_events.py::test_a_completed_reset_is_recorded PASSED [ 52%]
+tests/integration/test_password_audit_events.py::test_a_password_change_is_recorded_and_a_refused_one_is_not PASSED [ 55%]
+tests/integration/test_mailer.py::test_the_smtp_mailer_delivers_reset_emails_when_settings_choose_it PASSED [ 58%]
+tests/integration/test_mailer.py::test_the_smtp_mailer_raises_when_the_server_is_unreachable PASSED [ 61%]
+tests/integration/test_mailer.py::test_the_ses_mailer_sends_a_plain_text_email PASSED [ 63%]
+tests/integration/test_mailer.py::test_settings_choose_the_mailer[outbox-OutboxMailer] PASSED [ 66%]
+tests/integration/test_mailer.py::test_settings_choose_the_mailer[smtp-SmtpMailer] PASSED [ 69%]
+tests/integration/test_mailer.py::test_settings_choose_the_mailer[ses-SesMailer] PASSED [ 72%]
+tests/integration/test_mailer.py::test_an_unknown_mailer_setting_fails_startup PASSED [ 75%]
+tests/integration/test_mailer.py::test_reset_emails_land_in_the_outbox_in_tests PASSED [ 77%]
+tests/integration/test_openapi.py::test_openapi_document_describes_every_endpoint PASSED [ 80%]
+tests/integration/test_openapi.py::test_openapi_document_is_rendered_deterministically PASSED [ 83%]
+tests/integration/test_migrations.py::test_migrations_upgrade_to_head_and_downgrade_to_base PASSED [ 86%]
+tests/integration/test_migrations.py::test_the_migrations_match_the_models PASSED [ 88%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[GET /api/organisations/{organisation_id}] PASSED [ 91%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[GET /api/organisations/{organisation_id}] PASSED [ 94%]
+tests/integration/test_tenant_isolation.py::test_every_organisation_scoped_route_is_in_the_isolation_test PASSED [ 97%]
+tests/integration/test_tenant_isolation.py::test_every_table_below_the_platform_level_carries_an_organisation_id PASSED [100%]
+
+============================= 36 passed in 13.40s ==============================
+exit=0

@@ -10,13 +10,15 @@ from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.api import health
+from app.auth import account_api, mfa_api
 from app.auth import api as auth_api
-from app.auth import mfa_api
+from app.core.clock import SystemClock
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
 from app.crypto.adapters import build_envelope
+from app.mail.factory import build_mailer
 from app.tenancy import api as tenancy_api
 from app.worker.celery_app import configure_celery
 
@@ -38,6 +40,8 @@ def _lifespan(
         instrument_engine(app.state.engine)
         app.state.sessionmaker = create_sessionmaker(app.state.engine)
         app.state.redis = Redis.from_url(str(settings.redis_url))
+        app.state.clock = SystemClock()
+        app.state.mailer = build_mailer(settings)
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield
@@ -57,6 +61,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.include_router(health.router)
     app.include_router(auth_api.router)
     app.include_router(mfa_api.router)
+    app.include_router(account_api.router)
     app.include_router(tenancy_api.router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)

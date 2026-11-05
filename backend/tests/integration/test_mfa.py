@@ -18,11 +18,11 @@ from fastapi import FastAPI
 from sqlalchemy import select, text
 
 from app.audit.models import AuditEvent
-from app.core.clock import ControllableClock
 from app.main import create_app
 from tests.conftest import (
     BASE_URL,
     ClientFactory,
+    ControllableClock,
     SignedUpMember,
     TenantFactory,
     new_member_details,
@@ -73,7 +73,7 @@ async def _audit_actions(app: FastAPI, member: SignedUpMember) -> list[tuple[str
         rows = await session.execute(
             select(AuditEvent.action, AuditEvent.before, AuditEvent.after)
             .where(
-                AuditEvent.actor_member_id == uuid.UUID(member.member_id),
+                AuditEvent.actor_id == uuid.UUID(member.member_id),
                 AuditEvent.organisation_id == uuid.UUID(member.organisation_id),
                 AuditEvent.action.like("mfa.%"),
             )
@@ -519,7 +519,7 @@ async def test_audit_events_are_recorded_in_every_organisation_of_the_member(
             (
                 await session.execute(
                     select(AuditEvent.organisation_id).where(
-                        AuditEvent.actor_member_id == uuid.UUID(owner.member_id),
+                        AuditEvent.actor_id == uuid.UUID(owner.member_id),
                         AuditEvent.action == "mfa.enrolled",
                     )
                 )
@@ -535,7 +535,7 @@ async def test_the_audit_event_targets_the_member(
 
     async with app.state.sessionmaker() as session:
         event = await session.scalar(
-            select(AuditEvent).where(AuditEvent.actor_member_id == uuid.UUID(owner.member_id))
+            select(AuditEvent).where(AuditEvent.actor_id == uuid.UUID(owner.member_id))
         )
     assert event is not None
     assert (event.target_type, str(event.target_id)) == ("member", owner.member_id)
