@@ -19,6 +19,14 @@ How long an Organisation keeps Message text before it is purged. Aggregate metri
 A person who signs in to the Studio and belongs to one or more Organisations.
 _Avoid_: User, admin
 
+**Profile**:
+A Member's own details: their name, email and password. It is the same in every Organisation they belong to, and only the Member can change it.
+_Avoid_: Account settings, user settings
+
+**Password Reset Link**:
+An emailed link that lets a Member who forgot their password choose a new one. It works once and expires; using it, or changing the password from the Profile, signs the Member out everywhere else.
+_Avoid_: Recovery link, magic link
+
 **Membership**:
 A Member's place in one Organisation, with a role: Owner or Editor. Signing up creates an Organisation and an Owner Membership for the new Member.
 _Avoid_: Seat, account

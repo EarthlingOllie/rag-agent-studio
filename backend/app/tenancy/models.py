@@ -13,7 +13,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
 
-PLATFORM_TABLES = frozenset({"organisations", "members"})
+# Tables that belong to no single Organisation: Organisations themselves, Members (who can
+# belong to several) and per-Member auth state such as password reset tokens.
+PLATFORM_TABLES = frozenset({"organisations", "members", "password_reset_tokens"})
 
 
 class Role(enum.StrEnum):

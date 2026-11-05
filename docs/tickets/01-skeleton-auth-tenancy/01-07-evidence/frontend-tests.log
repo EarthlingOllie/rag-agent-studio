@@ -1,0 +1,31 @@
+$ make test-frontend
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0107/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0107/frontend
+      Coverage enabled with v8
+
+
+ Test Files  8 passed (8)
+      Tests  52 passed (52)
+   Start at  02:54:13
+   Duration  26.20s (tests 50%, environment 29%, setup 9%, import 7%, transform 3%, worker 3%)
+
+Environment  jsdom was created 8 times · 20.26s total, 29% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+15 files fully covered.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 214/214 )
+Branches     : 100% ( 121/121 )
+Functions    : 100% ( 86/86 )
+Lines        : 100% ( 184/184 )
+================================================================================
+exit=0
