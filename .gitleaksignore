@@ -1,0 +1,4 @@
+# Fake credentials in test fixtures. gitleaks scans the whole history, so a finding in an
+# earlier commit is allowlisted here by fingerprint (<commit>:<file>:<rule>:<line>).
+# backend/tests/integration/test_telemetry.py: PASSWORD is a made-up value the scrubbing test checks is never exported.
+1bdc0b45f64a33fd10fa800aaaaeb29142f1603d:backend/tests/integration/test_telemetry.py:generic-api-key:141

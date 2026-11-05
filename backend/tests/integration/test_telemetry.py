@@ -138,7 +138,7 @@ COOKIE_VALUE = "cookie-value-7f3a"
 BEARER_TOKEN = "bearer-token-91c2"
 API_KEY = "api-key-55d0"
 SESSION_ID = "session-id-c4e8"
-PASSWORD = "hunter2-b61f"
+PASSWORD = "hunter2-b61f"  # gitleaks:allow (fake test value)
 SENSITIVE = (MESSAGE_TEXT, COOKIE_VALUE, BEARER_TOKEN, API_KEY, SESSION_ID, PASSWORD)
 
 

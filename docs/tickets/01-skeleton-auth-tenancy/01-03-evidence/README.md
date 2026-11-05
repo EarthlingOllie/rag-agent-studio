@@ -22,6 +22,7 @@ Branch `ticket/01-03-telemetry-scrubbing`. All logs were produced from a fresh `
 - **`distributed_tracing=True`.** This lets Celery workers join the trace of the request that queued the task.
 - **`httpx` is now a runtime dependency.** The production image failed to start without it, because `instrument_httpx` requires it. The container run in this evidence caught that, and it is fixed.
 - **One non-JSON line.** On SIGTERM, Celery writes `worker: Warm shutdown (MainProcess)` straight to stdout, outside logging. The worker tests allow exactly that line.
+- **gitleaks allowlist.** After merging `candidate` (which added the full-history gitleaks gate from 01-02), gitleaks flagged the fake `PASSWORD` fixture in `tests/integration/test_telemetry.py`. It is a made-up value the scrubbing test proves is never exported. The finding in commit `1bdc0b4` is allowlisted by fingerprint in `.gitleaksignore`, and the line carries `# gitleaks:allow`. `make secret-scan` and `make audit` are clean.
 - **Spans flush on API shutdown.** Uvicorn re-raises SIGTERM after a graceful shutdown, so atexit hooks do not run. The lifespan flushes telemetry on shutdown.
 
 ## Sandbox notes (local / test-double routes used)
