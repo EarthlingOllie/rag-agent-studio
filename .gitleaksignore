@@ -16,3 +16,7 @@ c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_ev
 aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/integration/test_tenant_isolation.py:generic-api-key:95
 aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:frontend/apps/studio/src/settings/CredentialsPage.test.tsx:generic-api-key:261
 aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/unit/test_http_credential_verifier.py:generic-api-key:125
+# Ticket 03-02 (branch ticket/03-02-upload-document-ready): the evidence's hoststack.env repeats
+# docker-compose.yml's development-only local key wrapper key ("local-dev-only-key-not-a-secret!"
+# in base64), which compose already commits as its default. Not a real secret.
+e1b3c4bbfb767d84788aa8660d4c568276eb9463:docs/tickets/03-projects-knowledge-base/03-02-evidence/hoststack.env:generic-api-key:6
