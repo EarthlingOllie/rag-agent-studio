@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
@@ -67,6 +67,22 @@ test("the toggle is disabled while saving, and a refused change says why and kee
   expect(await screen.findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
   expect(screen.getByRole("checkbox", { name: OCR })).not.toBeChecked();
   expect(screen.getByRole("checkbox", { name: OCR })).toBeEnabled();
+});
+
+test("the box shows the setting asked for as soon as it is clicked, before the save starts", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  renderStudio(settingsPage(hrProject.id));
+  const box = await screen.findByRole("checkbox", { name: OCR });
+
+  // A synchronous click, as a browser delivers it: nothing else runs before the box is read.
+  fireEvent.click(box);
+
+  expect(box).toBeChecked();
+  expect(box).toBeDisabled();
+  await screen.findByText(/OCR is on\./);
+  expect(box).toBeChecked();
+  expect(box).toBeEnabled();
 });
 
 test("an archived Project's OCR setting can't be changed", async () => {

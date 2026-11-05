@@ -1,4 +1,5 @@
 import { useParams } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { type Project, projectFailure, useProject, useUpdateProject } from "./projects";
@@ -7,6 +8,9 @@ import { useOrganisationRole } from "./ProjectsPage";
 function OcrSetting({ project, organisationId }: { project: Project; organisationId: string }) {
   const update = useUpdateProject(organisationId, project.id);
   const archived = project.archived_at !== null;
+  // The setting asked for while it saves. Kept in component state, set in the click itself, so
+  // the box shows it at once instead of after the mutation's state catches up.
+  const [requested, setRequested] = useState<boolean | null>(null);
   return (
     <fieldset className="max-w-xl space-y-2 rounded border border-slate-200 p-4">
       <legend className="px-1 font-medium">OCR</legend>
@@ -15,10 +19,11 @@ function OcrSetting({ project, organisationId }: { project: Project; organisatio
         <input
           type="checkbox"
           // While a change saves (the box is disabled meanwhile), it shows the setting asked for.
-          checked={update.isPending ? !project.ocr_enabled : project.ocr_enabled}
-          disabled={archived || update.isPending}
+          checked={requested ?? project.ocr_enabled}
+          disabled={archived || requested !== null}
           onChange={(event) => {
-            update.mutate({ ocr_enabled: event.target.checked });
+            setRequested(event.target.checked);
+            update.mutate({ ocr_enabled: event.target.checked }, { onSettled: () => { setRequested(null); } });
           }}
           className="h-4 w-4"
         />
