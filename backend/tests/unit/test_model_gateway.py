@@ -447,7 +447,7 @@ async def test_the_fake_embedder_is_deterministic_and_tells_texts_apart() -> Non
     refund, hours = first.embeddings
     assert again.embeddings == [refund]
     assert refund != hours
-    assert len(refund) == 16
+    assert len(refund) == 1024  # voyage-3.5's registered dimension
     assert sum(x * x for x in refund) == pytest.approx(1.0)
     assert first.model_name == "voyage-3.5"
     assert first.provider_name == "fake"

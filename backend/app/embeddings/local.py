@@ -5,6 +5,7 @@ time; elsewhere they are fetched on first use. This adapter needs those download
 exercised by the live suite (``tests/live``), outside the coverage gate (ADR-0008).
 """
 
+import asyncio
 from functools import cached_property
 
 from docling_core.transforms.chunker.tokenizer.base import BaseTokenizer
@@ -51,6 +52,18 @@ class LocalEmbedder:
             model_name=LOCAL_MODEL.tokenizer, max_tokens=max_tokens
         )
 
-    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+    def _passages(self, texts: list[str]) -> list[list[float]]:
         prefixed = [LOCAL_MODEL.passage_prefix + text for text in texts]
         return [vector.tolist() for vector in self._embedding.passage_embed(prefixed)]
+
+    def _query(self, text: str) -> list[float]:
+        (vector,) = self._embedding.query_embed([LOCAL_MODEL.query_prefix + text])
+        result: list[float] = vector.tolist()
+        return result
+
+    async def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        # ONNX inference is CPU-bound, so it runs off the event loop.
+        return await asyncio.to_thread(self._passages, texts)
+
+    async def embed_query(self, text: str) -> list[float]:
+        return await asyncio.to_thread(self._query, text)

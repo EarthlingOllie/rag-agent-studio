@@ -7,6 +7,7 @@ directly, which the shared test seams allow for behaviour with no API surface.
 import math
 import uuid
 
+import pytest
 from fastapi import FastAPI
 from sqlalchemy import text
 
@@ -57,6 +58,35 @@ async def test_chunk_vectors_have_an_hnsw_index_per_model_and_text_a_gin_index(
     assert "vector_cosine_ops" in hnsw
     assert "WHERE ((embedding_model_id)::text = 'multilingual-e5-small'::text)" in hnsw
     assert "USING gin (search_vector)" in indexes["ix_chunks_search_vector"]
+
+
+@pytest.mark.parametrize(
+    ("index", "cast", "model_id"),
+    [
+        ("text_embedding_3_small", "vector(1536)", "text-embedding-3-small"),
+        # HNSW indexes ``vector`` up to 2,000 dimensions, so the 3,072 of this one use halfvec.
+        ("text_embedding_3_large", "halfvec(3072)", "text-embedding-3-large"),
+        ("voyage_3_5", "vector(1024)", "voyage-3.5"),
+        ("voyage_3_5_lite", "vector(1024)", "voyage-3.5-lite"),
+        ("voyage_multilingual_2", "vector(1024)", "voyage-multilingual-2"),
+        ("amazon_titan_embed_text_v2_0", "vector(1024)", "amazon.titan-embed-text-v2:0"),
+        ("cohere_embed_multilingual_v3", "vector(1024)", "cohere.embed-multilingual-v3"),
+    ],
+)
+async def test_every_provider_embedding_model_has_its_own_hnsw_index(
+    app: FastAPI, index: str, cast: str, model_id: str
+) -> None:
+    async with app.state.sessionmaker() as session:
+        definition = await session.scalar(
+            text("SELECT indexdef FROM pg_indexes WHERE indexname = :name"),
+            {"name": f"ix_chunks_embedding_hnsw_{index}"},
+        )
+
+    assert definition is not None
+    assert "USING hnsw" in definition
+    assert f"(embedding)::{cast}" in definition
+    assert f"{cast.split('(')[0]}_cosine_ops" in definition
+    assert f"WHERE ((embedding_model_id)::text = '{model_id}'::text)" in definition
 
 
 async def test_ingestion_runs_once_per_upload(app: FastAPI, owner: SignedUpMember) -> None:
