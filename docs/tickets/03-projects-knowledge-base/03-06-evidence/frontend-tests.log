@@ -1,0 +1,29 @@
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0306/frontend
+> vitest run --coverage -- --maxWorkers=2
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0306/frontend
+      Coverage enabled with v8
+
+
+ Test Files  29 passed (29)
+      Tests  308 passed (308)
+   Start at  18:07:26
+   Duration  92.44s (tests 65%, environment 20%, setup 7%, import 5%, transform 2%, worker 2%)
+
+    Isolate  29 workers spawned · ~2.01s startup each (spawn + environment, per file)
+             at least ~17.38s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+46 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 1583/1583 )
+Branches     : 100% ( 916/916 )
+Functions    : 100% ( 617/617 )
+Lines        : 100% ( 1385/1385 )
+================================================================================
+exit=0
