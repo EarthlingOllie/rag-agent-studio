@@ -9,8 +9,8 @@ test("mounts the Studio into the page's root element", async () => {
 
   await import("./main");
 
-  expect(await screen.findByRole("heading", { name: "System status" })).toBeInTheDocument();
-  expect(await screen.findByText("All systems operational")).toBeInTheDocument();
+  // A visitor who is not signed in lands on the sign-in screen.
+  expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
 });
 
 test("explains what is missing when the page has no root element", async () => {

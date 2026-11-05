@@ -4,8 +4,8 @@ import type { APIRequestContext, Page } from "@playwright/test";
 
 /**
  * Signed-in page helpers. They drive the auth API directly, so a test about, say, the Members screen
- * doesn't sign up through the UI first. The routes and body fields are the contract ticket 01-04
- * implements; change them here if that ticket settles on different ones.
+ * doesn't sign up through the UI first. The routes and body fields are the auth API's
+ * (`backend/app/auth/api.py`); the session cookie is `studio_session`.
  */
 export const AUTH_ROUTES = {
   signUp: "/api/auth/sign-up",

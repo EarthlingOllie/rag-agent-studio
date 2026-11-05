@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     redis_url: RedisDsn
     celery_task_always_eager: bool = False
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
+    # How long a Studio session lasts without signing in again.
+    session_ttl_seconds: int = Field(default=14 * 24 * 60 * 60, gt=0)
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.
