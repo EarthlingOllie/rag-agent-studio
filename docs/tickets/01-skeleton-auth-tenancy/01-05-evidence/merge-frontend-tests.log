@@ -1,4 +1,4 @@
-# worktree at merge commit b8eacc8
+# worktree at merge commit 04134a6
 $ make test-frontend
 cd frontend && pnpm test
 
@@ -10,23 +10,23 @@ cd frontend && pnpm test
       Coverage enabled with v8
 
 
- Test Files  9 passed (9)
-      Tests  59 passed (59)
-   Start at  03:23:55
-   Duration  11.38s (tests 49%, environment 28%, setup 10%, import 7%, transform 3%, worker 3%)
+ Test Files  11 passed (11)
+      Tests  76 passed (76)
+   Start at  03:34:12
+   Duration  20.24s (tests 53%, environment 26%, setup 9%, import 6%, transform 3%, worker 2%)
 
-Environment  jsdom was created 9 times · 8.37s total, 28% of tracked time
+Environment  jsdom was created 11 times · 14.22s total, 26% of tracked time
              create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
              learn more: https://vitest.dev/guide/improving-performance#test-environments
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
-18 files fully covered.
+21 files fully covered.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 274/274 )
-Branches     : 100% ( 156/156 )
-Functions    : 100% ( 115/115 )
-Lines        : 100% ( 236/236 )
+Statements   : 100% ( 373/373 )
+Branches     : 100% ( 213/213 )
+Functions    : 100% ( 157/157 )
+Lines        : 100% ( 324/324 )
 ================================================================================
 exit=0
