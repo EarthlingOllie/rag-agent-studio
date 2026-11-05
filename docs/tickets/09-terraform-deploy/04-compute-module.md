@@ -7,7 +7,7 @@
 **Blocked by:**
 - [09-03: Data modules](03-data-modules.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] An ECS cluster runs three ARM64 services, with task sizes set by variables
 - [ ] Each service has a least-privilege role (policy documents asserted in tests), and the API's assume-role permission requires an external ID
