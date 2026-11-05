@@ -1,0 +1,105 @@
+$ python3 mutate.py <worktree>   (branch worktree at 4aee765; TEST_DATABASE_URL=…/studio_test_0108 TEST_REDIS_URL=…/7)
+== mutation: links are reusable (accepted invites still work)  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_an_invite_link_works_only_once
+== mutation: links never expire  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_an_invite_expires_after_seven_days
+     test_an_existing_member_cannot_accept_an_expired_invite
+     test_the_invite_lifetime_follows_the_setting[86400-1 day]
+     test_the_invite_lifetime_follows_the_setting[5400-90 minutes]
+== mutation: revoked links still work  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_owners_revoke_a_pending_invite
+== mutation: tokens stored in plain text  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_invite_tokens_are_stored_only_as_hashes
+== mutation: renewing keeps the old link working  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_renewing_an_invite_replaces_its_link_and_expiry
+     test_invite_accept_revoke_and_renew_are_audit_events
+== mutation: an invite for another email can be accepted  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_an_invite_for_another_email_is_refused_and_stays_usable
+     test_refused_invite_actions_record_nothing
+== mutation: accepting adds no membership  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_an_invited_person_without_an_account_creates_one_and_joins
+     test_an_existing_member_accepts_and_gains_the_membership
+     test_inviting_someone_who_already_belongs_is_refused
+     test_editors_cannot_manage_invites
+== mutation: accepting ignores the invited role  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_an_existing_member_accepts_and_gains_the_membership
+== mutation: existing Members can be invited again  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_inviting_someone_who_already_belongs_is_refused
+     test_refused_invite_actions_record_nothing
+== mutation: invite.created not recorded  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_invite_accept_revoke_and_renew_are_audit_events
+     test_refused_invite_actions_record_nothing
+== mutation: invite.revoked not recorded  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_invite_accept_revoke_and_renew_are_audit_events
+== mutation: invite.accepted not recorded  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_invite_accept_revoke_and_renew_are_audit_events
+== mutation: revoked invites stay in the pending list  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_owners_revoke_a_pending_invite
+     test_owners_list_pending_invites_newest_first
+== mutation: revoking another Organisation's invite  (backend/app/tenancy/invites.py)
+   CAUGHT; failing tests:
+     test_an_owner_cannot_revoke_or_renew_another_organisations_invite
+== mutation: Editors can manage invites  (backend/app/tenancy/invites_api.py)
+   CAUGHT; failing tests:
+     test_editors_cannot_manage_invites
+== mutation: accepting doesn't rotate the session  (backend/app/tenancy/invites_api.py)
+   CAUGHT; failing tests:
+     test_an_existing_member_accepts_and_gains_the_membership
+== mutation: a failed invite email loses the link (500)  (backend/app/tenancy/invites_api.py)
+   CAUGHT; failing tests:
+     test_a_failed_invite_email_still_gives_the_owner_a_link
+== mutation: link tokens exported in telemetry  (backend/app/core/telemetry.py)
+   CAUGHT; failing tests:
+     test_link_tokens_in_request_bodies_are_never_exported
+== mutation: Studio: Members tab shown to Editors  (frontend/apps/studio/src/settings/MembersPage.tsx)
+   CAUGHT; failing tests:
+     Editors don't see the Members tab, and its address tells them it is for Owners 66ms
+== mutation: Studio: no copyable link after inviting  (frontend/apps/studio/src/settings/MembersPage.tsx)
+   CAUGHT; failing tests:
+     an Owner can invite by link only, without sending an email 1133ms
+     an Owner gets a new link for an expired invite 1050ms
+     an Owner invites by email with a role and can copy the link 1207ms
+     when the email can't be sent, the Owner is told to copy the link 1124ms
+== mutation: Studio: invite sent without the chosen role  (frontend/apps/studio/src/settings/MembersPage.tsx)
+   CAUGHT; failing tests:
+     an Owner invites by email with a role and can copy the link 221ms
+== mutation: Studio: pending invites not listed  (frontend/apps/studio/src/settings/MembersPage.tsx)
+   CAUGHT; failing tests:
+     Owners open Members from Organisation settings and see pending invites 336ms
+     a failed renew says the invite may have changed 75ms
+     a failed revoke says the invite may have changed 68ms
+     an Owner gets a new link for an expired invite 56ms
+     an Owner invites by email with a role and can copy the link 202ms
+     an Owner revokes a pending invite 58ms
+== mutation: Studio: accept page offers Join to the wrong account  (frontend/apps/studio/src/invites/AcceptInvitePage.tsx)
+   CAUGHT; failing tests:
+     a Member signed in with another email is told to sign out first 1007ms
+     a failed sign-out says so 1013ms
+== mutation: Studio: existing account offered sign-up instead of sign-in  (frontend/apps/studio/src/invites/AcceptInvitePage.tsx)
+   CAUGHT; failing tests:
+     a Member with MFA enters a code on the page before joining 97ms
+     a refused MFA code on the page says why (400) 99ms
+     a refused MFA code on the page says why (401) 282ms
+     a refused MFA code on the page says why (500) 84ms
+     a signed-out person with an account signs in on the page, then joins 1008ms
+     signing in on the page can fail (401) 93ms
+     signing in on the page can fail (429) 86ms
+     signing in on the page can fail (500) 80ms
+
+24/24 mutations caught
+unmodified backend: 54 passed in 18.00s
+unmodified studio: Tests  41 passed (41)
+exit 0

@@ -8,13 +8,13 @@
 - [01-05: Audit Events and Audit tab](05-audit-events.md)
 - [01-07: Mailer, password reset and change password](07-mailer-password-reset.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] An Owner can invite by email with a role, and a copyable invite link is always available
-- [ ] Invite tokens are single-use, hashed and expiring, and Owners can revoke pending invites
-- [ ] Accepting as a new person creates an account and membership; accepting as an existing Member adds the membership
-- [ ] Pending invites are listed on the Members page
-- [ ] Invite, accept and revoke are recorded as Audit Events
-- [ ] End-to-end: Owner invites → email opened in Mailpit → accepted as a new account
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] An Owner can invite by email with a role, and a copyable invite link is always available
+- [x] Invite tokens are single-use, hashed and expiring, and Owners can revoke pending invites
+- [x] Accepting as a new person creates an account and membership; accepting as an existing Member adds the membership
+- [x] Pending invites are listed on the Members page
+- [x] Invite, accept and revoke are recorded as Audit Events
+- [x] End-to-end: Owner invites → email opened in Mailpit → accepted as a new account
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
