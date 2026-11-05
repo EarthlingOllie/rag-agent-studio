@@ -1,0 +1,187 @@
+# Each mutation breaks one acceptance criterion in infra/modules/network, runs the gate, then is reverted.
+
+### Mutation: private subnets hand out public IPs
+$ sed -i '/resource "aws_subnet" "private"/,/^}/s/map_public_ip_on_launch         = false/map_public_ip_on_launch         = true/' main.tf && terraform test
+@@ -44 +44 @@
+-  map_public_ip_on_launch         = false
++  map_public_ip_on_launch         = true
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... fail
+Error: Test assertion failed
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+Failure! 15 passed, 1 failed.
+exit=1
+
+### Mutation: managed NAT becomes the default
+$ sed -i '/variable "managed_nat"/,/^}/s/default     = false/default     = true/' variables.tf && terraform test
+@@ -35 +35 @@
+-  default     = false
++  default     = true
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... fail
+Error: Test assertion failed
+Error: Test assertion failed
+Error: Invalid index
+Error: Invalid index
+Error: Invalid index
+Error: Invalid index
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... skip
+  run "rejects_an_unknown_nat_instance_type_family"... skip
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... skip
+  run "endpoints_are_the_same_with_a_managed_nat"... skip
+  run "names_resources_from_the_prefix"... skip
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... skip
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... skip
+  run "locks_down_the_default_security_group"... skip
+  run "rejects_tags_without_project_and_environment"... skip
+  run "rejects_an_invalid_prefix"... skip
+  run "rejects_an_invalid_vpc_cidr"... skip
+  run "rejects_anything_but_two_distinct_azs"... skip
+  run "rejects_a_single_az"... skip
+Failure! 2 passed, 1 failed, 13 skipped.
+exit=1
+
+### Mutation: Secrets Manager endpoint dropped
+$ sed -i 's/"logs", "secretsmanager"/"logs"/' main.tf && terraform test
+@@ -215 +215 @@
+-  interface_endpoint_services = toset(["ecr.api", "ecr.dkr", "logs", "secretsmanager"])
++  interface_endpoint_services = toset(["ecr.api", "ecr.dkr", "logs"])
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... fail
+Error: Test assertion failed
+  run "endpoints_are_the_same_with_a_managed_nat"... fail
+Error: Test assertion failed
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+Failure! 14 passed, 2 failed.
+exit=1
+
+### Mutation: fck-nat interface keeps source/dest check on
+$ sed -i 's/source_dest_check = false/source_dest_check = true/' main.tf && terraform test
+@@ -167 +167 @@
+-  source_dest_check = false
++  source_dest_check = true
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... fail
+Error: Test assertion failed
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+Failure! 15 passed, 1 failed.
+exit=1
+
+### Mutation: endpoint security group loses the standard tags
+$ sed -i '/resource "aws_security_group" "endpoints"/,/^}/s/tags = merge(local.tags, /tags = merge({}, /' main.tf && terraform test
+@@ -234 +234 @@
+-  tags = merge(local.tags, { Name = "${local.name}-endpoints" })
++  tags = merge({}, { Name = "${local.name}-endpoints" })
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... fail
+Error: Test assertion failed
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+Failure! 15 passed, 1 failed.
+exit=1
+
+### Mutation: private route goes straight to the internet gateway
+$ sed -i '/resource "aws_route" "private_egress"/,/^}/s/  network_interface_id   = var.managed_nat ? null : aws_network_interface.fck_nat\[0\].id/  gateway_id             = aws_internet_gateway.this.id/' main.tf && terraform test
+@@ -210 +210 @@
+-  network_interface_id   = var.managed_nat ? null : aws_network_interface.fck_nat[0].id
++  gateway_id             = aws_internet_gateway.this.id
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... fail
+Error: Test assertion failed
+Error: Test assertion failed
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... fail
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+  run "rejects_an_unknown_nat_instance_type_family"... skip
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... skip
+  run "endpoints_are_the_same_with_a_managed_nat"... skip
+  run "names_resources_from_the_prefix"... skip
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... skip
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... skip
+  run "locks_down_the_default_security_group"... skip
+  run "rejects_tags_without_project_and_environment"... skip
+  run "rejects_an_invalid_prefix"... skip
+  run "rejects_an_invalid_vpc_cidr"... skip
+  run "rejects_anything_but_two_distinct_azs"... skip
+  run "rejects_a_single_az"... skip
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Error: Invalid combination of arguments
+Failure! 2 passed, 2 failed, 12 skipped.
+exit=1
+
+### Mutation: the justified checkov skip on the VPC removed
+$ sed -i '/CKV2_AWS_11/d' modules/network/main.tf && checkov --config-file .checkov.yaml
+	FAILED for resource: module.network.aws_vpc.this
+Check: CKV2_AWS_11: "Ensure VPC flow logging is enabled in all VPCs"
+Passed checks: 45, Failed checks: 1, Skipped checks: 2
+exit=1

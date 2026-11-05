@@ -1,0 +1,231 @@
+### Slice 1 (two AZs, public+private subnets): RED
+$ terraform test
+Error: Reference to undeclared output value
+An output value with the name "availability_zones" has not been declared.
+Error: Reference to undeclared resource
+A managed resource "aws_vpc" "this" has not been declared in the root module.
+Error: Reference to undeclared resource
+A managed resource "aws_subnet" "public" has not been declared in the root
+Error: Reference to undeclared resource
+A managed resource "aws_subnet" "private" has not been declared in the root
+Error: Reference to undeclared resource
+A managed resource "aws_subnet" "public" has not been declared in the root
+Error: Reference to undeclared resource
+A managed resource "aws_subnet" "private" has not been declared in the root
+Error: Reference to undeclared output value
+An output value with the name "public_subnet_ids" has not been declared.
+Error: Reference to undeclared output value
+An output value with the name "private_subnet_ids" has not been declared.
+Failure! 0 passed, 1 failed.
+exit=1
+
+
+### Slice 1: GREEN
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 1 passed, 0 failed.
+exit=0
+
+### Slice 2 (private subnets have no public IPs, routing per tier): RED
+$ terraform test
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... fail
+Error: Test assertion failed
+  on tests/contract.tftest.hcl line 69, in run "private_subnets_have_no_public_ips":
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 79, in run "private_subnets_have_no_public_ips":
+A managed resource "aws_route" "public_internet" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 79, in run "private_subnets_have_no_public_ips":
+A managed resource "aws_route" "public_internet" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 84, in run "private_subnets_have_no_public_ips":
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 84, in run "private_subnets_have_no_public_ips":
+Failure! 1 passed, 1 failed.
+exit=1
+
+### Slice 2: GREEN
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+exit=0
+(note: the RED test above was then simplified to aws_route.public_internet.destination_cidr_block, since the public route is a single resource)
+
+### Slice 3 (fck-nat default, managed-NAT toggle): RED
+$ terraform test
+      1   run "egresses_through_fck_nat_by_default"... fail
+      1   run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... skip
+      1   run "private_subnets_have_no_public_ips"... pass
+      1   run "rejects_an_unknown_nat_instance_type_family"... skip
+      1   run "spans_two_azs_with_public_and_private_subnets"... pass
+      2 A managed resource "aws_instance" "fck_nat" has not been declared in the root
+      1 A managed resource "aws_nat_gateway" "this" has not been declared in the root
+      2 A managed resource "aws_network_interface" "fck_nat" has not been declared in
+      3 A managed resource "aws_route" "private_egress" has not been declared in the
+      1 An output value with the name "nat_mode" has not been declared.
+      1 Error: Reference to undeclared output value
+      8 Error: Reference to undeclared resource
+      1 Failure! 2 passed, 1 failed, 2 skipped.
+exit=1
+
+
+
+
+### Slice 3: GREEN
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 5 passed, 0 failed.
+exit=0
+
+### Slice 4 (VPC endpoints for S3, ECR, Logs, Secrets Manager): RED
+$ terraform test
+      1   run "egresses_through_fck_nat_by_default"... pass
+      1   run "endpoints_are_the_same_with_a_managed_nat"... skip
+      1   run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+      1   run "private_subnets_have_no_public_ips"... pass
+      1   run "rejects_an_unknown_nat_instance_type_family"... pass
+      1   run "spans_two_azs_with_public_and_private_subnets"... pass
+      1   run "vpc_endpoints_keep_aws_traffic_off_the_nat"... fail
+      2 A managed resource "aws_security_group" "endpoints" has not been declared in
+      2 A managed resource "aws_vpc_endpoint" "interface" has not been declared in
+      3 A managed resource "aws_vpc_endpoint" "s3" has not been declared in the root
+     11 Error: Reference to undeclared resource
+      1 Failure! 5 passed, 1 failed, 1 skipped.
+      4 has not been declared in the root module.
+exit=1
+
+### Slice 4: GREEN
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 7 passed, 0 failed.
+exit=0
+
+### Slice 5 (standard tags, default SG, input validation): RED
+$ terraform test
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... fail
+Error: Reference to undeclared resource
+A managed resource "aws_default_security_group" "this" has not been declared
+Error: Test assertion failed
+Error: Test assertion failed
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... skip
+  run "locks_down_the_default_security_group"... skip
+  run "rejects_tags_without_project_and_environment"... skip
+  run "rejects_an_invalid_prefix"... skip
+  run "rejects_an_invalid_vpc_cidr"... skip
+Failure! 8 passed, 1 failed, 5 skipped.
+exit=1
+
+### Slice 5: GREEN (tag assertions use a per-key lookup: a map-vs-object equality is always false in HCL)
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... fail
+
+Error: Missing expected failure
+
+  on tests/contract.tftest.hcl line 316, in run "rejects_an_invalid_vpc_cidr":
+ 316:   expect_failures = [var.vpc_cidr]
+
+The checkable object, var.vpc_cidr, was expected to report an error but did
+not.
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... fail
+
+Failure! 13 passed, 1 failed.
+exit=1
+
+### Slice 5: GREEN after tightening vpc_cidr validation to /16-/20
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 14 passed, 0 failed.
+exit=0
+
+### Refactor forced by checkov CKV_AWS_394: the AZs are now an explicit two-item input (no aws_availability_zones lookup), with two new rejection runs
+$ terraform test
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 16 passed, 0 failed.
+exit=0
