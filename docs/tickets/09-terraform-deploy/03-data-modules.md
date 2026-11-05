@@ -7,7 +7,7 @@
 **Blocked by:**
 - [09-02: Network module](02-network-module.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] RDS runs Postgres 16, encrypted, private, with backups
 - [ ] ElastiCache has encryption in transit and at rest, and auth enabled
