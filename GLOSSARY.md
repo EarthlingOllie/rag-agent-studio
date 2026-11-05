@@ -110,6 +110,26 @@ _Avoid_: Unarchive, undelete
 A secret an Organisation stores so it can call a model provider.
 _Avoid_: API key, token, connection
 
+**Capability**:
+What a Provider Credential can be used for: chat, embeddings or reranking. Each provider offers a fixed set, listed with its models in the capability registry; a credential may be limited to some of them.
+_Avoid_: Feature, scope, permission
+
+**Masked suffix**:
+The last four characters of a Provider Credential's secret: all of the secret the platform ever shows after it is saved.
+_Avoid_: Hint, preview, redacted key
+
+**Credential check**:
+A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable).
+_Avoid_: Validation, test call, ping
+
+**Rotation**:
+Replacing a Provider Credential's secret while keeping its identity, so everything that references it keeps working.
+_Avoid_: Re-key, replace, regenerate
+
+**Credential reference**:
+Something that uses a Provider Credential, such as an Agent's model or a Project's Embedding Model. A credential can't be deleted while any reference to it exists.
+_Avoid_: Dependency, usage, link
+
 **Default Model**:
 The chat model an Organisation's Agents use unless an Agent overrides it.
 

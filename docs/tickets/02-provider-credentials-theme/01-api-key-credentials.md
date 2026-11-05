@@ -8,15 +8,15 @@
 - [01-09: Member management and role enforcement](../01-skeleton-auth-tenancy/09-member-management-roles.md)
 - [01-11: TOTP MFA](../01-skeleton-auth-tenancy/11-totp-mfa.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A KMS key-wrapper adapter sits alongside the local one, tested with a stubbed AWS client
-- [ ] A credential records name, provider, auth kind, sealed secret, masked suffix, capabilities, check status and last-checked time
-- [ ] A capability registry of providers, capabilities and models is exposed through the API
-- [ ] A credential-verifier port with a fake adapter exists, and the Studio shows typed failure reasons
-- [ ] Rotating keeps the credential's identity, and Owners can re-check on demand
-- [ ] A reference registry lets consumers register references; deletion is blocked with the list of referencing items (tested with a test-registered reference)
-- [ ] A response-schema test proves no endpoint ever returns secret material
-- [ ] Mutations are Owner-only and Editors can read; everything is audited; tenant isolation tests are extended
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A KMS key-wrapper adapter sits alongside the local one, tested with a stubbed AWS client
+- [x] A credential records name, provider, auth kind, sealed secret, masked suffix, capabilities, check status and last-checked time
+- [x] A capability registry of providers, capabilities and models is exposed through the API
+- [x] A credential-verifier port with a fake adapter exists, and the Studio shows typed failure reasons
+- [x] Rotating keeps the credential's identity, and Owners can re-check on demand
+- [x] A reference registry lets consumers register references; deletion is blocked with the list of referencing items (tested with a test-registered reference)
+- [x] A response-schema test proves no endpoint ever returns secret material
+- [x] Mutations are Owner-only and Editors can read; everything is audited; tenant isolation tests are extended
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

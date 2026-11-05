@@ -1,0 +1,31 @@
+$ make test-frontend
+# commit abef200, fresh clone of origin/ticket/02-01-api-key-provider-credentials (second run; the first had one timing failure in AcceptInvitePage.test.tsx, see README)
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test <scratch>/clean0201/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 <scratch>/clean0201/frontend
+      Coverage enabled with v8
+
+
+ Test Files  17 passed (17)
+      Tests  169 passed (169)
+   Start at  07:14:09
+   Duration  53.72s (tests 60%, environment 24%, setup 7%, import 6%, worker 2%, transform 1%)
+
+    Isolate  17 workers spawned · ~2.32s startup each (spawn + environment, per file)
+             at least ~10.82s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+29 files fully covered.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 802/802 )
+Branches     : 100% ( 455/455 )
+Functions    : 100% ( 319/319 )
+Lines        : 100% ( 699/699 )
+================================================================================
+exit code: 0

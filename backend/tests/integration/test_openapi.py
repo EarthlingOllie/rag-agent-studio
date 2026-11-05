@@ -4,6 +4,8 @@ import json
 
 from app.openapi import render_openapi
 
+_CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
+
 
 def test_openapi_document_describes_every_endpoint() -> None:
     document = json.loads(render_openapi())
@@ -46,6 +48,13 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "changeMemberRole": ("/api/organisations/{organisation_id}/members/{member_id}", "patch"),
         "removeMember": ("/api/organisations/{organisation_id}/members/{member_id}", "delete"),
         "leaveOrganisation": ("/api/organisations/{organisation_id}/leave", "post"),
+        "listCredentials": ("/api/organisations/{organisation_id}/credentials", "get"),
+        "createCredential": ("/api/organisations/{organisation_id}/credentials", "post"),
+        "getCredential": (_CREDENTIAL, "get"),
+        "deleteCredential": (_CREDENTIAL, "delete"),
+        "checkCredential": (f"{_CREDENTIAL}/check", "post"),
+        "rotateCredential": (f"{_CREDENTIAL}/rotate", "post"),
+        "listProviders": ("/api/providers", "get"),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "listThemeFonts": ("/api/themes/fonts", "get"),

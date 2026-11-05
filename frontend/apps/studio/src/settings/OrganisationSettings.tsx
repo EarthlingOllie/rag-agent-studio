@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
 import { AuditPage } from "./AuditPage";
+import { CredentialsPage } from "./CredentialsPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
 import { MembersPage } from "./MembersPage";
 import { ThemePage } from "./ThemePage";
@@ -125,8 +126,8 @@ function LeaveOrganisation({ organisationId, organisationName }: { organisationI
 }
 
 /**
- * Organisation settings, with a tab per area. Every Member sees General and Theme (Editors view
- * the Theme without editing it); the Members and Audit tabs are shown to Owners only.
+ * Organisation settings, with a tab per area. Every Member sees General, Credentials and Theme
+ * (Editors view the Theme without editing it); the Members and Audit tabs are shown to Owners only.
  */
 export function OrganisationSettingsLayout() {
   const { organisationId, isOwner } = useOrganisation();
@@ -138,6 +139,9 @@ export function OrganisationSettingsLayout() {
       <nav aria-label="Organisation settings" className="mt-4 flex gap-2 border-b border-slate-200 pb-2">
         <Link to="/organisations/$organisationId/settings" params={{ organisationId }} activeOptions={{ exact: true }} className={TAB}>
           General
+        </Link>
+        <Link to="/organisations/$organisationId/settings/credentials" params={{ organisationId }} className={TAB}>
+          Credentials
         </Link>
         <Link to="/organisations/$organisationId/settings/theme" params={{ organisationId }} className={TAB}>
           Theme
@@ -178,6 +182,11 @@ export function AuditSettingsPage() {
 export function MembersSettingsPage() {
   const { organisationId, memberId, isOwner } = useOrganisation();
   return <MembersPage organisationId={organisationId} memberId={memberId} isOwner={isOwner} />;
+}
+
+export function CredentialsSettingsPage() {
+  const { organisationId, isOwner } = useOrganisation();
+  return <CredentialsPage organisationId={organisationId} isOwner={isOwner} />;
 }
 
 export function ThemeSettingsPage() {

@@ -1,0 +1,11 @@
+$ make lint-backend
+# commit 482707e, fresh clone of origin/ticket/02-01-api-key-provider-credentials
+# TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:47432/studio_test TEST_REDIS_URL=redis://localhost:47379/1
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+All checks passed!
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+105 files already formatted
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Success: no issues found in 105 source files
+exit code: 0

@@ -186,6 +186,44 @@
         "title": "AuditTargetOut",
         "type": "object"
       },
+      "AuthKind": {
+        "enum": [
+          "api_key",
+          "aws_role",
+          "aws_access_keys"
+        ],
+        "title": "AuthKind",
+        "type": "string"
+      },
+      "Capability": {
+        "enum": [
+          "chat",
+          "embeddings",
+          "rerank"
+        ],
+        "title": "Capability",
+        "type": "string"
+      },
+      "CapabilityModelsOut": {
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/Capability"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelOut"
+            },
+            "title": "Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "capability",
+          "models"
+        ],
+        "title": "CapabilityModelsOut",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -218,6 +256,34 @@
         ],
         "title": "ChangeRoleRequest",
         "type": "object"
+      },
+      "CheckFailedResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CheckFailure"
+          }
+        },
+        "required": [
+          "detail",
+          "reason"
+        ],
+        "title": "CheckFailedResponse",
+        "type": "object"
+      },
+      "CheckFailure": {
+        "description": "Why a credential check failed, in terms an Owner can act on.",
+        "enum": [
+          "invalid_key",
+          "missing_model_access",
+          "quota_exceeded",
+          "provider_unreachable"
+        ],
+        "title": "CheckFailure",
+        "type": "string"
       },
       "CodeRequest": {
         "properties": {
@@ -283,6 +349,53 @@
         "title": "CompletePasswordResetRequest",
         "type": "object"
       },
+      "CreateCredentialRequest": {
+        "properties": {
+          "api_key": {
+            "format": "password",
+            "title": "Api Key",
+            "type": "string",
+            "writeOnly": true
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Capability"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capabilities"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "anthropic",
+              "openai",
+              "voyage"
+            ],
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "api_key"
+        ],
+        "title": "CreateCredentialRequest",
+        "type": "object"
+      },
       "CreateInviteRequest": {
         "properties": {
           "email": {
@@ -325,6 +438,122 @@
           "name"
         ],
         "title": "CreateProjectRequest",
+        "type": "object"
+      },
+      "CredentialInUseResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialReferenceOut"
+            },
+            "title": "References",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail",
+          "references"
+        ],
+        "title": "CredentialInUseResponse",
+        "type": "object"
+      },
+      "CredentialOut": {
+        "properties": {
+          "auth_kind": {
+            "$ref": "#/components/schemas/AuthKind"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "check_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "check_status": {
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Check Status",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_checked_at": {
+            "format": "date-time",
+            "title": "Last Checked At",
+            "type": "string"
+          },
+          "masked_suffix": {
+            "title": "Masked Suffix",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "auth_kind",
+          "masked_suffix",
+          "capabilities",
+          "check_status",
+          "check_failure",
+          "last_checked_at",
+          "created_at"
+        ],
+        "title": "CredentialOut",
+        "type": "object"
+      },
+      "CredentialReferenceOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "title": "CredentialReferenceOut",
         "type": "object"
       },
       "DisableRequest": {
@@ -778,6 +1007,24 @@
         "title": "MfaStatusResponse",
         "type": "object"
       },
+      "ModelOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ModelOut",
+        "type": "object"
+      },
       "OrganisationMemberOut": {
         "properties": {
           "email": {
@@ -921,6 +1168,49 @@
         "title": "ProjectOut",
         "type": "object"
       },
+      "Provider": {
+        "enum": [
+          "anthropic",
+          "openai",
+          "bedrock",
+          "voyage"
+        ],
+        "title": "Provider",
+        "type": "string"
+      },
+      "ProviderOut": {
+        "properties": {
+          "auth_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/AuthKind"
+            },
+            "title": "Auth Kinds",
+            "type": "array"
+          },
+          "capabilities": {
+            "items": {
+              "$ref": "#/components/schemas/CapabilityModelsOut"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "auth_kinds",
+          "capabilities"
+        ],
+        "title": "ProviderOut",
+        "type": "object"
+      },
       "RecoveryCodesResponse": {
         "properties": {
           "recovery_codes": {
@@ -955,6 +1245,21 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "RotateCredentialRequest": {
+        "properties": {
+          "api_key": {
+            "format": "password",
+            "title": "Api Key",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "api_key"
+        ],
+        "title": "RotateCredentialRequest",
+        "type": "object"
       },
       "SessionResponse": {
         "properties": {
@@ -2620,6 +2925,462 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/credentials": {
+      "get": {
+        "description": "The Organisation's Provider Credentials, by name. Open to every Member.",
+        "operationId": "listCredentials",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialOut"
+                  },
+                  "title": "Response Listcredentials",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credentials",
+        "tags": [
+          "credentials"
+        ]
+      },
+      "post": {
+        "description": "Checks the key with the provider, then stores it encrypted. A failed check stores nothing.",
+        "operationId": "createCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCredentialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckFailedResponse"
+                }
+              }
+            },
+            "description": "The provider check failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Another credential in this Organisation already has that name."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Credential",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}": {
+      "delete": {
+        "description": "Deletes the credential, unless something still references it (409 lists what does).",
+        "operationId": "deleteCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialInUseResponse"
+                }
+              }
+            },
+            "description": "This credential is still in use. Move these items to another credential first."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Credential",
+        "tags": [
+          "credentials"
+        ]
+      },
+      "get": {
+        "operationId": "getCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Credential",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/check": {
+      "post": {
+        "description": "Checks the stored key with the provider again; the outcome is on the credential.",
+        "operationId": "checkCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Credential",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/rotate": {
+      "post": {
+        "description": "Replaces the key, keeping the credential's identity. A failed check keeps the old key.",
+        "operationId": "rotateCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateCredentialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckFailedResponse"
+                }
+              }
+            },
+            "description": "The provider check failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rotate Credential",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/invites": {
       "get": {
         "description": "Pending Invites (not accepted or revoked), newest first, including expired ones.",
@@ -3858,6 +4619,52 @@
         "summary": "Save Theme",
         "tags": [
           "theme"
+        ]
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "description": "The capability registry: each provider, its auth kinds, and its models per capability.",
+        "operationId": "listProviders",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderOut"
+                  },
+                  "title": "Response Listproviders",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not signed in"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Providers",
+        "tags": [
+          "credentials"
         ]
       }
     },

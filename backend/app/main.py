@@ -4,6 +4,7 @@ import logging
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
+import httpx
 import logfire
 from fastapi import APIRouter, FastAPI
 from opentelemetry.sdk.trace import SpanProcessor
@@ -18,6 +19,9 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
+from app.credentials import api as credentials_api
+from app.credentials.adapters import build_verifier
+from app.credentials.references import ReferenceRegistry
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
 from app.projects import api as projects_api
@@ -40,6 +44,8 @@ ROUTERS: Sequence[APIRouter] = (
     invites_api.router,
     members_api.router,
     switcher_api.router,
+    credentials_api.router,
+    credentials_api.providers_router,
     theme_api.router,
     theme_api.fonts_router,
     projects_api.router,
@@ -64,10 +70,15 @@ def _lifespan(
         app.state.redis = Redis.from_url(str(settings.redis_url))
         app.state.clock = SystemClock()
         app.state.mailer = build_mailer(settings)
+        app.state.provider_http = httpx.AsyncClient(
+            timeout=settings.credential_check_timeout_seconds
+        )
+        app.state.credential_verifier = build_verifier(settings, app.state.provider_http)
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield
         finally:
+            await app.state.provider_http.aclose()
             await app.state.redis.aclose()
             await app.state.engine.dispose()
             flush_telemetry()
@@ -80,6 +91,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app = FastAPI(
         title="RAG Agent Studio API", version="0.1.0", lifespan=_lifespan(extra_span_processors)
     )
+    # Consumers of Provider Credentials register their "who references me" sources here.
+    app.state.credential_references = ReferenceRegistry()
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
