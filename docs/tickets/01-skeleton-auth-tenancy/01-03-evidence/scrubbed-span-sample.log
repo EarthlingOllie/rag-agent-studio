@@ -1,0 +1,88 @@
+$ uv run python scrubbed_span_sample.py   # script: in-memory exporter next to the console exporter, one request carrying Message text, cookie, bearer token, API key; fresh clone at 1bdc0b4
+{
+  "name": "Visitor sent {content}",
+  "attributes": {
+    "logfire.span_type": "log",
+    "logfire.level_num": 9,
+    "logfire.msg_template": "Visitor sent {content}",
+    "logfire.msg": "Visitor sent {content}",
+    "code.filepath": "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/scripts0103/scrubbed_span_sample.py",
+    "code.function": "main.<locals>.receive",
+    "code.lineno": 22,
+    "content": "[Scrubbed due to 'content']",
+    "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"content\":{}}}",
+    "logfire.scrubbed": "[{\"path\": [\"attributes\", \"content\"], \"matched_substring\": \"content\"}]"
+  }
+}
+{
+  "name": "POST /test/messages",
+  "attributes": {
+    "logfire.span_type": "span",
+    "logfire.msg": "POST /test/messages",
+    "http.scheme": "http",
+    "http.host": "t:None",
+    "http.flavor": "1.1",
+    "http.target": "/test/messages",
+    "http.url": "http://t/test/messages",
+    "http.method": "POST",
+    "http.server_name": "t",
+    "http.user_agent": "python-httpx/0.28.1",
+    "net.peer.ip": "127.0.0.1",
+    "net.peer.port": 123,
+    "http.route": "/test/messages",
+    "http.request.header.host": [
+      "t"
+    ],
+    "http.request.header.accept": [
+      "*/*"
+    ],
+    "http.request.header.accept_encoding": [
+      "gzip, deflate"
+    ],
+    "http.request.header.connection": [
+      "keep-alive"
+    ],
+    "http.request.header.user_agent": [
+      "python-httpx/0.28.1"
+    ],
+    "http.request.header.cookie": [
+      "[Scrubbed due to 'cookie']"
+    ],
+    "http.request.header.authorization": [
+      "[Scrubbed due to 'auth']"
+    ],
+    "http.request.header.content_length": [
+      "48"
+    ],
+    "http.request.header.content_type": [
+      "application/json"
+    ],
+    "fastapi.route.name": "receive",
+    "fastapi.route.operation_id": "null",
+    "fastapi.arguments.start_timestamp": "2026-11-05T01:04:57.189568Z",
+    "fastapi.arguments.end_timestamp": "2026-11-05T01:04:57.189686Z",
+    "fastapi.arguments.values": "{\"turn\": {\"content\": \"[Scrubbed due to 'content']\"}}",
+    "fastapi.arguments.errors": "[]",
+    "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"fastapi.route.name\":{},\"fastapi.route.operation_id\":{\"type\":\"null\"},\"fastapi.arguments.values\":{\"type\":\"object\",\"properties\":{\"turn\":{\"type\":\"object\",\"title\":\"Turn\",\"x-python-datatype\":\"PydanticModel\"}}},\"fastapi.arguments.errors\":{\"type\":\"array\"}}}",
+    "fastapi.endpoint_function.start_timestamp": "2026-11-05T01:04:57.190353Z",
+    "provider_api_key": "[Scrubbed due to 'api_key']",
+    "fastapi.endpoint_function.end_timestamp": "2026-11-05T01:04:57.193191Z",
+    "http.response.header.content_length": [
+      "21"
+    ],
+    "http.response.header.content_type": [
+      "application/json"
+    ],
+    "http.response.header.set_cookie": [
+      "[Scrubbed due to 'cookie']"
+    ],
+    "http.status_code": 200,
+    "logfire.scrubbed": "[{\"path\": [\"attributes\", \"http.request.header.cookie\"], \"matched_substring\": \"cookie\"}, {\"path\": [\"attributes\", \"http.request.header.authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"turn\", \"content\"], \"matched_substring\": \"content\"}, {\"path\": [\"attributes\", \"provider_api_key\"], \"matched_substring\": \"api_key\"}, {\"path\": [\"attributes\", \"http.response.header.set_cookie\"], \"matched_substring\": \"cookie\"}]"
+  }
+}
+'MESSAGE TEXT' in exported spans: False
+'COOKIE-SECRET' in exported spans: False
+'BEARER-SECRET' in exported spans: False
+'sk-live-SECRET' in exported spans: False
+'SESSION-SECRET' in exported spans: False
+exit=0

@@ -8,6 +8,8 @@ x-backend: &backend
     ENVIRONMENT: local
     DATABASE_URL: postgresql+asyncpg://studio:studio@postgres:5432/studio
     REDIS_URL: redis://redis:6379/0
+    # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
+    LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
   depends_on:
     postgres:
       condition: service_healthy
@@ -55,7 +57,7 @@ services:
 
   api:
     <<: *backend
-    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    command: ["sh", "-c", "alembic upgrade head && python -m app.serve"]
     ports: ["8000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
@@ -65,11 +67,11 @@ services:
 
   worker:
     <<: *backend
-    command: ["celery", "-A", "app.worker.main", "worker", "--loglevel=INFO", "--concurrency=2"]
+    command: ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
 
   beat:
     <<: *backend
-    command: ["celery", "-A", "app.worker.main", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    command: ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
 
   studio:
     build:

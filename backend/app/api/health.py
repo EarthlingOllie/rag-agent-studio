@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -14,6 +15,8 @@ from app.worker.tasks import health_check
 CheckStatus = Literal["ok", "error"]
 
 WORKER_POLL_INTERVAL_SECONDS = 0.05
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -42,7 +45,8 @@ async def _check_database(engine: AsyncEngine) -> CheckStatus:
     try:
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
-    except Exception:
+    except Exception as exc:
+        logger.warning("Database health check failed", extra={"error": type(exc).__name__})
         return "error"
     return "ok"
 
@@ -50,7 +54,8 @@ async def _check_database(engine: AsyncEngine) -> CheckStatus:
 async def _check_redis(redis: "Redis") -> CheckStatus:
     try:
         await redis.ping()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Redis health check failed", extra={"error": type(exc).__name__})
         return "error"
     return "ok"
 

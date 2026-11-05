@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn, ValidationError
+from pydantic import Field, HttpUrl, PostgresDsn, RedisDsn, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,13 +11,18 @@ class SettingsError(RuntimeError):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(case_sensitive=False, extra="ignore")
+    # An empty variable counts as unset, so `LOGFIRE_TOKEN=` in compose means "no token".
+    model_config = SettingsConfigDict(case_sensitive=False, extra="ignore", env_ignore_empty=True)
 
     environment: Literal["local", "test", "demo", "production"] = "local"
     database_url: PostgresDsn
     redis_url: RedisDsn
     celery_task_always_eager: bool = False
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
+    # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
+    logfire_token: SecretStr | None = None
+    # Only needed for a self-hosted Logfire; otherwise the region is read from the token.
+    logfire_base_url: HttpUrl | None = None
 
 
 def load_settings() -> Settings:

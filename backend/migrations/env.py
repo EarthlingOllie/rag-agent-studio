@@ -1,18 +1,18 @@
 """Alembic environment: runs migrations over the async engine built from validated settings."""
 
 import asyncio
-from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import MetaData
 from sqlalchemy.engine import Connection
 
 from app.core.db import create_engine
+from app.core.logs import configure_logging
 from app.core.settings import load_settings
 
 config = context.config
-if config.config_file_name is not None and config.attributes.get("configure_logger", True):
-    fileConfig(config.config_file_name, disable_existing_loggers=False)
+if config.attributes.get("configure_logger", True):
+    configure_logging("migrations")
 
 # Models register their tables on this metadata as they are introduced.
 target_metadata = MetaData()
