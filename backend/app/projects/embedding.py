@@ -2,10 +2,8 @@
 credential reference a provider model registers.
 
 - The local model needs no credential and is every new Project's default.
-- A provider model is chosen together with one of the Organisation's Provider Credentials
-  that offers it for ``embeddings``. Only providers the model gateway can embed with are
-  offered: Voyage and OpenAI. Bedrock models are registered but neither listed nor accepted
-  until the gateway builds Bedrock clients, so a Project can't be left unable to embed.
+- A provider model (Voyage, OpenAI or Bedrock) is chosen together with one of the
+  Organisation's Provider Credentials that offers it for ``embeddings``.
 - Until re-embedding exists (ticket 03-10), the model can only change while the Project has no
   Documents, so every Chunk of a Project is embedded with its current model.
 - The chosen credential is a "who references me" source: it can't be deleted while a Project
@@ -33,10 +31,6 @@ from app.projects.service import active_project
 from app.tenancy.repository import OrganisationScope
 
 CHANGED = "project.embedding_model_changed"
-# The providers whose embedders the model gateway's adapters build. Bedrock joins when the
-# gateway gets a Bedrock embedder (it raises ``UnsupportedCredentialError`` today).
-CALLABLE_PROVIDERS = frozenset({Provider.OPENAI, Provider.VOYAGE})
-BEDROCK_NOT_YET = "Bedrock Embedding Models can't be used yet: choose a Voyage or OpenAI model."
 
 
 class EmbeddingChoiceError(Exception):
@@ -66,8 +60,6 @@ async def embedding_choices(
     )
     choices = [EmbeddingChoice(LOCAL_MODEL, None)]
     for credential in credentials:
-        if Provider(credential.provider) not in CALLABLE_PROVIDERS:
-            continue
         offered = models_for(
             Provider(credential.provider), credential.capabilities, Capability.EMBEDDINGS
         )
@@ -92,8 +84,6 @@ async def _credential(
         check_offered(credential, Capability.EMBEDDINGS, model.id)
     except ModelUnavailableError as error:
         raise EmbeddingChoiceError(str(error)) from None
-    if Provider(credential.provider) not in CALLABLE_PROVIDERS:
-        raise EmbeddingChoiceError(BEDROCK_NOT_YET)
     return credential
 
 

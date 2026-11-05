@@ -16,7 +16,7 @@ from pydantic_ai.models.test import TestModel
 
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
-from app.gateway.ports import RankedDocument, Reranker
+from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
 
 ChatBuilder = Callable[[Provider, str, str], Model]
 
@@ -103,6 +103,9 @@ class FakeModelAdapters:
         return self._chat(provider, secret, model)
 
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel:
+        return HashEmbeddingModel(model)
+
+    def bedrock_embedder(self, account: BedrockAccount, model: str) -> EmbeddingModel:
         return HashEmbeddingModel(model)
 
     def reranker(self, provider: Provider, secret: str, model: str) -> Reranker:

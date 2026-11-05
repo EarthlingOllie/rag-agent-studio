@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path.cwd()
 TESTS = [
     "tests/integration/test_embedding_models.py",
+    "tests/unit/test_bedrock_embedder.py",
     "tests/integration/test_retrieval_probe_index.py",
 ]
 
@@ -85,20 +86,6 @@ MUTATIONS = [
     ),
     # Round 2 (evaluator feedback).
     (
-        "Bedrock models are offered",
-        "backend/app/projects/embedding.py",
-        "        if Provider(credential.provider) not in CALLABLE_PROVIDERS:\n            continue\n",
-        "",
-        "test_bedrock_models_are_not_offered_until_the_gateway_can_embed_with_them",
-    ),
-    (
-        "a Bedrock model is accepted",
-        "backend/app/projects/embedding.py",
-        "    if Provider(credential.provider) not in CALLABLE_PROVIDERS:\n        raise EmbeddingChoiceError(BEDROCK_NOT_YET)\n",
-        "",
-        "test_a_bedrock_model_is_refused_until_the_gateway_can_embed_with_it",
-    ),
-    (
         "an unusable model isn't answered 409 with its reason",
         "backend/app/projects/embedding_api.py",
         "    except UNUSABLE_ERRORS as error:",
@@ -118,6 +105,56 @@ MUTATIONS = [
         '    await session.execute(text("SET LOCAL hnsw.iterative_scan = strict_order"))\n',
         "",
         "test_the_index_finds_a_projects_chunks_behind_other_projects_nearer_ones",
+    ),
+    # Round 3 (evaluator feedback): the Bedrock embedder.
+    (
+        "a role is assumed without the Organisation's external ID",
+        "backend/app/gateway/gateway.py",
+        "BedrockAccount(region, credential.role_arn, credential.external_id)",
+        "BedrockAccount(region, credential.role_arn, None)",
+        "test_a_bedrock_role_model_is_chosen_and_documents_embed_with_it",
+    ),
+    (
+        "Bedrock is called with the platform's identity, not the credential's",
+        "backend/app/gateway/live.py",
+        'self._bedrock.clients("bedrock-runtime", self._account.region, self._keys())',
+        'self._bedrock.clients("bedrock-runtime", self._account.region, None)',
+        "test_access_keys_embed_with_titan or test_a_role_is_assumed",
+    ),
+    (
+        "Cohere queries are embedded as documents",
+        "backend/app/gateway/live.py",
+        '"input_type": _COHERE_INPUT_TYPES[input_type],',
+        '"input_type": "search_document",',
+        "test_cohere_embeds_a_batch_per_call_with_its_input_type",
+    ),
+    (
+        "Cohere is sent more than 96 texts at once",
+        "backend/app/gateway/live.py",
+        "COHERE_BATCH = 96",
+        "COHERE_BATCH = 1000",
+        "test_cohere_sends_at_most_96_texts_per_call",
+    ),
+    (
+        "Titan isn't asked for the registered dimension",
+        "backend/app/gateway/live.py",
+        '"dimensions": dimension, ',
+        "",
+        "test_access_keys_embed_with_titan",
+    ),
+    (
+        "a Bedrock refusal escapes as a botocore error",
+        "backend/app/gateway/live.py",
+        "        except ClientError as error:\n            raise _http_error",
+        "        except ZeroDivisionError as error:\n            raise _http_error",
+        "model_http_error",
+    ),
+    (
+        "Bedrock credentials offer nothing",
+        "backend/app/projects/embedding.py",
+        "    for credential in credentials:\n",
+        "    for credential in [c for c in credentials if c.provider != 'bedrock']:\n",
+        "test_bedrock_credentials_offer_titan_and_cohere",
     ),
 ]
 
@@ -142,7 +179,7 @@ def main() -> int:
         caught += code != 0
         print(f"{verdict}: {name} ({path}) -> pytest -k '{tests}' exit {code}", flush=True)
     print(f"{caught}/{len(MUTATIONS)} mutations caught")
-    clean = run("embedding or probe or model or index")
+    clean = run("embed or probe or model or index")
     print(f"unmodified code: {' '.join(TESTS)} exit {clean}")
     return 0 if caught == len(MUTATIONS) and clean == 0 else 1
 

@@ -6,7 +6,7 @@ vectors of the registered dimension); a failing provider is a gateway with faili
 Ingestion runs eagerly through the fake converter. Everything is observed through the API.
 """
 
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -22,10 +22,19 @@ from sqlalchemy import text
 from app.credentials.registry import Provider
 from app.gateway.fakes import FakeModelAdapters
 from app.gateway.gateway import ModelGateway
+from app.gateway.ports import BedrockAccount
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import chunks, create_project, documents, project_path, upload
 from tests.fakes.clock import ControllableClock
-from tests.integration.test_bedrock_credentials import add_keys, add_role, created
+from tests.integration.test_bedrock_credentials import (
+    ACCESS_KEY_ID,
+    ROLE_ARN,
+    SECRET_ACCESS_KEY,
+    add_keys,
+    add_role,
+    created,
+    setup_of,
+)
 from tests.integration.test_provider_credentials import (
     OPENAI_KEY,
     VOYAGE_KEY,
@@ -140,7 +149,11 @@ class ProviderAdapters(FakeModelAdapters):
 
 def install_provider(app: FastAPI, embedder: type[EmbeddingModel]) -> None:
     """Makes every provider embedding call, in ingestion and the probe, go to ``embedder``."""
-    adapters = ProviderAdapters(embedder)
+    install_adapters(app, ProviderAdapters(embedder))
+
+
+def install_adapters(app: FastAPI, adapters: FakeModelAdapters) -> None:
+    """Makes ingestion and the probe build their models with ``adapters``."""
 
     def open_gateway(http: httpx2.AsyncClient) -> ModelGateway:
         return ModelGateway(app.state.envelope, adapters)
@@ -476,29 +489,80 @@ async def test_vectors_of_the_wrong_size_fail_the_document(
     assert listed["status"] == "failed"
 
 
-async def test_bedrock_models_are_not_offered_until_the_gateway_can_embed_with_them(
-    owner: SignedUpMember,
-) -> None:
+async def test_bedrock_credentials_offer_titan_and_cohere(owner: SignedUpMember) -> None:
     await add_keys(owner, name="Bedrock keys", capabilities=["embeddings"])
     await add_role(owner, name="Bedrock role", capabilities=["embeddings"])
 
-    assert [c["model_id"] for c in await choices(owner)] == [LOCAL]
+    listed = await choices(owner)
+
+    assert [(c["model_id"], c["credential_name"]) for c in listed] == [
+        (LOCAL, None),
+        ("amazon.titan-embed-text-v2:0", "Bedrock keys"),
+        ("cohere.embed-multilingual-v3", "Bedrock keys"),
+        ("amazon.titan-embed-text-v2:0", "Bedrock role"),
+        ("cohere.embed-multilingual-v3", "Bedrock role"),
+    ]
+    titan = listed[1]
+    assert (titan["provider"], titan["dimension"]) == ("bedrock", 1024)
 
 
-@pytest.mark.parametrize("add", [add_keys, add_role])
-async def test_a_bedrock_model_is_refused_until_the_gateway_can_embed_with_it(
-    owner: SignedUpMember, add: Callable[..., Awaitable[httpx.Response]]
+class RecordingBedrock(FakeModelAdapters):
+    """The fake adapters, recording the account each Bedrock embedder is built for."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.accounts: list[BedrockAccount] = []
+
+    def bedrock_embedder(self, account: BedrockAccount, model: str) -> EmbeddingModel:
+        self.accounts.append(account)
+        return super().bedrock_embedder(account, model)
+
+
+@pytest.mark.parametrize(
+    "model_id", ["amazon.titan-embed-text-v2:0", "cohere.embed-multilingual-v3"]
+)
+async def test_a_bedrock_role_model_is_chosen_and_documents_embed_with_it(
+    app: FastAPI, owner: SignedUpMember, model_id: str
 ) -> None:
-    bedrock = created(await add(owner, name="Bedrock", capabilities=["embeddings"]))
+    adapters = RecordingBedrock()
+    install_adapters(app, adapters)
+    external_id = (await setup_of(owner))["external_id"]
+    role = created(await add_role(owner, name="Bedrock role", capabilities=["embeddings"]))
     project_id = await create_project(owner)
 
-    response = await choose(owner, project_id, "amazon.titan-embed-text-v2:0", bedrock["id"])
+    response = await choose(owner, project_id, model_id, role["id"])
 
-    assert (response.status_code, response.json()) == (
-        422,
-        {"detail": "Bedrock Embedding Models can't be used yet: choose a Voyage or OpenAI model."},
-    )
-    assert (await project(owner, project_id))["embedding_credential_id"] is None
+    assert response.status_code == 200, response.text
+    assert response.json()["embedding_credential_id"] == role["id"]
+    document = await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
+    (chunk,) = await chunks(owner, project_id, document["id"])
+    assert chunk["embedding_model_id"] == model_id
+    answer = await probed(owner, project_id, "Everyone gets 25 days.")
+    assert (answer["embedding_model_id"], answer["dimension"]) == (model_id, 1024)
+    assert [hit["chunk_id"] for hit in answer["chunks"]] == [chunk["id"]]
+    # Ingestion and the probe each assumed the Owner's role with the Organisation's external ID.
+    role_account = BedrockAccount("eu-west-2", ROLE_ARN, external_id)
+    assert adapters.accounts == [role_account, role_account]
+
+
+async def test_a_bedrock_access_keys_model_embeds_with_the_stored_keys(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    adapters = RecordingBedrock()
+    install_adapters(app, adapters)
+    keys = created(await add_keys(owner, name="Bedrock keys", capabilities=["embeddings"]))
+    project_id = await create_project(owner)
+    assert (await choose(owner, project_id, "amazon.titan-embed-text-v2:0", keys["id"])).is_success
+
+    await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
+    (listed,) = await documents(owner, project_id)
+
+    assert listed["status"] == "ready"
+    assert adapters.accounts == [
+        BedrockAccount(
+            "us-east-1", access_key_id=ACCESS_KEY_ID, secret_access_key=SECRET_ACCESS_KEY
+        )
+    ]
 
 
 # The retrieval probe
@@ -644,24 +708,6 @@ async def _set_embedding(app: FastAPI, project_id: str, model_id: str, credentia
             ),
             {"model": model_id, "credential": credential_id, "id": project_id},
         )
-
-
-async def test_probing_with_a_bedrock_role_credential_says_why_it_cannot_embed(
-    app: FastAPI, owner: SignedUpMember
-) -> None:
-    role = created(await add_role(owner, name="Bedrock role", capabilities=["embeddings"]))
-    project_id = await create_project(owner)
-    await _set_embedding(app, project_id, "amazon.titan-embed-text-v2:0", role["id"])
-
-    response = await probe(owner, project_id, "leave")
-
-    assert (response.status_code, response.json()) == (
-        409,
-        {
-            "detail": "The Project's Embedding Model can't be used: "
-            "Bedrock IAM-role credentials can't make model calls yet."
-        },
-    )
 
 
 async def test_probing_through_a_credential_without_the_embeddings_capability_says_why(
