@@ -1,12 +1,13 @@
 import type { Schemas } from "@studio/api-client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { api } from "../api";
 import { ProjectRequestError } from "./projects";
 
 export type ProjectDocument = Schemas["DocumentOut"];
 export type DocumentStatus = Schemas["DocumentStatus"];
+export type Replacement = Schemas["ReplacementOut"];
 
 /** How often the Document list asks for statuses while a Document is still being processed. */
 export const STATUS_POLL_MS = 2000;
@@ -36,7 +37,7 @@ export function useDocuments(organisationId: string, projectId: string) {
       return data;
     },
   });
-  const inProgress = (list.data ?? []).some((document) => !FINAL_STATUSES.includes(document.status));
+  const inProgress = (list.data ?? []).some((document) => !isSettled(document));
   const statuses = useQuery({
     queryKey: [...documentsKey(organisationId, projectId), "statuses"],
     queryFn: async () => {
@@ -49,25 +50,67 @@ export function useDocuments(organisationId: string, projectId: string) {
     },
     enabled: inProgress,
     // Polling stops once every Document has reached Ready or Failed.
-    refetchInterval: (query) =>
-      query.state.data?.every((status) => FINAL_STATUSES.includes(status.status)) ? false : STATUS_POLL_MS,
+    refetchInterval: (query) => (query.state.data?.every(isSettled) ? false : STATUS_POLL_MS),
   });
   const latest = new Map((statuses.data ?? []).map((status) => [status.id, status]));
   const documents = list.data?.map((document) => {
     const status = latest.get(document.id);
-    return status ? { ...document, status: status.status, error_message: status.error_message, chunk_count: status.chunk_count } : document;
+    return status ? { ...document, ...status } : document;
   });
+  // When a new edition becomes Ready its name, size and edition change: read the full list again.
+  const swapped = (list.data ?? []).some(
+    (document) => document.replacement !== null && latest.has(document.id) && latest.get(document.id)?.replacement === null,
+  );
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (swapped) void queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId), exact: true });
+  }, [swapped, queryClient, organisationId, projectId]);
   return { isError: list.isError, data: documents };
+}
+
+/** Whether the Document and any new edition of it are Ready or Failed: nothing left to poll for. */
+function isSettled(document: { status: DocumentStatus; replacement: Replacement | null }): boolean {
+  return (
+    FINAL_STATUSES.includes(document.status) && (document.replacement === null || FINAL_STATUSES.includes(document.replacement.status))
+  );
+}
+
+/** Whether a new edition can be uploaded: not while the Document or an earlier edition is processing. */
+export function canReplace(document: ProjectDocument): boolean {
+  return isSettled(document);
+}
+
+/** Deletes a Document; the list is refetched. */
+export function useDeleteDocument(organisationId: string, projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (documentId: string) => {
+      const { error, response } = await api.DELETE(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}",
+        { params: { path: { organisation_id: organisationId, project_id: projectId, document_id: documentId } } },
+      );
+      if (!response.ok) throw failed(response, error);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId) }),
+  });
+}
+
+/** The Document that already holds an uploaded file's content. */
+export interface ExistingDocument {
+  id: string;
+  name: string;
 }
 
 export type UploadState =
   | { phase: "uploading"; progress: number }
   | { phase: "uploaded" }
-  | { phase: "failed"; message: string };
+  | { phase: "failed"; message: string; existing?: ExistingDocument };
 
 export interface Upload {
   key: string;
   name: string;
+  /** For a new edition, the Document it replaces. */
+  replacing?: string;
   state: UploadState;
 }
 
@@ -93,6 +136,16 @@ function putFile(url: string, file: File, contentType: string, onProgress: (perc
 
 const TRY_AGAIN = "The upload failed. Try again.";
 
+/** Why a confirmation was refused, and for a duplicate, the Document that has the same content. */
+function refusal(response: Response, error: unknown): UploadState {
+  const conflict = error as Partial<Schemas["UploadConflictResponse"]> | undefined;
+  const message = failed(response, error).detail ?? TRY_AGAIN;
+  if (conflict?.document_id) {
+    return { phase: "failed", message, existing: { id: conflict.document_id, name: conflict.document_name as string } };
+  }
+  return { phase: "failed", message };
+}
+
 /**
  * Uploads files to the Project: for each, ask the API for a presigned URL (it checks the type
  * and size first), PUT the file straight to storage, then confirm. Tracks each file's progress.
@@ -106,7 +159,7 @@ export function useUploads(organisationId: string, projectId: string) {
     setUploads((current) => current.map((upload) => (upload.key === key ? { ...upload, state } : upload)));
   };
 
-  async function uploadOne(key: string, file: File) {
+  async function uploadOne(key: string, file: File, replacing?: ProjectDocument) {
     const started = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/uploads", {
       params: { path },
       body: { filename: file.name, size_bytes: file.size },
@@ -123,12 +176,15 @@ export function useUploads(organisationId: string, projectId: string) {
       update(key, { phase: "failed", message: TRY_AGAIN });
       return;
     }
-    const confirmed = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/documents", {
-      params: { path },
-      body: { upload_id: ticket.upload_id },
-    });
+    const body = { upload_id: ticket.upload_id };
+    const confirmed = replacing
+      ? await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/editions", {
+          params: { path: { ...path, document_id: replacing.id } },
+          body,
+        })
+      : await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/documents", { params: { path }, body });
     if (!confirmed.data) {
-      update(key, { phase: "failed", message: failed(confirmed.response, confirmed.error).detail ?? TRY_AGAIN });
+      update(key, refusal(confirmed.response, confirmed.error));
       return;
     }
     update(key, { phase: "uploaded" });
@@ -144,5 +200,12 @@ export function useUploads(organisationId: string, projectId: string) {
     for (const { key, file } of added) void uploadOne(key, file);
   }
 
-  return { uploads, upload };
+  /** Uploads a newer edition of the Document; its current edition serves until the new one is Ready. */
+  function replace(document: ProjectDocument, file: File) {
+    const key = crypto.randomUUID();
+    setUploads((current) => [...current, { key, name: file.name, replacing: document.name, state: { phase: "uploading", progress: 0 } }]);
+    void uploadOne(key, file, document);
+  }
+
+  return { uploads, upload, replace };
 }

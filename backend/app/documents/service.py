@@ -19,11 +19,20 @@ from datetime import datetime, timedelta
 from pathlib import PurePath
 
 from redis.asyncio import Redis
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.documents.models import Chunk, Document, DocumentStatus
+from app import audit
+from app.documents.models import (
+    FINAL_STATUSES,
+    Chunk,
+    Document,
+    DocumentStatus,
+    StagedEdition,
+)
+from app.documents.pipeline import stored_keys
 from app.projects import service as projects
+from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
 from app.tenancy.repository import OrganisationScope
 
@@ -64,6 +73,18 @@ class ContentHashMismatchError(Exception):
 
 class DocumentNotFoundError(Exception):
     """No Document with that ID in the Project."""
+
+
+class DocumentBusyError(Exception):
+    """The Document, or a newer edition of it, is still being processed."""
+
+
+class DuplicateDocumentError(Exception):
+    """The Project already has a Document with the uploaded file's content hash."""
+
+    def __init__(self, existing: Document) -> None:
+        super().__init__(existing.id)
+        self.existing = existing
 
 
 @dataclass(frozen=True)
@@ -113,18 +134,31 @@ async def start_upload(
     )
 
 
-async def confirm_upload(
+@dataclass(frozen=True)
+class _Received:
+    """A confirmed upload's file, read back from the object store."""
+
+    name: str
+    mime_type: str
+    object_key: str
+    size_bytes: int
+    content_hash: str
+    # The pending upload's Redis key, deleted once the Document is committed.
+    pending_key: str
+
+
+async def _receive(
     session: AsyncSession,
     redis: Redis,
     store: ObjectStore,
-    scope: OrganisationScope,
-    project_id: uuid.UUID,
+    project: Project,
     *,
     upload_id: uuid.UUID,
     content_hash: str | None,
-) -> Document:
-    """Creates the Document as Queued; the caller enqueues ingestion after this commits."""
-    project = await projects.active_project(session, scope, project_id)
+) -> _Received:
+    """Reads the pending upload's file, checks its content hash, and refuses a duplicate of a
+    Document (or a staged edition) already in the Project. The caller holds the Project's lock,
+    so two confirmations of the same file can't both pass the duplicate check."""
     key = _PENDING.format(f"{project.id}:{upload_id}")
     raw = await redis.get(key)
     if raw is None:
@@ -137,21 +171,73 @@ async def confirm_upload(
     digest = hashlib.sha256(data).hexdigest()
     if content_hash is not None and content_hash.lower() != digest:
         raise ContentHashMismatchError
+    duplicate = await _document_with_hash(session, project.id, digest)
+    if duplicate is not None:
+        # Nothing will refer to the refused copy, so neither the upload nor its file is kept.
+        await redis.delete(key)
+        await store.delete(pending["object_key"])
+        raise DuplicateDocumentError(duplicate)
+    return _Received(
+        name=pending["name"],
+        mime_type=pending["mime_type"],
+        object_key=pending["object_key"],
+        size_bytes=len(data),
+        content_hash=digest,
+        pending_key=key,
+    )
+
+
+async def _document_with_hash(
+    session: AsyncSession, project_id: uuid.UUID, content_hash: str
+) -> Document | None:
+    """The Project's Document whose current edition, or whose staged edition still being
+    ingested, has this content hash."""
+    staged = select(StagedEdition.document_id).where(
+        StagedEdition.project_id == project_id,
+        StagedEdition.content_hash == content_hash,
+        StagedEdition.status != DocumentStatus.FAILED,
+    )
+    return await session.scalar(
+        select(Document)
+        .where(
+            Document.project_id == project_id,
+            or_(Document.content_hash == content_hash, Document.id.in_(staged)),
+        )
+        .order_by(Document.created_at)
+        .limit(1)
+    )
+
+
+async def confirm_upload(
+    session: AsyncSession,
+    redis: Redis,
+    store: ObjectStore,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    *,
+    upload_id: uuid.UUID,
+    content_hash: str | None,
+) -> Document:
+    """Creates the Document as Queued; the caller enqueues ingestion after this commits."""
+    project = await projects.active_project(session, scope, project_id, lock=True)
+    received = await _receive(
+        session, redis, store, project, upload_id=upload_id, content_hash=content_hash
+    )
     document = Document(
         organisation_id=scope.organisation_id,
         project_id=project.id,
-        name=pending["name"],
-        mime_type=pending["mime_type"],
-        size_bytes=len(data),
-        content_hash=digest,
-        object_key=pending["object_key"],
+        name=received.name,
+        mime_type=received.mime_type,
+        size_bytes=received.size_bytes,
+        content_hash=received.content_hash,
+        object_key=received.object_key,
         status=DocumentStatus.QUEUED,
         attempt_count=0,
         edition=1,
     )
     session.add(document)
     await session.commit()
-    await redis.delete(key)
+    await redis.delete(received.pending_key)
     await session.refresh(document)
     return document
 
@@ -160,12 +246,14 @@ async def confirm_upload(
 class DocumentSummary:
     document: Document
     chunk_count: int
+    # A newer edition being ingested, or one that failed; ``None`` when there is neither.
+    replacement: StagedEdition | None
 
 
 async def list_documents(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID
 ) -> list[DocumentSummary]:
-    """The Project's Documents, newest first, with their Chunk counts."""
+    """The Project's Documents, newest first, with their Chunk counts and replacements."""
     project = await projects.get_project(session, scope, project_id)
     chunk_count = (
         select(func.count())
@@ -173,11 +261,12 @@ async def list_documents(
         .scalar_subquery()
     )
     rows = await session.execute(
-        select(Document, chunk_count)
+        select(Document, chunk_count, StagedEdition)
+        .outerjoin(StagedEdition, StagedEdition.document_id == Document.id)
         .where(Document.project_id == project.id)
         .order_by(Document.created_at.desc(), Document.name)
     )
-    return [DocumentSummary(document, count) for document, count in rows]
+    return [DocumentSummary(document, count, staged) for document, count, staged in rows]
 
 
 async def get_document(
@@ -203,3 +292,118 @@ async def list_chunks(
         .order_by(Chunk.ordinal)
     )
     return list(chunks)
+
+
+async def delete_document(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> list[str]:
+    """Deletes the Document and its Chunks in one transaction, so retrieval stops at once, and
+    records ``document.deleted``. Returns its stored objects (originals and converted markdown,
+    of the current and any staged edition) for the caller to schedule deletion of."""
+    project = await projects.active_project(session, scope, project_id)
+    document = await session.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.project_id == project.id)
+        .with_for_update()
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    staged = await session.get(StagedEdition, document.id, with_for_update=True)
+    keys = stored_keys(document.object_key)
+    if staged is not None:
+        keys += stored_keys(staged.object_key)
+    await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action="document.deleted",
+        target=audit.AuditTarget("document", document.id),
+        before={
+            "project_id": str(project.id),
+            "name": document.name,
+            "content_hash": document.content_hash,
+        },
+        occurred_at=now,
+    )
+    await session.delete(document)
+    await session.commit()
+    return keys
+
+
+@dataclass(frozen=True)
+class Replacement:
+    document: Document
+    staged: StagedEdition
+    # A previous failed replacement's stored objects, which nothing refers to any more.
+    discarded: list[str]
+
+
+async def replace_document(
+    session: AsyncSession,
+    redis: Redis,
+    store: ObjectStore,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    *,
+    upload_id: uuid.UUID,
+    content_hash: str | None,
+) -> Replacement:
+    """Stages the uploaded file as the Document's next edition, Queued; the caller enqueues
+    ingestion after this commits. The current edition keeps serving until the staged one is
+    Ready. Refused while the Document or an earlier replacement is still being processed; a
+    failed replacement is overwritten."""
+    project = await projects.active_project(session, scope, project_id, lock=True)
+    document = await session.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.project_id == project.id)
+        .with_for_update()
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    staged = await session.get(StagedEdition, document.id, with_for_update=True)
+    if document.status not in FINAL_STATUSES or (
+        staged is not None and staged.status != DocumentStatus.FAILED
+    ):
+        raise DocumentBusyError
+    received = await _receive(
+        session, redis, store, project, upload_id=upload_id, content_hash=content_hash
+    )
+    discarded: list[str] = []
+    if staged is None:
+        staged = StagedEdition(
+            document_id=document.id, organisation_id=document.organisation_id, project_id=project.id
+        )
+        session.add(staged)
+    else:
+        discarded = stored_keys(staged.object_key)
+    staged.edition = document.edition + 1
+    staged.name = received.name
+    staged.mime_type = received.mime_type
+    staged.size_bytes = received.size_bytes
+    staged.content_hash = received.content_hash
+    staged.object_key = received.object_key
+    staged.status = DocumentStatus.QUEUED
+    staged.error_message = None
+    staged.attempt_count = 0
+    staged.updated_at = func.now()
+    await session.commit()
+    await redis.delete(received.pending_key)
+    await session.refresh(staged)
+    return Replacement(document, staged, discarded)
+
+
+async def chunk_count(session: AsyncSession, document: Document) -> int:
+    """How many Chunks the Document's current edition has."""
+    count = await session.scalar(
+        select(func.count()).where(
+            Chunk.document_id == document.id, Chunk.edition == document.edition
+        )
+    )
+    return count or 0

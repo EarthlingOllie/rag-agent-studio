@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
@@ -160,7 +160,7 @@ test("Documents show their status, size and Chunk count, and why one failed", as
   renderStudio(documentsTab());
 
   const table = await documentsTable();
-  expect(table.getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Name", "Status", "Chunks", "Size"]);
+  expect(table.getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Name", "Status", "Chunks", "Size", "Actions"]);
   const ready = rowOf(table, "handbook.pdf");
   expect(ready.getByText("Ready")).toBeInTheDocument();
   expect(ready.getByText("12")).toBeInTheDocument();
@@ -199,4 +199,178 @@ test("an archived Project takes no uploads", async () => {
 
   expect(await screen.findByText(/No Documents yet/)).toBeInTheDocument();
   expect(screen.queryByLabelText("Choose files to upload")).not.toBeInTheDocument();
+});
+
+test("uploading a file already in the Project is refused with a link to the existing Document", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi();
+  renderStudio(documentsTab());
+  const picker = await screen.findByLabelText("Choose files to upload");
+  await userEvent.upload(picker, file("handbook.md"));
+  const table = await documentsTable();
+  expect(await table.findByRole("cell", { name: "handbook.md" })).toBeInTheDocument();
+
+  await userEvent.upload(picker, file("copy.md"));
+
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("This file is already in the Project as handbook.md.");
+  const link = within(alert).getByRole("link", { name: "Show handbook.md" });
+  const row = table.getByRole("cell", { name: "handbook.md" }).closest("tr") as HTMLElement;
+  expect(link).toHaveAttribute("href", `#${row.id}`);
+  expect(requests.filter((r) => r.route === "confirm")).toHaveLength(2);
+  expect(table.queryByRole("cell", { name: "copy.md" })).not.toBeInTheDocument();
+});
+
+test("an Editor uploads a new edition, and the old one shows as Ready until the new one replaces it", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [aDocument()] });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+  expect(table.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+    "Name",
+    "Status",
+    "Chunks",
+    "Size",
+    "Actions",
+  ]);
+
+  await userEvent.upload(table.getByLabelText("New edition of handbook.pdf"), file("handbook-2027.md", "# Handbook 2027"));
+
+  const uploads = within(screen.getByRole("list", { name: "Uploads" }));
+  expect(await uploads.findByText("New edition of handbook.pdf")).toBeInTheDocument();
+  expect(await uploads.findByText("Uploaded")).toBeInTheDocument();
+  const row = rowOf(table, "handbook.pdf");
+  expect(await row.findByText(/New edition 2 \(handbook-2027\.md\): (Queued|Processing)/)).toBeInTheDocument();
+  // The current edition keeps serving: still Ready, with its Chunks.
+  expect(row.getByText("Ready")).toBeInTheDocument();
+  expect(row.getByRole("cell", { name: "12" })).toBeInTheDocument();
+  // While the new edition is processing, another can't be uploaded.
+  expect(row.queryByLabelText("New edition of handbook.pdf")).not.toBeInTheDocument();
+
+  const replaced = await table.findByRole("cell", { name: "handbook-2027.md" }, { timeout: 8000 });
+  const after = within(replaced.closest("tr") as HTMLElement);
+  expect(after.getByText("Ready")).toBeInTheDocument();
+  expect(after.queryByText(/New edition 2/)).not.toBeInTheDocument();
+  expect(await after.findByRole("cell", { name: "6" })).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "replace").map((r) => r.body)).toEqual([{ upload_id: "u1" }]);
+}, 15000);
+
+test("a failed new edition says why, and the Document keeps its current edition", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({
+    documents: [
+      aDocument({
+        replacement: {
+          edition: 2,
+          name: "broken.md",
+          status: "failed",
+          error_message: "This Document couldn't be processed. Try uploading it again.",
+        },
+      }),
+    ],
+  });
+  renderStudio(documentsTab());
+
+  const row = rowOf(await documentsTable(), "handbook.pdf");
+  expect(row.getByText("Ready")).toBeInTheDocument();
+  expect(row.getByText(/New edition 2 \(broken\.md\): Failed/)).toBeInTheDocument();
+  expect(row.getByText("This Document couldn't be processed. Try uploading it again.")).toBeInTheDocument();
+  // A failed new edition can be replaced by another.
+  expect(row.getByLabelText("New edition of handbook.pdf")).toBeInTheDocument();
+});
+
+test("a new edition the API refuses says why", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument()] });
+  const busy = "This Document is still being processed. Try again once it is Ready or Failed.";
+  server.use(http.post(`${DOCUMENTS}/:documentId/editions`, () => HttpResponse.json({ detail: busy }, { status: 409 })));
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.upload(table.getByLabelText("New edition of handbook.pdf"), file("new.md"));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(busy);
+  expect(screen.queryByRole("link", { name: /Show/ })).not.toBeInTheDocument();
+});
+
+test("choosing no file for a new edition uploads nothing", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [aDocument()] });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  fireEvent.change(table.getByLabelText("New edition of handbook.pdf"), { target: { files: [] } });
+
+  expect(screen.queryByRole("list", { name: "Uploads" })).not.toBeInTheDocument();
+  expect(requests).toEqual([]);
+});
+
+test("a Document still processing can be deleted but not replaced", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument({ status: "queued", chunk_count: 0 })] });
+  renderStudio(documentsTab());
+
+  const row = rowOf(await documentsTable(), "handbook.pdf");
+  expect(row.getByRole("button", { name: "Delete handbook.pdf" })).toBeInTheDocument();
+  expect(row.queryByLabelText("New edition of handbook.pdf")).not.toBeInTheDocument();
+});
+
+test("an Editor deletes a Document after confirming, and it leaves the list", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const kept = aDocument({ id: "d0c00000-0000-4000-8000-000000000002", name: "faq.md" });
+  const { requests } = fakeDocumentsApi({ documents: [aDocument(), kept] });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.click(table.getByRole("button", { name: "Delete handbook.pdf" }));
+  const confirmation = within(table.getByRole("group", { name: "Delete handbook.pdf?" }));
+  expect(confirmation.getByText("Delete handbook.pdf? It stops being retrieved at once.")).toBeInTheDocument();
+  await userEvent.click(confirmation.getByRole("button", { name: "Cancel" }));
+  expect(table.queryByRole("group")).not.toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "delete")).toEqual([]);
+
+  await userEvent.click(table.getByRole("button", { name: "Delete handbook.pdf" }));
+  await userEvent.click(within(table.getByRole("group", { name: "Delete handbook.pdf?" })).getByRole("button", { name: "Delete" }));
+
+  await waitFor(() => {
+    expect(table.queryByRole("cell", { name: "handbook.pdf" })).not.toBeInTheDocument();
+  });
+  expect(table.getByRole("cell", { name: "faq.md" })).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "delete").map((r) => r.body)).toEqual([aDocument().id]);
+});
+
+test("a delete that fails says so and keeps the Document", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument()] });
+  server.use(http.delete(`${DOCUMENTS}/:documentId`, () => new HttpResponse("Bad gateway", { status: 502 })));
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.click(table.getByRole("button", { name: "Delete handbook.pdf" }));
+  await userEvent.click(within(table.getByRole("group", { name: "Delete handbook.pdf?" })).getByRole("button", { name: "Delete" }));
+
+  expect(await table.findByRole("alert")).toHaveTextContent("The Document could not be deleted. Try again.");
+  expect(table.getByRole("cell", { name: "handbook.pdf" })).toBeInTheDocument();
+  // Asking again clears the message.
+  await userEvent.click(table.getByRole("button", { name: "Delete handbook.pdf" }));
+  expect(table.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("an archived Project's Documents can't be replaced or deleted", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument()] });
+  renderStudio(documentsTab(oldProject.id));
+
+  const table = await documentsTable();
+  expect(table.getAllByRole("columnheader").map((header) => header.textContent)).toEqual(["Name", "Status", "Chunks", "Size"]);
+  expect(table.queryByRole("button", { name: /Delete/ })).not.toBeInTheDocument();
 });
