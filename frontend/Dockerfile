@@ -17,6 +17,11 @@ COPY . .
 # caches are not needed to run Vite, and the Trivy gate (security.yml) rejects their known CVEs.
 FROM node:22-slim
 
+# Debian security fixes released after the base image was built (the Trivy gate fails on fixable HIGH ones).
+RUN apt-get update \
+    && apt-get upgrade --yes --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 

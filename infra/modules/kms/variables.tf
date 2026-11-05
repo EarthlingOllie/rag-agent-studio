@@ -9,7 +9,33 @@ variable "name_prefix" {
 }
 
 variable "tags" {
-  description = "Tags applied to every resource the module creates."
+  description = "Standard tags applied to every resource the module creates. Must include Project and Environment."
   type        = map(string)
-  default     = {}
+
+  validation {
+    condition     = alltrue([for key in ["Project", "Environment"] : contains(keys(var.tags), key)])
+    error_message = "tags must include Project and Environment."
+  }
+}
+
+variable "rotation_period_in_days" {
+  description = "Days between automatic rotations of each key. AWS allows 90 to 2560."
+  type        = number
+  default     = 365
+
+  validation {
+    condition     = var.rotation_period_in_days >= 90 && var.rotation_period_in_days <= 2560
+    error_message = "rotation_period_in_days must be between 90 and 2560."
+  }
+}
+
+variable "deletion_window_in_days" {
+  description = "Waiting period before a destroyed key is deleted. Short for the throwaway demo; AWS allows 7 to 30."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.deletion_window_in_days >= 7 && var.deletion_window_in_days <= 30
+    error_message = "deletion_window_in_days must be between 7 and 30."
+  }
 }
