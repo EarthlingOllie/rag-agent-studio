@@ -1,0 +1,60 @@
+# GitHub Actions on branch ticket/01-02-ci-gates-playwright-harness (push events), read through the GitHub API.
+# Run URLs: https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/<run id>
+
+## Commit 3b5dcc4 (all ticket code: workflows, infra stubs, Playwright harness, Dockerfiles)
+workflow         run id        conclusion
+backend          41944319649   success
+frontend         41944319710   success
+security         41944319797   success   jobs: gitleaks (full history) success; pip-audit and pnpm audit success; Trivy image scan success
+infra            41944319917   success   job: fmt, validate, tflint, checkov, terraform test success (plan job runs on pull requests only)
+deploy           41944319697   success   see below
+guardrails-eval  41944319860   success
+e2e              41944319716   success   see below
+
+### deploy 41944319697, job "Build images (push on main when AWS is configured)": success
+  Check for AWS access                         success   (notice: AWS secrets are not configured. Images are built but not pushed.)
+  Build the API and Studio images              success
+  Run aws-actions/configure-aws-credentials@v4 skipped
+  Log in to ECR                                skipped
+  Push images to ECR                           skipped
+job "${{ inputs.action }} envs/demo" (renamed "Apply or destroy envs/demo" in a78fb5f): skipped (push event, not workflow_dispatch)
+
+### security 41944319797, job "Trivy image scan" (tail of the log)
+  ... app/node_modules/.pnpm/zod@4.6.7/node_modules/zod/package.json   node-pkg   0   -
+  ... opt/yarn-v1.22.22/package.json                                    node-pkg   0   -
+  Legend: '-': Not scanned  '0': Clean (no security findings detected)
+
+### e2e 41944319716, job "Compose stack + Playwright + axe" (excerpt)
+  Install Chromium for Playwright   success
+  Container rag-agent-studio-postgres-1  Healthy
+  Container rag-agent-studio-mailpit-1  Healthy
+  Container rag-agent-studio-beat-1  Healthy
+  Container rag-agent-studio-rustfs-1  Healthy
+  Container rag-agent-studio-studio-1  Healthy
+  cd frontend && pnpm e2e
+  Running 12 tests using 1 worker
+    ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member
+    ✓   2 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out
+    ✓   3 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page
+    ✓   4 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status
+    ✓   5 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email
+    ✓   6 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page
+    ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation
+    ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy
+    ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy
+    ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening
+    ✓  11 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational
+    ✓  12 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations
+    12 passed (9.2s)
+  Artifact playwright-report has been successfully uploaded (ID 13377064663)
+  docker compose down --volumes   success
+
+## Commit a78fb5f (deploy job rename; last code change)
+workflow         run id        conclusion
+backend          41944885414   success
+frontend         41944885411   success
+security         41944885321   success   (all three jobs success)
+infra            41944885399   success
+deploy           41944885314   success
+guardrails-eval  41944885323   success
+e2e              41944885364   success   ("Start the stack, wait for health checks, run Playwright" success; stack logs step skipped; report uploaded)

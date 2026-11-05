@@ -1,0 +1,7 @@
+$ make audit
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit=0

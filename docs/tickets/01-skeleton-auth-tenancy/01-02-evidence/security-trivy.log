@@ -1,0 +1,37 @@
+# Trivy gate: trivy Version: 0.69.3
+# Images built from this branch's Dockerfiles (sandbox build: proxy CA added to the download stage only).
+
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/api:0102
+exit=0
+  fixable HIGH/CRITICAL findings: 0
+
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/studio:0102
+exit=0
+  fixable HIGH/CRITICAL findings: 0
+
+# Gate demo: the same scan on the single-stage images from ticket 01-01 (uv, pip, npm and corepack left in the runtime image) fails.
+
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio-api:latest   # 01-01 image
+exit=1
+  CRITICAL uv 0.11.32 -> 0.13.4 GHSA-hq85-5cpj-mr62
+  HIGH msgpack 1.1.2 -> 1.2.1 GHSA-6v7p-g79w-8964
+  HIGH msgpack 1.1.2 -> 1.2.3 CVE-2026-114613
+  HIGH setuptools 70.3.0 -> 78.1.1 CVE-2025-47273
+  HIGH urllib3 2.7.0 -> 2.8.0 CVE-2026-97687
+  HIGH urllib3 2.7.0 -> 2.8.0 CVE-2026-97689
+  fixable HIGH/CRITICAL findings: 6
+
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio-studio:latest   # 01-01 image
+exit=1
+  HIGH pnpm 10.28.0 -> 10.34.5, 11.11.0 CVE-2026-82393
+  HIGH pnpm 10.28.0 -> 11.11.0, 10.34.5 GHSA-vx52-2968-3vc6
+  HIGH sigstore 3.1.0 -> 4.1.1 CVE-2026-48815
+  HIGH tar 7.5.2 -> 7.5.10 CVE-2026-29786
+  HIGH tar 7.5.2 -> 7.5.11 CVE-2026-31802
+  HIGH tar 7.5.2 -> 7.5.18 CVE-2026-59874
+  HIGH tar 7.5.2 -> 7.5.21 CVE-2026-73566
+  HIGH tar 7.5.2 -> 7.5.3 CVE-2026-23745
+  HIGH tar 7.5.2 -> 7.5.4 CVE-2026-23950
+  HIGH tar 7.5.2 -> 7.5.7 CVE-2026-24842
+  HIGH tar 7.5.2 -> 7.5.8 CVE-2026-26960
+  fixable HIGH/CRITICAL findings: 40
