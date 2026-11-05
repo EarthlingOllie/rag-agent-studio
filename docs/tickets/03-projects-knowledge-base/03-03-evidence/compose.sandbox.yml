@@ -1,0 +1,31 @@
+# Sandbox-only override for `make e2e`: the stack runs the images build.sh just built (the
+# committed Dockerfiles plus the egress proxy CA, with PDF and bundled models off; compose's own build
+# can't add the CA), and host ports move so this stack runs
+# beside other tickets' stacks on the same Docker daemon. Everything else is docker-compose.yml.
+services:
+  postgres:
+    ports: !override ["53432:5432"]
+  redis:
+    ports: !override ["53379:6379"]
+  rustfs:
+    ports: !override ["53900:9000", "53901:9001"]
+  mailpit:
+    ports: !override ["53025:1025", "53825:8025"]
+  api:
+    image: rag-agent-studio/api:0303
+    build: !reset null
+    pull_policy: never
+    ports: !override ["53800:8000"]
+  worker:
+    image: rag-agent-studio/api:0303
+    build: !reset null
+    pull_policy: never
+  beat:
+    image: rag-agent-studio/api:0303
+    build: !reset null
+    pull_policy: never
+  studio:
+    image: rag-agent-studio/studio:0303
+    build: !reset null
+    pull_policy: never
+    ports: !override ["53173:5173"]
