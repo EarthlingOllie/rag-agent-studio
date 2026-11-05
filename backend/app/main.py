@@ -21,7 +21,7 @@ from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
 from app.tenancy import api as tenancy_api
-from app.tenancy import invites_api, members_api
+from app.tenancy import invites_api, members_api, switcher_api
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,7 @@ ROUTERS: Sequence[APIRouter] = (
     invites_api.owner_router,
     invites_api.router,
     members_api.router,
+    switcher_api.router,
 )
 
 

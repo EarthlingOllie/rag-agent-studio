@@ -99,7 +99,10 @@ test.describe("invites", () => {
     await colleaguePage.goto(new URL(link).pathname + new URL(link).search);
     await colleaguePage.getByRole("button", { name: `Join ${member.organisationName}` }).click();
     await expect(colleaguePage.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(colleaguePage.getByText(member.organisationName)).toBeVisible();
+    // The colleague now belongs to two Organisations, so the header's switcher shows the one joined.
+    await expect(colleaguePage.getByRole("combobox", { name: "Organisation" }).locator("option:checked")).toHaveText(
+      member.organisationName,
+    );
     const me = (await (await colleaguePage.request.get("/api/auth/me")).json()) as { organisations: { name: string; role: string }[] };
     expect(me.organisations.map((o) => [o.name, o.role]).sort()).toEqual(
       [

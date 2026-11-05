@@ -6,6 +6,8 @@ Most logs come from a fresh `git clone` of the branch from GitHub at `2c113e7`. 
 - `mutation-proof.log` ran in the branch worktree at the same commit.
 - The screenshots were taken from the stack built from that clone.
 
+**Update from `origin/candidate` at `11dbf85` (01-10 Organisation switcher merged).** The merge resolved conflicts in `backend/app/main.py` (the switcher router joins `ROUTERS`, so the policy guard test sees it), `backend/tests/conftest.py` (`member_factory` now uses 01-10's `join_organisation`), `backend/tests/integration/test_tenant_isolation.py` (01-10's two-Organisation checks take the `member_factory` argument that `prepare` now needs) and `docs/development.md`. One Studio test (`LeaveOrganisation.test.tsx`) now sets `active_organisation_id: null` in the session it fakes after leaving, which matches what the API answers. After the merge, in the worktree: backend 280 passed with 100% line and branch coverage, Studio 148 passed with 100% coverage, lint and `mypy --strict` clean, and the regenerated API client matches the committed one. The logs above are from before the merge; GitHub CI on the PR covers the merged result, including e2e.
+
 Postgres+pgvector and Redis came from the shared `docker compose` services. These tests used their own database and Redis DB: `TEST_DATABASE_URL=…/studio_test_c0109` and `TEST_REDIS_URL=…/8`, or `studio_test_w0109` and `/9` for the worktree. Each log starts with its commands and ends with its exit code.
 
 **Seams under test.** These come from spec 01's testing decisions and the shared test seams. There was no one to confirm them with, so this is the recorded choice.

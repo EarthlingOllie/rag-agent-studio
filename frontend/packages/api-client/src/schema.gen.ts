@@ -25,6 +25,28 @@ export interface paths {
         patch: operations["updateProfile"];
         trace?: never;
     };
+    "/api/auth/me/active-organisation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Switch Organisation
+         * @description Makes one of the Member's Organisations the active one, remembered across sign-ins.
+         *
+         *     An Organisation the Member doesn't belong to is 404, the same as one that doesn't exist.
+         */
+        put: operations["switchOrganisation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me/password": {
         parameters: {
             query?: never;
@@ -872,6 +894,11 @@ export interface components {
         Role: "owner" | "editor";
         /** SessionResponse */
         SessionResponse: {
+            /**
+             * Active Organisation Id
+             * @description The Organisation the Studio opens: the one the Member last switched to, or their first. Null when they belong to none.
+             */
+            active_organisation_id: string | null;
             member: components["schemas"]["MemberOut"];
             /** Organisations */
             organisations: components["schemas"]["MembershipOut"][];
@@ -893,6 +920,14 @@ export interface components {
             organisation_name: string;
             /** Password */
             password: string;
+        };
+        /** SwitchOrganisationRequest */
+        SwitchOrganisationRequest: {
+            /**
+             * Organisation Id
+             * Format: uuid
+             */
+            organisation_id: string;
         };
         /** ThrottledResponse */
         ThrottledResponse: {
@@ -1004,6 +1039,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    switchOrganisation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwitchOrganisationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

@@ -188,14 +188,7 @@ def member_factory(tenant_factory: TenantFactory) -> MemberFactory:
 
     async def join(owner: SignedUpMember, role: str) -> SignedUpMember:
         joiner = await tenant_factory()
-        invited = await owner.client.post(
-            f"/api/organisations/{owner.organisation_id}/invites",
-            json={"email": joiner.email, "role": role, "send_email": False},
-        )
-        assert invited.status_code == 201, invited.text
-        token = invited.json()["link"].rsplit("token=", 1)[1]
-        accepted = await joiner.client.post("/api/invites/accept", json={"token": token})
-        assert accepted.status_code == 200, accepted.text
+        await join_organisation(owner, joiner, role)
         return replace(
             joiner,
             organisation_id=owner.organisation_id,
@@ -203,3 +196,15 @@ def member_factory(tenant_factory: TenantFactory) -> MemberFactory:
         )
 
     return join
+
+
+async def join_organisation(owner: SignedUpMember, member: SignedUpMember, role: str) -> None:
+    """Brings an existing Member into the Owner's Organisation through an accepted invite link."""
+    invited = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/invites",
+        json={"email": member.email, "role": role, "send_email": False},
+    )
+    assert invited.status_code == 201, invited.text
+    token = invited.json()["link"].split("token=", 1)[1]
+    accepted = await member.client.post("/api/invites/accept", json={"token": token})
+    assert accepted.status_code == 200, accepted.text

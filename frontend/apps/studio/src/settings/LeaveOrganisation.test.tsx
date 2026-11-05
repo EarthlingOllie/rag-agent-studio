@@ -25,7 +25,7 @@ test("an Editor leaves the Organisation after confirming", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Leave Analytical Engines" }));
   expect(screen.getByText("You will lose access to Analytical Engines until someone invites you again.")).toBeInTheDocument();
   // Once left, the session no longer lists the Organisation.
-  server.use(http.get("*/api/auth/me", () => HttpResponse.json({ ...adaSession, organisations: [] })));
+  server.use(http.get("*/api/auth/me", () => HttpResponse.json({ ...adaSession, organisations: [], active_organisation_id: null })));
   await userEvent.click(screen.getByRole("button", { name: "Yes, leave Analytical Engines" }));
 
   expect(await screen.findByText("You don't belong to any Organisation yet.")).toBeInTheDocument();

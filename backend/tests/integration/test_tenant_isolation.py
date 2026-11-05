@@ -10,6 +10,10 @@ To extend: add a ``ScopedRoute`` with the method, path (``{organisation_id}`` is
 and required role and, if the route needs a body or resources inside the Organisation, a
 ``prepare`` coroutine that creates them as the owning Member (it may add Members with the
 given factory) and returns the path parameters and body to use.
+
+The same routes are also checked for a Member who belongs to two Organisations: whichever
+one is active, they reach each Organisation's resources only through that Organisation's
+path, and a third Organisation stays not found.
 """
 
 import uuid
@@ -26,7 +30,7 @@ from app.core.db import Base
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
-from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
+from tests.conftest import MemberFactory, SignedUpMember, TenantFactory, join_organisation
 
 Prepared = tuple[dict[str, str], dict[str, Any] | None]
 Prepare = Callable[[SignedUpMember, MemberFactory], Awaitable[Prepared]]
@@ -189,6 +193,115 @@ def test_each_organisation_scoped_route_declares_its_role_with_one_policy() -> N
     }
 
     assert declared == {key: [role] for key, role in listed.items()}
+
+
+@dataclass(frozen=True)
+class TwoOrganisations:
+    """``member`` owns their own Organisation and joined ``other``'s as an Owner."""
+
+    member: SignedUpMember
+    other: SignedUpMember
+
+
+@pytest.fixture
+async def two_organisations(tenant_factory: TenantFactory) -> TwoOrganisations:
+    member, other = await tenant_factory(), await tenant_factory()
+    await join_organisation(other, member, "owner")
+    return TwoOrganisations(member, other)
+
+
+async def _switch(member: SignedUpMember, organisation_id: str) -> None:
+    response = await member.client.put(
+        "/api/auth/me/active-organisation", json={"organisation_id": organisation_id}
+    )
+    assert response.status_code == 200, response.text
+
+
+def _has_resource(route: ScopedRoute) -> bool:
+    return "{" in route.path.replace("{organisation_id}", "")
+
+
+@pytest.mark.parametrize("route", ORGANISATION_SCOPED_ROUTES, ids=str)
+@pytest.mark.parametrize("active", ["own", "other"])
+async def test_a_member_of_two_organisations_cannot_reach_a_third(
+    route: ScopedRoute,
+    active: str,
+    two_organisations: TwoOrganisations,
+    tenant_factory: TenantFactory,
+    member_factory: MemberFactory,
+) -> None:
+    member, other = two_organisations.member, two_organisations.other
+    await _switch(member, member.organisation_id if active == "own" else other.organisation_id)
+    third = await tenant_factory()
+    prepared = await route.prepare(third, member_factory)
+
+    response = await _call(member.client, route, third.organisation_id, prepared)
+
+    assert (response.status_code, response.json()) == (404, {"detail": "Not found"})
+
+
+@pytest.mark.parametrize(
+    "route", [r for r in ORGANISATION_SCOPED_ROUTES if _has_resource(r)], ids=str
+)
+async def test_one_organisations_resources_are_not_found_through_the_members_other_organisation(
+    route: ScopedRoute, two_organisations: TwoOrganisations, member_factory: MemberFactory
+) -> None:
+    member, other = two_organisations.member, two_organisations.other
+    # The resource belongs to the other Organisation, which is also the active one.
+    prepared = await route.prepare(other, member_factory)
+    await _switch(member, other.organisation_id)
+
+    crossed = await _call(member.client, route, member.organisation_id, prepared)
+    through_its_own = await _call(member.client, route, other.organisation_id, prepared)
+
+    assert (crossed.status_code, crossed.json()) == (404, {"detail": "Not found"})
+    assert through_its_own.status_code < 400, through_its_own.text
+
+
+async def test_a_member_of_two_organisations_sees_each_ones_data_only_in_it(
+    two_organisations: TwoOrganisations,
+) -> None:
+    member, other = two_organisations.member, two_organisations.other
+    own_invite = await member.client.post(
+        f"/api/organisations/{member.organisation_id}/invites",
+        json={"email": "own-only@example.test", "role": "editor", "send_email": False},
+    )
+    other_invite = await other.client.post(
+        f"/api/organisations/{other.organisation_id}/invites",
+        json={"email": "other-only@example.test", "role": "editor", "send_email": False},
+    )
+    assert own_invite.status_code == other_invite.status_code == 201
+
+    for active in (other.organisation_id, member.organisation_id):
+        await _switch(member, active)
+        seen = {}
+        for organisation_id in (member.organisation_id, other.organisation_id):
+            base = f"/api/organisations/{organisation_id}"
+            organisation = (await member.client.get(base)).json()
+            invites = (await member.client.get(f"{base}/invites")).json()
+            events = (await member.client.get(f"{base}/audit-events")).json()
+            seen[organisation_id] = (
+                organisation["name"],
+                {i["email"] for i in invites},
+                {
+                    e["after"].get("email")
+                    for e in events["items"]
+                    if e["action"] == "invite.created"
+                },
+            )
+
+        assert seen == {
+            member.organisation_id: (
+                member.organisation_name,
+                {"own-only@example.test"},
+                {"own-only@example.test"},
+            ),
+            other.organisation_id: (
+                other.organisation_name,
+                {"other-only@example.test"},
+                {"other-only@example.test", member.email},
+            ),
+        }
 
 
 def test_every_organisation_scoped_route_is_in_the_isolation_test() -> None:

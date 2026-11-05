@@ -31,6 +31,10 @@ _Avoid_: Recovery link, magic link
 A Member's place in one Organisation, with a role: Owner or Editor. Signing up creates an Organisation and an Owner Membership for the new Member.
 _Avoid_: Seat, account
 
+**Active Organisation**:
+The Organisation a Member is working in. A Member of several Organisations picks it with the Organisation switcher; the Studio remembers the choice and opens it next time, and otherwise opens their first Organisation. It never grants access: every Organisation page and API route names its Organisation, and a Member reaches only Organisations they have a Membership in.
+_Avoid_: Current tenant, workspace, default Organisation
+
 **Invite**:
 An Owner's offer of a Membership with a chosen role, addressed to one email. It comes as an Invite Link, emailed or copied by the Owner. It is pending until the invited person accepts it or an Owner revokes it.
 _Avoid_: Invitation code, join request

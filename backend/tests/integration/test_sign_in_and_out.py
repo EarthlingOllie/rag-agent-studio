@@ -22,6 +22,7 @@ async def test_a_member_signs_in_with_email_and_password(
         "organisations": [
             {"id": owner.organisation_id, "name": owner.organisation_name, "role": "owner"}
         ],
+        "active_organisation_id": owner.organisation_id,
     }
     assert (await client.get("/api/auth/me")).json() == response.json()
 
