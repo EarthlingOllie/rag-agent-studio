@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-02: Remaining CI gates and Playwright harness](../01-skeleton-auth-tenancy/02-ci-gates-playwright-harness.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The VPC spans two AZs with public and private subnets
 - [ ] `fck-nat` is the default, with a managed-NAT toggle
