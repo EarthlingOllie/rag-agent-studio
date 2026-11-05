@@ -9,11 +9,23 @@ export type SignInDetails = Schemas["SignInRequest"];
 
 export const ME_QUERY_KEY = ["me"] as const;
 
-/** A failed auth request; `status` is the HTTP status the API answered with. */
+export type Throttled = Schemas["ThrottledResponse"];
+
+/** A failed auth request; `status` is the HTTP status the API answered with, `body` its JSON. */
 export class AuthRequestError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly body?: unknown,
+  ) {
     super(`The API answered ${String(status)}`);
   }
+}
+
+/** The details of a sign-in the API delayed or locked out, or undefined for any other error. */
+export function throttledDetails(error: Error): Throttled | undefined {
+  if (!(error instanceof AuthRequestError) || error.status !== 429) return undefined;
+  const body = Object(error.body) as Partial<Throttled>; // no body reads as {}
+  return typeof body.retry_after_seconds === "number" ? (body as Throttled) : undefined;
 }
 
 /** The signed-in Member and their Organisations, or null when nobody is signed in. */
@@ -29,12 +41,14 @@ export function useMe() {
   });
 }
 
-function useStartSession<Details>(request: (details: Details) => Promise<{ data?: Session; response: Response }>) {
+function useStartSession<Details>(
+  request: (details: Details) => Promise<{ data?: Session; error?: unknown; response: Response }>,
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (details: Details) => {
-      const { data, response } = await request(details);
-      if (!data) throw new AuthRequestError(response.status);
+      const { data, error, response } = await request(details);
+      if (!data) throw new AuthRequestError(response.status, error);
       return data;
     },
     onSuccess: (session) => {
@@ -54,8 +68,8 @@ export function useSignIn() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (body: SignInDetails): Promise<SignInOutcome> => {
-      const { data, response } = await api.POST("/api/auth/sign-in", { body });
-      if (data === undefined) throw new AuthRequestError(response.status);
+      const { data, error, response } = await api.POST("/api/auth/sign-in", { body });
+      if (data === undefined) throw new AuthRequestError(response.status, error);
       if ("mfa_required" in data) return { mfaRequired: true };
       return { mfaRequired: false, session: data };
     },

@@ -1,0 +1,63 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+........................................................................ [ 41%]
+........................................................................ [ 83%]
+............................                                             [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.18-final-0 _______________
+
+Name                              Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------
+app/__init__.py                       0      0      0      0   100%
+app/api/__init__.py                   0      0      0      0   100%
+app/api/health.py                    69      0      8      0   100%
+app/audit/__init__.py                 2      0      0      0   100%
+app/audit/api.py                     47      0      0      0   100%
+app/audit/models.py                  19      0      0      0   100%
+app/audit/service.py                 77      0     16      0   100%
+app/auth/__init__.py                  0      0      0      0   100%
+app/auth/account_api.py              59      0      0      0   100%
+app/auth/api.py                     128      0     14      0   100%
+app/auth/mfa.py                     153      0     32      0   100%
+app/auth/mfa_api.py                  90      0      4      0   100%
+app/auth/mfa_pending.py              30      0      2      0   100%
+app/auth/models.py                   24      0      0      0   100%
+app/auth/passwords.py                12      0      0      0   100%
+app/auth/service.py                  94      0     18      0   100%
+app/auth/sessions.py                 34      0      0      0   100%
+app/auth/throttle.py                 76      0     18      0   100%
+app/core/__init__.py                  0      0      0      0   100%
+app/core/clock.py                    11      0      0      0   100%
+app/core/db.py                       16      0      0      0   100%
+app/core/deps.py                      7      0      0      0   100%
+app/core/logs.py                     59      0     18      0   100%
+app/core/settings.py                 50      0      2      0   100%
+app/core/telemetry.py                71      0     10      0   100%
+app/crypto/__init__.py                0      0      0      0   100%
+app/crypto/adapters.py                5      0      0      0   100%
+app/crypto/envelope.py               43      0      2      0   100%
+app/crypto/local_key_wrapper.py      31      0      4      0   100%
+app/mail/__init__.py                  0      0      0      0   100%
+app/mail/factory.py                  12      0      4      0   100%
+app/mail/outbox.py                    6      0      0      0   100%
+app/mail/port.py                      9      0      0      0   100%
+app/mail/ses.py                      11      0      0      0   100%
+app/mail/smtp.py                     22      0      0      0   100%
+app/mail/templates.py                10      0      0      0   100%
+app/main.py                          55      0      0      0   100%
+app/openapi.py                        6      0      0      0   100%
+app/serve.py                          0      0      0      0   100%
+app/tenancy/__init__.py               0      0      0      0   100%
+app/tenancy/api.py                   17      0      0      0   100%
+app/tenancy/models.py                23      0      0      0   100%
+app/tenancy/policy.py                19      0      4      0   100%
+app/tenancy/repository.py            35      0      2      0   100%
+app/worker/__init__.py                0      0      0      0   100%
+app/worker/celery_app.py              8      0      0      0   100%
+app/worker/main.py                   14      0      0      0   100%
+app/worker/tasks.py                   4      0      0      0   100%
+-----------------------------------------------------------------------------
+TOTAL                              1458      0    158      0   100%
+Coverage XML written to file coverage.xml
+Required test coverage of 100.0% reached. Total coverage: 100.00%
+172 passed in 74.78s (0:01:14)
+exit 0 (172 passed, 100% coverage; run after merging candidate c603cb0)

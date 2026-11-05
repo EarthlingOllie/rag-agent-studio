@@ -13,6 +13,9 @@ x-backend: &backend
     LOCAL_KEY_WRAPPER_KEY: ${LOCAL_KEY_WRAPPER_KEY:-bG9jYWwtZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldCE=}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
+    # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.
+    # Local only: a deployment lists just its load balancers here.
+    FORWARDED_ALLOW_IPS: "*"
     # Email goes to Mailpit; read it at http://localhost:8025.
     MAILER: smtp
     SMTP_HOST: mailpit

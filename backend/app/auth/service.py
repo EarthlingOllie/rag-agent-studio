@@ -1,10 +1,11 @@
 """The authentication module: sign up, check credentials, reset and change passwords.
 
-Session handling (start, resolve, end) lives in ``app.auth.sessions``; the HTTP layer in
-``app.auth.api`` puts the two together.
+Session handling (start, resolve, end) lives in ``app.auth.sessions`` and sign-in
+protection in ``app.auth.throttle``; the HTTP layer in ``app.auth.api`` puts them together.
 """
 
 import hashlib
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -16,14 +17,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import audit
 from app.auth.models import PasswordResetToken
 from app.auth.passwords import hash_password, verify_password
+from app.auth.throttle import Lockout, Refusal, SignInThrottle
+from app.core.clock import Clock
 from app.mail import templates
 from app.mail.port import Mailer
 from app.tenancy.models import Member, Membership
-from app.tenancy.repository import create_organisation_with_new_owner
+from app.tenancy.repository import create_organisation_with_new_owner, list_memberships
+
+logger = logging.getLogger(__name__)
+
+MEMBER_LOCKED_OUT = "member.locked_out"
 
 
 class EmailAlreadyRegisteredError(Exception):
     """Sign-up used an email that already belongs to a Member."""
+
+
+class SignInThrottledError(Exception):
+    """Too many sign-ins failed for this account or IP address; the password wasn't checked."""
+
+    def __init__(self, refusal: Refusal) -> None:
+        super().__init__(refusal)
+        self.refusal = refusal
 
 
 def normalise_email(email: str) -> str:
@@ -56,13 +71,62 @@ async def sign_up(
     return member
 
 
-async def authenticate(session: AsyncSession, *, email: str, password: str) -> Member | None:
-    """The Member these credentials belong to, or None. Unknown emails cost the same time."""
-    member = await session.scalar(select(Member).where(Member.email == normalise_email(email)))
+async def sign_in(
+    session: AsyncSession,
+    throttle: SignInThrottle,
+    clock: Clock,
+    *,
+    email: str,
+    password: str,
+    ip: str,
+) -> Member | None:
+    """The Member these credentials belong to, or None. Unknown emails cost the same time.
+
+    Raises ``SignInThrottledError`` while too many recent sign-ins have failed. Failures count
+    the same whether or not the email is registered, so throttling reveals nothing either.
+    """
+    email = normalise_email(email)
+    refusal = await throttle.check(email, ip)
+    if refusal is not None:
+        raise SignInThrottledError(refusal)
+    member = await session.scalar(select(Member).where(Member.email == email))
     password_hash = None if member is None else member.password_hash
-    if not verify_password(password_hash, password):
-        return None
-    return member
+    # The password is always checked, so unknown emails do the same argon2 work.
+    if verify_password(password_hash, password) and member is not None:
+        await throttle.record_success(email, ip)
+        return member
+    lockouts = await throttle.record_failure(email, ip)
+    for lockout in lockouts:
+        await _record_lockout(session, member, ip, lockout, clock.now())
+    return None
+
+
+async def _record_lockout(
+    session: AsyncSession, member: Member | None, ip: str, lockout: Lockout, at: datetime
+) -> None:
+    """Logs the lockout, and records it in the Audit of each Organisation the Member is in."""
+    logger.warning(
+        "Sign-in locked out",
+        extra={"scope": lockout.scope.value, "ip": ip, "known_account": member is not None},
+    )
+    if member is None:
+        return  # no Organisation to audit it in; the log line is the record
+    for membership in await list_memberships(session, member):
+        await audit.record(
+            session,
+            organisation_id=membership.organisation_id,
+            actor_id=None,
+            action=MEMBER_LOCKED_OUT,
+            target=audit.AuditTarget("member", member.id),
+            after={
+                "scope": lockout.scope.value,
+                "ip": ip,
+                "failures": lockout.failures,
+                "locked_until": lockout.locked_until.isoformat(),
+            },
+            occurred_at=at,
+        )
+    await session.commit()
 
 
 class InvalidResetTokenError(Exception):

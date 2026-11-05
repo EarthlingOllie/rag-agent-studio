@@ -1,0 +1,23 @@
+# fresh clone at 655bfaa
+$ uv run pytest --no-cov -v tests/integration/test_sign_in_throttling.py tests/integration/test_sign_in_and_out.py
+tests/integration/test_sign_in_throttling.py::test_repeated_failures_lock_the_account_even_for_the_right_password PASSED [  5%]
+tests/integration/test_sign_in_throttling.py::test_after_three_free_failures_each_attempt_waits_progressively_longer PASSED [ 10%]
+tests/integration/test_sign_in_throttling.py::test_a_delay_refuses_even_the_right_password_until_it_has_passed PASSED [ 15%]
+tests/integration/test_sign_in_throttling.py::test_the_lockout_expires_after_the_configured_time PASSED [ 21%]
+tests/integration/test_sign_in_throttling.py::test_a_successful_sign_in_clears_the_account_failures PASSED [ 26%]
+tests/integration/test_sign_in_throttling.py::test_failures_are_forgotten_once_the_lockout_time_passes_without_another PASSED [ 31%]
+tests/integration/test_sign_in_throttling.py::test_many_failures_from_one_ip_lock_that_ip_out_for_every_account PASSED [ 36%]
+tests/integration/test_sign_in_throttling.py::test_an_ip_waits_progressively_longer_after_its_free_failures PASSED [ 42%]
+tests/integration/test_sign_in_throttling.py::test_throttling_is_identical_for_an_unknown_email_and_a_wrong_password PASSED [ 47%]
+tests/integration/test_sign_in_throttling.py::test_an_account_lockout_is_recorded_as_an_audit_event PASSED [ 52%]
+tests/integration/test_sign_in_throttling.py::test_an_ip_lockout_is_recorded_for_the_member_whose_sign_in_tripped_it PASSED [ 57%]
+tests/integration/test_sign_in_and_out.py::test_a_member_signs_in_with_email_and_password PASSED [ 63%]
+tests/integration/test_sign_in_and_out.py::test_sign_in_ignores_the_case_and_surrounding_spaces_of_the_email PASSED [ 68%]
+tests/integration/test_sign_in_and_out.py::test_signing_in_rotates_the_session PASSED [ 73%]
+tests/integration/test_sign_in_and_out.py::test_sign_in_errors_are_identical_whether_or_not_the_email_is_registered PASSED [ 78%]
+tests/integration/test_sign_in_and_out.py::test_signing_out_ends_the_session_on_the_server PASSED [ 84%]
+tests/integration/test_sign_in_and_out.py::test_signing_out_without_a_session_succeeds PASSED [ 89%]
+tests/integration/test_sign_in_and_out.py::test_the_current_member_needs_a_valid_session PASSED [ 94%]
+tests/integration/test_sign_in_and_out.py::test_each_member_sees_only_their_own_organisations PASSED [100%]
+============================= 19 passed in 16.28s ==============================
+exit=0

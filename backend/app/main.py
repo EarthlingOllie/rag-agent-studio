@@ -35,6 +35,7 @@ def _lifespan(
         settings = load_settings()
         configure_telemetry(settings, "api", extra_span_processors=extra_span_processors)
         app.state.settings = settings
+        app.state.clock = SystemClock()
         app.state.envelope = build_envelope(settings)
         configure_celery(settings)
         app.state.engine = create_engine(settings)

@@ -22,11 +22,11 @@ from app.main import create_app
 from tests.conftest import (
     BASE_URL,
     ClientFactory,
-    ControllableClock,
     SignedUpMember,
     TenantFactory,
     new_member_details,
 )
+from tests.fakes.clock import ControllableClock
 from tests.totp import hotp, totp
 
 CODE_INCORRECT = {"detail": "Code is incorrect"}

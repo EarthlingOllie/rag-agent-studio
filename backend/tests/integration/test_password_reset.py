@@ -17,9 +17,9 @@ from tests.conftest import (
     STUDIO_URL,
     TEST_DATABASE_URL,
     ClientFactory,
-    ControllableClock,
     SignedUpMember,
 )
+from tests.fakes.clock import ControllableClock
 
 NEW_PASSWORD = "a brand new password 123"
 RESET_ACCEPTED = {"detail": "If that email is registered, a reset link is on its way."}

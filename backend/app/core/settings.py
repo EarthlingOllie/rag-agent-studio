@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
     # How long a Studio session lasts without signing in again.
     session_ttl_seconds: int = Field(default=14 * 24 * 60 * 60, gt=0)
+    # Sign-in protection. Failed sign-ins are counted per account (email) and per IP address.
+    # After `*_delay_after_failures` failures, each attempt waits `sign_in_delay_base_seconds`,
+    # doubling per further failure up to `sign_in_delay_max_seconds`; after
+    # `*_lockout_after_failures` failures, sign-in is locked for `sign_in_lockout_seconds`.
+    # Counters are forgotten `sign_in_lockout_seconds` after the last failure.
+    sign_in_account_delay_after_failures: int = Field(default=3, ge=0)
+    sign_in_account_lockout_after_failures: int = Field(default=10, gt=0)
+    sign_in_ip_delay_after_failures: int = Field(default=20, ge=0)
+    sign_in_ip_lockout_after_failures: int = Field(default=100, gt=0)
+    sign_in_delay_base_seconds: int = Field(default=1, gt=0)
+    sign_in_delay_max_seconds: int = Field(default=30, gt=0)
+    sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
     # How long a password-checked sign-in waits for its MFA code.
     mfa_pending_ttl_seconds: int = Field(default=5 * 60, gt=0)
     # Wraps the data keys of envelope-encrypted secrets. Only the local static-key wrapper

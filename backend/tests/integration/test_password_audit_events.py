@@ -14,7 +14,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.mail.outbox import OutboxMailer
-from tests.conftest import TEST_DATABASE_URL, ControllableClock, SignedUpMember
+from tests.conftest import TEST_DATABASE_URL, SignedUpMember
+from tests.fakes.clock import ControllableClock
 from tests.integration.test_password_reset import complete_reset, request_reset, reset_token
 
 

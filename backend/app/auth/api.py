@@ -8,11 +8,13 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.datastructures import Address
 
 from app.auth import service
 from app.auth.mfa import Mfa
 from app.auth.mfa_pending import MFA_PENDING_COOKIE, PendingSignIns
 from app.auth.sessions import SESSION_COOKIE, SessionStore
+from app.auth.throttle import SignInThrottle
 from app.core.clock import Clock, get_clock
 from app.core.deps import get_db
 from app.core.settings import Settings
@@ -22,6 +24,9 @@ from app.tenancy.repository import list_memberships
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 SIGN_IN_FAILED = "Email or password is incorrect"
+SIGN_IN_THROTTLED = "Too many failed sign-in attempts"
+# ASGI servers may leave the client unset (a Unix socket, for example); they share one counter.
+_UNKNOWN_CLIENT = Address("unknown", 0)
 NOT_SIGNED_IN = "Not signed in"
 
 # Deliberately loose: one @, no spaces, a dot in the domain. Delivery is the real check.
@@ -75,13 +80,26 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
+class ThrottledResponse(BaseModel):
+    detail: str
+    locked: bool = Field(description="True for a lockout; false for a short delay between attempts")
+    retry_after_seconds: int = Field(description="Seconds until sign-in can be tried again")
+
+
 def get_session_store(request: Request) -> SessionStore:
     settings: Settings = request.app.state.settings
     return SessionStore(request.app.state.redis, settings.session_ttl_seconds)
 
 
+def get_sign_in_throttle(request: Request) -> SignInThrottle:
+    return SignInThrottle(
+        request.app.state.redis, request.app.state.clock, request.app.state.settings
+    )
+
+
 Db = Annotated[AsyncSession, Depends(get_db)]
 Sessions = Annotated[SessionStore, Depends(get_session_store)]
+Throttle = Annotated[SignInThrottle, Depends(get_sign_in_throttle)]
 SessionToken = Annotated[str | None, Cookie(alias=SESSION_COOKIE, include_in_schema=False)]
 
 
@@ -179,6 +197,7 @@ MFA_PENDING_COOKIE_PATH = "/api/auth"
             "`/api/auth/mfa/verify` to finish signing in",
         },
         401: {"model": ErrorResponse, "description": SIGN_IN_FAILED},
+        429: {"model": ThrottledResponse, "description": SIGN_IN_THROTTLED},
     },
     response_model=SessionResponse,
     operation_id="signIn",
@@ -189,11 +208,33 @@ async def sign_in(
     response: Response,
     db: Db,
     sessions: Sessions,
+    throttle: Throttle,
     pending: PendingStore,
     clock: Annotated[Clock, Depends(get_clock)],
     token: SessionToken = None,
 ) -> SessionResponse | JSONResponse:
-    member = await service.authenticate(db, email=body.email, password=body.password)
+    """Signs a Member in. Repeated failures per account or IP are delayed, then locked out."""
+    try:
+        member = await service.sign_in(
+            db,
+            throttle,
+            clock,
+            email=body.email,
+            password=body.password,
+            ip=(request.client or _UNKNOWN_CLIENT).host,
+        )
+    except service.SignInThrottledError as throttled:
+        refusal = throttled.refusal
+        content = ThrottledResponse(
+            detail=SIGN_IN_THROTTLED,
+            locked=refusal.locked,
+            retry_after_seconds=refusal.retry_after_seconds,
+        )
+        return JSONResponse(
+            content.model_dump(),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(refusal.retry_after_seconds)},
+        )
     if member is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, SIGN_IN_FAILED)
     if await Mfa(db, request.app.state.envelope, clock).is_enabled(member.id):
