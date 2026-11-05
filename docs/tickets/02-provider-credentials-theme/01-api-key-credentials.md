@@ -8,7 +8,7 @@
 - [01-09: Member management and role enforcement](../01-skeleton-auth-tenancy/09-member-management-roles.md)
 - [01-11: TOTP MFA](../01-skeleton-auth-tenancy/11-totp-mfa.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A KMS key-wrapper adapter sits alongside the local one, tested with a stubbed AWS client
 - [ ] A credential records name, provider, auth kind, sealed secret, masked suffix, capabilities, check status and last-checked time
