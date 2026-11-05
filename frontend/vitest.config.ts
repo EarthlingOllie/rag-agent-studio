@@ -9,6 +9,9 @@ export default defineConfig({
     include: ["apps/*/src/**/*.test.{ts,tsx}", "packages/*/src/**/*.test.{ts,tsx}"],
     setupFiles: ["apps/studio/src/test/setup.ts"],
     restoreMocks: true,
+    // Above the five seconds `findBy…` may wait (see test/setup.ts), so a slow first render
+    // fails as a missing element rather than a timed-out test.
+    testTimeout: 15_000,
     coverage: {
       provider: "v8",
       include: ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"],
