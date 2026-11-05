@@ -1,5 +1,10 @@
 import type { Schemas } from "@studio/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { api } from "../api";
@@ -25,24 +30,45 @@ function failed(response: Response, error: unknown): ProjectRequestError {
   );
 }
 
+/** Narrows the Document list: part of the name, a status and a Tag. Empty means no filter. */
+export interface DocumentFilters {
+  q: string;
+  status: DocumentStatus | "";
+  tagId: string;
+}
+
+export const NO_FILTERS: DocumentFilters = { q: "", status: "", tagId: "" };
+
 /**
- * The Project's Documents. While any isn't Ready or Failed, their statuses are polled from the
+ * The Project's Documents, filtered on the server. While any isn't Ready or Failed, their statuses are polled from the
  * lightweight status endpoint and merged in, so the list updates without a refresh.
  */
-export function useDocuments(organisationId: string, projectId: string) {
+export function useDocuments(
+  organisationId: string,
+  projectId: string,
+  filters: DocumentFilters = NO_FILTERS,
+) {
   const path = { organisation_id: organisationId, project_id: projectId };
+  const q = filters.q.trim();
+  const query = {
+    ...(q && { q }),
+    ...(filters.status && { status: [filters.status] }),
+    ...(filters.tagId && { tag_id: [filters.tagId] }),
+  };
   const list = useQuery({
-    queryKey: documentsKey(organisationId, projectId),
+    queryKey: [...documentsKey(organisationId, projectId), "list", query],
     queryFn: async (): Promise<ProjectDocument[]> => {
       const { data, error, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/documents",
         {
-          params: { path },
+          params: { path, query },
         },
       );
       if (!data) throw failed(response, error);
       return data;
     },
+    // While a new filter loads, the previous list stays up.
+    placeholderData: keepPreviousData,
   });
   const inProgress = (list.data ?? []).some((document) => !isSettled(document));
   const statuses = useQuery({

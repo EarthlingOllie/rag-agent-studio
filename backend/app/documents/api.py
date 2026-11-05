@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StringConstraints
 from redis.asyncio import Redis
@@ -27,6 +27,9 @@ from app.documents.tasks import enqueue_ingestion, enqueue_object_deletion
 from app.projects.api import PROJECT_ARCHIVED
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.storage.port import ObjectStore
+from app.tags.api import TagRef, tag_ref
+from app.tags.models import Tag
+from app.tags.service import tags_of
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, Scope
 
@@ -144,6 +147,8 @@ class DocumentOut(BaseModel):
     error_message: str | None
     edition: int
     chunk_count: int
+    # The Document's Tags, by name.
+    tags: list[TagRef]
     created_at: datetime
     updated_at: datetime
     replacement: ReplacementOut | None
@@ -179,7 +184,10 @@ def _replacement_out(staged: StagedEdition | None) -> ReplacementOut | None:
 
 
 def _document_out(
-    document: Document, chunk_count: int, staged: StagedEdition | None = None
+    document: Document,
+    chunk_count: int,
+    tags: list[Tag],
+    staged: StagedEdition | None = None,
 ) -> DocumentOut:
     return DocumentOut(
         id=document.id,
@@ -191,6 +199,7 @@ def _document_out(
         error_message=document.error_message,
         edition=document.edition,
         chunk_count=chunk_count,
+        tags=[tag_ref(tag) for tag in tags],
         created_at=document.created_at,
         updated_at=document.updated_at,
         replacement=_replacement_out(staged),
@@ -307,19 +316,41 @@ async def confirm_upload(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
     except service.DuplicateDocumentError as duplicate:
         return _duplicate(duplicate)
-    queued = _document_out(document, chunk_count=0)
+    queued = _document_out(document, chunk_count=0, tags=[])
     await enqueue_ingestion(document.id)
     return queued
 
 
 @router.get("/documents", operation_id="listDocuments", responses=_errors(_NOT_FOUND))
-async def list_documents(project_id: uuid.UUID, scope: Scope, db: Db) -> list[DocumentOut]:
-    """The Project's Documents, newest first."""
+async def list_documents(
+    project_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    q: Annotated[
+        str | None, Query(max_length=NAME_MAX, description="Part of the name, ignoring case.")
+    ] = None,
+    status_: Annotated[
+        list[DocumentStatus] | None,
+        Query(alias="status", description="Only Documents with any of these statuses."),
+    ] = None,
+    tag_id: Annotated[
+        list[uuid.UUID] | None, Query(description="Only Documents with every one of these Tags.")
+    ] = None,
+) -> list[DocumentOut]:
+    """The Project's Documents, newest first, optionally searched by name and filtered by
+    status and Tag."""
+    where = service.DocumentFilter(
+        name=q.strip() if q else None, statuses=status_ or (), tag_ids=tag_id or ()
+    )
     try:
-        summaries = await service.list_documents(db, scope, project_id)
+        summaries = await service.list_documents(db, scope, project_id, where)
     except ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
-    return [_document_out(s.document, s.chunk_count, s.replacement) for s in summaries]
+    tags = await tags_of(db, [s.document.id for s in summaries])
+    return [
+        _document_out(s.document, s.chunk_count, tags.get(s.document.id, []), s.replacement)
+        for s in summaries
+    ]
 
 
 @router.get(
@@ -431,7 +462,13 @@ async def replace_document(
     except service.DuplicateDocumentError as duplicate:
         return _duplicate(duplicate)
     document = replacement.document
-    accepted = _document_out(document, await service.chunk_count(db, document), replacement.staged)
+    tags = await tags_of(db, [document.id])
+    accepted = _document_out(
+        document,
+        await service.chunk_count(db, document),
+        tags.get(document.id, []),
+        replacement.staged,
+    )
     if replacement.discarded:
         await enqueue_object_deletion(replacement.discarded)
     await enqueue_ingestion(document.id)

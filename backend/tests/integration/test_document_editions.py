@@ -220,6 +220,26 @@ async def test_a_newer_edition_replaces_the_document_in_place(
     assert HANDBOOK not in kept
 
 
+async def test_a_new_edition_keeps_the_documents_tags(app: FastAPI, owner: SignedUpMember) -> None:
+    project_id = await create_project(owner)
+    original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    path = project_path(owner, project_id)
+    created = await owner.client.post(f"{path}/tags", json={"name": "HR"})
+    assert created.status_code == 201, created.text
+    tag = created.json()
+    tagged = await owner.client.put(
+        f"{path}/documents/{original['id']}/tags", json={"tag_ids": [tag["id"]]}
+    )
+    assert tagged.status_code == 200, tagged.text
+
+    replaced = await replace(app, owner, project_id, original["id"], "handbook.md", HANDBOOK_2027)
+
+    assert replaced.status_code == 202, replaced.text
+    assert [t["id"] for t in replaced.json()["tags"]] == [tag["id"]]
+    (listed,) = await documents(owner, project_id)
+    assert (listed["edition"], [t["id"] for t in listed["tags"]]) == (2, [tag["id"]])
+
+
 async def test_the_old_edition_keeps_serving_until_the_new_one_is_ready(
     app: FastAPI, owner: SignedUpMember
 ) -> None:

@@ -14,6 +14,7 @@ through ``active_project``, so an archived Project takes none.
 import hashlib
 import json
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import PurePath
@@ -34,6 +35,7 @@ from app.documents.pipeline import stored_keys
 from app.projects import service as projects
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
+from app.tags.models import DocumentTag
 from app.tenancy.repository import OrganisationScope
 
 # The file types a Document can be uploaded from, by extension, with the MIME type stored.
@@ -257,8 +259,30 @@ class DocumentSummary:
     replacement: StagedEdition | None
 
 
+@dataclass(frozen=True)
+class DocumentFilter:
+    """Narrows the Document list. Every given condition must hold."""
+
+    # Part of the name, ignoring case.
+    name: str | None = None
+    # Any of these statuses.
+    statuses: Sequence[DocumentStatus] = ()
+    # Every one of these Tags.
+    tag_ids: Sequence[uuid.UUID] = ()
+
+
+NO_FILTER = DocumentFilter()
+
+
+def _escape_like(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 async def list_documents(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    where: DocumentFilter = NO_FILTER,
 ) -> list[DocumentSummary]:
     """The Project's Documents, newest first, with their Chunk counts and replacements."""
     project = await projects.get_project(session, scope, project_id)
@@ -267,12 +291,22 @@ async def list_documents(
         .where(Chunk.document_id == Document.id, Chunk.edition == Document.edition)
         .scalar_subquery()
     )
-    rows = await session.execute(
+    query = (
         select(Document, chunk_count, StagedEdition)
         .outerjoin(StagedEdition, StagedEdition.document_id == Document.id)
         .where(Document.project_id == project.id)
-        .order_by(Document.created_at.desc(), Document.name)
     )
+    if where.name:
+        query = query.where(Document.name.ilike(f"%{_escape_like(where.name)}%", escape="\\"))
+    if where.statuses:
+        query = query.where(Document.status.in_([str(s) for s in where.statuses]))
+    for tag_id in set(where.tag_ids):
+        query = query.where(
+            select(DocumentTag.tag_id)
+            .where(DocumentTag.document_id == Document.id, DocumentTag.tag_id == tag_id)
+            .exists()
+        )
+    rows = await session.execute(query.order_by(Document.created_at.desc(), Document.name))
     return [DocumentSummary(document, count, staged) for document, count, staged in rows]
 
 

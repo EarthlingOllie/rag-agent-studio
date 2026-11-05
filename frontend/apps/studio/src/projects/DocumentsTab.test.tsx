@@ -235,7 +235,7 @@ test("Documents show their status, size and Chunk count, and why one failed", as
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Name", "Status", "Chunks", "Size", "Actions"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size", "Actions"]);
   const ready = rowOf(table, "handbook.pdf");
   expect(ready.getByText("Ready")).toBeInTheDocument();
   expect(ready.getByText("12")).toBeInTheDocument();
