@@ -80,7 +80,9 @@ def _lifespan(
         app.state.provider_http = httpx.AsyncClient(
             timeout=settings.credential_check_timeout_seconds
         )
-        app.state.credential_verifier = build_verifier(settings, app.state.provider_http)
+        app.state.credential_verifier = build_verifier(
+            settings, app.state.provider_http, app.state.clock
+        )
         # Pydantic AI's provider clients take httpx2 clients; every model call shares this one.
         app.state.model_http = httpx2.AsyncClient(timeout=settings.model_timeout_seconds)
         app.state.model_gateway = build_model_gateway(

@@ -100,6 +100,8 @@ async def test_an_owner_adds_an_api_key_credential_for_each_provider(
         "provider": provider,
         "auth_kind": "api_key",
         "masked_suffix": suffix,
+        "role_arn": None,
+        "region": None,
         "capabilities": capabilities,
         "check_status": "passed",
         "check_failure": None,

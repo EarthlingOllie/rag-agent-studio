@@ -3,7 +3,8 @@
 - Anthropic chat and OpenAI chat and embeddings use Pydantic AI's own models and providers.
 - Voyage has no Pydantic AI provider without its SDK, so its embedder and reranker are thin
   HTTP clients here.
-- Bedrock credentials arrive with ticket 02-02, which builds their clients here.
+- Bedrock credentials can be stored and checked (ticket 02-02), but their model clients are
+  not built here yet.
 """
 
 from collections.abc import Sequence
@@ -30,7 +31,7 @@ VOYAGE_API = "https://api.voyageai.com/v1"
 
 def _unsupported(provider: Provider) -> UnsupportedCredentialError:
     return UnsupportedCredentialError(
-        f"Bedrock models are not available yet ({provider} credentials arrive with 02-02)."
+        f"Bedrock models are not available yet ({provider} model clients are not built)."
     )
 
 

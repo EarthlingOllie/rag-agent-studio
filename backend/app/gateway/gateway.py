@@ -52,6 +52,11 @@ class ModelGateway:
         self, credential: ProviderCredential, capability: Capability, model: str
     ) -> tuple[Provider, str]:
         check_offered(credential, capability, model)
+        if credential.secret_sealed is None:
+            # A Bedrock IAM-role credential stores no secret; its clients assume the role.
+            raise UnsupportedCredentialError(
+                "Bedrock IAM-role credentials can't make model calls yet."
+            )
         return Provider(credential.provider), open_secret(self._envelope, credential)
 
     def chat_model(self, credential: ProviderCredential, model: str) -> Model:

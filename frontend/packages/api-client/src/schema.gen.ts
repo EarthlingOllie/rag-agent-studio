@@ -442,6 +442,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/bedrock-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Bedrock Setup
+         * @description The Organisation's external ID, and the trust and permissions policies to paste into
+         *     the IAM role the platform will assume.
+         */
+        get: operations["getBedrockSetup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/credentials": {
         parameters: {
             query?: never;
@@ -460,6 +481,28 @@ export interface paths {
          * @description Checks the key with the provider, then stores it encrypted. A failed check stores nothing.
          */
         post: operations["createCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/bedrock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Bedrock Credential
+         * @description Adds a Bedrock credential: an IAM role the platform assumes with the Organisation's
+         *     external ID (recommended: no secret is stored), or access keys. The platform checks role
+         *     assumption (or the keys), then model access, before storing anything.
+         */
+        post: operations["createBedrockCredential"];
         delete?: never;
         options?: never;
         head?: never;
@@ -979,6 +1022,20 @@ export interface components {
          */
         AuthKind: "api_key" | "aws_role" | "aws_access_keys";
         /**
+         * BedrockSetupOut
+         * @description What an Owner pastes into AWS to let the platform assume their role.
+         */
+        BedrockSetupOut: {
+            /** External Id */
+            external_id: string;
+            /** Permissions Policy */
+            permissions_policy: string;
+            /** Platform Principal */
+            platform_principal: string;
+            /** Trust Policy */
+            trust_policy: string;
+        };
+        /**
          * Capability
          * @enum {string}
          */
@@ -1011,7 +1068,7 @@ export interface components {
          * @description Why a credential check failed, in terms an Owner can act on.
          * @enum {string}
          */
-        CheckFailure: "invalid_key" | "missing_model_access" | "quota_exceeded" | "provider_unreachable";
+        CheckFailure: "invalid_key" | "missing_model_access" | "quota_exceeded" | "provider_unreachable" | "role_not_assumable" | "wrong_region";
         /** CodeRequest */
         CodeRequest: {
             /** Code */
@@ -1039,6 +1096,49 @@ export interface components {
             password: string;
             /** Token */
             token: string;
+        };
+        /**
+         * CreateBedrockAccessKeysRequest
+         * @description A Bedrock credential reached with an IAM user's access keys (the fallback).
+         */
+        CreateBedrockAccessKeysRequest: {
+            /** Access Key Id */
+            access_key_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            auth_kind: "aws_access_keys";
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][] | null;
+            /** Name */
+            name: string;
+            /** Region */
+            region: string;
+            /**
+             * Secret Access Key
+             * Format: password
+             */
+            secret_access_key: string;
+        };
+        /**
+         * CreateBedrockRoleRequest
+         * @description A Bedrock credential the platform reaches by assuming an IAM role (recommended).
+         */
+        CreateBedrockRoleRequest: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            auth_kind: "aws_role";
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][] | null;
+            /** Name */
+            name: string;
+            /** Region */
+            region: string;
+            /** Role Arn */
+            role_arn: string;
         };
         /** CreateCredentialRequest */
         CreateCredentialRequest: {
@@ -1112,10 +1212,14 @@ export interface components {
              */
             last_checked_at: string;
             /** Masked Suffix */
-            masked_suffix: string;
+            masked_suffix: string | null;
             /** Name */
             name: string;
             provider: components["schemas"]["Provider"];
+            /** Region */
+            region: string | null;
+            /** Role Arn */
+            role_arn: string | null;
         };
         /** CredentialPricesOut */
         CredentialPricesOut: {
@@ -2696,6 +2800,55 @@ export interface operations {
             };
         };
     };
+    getBedrockSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BedrockSetupOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listCredentials: {
         parameters: {
             query?: never;
@@ -2748,6 +2901,77 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialOut"];
+                };
+            };
+            /** @description The provider check failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckFailedResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Another credential in this Organisation already has that name. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createBedrockCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBedrockRoleRequest"] | components["schemas"]["CreateBedrockAccessKeysRequest"];
             };
         };
         responses: {

@@ -95,6 +95,15 @@ async def _a_credential(owner: SignedUpMember, add_member: MemberFactory) -> Pre
     return {"credential_id": response.json()["id"]}, {"api_key": "sk-isolation-rotated-0001"}
 
 
+async def _new_bedrock_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {
+        "name": f"Isolation {uuid.uuid4().hex[:12]}",
+        "auth_kind": "aws_role",
+        "role_arn": "arn:aws:iam::111122223333:role/IsolationTest",
+        "region": "us-east-1",
+    }
+
+
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 
 
@@ -203,6 +212,10 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute(
         "POST", "/api/organisations/{organisation_id}/credentials", OWNER, _new_credential_body
     ),
+    ScopedRoute(
+        "POST", "/api/organisations/{organisation_id}/credentials/bedrock", OWNER, _new_bedrock_body
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/bedrock-setup", OWNER),
     ScopedRoute("GET", _CREDENTIAL, EDITOR, _a_credential),
     ScopedRoute("POST", f"{_CREDENTIAL}/check", OWNER, _a_credential),
     ScopedRoute("POST", f"{_CREDENTIAL}/rotate", OWNER, _a_credential),

@@ -79,7 +79,16 @@ def test_the_field_name_check_recognises_secret_fields() -> None:
     )
     assert not any(
         _secret_like(name)
-        for name in ("masked_suffix", "key_id", "check_status", "capabilities", "auth_kind")
+        for name in (
+            "masked_suffix",
+            "key_id",
+            "check_status",
+            "capabilities",
+            "auth_kind",
+            "role_arn",
+            "external_id",
+            "trust_policy",
+        )
     )
 
 
@@ -91,6 +100,7 @@ def test_no_response_schema_has_a_secret_field() -> None:
     assert ("CheckFailedResponse", "reason") in fields
     assert ("CredentialInUseResponse", "references") in fields
     assert ("ProviderOut", "capabilities") in fields
+    assert ("BedrockSetupOut", "trust_policy") in fields
     assert {field for field in fields if _secret_like(field[1])} == set(ALLOWED)
 
 
@@ -149,3 +159,48 @@ async def test_no_credential_route_ever_returns_the_key(owner: SignedUpMember) -
     # The masked suffixes are all that is shown.
     assert created.json()["masked_suffix"] == "q8r2"
     assert responses[6].json()["masked_suffix"] == "t4u6"
+
+
+SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG-no-echo-bPxRfiCYqzkwvn"
+FAILING_SECRET = "fake-fail-wrong_region-no-echo-hqzv7wkpnmtr"
+
+
+async def test_no_bedrock_route_ever_returns_the_secret_access_key(owner: SignedUpMember) -> None:
+    base = f"/api/organisations/{owner.organisation_id}"
+    client = owner.client
+    keys = {
+        "auth_kind": "aws_access_keys",
+        "access_key_id": "AKIAIOSFODNN7EXAMPLE",
+        "region": "us-east-1",
+    }
+    created = await client.post(
+        f"{base}/credentials/bedrock",
+        json={"name": "Keys", "secret_access_key": SECRET_ACCESS_KEY, **keys},
+    )
+    one = f"{base}/credentials/{created.json()['id']}"
+    responses = [
+        created,
+        await client.post(
+            f"{base}/credentials/bedrock",
+            json={"name": "Fails", "secret_access_key": FAILING_SECRET, **keys},
+        ),
+        await client.post(
+            f"{base}/credentials/bedrock",
+            json={"name": "Bad", "secret_access_key": f"{SECRET_ACCESS_KEY} x", **keys},
+        ),
+        await client.get(f"{base}/credentials"),
+        await client.get(one),
+        await client.post(f"{one}/check"),
+        await client.get(f"{base}/bedrock-setup"),
+        await client.get(f"{base}/audit-events", params={"size": 100}),
+        await client.delete(one),
+        await client.get(f"{base}/audit-events", params={"size": 100}),
+    ]
+
+    assert [r.status_code for r in responses] == [
+        201, 400, 422, 200, 200, 200, 200, 200, 204, 200
+    ]  # fmt: skip
+    for response in responses:
+        for secret in (SECRET_ACCESS_KEY, FAILING_SECRET):
+            assert not _leaks(response, secret), (response.request.url, response.text)
+    assert created.json()["masked_suffix"] == "MPLE"

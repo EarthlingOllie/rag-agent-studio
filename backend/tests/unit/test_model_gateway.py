@@ -319,6 +319,21 @@ def test_bedrock_credentials_are_not_built_by_the_live_adapters_yet(
         build(bedrock, model)
 
 
+@pytest.mark.parametrize("adapters", ["live", "fake"])
+def test_a_bedrock_role_credential_has_no_secret_to_open(adapters: str) -> None:
+    gateway = (
+        live_gateway(Recorder(lambda request: httpx2.Response(500)))
+        if adapters == "live"
+        else ModelGateway(ENVELOPE, FakeModelAdapters())
+    )
+    role = credential(Provider.BEDROCK, "unused")
+    role.auth_kind = "aws_role"
+    role.secret_sealed = None
+
+    with pytest.raises(UnsupportedCredentialError, match="IAM-role"):
+        gateway.chat_model(role, "amazon.nova-pro-v1:0")
+
+
 # What the factory refuses, live or fake
 
 

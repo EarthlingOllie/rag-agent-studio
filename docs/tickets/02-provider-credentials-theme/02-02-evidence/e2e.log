@@ -1,0 +1,61 @@
+# commit c40e1d9, fresh clone
+$ bash build.sh <clone> 0202  # sandbox image build (committed Dockerfiles + proxy CA)
+$ STUDIO_URL=http://localhost:51173 docker compose -p rag0202 -f docker-compose.yml -f compose.sandbox.yml down -v && ... up -d --wait  (fresh volumes)
+$ E2E_BASE_URL=http://localhost:51173 E2E_MAILPIT_URL=http://localhost:51825 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e
+rag0202-studio-1 rag-agent-studio/studio:0202 Up 3 seconds (healthy)
+rag0202-worker-1 rag-agent-studio/api:0202 Up 10 seconds
+rag0202-api-1 rag-agent-studio/api:0202 Up 11 seconds (healthy)
+rag0202-beat-1 rag-agent-studio/api:0202 Up 10 seconds
+rag0202-redis-1 redis:7.4.2-alpine Up 13 seconds (healthy)
+rag0202-postgres-1 pgvector/pgvector:0.8.1-pg16 Up 14 seconds (healthy)
+rag0202-rustfs-1 rustfs/rustfs:1.0.4 Up 14 seconds
+rag0202-mailpit-1 axllent/mailpit:v1.27 Up 14 seconds (healthy)
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0202/frontend
+> playwright test
+
+
+Running 39 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (938ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (553ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (710ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (356ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (11ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (2.5s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (158ms)
+  ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.5s)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (222ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (210ms)
+  ✓  11 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (5.1s)
+  ✓  12 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (5.6s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (4.7s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.5s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.7s)
+  ✓  14 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (11.1s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.0s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (4.3s)
+  ✓  18 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (8.8s)
+  ✓  21 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (9.2s)
+  ✓  20 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (16.4s)
+  ✓  23 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (8.7s)
+  ✓  22 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (15.3s)
+  ✓  25 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (9.7s)
+  ✓  24 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (18.2s)
+  ✓  26 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (12.8s)
+  ✓  27 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (6.7s)
+  ✓  28 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (8.4s)
+  ✓  29 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (12.1s)
+  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (7.7s)
+  ✓  32 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (3.3s)
+  ✓  33 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (2.7s)
+  ✓  31 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (13.6s)
+  ✓  34 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (5.3s)
+  ✓  36 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.0s)
+  ✓  37 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.0s)
+  ✓  38 [studio] › e2e/tests/theme.spec.ts:51:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (8.7s)
+  ✓  35 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (16.4s)
+  ✓  39 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (6.4s)
+
+  39 passed (2.2m)
+EXIT 0

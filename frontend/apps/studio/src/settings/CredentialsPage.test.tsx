@@ -102,12 +102,6 @@ test("an Owner adds a credential, which is checked and saved", async () => {
   renderStudio(credentialsPath);
   const form = await addForm();
 
-  // Only providers that take an API key are offered; Bedrock arrives with its own wizard.
-  expect(within(form.getByLabelText("Provider")).getAllByRole("option").map((o) => o.textContent)).toEqual([
-    "Anthropic",
-    "OpenAI",
-    "Voyage AI",
-  ]);
   await userEvent.selectOptions(form.getByLabelText("Provider"), "OpenAI");
   expect(form.getByLabelText("Chat")).toBeChecked();
   expect(form.getByLabelText("Embeddings")).toBeChecked();

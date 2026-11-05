@@ -3,23 +3,29 @@
 Every secret is checked with the credential verifier before it is stored, sealed with the
 envelope-encryption module, and never returned: callers see only the masked suffix. Each
 change is recorded as an Audit Event in the same transaction, without the secret.
+
+Bedrock credentials are either an IAM role in the Owner's AWS account, which the platform
+assumes with the Organisation's external ID (no secret is stored), or AWS access keys.
 """
 
+import json
+import secrets
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import AuditTarget, record
 from app.core.clock import Clock
-from app.credentials.models import ProviderCredential
+from app.credentials.models import AwsExternalId, ProviderCredential
 from app.credentials.references import CredentialReference, ReferenceRegistry
 from app.credentials.registry import PROVIDERS, AuthKind, Capability, Provider
-from app.credentials.verifier import CheckFailure, CheckResult, CredentialVerifier
+from app.credentials.verifier import BedrockAccess, CheckFailure, CheckResult, CredentialVerifier
 from app.crypto.envelope import EnvelopeEncryption
 from app.tenancy.repository import OrganisationScope
 
@@ -46,6 +52,10 @@ class CheckFailedError(Exception):
         self.failure = failure
 
 
+class NotRotatableError(Exception):
+    """Only API-key credentials are rotated with a new key."""
+
+
 class CredentialInUseError(Exception):
     def __init__(self, references: list[CredentialReference]) -> None:
         self.references = references
@@ -63,9 +73,11 @@ def seal_secret(
 
 
 def open_secret(envelope: EnvelopeEncryption, credential: ProviderCredential) -> str:
-    """The credential's secret in plain text. Only the model gateway and checks need it."""
+    """The credential's secret in plain text. Only the model gateway and checks need it, and
+    only for credentials with a secret: a Bedrock IAM role has none."""
     context = _context(credential.organisation_id, credential.id)
-    return envelope.open(credential.secret_sealed, context=context).decode()
+    sealed = cast(bytes, credential.secret_sealed)
+    return envelope.open(sealed, context=context).decode()
 
 
 def _suffix(secret: str) -> str:
@@ -73,13 +85,21 @@ def _suffix(secret: str) -> str:
 
 
 def _summary(credential: ProviderCredential) -> dict[str, Any]:
-    return {
+    summary = {
         "name": credential.name,
         "provider": credential.provider,
         "auth_kind": credential.auth_kind,
         "capabilities": list(credential.capabilities),
         "masked_suffix": credential.masked_suffix,
     }
+    if credential.provider == Provider.BEDROCK:
+        summary |= {"role_arn": credential.role_arn, "region": credential.region}
+    return summary
+
+
+def _check_model(capabilities: Sequence[Capability]) -> str:
+    """The Bedrock model whose access is checked: the first of the first capability's."""
+    return PROVIDERS[Provider.BEDROCK].models[capabilities[0]][0].id
 
 
 def _target(credential_id: uuid.UUID | None) -> AuditTarget:
@@ -92,6 +112,25 @@ class NewCredential:
     provider: Provider
     api_key: str
     capabilities: Sequence[Capability] | None = None
+
+
+@dataclass(frozen=True)
+class NewBedrockCredential:
+    """A Bedrock credential: ``role_arn``, or ``access_key_id`` and ``secret_access_key``."""
+
+    name: str
+    region: str
+    role_arn: str | None = None
+    access_key_id: str | None = None
+    secret_access_key: str | None = None
+    capabilities: Sequence[Capability] | None = None
+
+    @property
+    def auth_kind(self) -> AuthKind:
+        return AuthKind.AWS_ROLE if self.role_arn is not None else AuthKind.AWS_ACCESS_KEYS
+
+
+EXTERNAL_ID_BYTES = 24
 
 
 class Credentials:
@@ -166,16 +205,26 @@ class Credentials:
         await self._session.commit()
         return CheckFailedError(failure)
 
-    async def create(self, scope: OrganisationScope, new: NewCredential) -> ProviderCredential:
-        """Checks the key, then stores the credential. A failed check stores nothing."""
-        spec = PROVIDERS[new.provider]
-        capabilities = list(spec.capabilities if new.capabilities is None else new.capabilities)
+    async def _capabilities(
+        self,
+        scope: OrganisationScope,
+        provider: Provider,
+        name: str,
+        chosen: Sequence[Capability] | None,
+    ) -> tuple[Capability, ...]:
+        """The capabilities to store, in the registry's order, once the name is known free."""
+        spec = PROVIDERS[provider]
+        capabilities = list(spec.capabilities if chosen is None else chosen)
         unsupported = [c for c in capabilities if c not in spec.capabilities]
         if unsupported:
-            raise UnsupportedCapabilityError(new.provider, unsupported)
-        capabilities = [c for c in spec.capabilities if c in capabilities]
-        if await self._name_taken(scope, new.name):
+            raise UnsupportedCapabilityError(provider, unsupported)
+        if await self._name_taken(scope, name):
             raise DuplicateNameError
+        return tuple(c for c in spec.capabilities if c in capabilities)
+
+    async def create(self, scope: OrganisationScope, new: NewCredential) -> ProviderCredential:
+        """Checks the key, then stores the credential. A failed check stores nothing."""
+        capabilities = await self._capabilities(scope, new.provider, new.name, new.capabilities)
         result = await self._verifier.check(new.provider, new.api_key)
         if result.failure is not None:
             details = {
@@ -184,24 +233,84 @@ class Credentials:
                 "masked_suffix": _suffix(new.api_key),
             }
             raise await self._check_failed(scope, None, details, result.failure)
-        now = self._clock.now()
-        credential_id = uuid.uuid4()
         credential = ProviderCredential(
-            id=credential_id,
-            organisation_id=scope.organisation_id,
             name=new.name,
             provider=new.provider,
             auth_kind=AuthKind.API_KEY,
-            secret_sealed=seal_secret(
-                self._envelope, scope.organisation_id, credential_id, new.api_key
-            ),
             masked_suffix=_suffix(new.api_key),
-            capabilities=[str(c) for c in capabilities],
-            check_status=PASSED,
-            check_failure=None,
-            last_checked_at=now,
-            secret_set_at=now,
         )
+        return await self._store(scope, credential, capabilities, new.api_key)
+
+    async def create_bedrock(
+        self, scope: OrganisationScope, new: NewBedrockCredential
+    ) -> ProviderCredential:
+        """Checks role assumption (or the access keys), then model access, then stores the
+        credential. A failed check stores nothing."""
+        capabilities = await self._capabilities(scope, Provider.BEDROCK, new.name, new.capabilities)
+        if new.role_arn is not None:
+            access = BedrockAccess(
+                region=new.region,
+                model_id=_check_model(capabilities),
+                role_arn=new.role_arn,
+                external_id=await self._external_id(scope),
+            )
+            secret, suffix = None, None
+            shown: dict[str, Any] = {"role_arn": new.role_arn}
+        else:
+            access = BedrockAccess(
+                region=new.region,
+                model_id=_check_model(capabilities),
+                access_key_id=new.access_key_id,
+                secret_access_key=new.secret_access_key,
+            )
+            secret = json.dumps(
+                {"access_key_id": new.access_key_id, "secret_access_key": new.secret_access_key}
+            )
+            # The end of the access key ID, which the Owner can match in the IAM console.
+            suffix = _suffix(str(new.access_key_id))
+            shown = {"masked_suffix": suffix}
+        result = await self._verifier.check_bedrock(access)
+        if result.failure is not None:
+            details = {
+                "name": new.name,
+                "provider": Provider.BEDROCK,
+                "auth_kind": new.auth_kind,
+                **shown,
+                "region": new.region,
+            }
+            raise await self._check_failed(scope, None, details, result.failure)
+        credential = ProviderCredential(
+            name=new.name,
+            provider=Provider.BEDROCK,
+            auth_kind=new.auth_kind,
+            masked_suffix=suffix,
+            region=new.region,
+            role_arn=new.role_arn,
+        )
+        return await self._store(scope, credential, capabilities, secret)
+
+    async def _store(
+        self,
+        scope: OrganisationScope,
+        credential: ProviderCredential,
+        capabilities: Sequence[Capability],
+        secret: str | None,
+    ) -> ProviderCredential:
+        """Seals the secret (if any) and stores a credential that has just passed its check."""
+        now = self._clock.now()
+        credential_id = uuid.uuid4()
+        credential.id = credential_id
+        credential.organisation_id = scope.organisation_id
+        credential.secret_sealed = (
+            None
+            if secret is None
+            else seal_secret(self._envelope, scope.organisation_id, credential_id, secret)
+        )
+        credential.capabilities = [str(c) for c in capabilities]
+        credential.check_status = PASSED
+        credential.check_failure = None
+        credential.last_checked_at = now
+        credential.secret_set_at = now
         self._session.add(credential)
         try:
             await self._session.flush()
@@ -222,14 +331,64 @@ class Credentials:
         )
         return existing is not None
 
+    async def bedrock_external_id(self, scope: OrganisationScope) -> str:
+        """The Organisation's external ID for Bedrock role trust policies."""
+        external_id = await self._external_id(scope)
+        await self._session.commit()
+        return external_id
+
+    async def _external_id(self, scope: OrganisationScope) -> str:
+        """The Organisation's external ID, generated the first time it is asked for. Concurrent
+        first requests agree on one: the losing insert does nothing."""
+        await self._session.execute(
+            insert(AwsExternalId)
+            .values(
+                organisation_id=scope.organisation_id,
+                external_id=secrets.token_urlsafe(EXTERNAL_ID_BYTES),
+                created_at=self._clock.now(),
+            )
+            .on_conflict_do_nothing(index_elements=["organisation_id"])
+        )
+        external_id = await self._session.scalar(
+            select(AwsExternalId.external_id).where(
+                AwsExternalId.organisation_id == scope.organisation_id
+            )
+        )
+        return str(external_id)
+
+    async def _verify_stored(
+        self, scope: OrganisationScope, credential: ProviderCredential
+    ) -> CheckResult:
+        """Checks a stored credential again, however it authenticates."""
+        if credential.auth_kind == AuthKind.API_KEY:
+            return await self._verifier.check(
+                Provider(credential.provider), open_secret(self._envelope, credential)
+            )
+        capabilities = [Capability(c) for c in credential.capabilities]
+        region = str(credential.region)
+        if credential.auth_kind == AuthKind.AWS_ROLE:
+            access = BedrockAccess(
+                region=region,
+                model_id=_check_model(capabilities),
+                role_arn=credential.role_arn,
+                external_id=await self._external_id(scope),
+            )
+        else:
+            keys = json.loads(open_secret(self._envelope, credential))
+            access = BedrockAccess(
+                region=region,
+                model_id=_check_model(capabilities),
+                access_key_id=keys["access_key_id"],
+                secret_access_key=keys["secret_access_key"],
+            )
+        return await self._verifier.check_bedrock(access)
+
     async def recheck(
         self, scope: OrganisationScope, credential_id: uuid.UUID
     ) -> ProviderCredential:
         """Checks the stored secret again and records the outcome on the credential."""
         credential = await self.get(scope, credential_id, for_update=True)
-        result = await self._verifier.check(
-            Provider(credential.provider), open_secret(self._envelope, credential)
-        )
+        result = await self._verify_stored(scope, credential)
         self._apply(credential, result)
         if result.failure is None:
             await self._record(scope, "credential.checked", credential.id, after={"status": PASSED})
@@ -253,6 +412,8 @@ class Credentials:
     ) -> ProviderCredential:
         """Replaces the secret, keeping the credential's ID. A failed check keeps the old one."""
         credential = await self.get(scope, credential_id, for_update=True)
+        if credential.auth_kind != AuthKind.API_KEY:
+            raise NotRotatableError
         result = await self._verifier.check(Provider(credential.provider), api_key)
         if result.failure is not None:
             details = _summary(credential) | {"attempted_suffix": _suffix(api_key)}
