@@ -8,7 +8,7 @@
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 - [02-03: Model gateway and Default Model](../02-provider-credentials-theme/03-model-gateway-default-model.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] An Embedding Model registry records provider, dimension and tokenizer for each model
 - [ ] New Projects default to the local model, and a provider model can be chosen from embedding-capable credentials, registering a reference
