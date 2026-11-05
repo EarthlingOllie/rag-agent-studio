@@ -20,7 +20,7 @@ concurrency:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
-  # Empty until spec 09 creates the OIDC role and ECR repositories; every AWS step is skipped while it is.
+  # Empty until infra/bootstrap creates the OIDC role (docs/infra-bootstrap.md); every AWS step is skipped while it is.
   AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
 
 jobs:
@@ -96,6 +96,7 @@ jobs:
         working-directory: infra/envs/demo
         env:
           ACTION: ${{ inputs.action }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
         run: |
-          terraform init -input=false
+          terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="region=$AWS_REGION"
           terraform "$ACTION" -input=false -auto-approve

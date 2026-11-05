@@ -3,7 +3,6 @@ output "module_names" {
   value = {
     cache    = module.cache.name
     cdn      = module.cdn.name
-    ci_oidc  = module.ci_oidc.name
     database = module.database.name
     ecs      = module.ecs.name
     kms      = module.kms.name

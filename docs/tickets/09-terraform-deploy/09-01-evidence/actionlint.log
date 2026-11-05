@@ -1,0 +1,2 @@
+$ actionlint -shellcheck= .github/workflows/infra.yml .github/workflows/deploy.yml   # actionlint 1.7.7
+exit=0

@@ -1,0 +1,49 @@
+# GitHub Actions on branch ticket/09-01-state-bootstrap-oidc, read through the GitHub API.
+# Pull request: #5 (ticket/09-01-state-bootstrap-oidc -> candidate), open, not merged.
+# Commit da9dd10 (evidence refresh after merging candidate; the code under test). The later commit that
+# rewrites this log and the evidence README changes only these two Markdown/log files.
+
+## da9dd10, push event
+infra            run 41950908857  success
+  fmt, validate, tflint, checkov, terraform test   success  (job 126994349404)
+  Should terraform plan run?                       skipped  (job 126994350707; plan-gate runs on pull requests only)
+  terraform plan (demo)                            skipped  (job 126994954706; needs plan-gate run == 'true')
+backend          run 41950908911  success
+frontend         run 41950908970  success
+deploy           run 41950908812  success
+security         run 41950908951  success
+guardrails-eval  run 41950908900  success
+e2e              run 41950908881  success
+
+## da9dd10, pull_request event (PR #5)
+infra            run 41950915017  success
+  fmt, validate, tflint, checkov, terraform test   success  (job 126994370102)
+  Should terraform plan run?                       success  (job 126994370289; output run=false, see below)
+  terraform plan (demo)                            skipped  (job 126994929334; needs plan-gate run == 'true')
+backend          run 41950914849  success
+frontend         run 41950914760  success
+security         run 41950914746  success
+guardrails-eval  run 41950914800  success
+e2e              run 41950914757  success
+
+## eb4f575 (merge of candidate), pull_request event (PR #5): first PR run of the gate
+infra            run 41950815030  success
+  Should terraform plan run?                       success  (job 126994041653)
+  fmt, validate, tflint, checkov, terraform test   success  (job 126994042061)
+  terraform plan (demo)                            skipped  (job 126994705567)
+
+# Job 126994370289, "Check for AWS access and infrastructure changes" (plan gate on PR #5, no secret configured):
+2026-11-05T01:47:56.6374467Z scripts/ci/plan-gate.sh "aac92d3ee32fec6b62623449f2033715f2161e72" "da9dd10c70b64d8374626abdff2c4d05f4a2f3cc"
+2026-11-05T01:47:56.6400814Z env:
+2026-11-05T01:47:56.6401557Z   AWS_ROLE_ARN: 
+2026-11-05T01:47:56.6402352Z   TF_STATE_BUCKET: 
+2026-11-05T01:47:56.6526968Z ##[notice]The AWS_DEPLOY_ROLE_ARN secret is not configured, so there is nothing to plan against.
+2026-11-05T01:47:56.9782492Z Set output 'run'
+
+# Tail of job 126994370102, "Run every infrastructure gate" (GitHub's runner, real registry, tflint --init with GITHUB_TOKEN):
+2026-11-05T01:49:03.4871648Z Success! 2 passed, 0 failed.
+2026-11-05T01:49:03.4891898Z cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+2026-11-05T01:49:03.5063261Z Installing "aws" plugin...
+2026-11-05T01:49:05.0872361Z Installed "aws" (source: github.com/terraform-linters/tflint-ruleset-aws, version: 0.50.0)
+2026-11-05T01:49:08.6720662Z cd infra && checkov --config-file .checkov.yaml
+2026-11-05T01:49:16.3432060Z Passed checks: 73, Failed checks: 0, Skipped checks: 6
