@@ -7,12 +7,12 @@
 **Blocked by:**
 - [01-09: Member management and role enforcement](../01-skeleton-auth-tenancy/09-member-management-roles.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] Projects can be created, renamed and described, and are listed with their counts
-- [ ] Archiving hides a Project from the main list and stops it serving; Owners can restore it
-- [ ] The Project page has tabs for Documents, Instructions, Agents, Conversations and Analytics, with placeholders where features aren't built yet
-- [ ] Project-level isolation tests are added to the shared suite
-- [ ] Create, archive and restore are recorded as Audit Events
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Projects can be created, renamed and described, and are listed with their counts
+- [x] Archiving hides a Project from the main list and stops it serving; Owners can restore it
+- [x] The Project page has tabs for Documents, Instructions, Agents, Conversations and Analytics, with placeholders where features aren't built yet
+- [x] Project-level isolation tests are added to the shared suite
+- [x] Create, archive and restore are recorded as Audit Events
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
