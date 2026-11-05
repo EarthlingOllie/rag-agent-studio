@@ -231,9 +231,9 @@ class LiveModelAdapters:
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel:
         if provider is Provider.OPENAI:
             return OpenAIEmbeddingModel(model, provider=self._openai(secret))
-        if provider is Provider.VOYAGE:
-            return VoyageEmbeddingModel(self._client, secret, model)
-        raise _unsupported(provider)
+        # The gateway has checked the provider offers embeddings: the API-key ones are OpenAI
+        # and Voyage, and Bedrock goes through ``bedrock_embedder``.
+        return VoyageEmbeddingModel(self._client, secret, model)
 
     def bedrock_embedder(self, account: BedrockAccount, model: str) -> EmbeddingModel:
         return BedrockEmbeddingModel(self.bedrock, account, model)
