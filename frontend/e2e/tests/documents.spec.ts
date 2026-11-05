@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
@@ -31,5 +32,35 @@ test.describe("Documents", () => {
     await page.getByRole("link", { name: "All Projects" }).click();
     const projectRow = page.getByRole("row", { name: /Northwind handbook/ });
     await expect(projectRow.getByRole("cell", { name: "1", exact: true }).first()).toBeVisible();
+  });
+
+  test("an Owner opens the handbook in the Document viewer and downloads the original", async ({ signedInPage: page, makeAxeBuilder }) => {
+    await page.goto("/");
+    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    const form = page.getByRole("form", { name: "New Project" });
+    await form.getByLabel("Name").fill("Handbook viewer");
+    await form.getByRole("button", { name: "Create Project" }).click();
+    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
+    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
+
+    await row.getByRole("link", { name: "northwind-staff-handbook.md" }).click();
+
+    // Docling's markdown, rendered, beside the Chunks with their heading paths.
+    await expect(page.getByRole("heading", { level: 2, name: "northwind-staff-handbook.md" })).toBeVisible();
+    const markdown = page.getByRole("region", { name: "Converted markdown" });
+    await expect(markdown.getByRole("heading", { name: "Annual leave" })).toBeVisible();
+    const chunks = page.getByRole("region", { name: "Chunks" });
+    await expect(chunks.getByText(/^Chunks 1–\d+ of \d+$/)).toBeVisible();
+    const leave = chunks.getByRole("listitem").filter({ hasText: "25 days of annual leave" });
+    await expect(leave.getByText("Northwind Traders staff handbook › Annual leave")).toBeVisible();
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // The original downloads through the API's redirect to a presigned GET on RustFS.
+    const downloading = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download original" }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe("northwind-staff-handbook.md");
+    expect(readFileSync(await download.path(), "utf8")).toBe(readFileSync(HANDBOOK, "utf8"));
   });
 });
