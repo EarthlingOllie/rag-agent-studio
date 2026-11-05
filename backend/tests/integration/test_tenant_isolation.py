@@ -189,6 +189,43 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _a_new_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"name": f"Tag {uuid.uuid4().hex[:8]}"}
+
+
+async def _make_tag(owner: SignedUpMember, project_id: str) -> str:
+    response = await owner.client.post(
+        f"{documents.project_path(owner, project_id)}/tags", json={"name": "Isolation"}
+    )
+    assert response.status_code == 201, response.text
+    tag_id: str = response.json()["id"]
+    return tag_id
+
+
+async def _a_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    tag_id = await _make_tag(owner, project_id)
+    return {"project_id": project_id, "tag_id": tag_id}, {"name": "Renamed"}
+
+
+async def _a_document_and_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _a_document(owner, add_member)
+    tag_id = await _make_tag(owner, params["project_id"])
+    return params, {"tag_ids": [tag_id]}
+
+
+async def _documents_to_bulk_tag(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_document_and_tag(owner, add_member)
+    assert body is not None
+    return {"project_id": params["project_id"]}, {
+        "document_ids": [params["document_id"]],
+        "add": body["tag_ids"],
+    }
+
+
+TAG = PROJECTS + "/{project_id}/tags/{tag_id}"
+
+
 async def _new_agent_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {"project_id": await _make_project(owner)}, {"name": "Isolation Agent"}
 
@@ -245,6 +282,17 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/tags", EDITOR, _a_project),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/tags", EDITOR, _a_new_tag),
+    ScopedRoute("PATCH", TAG, EDITOR, _a_tag),
+    ScopedRoute("DELETE", TAG, EDITOR, _a_tag),
+    ScopedRoute(
+        "PUT",
+        PROJECTS + "/{project_id}/documents/{document_id}/tags",
+        EDITOR,
+        _a_document_and_tag,
+    ),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/documents/tags", EDITOR, _documents_to_bulk_tag),
     ScopedRoute("GET", PROJECTS + "/{project_id}/agents", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/agents", EDITOR, _new_agent_body),
     ScopedRoute("GET", _AGENT, EDITOR, _an_agent),

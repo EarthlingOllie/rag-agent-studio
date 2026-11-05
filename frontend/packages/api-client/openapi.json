@@ -342,6 +342,43 @@
         "title": "Behaviour",
         "type": "object"
       },
+      "BulkTagRequest": {
+        "properties": {
+          "add": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Add",
+            "type": "array"
+          },
+          "document_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Document Ids",
+            "type": "array"
+          },
+          "remove": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Remove",
+            "type": "array"
+          }
+        },
+        "required": [
+          "document_ids"
+        ],
+        "title": "BulkTagRequest",
+        "type": "object"
+      },
       "Capability": {
         "enum": [
           "chat",
@@ -1133,6 +1170,13 @@
           "status": {
             "$ref": "#/components/schemas/DocumentStatus"
           },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -1149,6 +1193,7 @@
           "error_message",
           "edition",
           "chunk_count",
+          "tags",
           "created_at",
           "updated_at"
         ],
@@ -1198,6 +1243,24 @@
           "chunk_count"
         ],
         "title": "DocumentStatusOut",
+        "type": "object"
+      },
+      "DocumentTagsRequest": {
+        "properties": {
+          "tag_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Tag Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "tag_ids"
+        ],
+        "title": "DocumentTagsRequest",
         "type": "object"
       },
       "EnrolmentResponse": {
@@ -2416,6 +2479,71 @@
           "organisation_id"
         ],
         "title": "SwitchOrganisationRequest",
+        "type": "object"
+      },
+      "TagOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_count": {
+            "title": "Document Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "document_count",
+          "created_at"
+        ],
+        "title": "TagOut",
+        "type": "object"
+      },
+      "TagRef": {
+        "description": "A Tag as shown on a Document.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TagRef",
+        "type": "object"
+      },
+      "TagRequest": {
+        "properties": {
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TagRequest",
         "type": "object"
       },
       "ThemeColours": {
@@ -6586,7 +6714,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents": {
       "get": {
-        "description": "The Project's Documents, newest first.",
+        "description": "The Project's Documents, newest first, optionally searched by name and filtered by\nstatus and Tag.",
         "operationId": "listDocuments",
         "parameters": [
           {
@@ -6607,6 +6735,68 @@
               "format": "uuid",
               "title": "Organisation Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "Part of the name, ignoring case.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the name, ignoring case.",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Only Documents with any of these statuses.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only Documents with any of these statuses.",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Only Documents with every one of these Tags.",
+            "in": "query",
+            "name": "tag_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only Documents with every one of these Tags.",
+              "title": "Tag Id"
             }
           }
         ],
@@ -6802,6 +6992,83 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/tags": {
+      "post": {
+        "description": "Applies Tags to, and takes Tags off, many Documents at once.",
+        "operationId": "bulkTagDocuments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "One or more of these Tags aren't in this Project. / One or more of these Documents aren't in this Project."
+          }
+        },
+        "summary": "Bulk Tag Documents",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
       "get": {
         "description": "The Document's Chunks in order, with heading path and pages.",
@@ -6877,6 +7144,104 @@
         "summary": "List Chunks",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags": {
+      "put": {
+        "description": "Sets the Document's Tags to exactly the ones given; answers with them, by name.",
+        "operationId": "setDocumentTags",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentTagsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagRef"
+                  },
+                  "title": "Response Setdocumenttags",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "One or more of these Tags aren't in this Project."
+          }
+        },
+        "summary": "Set Document Tags",
+        "tags": [
+          "tags"
         ]
       }
     },
@@ -6961,6 +7326,325 @@
         "summary": "Restore Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/tags": {
+      "get": {
+        "description": "The Project's Tags by name, with how many Documents carry each.",
+        "operationId": "listTags",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TagOut"
+                  },
+                  "title": "Response Listtags",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tags",
+        "tags": [
+          "tags"
+        ]
+      },
+      "post": {
+        "description": "Creates a Tag. Names are unique in the Project, ignoring case.",
+        "operationId": "createTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project already has a Tag with that name. / This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Tag",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}": {
+      "delete": {
+        "description": "Deletes a Tag and takes it off every Document. The Documents stay.",
+        "operationId": "deleteTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tag Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Tag",
+        "tags": [
+          "tags"
+        ]
+      },
+      "patch": {
+        "description": "Renames a Tag. Documents keep it.",
+        "operationId": "renameTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tag Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project already has a Tag with that name. / This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename Tag",
+        "tags": [
+          "tags"
         ]
       }
     },
