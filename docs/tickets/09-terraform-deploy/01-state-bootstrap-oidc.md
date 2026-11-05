@@ -7,12 +7,12 @@
 **Blocked by:**
 - [01-02: Remaining CI gates and Playwright harness](../01-skeleton-auth-tenancy/02-ci-gates-playwright-harness.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A bootstrap root module creates a versioned, encrypted state bucket
-- [ ] The S3 backend uses native locking (`use_lockfile`)
-- [ ] The `ci-oidc` module trusts only this repository
-- [ ] The plan-on-PR job runs when the secret is present and is skipped otherwise
-- [ ] Bootstrap steps are documented
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A bootstrap root module creates a versioned, encrypted state bucket
+- [x] The S3 backend uses native locking (`use_lockfile`)
+- [x] The `ci-oidc` module trusts only this repository
+- [x] The plan-on-PR job runs when the secret is present and is skipped otherwise
+- [x] Bootstrap steps are documented
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

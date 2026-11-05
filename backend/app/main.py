@@ -10,10 +10,12 @@ from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.api import health
-from app.core.db import create_engine
+from app.auth import api as auth_api
+from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
+from app.tenancy import api as tenancy_api
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ def _lifespan(
         configure_celery(settings)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)
+        app.state.sessionmaker = create_sessionmaker(app.state.engine)
         app.state.redis = Redis.from_url(str(settings.redis_url))
         logger.info("API started", extra={"environment": settings.environment})
         try:
@@ -49,6 +52,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
         title="RAG Agent Studio API", version="0.1.0", lifespan=_lifespan(extra_span_processors)
     )
     app.include_router(health.router)
+    app.include_router(auth_api.router)
+    app.include_router(tenancy_api.router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app

@@ -9,8 +9,11 @@ export const healthy: Schemas["HealthResponse"] = {
 
 export const workerHealthy: Schemas["WorkerHealthResponse"] = { status: "ok", reply: "pong" };
 
-/** Default handlers describe a healthy stack; tests override them per scenario. */
+export const notSignedIn: Schemas["ErrorResponse"] = { detail: "Not signed in" };
+
+/** Default handlers describe a healthy stack and a visitor who is not signed in. */
 export const server = setupServer(
   http.get("*/api/health", () => HttpResponse.json(healthy)),
   http.get("*/api/health/worker", () => HttpResponse.json(workerHealthy)),
+  http.get("*/api/auth/me", () => HttpResponse.json(notSignedIn, { status: 401 })),
 );

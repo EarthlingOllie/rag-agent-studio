@@ -60,3 +60,11 @@ def test_migrations_upgrade_to_head_and_downgrade_to_base(
 
     command.upgrade(config, "head")
     assert _database_state(TEST_DATABASE_URL) == (head, True)
+
+
+def test_the_migrations_match_the_models(settings_env: pytest.MonkeyPatch) -> None:
+    config = _alembic_config()
+    config.attributes["configure_logger"] = False
+    command.upgrade(config, "head")
+
+    command.check(config)  # raises if autogenerate would emit any operation

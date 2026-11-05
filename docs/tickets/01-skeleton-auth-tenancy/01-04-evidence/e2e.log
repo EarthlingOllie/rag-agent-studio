@@ -1,0 +1,65 @@
+# Sandbox equivalent of 'make e2e' from a fresh git clone at ab9a2d9: the same docker-compose.yml plus the sandbox override sb0104/compose.sandbox.yml (images built from the committed Dockerfiles with the proxy CA added; host ports moved so the stack runs beside another ticket's stack). Chromium: the sandbox's Chrome for Testing via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, because Playwright's browser CDN is blocked here. E2E_BASE_URL=http://localhost:25173.
+$ docker compose up -d --no-build --wait
+ Container rag0104-mailpit-1 Running 
+ Container rag0104-rustfs-1 Running 
+ Container rag0104-redis-1 Running 
+ Container rag0104-postgres-1 Recreate 
+ Container rag0104-postgres-1 Recreated 
+ Container rag0104-api-1 Recreate 
+ Container rag0104-worker-1 Recreate 
+ Container rag0104-beat-1 Recreate 
+ Container rag0104-beat-1 Recreated 
+ Container rag0104-worker-1 Recreated 
+ Container rag0104-api-1 Recreated 
+ Container rag0104-studio-1 Recreate 
+ Container rag0104-studio-1 Recreated 
+ Container rag0104-postgres-1 Starting 
+ Container rag0104-postgres-1 Started 
+ Container rag0104-beat-1 Starting 
+ Container rag0104-api-1 Starting 
+ Container rag0104-worker-1 Starting 
+ Container rag0104-beat-1 Started 
+ Container rag0104-api-1 Started 
+ Container rag0104-worker-1 Started 
+ Container rag0104-studio-1 Starting 
+ Container rag0104-studio-1 Started 
+exit=0
+$ docker compose ps
+SERVICE    STATUS
+api        Up 7 seconds (healthy)
+beat       Up 7 seconds
+mailpit    Up 6 minutes (healthy)
+postgres   Up 10 seconds (healthy)
+redis      Up 6 minutes (healthy)
+rustfs     Up 6 minutes
+studio     Up 3 seconds (healthy)
+worker     Up 7 seconds
+$ cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0104/frontend
+> playwright test
+
+
+Running 18 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (506ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (275ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (202ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.1s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (194ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (1ms)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (70ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (722ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (211ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (205ms)
+  ✓  12 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (917ms)
+  ✓  11 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (1.9s)
+  ✓  13 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (1.5s)
+  ✓  14 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (1.2s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (702ms)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (1.1s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (1.0s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (1.2s)
+
+  18 passed (11.5s)
+exit=0

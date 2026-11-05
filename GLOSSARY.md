@@ -19,6 +19,10 @@ How long an Organisation keeps Message text before it is purged. Aggregate metri
 A person who signs in to the Studio and belongs to one or more Organisations.
 _Avoid_: User, admin
 
+**Membership**:
+A Member's place in one Organisation, with a role: Owner or Editor. Signing up creates an Organisation and an Owner Membership for the new Member.
+_Avoid_: Seat, account
+
 **Owner**:
 A Member role that can manage Provider Credentials, Members and Organisation settings, as well as everything an Editor can.
 
