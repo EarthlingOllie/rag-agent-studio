@@ -7,7 +7,7 @@
 **Blocked by:**
 - [09-04: Compute module](04-compute-module.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Each path has its own behaviour, and only static paths are cached
 - [ ] Dynamic paths forward headers, cookies and query strings, and have a long read timeout
