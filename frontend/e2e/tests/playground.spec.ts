@@ -53,7 +53,7 @@ test.describe("Agent and Playground", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // Ask the Draft; the fake model's answer streams back and is saved with its usage.
-    await page.getByLabel("Question").fill("How many days of annual leave do I get?");
+    await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
     await page.getByRole("button", { name: "Send" }).click();
     const messages = page.getByRole("list", { name: "Playground messages" });
     await expect(messages.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");

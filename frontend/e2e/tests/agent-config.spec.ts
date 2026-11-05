@@ -86,7 +86,7 @@ test.describe("Full AgentConfig editor", () => {
     await expect(status).toHaveText("All changes saved");
 
     // The Playground answers with the Model override, not the Default Model.
-    await page.getByLabel("Question").fill("How many days of annual leave do I get?");
+    await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
     await page.getByRole("button", { name: "Send" }).click();
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText("Fake reply from openai:gpt-4.1-mini.", { timeout: 15_000 });
