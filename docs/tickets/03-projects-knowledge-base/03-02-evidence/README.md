@@ -4,16 +4,16 @@ Branch `ticket/03-02-upload-document-ready`, based on `origin/candidate` at `c8c
 
 **Status: done, with one recorded gap for human review.** Criteria 1–5 and 7–9 are met and evidenced. Criterion 6 is met as far as this sandbox allows: Hugging Face is blocked by the sandbox's egress policy (proxy `403 Forbidden`), so the live-model runs are an explicit **GAP** with the exact commands to close it (see Gaps). Marking the ticket done with that gap is the orchestrator's recorded best guess, flagged for a human to confirm.
 
-Round 4 (update from `origin/candidate` at `2245f85`, which adds 02-02 Bedrock credentials and 02-03 the model gateway), merge commit `e0b2bbb`:
+Round 4 (updates from `origin/candidate`): merge `e0b2bbb` brought in 02-02 Bedrock credentials and 02-03 the model gateway; merge `798679a` brought in 02-04 the price table (candidate at `d0cead4`).
 - Conflicts resolved by keeping both sides: dependencies in `backend/pyproject.toml`, test settings in `backend/tests/conftest.py`, the model imports in `backend/migrations/env.py`, and imports and lifespan wiring in `backend/app/main.py` (ingestion ports and the model gateway both start). `uv.lock` was re-locked, and the API client regenerated.
-- The Documents migration was a second Alembic head after 02-02's `0009_bedrock_credentials`. It is now `0010_documents`, revising `0009_bedrock_credentials` (file `20261105_0010_documents.py`); the migration round-trip tests pass.
-- Every log below was re-run on the merged tree, worktree clean at `e0b2bbb`, with services from compose project `rag0302` (Postgres `45732`, Redis `46679`, RustFS `49300`, Mailpit `48325`):
-  - [backend-tests.log](backend-tests.log): `make test-backend`: **756 passed**, 5 live deselected, 100% line and branch (`TOTAL 3945 0 376 0`).
+- The Documents migration would have been a second Alembic head. It is now `0011_documents`, revising 02-04's `0010_price_table` (file `20261105_0011_documents.py`); the migration round-trip tests pass. A database left at an earlier, renumbered revision has to be recreated (only sandbox databases from this branch's own earlier runs were).
+- Every log below was re-run on the merged tree, worktree clean at `798679a`, with services from compose project `rag0302` (Postgres `45732`, Redis `46679`, RustFS `49300`, Mailpit `48325`):
+  - [backend-tests.log](backend-tests.log): `make test-backend`: **814 passed**, 5 live deselected, 100% line and branch (`TOTAL 4195 0 402 0`).
   - [lint.log](lint.log): `make lint`: ruff, ruff format, `mypy --strict`, eslint and `tsc` clean.
   - [client-drift.log](client-drift.log): `make check-client`: up to date.
-  - [frontend-tests.log](frontend-tests.log): `make test-frontend`: **279 passed**, 100% coverage.
+  - [frontend-tests.log](frontend-tests.log): `make test-frontend`: **294 passed**, 100% coverage.
   - [images.log](images.log): both images rebuilt through `build.sh` (sandbox CA, `WITH_PDF=false BUNDLE_MODELS=false`).
-  - [e2e.log](e2e.log): `make e2e` on the containerised stack from those images: **41 passed**.
+  - [e2e.log](e2e.log): `make e2e` on the containerised stack from those images: **42 passed**.
   - Infra: no file under `infra/` changes on this branch, so the Terraform checks were not re-run.
 - Earlier rounds' counts in the table below are kept as they were recorded.
 

@@ -1,4 +1,5 @@
-$ git status: 1 changes @ e0b2bbb (merged origin/candidate 2245f85)
+$ git status: clean @ 798679a (merged origin/candidate d0cead4)
+# studio_test was dropped and recreated first: the earlier run had left it at the renumbered 0010_documents
 $ TEST_OBJECT_STORE_URL=http://localhost:49300 TEST_DATABASE_URL=...@localhost:45732/studio_test TEST_REDIS_URL=redis://localhost:46679/15 make test-backend
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
@@ -9,51 +10,53 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 761 items / 5 deselected / 756 selected
+collected 819 items / 5 deselected / 814 selected
 
 tests/integration/test_audit_events.py ...................               [  2%]
 tests/integration/test_bedrock_credentials.py .......................... [  5%]
 ............                                                             [  7%]
 tests/integration/test_chunk_storage.py ...                              [  7%]
-tests/integration/test_default_model.py ....................             [ 10%]
-tests/integration/test_documents.py .....................                [ 13%]
-tests/integration/test_health.py ...                                     [ 13%]
-tests/integration/test_invites.py ..............................         [ 17%]
-tests/integration/test_logging.py .......                                [ 18%]
-tests/integration/test_mailer.py ........                                [ 19%]
-tests/integration/test_members.py ...............                        [ 21%]
-tests/integration/test_mfa.py .....................................      [ 26%]
-tests/integration/test_migrations.py ..                                  [ 26%]
-tests/integration/test_no_secret_in_responses.py ....                    [ 27%]
-tests/integration/test_object_store.py .......                           [ 28%]
-tests/integration/test_openapi.py ..                                     [ 28%]
-tests/integration/test_organisation_switcher.py .......                  [ 29%]
-tests/integration/test_password_audit_events.py ..                       [ 29%]
-tests/integration/test_password_reset.py ...........                     [ 31%]
-tests/integration/test_profile.py .......                                [ 32%]
-tests/integration/test_projects.py ....................                  [ 34%]
-tests/integration/test_provider_credentials.py ......................... [ 38%]
-...........                                                              [ 39%]
-tests/integration/test_require_mfa.py .................................. [ 44%]
-..............                                                           [ 45%]
-tests/integration/test_settings.py ....                                  [ 46%]
-tests/integration/test_sign_in_and_out.py ........                       [ 47%]
-tests/integration/test_sign_in_throttling.py ...........                 [ 48%]
-tests/integration/test_sign_up.py ............                           [ 50%]
-tests/integration/test_telemetry.py ........                             [ 51%]
-tests/integration/test_tenant_isolation.py ............................. [ 55%]
+tests/integration/test_default_model.py ....................             [  9%]
+tests/integration/test_documents.py .....................                [ 12%]
+tests/integration/test_health.py ...                                     [ 12%]
+tests/integration/test_invites.py ..............................         [ 16%]
+tests/integration/test_logging.py .......                                [ 17%]
+tests/integration/test_mailer.py ........                                [ 18%]
+tests/integration/test_members.py ...............                        [ 20%]
+tests/integration/test_mfa.py .....................................      [ 24%]
+tests/integration/test_migrations.py ..                                  [ 24%]
+tests/integration/test_no_secret_in_responses.py ....                    [ 25%]
+tests/integration/test_object_store.py .......                           [ 26%]
+tests/integration/test_openapi.py ..                                     [ 26%]
+tests/integration/test_organisation_switcher.py .......                  [ 27%]
+tests/integration/test_password_audit_events.py ..                       [ 27%]
+tests/integration/test_password_reset.py ...........                     [ 28%]
+tests/integration/test_prices.py ...................................     [ 33%]
+tests/integration/test_profile.py .......                                [ 34%]
+tests/integration/test_projects.py ....................                  [ 36%]
+tests/integration/test_provider_credentials.py ......................... [ 39%]
+...........                                                              [ 41%]
+tests/integration/test_require_mfa.py .................................. [ 45%]
+................                                                         [ 47%]
+tests/integration/test_settings.py ....                                  [ 47%]
+tests/integration/test_sign_in_and_out.py ........                       [ 48%]
+tests/integration/test_sign_in_throttling.py ...........                 [ 50%]
+tests/integration/test_sign_up.py ............                           [ 51%]
+tests/integration/test_telemetry.py ........                             [ 52%]
+tests/integration/test_tenant_isolation.py ............................. [ 56%]
 ........................................................................ [ 64%]
-........................................................................ [ 74%]
-........................................                                 [ 79%]
+........................................................................ [ 73%]
+....................................................                     [ 80%]
 tests/integration/test_theme.py .....................                    [ 82%]
 tests/integration/test_worker_entrypoint.py ....                         [ 83%]
 tests/integration/test_worker_health.py ....                             [ 83%]
 tests/unit/test_bedrock_verifier.py ...............................      [ 87%]
 tests/unit/test_chunking.py .....                                        [ 88%]
-tests/unit/test_docling_converter.py ..                                  [ 88%]
-tests/unit/test_envelope_encryption.py .................                 [ 90%]
+tests/unit/test_cost.py .........                                        [ 89%]
+tests/unit/test_docling_converter.py ..                                  [ 89%]
+tests/unit/test_envelope_encryption.py .................                 [ 91%]
 tests/unit/test_http_credential_verifier.py ............................ [ 94%]
-.                                                                        [ 94%]
+.                                                                        [ 95%]
 tests/unit/test_ingestion_ports.py ...                                   [ 95%]
 tests/unit/test_kms_key_wrapper.py ........                              [ 96%]
 tests/unit/test_model_gateway.py .............................           [100%]
@@ -133,8 +136,14 @@ app/mail/port.py                          9      0      0      0   100%
 app/mail/ses.py                          11      0      0      0   100%
 app/mail/smtp.py                         22      0      0      0   100%
 app/mail/templates.py                    19      0      2      0   100%
-app/main.py                              77      0      4      0   100%
+app/main.py                              78      0      4      0   100%
 app/openapi.py                            6      0      0      0   100%
+app/pricing/__init__.py                   0      0      0      0   100%
+app/pricing/api.py                       70      0      0      0   100%
+app/pricing/models.py                    26      0      0      0   100%
+app/pricing/service.py                   58      0      6      0   100%
+app/pricing/sync.py                      13      0      4      0   100%
+app/pricing/table.py                     82      0     16      0   100%
 app/projects/__init__.py                  0      0      0      0   100%
 app/projects/api.py                      80      0      0      0   100%
 app/projects/models.py                   15      0      0      0   100%
@@ -168,9 +177,8 @@ app/worker/celery_app.py                  8      0      0      0   100%
 app/worker/main.py                       16      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                  3945      0    376      0   100%
+TOTAL                                  4195      0    402      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-================ 756 passed, 5 deselected in 515.81s (0:08:35) =================
-{"timestamp": "2026-11-05T12:56:16.805147+00:00", "level": "ERROR", "logger": "opentelemetry.sdk._shared_internal", "message": "Exception while exporting Span.", "service": "api", "exception": "Traceback (most recent call last):\n  File \"/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/_shared_internal/__init__.py\", line 187, in _export\n    self._exporter.export(batch)\n    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/trace/export/__init__.py\", line 311, in export\n    self.out.write(self.formatter(span))\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\nValueError: I/O operation on closed file."}
+================ 814 passed, 5 deselected in 523.39s (0:08:43) =================
 exit 0
