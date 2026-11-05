@@ -56,11 +56,14 @@ def upgrade() -> None:
             sa.ForeignKey("agents.id", ondelete="CASCADE", name="fk_agent_drafts_agent_id_agents"),
             primary_key=True,
         ),
+        _foreign("agent_drafts", "organisation_id", "organisations"),
         sa.Column("config", postgresql.JSONB(), nullable=False),
         sa.Column(
             "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
     )
+
+    op.create_index("ix_agent_drafts_organisation_id", "agent_drafts", ["organisation_id"])
 
     op.create_table(
         "conversations",

@@ -42,6 +42,9 @@ class AgentDraft(Base):
     agent_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Agent.id, ondelete="CASCADE"), primary_key=True
     )
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
     # An ``AgentConfig`` as JSON; read it through ``AgentConfig.model_validate``.
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

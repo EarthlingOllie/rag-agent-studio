@@ -13,6 +13,8 @@ test.describe("Agent and Playground", () => {
     signedInPage: page,
     makeAxeBuilder,
   }) => {
+    // Ingestion, two axe scans and a streamed answer: more than the default 30 seconds.
+    test.setTimeout(120_000);
     // The Organisation's Default Model, set through the API (the Models page has its own test).
     await page.goto("/");
     const me = (await (await page.request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
@@ -38,14 +40,14 @@ test.describe("Agent and Playground", () => {
 
     // Create the Agent and write its system prompt.
     await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
-    await expect(page.getByText(/No Agents yet/)).toBeVisible();
+    await expect(page.getByText(/No Agents yet/)).toBeVisible({ timeout: 15_000 });
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("HR helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("System prompt").fill("You answer Northwind staff questions about HR policy.");
     await page.getByRole("button", { name: "Save Draft" }).click();
-    await expect(page.getByText("Draft saved")).toBeVisible();
+    await expect(page.getByText("Draft saved")).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // Ask the Draft; the fake model's answer streams back and is saved with its usage.
@@ -54,12 +56,12 @@ test.describe("Agent and Playground", () => {
     const messages = page.getByRole("list", { name: "Playground messages" });
     await expect(messages.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");
     const answer = messages.getByRole("listitem", { name: "HR helper" });
-    await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.");
+    await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
     await expect(answer).toContainText(/\d+ input and \d+ output tokens · \d+ ms/);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // The reload keeps the Draft.
     await page.reload();
-    await expect(page.getByLabel("System prompt")).toHaveValue("You answer Northwind staff questions about HR policy.");
+    await expect(page.getByLabel("System prompt")).toHaveValue("You answer Northwind staff questions about HR policy.", { timeout: 15_000 });
   });
 });

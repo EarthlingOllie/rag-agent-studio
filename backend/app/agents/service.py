@@ -50,7 +50,14 @@ async def create_agent(
     agent = Agent(organisation_id=scope.organisation_id, project_id=project.id, name=name)
     session.add(agent)
     await session.flush()
-    session.add(AgentDraft(agent_id=agent.id, config=AgentConfig().model_dump(), updated_at=now))
+    session.add(
+        AgentDraft(
+            agent_id=agent.id,
+            organisation_id=scope.organisation_id,
+            config=AgentConfig().model_dump(),
+            updated_at=now,
+        )
+    )
     await audit.record(
         session,
         organisation_id=scope.organisation_id,
