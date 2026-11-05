@@ -16,6 +16,11 @@ RUN uv sync --frozen --no-dev --no-install-project
 # not needed at runtime, and the Trivy gate (security.yml) rejects their known CVEs.
 FROM python:3.13-slim
 
+# Debian security fixes released after the base image was built (the Trivy gate fails on fixable HIGH ones).
+RUN apt-get update \
+    && apt-get upgrade --yes --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN python -m pip uninstall --yes --no-cache-dir pip \
     && rm -rf /usr/local/lib/python3.13/ensurepip
 
