@@ -30,8 +30,8 @@ export function SignInPage() {
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     signIn.mutate(formValues(event.currentTarget, ["email", "password"]), {
-      onSuccess: () => {
-        void navigate({ to: "/" });
+      onSuccess: (outcome) => {
+        void navigate({ to: outcome.mfaRequired ? "/sign-in/mfa" : "/" });
       },
     });
   }

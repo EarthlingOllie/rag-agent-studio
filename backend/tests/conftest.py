@@ -4,6 +4,7 @@ Tests talk to the FastAPI app through an in-process async HTTP client, against r
 Postgres and Redis (``docker compose up postgres redis`` locally, service containers in CI).
 """
 
+import base64
 import os
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -27,6 +28,8 @@ TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
 )
 TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+# 32 bytes, base64: the local static-key wrapper's key for the test run.
+TEST_LOCAL_KEY_WRAPPER_KEY = base64.b64encode(b"test-only-local-key-wrapper-key!").decode()
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 # HTTPS, so the client's cookie jar sends the Secure session cookie back.
 BASE_URL = "https://testserver"
@@ -39,6 +42,7 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("REDIS_URL", TEST_REDIS_URL)
     monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "true")
+    monkeypatch.setenv("LOCAL_KEY_WRAPPER_KEY", TEST_LOCAL_KEY_WRAPPER_KEY)
     monkeypatch.setenv("MAILER", "outbox")
     monkeypatch.setenv("STUDIO_URL", STUDIO_URL)
 

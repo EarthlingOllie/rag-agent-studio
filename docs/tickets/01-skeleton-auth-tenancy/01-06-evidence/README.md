@@ -42,6 +42,18 @@ These seams follow the spec's test plan. The agent picked them without a human t
 - **GitHub Actions** haven't run on this branch yet. No PR was opened at this stage; the orchestrator's PR stage runs CI.
 - **gitleaks** allowlists 01-05's fake test keys through 01-05's `.gitleaksignore` entries, which this branch includes.
 
+## Merge with candidate (01-05, 01-07, 01-11)
+
+The branch was brought up to date by merging `origin/ticket/01-05-audit-events` (which already carried candidate with 01-07) and then `origin/candidate` (01-11 TOTP MFA). Resolutions:
+
+- **Sign-in endpoint** keeps throttling first (429 before the password is checked), then 01-11's MFA challenge (202) once the password is right. A right password clears the account's failure counter before the MFA step; failed MFA codes are 01-11's concern and are not counted by this throttle (recorded as a follow-up, not a gap in 01-06's criteria).
+- **One `ControllableClock`.** 01-07 had added a second one in `tests/conftest.py`; the merge keeps `tests/fakes/clock.py`, whose `advance` now takes a `timedelta` or seconds, and points every test at it.
+- **Studio.** 01-11's `useSignIn` dropped the error body, which hid the 429 details from the sign-in page; it now passes it through (`frontend/apps/studio/src/auth/session.ts`).
+- **Test fix.** `test_mfa.py::test_the_audit_event_targets_the_member` picked the Member's first Audit Event; with 01-05's real audit module that is `organisation.created`, so it now filters on `mfa.enrolled`.
+- Settings, `.env.example`, compose, `docs/development.md` and the router combine both sides; the API client is regenerated.
+
+Logs after the merge: [merge-backend-tests.log](merge-backend-tests.log) (172 passed, 100% line and branch coverage) and [merge-frontend-tests.log](merge-frontend-tests.log) (84 passed). Lint and `mypy --strict` pass. Playwright e2e after the merge is left to CI.
+
 ## Files
 
 | File | What it is |

@@ -8,6 +8,9 @@ x-backend: &backend
     ENVIRONMENT: local
     DATABASE_URL: postgresql+asyncpg://studio:studio@postgres:5432/studio
     REDIS_URL: redis://redis:6379/0
+    # The local static-key wrapper's key, for envelope-encrypted secrets (TOTP secrets, later
+    # Provider Credentials). A fixed development key: override it in .env; AWS uses KMS instead.
+    LOCAL_KEY_WRAPPER_KEY: ${LOCAL_KEY_WRAPPER_KEY:-bG9jYWwtZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldCE=}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
     # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.

@@ -1,0 +1,17 @@
+$ (fresh clone @ f9e1acf) make check-client
+
+cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
+cd frontend && pnpm gen-client
+
+> rag-agent-studio-frontend@ gen-client /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0111/frontend
+> pnpm --filter @studio/api-client generate
+
+
+> @studio/api-client@ generate /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0111/frontend/packages/api-client
+> openapi-typescript ./openapi.json --output ./src/schema.gen.ts
+
+✨ openapi-typescript 7.13.0
+🚀 ./openapi.json → ./src/schema.gen.ts [64.2ms]
+API client is up to date.
+
+exit code: 0

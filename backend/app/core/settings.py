@@ -1,8 +1,18 @@
 """Typed service settings, read from the environment and validated at startup."""
 
+import base64
+import binascii
 from typing import Literal
 
-from pydantic import Field, HttpUrl, PostgresDsn, RedisDsn, SecretStr, ValidationError
+from pydantic import (
+    Field,
+    HttpUrl,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    ValidationError,
+    field_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +43,13 @@ class Settings(BaseSettings):
     sign_in_delay_base_seconds: int = Field(default=1, gt=0)
     sign_in_delay_max_seconds: int = Field(default=30, gt=0)
     sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
+    # How long a password-checked sign-in waits for its MFA code.
+    mfa_pending_ttl_seconds: int = Field(default=5 * 60, gt=0)
+    # Wraps the data keys of envelope-encrypted secrets. Only the local static-key wrapper
+    # exists so far; AWS KMS arrives with the AWS deployment (spec 09).
+    key_wrapper: Literal["local"] = "local"
+    # The local wrapper's key: 32 random bytes, base64-encoded (`openssl rand -base64 32`).
+    local_key_wrapper_key: SecretStr
     # How long a password reset link works.
     password_reset_ttl_seconds: int = Field(default=60 * 60, gt=0)
     # The Studio's public address; links in emails point here.
@@ -49,6 +66,17 @@ class Settings(BaseSettings):
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.
     logfire_base_url: HttpUrl | None = None
+
+    @field_validator("local_key_wrapper_key")
+    @classmethod
+    def _is_a_32_byte_key(cls, value: SecretStr) -> SecretStr:
+        try:
+            key = base64.b64decode(value.get_secret_value(), validate=True)
+        except binascii.Error:
+            key = b""
+        if len(key) != 32:
+            raise ValueError("must be 32 bytes, base64-encoded")
+        return value
 
 
 def load_settings() -> Settings:

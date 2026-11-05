@@ -7,6 +7,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { MfaChallengePage } from "./auth/MfaChallengePage";
 import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { SignInPage } from "./auth/SignInPage";
@@ -14,6 +15,7 @@ import { SignUpPage } from "./auth/SignUpPage";
 import { AuditSettingsPage, GeneralSettingsPage, OrganisationSettingsLayout } from "./settings/OrganisationSettings";
 import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
+import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
 
 function StatusLayout() {
@@ -37,6 +39,11 @@ const rootRoute = createRootRoute({ component: Outlet });
 const statusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/status", component: StatusLayout });
 const signUpRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sign-up", component: SignUpPage });
 const signInRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sign-in", component: SignInPage });
+const mfaChallengeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sign-in/mfa",
+  component: MfaChallengePage,
+});
 const forgotPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/forgot-password",
@@ -67,13 +74,20 @@ const settingsRoute = createRoute({
 const generalSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/", component: GeneralSettingsPage });
 const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
+const securityRoute = createRoute({
+  getParentRoute: () => organisationRoute,
+  path: "/security",
+  component: SecurityPage,
+});
+
 const routeTree = rootRoute.addChildren([
   statusRoute,
   signUpRoute,
   signInRoute,
+  mfaChallengeRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
-  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute]), profileRoute])]),
+  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute]), profileRoute, securityRoute])]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {
