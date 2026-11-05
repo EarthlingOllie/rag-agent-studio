@@ -55,7 +55,10 @@ async def theme_of(member: SignedUpMember) -> dict[str, Any]:
 
 
 def without_updated_at(theme: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in theme.items() if key != "updated_at"}
+    """The Theme's settings: without ``updated_at`` and the images (``test_theme_images.py``)."""
+    return {
+        key: value for key, value in theme.items() if key not in {"updated_at", "logo", "avatar"}
+    }
 
 
 async def theme_events(owner: SignedUpMember) -> list[dict[str, Any]]:

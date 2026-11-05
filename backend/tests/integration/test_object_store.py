@@ -1,9 +1,11 @@
 """The object-store port: the S3 adapter against RustFS, and the in-memory fake, behave alike.
 And the whole upload flow works against RustFS, with the browser's PUT to a presigned URL."""
 
+import asyncio
 import os
 import uuid
 from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
 import pytest
@@ -16,6 +18,7 @@ from app.storage.memory import InMemoryObjectStore
 from app.storage.port import ObjectNotFoundError, ObjectStore
 from app.storage.s3 import S3ObjectStore
 from tests.conftest import BASE_URL, new_member_details
+from tests.theme_images import png
 
 RUSTFS_URL = os.environ.get("TEST_OBJECT_STORE_URL", "http://localhost:9000")
 RUSTFS_KEYS = {"access_key_id": "studio", "secret_access_key": "studio-secret"}
@@ -146,3 +149,42 @@ async def test_a_document_uploaded_through_rustfs_becomes_ready(rustfs_app: Fast
     assert [(d["name"], d["status"], d["chunk_count"]) for d in listed] == [
         ("leave.md", "ready", 1)
     ]
+
+
+async def test_a_theme_logo_uploaded_through_rustfs_is_served_and_replaced(
+    rustfs_app: FastAPI,
+) -> None:
+    first, second = png(255, 0, 0), png(0, 0, 255)
+    transport = httpx.ASGITransport(app=rustfs_app)
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=BASE_URL) as studio,
+        httpx.AsyncClient() as browser,
+    ):
+        signed_up = (await studio.post("/api/auth/sign-up", json=new_member_details())).json()
+        logo = f"/api/organisations/{signed_up['organisations'][0]['id']}/theme/images/logo"
+
+        async def upload(data: bytes) -> dict[str, Any]:
+            started = await studio.post(
+                f"{logo}/uploads", json={"filename": "logo.png", "size_bytes": len(data)}
+            )
+            ticket = started.json()
+            put = await browser.put(
+                ticket["url"], content=data, headers={"Content-Type": ticket["content_type"]}
+            )
+            assert (started.status_code, put.status_code) == (201, 200)
+            confirmed = await studio.put(logo, json={"upload_id": ticket["upload_id"]})
+            assert confirmed.status_code == 200, confirmed.text
+            image: dict[str, Any] = confirmed.json()["logo"]
+            return image
+
+        replaced = await upload(first)
+        current = await upload(second)
+        served = await studio.get(current["url"])
+        store = rustfs_app.state.ingestion.object_store
+        assert isinstance(store, S3ObjectStore)
+        listed = await asyncio.to_thread(store._client.list_objects_v2, Bucket=store.bucket)
+
+    assert replaced["url"] != current["url"]
+    assert (served.status_code, served.content) == (200, second)
+    # The replaced logo's file is gone from the bucket; only the current one is kept.
+    assert [item["Size"] for item in listed["Contents"]] == [len(second)]

@@ -107,6 +107,8 @@ class Settings(BaseSettings):
     upload_url_ttl_seconds: int = Field(default=15 * 60, gt=0)
     # The largest file a Document can be uploaded from.
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
+    # The largest logo or default Agent avatar image a Theme can have.
+    max_theme_image_bytes: int = Field(default=1024 * 1024, gt=0)
     # Converts uploaded files to markdown and structure: Docling, or the fake (tests).
     document_converter: Literal["docling", "fake"] = "docling"
     # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
