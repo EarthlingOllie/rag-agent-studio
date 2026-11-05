@@ -89,6 +89,8 @@ export function useRevokeInvite(organisationId: string) {
 export function useInvitePreview(token: string) {
   return useQuery({
     queryKey: ["invite-preview", token],
+    // A link that doesn't work won't start working on a retry; say so straight away.
+    retry: false,
     queryFn: async (): Promise<InvitePreview> => {
       const { data, error, response } = await api.POST("/api/invites/lookup", { body: { token } });
       if (!data) throw failed(response, error);

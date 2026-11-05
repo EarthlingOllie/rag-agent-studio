@@ -27,7 +27,7 @@ test.describe("invites", () => {
     await form.getByRole("button", { name: "Invite" }).click();
     await expect(page.getByRole("status")).toContainText(`We emailed an invite to ${invited.email}.`);
     const pending = page.getByRole("table", { name: "Pending invites" });
-    await expect(pending.getByRole("cell", { name: invited.email })).toBeVisible();
+    await expect(pending.getByRole("cell", { name: invited.email, exact: true })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     const email = await latestEmailTo(page.request, invited.email);
