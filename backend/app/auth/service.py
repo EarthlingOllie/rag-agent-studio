@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.audit import service as audit_service
+from app import audit
 from app.auth.passwords import hash_password, verify_password
 from app.auth.throttle import Lockout, Refusal, SignInThrottle
 from app.core.clock import Clock
@@ -20,7 +20,7 @@ from app.tenancy.repository import create_organisation_with_new_owner, list_memb
 
 logger = logging.getLogger(__name__)
 
-SIGN_IN_LOCKED_OUT = "sign_in.locked_out"
+MEMBER_LOCKED_OUT = "member.locked_out"
 
 
 class EmailAlreadyRegisteredError(Exception):
@@ -42,12 +42,21 @@ def normalise_email(email: str) -> str:
 async def sign_up(
     session: AsyncSession, *, name: str, email: str, password: str, organisation_name: str
 ) -> Member:
-    """Creates the Member, the Organisation and the Owner membership in one transaction."""
+    """Creates the Member, the Organisation, the Owner membership and the Audit Event of the
+    Organisation being created, in one transaction."""
     member = Member(name=name, email=normalise_email(email), password_hash=hash_password(password))
     try:
         async with session.begin():
-            await create_organisation_with_new_owner(
+            organisation = await create_organisation_with_new_owner(
                 session, organisation_name=organisation_name, owner=member
+            )
+            await audit.record(
+                session,
+                organisation_id=organisation.id,
+                actor_id=member.id,
+                action="organisation.created",
+                target=audit.AuditTarget("organisation", organisation.id),
+                after={"name": organisation.name},
             )
     except IntegrityError as exc:
         raise EmailAlreadyRegisteredError from exc
@@ -95,20 +104,18 @@ async def _record_lockout(
     if member is None:
         return  # no Organisation to audit it in; the log line is the record
     for membership in await list_memberships(session, member):
-        audit_service.record(
+        await audit.record(
             session,
             organisation_id=membership.organisation_id,
-            actor_member_id=None,
-            action=SIGN_IN_LOCKED_OUT,
-            target_type="member",
-            target_id=str(member.id),
-            before=None,
+            actor_id=None,
+            action=MEMBER_LOCKED_OUT,
+            target=audit.AuditTarget("member", member.id),
             after={
                 "scope": lockout.scope.value,
                 "ip": ip,
                 "failures": lockout.failures,
                 "locked_until": lockout.locked_until.isoformat(),
             },
-            at=at,
+            occurred_at=at,
         )
     await session.commit()

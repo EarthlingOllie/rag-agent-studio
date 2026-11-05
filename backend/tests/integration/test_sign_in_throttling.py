@@ -11,10 +11,7 @@ from contextlib import AsyncExitStack
 import httpx
 import pytest
 from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.audit.service import list_events
-from app.tenancy.repository import resolve_scope
 from tests.conftest import BASE_URL, SignedUpMember
 from tests.fakes.clock import ControllableClock
 
@@ -259,49 +256,35 @@ async def test_throttling_is_identical_for_an_unknown_email_and_a_wrong_password
     assert answers[-1]["locked"] is True
 
 
-async def _audit_events(app: FastAPI, owner: SignedUpMember) -> list[dict[str, object]]:
-    """The Organisation's Audit Events. Read through the audit module until 01-05's endpoint."""
-    sessionmaker: async_sessionmaker[AsyncSession] = app.state.sessionmaker
-    async with sessionmaker() as session:
-        scope = await resolve_scope(
-            session,
-            member_id=uuid.UUID(owner.member_id),
-            organisation_id=uuid.UUID(owner.organisation_id),
-        )
-        assert scope is not None
-        return [
-            {
-                "actor": event.actor_member_id,
-                "action": event.action,
-                "target": (event.target_type, event.target_id),
-                "before": event.before,
-                "after": event.after,
-                "at": event.occurred_at,
-            }
-            for event in await list_events(session, scope)
-            if event.action.startswith("sign_in.")
-        ]
+async def _lockout_events(owner: SignedUpMember) -> list[dict[str, object]]:
+    """The lockouts in the Owner's Audit tab, through the Owner-only list endpoint."""
+    response = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/audit-events",
+        params={"action": "member.locked_out"},
+    )
+    assert response.status_code == 200, response.text
+    return [{k: v for k, v in event.items() if k != "id"} for event in response.json()["items"]]
 
 
 async def test_an_account_lockout_is_recorded_as_an_audit_event(
-    app: FastAPI, owner: SignedUpMember, client_from: IpClientFactory, clock: ControllableClock
+    owner: SignedUpMember, client_from: IpClientFactory, clock: ControllableClock
 ) -> None:
     ip = _unique_ip()
     client = await client_from(ip)
     for _ in range(9):
         await _sign_in(client, owner.email, "wrong password")
         clock.advance(60)
-    assert await _audit_events(app, owner) == []  # delays alone aren't audited
-    locked_at = clock.now()
+    assert await _lockout_events(owner) == []  # delays alone aren't audited
 
     await _sign_in(client, owner.email, "wrong password")
     await _sign_in(client, owner.email, owner.password)  # refused while locked: no new event
 
-    assert await _audit_events(app, owner) == [
+    assert await _lockout_events(owner) == [
         {
+            "occurred_at": "2026-11-05T09:09:00Z",
             "actor": None,
-            "action": "sign_in.locked_out",
-            "target": ("member", owner.member_id),
+            "action": "member.locked_out",
+            "target": {"type": "member", "id": owner.member_id},
             "before": None,
             "after": {
                 "scope": "account",
@@ -309,13 +292,12 @@ async def test_an_account_lockout_is_recorded_as_an_audit_event(
                 "failures": 10,
                 "locked_until": "2026-11-05T09:11:00+00:00",
             },
-            "at": locked_at,
         }
     ]
 
 
 async def test_an_ip_lockout_is_recorded_for_the_member_whose_sign_in_tripped_it(
-    app: FastAPI, owner: SignedUpMember, client_from: IpClientFactory, clock: ControllableClock
+    owner: SignedUpMember, client_from: IpClientFactory, clock: ControllableClock
 ) -> None:
     ip = _unique_ip()
     attacker = await client_from(ip)
@@ -325,8 +307,8 @@ async def test_an_ip_lockout_is_recorded_for_the_member_whose_sign_in_tripped_it
 
     await _sign_in(attacker, owner.email, "guess")
 
-    (event,) = await _audit_events(app, owner)
-    assert event["target"] == ("member", owner.member_id)
+    (event,) = await _lockout_events(owner)
+    assert event["target"] == {"type": "member", "id": owner.member_id}
     assert event["after"] == {
         "scope": "ip",
         "ip": ip,

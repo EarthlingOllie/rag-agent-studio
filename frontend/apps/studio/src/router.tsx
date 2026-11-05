@@ -9,13 +9,8 @@ import {
 
 import { SignInPage } from "./auth/SignInPage";
 import { SignUpPage } from "./auth/SignUpPage";
-import {
-  HomeRedirect,
-  OrganisationSettingsPage,
-  OrganisationShell,
-  ProjectsPage,
-  SignedInShell,
-} from "./shell/SignedInShell";
+import { AuditSettingsPage, GeneralSettingsPage, OrganisationSettingsLayout } from "./settings/OrganisationSettings";
+import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
 import { StatusPage } from "./status/StatusPage";
 
 function StatusLayout() {
@@ -50,14 +45,16 @@ const projectsRoute = createRoute({ getParentRoute: () => organisationRoute, pat
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
   path: "/settings",
-  component: OrganisationSettingsPage,
+  component: OrganisationSettingsLayout,
 });
+const generalSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/", component: GeneralSettingsPage });
+const auditSettingsRoute = createRoute({ getParentRoute: () => settingsRoute, path: "/audit", component: AuditSettingsPage });
 
 const routeTree = rootRoute.addChildren([
   statusRoute,
   signUpRoute,
   signInRoute,
-  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute])]),
+  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute])])]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {

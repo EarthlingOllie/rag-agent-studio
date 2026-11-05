@@ -1,0 +1,139 @@
+# Mutation proof, run in the branch worktree at 7075bcc with /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/sb0105/mutate.sh (copied below). Each mutation breaks one criterion; a non-zero exit means the tests caught it. The tree is restored after each; the last block runs the unmodified code.
+=== mutation: no redaction (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_secret_like_fields_are_redacted_before_storage
+FAILED tests/integration/test_audit_events.py::test_redaction_happens_before_the_values_reach_the_database
+2 failed, 21 passed in 23.35s
+exit=1 (non-zero = mutation caught)
+=== mutation: redaction skips lists (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_secret_like_fields_are_redacted_before_storage
+1 failed, 22 passed in 10.24s
+exit=1 (non-zero = mutation caught)
+=== mutation: Editors allowed (backend/app/tenancy/policy.py)
+ backend/app/tenancy/policy.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_editors_are_refused_the_audit_events
+FAILED tests/integration/test_audit_events.py::test_editors_are_refused_the_filter_options
+2 failed, 21 passed in 10.15s
+exit=1 (non-zero = mutation caught)
+=== mutation: sign-up not recorded (backend/app/auth/service.py)
+ backend/app/auth/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_signing_up_records_the_organisation_being_created
+FAILED tests/integration/test_audit_events.py::test_audit_events_cannot_be_changed_or_removed
+FAILED tests/integration/test_audit_events.py::test_an_organisation_sees_only_its_own_events
+FAILED tests/integration/test_audit_events.py::test_owners_get_the_actors_and_actions_they_can_filter_by
+4 failed, 19 passed in 12.86s
+exit=1 (non-zero = mutation caught)
+=== mutation: action filter ignored (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_recorded_events_keep_the_actor_action_target_and_before_after_values
+FAILED tests/integration/test_audit_events.py::test_an_event_can_have_no_actor_and_a_target_without_an_id
+FAILED tests/integration/test_audit_events.py::test_secret_like_fields_are_redacted_before_storage
+FAILED tests/integration/test_audit_events.py::test_owners_filter_by_actor_action_and_date_range
+4 failed, 19 passed in 26.16s
+exit=1 (non-zero = mutation caught)
+=== mutation: actor filter ignored (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_owners_filter_by_actor_action_and_date_range
+FAILED tests/integration/test_audit_events.py::test_an_organisation_sees_only_its_own_events
+2 failed, 21 passed in 14.66s
+exit=1 (non-zero = mutation caught)
+=== mutation: end inclusive (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_owners_filter_by_actor_action_and_date_range
+1 failed, 22 passed in 12.27s
+exit=1 (non-zero = mutation caught)
+=== mutation: oldest first (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_owners_filter_by_actor_action_and_date_range
+FAILED tests/integration/test_audit_events.py::test_events_are_paginated_newest_first
+2 failed, 21 passed in 13.84s
+exit=1 (non-zero = mutation caught)
+=== mutation: not scoped to the Organisation (backend/app/audit/service.py)
+ backend/app/audit/service.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_signing_up_records_the_organisation_being_created
+FAILED tests/integration/test_audit_events.py::test_recorded_events_keep_the_actor_action_target_and_before_after_values
+FAILED tests/integration/test_audit_events.py::test_an_event_can_have_no_actor_and_a_target_without_an_id
+FAILED tests/integration/test_audit_events.py::test_secret_like_fields_are_redacted_before_storage
+FAILED tests/integration/test_audit_events.py::test_audit_events_cannot_be_changed_or_removed
+FAILED tests/integration/test_audit_events.py::test_owners_filter_by_actor_action_and_date_range
+FAILED tests/integration/test_audit_events.py::test_events_are_paginated_newest_first
+FAILED tests/integration/test_audit_events.py::test_an_organisation_sees_only_its_own_events
+exit=1 (non-zero = mutation caught)
+=== mutation: append-only trigger lets changes through (fresh database) (backend/migrations/versions/20261105_0003_audit_events.py)
+ backend/migrations/versions/20261105_0003_audit_events.py | 2 +-
+FAILED tests/integration/test_audit_events.py::test_audit_events_cannot_be_changed_or_removed
+1 failed, 14 deselected in 1.17s
+exit=1 (non-zero = mutation caught)
+=== mutation: Audit tab shown to Editors (frontend/apps/studio/src/settings/OrganisationSettings.tsx)
+ frontend/apps/studio/src/settings/OrganisationSettings.tsx | 2 +-
+ ❯ apps/studio/src/settings/AuditPage.test.tsx (7 tests | 1 failed) 2024ms
+   × Editors don't see the Audit tab 38ms
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+exit=1 (non-zero = mutation caught)
+=== mutation: Editors get the audit log (frontend/apps/studio/src/settings/AuditPage.tsx)
+ frontend/apps/studio/src/settings/AuditPage.tsx | 2 +-
+ ❯ apps/studio/src/settings/AuditPage.test.tsx (7 tests | 1 failed) 3383ms
+   × an Editor who opens the Audit address is told it is for Owners, and nothing is requested 1024ms
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+exit=1 (non-zero = mutation caught)
+=== mutation: To date exclusive (frontend/apps/studio/src/settings/audit.ts)
+ frontend/apps/studio/src/settings/audit.ts | 2 +-
+ ❯ apps/studio/src/settings/AuditPage.test.tsx (7 tests | 1 failed) 2429ms
+   × Owners filter by actor, action and a date range 1338ms
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+exit=1 (non-zero = mutation caught)
+=== mutation: filters keep the page (frontend/apps/studio/src/settings/AuditPage.tsx)
+ frontend/apps/studio/src/settings/AuditPage.tsx | 2 +-
+ ❯ apps/studio/src/settings/AuditPage.test.tsx (7 tests | 1 failed) 2712ms
+   × Owners page through long histories, and changing a filter goes back to the first page 1222ms
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+exit=1 (non-zero = mutation caught)
+=== unmodified code
+23 passed in 26.48s
+      Tests  7 passed (7)
+
+# --- mutate.sh ---
+#!/usr/bin/env bash
+# Each mutation breaks one acceptance criterion; the named tests must fail. The tree is restored after each.
+set -u
+WT=$1; cd "$WT"
+export TEST_REDIS_URL=redis://localhost:6379/11
+DB=postgresql+asyncpg://studio:studio@localhost:5432
+run() { # name, file, python-replace old, new, test command
+  local name=$1 file=$2 old=$3 new=$4; shift 4
+  echo "=== mutation: $name ($file)"
+  python3 - "$file" "$old" "$new" <<'PY'
+import sys; p,o,n=sys.argv[1:]; s=open(p).read(); assert o in s, "pattern missing"; open(p,'w').write(s.replace(o,n,1))
+PY
+  git --no-pager diff --stat -- "$file" | head -1
+  (eval "$@") > /tmp/mut.out 2>&1; rc=$?
+  grep -E "^(FAILED|ERROR)|×|Tests .*failed|passed|failed" /tmp/mut.out | grep -v "^ *✓" | head -8
+  echo "exit=$rc (non-zero = mutation caught)"
+  git checkout -q -- "$file"
+}
+B="cd backend && TEST_DATABASE_URL=$DB/studio_test_0105 uv run pytest -q -p no:cacheprovider --no-cov tests/integration/test_audit_events.py tests/integration/test_tenant_isolation.py"
+run "no redaction" backend/app/audit/service.py 'REDACTED if SECRET_LIKE_KEY.search(str(key)) else redact(item)' 'redact(item)' "$B"
+run "redaction skips lists" backend/app/audit/service.py 'return [redact(item) for item in value]' 'return list(value)' "$B"
+run "Editors allowed" backend/app/tenancy/policy.py 'if scope.role is not Role.OWNER:' 'if False:' "$B"
+run "sign-up not recorded" backend/app/auth/service.py 'action="organisation.created"' 'action="organisation.made"' "$B"
+run "action filter ignored" backend/app/audit/service.py 'query = query.where(AuditEvent.action == where.action)' 'pass' "$B"
+run "actor filter ignored" backend/app/audit/service.py 'query = query.where(AuditEvent.actor_id == where.actor_id)' 'pass' "$B"
+run "end inclusive" backend/app/audit/service.py 'AuditEvent.occurred_at < where.end' 'AuditEvent.occurred_at <= where.end' "$B"
+run "oldest first" backend/app/audit/service.py 'AuditEvent.occurred_at.desc(), AuditEvent.id.desc()' 'AuditEvent.occurred_at, AuditEvent.id' "$B"
+run "not scoped to the Organisation" backend/app/audit/service.py 'query = select(AuditEvent).where(AuditEvent.organisation_id == scope.organisation_id)' 'query = select(AuditEvent)' "$B"
+PSQL="PGPASSWORD=studio psql -q -h localhost -U studio -d postgres"
+PSQL="PGPASSWORD=studio psql -q -h localhost -U studio -d postgres"
+run "append-only trigger lets changes through (fresh database)" backend/migrations/versions/20261105_0003_audit_events.py "RAISE EXCEPTION 'audit_events is append-only" "RETURN COALESCE(NEW, OLD); RAISE EXCEPTION 'audit_events is append-only" "$PSQL -c 'drop database if exists studio_mut_0105' -c 'create database studio_mut_0105' && cd backend && TEST_DATABASE_URL=$DB/studio_mut_0105 uv run pytest -q -p no:cacheprovider --no-cov tests/integration/test_audit_events.py -k cannot_be_changed"
+F="cd frontend && pnpm vitest run apps/studio/src/settings"
+run "Audit tab shown to Editors" frontend/apps/studio/src/settings/OrganisationSettings.tsx '{isOwner && (' '{(isOwner || true) && (' "$F"
+run "Editors get the audit log" frontend/apps/studio/src/settings/AuditPage.tsx '{isOwner ? (' '{isOwner || true ? (' "$F"
+run "To date exclusive" frontend/apps/studio/src/settings/audit.ts 'startOfUtcDay(filters.to, 1)' 'startOfUtcDay(filters.to)' "$F"
+run "filters keep the page" frontend/apps/studio/src/settings/AuditPage.tsx 'setPage(1);' '' "$F"
+echo "=== unmodified code"
+git status --porcelain
+(eval "$B") 2>&1 | tail -1; (eval "$F") 2>&1 | grep "Tests "

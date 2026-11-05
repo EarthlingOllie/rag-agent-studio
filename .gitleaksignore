@@ -2,8 +2,6 @@
 # earlier commit is allowlisted here by fingerprint (<commit>:<file>:<rule>:<line>).
 # backend/tests/integration/test_telemetry.py: PASSWORD is a made-up value the scrubbing test checks is never exported.
 1bdc0b45f64a33fd10fa800aaaaeb29142f1603d:backend/tests/integration/test_telemetry.py:generic-api-key:141
-# backend/tests/integration/test_audit_events.py (branch ticket/01-05-audit-events): "sk-before-1234" and
-# "sk-after-5678" are made-up keys the audit redaction test checks are never stored. CI's full-history scan
-# reads every fetched branch, so these fingerprints fail every branch until they are allowlisted.
+# backend/tests/integration/test_audit_events.py: made-up API keys the audit redaction test checks are never stored.
 15952996298f42d020159e30a60a6314a63ccadd:backend/tests/integration/test_audit_events.py:generic-api-key:148
 15952996298f42d020159e30a60a6314a63ccadd:backend/tests/integration/test_audit_events.py:generic-api-key:154

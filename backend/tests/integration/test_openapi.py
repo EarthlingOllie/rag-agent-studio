@@ -21,6 +21,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "signOut": ("/api/auth/sign-out", "post"),
         "getMe": ("/api/auth/me", "get"),
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
+        "listAuditEvents": ("/api/organisations/{organisation_id}/audit-events", "get"),
+        "getAuditFacets": ("/api/organisations/{organisation_id}/audit-events/facets", "get"),
     }
 
 

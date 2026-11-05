@@ -11,9 +11,11 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 
 from app.auth.api import CurrentMember, Db
+from app.tenancy.models import Role
 from app.tenancy.repository import OrganisationScope, resolve_scope
 
 NOT_FOUND = "Not found"
+OWNERS_ONLY = "Only Owners can do this"
 
 
 async def organisation_scope(
@@ -26,3 +28,13 @@ async def organisation_scope(
 
 
 Scope = Annotated[OrganisationScope, Depends(organisation_scope)]
+
+
+async def owner_scope(scope: Scope) -> OrganisationScope:
+    """The scope of an Owner. An Editor gets 403: they can know the route exists."""
+    if scope.role is not Role.OWNER:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, OWNERS_ONLY)
+    return scope
+
+
+OwnerScope = Annotated[OrganisationScope, Depends(owner_scope)]
