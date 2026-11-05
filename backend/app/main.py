@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 import logfire
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
@@ -21,10 +21,23 @@ from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
 from app.tenancy import api as tenancy_api
-from app.tenancy import invites_api
+from app.tenancy import invites_api, members_api
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
+
+# Every API router. Tests read their routes to check each one's policy dependency.
+ROUTERS: Sequence[APIRouter] = (
+    health.router,
+    auth_api.router,
+    mfa_api.router,
+    account_api.router,
+    tenancy_api.router,
+    audit_api.router,
+    invites_api.owner_router,
+    invites_api.router,
+    members_api.router,
+)
 
 
 def _lifespan(
@@ -61,14 +74,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app = FastAPI(
         title="RAG Agent Studio API", version="0.1.0", lifespan=_lifespan(extra_span_processors)
     )
-    app.include_router(health.router)
-    app.include_router(auth_api.router)
-    app.include_router(mfa_api.router)
-    app.include_router(account_api.router)
-    app.include_router(tenancy_api.router)
-    app.include_router(audit_api.router)
-    app.include_router(invites_api.owner_router)
-    app.include_router(invites_api.router)
+    for router in ROUTERS:
+        app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app

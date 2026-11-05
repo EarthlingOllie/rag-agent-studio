@@ -481,6 +481,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave Organisation
+         * @description The signed-in Member leaves the Organisation. Its last Owner can't.
+         */
+        post: operations["leaveOrganisation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Members
+         * @description Every Member of the Organisation with their role, in the order they joined.
+         */
+        get: operations["listMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/members/{member_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Member
+         * @description Removes the Member; their access to the Organisation ends at once.
+         */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        /**
+         * Change Member Role
+         * @description Makes the Member an Owner or an Editor. The last Owner can't be demoted.
+         */
+        patch: operations["changeMemberRole"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -558,6 +622,10 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /** ChangeRoleRequest */
+        ChangeRoleRequest: {
+            role: components["schemas"]["Role"];
         };
         /** CodeRequest */
         CodeRequest: {
@@ -744,6 +812,24 @@ export interface components {
             enabled: boolean;
             /** Recovery Codes Remaining */
             recovery_codes_remaining: number;
+        };
+        /** OrganisationMemberOut */
+        OrganisationMemberOut: {
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Joined At
+             * Format: date-time
+             */
+            joined_at: string;
+            /** Name */
+            name: string;
+            role: components["schemas"]["Role"];
         };
         /** OrganisationOut */
         OrganisationOut: {
@@ -2004,6 +2090,222 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leaveOrganisation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listMembers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationMemberOut"][];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    changeMemberRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                member_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationMemberOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

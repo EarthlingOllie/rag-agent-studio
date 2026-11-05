@@ -40,6 +40,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "lookUpInvite": ("/api/invites/lookup", "post"),
         "acceptInvite": ("/api/invites/accept", "post"),
         "signUpWithInvite": ("/api/invites/sign-up", "post"),
+        "listMembers": ("/api/organisations/{organisation_id}/members", "get"),
+        "changeMemberRole": ("/api/organisations/{organisation_id}/members/{member_id}", "patch"),
+        "removeMember": ("/api/organisations/{organisation_id}/members/{member_id}", "delete"),
+        "leaveOrganisation": ("/api/organisations/{organisation_id}/leave", "post"),
     }
 
 

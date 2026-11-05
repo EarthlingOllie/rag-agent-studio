@@ -12,6 +12,7 @@ import {
   useRenewInvite,
   useRevokeInvite,
 } from "../invites/invites";
+import { MembersList } from "./MembersList";
 
 const INPUT = "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
 const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
@@ -205,15 +206,18 @@ function PendingInvites({ organisationId, onIssued }: { organisationId: string; 
   );
 }
 
-/** Members tab: Owners invite people and manage pending invites. */
-export function MembersPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
+/** Members tab: Owners see and manage Members, invite people and manage pending invites. */
+export function MembersPage({ organisationId, memberId, isOwner }: { organisationId: string; memberId: string; isOwner: boolean }) {
   const [issued, setIssued] = useState<{ invite: IssuedInvite; emailed: boolean } | null>(null);
   if (!isOwner) return <p>Only Owners can manage Members and invites.</p>;
   return (
     <section aria-labelledby="members-heading">
-      <h2 id="members-heading" className="sr-only">
+      <h2 id="members-heading" className="text-lg font-semibold">
         Members
       </h2>
+      <div className="mt-2 mb-8">
+        <MembersList organisationId={organisationId} memberId={memberId} />
+      </div>
       <InviteForm
         organisationId={organisationId}
         onIssued={(invite, emailed) => {

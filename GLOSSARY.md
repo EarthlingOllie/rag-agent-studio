@@ -49,6 +49,13 @@ A Member role that can manage Provider Credentials, Members and Organisation set
 **Editor**:
 A Member role that can manage Projects, Documents and Agents.
 
+**Last Owner**:
+An Organisation's only remaining Owner. An Organisation always keeps at least one Owner, so the Last Owner can't be demoted, removed or leave; another Member must be made an Owner first.
+_Avoid_: Sole admin, primary owner
+
+**Leaving**:
+A Member ending their own Membership of an Organisation. Removing is an Owner ending someone else's. Either way, access to that Organisation ends with the next request; the Member keeps their account and their other Memberships.
+
 **MFA**:
 Multi-factor authentication: a Member's sign-in also needs a code from an authenticator app (TOTP). It belongs to the Member, so it applies in every Organisation they belong to.
 _Avoid_: 2FA, two-step verification (fine in Studio copy, not in code or docs)
