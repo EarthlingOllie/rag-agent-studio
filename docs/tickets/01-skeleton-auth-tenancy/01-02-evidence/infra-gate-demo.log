@@ -1,0 +1,43 @@
+# Gate demo: each infra gate fails on a deliberately bad change (reverted after each step).
+
+## 1. Checkov: an unencrypted, unversioned S3 bucket added to the storage stub
+$ cd infra && checkov --config-file .checkov.yaml
+Passed checks: 4, Failed checks: 7, Skipped checks: 0
+Check: CKV2_AWS_6: "Ensure that S3 bucket has a Public Access block"
+	FAILED for resource: module.storage.aws_s3_bucket.documents
+Check: CKV2_AWS_62: "Ensure S3 buckets should have event notifications enabled"
+	FAILED for resource: module.storage.aws_s3_bucket.documents
+Check: CKV_AWS_18: "Ensure the S3 bucket has access logging enabled"
+	FAILED for resource: module.storage.aws_s3_bucket.documents
+Check: CKV2_AWS_61: "Ensure that an S3 bucket has a lifecycle configuration"
+	FAILED for resource: module.storage.aws_s3_bucket.documents
+Check: CKV_AWS_144: "Ensure that S3 bucket has cross-region replication enabled"
+	FAILED for resource: module.storage.aws_s3_bucket.documents
+Check: CKV_AWS_21: "Ensure all data stored in the S3 bucket have versioning enabled"
+exit=1
+
+## 2. terraform fmt: a badly formatted file
+$ terraform fmt -check -recursive infra
+infra/modules/kms/zz_demo.tf
+exit=3
+
+## 3. tflint: an undocumented, untyped, unused variable
+$ cd infra && tflint --recursive
+3 issue(s) found:
+Warning: `unused` variable has no type (terraform_typed_variables)
+Warning: [Fixable] variable "unused" is declared but not used (terraform_unused_declarations)
+exit=2
+Updated 1 path from the index
+
+## 4. terraform test: the network module stops deriving its name from the prefix
+$ terraform -chdir=infra/modules/network test
+  run "names_resources_from_the_prefix"... fail
+Error: Test assertion failed
+  on tests/contract.tftest.hcl line 11, in run "names_resources_from_the_prefix":
+The network name must be derived from name_prefix.
+  run "rejects_an_invalid_prefix"... pass
+Failure! 1 passed, 1 failed.
+exit=1
+Updated 1 path from the index
+
+$ git status --short infra  # clean after the demo

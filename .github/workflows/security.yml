@@ -1,0 +1,53 @@
+name: security
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    # New advisories appear without code changes, so the gates also run weekly (Monday 05:17 UTC).
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: gitleaks (full history)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: scripts/ci/install-tools.sh gitleaks
+      - name: Scan every commit for secrets
+        run: make secret-scan
+
+  dependencies:
+    name: pip-audit and pnpm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit backend and frontend dependencies
+        run: make audit
+
+  images:
+    name: Trivy image scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Trivy
+        run: scripts/ci/install-tools.sh trivy
+      - name: Build the images and scan them
+        # Fails on any HIGH or CRITICAL vulnerability that has a fix.
+        run: make image-scan IMAGE_TAG=${{ github.sha }}
