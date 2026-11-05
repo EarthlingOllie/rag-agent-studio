@@ -76,6 +76,15 @@ export function OrganisationShell() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-700">{session.member.name}</span>
+            {organisation && (
+              <Link
+                to="/organisations/$organisationId/profile"
+                params={{ organisationId }}
+                className="text-sm text-slate-700 underline"
+              >
+                Profile
+              </Link>
+            )}
             <SignOutButton />
           </div>
         </div>
