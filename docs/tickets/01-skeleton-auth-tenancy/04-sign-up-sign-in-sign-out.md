@@ -8,14 +8,14 @@
 - [01-01: Walking skeleton](01-walking-skeleton.md)
 - [01-02: Remaining CI gates and Playwright harness](02-ci-gates-playwright-harness.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] Sign-up creates the Organisation, the Member and an Owner membership in one transaction
-- [ ] Passwords are hashed with argon2id; sessions are opaque, stored in Redis and held in an httpOnly, Secure, SameSite=Lax cookie that is rotated on sign-in
-- [ ] Sign-out invalidates the session on the server
-- [ ] Sign-in errors are identical whether or not the email is registered
-- [ ] Data access below the platform level requires an Organisation in scope, and a parametrised isolation test asserts that other tenants' resources return 404
-- [ ] Studio has sign-up and sign-in screens and a signed-in shell with Projects and Organisation settings placeholders
-- [ ] End-to-end: sign up → see the signed-in shell → sign out
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Sign-up creates the Organisation, the Member and an Owner membership in one transaction
+- [x] Passwords are hashed with argon2id; sessions are opaque, stored in Redis and held in an httpOnly, Secure, SameSite=Lax cookie that is rotated on sign-in
+- [x] Sign-out invalidates the session on the server
+- [x] Sign-in errors are identical whether or not the email is registered
+- [x] Data access below the platform level requires an Organisation in scope, and a parametrised isolation test asserts that other tenants' resources return 404
+- [x] Studio has sign-up and sign-in screens and a signed-in shell with Projects and Organisation settings placeholders
+- [x] End-to-end: sign up → see the signed-in shell → sign out
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
