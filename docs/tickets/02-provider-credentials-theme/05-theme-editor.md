@@ -7,7 +7,7 @@
 **Blocked by:**
 - [01-09: Member management and role enforcement](../01-skeleton-auth-tenancy/09-member-management-roles.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Theme stores colour tokens with dark-mode values, radius, a font from the allowlist, mode, launcher type and launcher position
 - [ ] A pure resolution function produces CSS custom properties, shared by the Studio preview and the widget
