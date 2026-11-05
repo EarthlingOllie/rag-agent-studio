@@ -44,6 +44,7 @@ Tests read the database directly in two places only, because neither has an API 
 - **No real email.** Nothing was sent through AWS SES. The SES adapter is checked only against botocore's Stubber, with fake credentials. All real delivery went to Mailpit or the in-process SMTP sink.
 - **Second stack and images.** As in 01-04, the images were built from the committed Dockerfiles. The only addition was the sandbox proxy CA and proxy environment in the first build stage ([mutate.sh](mutate.sh) is the mutation runner; the build used `sb0107/build.sh`, the same as 01-04's). The stack ran as compose project `rag0107` with [compose.sandbox.yml](compose.sandbox.yml), which moves the host ports (Studio `55173`, Mailpit `58025`), with `STUDIO_URL=http://localhost:55173`. `docker-compose.yml` was otherwise used as committed.
 - **Chromium.** The sandbox's Chrome was used through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- **gitleaks in CI.** The `security` workflow's full-history gitleaks scan fetches every branch, so it flagged two made-up keys in 01-05's test commit `1595299` (on `origin/ticket/01-05-audit-events`), and failed on `d715317`. 01-05 allowlists them by fingerprint in its `.gitleaksignore`. This branch adds the same two lines, so its scan passes and the change merges as an identical edit.
 - **Flaky existing test.** `test_worker_health_is_unavailable_when_no_worker_replies` (01-01) failed once on a Redis DB another build was using. It passed on a private Redis DB and in every logged run.
 
 ## Files
