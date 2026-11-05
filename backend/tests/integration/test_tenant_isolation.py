@@ -78,7 +78,56 @@ async def _another_owner(owner: SignedUpMember, add_member: MemberFactory) -> Pr
     return {}, None
 
 
+async def _new_project_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"name": f"Isolation {uuid.uuid4().hex[:8]}", "description": "Scoped"}
+
+
+async def _make_project(owner: SignedUpMember, *, archived: bool = False) -> str:
+    """Creates a Project in the Owner's Organisation through the API; returns its ID."""
+    _, body = await _new_project_body(owner, _no_members)
+    created = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/projects", json=body
+    )
+    assert created.status_code == 201, created.text
+    project_id: str = created.json()["id"]
+    if archived:
+        response = await owner.client.post(
+            f"/api/organisations/{owner.organisation_id}/projects/{project_id}/archive"
+        )
+        assert response.status_code == 200, response.text
+    return project_id
+
+
+async def _no_members(owner: SignedUpMember, role: str) -> SignedUpMember:
+    raise AssertionError("This preparation adds no Members")
+
+
+async def _a_project(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, None
+
+
+async def _a_project_to_rename(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"name": "Renamed"}
+
+
+async def _an_archived_project(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner, archived=True)}, None
+
+
+PROJECTS = "/api/organisations/{organisation_id}/projects"
+
+# Routes that act on one Project. They are also checked at the Project level below.
+PROJECT_SCOPED_ROUTES = [
+    ScopedRoute("GET", PROJECTS + "/{project_id}", EDITOR, _a_project),
+    ScopedRoute("PATCH", PROJECTS + "/{project_id}", EDITOR, _a_project_to_rename),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/archive", EDITOR, _a_project),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/restore", OWNER, _an_archived_project),
+]
+
 ORGANISATION_SCOPED_ROUTES = [
+    ScopedRoute("GET", PROJECTS, EDITOR),
+    ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
+    *PROJECT_SCOPED_ROUTES,
     ScopedRoute("GET", "/api/organisations/{organisation_id}", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets", OWNER),
@@ -325,3 +374,64 @@ def test_every_table_below_the_platform_level_carries_an_organisation_id() -> No
         column = table.columns.get("organisation_id")
         assert column is not None, f"{name} has no organisation_id"
         assert not column.nullable, f"{name}.organisation_id is nullable"
+
+
+# Project-level isolation. Every route that acts on one Project finds it only inside the
+# Organisation in its path, even for a Member who belongs to both Organisations, and an
+# unknown Project answers exactly as another Organisation's does.
+
+
+@pytest.mark.parametrize("route", PROJECT_SCOPED_ROUTES, ids=str)
+async def test_a_project_is_not_found_through_another_organisation_of_the_same_member(
+    route: ScopedRoute, two_organisations: TwoOrganisations, member_factory: MemberFactory
+) -> None:
+    member, other = two_organisations.member, two_organisations.other
+    # The Project belongs to ``member``'s own Organisation; they are an Owner of both.
+    prepared = await route.prepare(member, member_factory)
+    _, body = prepared
+
+    crossed = await _call(member.client, route, other.organisation_id, prepared)
+    unknown = await _call(
+        member.client, route, other.organisation_id, ({"project_id": str(uuid.uuid4())}, body)
+    )
+    through_its_own = await _call(member.client, route, member.organisation_id, prepared)
+
+    assert (crossed.status_code, crossed.json()) == (404, {"detail": "Not found"})
+    assert (unknown.status_code, unknown.json()) == (crossed.status_code, crossed.json())
+    assert through_its_own.status_code < 400, through_its_own.text
+
+
+async def test_each_organisation_lists_only_its_own_projects_for_a_member_of_both(
+    two_organisations: TwoOrganisations,
+) -> None:
+    member, other = two_organisations.member, two_organisations.other
+    own = await _make_project(member)
+    others = await _make_project(other)
+    own_archived = await _make_project(member, archived=True)
+    others_archived = await _make_project(other, archived=True)
+
+    seen = {}
+    for organisation_id in (member.organisation_id, other.organisation_id):
+        path = PROJECTS.format(organisation_id=organisation_id)
+        active = (await member.client.get(path)).json()
+        archived = (await member.client.get(path, params={"archived": "true"})).json()
+        seen[organisation_id] = ({p["id"] for p in active}, {p["id"] for p in archived})
+
+    assert seen == {
+        member.organisation_id: ({own}, {own_archived}),
+        other.organisation_id: ({others}, {others_archived}),
+    }
+
+
+def test_every_project_route_is_in_the_project_isolation_test() -> None:
+    """New routes under a Project must be added to PROJECT_SCOPED_ROUTES."""
+    listed = {(r.method, r.path) for r in PROJECT_SCOPED_ROUTES}
+
+    found = {
+        (method.upper(), path)
+        for path, operations in create_app().openapi()["paths"].items()
+        if "{project_id}" in path
+        for method in operations
+    }
+
+    assert found == listed

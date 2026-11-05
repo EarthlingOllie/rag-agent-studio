@@ -20,6 +20,7 @@ from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
 from app.crypto.adapters import build_envelope
 from app.mail.factory import build_mailer
+from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
 from app.worker.celery_app import configure_celery
@@ -38,6 +39,7 @@ ROUTERS: Sequence[APIRouter] = (
     invites_api.router,
     members_api.router,
     switcher_api.router,
+    projects_api.router,
 )
 
 

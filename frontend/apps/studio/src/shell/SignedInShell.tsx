@@ -118,18 +118,3 @@ export function OrganisationShell() {
     </div>
   );
 }
-
-function Placeholder({ title, children }: { title: string; children: string }) {
-  return (
-    <section aria-labelledby="page-heading">
-      <h1 id="page-heading" className="text-2xl font-semibold">
-        {title}
-      </h1>
-      <p className="mt-2 text-slate-700">{children}</p>
-    </section>
-  );
-}
-
-export function ProjectsPage() {
-  return <Placeholder title="Projects">No Projects yet. Projects arrive in a later release.</Placeholder>;
-}
