@@ -7,7 +7,7 @@
 **Blocked by:**
 - [02-01: API-key Provider Credentials](01-api-key-credentials.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] One factory turns a credential and model name into a Pydantic AI chat model, an embedder or a reranker, with fakes injectable at that one point
 - [ ] The model list for each credential is filtered by capability
