@@ -28,6 +28,7 @@ from app.default_model import api as default_model_api
 from app.default_model.service import default_model_references
 from app.gateway.adapters import build_model_gateway
 from app.mail.factory import build_mailer
+from app.pricing import api as pricing_api
 from app.projects import api as projects_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
@@ -51,6 +52,7 @@ ROUTERS: Sequence[APIRouter] = (
     credentials_api.router,
     credentials_api.providers_router,
     default_model_api.router,
+    pricing_api.router,
     theme_api.router,
     theme_api.fonts_router,
     projects_api.router,

@@ -1,0 +1,26 @@
+# commit 803685f, fresh clone
+$ make secret-scan
+gitleaks git --redact --no-banner .
+12:10PM INF 148 commits scanned.
+12:10PM INF scanned ~8376669 bytes (8.38 MB) in 755ms
+12:10PM WRN leaks found: 1
+make: *** [Makefile:84: secret-scan] Error 1
+[exit code 2]
+$ make audit
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+[exit code 0]
+
+# The one finding above is in 03-02's branch (e1b3c4b, origin/ticket/03-02-upload-document-ready), which a
+# fresh clone fetches as a remote ref; it is not in this branch's history:
+$ git merge-base --is-ancestor e1b3c4b HEAD || echo "not in HEAD"
+not in HEAD
+$ gitleaks git --redact --no-banner --log-opts=HEAD .   (this branch's whole history)
+12:10PM INF 61 commits scanned.
+12:10PM INF scanned ~4693698 bytes (4.69 MB) in 686ms
+12:10PM INF no leaks found
+[exit code 0]

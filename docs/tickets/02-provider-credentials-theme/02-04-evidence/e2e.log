@@ -1,0 +1,125 @@
+# commit 803685f, fresh clone of ticket/02-04-price-table-overrides; stack on fresh volumes, images tag 0204 (built at e7e3c20; 803685f changed only e2e/tests/prices.spec.ts)
+$ cd frontend && E2E_BASE_URL=http://localhost:52173 E2E_MAILPIT_URL=http://localhost:52825 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e
+
+> rag-agent-studio-frontend@ e2e <scratch>/clean0204/frontend
+> playwright test
+
+
+Running 40 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (544ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (335ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (312ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.4s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (229ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (835ms)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (124ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (217ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (204ms)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (2.5s)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (3.6s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (2.2s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (1.5s)
+  ✓  14 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (4.8s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.1s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.1s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (2.7s)
+  ✓  17 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (5.3s)
+  ✘  20 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (13.1s)
+  ✘  21 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (13.2s)
+  ✓  22 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (6.6s)
+  ✓  23 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (6.8s)
+  ✓  25 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (5.1s)
+  ✓  24 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (8.7s)
+  ✓  27 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (3.4s)
+  ✓  26 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (7.6s)
+  ✓  28 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (4.0s)
+  ✓  29 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (6.1s)
+  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (3.6s)
+  ✓  32 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (1.9s)
+  ✓  33 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (1.7s)
+  ✓  34 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (2.5s)
+  ✓  31 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (6.8s)
+  ✓  36 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (7.5s)
+  ✓  37 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.2s)
+  ✓  35 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (10.3s)
+  ✓  38 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (2.2s)
+  ✓  39 [studio] › e2e/tests/theme.spec.ts:51:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (4.3s)
+  ✓  40 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (2.8s)
+
+
+  1) [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No pending invites.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No pending invites.') with timeout 5000ms
+      - waiting for getByText('No pending invites.')
+
+
+      71 |     // The Owner sees the invite gone from Pending and the events in the Audit tab.
+      72 |     await page.reload();
+    > 73 |     await expect(page.getByText("No pending invites.")).toBeVisible();
+         |                                                         ^
+      74 |     await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+      75 |     await expect(page.getByRole("cell", { name: "invite.created" })).toBeVisible();
+      76 |     await expect(page.getByRole("cell", { name: "invite.accepted" })).toBeVisible();
+        at <scratch>/clean0204/frontend/e2e/tests/invites.spec.ts:73:57
+
+    Error: browserContext._wrapApiCall: ENOSPC: no space left on device, write
+
+    Error Context: test-results/tests-invites-invites-an-O-be859-nd-joins-with-a-new-account-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-invites-invites-an-O-be859-nd-joins-with-a-new-account-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-invites-invites-an-O-be859-nd-joins-with-a-new-account-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('navigation', { name: 'Organisation settings' }).getByRole('link', { name: 'Members' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('navigation', { name: 'Organisation settings' }).getByRole('link', { name: 'Members' }) with timeout 5000ms
+      - waiting for getByRole('navigation', { name: 'Organisation settings' }).getByRole('link', { name: 'Members' })
+
+
+      75 |     await expect(page.getByText(`${editor.name} is now an Owner.`)).toBeVisible();
+      76 |     await editorPage.reload();
+    > 77 |     await expect(editorTabs.getByRole("link", { name: "Members" })).toBeVisible();
+         |                                                                     ^
+      78 |     await page.getByLabel(`Role for ${editor.name}`).selectOption("Editor");
+      79 |     await expect(page.getByText(`${editor.name} is now an Editor.`)).toBeVisible();
+      80 |
+        at <scratch>/clean0204/frontend/e2e/tests/members.spec.ts:77:69
+
+    Error: browserContext._wrapApiCall: ENOSPC: no space left on device, write
+
+    attachment #1: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account 
+    [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends 
+  38 passed (1.4m)
+ ELIFECYCLE  Command failed with exit code 1.
+[exit code 1]

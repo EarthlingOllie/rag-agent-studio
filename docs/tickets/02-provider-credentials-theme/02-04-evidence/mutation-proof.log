@@ -1,0 +1,16 @@
+# commit e7e3c20, branch worktree
+$ python mutate.py <worktree>
+CAUGHT: the cost ignores overrides (backend/app/pricing/table.py)
+CAUGHT: the cost uses the earliest price, not the one in effect (backend/app/pricing/table.py)
+CAUGHT: the cost uses prices that take effect later (backend/app/pricing/table.py)
+CAUGHT: the cost ignores the provider (backend/app/pricing/table.py)
+CAUGHT: migrating does not load the price table (backend/migrations/env.py)
+CAUGHT: a malformed price file is loaded anyway (backend/app/pricing/table.py)
+CAUGHT: Editors may override prices (backend/app/pricing/api.py)
+CAUGHT: overrides are not audited (backend/app/pricing/service.py)
+CAUGHT: any model can be overridden (backend/app/pricing/service.py)
+CAUGHT: the Studio hides that a price is overridden (frontend/apps/studio/src/settings/PriceTable.tsx)
+CAUGHT: the Studio sends a blank price as zero (frontend/apps/studio/src/settings/prices.ts)
+11/11 mutations caught
+unmodified code: passes
+[exit code 0]

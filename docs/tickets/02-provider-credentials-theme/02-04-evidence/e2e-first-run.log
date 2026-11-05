@@ -1,0 +1,153 @@
+# commit e7e3c20, fresh clone of ticket/02-04-price-table-overrides
+$ cd frontend && E2E_BASE_URL=http://localhost:52173 E2E_MAILPIT_URL=http://localhost:52825 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e
+
+> rag-agent-studio-frontend@ e2e <scratch>/clean0204/frontend
+> playwright test
+
+
+Running 40 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (982ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (563ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.9s)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (408ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (560ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (3ms)
+  ✓   5 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.3s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (106ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (218ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (208ms)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (4.8s)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (3.8s)
+  ✓  14 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (3.0s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.1s)
+  ✓  13 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (6.6s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.4s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.3s)
+  ✓  17 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (6.9s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (3.4s)
+  ✘  21 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (15.1s)
+  ✘  20 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (15.2s)
+  ✓  22 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (7.8s)
+  ✓  23 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (7.6s)
+  ✓  25 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (6.8s)
+  ✓  24 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (12.9s)
+  ✓  26 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (9.5s)
+  ✓  27 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (4.0s)
+  ✓  28 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (4.3s)
+  ✘  29 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (4.6s)
+  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (5.0s)
+  ✓  32 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.2s)
+  ✓  33 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (2.2s)
+  ✓  31 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (8.4s)
+  ✓  34 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (3.3s)
+  ✓  35 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (11.6s)
+  ✓  37 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.8s)
+  ✓  36 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (14.3s)
+  ✓  38 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.4s)
+  ✓  39 [studio] › e2e/tests/theme.spec.ts:51:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (5.1s)
+  ✓  40 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (4.3s)
+
+
+  1) [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No pending invites.')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No pending invites.') with timeout 5000ms
+      - waiting for getByText('No pending invites.')
+
+
+      71 |     // The Owner sees the invite gone from Pending and the events in the Audit tab.
+      72 |     await page.reload();
+    > 73 |     await expect(page.getByText("No pending invites.")).toBeVisible();
+         |                                                         ^
+      74 |     await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+      75 |     await expect(page.getByRole("cell", { name: "invite.created" })).toBeVisible();
+      76 |     await expect(page.getByRole("cell", { name: "invite.accepted" })).toBeVisible();
+        at <scratch>/clean0204/frontend/e2e/tests/invites.spec.ts:73:57
+
+    Error Context: test-results/tests-invites-invites-an-O-be859-nd-joins-with-a-new-account-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-invites-invites-an-O-be859-nd-joins-with-a-new-account-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-invites-invites-an-O-be859-nd-joins-with-a-new-account-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('navigation', { name: 'Organisation settings' }).getByRole('link', { name: 'Members' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('navigation', { name: 'Organisation settings' }).getByRole('link', { name: 'Members' }) with timeout 5000ms
+      - waiting for getByRole('navigation', { name: 'Organisation settings' }).getByRole('link', { name: 'Members' })
+
+
+      75 |     await expect(page.getByText(`${editor.name} is now an Owner.`)).toBeVisible();
+      76 |     await editorPage.reload();
+    > 77 |     await expect(editorTabs.getByRole("link", { name: "Members" })).toBeVisible();
+         |                                                                     ^
+      78 |     await page.getByLabel(`Role for ${editor.name}`).selectOption("Editor");
+      79 |     await expect(page.getByText(`${editor.name} is now an Editor.`)).toBeVisible();
+      80 |
+        at <scratch>/clean0204/frontend/e2e/tests/members.spec.ts:77:69
+
+    Error Context: test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential 
+
+    Error: locator.fill: Error: strict mode violation: getByRole('form', { name: 'Override prices for Claude Sonnet 4.5' }).getByLabel('Input') resolved to 2 elements:
+        1) <input value="" inputmode="decimal" placeholder="Platform: $3.00" class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900"/> aka getByRole('textbox', { name: 'Input', exact: true })
+        2) <input value="" inputmode="decimal" placeholder="Platform: $0.30" class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900"/> aka getByRole('textbox', { name: 'Cached input' })
+
+    Call log:
+      - waiting for getByRole('form', { name: 'Override prices for Claude Sonnet 4.5' }).getByLabel('Input')
+
+
+      33 |     await page.getByRole("button", { name: "Override prices: Claude Sonnet 4.5" }).click();
+      34 |     const form = page.getByRole("form", { name: "Override prices for Claude Sonnet 4.5" });
+    > 35 |     await form.getByLabel("Input").fill("2.25");
+         |                                    ^
+      36 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+      37 |     await form.getByRole("button", { name: "Save prices" }).click();
+      38 |     await expect(page.getByRole("status")).toHaveText("Prices for Claude Sonnet 4.5 saved.");
+        at <scratch>/clean0204/frontend/e2e/tests/prices.spec.ts:35:36
+
+    Error Context: test-results/tests-prices-prices-an-Own-0582f--a-price-for-one-credential-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-prices-prices-an-Own-0582f--a-price-for-one-credential-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-prices-prices-an-Own-0582f--a-price-for-one-credential-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account 
+    [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends 
+    [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential 
+  37 passed (1.8m)
+ ELIFECYCLE  Command failed with exit code 1.
+[exit code 1]

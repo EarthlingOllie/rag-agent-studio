@@ -1,0 +1,26 @@
+# commit e7e3c20, fresh clone; build.sh (committed Dockerfiles + sandbox proxy CA), tag 0204
+#1 DONE 0.0s
+#2 DONE 0.0s
+#3 DONE 0.0s
+#4 DONE 0.0s
+#5 DONE 0.1s
+#6 DONE 0.1s
+#7 DONE 0.2s
+#18 DONE 0.3s
+#19 DONE 0.1s
+#20 DONE 0.5s
+#21 naming to docker.io/rag-agent-studio/api:0204 done
+#21 DONE 0.4s
+#1 DONE 0.0s
+#2 DONE 0.1s
+#3 DONE 0.1s
+#4 DONE 0.0s
+#5 DONE 0.1s
+#6 DONE 0.0s
+#7 DONE 0.1s
+#16 DONE 0.1s
+#19 DONE 3.3s
+#20 DONE 0.8s
+#21 naming to docker.io/rag-agent-studio/studio:0204 done
+#21 DONE 17.8s
+[exit code 0]
