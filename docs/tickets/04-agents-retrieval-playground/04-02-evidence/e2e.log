@@ -1,4 +1,4 @@
-$ (env from e2e.env) make e2e COMPOSE='docker compose -p rag0402 -f docker-compose.yml -f docs/tickets/04-agents-retrieval-playground/04-02-evidence/compose.sandbox.yml' @ 53fddea + uncommitted toolbar/e2e fix
+$ (env from e2e.env) make e2e COMPOSE='docker compose -p rag0402 -f docker-compose.yml -f docs/tickets/04-agents-retrieval-playground/04-02-evidence/compose.sandbox.yml' @ the tree committed as 12655aa
 docker compose -p rag0402 -f docker-compose.yml -f docs/tickets/04-agents-retrieval-playground/04-02-evidence/compose.sandbox.yml up -d --build --wait
  Container rag0402-redis-1 Running 
  Container rag0402-postgres-1 Running 
