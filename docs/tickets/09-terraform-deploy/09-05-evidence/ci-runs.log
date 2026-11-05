@@ -1,0 +1,12 @@
+# GitHub Actions runs on ticket/09-05-cdn-module (read with the GitHub MCP actions_list / actions_get tools, 2026-11-05)
+# Later commits on the branch touch only docs/ (evidence and ticket status).
+commit   workflow          run id        conclusion
+6f28166  infra             41961844028   success   (job "fmt, validate, tflint, checkov, terraform test": step "Run every infrastructure gate" success, Node set up by actions/setup-node@v4; "Should terraform plan run?" skipped on push)
+6f28166  backend           41961843979   success
+6f28166  frontend          41961844031   success
+6f28166  e2e               41961844140   success
+6f28166  security          41961843938   success
+6f28166  deploy            41961843965   success   (build only; AWS steps skipped, no AWS_DEPLOY_ROLE_ARN)
+6f28166  guardrails-eval   41961844209   success
+5c2f886  infra             41959695245   success   (claim commit)
+5c2f886  backend/frontend/e2e/security/deploy/guardrails-eval   success

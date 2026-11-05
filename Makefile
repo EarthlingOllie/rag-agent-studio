@@ -62,6 +62,8 @@ AUDIT_REQUIREMENTS ?= $(or $(RUNNER_TEMP),/tmp)/requirements-audit.txt
 infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on the bootstrap, every module and environment
 	terraform fmt -check -recursive -diff infra
 	infra/tests/backend.test.sh
+	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+		$(wildcard infra/modules/*/functions/*.test.mjs)
 	scripts/ci/tests/plan-gate.test.sh
 	@set -e; for root in $(TF_ROOTS); do \
 		echo "== $$root"; \

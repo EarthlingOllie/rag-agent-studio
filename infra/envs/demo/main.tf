@@ -1,6 +1,6 @@
 # Demo environment (ticket 01-02 stub; ticket 09-02 adds the AWS provider and the real network module;
-# ticket 09-03 adds the real database, cache, storage and kms modules; ticket 09-04 adds ecr and the real ecs module).
-# Spec 09 adds the remaining real resources. State is in S3 (backend.tf).
+# ticket 09-03 adds the real database, cache, storage and kms modules; ticket 09-04 adds ecr and the real ecs module;
+# ticket 09-05 adds the real cdn module). State is in S3 (backend.tf).
 # The GitHub OIDC deploy role is not here: infra/bootstrap creates it once, before this environment can be planned.
 locals {
   name_prefix = "studio-${var.environment}"
@@ -44,14 +44,15 @@ module "cache" {
   client_security_group_ids = { for k in ["api", "worker", "beat"] : k => module.ecs.service_security_group_ids[k] }
 }
 
-# The cdn module (ticket 09-05) supplies the CloudFront origin for Documents CORS and the distribution
-# allowed to read static assets. Until then neither is allowed.
+# Browsers upload Documents only from the CloudFront origin, and only the distribution reads static assets.
 module "storage" {
-  source        = "../../modules/storage"
-  name_prefix   = local.name_prefix
-  tags          = local.tags
-  kms_key_arn   = module.kms.data_key_arn
-  force_destroy = true # The demo is torn down with one destroy run (spec 09 story 27).
+  source                         = "../../modules/storage"
+  name_prefix                    = local.name_prefix
+  tags                           = local.tags
+  kms_key_arn                    = module.kms.data_key_arn
+  force_destroy                  = true # The demo is torn down with one destroy run (spec 09 story 27).
+  documents_cors_allowed_origin  = module.cdn.url
+  static_assets_distribution_arn = module.cdn.distribution_arn
 }
 
 module "kms" {
@@ -70,8 +71,7 @@ module "ecr" {
   force_delete     = true # The demo is torn down with one destroy run (spec 09 story 27).
 }
 
-# The cdn module (ticket 09-05) reads origin_header_name and origin_header_value and points /api/* and
-# /widget/a/* at alb_dns_name.
+# The cdn module reads origin_header_name and origin_header_value and points /api/* and /widget/a/* at alb_dns_name.
 module "ecs" {
   source               = "../../modules/ecs"
   name_prefix          = local.name_prefix
@@ -103,8 +103,16 @@ module "ecs" {
   }
 }
 
+# One distribution serves the Studio and widget from the static bucket and the API from the ALB (ADR-0011).
 module "cdn" {
-  source      = "../../modules/cdn"
-  name_prefix = local.name_prefix
-  tags        = local.tags
+  source                             = "../../modules/cdn"
+  name_prefix                        = local.name_prefix
+  tags                               = local.tags
+  static_bucket_regional_domain_name = module.storage.static_bucket_regional_domain_name
+  static_origin_access_control_id    = module.storage.static_origin_access_control_id
+  alb_dns_name                       = module.ecs.alb_dns_name
+  origin_header_name                 = module.ecs.origin_header_name
+  origin_header_value                = module.ecs.origin_header_value
+  domain_name                        = var.domain_name
+  hosted_zone_name                   = var.hosted_zone_name
 }
