@@ -4,8 +4,8 @@ The rows of ``model_prices`` are not written here: ``migrations/env.py`` reloads
 ``app/pricing/price_table.json`` after every upgrade, so editing that file and migrating is
 enough to change prices.
 
-Revision ID: 0009_price_table
-Revises: 0008_default_models
+Revision ID: 0010_price_table
+Revises: 0009_bedrock_credentials
 Create Date: 2026-11-05
 """
 
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0009_price_table"
-down_revision: str | None = "0008_default_models"
+revision: str = "0010_price_table"
+down_revision: str | None = "0009_bedrock_credentials"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
