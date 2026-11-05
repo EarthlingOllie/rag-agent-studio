@@ -8,7 +8,7 @@
 - [01-05: Audit Events and Audit tab](05-audit-events.md)
 - [01-07: Mailer, password reset and change password](07-mailer-password-reset.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] An Owner can invite by email with a role, and a copyable invite link is always available
 - [ ] Invite tokens are single-use, hashed and expiring, and Owners can revoke pending invites
