@@ -3,8 +3,8 @@
 Each counter remembers how many sign-ins failed and when the last one did. A few failures
 are free; after that every attempt must wait a progressively longer delay, and after more
 the counter locks sign-in out for a while. Attempts refused this way are not counted, so
-waiting out a lockout always works. Counters are forgotten once the lockout length has
-passed since their last failure.
+waiting out a lockout always works. A counter is forgotten when the next failure comes
+the lockout length or more after the last one; by then no delay or lockout applies.
 
 Times come from the Clock port, not from Redis expiry, so tests can move time forward.
 Redis expiry only clears counters nobody has touched for longer than that.
@@ -112,7 +112,7 @@ class SignInThrottle:
             failures, last = cast(
                 list[bytes | None], await self._redis.hmget(key, "failures", "last")
             )
-            if failures is None or last is None or now - float(last) >= self._lockout_seconds:
+            if failures is None or last is None:
                 continue
             blocked = self._blocked_for(scope, int(failures))
             if blocked is None:

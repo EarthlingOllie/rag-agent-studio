@@ -195,7 +195,9 @@ async def test_many_failures_from_one_ip_lock_that_ip_out_for_every_account(
     ip = _unique_ip()
     attacker = await client_from(ip)
     statuses: list[int] = []
-    while len(statuses) < IP_LOCKOUT_AFTER:
+    for _ in range(100):
+        if len(statuses) == IP_LOCKOUT_AFTER:
+            break
         response = await _sign_in(attacker, _unknown_email(), "guessed password")
         if response.status_code == 429:
             clock.advance(response.json()["retry_after_seconds"])
