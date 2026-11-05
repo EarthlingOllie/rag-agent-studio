@@ -1,4 +1,5 @@
-$ make test-backend (TEST_DATABASE_URL/TEST_REDIS_URL/TEST_OBJECT_STORE_URL -> rag0407-postgres, rag0407-redis, rag0407-rustfs) @ 1a1ea6d
+$ make test-backend (TEST_DATABASE_URL/TEST_REDIS_URL/TEST_OBJECT_STORE_URL -> rag0407-pg, rag0407-redis, rag0407-rustfs) @ round-2 working tree
+cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
 platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
@@ -7,10 +8,10 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 1012 items / 5 deselected / 1007 selected
+collected 1013 items / 5 deselected / 1008 selected
 
 tests/integration/test_agent_config.py ................................. [  3%]
-.........                                                                [  4%]
+..........                                                               [  4%]
 tests/integration/test_agents.py ...............                         [  5%]
 tests/integration/test_audit_events.py ...................               [  7%]
 tests/integration/test_bedrock_credentials.py .......................... [ 10%]
@@ -18,11 +19,11 @@ tests/integration/test_bedrock_credentials.py .......................... [ 10%]
 tests/integration/test_chunk_storage.py ...                              [ 11%]
 tests/integration/test_default_model.py ....................             [ 13%]
 tests/integration/test_documents.py .....................                [ 15%]
-tests/integration/test_health.py ...                                     [ 15%]
-tests/integration/test_invites.py ..............................         [ 18%]
+tests/integration/test_health.py ...                                     [ 16%]
+tests/integration/test_invites.py ..............................         [ 19%]
 tests/integration/test_logging.py .......                                [ 19%]
 tests/integration/test_mailer.py ........                                [ 20%]
-tests/integration/test_members.py ...............                        [ 21%]
+tests/integration/test_members.py ...............                        [ 22%]
 tests/integration/test_mfa.py .....................................      [ 25%]
 tests/integration/test_migrations.py ..                                  [ 25%]
 tests/integration/test_no_secret_in_responses.py ....                    [ 26%]
@@ -41,7 +42,7 @@ tests/integration/test_require_mfa.py .................................. [ 43%]
 .............................                                            [ 46%]
 tests/integration/test_retrieval.py .....                                [ 46%]
 tests/integration/test_settings.py ....                                  [ 47%]
-tests/integration/test_sign_in_and_out.py ........                       [ 47%]
+tests/integration/test_sign_in_and_out.py ........                       [ 48%]
 tests/integration/test_sign_in_throttling.py ...........                 [ 49%]
 tests/integration/test_sign_up.py ............                           [ 50%]
 tests/integration/test_tags.py .............                             [ 51%]
@@ -178,7 +179,7 @@ app/storage/s3.py                        38      0      4      0   100%
 app/tags/__init__.py                      0      0      0      0   100%
 app/tags/api.py                         104      0      0      0   100%
 app/tags/models.py                       19      0      0      0   100%
-app/tags/service.py                      96      0     12      0   100%
+app/tags/service.py                     104      0     14      0   100%
 app/tenancy/__init__.py                   0      0      0      0   100%
 app/tenancy/active.py                    18      0      2      0   100%
 app/tenancy/api.py                       34      0      0      0   100%
@@ -202,9 +203,7 @@ app/worker/celery_app.py                  8      0      0      0   100%
 app/worker/main.py                       16      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                  5066      0    462      0   100%
+TOTAL                                  5074      0    464      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=============== 1007 passed, 5 deselected in 1113.78s (0:18:33) ================
-{"name": "anthropic.messages.create", "context": {"trace_id": "0x01a1ad74e7855f51479e2365e339c8bd", "span_id": "0xcfd370b01938f183", "trace_state": "[]"}, "kind": "SpanKind.CLIENT", "parent_id": null, "start_time": "2026-11-05T20:44:42.245481Z", "end_time": "2026-11-05T20:44:42.801886Z", "status": {"status_code": "OK"}, "attributes": {"server.address": "api.anthropic.com", "server.port": 443, "http.request.method": "POST", "http.route": "/v1/messages", "gen_ai.provider.name": "anthropic", "gen_ai.operation.name": "chat", "gen_ai.request.model": "claude-haiku-4-5", "gen_ai.request.max_tokens": 64000, "gen_ai.request.stream": true, "logfire.span_type": "span", "logfire.msg": "anthropic.messages.create", "url.scheme": "https", "url.path": "/v1/messages", "url.full": "https://api.anthropic.com/v1/messages", "http.response.status_code": 200, "gen_ai.response.time_to_first_chunk": 0.553738841, "gen_ai.response.id": "msg_01", "gen_ai.response.model": "claude-haiku-4-5", "anthropic.message.stop_reason": "end_turn", "gen_ai.usage.input_tokens": 3, "gen_ai.usage.output_tokens": 1}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]", "host.name": "vm", "host.arch": "x86_64", "host.id": "d165c2d88d894a4787be219662b439ad", "os.type": "linux", "os.version": "6.18.44-fc-v236", "service.instance.id": "65943c6e-618e-4988-a415-3b9f664afd00", "service.version": "1a1ea6d7ddfedd8b9475a92517010915a6d6cb5a", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "test", "logfire.version": "5.4.0", "process.pid": 11499}, "schema_url": ""}}
-exit 0
+=============== 1008 passed, 5 deselected in 1111.32s (0:18:31) ================

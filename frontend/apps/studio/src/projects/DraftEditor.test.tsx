@@ -6,6 +6,7 @@ import { claude, defaultDraft, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, v
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
+import { AUTOSAVE_MS } from "./DraftEditor";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const agentPage = `/organisations/${organisationId}/projects/${hrProject.id}/agents/${hrHelper.id}`;
@@ -136,7 +137,8 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
   const last = saves(requests).at(-1) as Draft;
   expect(last.experience.ui_text.send_button).toBeNull();
   expect(last.experience.avatar_url).toBeNull();
-});
+  // The longest test here: it types into every field, so it gets room on a loaded machine.
+}, 30_000);
 
 test("an Editor sets the Retrieval settings and Tag scoping", async () => {
   const { requests } = setUp();
@@ -301,6 +303,63 @@ test("a failed save says so, and the next change tries again", async () => {
   fail = false;
   await userEvent.type(name, "i");
   await saved();
+});
+
+test("a save the network drops says so, and the next change tries again", async () => {
+  let drop = true;
+  setUp({ saveDraft: () => (drop ? HttpResponse.error() : undefined) });
+  await openEditor();
+  const name = within(group("Experience")).getByLabelText("Display name");
+
+  await userEvent.type(name, "H");
+  expect(await screen.findByText("Not saved: something went wrong. Your next change tries again.", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(name).not.toHaveAttribute("aria-invalid");
+
+  drop = false;
+  await userEvent.type(name, "i");
+  await saved();
+});
+
+test("saves run one at a time, so an older save can't overwrite a newer one", async () => {
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let calls = 0;
+  const { requests } = setUp({ saveDraft: () => (++calls === 1 ? held.then(() => undefined) : undefined) });
+  await openEditor();
+  const name = within(group("Experience")).getByLabelText("Display name");
+  await userEvent.type(name, "H");
+  await screen.findByText("Saving…", {}, { timeout: 5000 });
+
+  await userEvent.type(name, "i");
+  await new Promise((resolve) => setTimeout(resolve, AUTOSAVE_MS * 2));
+  // The newer Draft waits for the older save to finish instead of racing it.
+  expect(saves(requests).map((draft) => draft.experience.display_name)).toEqual(["H"]);
+  expect(screen.getByRole("status", { name: "Draft status" })).not.toHaveTextContent("All changes saved");
+  // A change queued behind "Hi" replaces it: only the newest waiting Draft is sent.
+  await userEvent.type(name, "!");
+  await new Promise((resolve) => setTimeout(resolve, AUTOSAVE_MS * 2));
+
+  release();
+  await saved();
+  expect(saves(requests).map((draft) => draft.experience.display_name)).toEqual(["H", "Hi!"]);
+});
+
+test("a credential chosen without a model is an unsaved change, not a saved one", async () => {
+  const { requests } = setUp();
+  await openEditor();
+  const model = within(group("Behaviour")).getByRole("group", { name: "Model override" });
+  await within(model).findByRole("option", { name: "Claude (Anthropic)" });
+
+  await userEvent.selectOptions(within(model).getByLabelText("Credential"), claude.id);
+
+  const status = screen.getByRole("status", { name: "Draft status" });
+  expect(status).toHaveTextContent("Unsaved changes: choose a model.");
+  expect(await within(model).findByText("Choose a model to use this credential.")).toBeInTheDocument();
+  expect(saves(requests)).toEqual([]);
+
+  await userEvent.selectOptions(within(model).getByLabelText("Model"), "claude-haiku-4-5");
+  await saved();
+  expect(within(model).queryByText("Choose a model to use this credential.")).not.toBeInTheDocument();
 });
 
 test("an archived Project's Draft can't be changed", async () => {

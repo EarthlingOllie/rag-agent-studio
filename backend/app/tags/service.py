@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.models import Agent, AgentDraft
 from app.documents.models import Document
 from app.projects import service as projects
 from app.projects.models import Project
@@ -112,11 +113,29 @@ async def rename_tag(
 async def delete_tag(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, tag_id: uuid.UUID
 ) -> None:
-    """Deletes the Tag and removes it from every Document; the Documents stay."""
+    """Deletes the Tag and removes it from every Document and every Agent Draft scoped to it;
+    the Documents and Agents stay. Published Agent Versions are snapshots and keep it."""
     project = await projects.active_project(session, scope, project_id)
     tag = await _tag(session, project, tag_id)
+    await _unscope_drafts(session, project, tag.id)
     await session.delete(tag)
     await session.commit()
+
+
+async def _unscope_drafts(session: AsyncSession, project: Project, tag_id: uuid.UUID) -> None:
+    drafts = await session.scalars(
+        select(AgentDraft)
+        .join(Agent, Agent.id == AgentDraft.agent_id)
+        .where(
+            Agent.project_id == project.id,
+            AgentDraft.config["retrieval"]["tag_ids"].contains([str(tag_id)]),
+        )
+        .with_for_update()
+    )
+    for draft in drafts:
+        retrieval = draft.config["retrieval"]
+        kept = [kept_id for kept_id in retrieval["tag_ids"] if kept_id != str(tag_id)]
+        draft.config = {**draft.config, "retrieval": {**retrieval, "tag_ids": kept}}
 
 
 async def _project_tag_ids(

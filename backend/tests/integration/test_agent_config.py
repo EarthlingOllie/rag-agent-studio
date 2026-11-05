@@ -322,6 +322,25 @@ async def test_tags_must_belong_to_the_agents_project(owner: SignedUpMember) -> 
     assert duplicate.json()["draft"]["retrieval"]["tag_ids"] == [own_tag]
 
 
+async def test_deleting_a_tag_takes_it_out_of_every_draft_that_scoped_to_it(
+    owner: SignedUpMember,
+) -> None:
+    project_id = await create_project(owner)
+    hr = await create_tag(owner, project_id, "HR")
+    policies = await create_tag(owner, project_id, "Policies")
+    agent = await create_agent(owner, project_id)
+    scoped = _set(FULL_DEFAULT_DRAFT, "retrieval.tag_ids", [hr, policies])
+    assert (await save_draft(owner, project_id, agent["id"], scoped)).status_code == 200
+
+    deleted = await owner.client.delete(f"{project_path(owner, project_id)}/tags/{hr}")
+    assert deleted.status_code == 204, deleted.text
+
+    read = await owner.client.get(agents_path(owner, project_id, agent["id"]))
+    assert read.json()["draft"]["retrieval"]["tag_ids"] == [policies]
+    resaved = await save_draft(owner, project_id, agent["id"], read.json()["draft"])
+    assert resaved.status_code == 200, resaved.text
+
+
 async def test_credentials_an_agent_uses_cant_be_deleted(owner: SignedUpMember) -> None:
     openai, voyage, anthropic = await three_credentials(owner)
     project_id = await create_project(owner)

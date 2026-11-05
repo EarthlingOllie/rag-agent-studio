@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
 import { type Agent, useSaveDraft } from "./agents";
@@ -17,6 +17,8 @@ const PROVIDER_NAMES: Record<Credential["provider"], string> = {
 };
 
 type Status = "saved" | "dirty" | "saving" | "invalid" | "failed";
+
+const FAILED_TEXT = "something went wrong. Your next change tries again.";
 
 const STATUS_TEXT: Record<Exclude<Status, "failed">, string> = {
   saved: "All changes saved",
@@ -37,8 +39,18 @@ function Errors({ id, messages }: { id: string; messages: string[] }) {
   );
 }
 
-type FieldProps = { label: string; hint?: string | undefined; errors: string[]; children: (control: ControlProps) => ReactNode };
-type ControlProps = { id: string; "aria-invalid": true | undefined; "aria-describedby": string | undefined; className: string };
+type FieldProps = {
+  label: string;
+  hint?: string | undefined;
+  errors: string[];
+  children: (control: ControlProps) => ReactNode;
+};
+type ControlProps = {
+  id: string;
+  "aria-invalid": true | undefined;
+  "aria-describedby": string | undefined;
+  className: string;
+};
 
 /** A labelled control with its hint and the reasons it was refused. */
 function Field({ label, hint, errors, children }: FieldProps) {
@@ -198,8 +210,11 @@ function ModelChoiceField({
   organisationId,
   value,
   errors,
+  field,
   onChange,
+  onIncomplete,
 }: {
+  field: string;
   legend: string;
   noneLabel: string;
   hint: string;
@@ -209,6 +224,8 @@ function ModelChoiceField({
   value: ModelChoice | null;
   errors: string[];
   onChange: (value: ModelChoice | null) => void;
+  /** Whether a credential is chosen that differs from the saved one and still waits for a model. */
+  onIncomplete: (field: string, incomplete: boolean) => void;
 }) {
   const id = useId();
   const credentials = useCredentials(organisationId);
@@ -219,6 +236,10 @@ function ModelChoiceField({
     .sort((a, b) => a.name.localeCompare(b.name));
   const options = models.data ?? [];
   const model = value?.credential_id === credentialId ? value.model : "";
+  const incomplete = credentialId !== "" && value?.credential_id !== credentialId;
+  useEffect(() => {
+    onIncomplete(field, incomplete);
+  }, [field, incomplete, onIncomplete]);
   return (
     <fieldset className="space-y-2 rounded border border-slate-200 p-3">
       <legend className="px-1 text-sm font-medium">{legend}</legend>
@@ -259,7 +280,10 @@ function ModelChoiceField({
                   className={INPUT}
                   value={model}
                   onChange={(event) => {
-                    onChange({ credential_id: credentialId, model: event.target.value });
+                    onChange({
+                      credential_id: credentialId,
+                      model: event.target.value,
+                    });
                   }}
                 >
                   <option value="" disabled>
@@ -271,6 +295,7 @@ function ModelChoiceField({
                     </option>
                   ))}
                 </select>
+                {incomplete && <p className="text-sm text-slate-700">Choose a model to use this credential.</p>}
               </>
             ))}
         </>
@@ -357,15 +382,52 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
   const latest = useRef(0);
   // A change waiting for typing to pause; saved at once if the editor closes first.
   const waiting = useRef<Draft | null>(null);
-  const { mutate } = save;
+  // Saves run one at a time, in order, so an older save can never land after a newer one.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  // The newest change handed to the queue; an older queued save that hasn't started is skipped.
+  const queued = useRef(0);
+  // Pickers with a credential chosen but no model yet: a change not yet in the Draft.
+  const [incomplete, setIncomplete] = useState<Record<string, boolean>>({});
+  const { mutateAsync } = save;
+
+  const enqueue = useCallback(
+    (next: Draft, version: number) => {
+      queued.current = version;
+      queue.current = queue.current.then(async () => {
+        if (version !== queued.current) return;
+        try {
+          await mutateAsync(next);
+          if (version !== latest.current) return;
+          setErrors([]);
+          setStatus("saved");
+        } catch (error) {
+          if (version !== latest.current) return;
+          const fields = error instanceof DraftRequestError ? error.fields : [];
+          setErrors(fields);
+          if (fields.length > 0) {
+            setStatus("invalid");
+          } else {
+            setFailure((error instanceof DraftRequestError && error.detail) || FAILED_TEXT);
+            setStatus("failed");
+          }
+        }
+      });
+    },
+    [mutateAsync],
+  );
 
   useEffect(
     () => () => {
       clearTimeout(timer.current);
-      if (waiting.current) mutate(waiting.current);
+      if (waiting.current) enqueue(waiting.current, latest.current);
     },
-    [mutate],
+    [enqueue],
   );
+
+  const reportIncomplete = useCallback((field: string, value: boolean) => {
+    setIncomplete((current) => ({ ...current, [field]: value }));
+  }, []);
+  const awaitingModel = Object.values(incomplete).some(Boolean);
 
   function change(next: Draft) {
     setDraft(next);
@@ -383,24 +445,7 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
     timer.current = setTimeout(() => {
       waiting.current = null;
       setStatus("saving");
-      save.mutate(next, {
-        onSuccess: () => {
-          if (version !== latest.current) return;
-          setErrors([]);
-          setStatus("saved");
-        },
-        onError: (error) => {
-          if (version !== latest.current) return;
-          const refused = error as DraftRequestError;
-          setErrors(refused.fields);
-          if (refused.fields.length > 0) {
-            setStatus("invalid");
-          } else {
-            setFailure(refused.detail ?? "something went wrong. Your next change tries again.");
-            setStatus("failed");
-          }
-        },
-      });
+      enqueue(next, version);
     }, AUTOSAVE_MS);
   }
 
@@ -431,7 +476,11 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
           Draft
         </h2>
         <p role="status" aria-label="Draft status" className={`text-sm ${status === "saved" ? "text-slate-700" : "text-slate-900"}`}>
-          {status === "failed" ? `Not saved: ${failure}` : STATUS_TEXT[status]}
+          {status === "failed"
+            ? `Not saved: ${failure}`
+            : awaitingModel && (status === "saved" || status === "saving")
+              ? "Unsaved changes: choose a model."
+              : STATUS_TEXT[status]}
         </p>
       </div>
 
@@ -454,6 +503,8 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
           organisationId={organisationId}
           value={behaviour.model}
           errors={at("behaviour.model")}
+          field="behaviour.model"
+          onIncomplete={reportIncomplete}
           onChange={(model) => {
             setBehaviour({ model });
           }}
@@ -553,6 +604,8 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
           organisationId={organisationId}
           value={retrieval.reranker}
           errors={at("retrieval.reranker")}
+          field="retrieval.reranker"
+          onIncomplete={reportIncomplete}
           onChange={(reranker) => {
             setRetrieval({ reranker });
           }}
@@ -604,7 +657,9 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
           onChange={(typed) => {
             setQuestions(typed);
             const lines = typed.split("\n").map((line) => line.trim());
-            setExperience({ starter_questions: lines.filter((line) => line !== "") });
+            setExperience({
+              starter_questions: lines.filter((line) => line !== ""),
+            });
           }}
         />
         <TextField
@@ -668,6 +723,8 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
           organisationId={organisationId}
           value={guardrails.classifier}
           errors={at("guardrails.classifier")}
+          field="guardrails.classifier"
+          onIncomplete={reportIncomplete}
           onChange={(classifier) => {
             setGuardrails({ classifier });
           }}
