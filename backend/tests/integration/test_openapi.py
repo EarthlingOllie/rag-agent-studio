@@ -55,6 +55,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "checkCredential": (f"{_CREDENTIAL}/check", "post"),
         "rotateCredential": (f"{_CREDENTIAL}/rotate", "post"),
         "listCredentialModels": (f"{_CREDENTIAL}/models/{{capability}}", "get"),
+        "listCredentialPrices": (f"{_CREDENTIAL}/prices", "get"),
+        "overrideCredentialPrices": (f"{_CREDENTIAL}/prices", "put"),
         "listProviders": ("/api/providers", "get"),
         "getDefaultModel": ("/api/organisations/{organisation_id}/default-model", "get"),
         "setDefaultModel": ("/api/organisations/{organisation_id}/default-model", "put"),

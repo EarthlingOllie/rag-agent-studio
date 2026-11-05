@@ -78,5 +78,90 @@ export function fakeModelsApi(options: { defaultModel?: DefaultModel | null; cre
       return HttpResponse.json(current);
     }),
   );
+  fakePricesApi();
   return { set, listed };
+}
+
+type ModelPrices = Schemas["ModelPricesOut"];
+type PriceOverride = Schemas["OverridePricesRequest"];
+
+/** Prices per credential ID, as `GET …/credentials/{id}/prices` answers them before overrides. */
+export const platformPrices: Record<string, ModelPrices[]> = {
+  [legalClaude.id]: [
+    {
+      model: "claude-sonnet-4-5",
+      model_name: "Claude Sonnet 4.5",
+      capability: "chat",
+      platform: { input: "3", output: "15", cached_input: "0.3" },
+      override: null,
+      effective: { input: "3", output: "15", cached_input: "0.3" },
+    },
+    {
+      model: "claude-haiku-4-5",
+      model_name: "Claude Haiku 4.5",
+      capability: "chat",
+      platform: { input: "1", output: "5", cached_input: "0.1" },
+      override: null,
+      effective: { input: "1", output: "5", cached_input: "0.1" },
+    },
+  ],
+  [marketingOpenAi.id]: [
+    {
+      model: "gpt-4.1",
+      model_name: "GPT-4.1",
+      capability: "chat",
+      platform: { input: "2", output: "8", cached_input: "0.5" },
+      override: null,
+      effective: { input: "2", output: "8", cached_input: "0.5" },
+    },
+    {
+      model: "text-embedding-3-small",
+      model_name: "text-embedding-3-small",
+      capability: "embeddings",
+      platform: null,
+      override: null,
+      effective: { input: null, output: null, cached_input: null },
+    },
+  ],
+};
+
+/**
+ * A stateful stand-in for the price routes: overrides apply as the API applies them (each
+ * price overrides the platform's; none clears the override). Records what it receives.
+ */
+export function fakePricesApi(options: { prices?: Record<string, ModelPrices[]> } = {}) {
+  const prices = structuredClone(options.prices ?? platformPrices);
+  const overridden: { credentialId: string; body: PriceOverride }[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/credentials/:credentialId/prices", ({ params }) => {
+      const id = params.credentialId as string;
+      return HttpResponse.json({ credential_id: id, currency: "USD", unit: "per million tokens", models: prices[id] ?? [] });
+    }),
+    http.put("*/api/organisations/:organisationId/credentials/:credentialId/prices", async ({ params, request }) => {
+      const id = params.credentialId as string;
+      const body = (await request.json()) as PriceOverride;
+      overridden.push({ credentialId: id, body });
+      const rows = prices[id] ?? [];
+      const index = rows.findIndex((row) => row.model === body.model);
+      const row = rows[index] as ModelPrices;
+      const pick = (kind: "input" | "output" | "cached_input") => {
+        const value = body[kind];
+        return value === undefined || value === null ? null : String(value);
+      };
+      const override = { input: pick("input"), output: pick("output"), cached_input: pick("cached_input") };
+      const cleared = override.input === null && override.output === null && override.cached_input === null;
+      const next: ModelPrices = {
+        ...row,
+        override: cleared ? null : override,
+        effective: {
+          input: override.input ?? row.platform?.input ?? null,
+          output: override.output ?? row.platform?.output ?? null,
+          cached_input: override.cached_input ?? row.platform?.cached_input ?? null,
+        },
+      };
+      rows[index] = next;
+      return HttpResponse.json(next);
+    }),
+  );
+  return { overridden };
 }

@@ -4,6 +4,7 @@ import { type SubmitEvent, useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { type Credential, credentialFailure, type ProviderId, useCredentials } from "./credentials";
 import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
+import { PriceTable } from "./PriceTable";
 
 const INPUT = "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
 const PRIMARY = "rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:bg-slate-600";
@@ -138,8 +139,20 @@ function OwnerControls({ organisationId }: { organisationId: string }) {
   return <Picker organisationId={organisationId} chat={[first, ...rest]} current={current.data} />;
 }
 
-/** The Models tab: the Organisation's Default Model. Every Member sees it; Owners choose it. */
+/**
+ * The Models tab: the Organisation's Default Model and the price table. Every Member sees them;
+ * Owners choose the Default Model and override prices.
+ */
 export function ModelsPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
+  return (
+    <div className="space-y-10">
+      <DefaultModelSection organisationId={organisationId} isOwner={isOwner} />
+      <PriceTable organisationId={organisationId} isOwner={isOwner} />
+    </div>
+  );
+}
+
+function DefaultModelSection({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   return (
     <section aria-labelledby="default-model-heading" className="space-y-4">
       <div className="space-y-1">

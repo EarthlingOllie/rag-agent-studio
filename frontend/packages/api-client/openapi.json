@@ -533,6 +533,40 @@
         "title": "CredentialOut",
         "type": "object"
       },
+      "CredentialPricesOut": {
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "currency": {
+            "const": "USD",
+            "default": "USD",
+            "title": "Currency",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelPricesOut"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "unit": {
+            "const": "per million tokens",
+            "default": "per million tokens",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "models"
+        ],
+        "title": "CredentialPricesOut",
+        "type": "object"
+      },
       "CredentialReferenceOut": {
         "properties": {
           "id": {
@@ -1064,6 +1098,98 @@
         "title": "ModelOut",
         "type": "object"
       },
+      "ModelPricesOut": {
+        "properties": {
+          "capability": {
+            "$ref": "#/components/schemas/Capability"
+          },
+          "effective": {
+            "$ref": "#/components/schemas/OptionalPricesOut"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptionalPricesOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PricesOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "model",
+          "model_name",
+          "capability",
+          "platform",
+          "override",
+          "effective"
+        ],
+        "title": "ModelPricesOut",
+        "type": "object"
+      },
+      "OptionalPricesOut": {
+        "properties": {
+          "cached_input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached Input"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          }
+        },
+        "required": [
+          "input",
+          "output",
+          "cached_input"
+        ],
+        "title": "OptionalPricesOut",
+        "type": "object"
+      },
       "OrganisationMemberOut": {
         "properties": {
           "email": {
@@ -1127,6 +1253,67 @@
         "title": "OrganisationOut",
         "type": "object"
       },
+      "OverridePricesRequest": {
+        "description": "A model's prices for this credential. A price left out (or null) keeps the platform's;\nleaving all three out clears the override.",
+        "properties": {
+          "cached_input": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached Input"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "OverridePricesRequest",
+        "type": "object"
+      },
       "PasswordResetAccepted": {
         "properties": {
           "detail": {
@@ -1152,6 +1339,29 @@
           "email"
         ],
         "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "PricesOut": {
+        "properties": {
+          "cached_input": {
+            "title": "Cached Input",
+            "type": "string"
+          },
+          "input": {
+            "title": "Input",
+            "type": "string"
+          },
+          "output": {
+            "title": "Output",
+            "type": "string"
+          }
+        },
+        "required": [
+          "input",
+          "output",
+          "cached_input"
+        ],
+        "title": "PricesOut",
         "type": "object"
       },
       "ProjectOut": {
@@ -3420,6 +3630,152 @@
         "summary": "List Credential Models",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/prices": {
+      "get": {
+        "description": "The prices of every model the credential offers: the platform price in effect now, the\ncredential's override, and the price that applies. Open to every Member.",
+        "operationId": "listCredentialPrices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialPricesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Credential Prices",
+        "tags": [
+          "prices"
+        ]
+      },
+      "put": {
+        "description": "Overrides the credential's prices for one model, for negotiated rates. Owners only.",
+        "operationId": "overrideCredentialPrices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverridePricesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelPricesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a model this credential offers"
+          }
+        },
+        "summary": "Override Credential Prices",
+        "tags": [
+          "prices"
         ]
       }
     },

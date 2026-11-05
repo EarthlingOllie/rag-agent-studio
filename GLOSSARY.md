@@ -142,6 +142,18 @@ _Avoid_: Model client factory, provider router, LLM proxy
 A model that reorders retrieved passages by relevance to a query, built by the Model gateway from a credential with the rerank Capability.
 _Avoid_: Re-ranker, scorer
 
+**Price table**:
+The platform's price for each provider's models, in US dollars per million input, output and cached input tokens, each with the date it took effect. It lives in the repo as data and is loaded on every migrate; a new price is a new dated entry, so past costs keep the price they were made at.
+_Avoid_: Rate card, price list, pricing
+
+**Price override**:
+An Owner's price for one model of one Provider Credential, such as a negotiated rate. Any of the three prices can be overridden; the rest keep the Price table's. Overrides take precedence over the Price table and go with their credential.
+_Avoid_: Custom price, discount
+
+**Cost**:
+What a model call cost in US dollars: its token counts times the prices in effect when it was made, preferring Price overrides. Unknown when tokens were used at a price nobody has set.
+_Avoid_: Spend, charge, bill
+
 **Embedding Model**:
 The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider.
 
