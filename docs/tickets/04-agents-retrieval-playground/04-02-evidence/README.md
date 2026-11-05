@@ -50,17 +50,17 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). They ran at `12655aa`, the last code commit on the branch. Later commits change only this folder and the ticket's Status. `origin/candidate` had not moved from `7a89f6e`.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). They ran at `6b690ca`, the merge of `origin/candidate` at `a35cef1` (03-05 and the tickets before it) into the branch, which re-parents the Instructions migration as `0015` after 03-05's `0014`. The next commit changes only this folder. Every log's first line names the commit it ran at.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against the `rag0402-*` Postgres/pgvector, Redis and RustFS containers | **999 passed**, 5 deselected (live); coverage **100.00%** lines and branches (5024 statements, 468 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **33 files, 365 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0402-*` Postgres/pgvector, Redis and RustFS containers | **1030 passed**, 5 deselected (live); coverage **100.00%** lines and branches (5237 statements, 502 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **33 files, 375 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit, covering the new TipTap and marked packages) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0402`) | **45 passed**, including the new `instructions.spec.ts` and the updated `playground.spec.ts`, each with axe scans. The first run caught an axe `label-content-name-mismatch` on the toolbar (symbol text with a different `aria-label`), and the new spec was missing its initial `goto`. Both were fixed in `12655aa` and the full suite re-run. | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0402`) | **46 passed**, including the new `instructions.spec.ts` and the updated `playground.spec.ts`, each with axe scans. The first run caught an axe `label-content-name-mismatch` on the toolbar (symbol text with a different `aria-label`), and the new spec was missing its initial `goto`. Both were fixed in `12655aa` and the full suite re-run. | [e2e.log](e2e.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
 The last lines of `backend-tests.log` are telemetry spans the console exporter flushes at exit, from the fake model transports. They are not real provider calls.
