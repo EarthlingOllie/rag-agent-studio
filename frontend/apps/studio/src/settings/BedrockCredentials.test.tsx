@@ -247,3 +247,17 @@ test("re-checking a Bedrock credential that fails shows the Bedrock reason", asy
 
   expect(await screen.findByText(/Check failed: Bedrock, or this model, isn't available in that region/)).toBeInTheDocument();
 });
+
+test("an Owner who looked at access keys can go back to the role", async () => {
+  fakeCredentialsApi({ credentials: [] });
+  const form = await bedrockForm();
+  await userEvent.click(form.getByLabelText("Access keys"));
+  expect(form.queryByLabelText("Role ARN")).not.toBeInTheDocument();
+
+  await userEvent.click(form.getByLabelText("IAM role (recommended)"));
+
+  expect(form.getByLabelText("IAM role (recommended)")).toBeChecked();
+  expect(form.getByLabelText("Role ARN")).toBeInTheDocument();
+  expect(await form.findByRole("region", { name: "Set up the role in AWS" })).toBeInTheDocument();
+  expect(form.queryByLabelText("Secret access key")).not.toBeInTheDocument();
+});
