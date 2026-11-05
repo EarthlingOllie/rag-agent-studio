@@ -2,6 +2,8 @@
 
 Branch `ticket/09-03-data-modules`. Each local log starts with its commands and ends with the exit code. [fresh-clone.log](fresh-clone.log) re-runs `make infra-check` from a new `git clone` of the branch at `0dcbf16`. That command runs fmt, then init, validate and `terraform test` in every module and environment, then TFLint and Checkov. The log ends with an empty `git status`. Later commits on the branch touch only `docs/`. [ci-runs.log](ci-runs.log) has the GitHub Actions results for this branch. Its `infra` job runs the same `make infra-check` on GitHub's runner, with the AWS provider installed from the public registry.
 
+After merging latest `origin/candidate` (tickets 09-01 and 01-04) at `2522d1e`, `make infra-check` was re-run over the bootstrap, every module and the demo environment: all `terraform test` suites passed and Checkov reported 147 passed, 0 failed ([merge-infra-check.log](merge-infra-check.log)). The only conflict was the header comment of `infra/envs/demo/main.tf`.
+
 The work is in `infra/modules/{kms,database,cache,storage}/`, each with a committed `.terraform.lock.hcl` copied from the network module (AWS provider 6.72.0). The only shared file changed is `infra/envs/demo/` (`main.tf` and `tests/demo.tftest.hcl`), which wires the four modules into the network and the data key.
 
 ## Acceptance criteria
