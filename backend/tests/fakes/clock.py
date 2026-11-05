@@ -12,5 +12,6 @@ class ControllableClock:
     def now(self) -> datetime:
         return self._now
 
-    def advance(self, seconds: float) -> None:
-        self._now += timedelta(seconds=seconds)
+    def advance(self, by: timedelta | float) -> None:
+        """Moves the clock forward (or back) by a timedelta or a number of seconds."""
+        self._now += by if isinstance(by, timedelta) else timedelta(seconds=by)

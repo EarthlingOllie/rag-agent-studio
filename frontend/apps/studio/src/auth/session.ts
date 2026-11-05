@@ -77,3 +77,48 @@ export function useSignOut() {
     },
   });
 }
+
+export type PasswordResetRequest = Schemas["PasswordResetRequest"];
+export type CompletePasswordReset = Schemas["CompletePasswordResetRequest"];
+export type ChangePassword = Schemas["ChangePasswordRequest"];
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: async (body: PasswordResetRequest) => {
+      const { response } = await api.POST("/api/auth/password-reset", { body });
+      if (!response.ok) throw new AuthRequestError(response.status);
+    },
+  });
+}
+
+export function useCompletePasswordReset() {
+  return useMutation({
+    mutationFn: async (body: CompletePasswordReset) => {
+      const { response } = await api.POST("/api/auth/password-reset/complete", { body });
+      if (!response.ok) throw new AuthRequestError(response.status);
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Schemas["UpdateProfileRequest"]) => {
+      const { data, response } = await api.PATCH("/api/auth/me", { body });
+      if (!data) throw new AuthRequestError(response.status);
+      return data;
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(ME_QUERY_KEY, session);
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (body: ChangePassword) => {
+      const { response } = await api.POST("/api/auth/me/password", { body });
+      if (!response.ok) throw new AuthRequestError(response.status);
+    },
+  });
+}

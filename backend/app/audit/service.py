@@ -16,12 +16,44 @@ from app.tenancy.repository import OrganisationScope
 
 REDACTED = "[Redacted]"
 
-# Keys whose values are never stored, at any depth of the before/after values.
-SECRET_LIKE_KEY = re.compile(
-    r"password|passwd|passphrase|secret|token|credential|private[._ -]?key|api[._ -]?key"
-    r"|access[._ -]?key|authori[sz]ation|cookie|session|recovery[._ -]?codes?",
-    re.IGNORECASE,
+# A key is split into lower-case words at separators and case changes ("wrappedDataKey" is
+# wrapped/data/key), and whole words are matched, so "token_budget" and "max_tokens" keep
+# their values while "session_token" does not.
+_KEY_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")
+# A key holding any of these words is secret wherever the word sits: "password_hash".
+_SECRET_ANYWHERE = frozenset(
+    {
+        "password",
+        "passwd",
+        "passphrase",
+        "pwd",
+        "secret",
+        "secrets",
+        "authorization",
+        "authorisation",
+        "cookie",
+        "cookies",
+    }
 )
+# A key ending in one of these words names the secret itself: "api_key", "wrapped_data_key",
+# "refresh_token", "seed", "sentry_dsn". "key_id" or "token_budget" only describe one.
+_SECRET_LAST_WORD = frozenset(
+    {"key", "keys", "token", "seed", "dsn", "session", "credential", "credentials"}
+)
+# Pairs of final words that name a secret: "recovery_codes", "session_id".
+_SECRET_LAST_PAIR = frozenset({("recovery", "codes"), ("recovery", "code"), ("session", "id")})
+
+
+def _is_secret_like(key: str) -> bool:
+    """Whether the value under ``key`` is never stored."""
+    words = [word.lower() for word in _KEY_WORD.findall(key)]
+    if not words:
+        return False
+    return (
+        not _SECRET_ANYWHERE.isdisjoint(words)
+        or words[-1] in _SECRET_LAST_WORD
+        or tuple(words[-2:]) in _SECRET_LAST_PAIR
+    )
 
 
 @dataclass(frozen=True)
@@ -36,7 +68,7 @@ def redact(value: Any) -> Any:
     """``value`` with every secret-like key's value replaced, through nested dicts and lists."""
     if isinstance(value, Mapping):
         return {
-            str(key): REDACTED if SECRET_LIKE_KEY.search(str(key)) else redact(item)
+            str(key): REDACTED if _is_secret_like(str(key)) else redact(item)
             for key, item in value.items()
         }
     if isinstance(value, list | tuple):
@@ -59,7 +91,7 @@ async def record(
 
     ``action`` is a dotted name such as ``organisation.created``. Secret-like fields in
     ``before`` and ``after`` are redacted before anything is stored. ``occurred_at`` defaults
-    to the database's transaction time.
+    to the database's clock at the insert.
     """
     event = AuditEvent(
         organisation_id=organisation_id,
@@ -119,7 +151,7 @@ async def list_events(
     rows = await session.execute(
         query.add_columns(Member)
         .outerjoin(Member, Member.id == AuditEvent.actor_id)
-        .order_by(AuditEvent.occurred_at.desc(), AuditEvent.id.desc())
+        .order_by(AuditEvent.occurred_at.desc(), AuditEvent.sequence.desc())
         .offset((page - 1) * size)
         .limit(size)
     )

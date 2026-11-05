@@ -1,46 +1,117 @@
-# Sandbox equivalent of 'make e2e' from a fresh git clone at 7075bcc: docker-compose.yml plus the sandbox override sb0105/compose.sandbox.yml (images built from the committed Dockerfiles with the sandbox proxy CA added in the download stage; host ports moved so the stack runs beside other tickets' stacks; compose project rag0105). Chromium: the sandbox's preinstalled build via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, because Playwright's browser CDN is blocked here. E2E_BASE_URL=http://localhost:35173.
+# Sandbox equivalent of 'make e2e' from a fresh git clone at a342f69: docker-compose.yml plus the sandbox override sb0105/compose.sandbox.yml (images built from the committed Dockerfiles with the sandbox proxy CA added in the download stage; host ports moved so the stack runs beside other tickets' stacks; compose project rag0105, volumes removed first). Chromium: the sandbox's preinstalled build via PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, because Playwright's browser CDN is blocked here. E2E_BASE_URL=http://localhost:35173.
 $ docker compose up -d --no-build --force-recreate --wait
- Container rag0105-worker-1 Healthy 
+ Network rag0105_default Creating 
+ Network rag0105_default Creating 
+ Volume rag0105_postgres-data Creating 
+ Volume rag0105_postgres-data Creating 
+ Volume rag0105_rustfs-data Creating 
+ Volume rag0105_rustfs-data Creating 
+ Volume rag0105_rustfs-data Created 
+ Volume rag0105_rustfs-data Created 
+ Volume rag0105_postgres-data Created 
+ Volume rag0105_postgres-data Created 
+ Network rag0105_default Created 
+ Network rag0105_default Created 
+ Container rag0105-rustfs-1 Creating 
+ Container rag0105-redis-1 Creating 
+ Container rag0105-mailpit-1 Creating 
+ Container rag0105-postgres-1 Creating 
+ Container rag0105-mailpit-1 Created 
+ Container rag0105-rustfs-1 Created 
+ Container rag0105-postgres-1 Created 
+ Container rag0105-redis-1 Created 
+ Container rag0105-worker-1 Creating 
+ Container rag0105-api-1 Creating 
+ Container rag0105-beat-1 Creating 
+ Container rag0105-api-1 Created 
+ Container rag0105-studio-1 Creating 
+ Container rag0105-worker-1 Created 
+ Container rag0105-beat-1 Created 
+ Container rag0105-studio-1 Created 
+ Container rag0105-redis-1 Starting 
+ Container rag0105-mailpit-1 Starting 
+ Container rag0105-postgres-1 Starting 
+ Container rag0105-rustfs-1 Starting 
+ Container rag0105-redis-1 Started 
+ Container rag0105-mailpit-1 Started 
+ Container rag0105-postgres-1 Started 
+ Container rag0105-redis-1 Waiting 
+ Container rag0105-postgres-1 Waiting 
+ Container rag0105-postgres-1 Waiting 
+ Container rag0105-redis-1 Waiting 
+ Container rag0105-postgres-1 Waiting 
+ Container rag0105-redis-1 Waiting 
+ Container rag0105-rustfs-1 Started 
  Container rag0105-redis-1 Healthy 
+ Container rag0105-redis-1 Healthy 
+ Container rag0105-redis-1 Healthy 
+ Container rag0105-postgres-1 Healthy 
+ Container rag0105-api-1 Starting 
+ Container rag0105-postgres-1 Healthy 
+ Container rag0105-beat-1 Starting 
+ Container rag0105-postgres-1 Healthy 
+ Container rag0105-worker-1 Starting 
+ Container rag0105-api-1 Started 
+ Container rag0105-api-1 Waiting 
+ Container rag0105-beat-1 Started 
+ Container rag0105-worker-1 Started 
+ Container rag0105-api-1 Healthy 
+ Container rag0105-studio-1 Starting 
+ Container rag0105-studio-1 Started 
+ Container rag0105-beat-1 Waiting 
+ Container rag0105-postgres-1 Waiting 
+ Container rag0105-rustfs-1 Waiting 
+ Container rag0105-redis-1 Waiting 
+ Container rag0105-worker-1 Waiting 
+ Container rag0105-api-1 Waiting 
+ Container rag0105-mailpit-1 Waiting 
+ Container rag0105-studio-1 Waiting 
  Container rag0105-beat-1 Healthy 
+ Container rag0105-postgres-1 Healthy 
+ Container rag0105-api-1 Healthy 
+ Container rag0105-mailpit-1 Healthy 
+ Container rag0105-redis-1 Healthy 
+ Container rag0105-worker-1 Healthy 
+ Container rag0105-rustfs-1 Healthy 
  Container rag0105-studio-1 Healthy 
 exit=0
 $ docker compose ps
-api Up 15 seconds (healthy)
-beat Up 14 seconds
-mailpit Up 20 seconds (healthy)
-postgres Up 19 seconds (healthy)
-redis Up 19 seconds (healthy)
-rustfs Up 21 seconds
-studio Up 4 seconds (healthy)
-worker Up 16 seconds
+NAME                 IMAGE                          COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+rag0105-api-1        rag-agent-studio/api:0105      "sh -c 'alembic upgr…"   api        14 seconds ago   Up 11 seconds (healthy)   0.0.0.0:38000->8000/tcp
+rag0105-beat-1       rag-agent-studio/api:0105      "celery -A app.worke…"   beat       14 seconds ago   Up 10 seconds             8000/tcp
+rag0105-mailpit-1    axllent/mailpit:v1.27          "/mailpit"               mailpit    15 seconds ago   Up 14 seconds (healthy)   1110/tcp, 0.0.0.0:31025->1025/tcp, 0.0.0.0:38025->8025/tcp
+rag0105-postgres-1   pgvector/pgvector:0.8.1-pg16   "docker-entrypoint.s…"   postgres   15 seconds ago   Up 13 seconds (healthy)   0.0.0.0:35432->5432/tcp
+rag0105-redis-1      redis:7.4.2-alpine             "docker-entrypoint.s…"   redis      15 seconds ago   Up 14 seconds (healthy)   0.0.0.0:36105->6379/tcp
+rag0105-rustfs-1     rustfs/rustfs:1.0.4            "/entrypoint.sh rust…"   rustfs     15 seconds ago   Up 13 seconds             0.0.0.0:39000->9000/tcp, 0.0.0.0:39001->9001/tcp
+rag0105-studio-1     rag-agent-studio/studio:0105   "docker-entrypoint.s…"   studio     14 seconds ago   Up 3 seconds (healthy)    0.0.0.0:35173->5173/tcp
+rag0105-worker-1     rag-agent-studio/api:0105      "celery -A app.worke…"   worker     14 seconds ago   Up 10 seconds             8000/tcp
 $ cd frontend && pnpm e2e
 
-> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105/frontend
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0105r2/frontend
 > playwright test
 
 
 Running 19 tests using 2 workers
 
-  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (1.2s)
-  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (589ms)
-  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (1.1s)
-  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (445ms)
-  ✓   6 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (54ms)
-  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (4.1s)
-  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (426ms)
-  ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (2.3s)
-  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (276ms)
-  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (246ms)
-  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (5.5s)
-  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (8.4s)
-  ✓  14 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.8s)
-  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (6.0s)
-  ✓  15 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.5s)
-  ✓  16 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (3.5s)
-  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (3.3s)
-  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.7s)
-  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (4.3s)
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (637ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (500ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.3s)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (386ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (332ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   5 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.5s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (123ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (219ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (204ms)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (4.3s)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (5.8s)
+  ✓  14 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.3s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (3.4s)
+  ✓  15 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (2.0s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (1.7s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (1.6s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (1.5s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (2.1s)
 
-  19 passed (40.0s)
+  19 passed (22.0s)
 exit=0

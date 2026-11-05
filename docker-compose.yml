@@ -13,11 +13,18 @@ x-backend: &backend
     # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.
     # Local only: a deployment lists just its load balancers here.
     FORWARDED_ALLOW_IPS: "*"
+    # Email goes to Mailpit; read it at http://localhost:8025.
+    MAILER: smtp
+    SMTP_HOST: mailpit
+    SMTP_PORT: "1025"
+    STUDIO_URL: ${STUDIO_URL:-http://localhost:5173}
   depends_on:
     postgres:
       condition: service_healthy
     redis:
       condition: service_healthy
+    mailpit:
+      condition: service_started
 
 services:
   postgres:

@@ -33,6 +33,18 @@ class Settings(BaseSettings):
     sign_in_delay_base_seconds: int = Field(default=1, gt=0)
     sign_in_delay_max_seconds: int = Field(default=30, gt=0)
     sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
+    # How long a password reset link works.
+    password_reset_ttl_seconds: int = Field(default=60 * 60, gt=0)
+    # The Studio's public address; links in emails point here.
+    studio_url: HttpUrl = HttpUrl("http://localhost:5173")
+    # Which mailer adapter sends email: in-memory outbox (tests), SMTP (Mailpit) or AWS SES.
+    mailer: Literal["outbox", "smtp", "ses"] = "outbox"
+    mail_from: str = "RAG Agent Studio <no-reply@rag-agent-studio.invalid>"
+    smtp_host: str = "localhost"
+    smtp_port: int = Field(default=1025, gt=0, lt=65536)
+    smtp_timeout_seconds: float = Field(default=10.0, gt=0)
+    # SES region; unset means boto3's default (AWS_REGION).
+    ses_region: str | None = None
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.

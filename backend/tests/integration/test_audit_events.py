@@ -14,12 +14,12 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import text
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import audit
 from app.tenancy.models import Membership, Role
-from tests.conftest import SignedUpMember, TenantFactory
+from tests.conftest import SignedUpMember, TenantFactory, new_member_details
 
 
 def _events_path(organisation_id: str) -> str:
@@ -157,6 +157,22 @@ async def test_secret_like_fields_are_redacted_before_storage(
             "recovery_codes": ["a", "b"],
             "session_token": "t",
             "private-key": "-----BEGIN",
+            # The fields of a sealed record (ADR-0006, spec 02) and other key material.
+            "sealed": {
+                "ciphertext_b64": "AAAA",
+                "data_key": "dk",
+                "wrapped_data_key": "wdk",
+                "key_id": "local-1",
+            },
+            "signing_key": "sk",
+            "encryptionKey": "ek",
+            "key": "k",
+            "seed": "words words",
+            "sentry_dsn": "https://pub@sentry.example/1",
+            "dsn": "postgresql://u:p@h/d",
+            "refresh_token": "r",
+            "session": "s",
+            "sessionId": "sid",
         },
     )
 
@@ -176,7 +192,54 @@ async def test_secret_like_fields_are_redacted_before_storage(
         "recovery_codes": "[Redacted]",
         "session_token": "[Redacted]",
         "private-key": "[Redacted]",
+        "sealed": {
+            "ciphertext_b64": "AAAA",
+            "data_key": "[Redacted]",
+            "wrapped_data_key": "[Redacted]",
+            "key_id": "local-1",
+        },
+        "signing_key": "[Redacted]",
+        "encryptionKey": "[Redacted]",
+        "key": "[Redacted]",
+        "seed": "[Redacted]",
+        "sentry_dsn": "[Redacted]",
+        "dsn": "[Redacted]",
+        "refresh_token": "[Redacted]",
+        "session": "[Redacted]",
+        "sessionId": "[Redacted]",
     }
+
+
+async def test_settings_that_only_mention_a_secret_word_keep_their_values(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # Spec 06 audits Token Budget changes, so these must read as values, not "[Redacted]".
+    settings = {
+        "token_budget": 1000,
+        "max_tokens": 512,
+        "tokenBudget": 2000,
+        "session_ttl_seconds": 3600,
+        "default_credential_id": "c-1",
+        "credential_label": "OpenAI production",
+        "key_id": "local-1",
+        "keyboard_shortcuts": True,
+        "monkey": "not a key",
+        "secretary": "not a secret",
+        "": "a key with no words",
+    }
+    await record_event(
+        app,
+        owner.organisation_id,
+        actor_id=owner.member_id,
+        action="project.settings_changed",
+        before=settings,
+        after={**settings, "token_budget": 1500},
+    )
+
+    (event,) = (await _list(owner, action="project.settings_changed")).json()["items"]
+
+    assert event["before"] == settings
+    assert event["after"] == {**settings, "token_budget": 1500}
 
 
 async def test_redaction_happens_before_the_values_reach_the_database(
@@ -291,6 +354,46 @@ async def test_events_are_paginated_newest_first(app: FastAPI, owner: SignedUpMe
     assert (everything["total"], everything["page_size"], len(everything["items"])) == (6, 25, 6)
 
 
+async def test_events_recorded_in_one_transaction_list_newest_first(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # One change can record several events in its transaction; they still list in reverse
+    # order of recording, not by transaction start time and a random ID.
+    async with _sessions(app).begin() as session:
+        for step in range(8):
+            await audit.record(
+                session,
+                organisation_id=uuid.UUID(owner.organisation_id),
+                actor_id=uuid.UUID(owner.member_id),
+                action=f"test.same_transaction_{step}",
+                target=audit.AuditTarget("member"),
+            )
+
+    items = (await _list(owner)).json()["items"]
+
+    assert [e["action"] for e in items] == [
+        *(f"test.same_transaction_{step}" for step in reversed(range(8))),
+        "organisation.created",
+    ]
+    times = [datetime.fromisoformat(e["occurred_at"]) for e in items[:8]]
+    assert times == sorted(times, reverse=True)
+    assert len(set(times)) == 8
+
+
+async def test_events_given_the_same_time_list_in_reverse_order_of_recording(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    at = datetime(2025, 6, 1, tzinfo=UTC)
+    for step in range(8):
+        await record_event(
+            app, owner.organisation_id, actor_id=None, action=f"test.tie_{step}", occurred_at=at
+        )
+
+    items = (await _list(owner, end=(at + timedelta(seconds=1)).isoformat())).json()["items"]
+
+    assert [e["action"] for e in items] == [f"test.tie_{step}" for step in reversed(range(8))]
+
+
 async def test_page_sizes_are_bounded(owner: SignedUpMember) -> None:
     for params in ({"page_size": 0}, {"page_size": 101}, {"page": 0}):
         assert (await _list(owner, **params)).status_code == 422
@@ -382,3 +485,21 @@ async def test_editors_are_refused_the_filter_options(
     response = await editor.client.get(f"{_events_path(owner.organisation_id)}/facets")
 
     assert (response.status_code, response.json()) == (403, {"detail": "Only Owners can do this"})
+
+
+async def test_a_sign_up_whose_audit_event_fails_is_not_reported_as_a_taken_email(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Fault injection at the one public audit operation: the event's insert hits a constraint.
+    async def failing_record(*args: Any, **kwargs: Any) -> None:
+        raise IntegrityError("INSERT INTO audit_events", {}, Exception("constraint violated"))
+
+    monkeypatch.setattr(audit, "record", failing_record)
+    details = new_member_details()
+
+    with pytest.raises(IntegrityError):
+        await client.post("/api/auth/sign-up", json=details)
+
+    # Nothing from the attempt is kept, so the same email can sign up once audit works again.
+    monkeypatch.undo()
+    assert (await client.post("/api/auth/sign-up", json=details)).status_code == 201

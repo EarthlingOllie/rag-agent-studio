@@ -52,6 +52,11 @@ export function SignInPage() {
         <FormError message={errorMessage(signIn.error)} />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="current-password" />
+        <p className="-mt-2 text-sm">
+          <Link to="/forgot-password" className="text-slate-700 underline">
+            Forgot your password?
+          </Link>
+        </p>
         <SubmitButton pending={signIn.isPending} label="Sign in" pendingLabel="Signing in…" />
       </form>
     </AuthLayout>

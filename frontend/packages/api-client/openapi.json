@@ -171,6 +171,49 @@
         "title": "AuditTargetOut",
         "type": "object"
       },
+      "ChangePasswordRequest": {
+        "properties": {
+          "current_password": {
+            "maxLength": 256,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "maxLength": 256,
+            "minLength": 12,
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest",
+        "type": "object"
+      },
+      "CompletePasswordResetRequest": {
+        "properties": {
+          "password": {
+            "maxLength": 256,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "CompletePasswordResetRequest",
+        "type": "object"
+      },
       "ErrorResponse": {
         "properties": {
           "detail": {
@@ -315,6 +358,33 @@
         "title": "OrganisationOut",
         "type": "object"
       },
+      "PasswordResetAccepted": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "PasswordResetAccepted",
+        "type": "object"
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequest",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "owner",
@@ -421,6 +491,21 @@
           "retry_after_seconds"
         ],
         "title": "ThrottledResponse",
+        "type": "object"
+      },
+      "UpdateProfileRequest": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "UpdateProfileRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -536,6 +621,178 @@
           }
         },
         "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      },
+      "patch": {
+        "description": "Edits the signed-in Member's Profile.",
+        "operationId": "updateProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/me/password": {
+      "post": {
+        "description": "Changes the password. Other sessions end; this one continues under a new token.",
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Current password is incorrect"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/password-reset": {
+      "post": {
+        "description": "Emails a reset link if the email is registered. The answer is the same either way.",
+        "operationId": "requestPasswordReset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Password Reset",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/password-reset/complete": {
+      "post": {
+        "description": "Sets a new password from an emailed link, and signs the Member out everywhere.",
+        "operationId": "completePasswordReset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompletePasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This reset link is invalid or has expired."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Password Reset",
         "tags": [
           "auth"
         ]

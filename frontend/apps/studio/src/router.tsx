@@ -7,10 +7,13 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { SignInPage } from "./auth/SignInPage";
 import { SignUpPage } from "./auth/SignUpPage";
 import { AuditSettingsPage, GeneralSettingsPage, OrganisationSettingsLayout } from "./settings/OrganisationSettings";
 import { HomeRedirect, OrganisationShell, ProjectsPage, SignedInShell } from "./shell/SignedInShell";
+import { ProfilePage } from "./profile/ProfilePage";
 import { StatusPage } from "./status/StatusPage";
 
 function StatusLayout() {
@@ -34,6 +37,19 @@ const rootRoute = createRootRoute({ component: Outlet });
 const statusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/status", component: StatusLayout });
 const signUpRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sign-up", component: SignUpPage });
 const signInRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sign-in", component: SignInPage });
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  // The emailed link carries the token as `?token=`.
+  validateSearch: (search: Record<string, unknown>): { token?: string } =>
+    typeof search.token === "string" ? { token: search.token } : {},
+  component: ResetPasswordPage,
+});
 const signedInRoute = createRoute({ getParentRoute: () => rootRoute, id: "signed-in", component: SignedInShell });
 const homeRoute = createRoute({ getParentRoute: () => signedInRoute, path: "/", component: HomeRedirect });
 const organisationRoute = createRoute({
@@ -42,6 +58,7 @@ const organisationRoute = createRoute({
   component: OrganisationShell,
 });
 const projectsRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/projects", component: ProjectsPage });
+const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
   path: "/settings",
@@ -54,7 +71,9 @@ const routeTree = rootRoute.addChildren([
   statusRoute,
   signUpRoute,
   signInRoute,
-  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute])])]),
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute.addChildren([generalSettingsRoute, auditSettingsRoute]), profileRoute])]),
 ]);
 
 export function createAppRouter(history?: RouterHistory) {
