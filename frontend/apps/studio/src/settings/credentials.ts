@@ -16,7 +16,23 @@ export const FAILURE_MESSAGES: Record<CheckFailure, string> = {
   missing_model_access: "The key works, but it can't use this provider's models. Check the key's permissions in your provider account.",
   quota_exceeded: "The provider says this key is over its rate limit or quota. Try again later, or check your plan.",
   provider_unreachable: "We couldn't reach the provider to check the key. Try again in a few minutes.",
+  role_not_assumable: "We couldn't assume this role. Check the role ARN, and that the role's trust policy is exactly the one shown, with your external ID.",
+  wrong_region: "Bedrock, or this model, isn't available in that region. Choose the region where you enabled model access.",
 };
+
+/** The same reasons for a Bedrock credential, which is an IAM role or AWS access keys. */
+export const BEDROCK_FAILURE_MESSAGES: Record<CheckFailure, string> = {
+  ...FAILURE_MESSAGES,
+  invalid_key: "AWS rejected this access key. Check the access key ID and secret access key were copied in full.",
+  missing_model_access:
+    "The role works, but it can't use the model. Enable model access in the Bedrock console for this region, and check the role's permissions policy.",
+  quota_exceeded: "AWS says this account is over its Bedrock rate limit or quota. Try again later.",
+  provider_unreachable: "We couldn't reach AWS to check the credential. Try again in a few minutes.",
+};
+
+export function failureMessages(provider: ProviderId): Record<CheckFailure, string> {
+  return provider === "bedrock" ? BEDROCK_FAILURE_MESSAGES : FAILURE_MESSAGES;
+}
 
 export const CAPABILITY_NAMES: Record<Capability, string> = { chat: "Chat", embeddings: "Embeddings", rerank: "Reranking" };
 
@@ -40,11 +56,11 @@ function failed(response: Response, error: unknown): CredentialRequestError {
 }
 
 /** What to tell an Owner about a failed change. */
-export function credentialFailure(error: Error | null): string | undefined {
+export function credentialFailure(error: Error | null, provider: ProviderId = "anthropic"): string | undefined {
   if (error === null) return undefined;
   // A network failure is a plain Error, with none of these.
   const { status, detail, reason } = error as Partial<CredentialRequestError>;
-  if (reason) return `The check failed. ${FAILURE_MESSAGES[reason]}`;
+  if (reason) return `The check failed. ${failureMessages(provider)[reason]}`;
   // A malformed key, an unsupported capability or a taken name: the API says which.
   if ((status === 409 || status === 422) && detail) return detail;
   return "Something went wrong. Try again.";
@@ -96,6 +112,39 @@ export function useAddCredential(organisationId: string) {
       return data;
     },
     onSettled: refresh,
+  });
+}
+
+export type NewBedrockCredential = Schemas["CreateBedrockRoleRequest"] | Schemas["CreateBedrockAccessKeysRequest"];
+export type BedrockSetup = Schemas["BedrockSetupOut"];
+
+export function useAddBedrockCredential(organisationId: string) {
+  const refresh = useRefresh(organisationId);
+  return useMutation({
+    mutationFn: async (body: NewBedrockCredential): Promise<Credential> => {
+      const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/credentials/bedrock", {
+        params: { path: { organisation_id: organisationId } },
+        body,
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSettled: refresh,
+  });
+}
+
+/** The Organisation's external ID and the policies to paste into AWS (Owners only). */
+export function useBedrockSetup(organisationId: string) {
+  return useQuery({
+    queryKey: ["bedrock-setup", organisationId],
+    staleTime: Infinity,
+    queryFn: async (): Promise<BedrockSetup> => {
+      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/bedrock-setup", {
+        params: { path: { organisation_id: organisationId } },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
   });
 }
 

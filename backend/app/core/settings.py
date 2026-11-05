@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     credential_verifier: Literal["live", "fake"] = "live"
     # How long a live credential check waits for the provider.
     credential_check_timeout_seconds: float = Field(default=10.0, gt=0)
+    # The platform's own AWS identity, which assumes Owners' Bedrock roles: the principal the
+    # Studio puts in the trust policy Owners paste into AWS. In AWS it is the API's task role;
+    # `docker compose` has no AWS identity, so the default is a placeholder.
+    bedrock_platform_principal: str = "arn:aws:iam::000000000000:role/rag-agent-studio-local"
+    # The region whose STS endpoint assumes Owners' roles and checks access keys.
+    bedrock_sts_region: str = "us-east-1"
+    # Assumed-role sessions are reused until this long before they expire.
+    bedrock_session_refresh_seconds: int = Field(default=5 * 60, ge=0)
     # How long a password reset link works.
     password_reset_ttl_seconds: int = Field(default=60 * 60, gt=0)
     # How long an invite link works.

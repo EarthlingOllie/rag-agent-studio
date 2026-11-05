@@ -12,7 +12,8 @@ x-backend: &backend
     # Provider Credentials). A fixed development key: override it in .env; AWS uses KMS instead.
     LOCAL_KEY_WRAPPER_KEY: ${LOCAL_KEY_WRAPPER_KEY:-bG9jYWwtZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldCE=}
     # Provider Credentials are checked by the fake verifier locally: every key passes except
-    # one starting `fake-fail-<reason>`. Set CREDENTIAL_VERIFIER=live in .env to call providers.
+    # one starting `fake-fail-<reason>` (for Bedrock, a role name or secret access key starting
+    # so). Set CREDENTIAL_VERIFIER=live in .env to call providers.
     CREDENTIAL_VERIFIER: ${CREDENTIAL_VERIFIER:-fake}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}

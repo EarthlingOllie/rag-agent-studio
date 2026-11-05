@@ -26,7 +26,11 @@ export const providers: Provider[] = [
     id: "bedrock",
     name: "Amazon Bedrock",
     auth_kinds: ["aws_role", "aws_access_keys"],
-    capabilities: [{ capability: "chat", models: models("anthropic.claude-sonnet-4-5-20250929-v1:0") }],
+    capabilities: [
+      { capability: "chat", models: models("anthropic.claude-sonnet-4-5-20250929-v1:0") },
+      { capability: "embeddings", models: models("amazon.titan-embed-text-v2:0") },
+      { capability: "rerank", models: models("cohere.rerank-v3-5:0") },
+    ],
   },
   {
     id: "voyage",
@@ -45,6 +49,8 @@ export const marketingOpenAi: Credential = {
   provider: "openai",
   auth_kind: "api_key",
   masked_suffix: "wxyz",
+  role_arn: null,
+  region: null,
   capabilities: ["chat", "embeddings"],
   check_status: "passed",
   check_failure: null,
@@ -58,6 +64,8 @@ export const legalVoyage: Credential = {
   provider: "voyage",
   auth_kind: "api_key",
   masked_suffix: "9876",
+  role_arn: null,
+  region: null,
   capabilities: ["embeddings", "rerank"],
   check_status: "failed",
   check_failure: "quota_exceeded",
@@ -65,10 +73,51 @@ export const legalVoyage: Credential = {
   created_at: "2026-11-01T08:00:00Z",
 };
 
-/** Keys starting `fail-<reason>` fail their check with that reason, like the backend's fake verifier. */
-function failureOf(apiKey: string): CheckFailure | undefined {
-  const reasons: CheckFailure[] = ["invalid_key", "missing_model_access", "quota_exceeded", "provider_unreachable"];
-  return reasons.find((reason) => apiKey.startsWith(`fail-${reason}`));
+export const bedrockRole: Credential = {
+  id: "c0000000-0000-4000-8000-000000000003",
+  name: "Bedrock prod",
+  provider: "bedrock",
+  auth_kind: "aws_role",
+  masked_suffix: null,
+  role_arn: "arn:aws:iam::111122223333:role/StudioBedrockAccess",
+  region: "eu-west-2",
+  capabilities: ["chat", "embeddings", "rerank"],
+  check_status: "failed",
+  check_failure: "role_not_assumable",
+  last_checked_at: "2026-11-05T10:00:00Z",
+  created_at: "2026-11-05T08:00:00Z",
+};
+
+export const bedrockKeys: Credential = {
+  ...bedrockRole,
+  id: "c0000000-0000-4000-8000-000000000004",
+  name: "Bedrock sandbox",
+  auth_kind: "aws_access_keys",
+  masked_suffix: "MPLE",
+  role_arn: null,
+  region: "us-east-1",
+  check_status: "passed",
+  check_failure: null,
+};
+
+export const bedrockSetup: Schemas["BedrockSetupOut"] = {
+  external_id: "k2Jd8wQm4Zr7Vt1Xy9Pb3Lc6Ns0Hf5Ga",
+  platform_principal: "arn:aws:iam::000000000000:role/rag-agent-studio-local",
+  trust_policy: '{\n  "Version": "2012-10-17",\n  "Statement": ["trust k2Jd8wQm4Zr7Vt1Xy9Pb3Lc6Ns0Hf5Ga"]\n}',
+  permissions_policy: '{\n  "Version": "2012-10-17",\n  "Statement": ["bedrock:InvokeModel"]\n}',
+};
+
+/** Values starting `fail-<reason>` fail their check with that reason, like the backend's fake verifier. */
+function failureOf(value: string): CheckFailure | undefined {
+  const reasons: CheckFailure[] = [
+    "invalid_key",
+    "missing_model_access",
+    "quota_exceeded",
+    "provider_unreachable",
+    "role_not_assumable",
+    "wrong_region",
+  ];
+  return reasons.find((reason) => value.startsWith(`fail-${reason}`));
 }
 
 const checkFailed = (reason: CheckFailure) => HttpResponse.json({ detail: `API says ${reason}`, reason }, { status: 400 });
@@ -82,6 +131,7 @@ export function fakeCredentialsApi(
 ) {
   let credentials = [...(options.credentials ?? [marketingOpenAi, legalVoyage])];
   const added: unknown[] = [];
+  let setupRequests = 0;
   const rotated: { id: string; apiKey: string }[] = [];
   const checked: string[] = [];
   const deleted: string[] = [];
@@ -114,6 +164,29 @@ export function fakeCredentialsApi(
       credentials.push(credential);
       return HttpResponse.json(credential, { status: 201 });
     }),
+    http.get("*/api/organisations/:organisationId/bedrock-setup", () => {
+      setupRequests += 1;
+      return HttpResponse.json(bedrockSetup);
+    }),
+    http.post("*/api/organisations/:organisationId/credentials/bedrock", async ({ request }) => {
+      const body = (await request.json()) as Schemas["CreateBedrockRoleRequest"] | Schemas["CreateBedrockAccessKeysRequest"];
+      added.push(body);
+      const reason = failureOf(body.auth_kind === "aws_role" ? (body.role_arn.split("/").pop() ?? "") : body.secret_access_key);
+      if (reason) return checkFailed(reason);
+      const credential: Credential = {
+        ...(body.auth_kind === "aws_role" ? bedrockRole : bedrockKeys),
+        id: `c0000000-0000-4000-8000-${String(credentials.length + 100).padStart(12, "0")}`,
+        name: body.name,
+        role_arn: body.auth_kind === "aws_role" ? body.role_arn : null,
+        masked_suffix: body.auth_kind === "aws_role" ? null : body.access_key_id.slice(-4),
+        region: body.region,
+        capabilities: body.capabilities ?? [],
+        check_status: "passed",
+        check_failure: null,
+      };
+      credentials.push(credential);
+      return HttpResponse.json(credential, { status: 201 });
+    }),
     http.post("*/api/organisations/:organisationId/credentials/:credentialId/check", ({ params }) => {
       checked.push(params.credentialId as string);
       const failure = options.recheck ?? null;
@@ -142,5 +215,13 @@ export function fakeCredentialsApi(
       return new HttpResponse(null, { status: 204 });
     }),
   );
-  return { added, rotated, checked, deleted };
+  return {
+    added,
+    rotated,
+    checked,
+    deleted,
+    get setupRequests() {
+      return setupRequests;
+    },
+  };
 }

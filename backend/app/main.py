@@ -73,7 +73,9 @@ def _lifespan(
         app.state.provider_http = httpx.AsyncClient(
             timeout=settings.credential_check_timeout_seconds
         )
-        app.state.credential_verifier = build_verifier(settings, app.state.provider_http)
+        app.state.credential_verifier = build_verifier(
+            settings, app.state.provider_http, app.state.clock
+        )
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield
