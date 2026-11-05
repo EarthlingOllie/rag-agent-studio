@@ -11,7 +11,7 @@ Branch `ticket/04-02-markdown-editor`, from `origin/candidate` at `7a89f6e` (04-
   - **Written back exactly.** The editor's dialect is CommonMark without raw HTML or bare-URL autolinks. Prompts are text for a model, so `<context>`, `&` and URLs stay literal. TipTap's own writer escapes every `_`, `[` and `~` and turns `<` and `&` into HTML entities. The editor replaces that: text is written as typed unless it would read back as formatting, and only then escaped. Trailing whitespace is kept.
   - **Markdown view:** text typed there is stored exactly as typed. Switching back shows it formatted and isn't an edit.
 - **Project Instructions** (backend): one markdown Draft per Project.
-  - The column is `projects.instructions` (migration `0014_project_instructions`, `text NOT NULL DEFAULT ''`).
+  - The column is `projects.instructions` (migration `0015_project_instructions`, after 03-05's `0014_staged_editions`, `text NOT NULL DEFAULT ''`).
   - `getProjectInstructions` (GET) and `saveProjectInstructions` (PUT `…/projects/{id}/instructions`, body `{markdown}`, up to 20,000 characters like the system prompt) are open to Editors and Owners. An archived Project is read-only (409).
   - A save that changes the text records `project.instructions_updated` with the before and after text.
   - The Playground now passes the Project's Instructions to `run_turn`. 04-01 passed `""`.
