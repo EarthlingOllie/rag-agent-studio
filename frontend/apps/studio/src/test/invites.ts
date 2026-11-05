@@ -104,7 +104,7 @@ export function previewFor(email: string, overrides: Partial<InvitePreview> = {}
 
 /** The session a Member has after joining the invited Organisation. */
 export function joined(session: Session, role: "owner" | "editor" = "editor"): Session {
-  return { ...session, organisations: [...session.organisations, { ...invitedOrganisation, role }] };
+  return { ...session, organisations: [...session.organisations, { ...invitedOrganisation, role, mfa_required: false }] };
 }
 
 /**

@@ -20,6 +20,7 @@ from app.auth.mfa import (
     Mfa,
     MfaAlreadyEnabledError,
     MfaNotEnabledError,
+    MfaRequiredByOrganisationError,
     NoPendingEnrolmentError,
 )
 from app.auth.mfa_pending import MFA_PENDING_COOKIE
@@ -68,6 +69,13 @@ class DisableRequest(BaseModel):
 
 class RecoveryCodesResponse(BaseModel):
     recovery_codes: list[str]
+
+
+def required_by_organisations_message(names: list[str]) -> str:
+    """ "MFA can't be turned off while A requires it." or "… while A, B and C require it." """
+    if len(names) == 1:
+        return f"MFA can't be turned off while {names[0]} requires it."
+    return f"MFA can't be turned off while {', '.join(names[:-1])} and {names[-1]} require it."
 
 
 def _error(status_code: int, detail: str) -> dict[int | str, dict[str, object]]:
@@ -176,12 +184,17 @@ async def replace_recovery_codes(
     "/disable",
     status_code=status.HTTP_204_NO_CONTENT,
     operation_id="disableMfa",
-    responses=_error(400, PASSWORD_OR_CODE_INCORRECT) | _error(409, NOT_ENABLED),
+    responses=_error(400, PASSWORD_OR_CODE_INCORRECT)
+    | _error(409, "MFA is not enabled, or an Organisation of the Member requires it"),
 )
 async def disable(body: DisableRequest, member: CurrentMember, mfa: MfaService) -> None:
+    """Turns MFA off with the password and a code, unless an Organisation requires it."""
     try:
         await mfa.disable(member, password=body.password, code=body.code)
     except MfaNotEnabledError:
         raise HTTPException(status.HTTP_409_CONFLICT, NOT_ENABLED) from None
+    except MfaRequiredByOrganisationError as required:
+        message = required_by_organisations_message(required.organisation_names)
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
     except CodeIncorrectError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, PASSWORD_OR_CODE_INCORRECT) from None

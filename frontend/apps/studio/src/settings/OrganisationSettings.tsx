@@ -6,6 +6,7 @@ import { type Session, useMe } from "../auth/session";
 import { AuditPage } from "./AuditPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
 import { MembersPage } from "./MembersPage";
+import { useSetMfaPolicy } from "./mfaPolicy";
 
 const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
 
@@ -19,10 +20,49 @@ function useOrganisation() {
     organisationName: organisation.name,
     memberId: session.member.id,
     isOwner: organisation.role === "owner",
+    mfaRequired: organisation.mfa_required,
   };
 }
 
 const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
+
+/** The Require MFA policy: Owners turn it on or off; everyone else sees which it is. */
+function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: string; mfaRequired: boolean; isOwner: boolean }) {
+  const setPolicy = useSetMfaPolicy(organisationId);
+  return (
+    <section aria-labelledby="mfa-policy-heading" className="max-w-md space-y-3">
+      <h2 id="mfa-policy-heading" className="text-lg font-semibold">
+        Two-factor authentication
+      </h2>
+      <p className="text-sm text-slate-700">
+        {mfaRequired
+          ? "Every Member must use two-factor authentication. Members without it are asked to set it up before they can do anything else here."
+          : "Members choose whether to use two-factor authentication."}
+      </p>
+      {isOwner ? (
+        <>
+          <FormError message={memberFailure(setPolicy.error)} />
+          <button
+            type="button"
+            className={BUTTON}
+            disabled={setPolicy.isPending}
+            onClick={() => {
+              setPolicy.mutate(!mfaRequired);
+            }}
+          >
+            {setPolicy.isPending
+              ? "Saving…"
+              : mfaRequired
+                ? "Stop requiring two-factor authentication"
+                : "Require two-factor authentication"}
+          </button>
+        </>
+      ) : (
+        <p className="text-sm text-slate-700">Only Owners can change this.</p>
+      )}
+    </section>
+  );
+}
 
 /** Any Member can leave; the last Owner is refused by the API and told why. */
 function LeaveOrganisation({ organisationId, organisationName }: { organisationId: string; organisationName: string }) {
@@ -114,8 +154,13 @@ export function OrganisationSettingsLayout() {
 }
 
 export function GeneralSettingsPage() {
-  const { organisationId, organisationName } = useOrganisation();
-  return <LeaveOrganisation key={organisationId} organisationId={organisationId} organisationName={organisationName} />;
+  const { organisationId, organisationName, isOwner, mfaRequired } = useOrganisation();
+  return (
+    <div className="space-y-8">
+      <MfaPolicy key={`mfa-${organisationId}`} organisationId={organisationId} mfaRequired={mfaRequired} isOwner={isOwner} />
+      <LeaveOrganisation key={organisationId} organisationId={organisationId} organisationName={organisationName} />
+    </div>
+  );
 }
 
 export function AuditSettingsPage() {

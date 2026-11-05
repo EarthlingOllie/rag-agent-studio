@@ -579,6 +579,11 @@
             "title": "Id",
             "type": "string"
           },
+          "mfa_enabled": {
+            "description": "Whether the Member has turned MFA on",
+            "title": "Mfa Enabled",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -587,7 +592,8 @@
         "required": [
           "id",
           "name",
-          "email"
+          "email",
+          "mfa_enabled"
         ],
         "title": "MemberOut",
         "type": "object"
@@ -600,6 +606,11 @@
             "title": "Id",
             "type": "string"
           },
+          "mfa_required": {
+            "description": "The Organisation requires MFA: while the Member hasn't turned it on, its routes answer 403 and the Studio sends them to enrolment",
+            "title": "Mfa Required",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -611,7 +622,8 @@
         "required": [
           "id",
           "name",
-          "role"
+          "role",
+          "mfa_required"
         ],
         "title": "MembershipOut",
         "type": "object"
@@ -626,6 +638,19 @@
           }
         },
         "title": "MfaChallengeResponse",
+        "type": "object"
+      },
+      "MfaPolicyRequest": {
+        "properties": {
+          "require_mfa": {
+            "title": "Require Mfa",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "require_mfa"
+        ],
+        "title": "MfaPolicyRequest",
         "type": "object"
       },
       "MfaStatusResponse": {
@@ -691,6 +716,11 @@
             "title": "Name",
             "type": "string"
           },
+          "require_mfa": {
+            "description": "Whether every Member must have MFA turned on",
+            "title": "Require Mfa",
+            "type": "boolean"
+          },
           "role": {
             "$ref": "#/components/schemas/Role"
           }
@@ -698,7 +728,8 @@
         "required": [
           "id",
           "name",
-          "role"
+          "role",
+          "require_mfa"
         ],
         "title": "OrganisationOut",
         "type": "object"
@@ -1216,6 +1247,7 @@
     },
     "/api/auth/mfa/disable": {
       "post": {
+        "description": "Turns MFA off with the password and a code, unless an Organisation requires it.",
         "operationId": "disableMfa",
         "requestBody": {
           "content": {
@@ -1249,7 +1281,7 @@
                 }
               }
             },
-            "description": "MFA is not enabled"
+            "description": "MFA is not enabled, or an Organisation of the Member requires it"
           },
           "422": {
             "content": {
@@ -2007,6 +2039,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Organisation requires MFA. Turn on MFA for your account to continue."
           },
           "404": {
             "content": {
@@ -2850,6 +2892,90 @@
         "summary": "Change Member Role",
         "tags": [
           "members"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/mfa-policy": {
+      "put": {
+        "description": "Requires MFA of every Member, or stops requiring it (Owners only).\n\nThe Owner must have MFA themselves to turn the policy on.",
+        "operationId": "setMfaPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Organisation requires MFA. Turn on MFA for your account to continue. Or, on an Owner-only route: Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Turn on MFA for your own account before requiring it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Mfa Policy",
+        "tags": [
+          "organisations"
         ]
       }
     }

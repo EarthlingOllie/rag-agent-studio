@@ -78,8 +78,14 @@ async def _another_owner(owner: SignedUpMember, add_member: MemberFactory) -> Pr
     return {}, None
 
 
+async def _policy_left_off(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # Leaving the policy off needs no MFA, so any Owner can call it.
+    return {}, {"require_mfa": False}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}", EDITOR),
+    ScopedRoute("PUT", "/api/organisations/{organisation_id}/mfa-policy", OWNER, _policy_left_off),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/invites", OWNER),
