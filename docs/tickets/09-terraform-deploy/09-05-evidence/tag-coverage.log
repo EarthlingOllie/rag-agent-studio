@@ -1,0 +1,17 @@
+$ python3 -I docs/tickets/09-terraform-deploy/09-05-evidence/tagcheck.py <provider schema json for aws 6.72.0> infra/modules cdn
+== cdn
+resource                                                   taggable  sets tags  asserted
+aws_cloudfront_cache_policy.static                         False     False      False
+aws_cloudfront_cache_policy.dynamic                        False     False      False
+aws_cloudfront_origin_request_policy.dynamic               False     False      False
+aws_cloudfront_response_headers_policy.static              False     False      False
+aws_cloudfront_response_headers_policy.dynamic             False     False      False
+aws_cloudfront_function.spa_fallback                       True      True       True
+aws_cloudfront_distribution.this                           True      True       True
+aws_acm_certificate.this                                   True      True       True
+aws_route53_record.validation                              False     False      False
+aws_acm_certificate_validation.this                        False     False      False
+aws_route53_record.alias                                   False     False      False
+
+11 resources, 3 taggable, 0 missing tags or a tag assertion
+exit=0
