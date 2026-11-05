@@ -19,3 +19,9 @@ variable "aws_region" {
     error_message = "aws_region must be an AWS region name such as eu-west-2."
   }
 }
+
+variable "image_tag" {
+  description = "Backend image tag the services run. The deploy workflow (ticket 09-06) sets it to the pushed git SHA; until then services point at a tag that does not exist yet."
+  type        = string
+  default     = "bootstrap"
+}

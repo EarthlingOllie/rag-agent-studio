@@ -1,0 +1,32 @@
+$ python3 -I docs/tickets/09-terraform-deploy/09-04-evidence/tagcheck.py aws-schema.json infra/modules ecr ecs   # aws-schema.json: terraform providers schema -json, AWS provider 6.72.0
+== ecr
+resource                                                   taggable  sets tags  asserted
+aws_ecr_repository.this                                    True      True       True
+aws_ecr_lifecycle_policy.this                              False     False      False
+== ecs
+resource                                                   taggable  sets tags  asserted
+aws_iam_role.task                                          True      True       True
+aws_iam_role_policy.task                                   False     False      False
+aws_ecs_cluster.this                                       True      True       True
+aws_cloudwatch_log_group.service                           True      True       True
+aws_iam_role.execution                                     True      True       True
+aws_iam_role_policy.execution                              False     False      False
+aws_ecs_task_definition.this                               True      True       True
+terraform_data.origin_secret                               False     False      False
+aws_security_group.alb                                     True      True       True
+aws_vpc_security_group_ingress_rule.alb                    True      True       True
+aws_vpc_security_group_egress_rule.alb_to_api              True      True       True
+aws_lb.this                                                True      True       True
+aws_lb_target_group.api                                    True      True       True
+aws_lb_listener.http                                       True      True       True
+aws_lb_listener_rule.origin_header                         True      True       True
+aws_security_group.service                                 True      True       True
+aws_vpc_security_group_egress_rule.service                 True      True       True
+aws_vpc_security_group_ingress_rule.api_from_alb           True      True       True
+aws_secretsmanager_secret.platform                         True      True       True
+aws_secretsmanager_secret_version.origin_header            False     False      False
+aws_secretsmanager_secret_version.session                  False     False      False
+aws_ecs_service.this                                       True      True       True
+
+24 resources, 18 taggable, 0 missing tags or a tag assertion
+exit=0

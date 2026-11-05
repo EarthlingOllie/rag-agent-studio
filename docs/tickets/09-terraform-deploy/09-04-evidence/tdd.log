@@ -1,0 +1,506 @@
+### slice 1 RED: ecr scans every image on push
+$ terraform -chdir=infra/modules/ecr test
+  run "scans_every_image_on_push"... fail
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 16, in run "scans_every_image_on_push":
+A managed resource "aws_ecr_repository" "this" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 21, in run "scans_every_image_on_push":
+A managed resource "aws_ecr_repository" "this" has not been declared in the
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed.
+exit=1
+
+### slice 1 GREEN: ecr scans every image on push
+$ terraform -chdir=infra/modules/ecr test
+  run "scans_every_image_on_push"... pass
+tests/contract.tftest.hcl... pass
+Success! 1 passed, 0 failed.
+exit=0
+
+### slice 2 RED: ecr lifecycle rule
+$ terraform -chdir=infra/modules/ecr test
+  run "scans_every_image_on_push"... pass
+  run "expires_untagged_and_old_images"... fail
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 30, in run "expires_untagged_and_old_images":
+A managed resource "aws_ecr_lifecycle_policy" "this" has not been declared in
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 35, in run "expires_untagged_and_old_images":
+A managed resource "aws_ecr_lifecycle_policy" "this" has not been declared in
+tests/contract.tftest.hcl... fail
+Failure! 1 passed, 1 failed, 1 skipped.
+exit=1
+
+### slice 2 GREEN: ecr lifecycle rule
+$ terraform -chdir=infra/modules/ecr test
+  run "scans_every_image_on_push"... pass
+  run "expires_untagged_and_old_images"... pass
+  run "lifecycle_limits_are_configurable"... pass
+tests/contract.tftest.hcl... pass
+Success! 3 passed, 0 failed.
+exit=0
+
+### slice 3 RED: ecr outputs, immutability, tags, validations
+$ terraform -chdir=infra/modules/ecr test
+  run "scans_every_image_on_push"... pass
+  run "expires_untagged_and_old_images"... pass
+  run "lifecycle_limits_are_configurable"... pass
+  run "tags_are_immutable_and_images_encrypted_with_the_data_key"... pass
+  run "force_delete_lets_one_destroy_remove_everything"... pass
+  run "outputs_each_repository_url_and_arn"... fail
+Error: Reference to undeclared output value
+  on tests/contract.tftest.hcl line 107, in run "outputs_each_repository_url_and_arn":
+An output value with the name "repository_urls" has not been declared.
+Error: Reference to undeclared output value
+  on tests/contract.tftest.hcl line 112, in run "outputs_each_repository_url_and_arn":
+An output value with the name "repository_arns" has not been declared.
+tests/contract.tftest.hcl... fail
+Failure! 5 passed, 1 failed, 8 skipped.
+exit=1
+
+### slice 3 GREEN: ecr outputs, immutability, tags, validations
+$ terraform -chdir=infra/modules/ecr test
+  run "scans_every_image_on_push"... pass
+  run "expires_untagged_and_old_images"... pass
+  run "lifecycle_limits_are_configurable"... pass
+  run "tags_are_immutable_and_images_encrypted_with_the_data_key"... pass
+  run "force_delete_lets_one_destroy_remove_everything"... pass
+  run "outputs_each_repository_url_and_arn"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_no_repositories"... pass
+  run "rejects_an_uppercase_repository_name"... pass
+  run "rejects_keeping_no_tagged_images"... pass
+  run "rejects_a_fractional_untagged_expiry"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... pass
+Success! 14 passed, 0 failed.
+exit=0
+
+### slice 4 RED: ecs runs three ARM64 services sized by variables
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... fail
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 63, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_service" "this" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 68, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_service" "this" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 68, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_cluster" "this" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 68, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_task_definition" "this" has not been declared in
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 73, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_task_definition" "this" has not been declared in
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 81, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_task_definition" "this" has not been declared in
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 90, in run "runs_api_worker_and_beat_on_arm64_fargate":
+A managed resource "aws_ecs_service" "this" has not been declared in the root
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 2 skipped.
+exit=1
+
+### slice 4 GREEN: ecs runs three ARM64 services sized by variables
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+tests/contract.tftest.hcl... pass
+Success! 3 passed, 0 failed.
+exit=0
+
+### slice 5 RED: least-privilege task roles, external ID on assume-role
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... fail
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 144, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role" "task" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 144, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role" "task" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 149, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role" "task" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 165, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role_policy" "task" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 165, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role_policy" "task" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 165, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role" "task" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 170, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role" "task" has not been declared in the root
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 175, in run "each_service_has_its_own_least_privilege_task_role":
+A managed resource "aws_iam_role_policy" "task" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 175, in run "each_service_has_its_own_least_privilege_task_role":
+exit=1
+
+### slice 5 GREEN: least-privilege task roles, external ID on assume-role
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... fail
+Error: "task_role_arn" (op5cwhkw) is an invalid ARN: arn: invalid prefix
+  on main.tf line 131, in resource "aws_ecs_task_definition" "this":
+Error: "task_role_arn" (e5f5asjs) is an invalid ARN: arn: invalid prefix
+  on main.tf line 131, in resource "aws_ecs_task_definition" "this":
+Error: "task_role_arn" (elfgnygg) is an invalid ARN: arn: invalid prefix
+  on main.tf line 131, in resource "aws_ecs_task_definition" "this":
+Error: "task_role_arn" (elfgnygg) is an invalid ARN: arn: invalid prefix
+  on main.tf line 131, in resource "aws_ecs_task_definition" "this":
+Error: "task_role_arn" (op5cwhkw) is an invalid ARN: arn: invalid prefix
+  on main.tf line 131, in resource "aws_ecs_task_definition" "this":
+Error: "task_role_arn" (e5f5asjs) is an invalid ARN: arn: invalid prefix
+  on main.tf line 131, in resource "aws_ecs_task_definition" "this":
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 5 skipped.
+exit=1
+
+### slice 5 GREEN: least-privilege task roles, external ID on assume-role
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+tests/contract.tftest.hcl... pass
+Success! 6 passed, 0 failed.
+exit=0
+
+### slice 6 RED: ALB reachable only from the CloudFront prefix list, with the secret header rule
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... fail
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 268, in run "only_cloudfront_can_reach_the_alb":
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 274, in run "only_cloudfront_can_reach_the_alb":
+A managed resource "aws_lb" "this" has not been declared in the root module.
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 274, in run "only_cloudfront_can_reach_the_alb":
+A managed resource "aws_lb" "this" has not been declared in the root module.
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 275, in run "only_cloudfront_can_reach_the_alb":
+A managed resource "aws_lb" "this" has not been declared in the root module.
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 275, in run "only_cloudfront_can_reach_the_alb":
+A managed resource "aws_lb" "this" has not been declared in the root module.
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 275, in run "only_cloudfront_can_reach_the_alb":
+A managed resource "aws_security_group" "alb" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 276, in run "only_cloudfront_can_reach_the_alb":
+A managed resource "aws_lb" "this" has not been declared in the root module.
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 283, in run "only_cloudfront_can_reach_the_alb":
+Error: Reference to undeclared resource
+exit=1
+
+### slice 6 GREEN: ALB reachable only from the CloudFront prefix list, with the secret header rule
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... fail
+Error: "load_balancer_arn" (dk2m2rak) is an invalid ARN: arn: invalid prefix
+  on main.tf line 236, in resource "aws_lb_listener" "http":
+Error: "load_balancer.0.target_group_arn" (kq2q304j) is an invalid ARN: arn: invalid prefix
+  on main.tf line 315, in resource "aws_ecs_service" "this":
+Error: "load_balancer_arn" (dk2m2rak) is an invalid ARN: arn: invalid prefix
+  on main.tf line 236, in resource "aws_lb_listener" "http":
+Error: "load_balancer.0.target_group_arn" (kq2q304j) is an invalid ARN: arn: invalid prefix
+  on main.tf line 315, in resource "aws_ecs_service" "this":
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 9 skipped.
+exit=1
+
+### slice 6 GREEN: ALB reachable only from the CloudFront prefix list, with the secret header rule
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+tests/contract.tftest.hcl... pass
+Success! 10 passed, 0 failed.
+exit=0
+
+### slice 7 RED: secrets from Secrets Manager, log groups with retention
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... fail
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 425, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 425, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 425, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 443, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 443, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 443, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 450, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 468, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+  on tests/contract.tftest.hcl line 469, in run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values":
+Error: Unsupported attribute
+exit=1
+
+### slice 7 GREEN: secrets from Secrets Manager, log groups with retention
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+tests/contract.tftest.hcl... pass
+Success! 17 passed, 0 failed.
+exit=0
+
+### slice 8 RED: execution roles, service egress, deployments, outputs, tags, validations
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... fail
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 577, in run "each_service_has_its_own_least_privilege_execution_role":
+A managed resource "aws_iam_role" "execution" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 578, in run "each_service_has_its_own_least_privilege_execution_role":
+A managed resource "aws_iam_role" "execution" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 579, in run "each_service_has_its_own_least_privilege_execution_role":
+A managed resource "aws_iam_role" "execution" has not been declared in the
+Error: Reference to undeclared resource
+  on tests/contract.tftest.hcl line 585, in run "each_service_has_its_own_least_privilege_execution_role":
+A managed resource "aws_iam_role_policy" "execution" has not been declared in
+exit=1
+
+### slice 8 GREEN: execution roles, service egress, deployments, outputs, tags, validations
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... pass
+  run "services_reach_only_their_data_stores_and_https"... fail
+Error: Test assertion failed
+  on tests/contract.tftest.hcl line 658, in run "services_reach_only_their_data_stores_and_https":
+  run "deployments_roll_back_and_beat_never_runs_twice"... pass
+  run "outputs_the_cluster_services_and_the_bedrock_trust_principal"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer"... pass
+  run "rejects_an_unknown_cpu_value"... pass
+  run "accepts_every_fargate_cpu_size"... pass
+  run "accepts_4_vcpu_tasks"... pass
+  run "rejects_a_missing_service_size"... pass
+  run "rejects_two_beats"... pass
+exit=1
+
+### slice 8 GREEN: execution roles, service egress, deployments, outputs, tags, validations
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_never_touches_credentials"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... pass
+  run "services_reach_only_their_data_stores_and_https"... pass
+  run "deployments_roll_back_and_beat_never_runs_twice"... pass
+  run "outputs_the_cluster_services_and_the_bedrock_trust_principal"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer"... pass
+  run "rejects_an_unknown_cpu_value"... pass
+  run "accepts_every_fargate_cpu_size"... pass
+  run "accepts_4_vcpu_tasks"... pass
+  run "rejects_a_missing_service_size"... pass
+  run "rejects_two_beats"... pass
+  run "rejects_a_negative_count"... pass
+  run "rejects_the_latest_tag"... pass
+exit=0
+
+### slice 9 RED: demo environment wires ecr and ecs into the data modules
+$ terraform -chdir=infra/envs/demo test
+  run "wires_every_module_with_the_environment_prefix"... fail
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+Error: Missing required argument
+  on main.tf line 62, in module "ecs":
+tests/demo.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 3 skipped.
+exit=1
+
+### slice 9: modules/database outputs admitted client security groups
+$ terraform -chdir=infra/modules/database test
+  run "runs_postgres_16_encrypted_private_with_backups"... pass
+  run "requires_tls_and_admits_only_listed_clients"... pass
+  run "admits_no_one_without_clients"... pass
+  run "keeps_the_password_out_of_state_and_in_secrets_manager"... pass
+  run "password_version_bumps_both_writes"... pass
+  run "demo_defaults_are_cheap_and_destroyable"... pass
+  run "production_toggles_turn_on_protection"... pass
+  run "outputs_the_connection_details"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_postgres_15"... pass
+  run "rejects_turning_backups_off"... pass
+  run "rejects_backup_retention_over_35_days"... pass
+  run "rejects_a_single_subnet"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_a_non_rds_instance_class"... pass
+  run "rejects_storage_under_the_gp3_minimum"... pass
+  run "rejects_an_invalid_database_name"... pass
+  run "rejects_a_reserved_master_username"... pass
+  run "rejects_a_malformed_master_username"... pass
+  run "rejects_a_fractional_password_version"... pass
+  run "rejects_a_zero_password_version"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... pass
+Success! 23 passed, 0 failed.
+exit=0
+
+### slice 9: modules/cache outputs admitted client security groups
+$ terraform -chdir=infra/modules/cache test
+  run "encrypts_in_transit_and_at_rest_with_auth_on"... pass
+  run "keeps_the_auth_token_out_of_state_and_in_secrets_manager"... pass
+  run "auth_token_version_bumps_both_writes"... pass
+  run "is_private_and_admits_only_listed_clients"... pass
+  run "admits_no_one_without_clients"... pass
+  run "demo_runs_one_cheap_node_with_snapshots"... pass
+  run "replicas_turn_on_failover"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_redis_6"... pass
+  run "rejects_a_non_elasticache_node_type"... pass
+  run "rejects_negative_replicas"... pass
+  run "rejects_more_than_five_replicas"... pass
+  run "rejects_turning_snapshots_off"... pass
+  run "rejects_snapshot_retention_over_35_days"... pass
+  run "rejects_a_single_subnet"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_a_zero_auth_token_version"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... pass
+Success! 19 passed, 0 failed.
+exit=0
+
+### slice 9 GREEN: demo environment wires ecr and ecs into the data modules
+$ terraform -chdir=infra/envs/demo test
+Error: Module not installed
+  on main.tf line 64:
+exit=1
+
+### slice 9 GREEN: demo environment wires ecr and ecs into the data modules
+$ terraform -chdir=infra/envs/demo test
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "wires_the_data_modules_into_the_environment"... pass
+  run "wires_the_compute_module_into_the_data_modules"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/demo.tftest.hcl... pass
+Success! 4 passed, 0 failed.
+exit=0
+
