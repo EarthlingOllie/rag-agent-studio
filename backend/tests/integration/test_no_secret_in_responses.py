@@ -32,6 +32,8 @@ ALLOWED = {
     # Spec 04: how many model tokens an answer used; counts, not access tokens.
     ("MessageOut", "input_tokens"): "the number of input tokens a model call used",
     ("MessageOut", "output_tokens"): "the number of output tokens a model call used",
+    ("TraceOut", "input_tokens"): "the number of input tokens the traced answer used",
+    ("TraceOut", "output_tokens"): "the number of output tokens the traced answer used",
 }
 
 
