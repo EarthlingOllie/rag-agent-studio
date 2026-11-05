@@ -44,7 +44,8 @@ class EmbeddingModelChoiceOut(BaseModel):
     provider: str
     dimension: int
     tokenizer: str
-    max_tokens: int
+    # The most tokens the model reads at once.
+    token_limit: int
     credential_id: uuid.UUID | None
     credential_name: str | None
 
@@ -91,7 +92,7 @@ async def list_embedding_models(scope: Scope, db: Db) -> list[EmbeddingModelChoi
             provider=choice.model.provider,
             dimension=choice.model.dimension,
             tokenizer=choice.model.tokenizer,
-            max_tokens=choice.model.max_tokens,
+            token_limit=choice.model.max_tokens,
             credential_id=None if choice.credential is None else choice.credential.id,
             credential_name=None if choice.credential is None else choice.credential.name,
         )

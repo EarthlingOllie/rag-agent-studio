@@ -1522,14 +1522,14 @@ export interface components {
             credential_name: string | null;
             /** Dimension */
             dimension: number;
-            /** Max Tokens */
-            max_tokens: number;
             /** Model Id */
             model_id: string;
             /** Name */
             name: string;
             /** Provider */
             provider: string;
+            /** Token Limit */
+            token_limit: number;
             /** Tokenizer */
             tokenizer: string;
         };

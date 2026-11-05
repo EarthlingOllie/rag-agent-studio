@@ -1052,10 +1052,6 @@
             "title": "Dimension",
             "type": "integer"
           },
-          "max_tokens": {
-            "title": "Max Tokens",
-            "type": "integer"
-          },
           "model_id": {
             "title": "Model Id",
             "type": "string"
@@ -1068,6 +1064,10 @@
             "title": "Provider",
             "type": "string"
           },
+          "token_limit": {
+            "title": "Token Limit",
+            "type": "integer"
+          },
           "tokenizer": {
             "title": "Tokenizer",
             "type": "string"
@@ -1079,7 +1079,7 @@
           "provider",
           "dimension",
           "tokenizer",
-          "max_tokens",
+          "token_limit",
           "credential_id",
           "credential_name"
         ],

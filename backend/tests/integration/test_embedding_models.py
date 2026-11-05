@@ -173,7 +173,7 @@ async def test_without_credentials_only_the_local_model_can_be_chosen(
             "provider": "local",
             "dimension": 384,
             "tokenizer": "intfloat/multilingual-e5-small",
-            "max_tokens": 512,
+            "token_limit": 512,
             "credential_id": None,
             "credential_name": None,
         }
@@ -210,7 +210,7 @@ async def test_embedding_capable_credentials_offer_their_providers_models(
         "provider": "voyage",
         "dimension": 1024,
         "tokenizer": "voyageai/voyage-3.5",
-        "max_tokens": 32000,
+        "token_limit": 32000,
         "credential_id": voyage["id"],
         "credential_name": "Voyage",
     }
