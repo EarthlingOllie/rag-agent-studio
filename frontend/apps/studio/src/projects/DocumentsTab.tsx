@@ -1,4 +1,4 @@
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { type ChangeEvent, type DragEvent, useState } from "react";
 
 import { type DocumentStatus, type ProjectDocument, type Upload, useDocuments, useUploads } from "./documents";
@@ -8,7 +8,7 @@ import { useOrganisationRole } from "./ProjectsPage";
 /** The file types the API accepts, for the file picker. */
 const ACCEPT = ".pdf,.docx,.pptx,.html,.htm,.md,.markdown,.txt";
 
-const STATUS_LABELS: Record<DocumentStatus, string> = {
+export const STATUS_LABELS: Record<DocumentStatus, string> = {
   queued: "Queued",
   processing: "Processing",
   ready: "Ready",
@@ -76,7 +76,7 @@ function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
   );
 }
 
-function DocumentRows({ documents }: { documents: ProjectDocument[] }) {
+function DocumentRows({ documents, organisationId, projectId }: { documents: ProjectDocument[]; organisationId: string; projectId: string }) {
   return (
     <table className="w-full text-left text-sm">
       <caption className="sr-only">Documents</caption>
@@ -93,7 +93,15 @@ function DocumentRows({ documents }: { documents: ProjectDocument[] }) {
       <tbody>
         {documents.map((document) => (
           <tr key={document.id} className="border-b border-slate-100">
-            <td className="py-2">{document.name}</td>
+            <td className="py-2">
+              <Link
+                to="/organisations/$organisationId/projects/$projectId/documents/$documentId"
+                params={{ organisationId, projectId, documentId: document.id }}
+                className="underline"
+              >
+                {document.name}
+              </Link>
+            </td>
             <td>
               {STATUS_LABELS[document.status]}
               {document.error_message && <span className="block text-red-700">{document.error_message}</span>}
@@ -124,7 +132,7 @@ export function DocumentsTab() {
   } else if (documents.data.length === 0) {
     list = <p className="text-slate-700">No Documents yet. Upload files to build this Project's Knowledge Base.</p>;
   } else {
-    list = <DocumentRows documents={documents.data} />;
+    list = <DocumentRows documents={documents.data} organisationId={organisationId} projectId={projectId} />;
   }
 
   return (

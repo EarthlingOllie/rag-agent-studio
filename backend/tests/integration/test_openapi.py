@@ -85,6 +85,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "confirmDocumentUpload": (f"{_PROJECT}/documents", "post"),
         "listDocuments": (f"{_PROJECT}/documents", "get"),
         "listDocumentStatuses": (f"{_PROJECT}/documents/statuses", "get"),
+        "getDocument": (f"{_PROJECT}/documents/{{document_id}}", "get"),
+        "downloadDocument": (f"{_PROJECT}/documents/{{document_id}}/download", "get"),
         "listChunks": (f"{_PROJECT}/documents/{{document_id}}/chunks", "get"),
     }
 

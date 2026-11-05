@@ -199,6 +199,14 @@ _Avoid_: Indexing, processing pipeline, import
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
 
+**Document viewer**:
+The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
+_Avoid_: Document preview, inspector, detail page
+
+**Heading path**:
+The headings above a Chunk in its Document, outermost first, shown as `Leave › Annual leave`. It is embedded with the Chunk so retrieval knows its context.
+_Avoid_: Breadcrumb, section, context
+
 **Tag**:
 A label on Documents that an Agent can use to limit which Documents it retrieves from.
 _Avoid_: Category, folder, label
