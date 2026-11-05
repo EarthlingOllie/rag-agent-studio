@@ -1,0 +1,19 @@
+GitHub Actions on ticket/01-11-totp-mfa, read through the GitHub API (actions list_workflow_runs) on 2026-11-05.
+
+head f9e1acf (last code change):
+  backend          success   run 41958645529
+  frontend         success   run 41958645526
+  e2e              success   run 41958645554   (real `make e2e`, including e2e/tests/mfa.spec.ts)
+  infra            success   run 41958645536
+  deploy           success   run 41958645314
+  guardrails-eval  success   run 41958645574
+  security         failure   run 41958645524   job "gitleaks (full history)" only; pip-audit/pnpm audit/Trivy jobs passed
+
+ffa76d4: backend, frontend, e2e, infra, deploy, guardrails-eval success; security failure (same cause).
+0bd02f8 (claim): all seven success.
+
+Cause of the security failure: `make secret-scan` runs `gitleaks git` over every fetched ref. The 2 findings are
+in backend/tests/integration/test_audit_events.py lines 148 and 154 at commit 1595299, which exists only on
+origin/ticket/01-05-audit-events (pushed by the parallel 01-05 build after this branch's claim run passed).
+`git merge-base --is-ancestor 1595299 HEAD` is false on this branch. Scanning this branch's own history
+(`gitleaks git --log-opts=HEAD .`) finds no leaks (security.log). Fix belongs to 01-05 (.gitleaksignore entry).

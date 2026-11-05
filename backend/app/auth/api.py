@@ -2,14 +2,18 @@
 
 import re
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import service
+from app.auth.mfa import Mfa
+from app.auth.mfa_pending import MFA_PENDING_COOKIE, PendingSignIns
 from app.auth.sessions import SESSION_COOKIE, SessionStore
+from app.core.clock import Clock, get_clock
 from app.core.deps import get_db
 from app.core.settings import Settings
 from app.tenancy.models import Member, Role
@@ -93,7 +97,7 @@ async def current_member(db: Db, sessions: Sessions, token: SessionToken = None)
 CurrentMember = Annotated[Member, Depends(current_member)]
 
 
-async def _session_response(db: AsyncSession, member: Member) -> SessionResponse:
+async def session_response(db: AsyncSession, member: Member) -> SessionResponse:
     memberships = await list_memberships(db, member)
     return SessionResponse(
         member=MemberOut(id=member.id, name=member.name, email=member.email),
@@ -104,7 +108,7 @@ async def _session_response(db: AsyncSession, member: Member) -> SessionResponse
     )
 
 
-async def _start_session(
+async def start_session(
     response: Response, request: Request, sessions: SessionStore, member: Member, old: str | None
 ) -> None:
     """Issues a new session token. Any session the browser already had is ended (rotation)."""
@@ -148,13 +152,35 @@ async def sign_up(
         )
     except service.EmailAlreadyRegisteredError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered") from None
-    await _start_session(response, request, sessions, member, token)
-    return await _session_response(db, member)
+    await start_session(response, request, sessions, member, token)
+    return await session_response(db, member)
+
+
+class MfaChallengeResponse(BaseModel):
+    mfa_required: Literal[True] = True
+
+
+def get_pending_sign_ins(request: Request) -> PendingSignIns:
+    settings: Settings = request.app.state.settings
+    return PendingSignIns(request.app.state.redis, settings.mfa_pending_ttl_seconds)
+
+
+PendingStore = Annotated[PendingSignIns, Depends(get_pending_sign_ins)]
+# Sent only to the MFA routes and to sign-in (which replaces it).
+MFA_PENDING_COOKIE_PATH = "/api/auth"
 
 
 @router.post(
     "/sign-in",
-    responses={401: {"model": ErrorResponse, "description": SIGN_IN_FAILED}},
+    responses={
+        202: {
+            "model": MfaChallengeResponse,
+            "description": "The password is right and the Member uses MFA: send a code to "
+            "`/api/auth/mfa/verify` to finish signing in",
+        },
+        401: {"model": ErrorResponse, "description": SIGN_IN_FAILED},
+    },
+    response_model=SessionResponse,
     operation_id="signIn",
 )
 async def sign_in(
@@ -163,13 +189,51 @@ async def sign_in(
     response: Response,
     db: Db,
     sessions: Sessions,
+    pending: PendingStore,
+    clock: Annotated[Clock, Depends(get_clock)],
     token: SessionToken = None,
-) -> SessionResponse:
+) -> SessionResponse | JSONResponse:
     member = await service.authenticate(db, email=body.email, password=body.password)
     if member is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, SIGN_IN_FAILED)
-    await _start_session(response, request, sessions, member, token)
-    return await _session_response(db, member)
+    if await Mfa(db, request.app.state.envelope, clock).is_enabled(member.id):
+        challenge = JSONResponse(
+            MfaChallengeResponse().model_dump(), status_code=status.HTTP_202_ACCEPTED
+        )
+        if token is not None:
+            await sessions.delete(token)
+            challenge.delete_cookie(
+                SESSION_COOKIE, path="/", secure=True, httponly=True, samesite="lax"
+            )
+        settings: Settings = request.app.state.settings
+        challenge.set_cookie(
+            MFA_PENDING_COOKIE,
+            await pending.create(member.id),
+            max_age=settings.mfa_pending_ttl_seconds,
+            path=MFA_PENDING_COOKIE_PATH,
+            secure=True,
+            httponly=True,
+            samesite="lax",
+        )
+        return challenge
+    await start_session(response, request, sessions, member, token)
+    return await session_response(db, member)
+
+
+async def finish_mfa_sign_in(
+    response: Response,
+    request: Request,
+    db: AsyncSession,
+    sessions: SessionStore,
+    member: Member,
+    old_session: str | None,
+) -> SessionResponse:
+    """Turns a verified MFA-pending sign-in into a full session."""
+    response.delete_cookie(
+        MFA_PENDING_COOKIE, path=MFA_PENDING_COOKIE_PATH, secure=True, httponly=True, samesite="lax"
+    )
+    await start_session(response, request, sessions, member, old_session)
+    return await session_response(db, member)
 
 
 @router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT, operation_id="signOut")
@@ -186,4 +250,4 @@ async def sign_out(response: Response, sessions: Sessions, token: SessionToken =
     operation_id="getMe",
 )
 async def me(member: CurrentMember, db: Db) -> SessionResponse:
-    return await _session_response(db, member)
+    return await session_response(db, member)

@@ -19,6 +19,14 @@ How long an Organisation keeps Message text before it is purged. Aggregate metri
 A person who signs in to the Studio and belongs to one or more Organisations.
 _Avoid_: User, admin
 
+**Profile**:
+A Member's own details: their name, email and password. It is the same in every Organisation they belong to, and only the Member can change it.
+_Avoid_: Account settings, user settings
+
+**Password Reset Link**:
+An emailed link that lets a Member who forgot their password choose a new one. It works once and expires; using it, or changing the password from the Profile, signs the Member out everywhere else.
+_Avoid_: Recovery link, magic link
+
 **Membership**:
 A Member's place in one Organisation, with a role: Owner or Editor. Signing up creates an Organisation and an Owner Membership for the new Member.
 _Avoid_: Seat, account
@@ -28,6 +36,14 @@ A Member role that can manage Provider Credentials, Members and Organisation set
 
 **Editor**:
 A Member role that can manage Projects, Documents and Agents.
+
+**MFA**:
+Multi-factor authentication: a Member's sign-in also needs a code from an authenticator app (TOTP). It belongs to the Member, so it applies in every Organisation they belong to.
+_Avoid_: 2FA, two-step verification (fine in Studio copy, not in code or docs)
+
+**Recovery Code**:
+One of ten single-use codes a Member gets when they turn MFA on, to sign in without their authenticator app. Shown once; making new ones stops the old ones working.
+_Avoid_: Backup code
 
 **Audit Event**:
 An append-only record of who changed what in an Organisation, and when.

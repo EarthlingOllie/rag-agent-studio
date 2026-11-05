@@ -7,12 +7,16 @@ dependencies = [
     "alembic>=1.20.1",
     "argon2-cffi>=25.1.0",
     "asyncpg>=0.32.0",
+    "boto3>=1.43.124",
     "celery[redis]>=5.6.3",
+    "cryptography>=50.0.2",
     "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "logfire[celery,fastapi,httpx,sqlalchemy]>=5.4.0",
     "pydantic-settings>=2.16.2",
+    "pyotp>=2.10.0",
     "redis>=8.1.0",
+    "segno>=1.6.6",
     "sqlalchemy[asyncio]>=2.1.8",
     "uvicorn[standard]>=0.54.0",
 ]
@@ -22,7 +26,9 @@ package = false
 
 [dependency-groups]
 dev = [
+    "aiosmtpd>=1.4.6",
     "asgi-lifespan>=2.1.0",
+    "boto3-stubs[sesv2]>=1.43.124",
     "celery-types>=0.26.0",
     "mypy>=2.4.1",
     "pytest>=9.2.0",

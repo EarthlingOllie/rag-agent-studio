@@ -17,8 +17,8 @@ export function SignInPage() {
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     signIn.mutate(formValues(event.currentTarget, ["email", "password"]), {
-      onSuccess: () => {
-        void navigate({ to: "/" });
+      onSuccess: (outcome) => {
+        void navigate({ to: outcome.mfaRequired ? "/sign-in/mfa" : "/" });
       },
     });
   }
@@ -39,6 +39,11 @@ export function SignInPage() {
         <FormError message={errorMessage(signIn.error)} />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="current-password" />
+        <p className="-mt-2 text-sm">
+          <Link to="/forgot-password" className="text-slate-700 underline">
+            Forgot your password?
+          </Link>
+        </p>
         <SubmitButton pending={signIn.isPending} label="Sign in" pendingLabel="Signing in…" />
       </form>
     </AuthLayout>

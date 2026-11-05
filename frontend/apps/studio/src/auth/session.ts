@@ -47,8 +47,27 @@ export function useSignUp() {
   return useStartSession((body: SignUpDetails) => api.POST("/api/auth/sign-up", { body }));
 }
 
+/** What a correct password leads to: a session, or (for a Member with MFA) a code challenge. */
+export type SignInOutcome = { mfaRequired: false; session: Session } | { mfaRequired: true };
+
 export function useSignIn() {
-  return useStartSession((body: SignInDetails) => api.POST("/api/auth/sign-in", { body }));
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: SignInDetails): Promise<SignInOutcome> => {
+      const { data, response } = await api.POST("/api/auth/sign-in", { body });
+      if (data === undefined) throw new AuthRequestError(response.status);
+      if ("mfa_required" in data) return { mfaRequired: true };
+      return { mfaRequired: false, session: data };
+    },
+    onSuccess: (outcome) => {
+      if (!outcome.mfaRequired) queryClient.setQueryData(ME_QUERY_KEY, outcome.session);
+    },
+  });
+}
+
+/** Finishes an MFA-pending sign-in with an authenticator or recovery code. */
+export function useVerifyMfa() {
+  return useStartSession((code: string) => api.POST("/api/auth/mfa/verify", { body: { code } }));
 }
 
 export function useSignOut() {
@@ -60,6 +79,51 @@ export function useSignOut() {
     },
     onSuccess: () => {
       queryClient.setQueryData(ME_QUERY_KEY, null);
+    },
+  });
+}
+
+export type PasswordResetRequest = Schemas["PasswordResetRequest"];
+export type CompletePasswordReset = Schemas["CompletePasswordResetRequest"];
+export type ChangePassword = Schemas["ChangePasswordRequest"];
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: async (body: PasswordResetRequest) => {
+      const { response } = await api.POST("/api/auth/password-reset", { body });
+      if (!response.ok) throw new AuthRequestError(response.status);
+    },
+  });
+}
+
+export function useCompletePasswordReset() {
+  return useMutation({
+    mutationFn: async (body: CompletePasswordReset) => {
+      const { response } = await api.POST("/api/auth/password-reset/complete", { body });
+      if (!response.ok) throw new AuthRequestError(response.status);
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Schemas["UpdateProfileRequest"]) => {
+      const { data, response } = await api.PATCH("/api/auth/me", { body });
+      if (!data) throw new AuthRequestError(response.status);
+      return data;
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(ME_QUERY_KEY, session);
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (body: ChangePassword) => {
+      const { response } = await api.POST("/api/auth/me/password", { body });
+      if (!response.ok) throw new AuthRequestError(response.status);
     },
   });
 }
