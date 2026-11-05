@@ -135,7 +135,8 @@ export function DocumentViewer() {
             {document.data.markdown === null ? (
               <p className="text-slate-700">There is no converted markdown yet.</p>
             ) : (
-              <div className="markdown max-h-[70vh] overflow-auto rounded border border-slate-200 p-4 text-sm">
+              // It scrolls on its own, so it takes focus for keyboard scrolling (WCAG 2.1.1).
+              <div tabIndex={0} className="markdown max-h-[70vh] overflow-auto rounded border border-slate-200 p-4 text-sm">
                 <Markdown remarkPlugins={[remarkGfm]}>{document.data.markdown}</Markdown>
               </div>
             )}
