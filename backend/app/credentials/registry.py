@@ -4,6 +4,7 @@ models. Maintained in code, alongside the price table (ticket 02-04); pickers re
 """
 
 import enum
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 
@@ -110,3 +111,13 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
         ),
     )
 }
+
+
+def models_for(
+    provider: Provider, capabilities: Sequence[str], capability: Capability
+) -> tuple[Model, ...]:
+    """The models a credential offers for one capability: none unless it was given that
+    capability, otherwise the provider's models for it."""
+    if capability not in capabilities:
+        return ()
+    return PROVIDERS[provider].models.get(capability, ())

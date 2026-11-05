@@ -131,7 +131,16 @@ Something that uses a Provider Credential, such as an Agent's model or a Project
 _Avoid_: Dependency, usage, link
 
 **Default Model**:
-The chat model an Organisation's Agents use unless an Agent overrides it.
+The chat model an Organisation's Agents use unless an Agent overrides it: one chat-capable Provider Credential and one of its chat models, chosen by an Owner. It is a Credential reference, so its credential can't be deleted while it is chosen.
+_Avoid_: Global model, org model
+
+**Model gateway**:
+The single factory every model call goes through: it turns a Provider Credential and a model name into a chat model, an embedder or a reranker, refusing a model the credential doesn't offer for that Capability. Tests and `docker compose` swap in fake adapters here and nowhere else.
+_Avoid_: Model client factory, provider router, LLM proxy
+
+**Reranker**:
+A model that reorders retrieved passages by relevance to a query, built by the Model gateway from a credential with the rerank Capability.
+_Avoid_: Re-ranker, scorer
 
 **Embedding Model**:
 The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider.

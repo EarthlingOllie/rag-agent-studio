@@ -17,7 +17,7 @@ from app.auth.api import CurrentMember, Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.credentials.models import ProviderCredential
 from app.credentials.references import ReferenceRegistry
-from app.credentials.registry import PROVIDERS, AuthKind, Capability, Provider
+from app.credentials.registry import PROVIDERS, AuthKind, Capability, Provider, models_for
 from app.credentials.service import (
     CheckFailedError,
     CredentialInUseError,
@@ -285,6 +285,24 @@ async def delete_credential(
         )
         return JSONResponse(body.model_dump(mode="json"), status_code=status.HTTP_409_CONFLICT)
     return None
+
+
+@router.get(
+    "/credentials/{credential_id}/models/{capability}",
+    responses=_NOT_FOUND,
+    operation_id="listCredentialModels",
+)
+async def list_credential_models(
+    credential_id: uuid.UUID, capability: Capability, scope: Scope, credentials: CredentialsService
+) -> list[ModelOut]:
+    """The models this credential offers for a capability: empty unless the credential was
+    given that capability. Open to every Member, for model pickers."""
+    try:
+        credential = await credentials.get(scope, credential_id)
+    except CredentialNotFoundError:
+        raise _not_found() from None
+    offered = models_for(Provider(credential.provider), credential.capabilities, capability)
+    return [ModelOut(id=m.id, name=m.name) for m in offered]
 
 
 @providers_router.get(
