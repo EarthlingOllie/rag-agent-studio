@@ -316,3 +316,14 @@ test("deleting a credential still in use is refused with the list of what uses i
   ]);
   expect(rows().map((row) => row[0])).toEqual(["Legal Voyage", "Marketing OpenAI"]);
 });
+
+test("deleting the last credential says so and shows the empty list", async () => {
+  fakeCredentialsApi({ credentials: [marketingOpenAi] });
+  await openAsOwner();
+
+  await userEvent.click(screen.getByRole("button", { name: "Delete: Marketing OpenAI" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, delete Marketing OpenAI" }));
+
+  expect(await screen.findByText("Marketing OpenAI was deleted.")).toBeInTheDocument();
+  expect(await screen.findByText("No credentials yet.")).toBeInTheDocument();
+});

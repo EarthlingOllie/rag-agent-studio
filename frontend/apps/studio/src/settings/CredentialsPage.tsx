@@ -168,7 +168,6 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
   const [deleting, setDeleting] = useState("");
   if (credentials.isPending) return <p role="status">Loading credentials…</p>;
   if (credentials.isError) return <p role="alert">The credentials could not be loaded. Try again shortly.</p>;
-  if (credentials.data.length === 0) return <p className="text-sm text-slate-700">No credentials yet.</p>;
   const busy = check.isPending || rotate.isPending || remove.isPending;
   const inUse = remove.error instanceof CredentialRequestError && remove.error.references.length > 0 ? remove.error : null;
   const start = () => {
@@ -185,76 +184,80 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
           {done}
         </p>
       )}
-      <table className="w-full text-left text-sm" aria-label="Provider Credentials">
-        <thead>
-          <tr>
-            <th className="py-2 pr-4 font-medium">Name</th>
-            <th className="py-2 pr-4 font-medium">Provider</th>
-            <th className="py-2 pr-4 font-medium">Used for</th>
-            <th className="py-2 pr-4 font-medium">Key</th>
-            <th className="py-2 pr-4 font-medium">Status</th>
-            <th className="py-2 pr-4 font-medium">Last checked</th>
-            {isOwner && (
-              <th className="py-2 font-medium">
-                <span className="sr-only">Actions</span>
-              </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {credentials.data.map((credential) => (
-            <tr key={credential.id} className="border-t border-slate-200 align-top">
-              <td className="py-2 pr-4">{credential.name}</td>
-              <td className="py-2 pr-4">{PROVIDER_NAMES[credential.provider]}</td>
-              <td className="py-2 pr-4">{capabilities(credential.capabilities)}</td>
-              <td className="py-2 pr-4 font-mono" aria-label={`Key ending ${credential.masked_suffix}`}>
-                ••••{credential.masked_suffix}
-              </td>
-              <td className="py-2 pr-4">
-                <Status credential={credential} />
-              </td>
-              <td className="py-2 pr-4">{when(credential.last_checked_at)}</td>
+      {credentials.data.length === 0 ? (
+        <p className="text-sm text-slate-700">No credentials yet.</p>
+      ) : (
+        <table className="w-full text-left text-sm" aria-label="Provider Credentials">
+          <thead>
+            <tr>
+              <th className="py-2 pr-4 font-medium">Name</th>
+              <th className="py-2 pr-4 font-medium">Provider</th>
+              <th className="py-2 pr-4 font-medium">Used for</th>
+              <th className="py-2 pr-4 font-medium">Key</th>
+              <th className="py-2 pr-4 font-medium">Status</th>
+              <th className="py-2 pr-4 font-medium">Last checked</th>
               {isOwner && (
-                <td className="py-2">
-                  <CredentialActions
-                    credential={credential}
-                    busy={busy}
-                    onCheck={() => {
-                      start();
-                      check.mutate(credential.id, {
-                        onSuccess: (checked) => {
-                          setDone(checked.check_failure ? null : `${checked.name} passed its check.`);
-                        },
-                      });
-                    }}
-                    onRotate={(apiKey, finished) => {
-                      start();
-                      rotate.mutate(
-                        { credentialId: credential.id, apiKey },
-                        {
-                          onSuccess: (rotated) => {
-                            finished();
-                            setDone(`The key of ${rotated.name} was checked and replaced.`);
-                          },
-                        },
-                      );
-                    }}
-                    onDelete={() => {
-                      start();
-                      setDeleting(credential.name);
-                      remove.mutate(credential.id, {
-                        onSuccess: () => {
-                          setDone(`${credential.name} was deleted.`);
-                        },
-                      });
-                    }}
-                  />
-                </td>
+                <th className="py-2 font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
               )}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {credentials.data.map((credential) => (
+              <tr key={credential.id} className="border-t border-slate-200 align-top">
+                <td className="py-2 pr-4">{credential.name}</td>
+                <td className="py-2 pr-4">{PROVIDER_NAMES[credential.provider]}</td>
+                <td className="py-2 pr-4">{capabilities(credential.capabilities)}</td>
+                <td className="py-2 pr-4 font-mono" aria-label={`Key ending ${credential.masked_suffix}`}>
+                  ••••{credential.masked_suffix}
+                </td>
+                <td className="py-2 pr-4">
+                  <Status credential={credential} />
+                </td>
+                <td className="py-2 pr-4">{when(credential.last_checked_at)}</td>
+                {isOwner && (
+                  <td className="py-2">
+                    <CredentialActions
+                      credential={credential}
+                      busy={busy}
+                      onCheck={() => {
+                        start();
+                        check.mutate(credential.id, {
+                          onSuccess: (checked) => {
+                            setDone(checked.check_failure ? null : `${checked.name} passed its check.`);
+                          },
+                        });
+                      }}
+                      onRotate={(apiKey, finished) => {
+                        start();
+                        rotate.mutate(
+                          { credentialId: credential.id, apiKey },
+                          {
+                            onSuccess: (rotated) => {
+                              finished();
+                              setDone(`The key of ${rotated.name} was checked and replaced.`);
+                            },
+                          },
+                        );
+                      }}
+                      onDelete={() => {
+                        start();
+                        setDeleting(credential.name);
+                        remove.mutate(credential.id, {
+                          onSuccess: () => {
+                            setDone(`${credential.name} was deleted.`);
+                          },
+                        });
+                      }}
+                    />
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
