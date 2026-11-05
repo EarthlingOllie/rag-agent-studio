@@ -7,29 +7,58 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { SignInPage } from "./auth/SignInPage";
+import { SignUpPage } from "./auth/SignUpPage";
+import {
+  HomeRedirect,
+  OrganisationSettingsPage,
+  OrganisationShell,
+  ProjectsPage,
+  SignedInShell,
+} from "./shell/SignedInShell";
 import { StatusPage } from "./status/StatusPage";
 
-function Shell() {
+function StatusLayout() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
         <nav className="mx-auto flex max-w-4xl items-center gap-6 px-6 py-4" aria-label="Main">
-          <span className="font-semibold">RAG Agent Studio</span>
-          <Link to="/" className="text-sm text-slate-600 [&.active]:font-medium [&.active]:text-slate-900">
-            System status
+          <Link to="/" className="font-semibold">
+            RAG Agent Studio
           </Link>
         </nav>
       </header>
       <main className="mx-auto max-w-4xl px-6 py-8">
-        <Outlet />
+        <StatusPage />
       </main>
     </div>
   );
 }
 
-const rootRoute = createRootRoute({ component: Shell });
-const statusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: StatusPage });
-const routeTree = rootRoute.addChildren([statusRoute]);
+const rootRoute = createRootRoute({ component: Outlet });
+const statusRoute = createRoute({ getParentRoute: () => rootRoute, path: "/status", component: StatusLayout });
+const signUpRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sign-up", component: SignUpPage });
+const signInRoute = createRoute({ getParentRoute: () => rootRoute, path: "/sign-in", component: SignInPage });
+const signedInRoute = createRoute({ getParentRoute: () => rootRoute, id: "signed-in", component: SignedInShell });
+const homeRoute = createRoute({ getParentRoute: () => signedInRoute, path: "/", component: HomeRedirect });
+const organisationRoute = createRoute({
+  getParentRoute: () => signedInRoute,
+  path: "/organisations/$organisationId",
+  component: OrganisationShell,
+});
+const projectsRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/projects", component: ProjectsPage });
+const settingsRoute = createRoute({
+  getParentRoute: () => organisationRoute,
+  path: "/settings",
+  component: OrganisationSettingsPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  statusRoute,
+  signUpRoute,
+  signInRoute,
+  signedInRoute.addChildren([homeRoute, organisationRoute.addChildren([projectsRoute, settingsRoute])]),
+]);
 
 export function createAppRouter(history?: RouterHistory) {
   return createRouter(history ? { routeTree, history } : { routeTree });

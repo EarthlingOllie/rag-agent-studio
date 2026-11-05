@@ -3,19 +3,20 @@
 import asyncio
 
 from alembic import context
-from sqlalchemy import MetaData
 from sqlalchemy.engine import Connection
 
-from app.core.db import create_engine
+from app.core.db import Base, create_engine
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
+from app.tenancy import models as tenancy_models
 
 config = context.config
 if config.attributes.get("configure_logger", True):
     configure_logging("migrations")
 
-# Models register their tables on this metadata as they are introduced.
-target_metadata = MetaData()
+# Every model registers its table on Base.metadata; importing the modules is enough.
+_MODEL_MODULES = (tenancy_models,)
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

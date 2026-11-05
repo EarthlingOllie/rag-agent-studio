@@ -5,7 +5,7 @@ import json
 from app.openapi import render_openapi
 
 
-def test_openapi_document_describes_the_health_endpoints() -> None:
+def test_openapi_document_describes_every_endpoint() -> None:
     document = json.loads(render_openapi())
 
     operations = {
@@ -16,6 +16,11 @@ def test_openapi_document_describes_the_health_endpoints() -> None:
     assert operations == {
         "getHealth": ("/api/health", "get"),
         "getWorkerHealth": ("/api/health/worker", "get"),
+        "signUp": ("/api/auth/sign-up", "post"),
+        "signIn": ("/api/auth/sign-in", "post"),
+        "signOut": ("/api/auth/sign-out", "post"),
+        "getMe": ("/api/auth/me", "get"),
+        "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
     }
 
 

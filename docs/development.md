@@ -12,7 +12,7 @@ Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/
 | `make gen-client` | Regenerates `frontend/packages/api-client` from the backend's OpenAPI schema. |
 | `make check-client` | Fails if the committed API client differs from a fresh generation (CI runs this). |
 | `make e2e-install` | Installs the Chromium build Playwright uses. |
-| `make e2e` | Starts the stack with `docker compose up --wait`, then runs the Playwright suite (fixture checks and the Studio smoke test with axe). |
+| `make e2e` | Starts the stack with `docker compose up --wait`, then runs the Playwright suite (fixture checks and the Studio smoke and auth tests with axe). |
 | `make infra-check` | `terraform fmt`, `validate`, `terraform test`, TFLint and Checkov over every module in `infra/modules` and every environment in `infra/envs`. |
 | `make security` | gitleaks over the whole history (`secret-scan`), pip-audit and pnpm audit (`audit`), and a Trivy scan of the built images (`image-scan`). |
 | `make images` | Builds the API image (also used by the worker and Beat) and the Studio image. |
@@ -20,7 +20,7 @@ Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/
 
 Once `make dev` is up:
 
-- Studio: <http://localhost:5173> (the System status page shows API, database, Redis and worker health through the generated client)
+- Studio: <http://localhost:5173> (sign up there to create an Organisation; <http://localhost:5173/status> shows API, database, Redis and worker health through the generated client)
 - API: <http://localhost:8000/api/health>, OpenAPI docs at <http://localhost:8000/docs>
 - Mailpit: <http://localhost:8025>
 - RustFS console: <http://localhost:9001>
@@ -34,6 +34,14 @@ app.core.settings.SettingsError: Invalid service settings. DATABASE_URL: Field r
 ```
 
 `docker-compose.yml` supplies the local values; `.env.example` lists them.
+
+## Sign-in and tenancy
+
+- **Sessions.** Signing up or in starts a server-side session in Redis (key `session:<sha256 of the token>`, value the Member's ID, TTL `SESSION_TTL_SECONDS`, default 14 days). The browser holds only the opaque token, in the `studio_session` cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`). Every sign-in or sign-up issues a new token and ends the session the browser had before. Signing out deletes the session in Redis and clears the cookie. Browsers accept `Secure` cookies from `http://localhost`, so local development needs no TLS.
+- **Passwords** are hashed with argon2id (`argon2-cffi` defaults, RFC 9106). Sign-in answers `401 {"detail": "Email or password is incorrect"}` for an unknown email and a wrong password alike, and verifies against a dummy hash when the email is unknown so the timing matches too.
+- **Tenancy.** `organisations` and `members` are platform-level tables. Every other table carries a non-null `organisation_id`, and a test fails if one doesn't. Tenant data is read through `app/tenancy/repository.py` functions that take an `OrganisationScope`. Routes get one from the `Scope` dependency (`app/tenancy/policy.py`), which reads `{organisation_id}` from the path and answers 404 when the Member doesn't belong to it, exactly as for an Organisation that doesn't exist.
+- **Isolation test.** `backend/tests/integration/test_tenant_isolation.py` lists every Organisation-scoped route in `ORGANISATION_SCOPED_ROUTES` and checks that another tenant's Member gets 404 and a signed-out visitor 401. A guard test fails when the OpenAPI document has an `{organisation_id}` route that isn't listed, so adding a route means adding it there (with a `prepare` step if it needs resources inside the Organisation).
+- **Backend test fixtures** (`backend/tests/conftest.py`): `client` (HTTPS base URL, so the `Secure` cookie round-trips), `new_client` (another browser on the same app), `tenant_factory` (signs a new Member up in a fresh client, so they own a new Organisation) and `owner`. The test database is migrated to head once per run.
 
 ## Telemetry and logs
 

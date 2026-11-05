@@ -10,7 +10,7 @@ function statusOf(name: string) {
 }
 
 test("shows every part of the stack as operational when the API is healthy", async () => {
-  renderStudio("/");
+  renderStudio("/status");
 
   expect(await screen.findByText("All systems operational")).toBeInTheDocument();
   expect(statusOf("API")).toHaveTextContent("OK");
@@ -27,7 +27,7 @@ test("names the failing dependency when the API reports it unhealthy", async () 
   };
   server.use(http.get("*/api/health", () => HttpResponse.json(degraded, { status: 503 })));
 
-  renderStudio("/");
+  renderStudio("/status");
 
   expect(await screen.findByText("Some systems are unavailable")).toBeInTheDocument();
   expect(statusOf("Database")).toHaveTextContent("Unavailable");
@@ -38,7 +38,7 @@ test("shows the worker as unavailable when it does not reply", async () => {
   const silent: Schemas["WorkerHealthResponse"] = { status: "error", reply: null };
   server.use(http.get("*/api/health/worker", () => HttpResponse.json(silent, { status: 503 })));
 
-  renderStudio("/");
+  renderStudio("/status");
 
   expect(await screen.findByText("Worker did not reply")).toBeInTheDocument();
   expect(statusOf("Worker")).toHaveTextContent("Unavailable");
@@ -51,7 +51,7 @@ test("says the API cannot be reached when the request fails", async () => {
     http.get("*/api/health/worker", () => HttpResponse.error()),
   );
 
-  renderStudio("/");
+  renderStudio("/status");
 
   expect(await screen.findByText("The API could not be reached")).toBeInTheDocument();
   expect(statusOf("API")).toHaveTextContent("Unavailable");
@@ -61,7 +61,7 @@ test("says the API cannot be reached when the request fails", async () => {
 test("treats an unexpected API response as unavailable", async () => {
   server.use(http.get("*/api/health", () => new HttpResponse("Bad gateway", { status: 502 })));
 
-  renderStudio("/");
+  renderStudio("/status");
 
   expect(await screen.findByText("The API could not be reached")).toBeInTheDocument();
 });
@@ -69,7 +69,7 @@ test("treats an unexpected API response as unavailable", async () => {
 test("shows a checking state while the first health request is in flight", async () => {
   server.use(http.get("*/api/health", () => delay("infinite")));
 
-  renderStudio("/");
+  renderStudio("/status");
 
   expect(await screen.findByRole("status")).toHaveTextContent("Checking…");
   expect(statusOf("API")).toHaveTextContent("Checking…");

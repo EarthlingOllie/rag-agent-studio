@@ -5,6 +5,7 @@ description = "RAG Agent Studio API, worker and Beat"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "alembic>=1.20.1",
+    "argon2-cffi>=25.1.0",
     "asyncpg>=0.32.0",
     "celery[redis]>=5.6.3",
     "fastapi>=0.162.0",
@@ -48,6 +49,8 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
+# SQLAlchemy's async layer runs ORM code in greenlets; without this those lines go unmeasured.
+concurrency = ["greenlet", "thread"]
 source = ["app"]
 omit = ["migrations/*"]
 
