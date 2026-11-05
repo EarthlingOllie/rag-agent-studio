@@ -8,7 +8,10 @@ const LAST_OWNER = "An Organisation needs at least one Owner. Make someone else 
 async function openSettings(page: Page, tab?: "Members") {
   await page.goto("/");
   await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-  if (tab) await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: tab }).click();
+  if (tab) {
+    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: tab }).click();
+    await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
+  }
 }
 
 async function organisationId(page: Page): Promise<string> {
