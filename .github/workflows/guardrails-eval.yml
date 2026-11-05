@@ -1,0 +1,25 @@
+name: guardrails-eval
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    # Nightly run against the real model once ticket 08-07 adds the suite and provider secrets exist.
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  attack-suite:
+    name: Attack evaluation suite (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the Guardrail evaluation
+        # Placeholder until ticket 08-07: passes, and says so in the run summary.
+        run: |
+          make eval
+          echo "Guardrail evaluation is a passing placeholder until ticket 08-07 adds the attack-prompt suite." >> "$GITHUB_STEP_SUMMARY"

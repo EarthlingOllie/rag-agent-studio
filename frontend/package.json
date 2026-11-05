@@ -12,10 +12,14 @@
     "test": "vitest run --coverage",
     "build": "pnpm --filter @studio/studio build",
     "dev": "pnpm --filter @studio/studio dev",
-    "gen-client": "pnpm --filter @studio/api-client generate"
+    "gen-client": "pnpm --filter @studio/api-client generate",
+    "e2e": "playwright test",
+    "e2e:harness": "playwright test --project=harness"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
