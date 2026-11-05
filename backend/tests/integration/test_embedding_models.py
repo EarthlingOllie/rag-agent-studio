@@ -6,7 +6,7 @@ vectors of the registered dimension); a failing provider is a gateway with faili
 Ingestion runs eagerly through the fake converter. Everything is observed through the API.
 """
 
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from typing import Any
 
@@ -188,15 +188,12 @@ async def test_embedding_capable_credentials_offer_their_providers_models(
         owner, provider="openai", api_key=OPENAI_KEY, name="Chat only", capabilities=["chat"]
     )
     voyage = await added(owner, provider="voyage", api_key=VOYAGE_KEY, name="Voyage")
-    bedrock = created(await add_keys(owner, name="Bedrock", capabilities=["embeddings"]))
     editor = await member_factory(owner, "editor")
 
     listed = await choices(editor)
 
     assert [(c["model_id"], c["credential_name"]) for c in listed] == [
         (LOCAL, None),
-        ("amazon.titan-embed-text-v2:0", "Bedrock"),
-        ("cohere.embed-multilingual-v3", "Bedrock"),
         ("text-embedding-3-small", "OpenAI"),
         ("text-embedding-3-large", "OpenAI"),
         ("voyage-3.5", "Voyage"),
@@ -216,7 +213,6 @@ async def test_embedding_capable_credentials_offer_their_providers_models(
     }
     assert by_model["text-embedding-3-large"]["dimension"] == 3072
     assert by_model["text-embedding-3-small"]["credential_id"] == openai["id"]
-    assert by_model["amazon.titan-embed-text-v2:0"]["credential_id"] == bedrock["id"]
 
 
 async def test_another_organisations_credentials_are_not_offered(
@@ -480,20 +476,29 @@ async def test_vectors_of_the_wrong_size_fail_the_document(
     assert listed["status"] == "failed"
 
 
-async def test_a_bedrock_role_credential_can_be_chosen_but_cannot_embed_yet(
-    app: FastAPI, owner: SignedUpMember
+async def test_bedrock_models_are_not_offered_until_the_gateway_can_embed_with_them(
+    owner: SignedUpMember,
 ) -> None:
-    role = created(await add_role(owner, name="Bedrock role", capabilities=["embeddings"]))
+    await add_keys(owner, name="Bedrock keys", capabilities=["embeddings"])
+    await add_role(owner, name="Bedrock role", capabilities=["embeddings"])
+
+    assert [c["model_id"] for c in await choices(owner)] == [LOCAL]
+
+
+@pytest.mark.parametrize("add", [add_keys, add_role])
+async def test_a_bedrock_model_is_refused_until_the_gateway_can_embed_with_it(
+    owner: SignedUpMember, add: Callable[..., Awaitable[httpx.Response]]
+) -> None:
+    bedrock = created(await add(owner, name="Bedrock", capabilities=["embeddings"]))
     project_id = await create_project(owner)
 
-    chosen = await choose(owner, project_id, "amazon.titan-embed-text-v2:0", role["id"])
-    await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
+    response = await choose(owner, project_id, "amazon.titan-embed-text-v2:0", bedrock["id"])
 
-    assert chosen.status_code == 200
-    (listed,) = await documents(owner, project_id)
-    assert listed["status"] == "failed"
-    probe_answer = await probe(owner, project_id, "leave")
-    assert probe_answer.status_code == 502
+    assert (response.status_code, response.json()) == (
+        422,
+        {"detail": "Bedrock Embedding Models can't be used yet: choose a Voyage or OpenAI model."},
+    )
+    assert (await project(owner, project_id))["embedding_credential_id"] is None
 
 
 # The retrieval probe
@@ -623,4 +628,77 @@ async def test_a_provider_failure_while_probing_is_a_bad_gateway(
     assert (response.status_code, response.json()) == (
         502,
         {"detail": "The Embedding Model's provider couldn't embed the query. Try again shortly."},
+    )
+
+
+# A Project whose Embedding Model became unusable outside the choice path (written directly:
+# the choice refuses all three) is a setup problem the caller must fix, not a provider outage.
+
+
+async def _set_embedding(app: FastAPI, project_id: str, model_id: str, credential_id: Any) -> None:
+    async with app.state.sessionmaker() as session, session.begin():
+        await session.execute(
+            text(
+                "UPDATE projects SET embedding_model_id = :model,"
+                " embedding_credential_id = :credential WHERE id = :id"
+            ),
+            {"model": model_id, "credential": credential_id, "id": project_id},
+        )
+
+
+async def test_probing_with_a_bedrock_role_credential_says_why_it_cannot_embed(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    role = created(await add_role(owner, name="Bedrock role", capabilities=["embeddings"]))
+    project_id = await create_project(owner)
+    await _set_embedding(app, project_id, "amazon.titan-embed-text-v2:0", role["id"])
+
+    response = await probe(owner, project_id, "leave")
+
+    assert (response.status_code, response.json()) == (
+        409,
+        {
+            "detail": "The Project's Embedding Model can't be used: "
+            "Bedrock IAM-role credentials can't make model calls yet."
+        },
+    )
+
+
+async def test_probing_through_a_credential_without_the_embeddings_capability_says_why(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    voyage = await added(owner, provider="voyage", api_key=VOYAGE_KEY)
+    project_id = await create_project(owner)
+    await choose(owner, project_id, "voyage-3.5", voyage["id"])
+    async with app.state.sessionmaker() as session, session.begin():
+        await session.execute(
+            text("UPDATE provider_credentials SET capabilities = '{rerank}' WHERE id = :id"),
+            {"id": voyage["id"]},
+        )
+
+    response = await probe(owner, project_id, "leave")
+
+    assert (response.status_code, response.json()) == (
+        409,
+        {
+            "detail": "The Project's Embedding Model can't be used: "
+            "This credential can't be used for embeddings."
+        },
+    )
+
+
+async def test_probing_a_provider_model_without_its_credential_says_why(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    await _set_embedding(app, project_id, "voyage-3.5", None)
+
+    response = await probe(owner, project_id, "leave")
+
+    assert (response.status_code, response.json()) == (
+        409,
+        {
+            "detail": "The Project's Embedding Model can't be used: "
+            "voyage-3.5 has no Provider Credential. Choose the Embedding Model again."
+        },
     )

@@ -24,6 +24,10 @@ from app.gateway.gateway import ModelGateway
 CHARS_PER_TOKEN = 3
 
 
+class MissingCredentialError(Exception):
+    """A provider model has no Provider Credential to be called through."""
+
+
 class ApproximateTokenizer(BaseTokenizer):
     """Counts one token per ``CHARS_PER_TOKEN`` characters, rounded up."""
 
@@ -83,10 +87,14 @@ def resolve_embedder(
     gateway: ModelGateway,
 ) -> Embedder:
     """The embedder for a Project's Embedding Model: the local one, or the provider model
-    through the gateway with the Project's credential. Raises the gateway's errors when the
-    credential can't make the call."""
+    through the gateway with the Project's credential. Raises ``MissingCredentialError``, or
+    the gateway's ``ModelUnavailableError`` and ``UnsupportedCredentialError``, when the
+    credential can't make the call: setup problems that retrying won't fix."""
     if model.is_local:
         return local[model.id]
-    # A provider model is only ever chosen with its credential (enforced when it is chosen).
-    assert credential is not None  # noqa: S101
+    if credential is None:
+        # Choosing a provider model requires its credential; only data written another way lacks it.
+        raise MissingCredentialError(
+            f"{model.id} has no Provider Credential. Choose the Embedding Model again."
+        )
     return ProviderEmbedder(model, gateway.embedder(credential, model.id))

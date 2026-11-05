@@ -171,7 +171,7 @@ What a model call cost in US dollars: its token counts times the prices in effec
 _Avoid_: Spend, charge, bill
 
 **Embedding Model**:
-The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage, OpenAI or Bedrock) through an embedding-capable Provider Credential, which then becomes a Credential reference. Until re-embedding exists it can only change while the Project has no Documents.
+The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage or OpenAI; Bedrock once the model gateway can call it) through an embedding-capable Provider Credential, which then becomes a Credential reference. Until re-embedding exists it can only change while the Project has no Documents.
 
 **Embedding Model registry**:
 The list, kept in code, of every Embedding Model a Project can use, with its provider, vector dimension, tokenizer, token limit and the Capability its credential needs.

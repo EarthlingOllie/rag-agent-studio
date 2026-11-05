@@ -7,7 +7,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path.cwd()
-TESTS = "tests/integration/test_embedding_models.py"
+TESTS = [
+    "tests/integration/test_embedding_models.py",
+    "tests/integration/test_retrieval_probe_index.py",
+]
 
 MUTATIONS = [
     (
@@ -69,8 +72,8 @@ MUTATIONS = [
     (
         "the probe returns the farthest Chunks first",
         "backend/app/retrieval/probe.py",
-        ".order_by(distance, Chunk.id)",
-        ".order_by(distance.desc(), Chunk.id)",
+        ".order_by(distance)",
+        ".order_by(distance.desc())",
         "test_the_probe_returns_the_top_k_chunks_nearest_the_query",
     ),
     (
@@ -80,11 +83,47 @@ MUTATIONS = [
         "",
         "test_the_probe_returns_five_chunks_by_default",
     ),
+    # Round 2 (evaluator feedback).
+    (
+        "Bedrock models are offered",
+        "backend/app/projects/embedding.py",
+        "        if Provider(credential.provider) not in CALLABLE_PROVIDERS:\n            continue\n",
+        "",
+        "test_bedrock_models_are_not_offered_until_the_gateway_can_embed_with_them",
+    ),
+    (
+        "a Bedrock model is accepted",
+        "backend/app/projects/embedding.py",
+        "    if Provider(credential.provider) not in CALLABLE_PROVIDERS:\n        raise EmbeddingChoiceError(BEDROCK_NOT_YET)\n",
+        "",
+        "test_a_bedrock_model_is_refused_until_the_gateway_can_embed_with_it",
+    ),
+    (
+        "an unusable model isn't answered 409 with its reason",
+        "backend/app/projects/embedding_api.py",
+        "    except UNUSABLE_ERRORS as error:",
+        "    except ZeroDivisionError as error:",
+        "says_why",
+    ),
+    (
+        "the probe breaks distance ties by Chunk ID, so the HNSW index can't order it",
+        "backend/app/retrieval/probe.py",
+        ".order_by(distance)",
+        ".order_by(distance, Chunk.id)",
+        "test_the_probe_orders_on_the_models_hnsw_index",
+    ),
+    (
+        "the probe's index scan stops at hnsw.ef_search candidates",
+        "backend/app/retrieval/probe.py",
+        '    await session.execute(text("SET LOCAL hnsw.iterative_scan = strict_order"))\n',
+        "",
+        "test_the_index_finds_a_projects_chunks_behind_other_projects_nearer_ones",
+    ),
 ]
 
 
 def run(selection: str) -> int:
-    command = ["uv", "run", "pytest", "-q", "--no-cov", "-p", "no:randomly", TESTS, "-k", selection]
+    command = ["uv", "run", "pytest", "-q", "--no-cov", "-p", "no:randomly", *TESTS, "-k", selection]
     return subprocess.run(command, cwd=ROOT / "backend", capture_output=True, check=False).returncode
 
 
@@ -103,8 +142,8 @@ def main() -> int:
         caught += code != 0
         print(f"{verdict}: {name} ({path}) -> pytest -k '{tests}' exit {code}", flush=True)
     print(f"{caught}/{len(MUTATIONS)} mutations caught")
-    clean = run("embedding or probe or model")
-    print(f"unmodified code: {TESTS} exit {clean}")
+    clean = run("embedding or probe or model or index")
+    print(f"unmodified code: {' '.join(TESTS)} exit {clean}")
     return 0 if caught == len(MUTATIONS) and clean == 0 else 1
 
 

@@ -10,9 +10,9 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from app.auth.api import Db, ErrorResponse
 from app.documents.ports import IngestionPorts
-from app.embeddings.provider import resolve_embedder
+from app.embeddings.provider import MissingCredentialError, resolve_embedder
 from app.embeddings.registry import embedding_model
-from app.gateway.gateway import ModelGateway
+from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
 from app.projects import embedding, service
 from app.projects.api import PROJECT_ARCHIVED, ClockDep, ProjectOut, respond
 from app.retrieval.probe import probe
@@ -28,6 +28,10 @@ PROJECT_HAS_DOCUMENTS = (
     "Delete its Documents first."
 )
 PROVIDER_FAILED = "The Embedding Model's provider couldn't embed the query. Try again shortly."
+MODEL_UNUSABLE = "The Project's Embedding Model can't be used: {reason}"
+# Setup problems with the Project's model or credential: retrying won't help, so they are a 409
+# with the reason rather than the 502 kept for provider failures that may pass.
+UNUSABLE_ERRORS = (MissingCredentialError, ModelUnavailableError, UnsupportedCredentialError)
 PROBE_TOP_K_MAX = 50
 
 
@@ -138,7 +142,11 @@ async def set_project_embedding_model(
 @router.post(
     "/projects/{project_id}/retrieval-probe",
     operation_id="probeRetrieval",
-    responses=_errors((404, NOT_FOUND), (409, PROJECT_ARCHIVED), (502, PROVIDER_FAILED)),
+    responses=_errors(
+        (404, NOT_FOUND),
+        (409, f"{PROJECT_ARCHIVED} Or: {MODEL_UNUSABLE.format(reason='<why>')}"),
+        (502, PROVIDER_FAILED),
+    ),
 )
 async def probe_retrieval(
     project_id: uuid.UUID, body: ProbeRequest, scope: Scope, db: Db, request: Request
@@ -157,6 +165,10 @@ async def probe_retrieval(
     credential = await embedding.project_credential(db, project)
     try:
         embedder = resolve_embedder(model, credential, ports.embedders, gateway)
+    except UNUSABLE_ERRORS as error:
+        detail = MODEL_UNUSABLE.format(reason=error)
+        raise HTTPException(status.HTTP_409_CONFLICT, detail) from None
+    try:
         vector = await embedder.embed_query(body.query)
     except Exception:
         logger.exception(

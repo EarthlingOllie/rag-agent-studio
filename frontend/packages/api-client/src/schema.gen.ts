@@ -4891,7 +4891,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. */
+            /** @description This Project is archived. An Owner can restore it. Or: The Project's Embedding Model can't be used: <why> */
             409: {
                 headers: {
                     [name: string]: unknown;

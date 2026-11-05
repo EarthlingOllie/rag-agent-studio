@@ -156,7 +156,7 @@ variable "documents_bucket_arn" {
 }
 
 variable "credentials_key_arn" {
-  description = "KMS key for Provider Credential envelope encryption (ADR-0006). Only the API may use it."
+  description = "KMS key for Provider Credential envelope encryption (ADR-0006). The API seals and opens with it; the worker only opens (decrypts)."
   type        = string
 
   validation {

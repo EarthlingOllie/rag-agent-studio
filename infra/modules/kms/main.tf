@@ -1,6 +1,7 @@
 # KMS module (ticket 09-03): customer-managed keys with yearly rotation.
-# - credentials: wraps the per-record data keys of Provider Credentials (ADR-0006). Only the API task role
-#   will be granted it (ticket 09-04), so it is kept apart from the data key the worker also needs.
+# - credentials: wraps the per-record data keys of Provider Credentials (ADR-0006). The API task role
+#   seals and opens with it (ticket 09-04); the worker may only decrypt, to embed with a Project's provider
+#   Embedding Model (ticket 03-09). It is kept apart from the data key.
 # - data: encrypts data at rest in RDS, ElastiCache, the Documents bucket and the platform secrets.
 locals {
   module_name = "kms"
