@@ -161,3 +161,27 @@ test("publishing Instructions someone else has changed publishes nothing and pro
   expect(requests.filter((request) => request.route === "publish")).toEqual([]);
   expect(within(publish).queryByText(/could not be saved/)).not.toBeInTheDocument();
 });
+
+test("publishing twice in a row works on the revision the first publish saved", async () => {
+  const { requests } = setUp();
+  renderStudio(instructionsTab);
+  const source = await openMarkdownView();
+  const publish = screen.getByRole("form", { name: "Publish Instructions" });
+
+  for (const [markdown, note] of [
+    ["First.", "One"],
+    ["Second.", "Two"],
+  ] as const) {
+    await userEvent.clear(source);
+    await userEvent.type(source, markdown);
+    await userEvent.type(within(publish).getByLabelText("Note"), note);
+    await userEvent.click(within(publish).getByRole("button", { name: "Publish Instructions" }));
+    await within(publish).findByRole("status", {}, { timeout: 5000 });
+  }
+
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "publish")).toHaveLength(2);
+  // A save afterwards is on the latest revision too.
+  await userEvent.click(screen.getByRole("button", { name: "Save Instructions" }));
+  expect(await screen.findByText("Instructions saved", {}, { timeout: 5000 })).toBeInTheDocument();
+});

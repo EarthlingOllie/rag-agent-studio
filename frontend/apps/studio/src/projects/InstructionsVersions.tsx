@@ -30,8 +30,14 @@ export function PublishInstructionsForm({
   projectId,
   markdown,
   baseRevision,
+  onSaved,
   onStale,
-}: Target & { markdown: () => string; baseRevision: () => number; onStale: (latest: DraftInstructions) => void }) {
+}: Target & {
+  markdown: () => string;
+  baseRevision: () => number;
+  onSaved: (revision: number) => void;
+  onStale: (latest: DraftInstructions) => void;
+}) {
   const publish = usePublishInstructions(organisationId, projectId);
   const latest = useIsLatestInstructionsChange(organisationId, projectId, publish.submittedAt);
 
@@ -40,7 +46,7 @@ export function PublishInstructionsForm({
     const form = event.currentTarget;
     const note = new FormData(form).get("note") as string;
     publish.mutate(
-      { markdown: markdown(), note, baseRevision: baseRevision() },
+      { markdown: markdown(), note, baseRevision: baseRevision(), onSaved },
       {
         onSuccess: () => {
           form.reset();

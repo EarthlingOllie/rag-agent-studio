@@ -137,7 +137,18 @@ export function usePublishInstructions(organisationId: string, projectId: string
   const path = { organisation_id: organisationId, project_id: projectId };
   return useMutation({
     mutationKey: [...changeKey(organisationId, projectId), "publish"],
-    mutationFn: async ({ markdown, note, baseRevision }: { markdown: string; note: string; baseRevision: number }): Promise<InstructionsVersion> => {
+    mutationFn: async ({
+      markdown,
+      note,
+      baseRevision,
+      onSaved,
+    }: {
+      markdown: string;
+      note: string;
+      baseRevision: number;
+      /** Told the Draft's new revision once it is saved, before it is published. */
+      onSaved: (revision: number) => void;
+    }): Promise<InstructionsVersion> => {
       let saved;
       try {
         saved = await saveDraft(path, markdown, baseRevision);
@@ -147,6 +158,7 @@ export function usePublishInstructions(organisationId: string, projectId: string
         throw new DraftNotSavedError(status, detail);
       }
       queryClient.setQueryData(instructionsKey(organisationId, projectId), saved);
+      onSaved(saved.revision);
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions", {
         params: { path },
         body: { note },

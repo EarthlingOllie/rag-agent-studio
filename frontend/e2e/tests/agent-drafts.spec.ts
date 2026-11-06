@@ -61,8 +61,8 @@ test.describe("Diffs and Draft management", () => {
     const compare = page.getByRole("region", { name: "Compare" });
     const versionIds = (await (await page.request.get(`${agentApi}/versions`)).json()) as { versions: { id: string; number: number }[] };
     const idOf = (number: number) => versionIds.versions.find((version) => version.number === number)?.id ?? "";
-    await compare.getByLabel("From").selectOption(idOf(1));
-    await compare.getByLabel("To").selectOption(idOf(2));
+    await compare.getByRole("combobox", { name: "From" }).selectOption(idOf(1));
+    await compare.getByRole("combobox", { name: "To" }).selectOption(idOf(2));
     await expect(compare.getByRole("list", { name: "Behaviour › System prompt changes" }).getByRole("listitem")).toHaveText(
       ["Unchanged:   Answer from the handbook.", "Added: + Be brief."],
       { timeout: 15_000 },

@@ -120,6 +120,9 @@ function InstructionsForm({
           projectId={projectId}
           markdown={() => current.current}
           baseRevision={() => base.current}
+          onSaved={(revision) => {
+            base.current = revision;
+          }}
           onStale={setConflict}
         />
       )}
