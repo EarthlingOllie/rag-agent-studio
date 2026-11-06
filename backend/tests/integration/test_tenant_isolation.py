@@ -310,6 +310,22 @@ async def _an_agent_draft(owner: SignedUpMember, add_member: MemberFactory) -> P
     return params, {"retrieval": {"top_k": 3}}
 
 
+async def _an_archived_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    archived = await owner.client.post(
+        _AGENT.format(organisation_id=owner.organisation_id, **params) + "/archive"
+    )
+    assert archived.status_code == 200, archived.text
+    return params, None
+
+
+async def _an_archived_agent_to_delete(
+    owner: SignedUpMember, add_member: MemberFactory
+) -> Prepared:
+    params, _ = await _an_archived_agent(owner, add_member)
+    return params, {"confirm_name": "Isolation Agent"}
+
+
 async def _a_playground_conversation(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _an_agent(owner, add_member)
     started = await owner.client.post(
@@ -405,6 +421,9 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", PROJECTS + "/{project_id}/agents", EDITOR, _new_agent_body),
     ScopedRoute("GET", _AGENT, EDITOR, _an_agent),
     ScopedRoute("PUT", _AGENT + "/draft", EDITOR, _an_agent_draft),
+    ScopedRoute("POST", _AGENT + "/archive", EDITOR, _an_agent),
+    ScopedRoute("POST", _AGENT + "/restore", OWNER, _an_archived_agent),
+    ScopedRoute("DELETE", _AGENT, OWNER, _an_archived_agent_to_delete),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),

@@ -105,15 +105,15 @@ The Organisation `make seed` builds for showing the product: Northwind Traders, 
 _Avoid_: Sample org, test tenant, sandbox
 
 **Archive**:
-To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
+To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. An archived Agent leaves the Agents list, its Draft can't be changed and the Playground starts no Conversation with it. Any Member can archive. Permanent deletion is a separate action.
 _Avoid_: Disable, soft delete
 
 **Restore**:
-To bring an archived Project back to the Projects list so it serves again. Only Owners can restore.
+To bring an archived Agent or Project back to its list so it serves again. Only Owners can restore.
 _Avoid_: Unarchive, undelete
 
 **Permanent deletion**:
-Removing an archived Project for good: its Documents, Chunks, stored files, Tags, Agents and Conversations. Only an Owner can do it, only once the Project is archived, and only after typing the Project's name exactly. It runs as a background cascade and can't be undone; the Audit Event records who deleted the Project and what it held.
+Removing an archived Agent or Project for good. An Agent takes its Draft, Conversations and their Messages with it, which releases its Credential references; a Project takes its Documents, Chunks, stored files, Tags, Agents and Conversations, in a background cascade. Only an Owner can do it, only once the Agent or Project is archived, and only after typing its name exactly. It can't be undone; the Audit Event records who deleted it and what it held.
 _Avoid_: Purge, hard delete
 
 ## Models
