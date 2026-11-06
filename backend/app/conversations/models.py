@@ -41,6 +41,14 @@ DRAFT = "draft"
 VERSION = "version"
 
 
+class InstructionsSource(enum.StrEnum):
+    """Which Project Instructions an answer ran with: the Instructions Draft (the Playground's
+    default) or a chosen Instructions Version (named by ``instructions_version_id``)."""
+
+    DRAFT = "draft"
+    VERSION = "version"
+
+
 class Conversation(IdMixin, Base):
     __tablename__ = "conversations"
 
@@ -74,6 +82,16 @@ class Message(IdMixin, Base):
     content: Mapped[str] = mapped_column(Text)
     # Set on assistant Messages only.
     config_source: Mapped[str | None] = mapped_column(String(40))
+    # The Project Instructions the answer ran with: an ``InstructionsSource``, and the Version
+    # when it was one. Versions only go with their Project, which takes its Messages with it.
+    instructions_source: Mapped[str | None] = mapped_column(String(20))
+    instructions_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "project_instructions_versions.id",
+            name="fk_messages_instructions_version",
+            ondelete="CASCADE",
+        )
+    )
     # The Agent Version that answered; None for a Draft answer (and for questions).
     agent_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agent_versions.id"))
     model_provider: Mapped[str | None] = mapped_column(String(40))
