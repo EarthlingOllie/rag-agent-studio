@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-03: Document viewer](03-document-viewer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The injection-classifier port has a heuristic adapter and a rule-driven fake
 - [ ] The ingestion scan flags Chunks with a label, score and reason
