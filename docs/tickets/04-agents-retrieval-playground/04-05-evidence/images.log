@@ -16,75 +16,329 @@
 #4 transferring context: 125B done
 #4 DONE 0.0s
 
-#5 [internal] load build context
-#5 DONE 0.0s
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 ...
 
-#6 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
-#6 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.1s done
-#6 DONE 0.1s
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 186.71kB 0.0s done
+#6 DONE 0.0s
 
-#7 [context sandboxca] load from client
-#7 transferring sandboxca: 36B done
-#7 DONE 0.0s
+#7 [internal] load build context
+#7 transferring context: 2.17MB 0.1s done
+#7 DONE 0.1s
 
-#5 [internal] load build context
-#5 transferring context: 2.15MB 0.2s done
-#5 DONE 0.2s
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 extracting sha256:37fb86c2a767b88d500c6872195f88078f64765fe0d2f9cc375cc2efbd4c0a41
+#5 extracting sha256:37fb86c2a767b88d500c6872195f88078f64765fe0d2f9cc375cc2efbd4c0a41 0.8s done
+#5 DONE 0.9s
 
-#8 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
-#8 CACHED
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 extracting sha256:0069ea31add00b9f63dbb3f0bcee44990654c5e2c17ccfeaeae47e74edf44498 0.1s done
+#5 extracting sha256:faa890a31e98e11bc3138d9549c86441024fdb24bd555bb0bca17dc9a6c5b565
+#5 extracting sha256:faa890a31e98e11bc3138d9549c86441024fdb24bd555bb0bca17dc9a6c5b565 0.4s done
+#5 extracting sha256:f7a79299dedd5c817d47e3f61cf6eecae73b92cb193a1ef52180a46b0161c50a
+#5 extracting sha256:f7a79299dedd5c817d47e3f61cf6eecae73b92cb193a1ef52180a46b0161c50a done
+#5 DONE 1.4s
 
-#9 [build 5/6] COPY pyproject.toml uv.lock ./
-#9 CACHED
+#8 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 0.163 Ign:1 http://deb.debian.org/debian trixie InRelease
+#8 0.163 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 0.163 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 ...
 
-#10 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
-#10 CACHED
+#9 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#9 DONE 0.2s
 
-#11 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
-#11 CACHED
+#10 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#10 2.598 Collecting uv==0.11.32
+#10 2.934   Downloading uv-0.11.32-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+#10 3.004 Downloading uv-0.11.32-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (27.0 MB)
+#10 4.216    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 27.0/27.0 MB 23.8 MB/s  0:00:01
+#10 4.334 Installing collected packages: uv
+#10 4.687 Successfully installed uv-0.11.32
+#10 4.687 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#10 4.688 
+#10 4.688 [notice] A new release of pip is available: 26.2.2 -> 26.3
+#10 4.688 [notice] To update, run: pip install --upgrade pip
+#10 DONE 4.9s
 
-#12 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
-#12 CACHED
+#8 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 1.168 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 1.168 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 1.169 Ign:1 http://deb.debian.org/debian trixie InRelease
+#8 3.171 Ign:1 http://deb.debian.org/debian trixie InRelease
+#8 3.171 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 3.175 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 ...
+
+#11 [build 4/6] WORKDIR /app
+#11 DONE 0.0s
+
+#12 [build 5/6] COPY pyproject.toml uv.lock ./
+#12 DONE 0.0s
 
 #13 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
-#13 CACHED
+#13 0.176 Using CPython 3.13.18 interpreter at: /usr/local/bin/python3
+#13 0.178 Creating virtual environment at: /opt/venv
+#13 0.876 Downloading pygments (1.2MiB)
+#13 0.876 Downloading tokenizers (3.2MiB)
+#13 0.876 Downloading tiktoken (1.1MiB)
+#13 0.876 Downloading uvloop (4.3MiB)
+#13 0.876 Downloading numpy (15.9MiB)
+#13 0.876 Downloading pandas (11.4MiB)
+#13 0.876 Downloading sqlalchemy (4.4MiB)
+#13 0.876 Downloading pydantic-core (2.1MiB)
+#13 0.876 Downloading pillow (6.8MiB)
+#13 0.876 Downloading cryptography (4.5MiB)
+#13 0.876 Downloading lxml (5.0MiB)
+#13 0.876 Downloading openai (2.3MiB)
+#13 0.876 Downloading hf-xet (4.1MiB)
+#13 0.877 Downloading onnxruntime (22.7MiB)
+#13 0.878 Downloading transformers (12.4MiB)
+#13 0.878 Downloading asyncpg (3.6MiB)
+#13 0.879 Downloading botocore (15.5MiB)
+#13 0.880 Downloading docling-slim (1.1MiB)
+#13 0.881 Downloading pydantic-ai-slim (2.7MiB)
+#13 0.883 Downloading anthropic (2.3MiB)
+#13 ...
+
+#8 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 7.177 Err:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 7.177   Could not resolve 'deb.debian.org'
+#8 7.177 Err:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 7.177   Could not resolve 'deb.debian.org'
+#8 7.188 Err:1 http://deb.debian.org/debian trixie InRelease
+#8 7.188   Could not resolve 'deb.debian.org'
+#8 7.195 Reading package lists...
+#8 7.209 W: Failed to fetch http://deb.debian.org/debian/dists/trixie/InRelease  Could not resolve 'deb.debian.org'
+#8 7.209 W: Failed to fetch http://deb.debian.org/debian/dists/trixie-updates/InRelease  Could not resolve 'deb.debian.org'
+#8 7.209 W: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Could not resolve 'deb.debian.org'
+#8 7.209 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#8 7.228 Reading package lists...
+#8 7.239 Building dependency tree...
+#8 7.240 Reading state information...
+#8 7.243 Calculating upgrade...
+#8 7.252 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#8 DONE 7.5s
 
 #14 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
-#14 CACHED
+#14 1.478 Found existing installation: pip 26.2.2
+#14 1.522 Uninstalling pip-26.2.2:
+#14 1.646   Successfully uninstalled pip-26.2.2
+#14 1.669 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 DONE 2.0s
 
-#15 [build 4/6] WORKDIR /app
-#15 CACHED
+#13 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#13 2.713  Downloaded pygments
+#13 2.723  Downloaded docling-slim
+#13 2.731  Downloaded tiktoken
+#13 3.564  Downloaded pydantic-core
+#13 3.633  Downloaded openai
+#13 3.655  Downloaded anthropic
+#13 3.848  Downloaded pydantic-ai-slim
+#13 4.180  Downloaded tokenizers
+#13 4.401  Downloaded asyncpg
+#13 4.604  Downloaded hf-xet
+#13 4.648  Downloaded uvloop
+#13 4.702  Downloaded sqlalchemy
+#13 4.745  Downloaded cryptography
+#13 4.924  Downloaded lxml
+#13 5.358  Downloaded pillow
+#13 6.310  Downloaded pandas
+#13 6.477  Downloaded transformers
+#13 6.900  Downloaded botocore
+#13 6.975  Downloaded numpy
+#13 7.307  Downloaded onnxruntime
+#13 7.308 Prepared 151 packages in 7.11s
+#13 9.174 Installed 151 packages in 1.85s
+#13 20.54 Bytecode compiled 15209 files in 11.36s
+#13 20.54  + alembic==1.20.1
+#13 20.54  + amqp==5.4.2
+#13 20.54  + annotated-doc==0.0.5
+#13 20.54  + annotated-types==0.8.0
+#13 20.54  + anthropic==2.5.0
+#13 20.54  + anyio==4.16.0
+#13 20.54  + argon2-cffi==25.1.0
+#13 20.54  + argon2-cffi-bindings==26.1.0
+#13 20.54  + asgiref==3.13.0
+#13 20.54  + asyncpg==0.32.0
+#13 20.54  + attrs==26.1.0
+#13 20.54  + beautifulsoup4==4.15.0
+#13 20.54  + billiard==4.3.2
+#13 20.54  + boto3==1.43.124
+#13 20.54  + botocore==1.43.124
+#13 20.54  + celery==5.6.3
+#13 20.54  + certifi==2026.10.23
+#13 20.54  + cffi==2.1.1
+#13 20.54  + charset-normalizer==3.5.2
+#13 20.54  + click==8.5.0
+#13 20.54  + click-didyoumean==0.3.1
+#13 20.54  + click-plugins==1.1.1.2
+#13 20.54  + click-repl==0.4.1
+#13 20.54  + cryptography==50.0.2
+#13 20.54  + defusedxml==0.7.1
+#13 20.54  + dill==0.4.1
+#13 20.54  + doclang==0.9.0
+#13 20.54  + docling-core==2.106.0
+#13 20.54  + docling-slim==2.147.0
+#13 20.54  + docstring-parser==0.18.0
+#13 20.54  + executing==2.3.0
+#13 20.54  + fastapi==0.162.0
+#13 20.54  + fastembed==0.9.1
+#13 20.54  + filelock==4.2.9
+#13 20.54  + filetype==1.2.0
+#13 20.54  + flatbuffers==25.12.19
+#13 20.54  + fsspec==2026.9.0
+#13 20.54  + genai-prices==0.2.1
+#13 20.54  + googleapis-common-protos==1.76.0
+#13 20.54  + greenlet==3.5.6
+#13 20.54  + griffelib==2.4.1
+#13 20.54  + h11==0.16.0
+#13 20.54  + hf-xet==1.8.0
+#13 20.54  + httpcore==1.0.9
+#13 20.54  + httpcore2==2.16.0
+#13 20.54  + httptools==0.9.0
+#13 20.54  + httpx==0.28.1
+#13 20.54  + httpx2==2.16.0
+#13 20.54  + huggingface-hub==1.33.0
+#13 20.54  + idna==3.20
+#13 20.54  + jiter==0.18.0
+#13 20.54  + jmespath==1.1.0
+#13 20.54  + jsonref==1.1.0
+#13 20.54  + jsonschema==4.26.0
+#13 20.54  + jsonschema-specifications==2025.9.1
+#13 20.54  + kombu==5.7.0
+#13 20.54  + langcodes==3.5.1
+#13 20.54  + latex2mathml==3.81.1
+#13 20.54  + logfire==5.4.0
+#13 20.54  + logfire-api==5.4.0
+#13 20.54  + logfire-sdk==5.4.0
+#13 20.54  + loguru==0.7.3
+#13 20.54  + lxml==6.1.3
+#13 20.54  + mako==1.4.3
+#13 20.54  + markdown-it-py==4.2.0
+#13 20.54  + marko==2.2.5
+#13 20.54  + markupsafe==3.0.4
+#13 20.54  + mdurl==0.1.2
+#13 20.54  + mmh3==5.3.1
+#13 20.54  + mpire==2.10.2
+#13 20.54  + multiprocess==0.70.19
+#13 20.54  + numpy==2.5.4
+#13 20.54  + onnxruntime==1.31.1
+#13 20.54  + openai==3.46.0
+#13 20.54  + opentelemetry-api==1.45.2
+#13 20.54  + opentelemetry-exporter-http-transport==0.66b2
+#13 20.54  + opentelemetry-exporter-otlp-common==0.66b2
+#13 20.54  + opentelemetry-exporter-otlp-proto-common==1.45.2
+#13 20.54  + opentelemetry-exporter-otlp-proto-http==1.45.2
+#13 20.54  + opentelemetry-instrumentation==0.66b2
+#13 20.54  + opentelemetry-instrumentation-asgi==0.66b2
+#13 20.54  + opentelemetry-instrumentation-celery==0.66b2
+#13 20.54  + opentelemetry-instrumentation-fastapi==0.66b2
+#13 20.54  + opentelemetry-instrumentation-httpx==0.66b2
+#13 20.54  + opentelemetry-instrumentation-sqlalchemy==0.66b2
+#13 20.54  + opentelemetry-proto==1.45.2
+#13 20.54  + opentelemetry-sdk==1.45.2
+#13 20.54  + opentelemetry-semantic-conventions==0.66b2
+#13 20.54  + opentelemetry-util-http==0.66b2
+#13 20.54  + packaging==26.3
+#13 20.54  + pandas==3.1.1
+#13 20.54  + pgvector==0.5.1
+#13 20.54  + pillow==13.0.0
+#13 20.54  + pluggy==1.7.0
+#13 20.54  + prompt-toolkit==3.0.53
+#13 20.54  + protobuf==7.36.2
+#13 20.54  + py-rust-stemmers==0.1.8
+#13 20.54  + pycparser==3.12
+#13 20.54  + pydantic==2.14.2
+#13 20.54  + pydantic-ai-slim==2.66.0
+#13 20.55  + pydantic-core==2.50.2
+#13 20.55  + pydantic-graph==2.66.0
+#13 20.55  + pydantic-settings==2.16.2
+#13 20.55  + pygments==2.21.0
+#13 20.55  + pylatexenc==2.11
+#13 20.55  + pyotp==2.10.0
+#13 20.55  + python-dateutil==2.9.0.post0
+#13 20.55  + python-docx==1.2.0
+#13 20.55  + python-dotenv==1.2.4
+#13 20.55  + python-pptx==1.0.2
+#13 20.55  + pyyaml==6.0.3
+#13 20.55  + redis==8.1.0
+#13 20.55  + referencing==0.37.0
+#13 20.55  + regex==2026.9.29
+#13 20.55  + requests==2.34.2
+#13 20.55  + rich==15.0.0
+#13 20.55  + rpds-py==2026.9.1
+#13 20.55  + s3transfer==0.19.3
+#13 20.55  + safetensors==0.8.0
+#13 20.55  + segno==1.6.6
+#13 20.55  + semchunk==3.2.5
+#13 20.55  + shellingham==1.5.4
+#13 20.55  + six==1.17.0
+#13 20.55  + sniffio==1.3.1
+#13 20.55  + soupsieve==4.0.1
+#13 20.55  + sqlalchemy==2.1.8
+#13 20.55  + starlette==1.10.0
+#13 20.55  + tabulate==0.10.0
+#13 20.55  + tiktoken==0.14.0
+#13 20.55  + tokenizers==0.23.3
+#13 20.55  + tqdm==4.70.1
+#13 20.55  + transformers==5.22.1
+#13 20.55  + tree-sitter==0.26.0
+#13 20.55  + tree-sitter-c==0.24.2
+#13 20.55  + tree-sitter-javascript==0.25.0
+#13 20.55  + tree-sitter-python==0.25.0
+#13 20.55  + tree-sitter-typescript==0.23.2
+#13 20.55  + truststore==0.10.5
+#13 20.55  + typer==0.27.3
+#13 20.55  + typing-extensions==4.16.0
+#13 20.55  + typing-inspection==0.4.5
+#13 20.55  + tzlocal==5.4.5
+#13 20.55  + urllib3==2.8.0
+#13 20.55  + uvicorn==0.54.0
+#13 20.55  + uvloop==0.23.0
+#13 20.55  + vine==5.1.0
+#13 20.55  + watchfiles==1.3.0
+#13 20.55  + wcwidth==0.9.4
+#13 20.55  + websockets==17.4
+#13 20.55  + wrapt==2.5.2
+#13 20.55  + xlsxwriter==3.3.1
+#13 DONE 21.8s
+
+#15 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
+#15 DONE 3.5s
 
 #16 [stage-1  5/10] WORKDIR /app
-#16 CACHED
+#16 DONE 0.2s
 
 #17 [stage-1  6/10] COPY alembic.ini ./
-#17 CACHED
+#17 DONE 0.0s
 
 #18 [stage-1  7/10] COPY app ./app
-#18 DONE 0.3s
+#18 DONE 0.0s
 
 #19 [stage-1  8/10] COPY migrations ./migrations
 #19 DONE 0.0s
 
 #20 [stage-1  9/10] RUN mkdir -p /opt/models/docling     && if [ "false" = "true" ]; then         python -c "from app.embeddings.local import LocalEmbedder as E; e = E(); e.embed_passages(['warm up']); e.tokenizer(512)"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'))";         fi;     fi
-#20 DONE 0.4s
+#20 DONE 0.1s
 
 #21 [stage-1 10/10] RUN useradd --system --uid 10001 studio
-#21 0.139 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
-#21 DONE 0.3s
+#21 0.078 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.1s
 
 #22 exporting to image
 #22 exporting layers
-#22 exporting layers 0.4s done
-#22 exporting manifest sha256:d6659032c25e6405a5d1255f540b750c20827a773fac8f004d2175a6c732b831 0.0s done
-#22 exporting config sha256:081ed38694e9ef0a029e8b541d12cb0ca2f8284b7f0b81681a3f8f5ad7f8ce62 0.0s done
-#22 exporting attestation manifest sha256:61cad8265af01e181f8386295237fc36fba2fe2dd5252710d70b501fe3fe8336 0.1s done
-#22 exporting manifest list sha256:98e6c9fec6ed08af54ebce46c1ab584cffc760b65737909d70c013183c47c58a
-#22 exporting manifest list sha256:98e6c9fec6ed08af54ebce46c1ab584cffc760b65737909d70c013183c47c58a done
+#22 exporting layers 27.0s done
+#22 exporting manifest sha256:4170c985257df904a756d84773fc170bf0cced54e658016ec7104ca758197388 done
+#22 exporting config sha256:f4d4d50119d3dd17fc2edca0086d5dd2b1edeb3c21bafd938281986f5e1bdc4e done
+#22 exporting attestation manifest sha256:09621ff223488f26b8bcc6645dfc87ce63f550c5e7d1dee53c61f0bea8c72ca5 done
+#22 exporting manifest list sha256:ad949b3c7036d7733686c6e53c85484389c72517ef615a74d19a80e398cb4784 done
 #22 naming to docker.io/rag-agent-studio/api:0405 done
-#22 unpacking to docker.io/rag-agent-studio/api:0405 0.1s done
-#22 DONE 0.7s
+#22 unpacking to docker.io/rag-agent-studio/api:0405
+#22 unpacking to docker.io/rag-agent-studio/api:0405 6.9s done
+#22 DONE 34.0s
 + docker build -t rag-agent-studio/studio:0405 frontend (sandbox CA)
 #0 building with "default" instance using docker driver
 
@@ -92,85 +346,179 @@
 #1 transferring dockerfile: 1.60kB done
 #1 DONE 0.0s
 
-#2 [context sandboxca] load .dockerignore
-#2 transferring sandboxca: 2B done
-#2 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/node:22-slim
+#2 DONE 0.0s
 
-#3 [internal] load metadata for docker.io/library/node:22-slim
-#3 DONE 0.1s
+#3 [context sandboxca] load .dockerignore
+#3 transferring sandboxca: 2B done
+#3 DONE 0.0s
 
 #4 [internal] load .dockerignore
 #4 transferring context: 104B done
 #4 DONE 0.0s
 
-#5 [internal] load build context
-#5 DONE 0.0s
+#5 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
+#5 ...
 
 #6 [context sandboxca] load from client
-#6 DONE 0.0s
+#6 transferring sandboxca: 186.71kB 0.0s done
+#6 DONE 0.1s
 
-#7 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
-#7 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
-#7 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.1s done
+#7 [internal] load build context
+#7 transferring context: 1.73MB 0.1s done
 #7 DONE 0.1s
 
-#6 [context sandboxca] load from client
-#6 transferring sandboxca: 36B done
-#6 DONE 0.0s
+#5 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 extracting sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3
+#5 extracting sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 0.8s done
+#5 DONE 0.9s
 
-#5 [internal] load build context
-#5 transferring context: 1.69MB 0.1s done
-#5 DONE 0.1s
+#5 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 extracting sha256:3c5f479ca65a7b3147df7d9724ac331de960e91ea4034826b7a5c3f9eed57934 0.0s done
+#5 extracting sha256:5d0c6c5710f1cdc2a30a47c236d5a75ab16d2785fc0aed022b46273ffafd13c6
+#5 extracting sha256:5d0c6c5710f1cdc2a30a47c236d5a75ab16d2785fc0aed022b46273ffafd13c6 1.2s done
+#5 extracting sha256:1b7992cf5ea802ac4b2bcb787738f6040d742e27f6d10e1395bee16b0a3c6d03
+#5 extracting sha256:1b7992cf5ea802ac4b2bcb787738f6040d742e27f6d10e1395bee16b0a3c6d03 0.1s done
+#5 extracting sha256:ff2c4258f9cf850b921ff6d790c9a52585dca4811afdb2b78f92be33696d8b5d done
+#5 DONE 2.3s
 
-#8 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
-#8 CACHED
+#8 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 0.093 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#8 0.093 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#8 0.093 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#8 1.094 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#8 1.094 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#8 1.094 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#8 ...
 
-#9 [install  4/10] WORKDIR /app
-#9 CACHED
+#9 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#9 DONE 1.6s
 
-#10 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-#10 CACHED
+#10 [install  3/10] RUN corepack enable
+#10 DONE 0.2s
 
-#11 [install  6/10] COPY apps/studio/package.json apps/studio/
-#11 CACHED
+#8 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 ...
 
-#12 [install  7/10] COPY packages/api-client/package.json packages/api-client/
-#12 CACHED
+#11 [install  4/10] WORKDIR /app
+#11 DONE 0.0s
 
-#13 [install  3/10] RUN corepack enable
-#13 CACHED
+#12 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#12 DONE 0.0s
 
-#14 [install  8/10] COPY packages/ui/package.json packages/ui/
-#14 CACHED
+#13 [install  6/10] COPY apps/studio/package.json apps/studio/
+#13 DONE 0.0s
 
-#15 [install  9/10] RUN pnpm install --frozen-lockfile
-#15 CACHED
+#14 [install  7/10] COPY packages/api-client/package.json packages/api-client/
+#14 DONE 0.0s
 
-#16 [install 10/10] COPY . .
-#16 DONE 0.2s
+#15 [install  8/10] COPY packages/ui/package.json packages/ui/
+#15 DONE 0.0s
 
-#17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
-#17 CACHED
+#16 [install  9/10] RUN pnpm install --frozen-lockfile
+#16 0.248 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.28.0.tgz
+#16 1.489 Scope: all 4 workspace projects
+#16 1.595 Lockfile is up to date, resolution step is skipped
+#16 1.647 Progress: resolved 1, reused 0, downloaded 0, added 0
+#16 1.741 Packages: +482
+#16 1.741 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#16 2.191 
+#16 2.191    ╭───────────────────────────────────────────────╮
+#16 2.191    │                                               │
+#16 2.191    │     Update available! 10.28.0 → 12.18.0.      │
+#16 2.191    │     Changelog: https://pnpm.io/v/12.18.0      │
+#16 2.191    │   To update, run: corepack use pnpm@12.18.0   │
+#16 2.191    │                                               │
+#16 2.191    ╰───────────────────────────────────────────────╯
+#16 2.191 
+#16 2.648 Progress: resolved 482, reused 0, downloaded 17, added 17
+#16 3.652 Progress: resolved 482, reused 0, downloaded 56, added 55
+#16 4.653 Progress: resolved 482, reused 0, downloaded 96, added 96
+#16 ...
 
-#18 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
-#18 CACHED
+#8 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 3.095 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#8 3.095 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#8 3.096 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#8 7.096 Err:1 http://deb.debian.org/debian bookworm InRelease
+#8 7.098   Could not resolve 'deb.debian.org'
+#8 7.098 Err:2 http://deb.debian.org/debian bookworm-updates InRelease
+#8 7.098   Could not resolve 'deb.debian.org'
+#8 7.104 Err:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#8 7.104   Could not resolve 'deb.debian.org'
+#8 7.109 Reading package lists...
+#8 7.133 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Could not resolve 'deb.debian.org'
+#8 7.133 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm-updates/InRelease  Could not resolve 'deb.debian.org'
+#8 7.133 W: Failed to fetch http://deb.debian.org/debian-security/dists/bookworm-security/InRelease  Could not resolve 'deb.debian.org'
+#8 7.133 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#8 7.140 Reading package lists...
+#8 7.151 Building dependency tree...
+#8 7.151 Reading state information...
+#8 7.161 Calculating upgrade...
+#8 7.167 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#8 DONE 7.3s
+
+#17 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#17 DONE 0.4s
+
+#16 [install  9/10] RUN pnpm install --frozen-lockfile
+#16 5.665 Progress: resolved 482, reused 0, downloaded 132, added 131
+#16 6.657 Progress: resolved 482, reused 0, downloaded 162, added 161
+#16 7.658 Progress: resolved 482, reused 0, downloaded 194, added 195
+#16 8.666 Progress: resolved 482, reused 0, downloaded 230, added 230
+#16 9.665 Progress: resolved 482, reused 0, downloaded 257, added 257
+#16 10.68 Progress: resolved 482, reused 0, downloaded 289, added 290
+#16 11.68 Progress: resolved 482, reused 0, downloaded 329, added 330
+#16 12.69 Progress: resolved 482, reused 0, downloaded 370, added 370
+#16 13.68 Progress: resolved 482, reused 0, downloaded 405, added 406
+#16 14.68 Progress: resolved 482, reused 0, downloaded 446, added 447
+#16 15.56 Progress: resolved 482, reused 0, downloaded 481, added 482, done
+#16 16.00 
+#16 16.00 devDependencies:
+#16 16.00 + @axe-core/playwright 4.14.0
+#16 16.00 + @eslint/js 10.0.1
+#16 16.00 + @playwright/test 1.64.1
+#16 16.00 + @testing-library/jest-dom 7.0.1
+#16 16.00 + @testing-library/react 16.3.3
+#16 16.00 + @testing-library/user-event 14.6.8
+#16 16.00 + @types/node 22.20.5
+#16 16.00 + @types/react 19.3.0
+#16 16.00 + @types/react-dom 19.3.0
+#16 16.00 + @vitejs/plugin-react 6.2.1
+#16 16.00 + @vitest/coverage-v8 5.1.0
+#16 16.00 + eslint 10.14.0
+#16 16.00 + eslint-plugin-react-hooks 7.1.1
+#16 16.00 + globals 17.14.0
+#16 16.00 + jsdom 30.1.3
+#16 16.00 + msw 3.0.3
+#16 16.00 + typescript 6.0.3
+#16 16.00 + typescript-eslint 8.72.1
+#16 16.00 + vite 8.3.5
+#16 16.00 + vitest 5.1.0
+#16 16.00 
+#16 16.03 Done in 14.9s using pnpm v10.28.0
+#16 DONE 16.4s
+
+#18 [install 10/10] COPY . .
+#18 DONE 0.3s
 
 #19 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
-#19 DONE 2.7s
+#19 DONE 1.9s
 
 #20 [stage-1 5/5] WORKDIR /app/apps/studio
-#20 DONE 0.2s
+#20 DONE 0.1s
 
 #21 exporting to image
 #21 exporting layers
-#21 exporting layers 12.8s done
-#21 exporting manifest sha256:0dcb5e02ed688b3bd69b617bf3d44ca47e37a6abfcfce811efa693eb69747789
-#21 exporting manifest sha256:0dcb5e02ed688b3bd69b617bf3d44ca47e37a6abfcfce811efa693eb69747789 0.0s done
-#21 exporting config sha256:0a516a844a3abc83f81ac56e13d3172fd7c48d038e99f4a75509e9748d6adeea 0.0s done
-#21 exporting attestation manifest sha256:333c1714266c3b15232fb3db067e4537329f44bfeb814dfe93c819547f2a5a05 0.0s done
-#21 exporting manifest list sha256:73c4a8a8598607496d3a27aa650595f2426ea34164be3977fefcc7f6a5b07012 0.0s done
+#21 exporting layers 10.3s done
+#21 exporting manifest sha256:f5951592435e0808ce5518508e454e8af3f307715465f095a3330ba8237fc79a
+#21 exporting manifest sha256:f5951592435e0808ce5518508e454e8af3f307715465f095a3330ba8237fc79a done
+#21 exporting config sha256:c3d5b95cc79e91b170f2f873a14cc8a0297f7ebc956ae26e5df5933ed1c9412f done
+#21 exporting attestation manifest sha256:c9636d3f30bbe8588dc5489037b5ad91dc5cdd239cd8bb78642c4aebe9abe1c8 done
+#21 exporting manifest list sha256:8b0e3ce93b4c09ed858fd8dd20fc4243f886e093977f8efd4316a9f9bb6b387b done
 #21 naming to docker.io/rag-agent-studio/studio:0405 done
 #21 unpacking to docker.io/rag-agent-studio/studio:0405
-#21 unpacking to docker.io/rag-agent-studio/studio:0405 4.3s done
-#21 DONE 17.3s
+#21 unpacking to docker.io/rag-agent-studio/studio:0405 3.1s done
+#21 DONE 13.4s
 exit 0
