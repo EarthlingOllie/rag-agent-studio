@@ -1,6 +1,6 @@
 # Evidence: ticket 04-05, Reranker
 
-Branch `ticket/04-05-reranker`, from `origin/candidate` at `f0d632d` (04-03, the only blocker, merged). The claim commit `0cdd6b8`, the first on the branch, set Status `in-progress`. No newer candidate commits existed when the checks ran.
+Branch `ticket/04-05-reranker`, from `origin/candidate` at `f0d632d` (04-03, the only blocker, merged). The claim commit `0cdd6b8`, the first on the branch, set Status `in-progress`. `origin/candidate` at `00f8214` (10-01) was merged in at `609c87b` with no conflicts (10-01 touched `GLOSSARY.md` and the gateway fakes, not the reranker). Every check below was rerun on the merged tree `609c87b`.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to other tickets and best guesses recorded instead of asking.
 
@@ -44,27 +44,27 @@ Each test was written failing first. The retrieval tests failed on the missing `
 
 ## Results
 
-All runs are local and sequential on a machine shared with five other tickets. GitHub Actions is down; the user authorised merging on local results.
+All runs are local and sequential, on the merged tree `609c87b`, on a machine shared with five other tickets (load average 13–35). GitHub Actions is down; the user authorised merging on local results.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against `rag0405-pg` (pgvector 0.8.1-pg16), `rag0405-redis` and `rag0405-rustfs` | **1451 passed**, 7 deselected (live); coverage 100% lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **38 files, 465 tests passed**; 100% | [frontend-tests.log](frontend-tests.log) |
-| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc); `make lint-frontend` rerun after the e2e spec fix | exit 0 both | [lint.log](lint.log), [lint-frontend-rerun.log](lint-frontend-rerun.log) |
+| Backend tests + coverage gate | `make test-backend` against `rag0405-pg` (pgvector 0.8.1-pg16), `rag0405-redis` and `rag0405-rustfs` | **1483 passed**, 7 deselected (live); coverage **100%** lines and branches (7015 statements, 778 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **38 files, 466 tests passed**; 100% ("No files with missing coverage") | [frontend-tests.log](frontend-tests.log) |
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." (no API schema change) | [client-drift.log](client-drift.log) |
 | Security | gitleaks over this branch's commits; `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
-| Images | `build.sh` (sandbox `make images`) at `0978400` | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0405`, ports 47xxx) | Final run: **55 passed**, exit 0, including `reranker.spec.ts`. Earlier attempts below. | [e2e.log](e2e.log), [e2e-attempt1.log](e2e-attempt1.log), [e2e-attempt2.log](e2e-attempt2.log), [e2e-attempt3.log](e2e-attempt3.log) |
+| Images | `build.sh` (sandbox `make images`) at `609c87b` | both built | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0405`, ports 47xxx), on images from `609c87b` | **57 passed**, exit 0, including `reranker.spec.ts` (15.0 s) | [e2e.log](e2e.log) |
 | Infra | not run | this branch changes nothing under `infra/` | |
 
-**End-to-end runs:**
+**Earlier end-to-end runs** (kept for honesty; none failed for a reason in this ticket's code):
 
-- **Attempt 1:** 54 passed, 1 failed. The failure was the new `reranker.spec.ts` itself: it waited for a save after setting the minimum relevance to 0, which is already the default, so no save came. Fixed in `f011c49`: the spec now checks the field shows 0.
-- **Attempt 2:** the reranker spec passed (33.6 s), but four unrelated specs (members, organisation switcher, require MFA, projects) timed out at 30 s with load average 35. All four passed in attempt 1.
-- **Attempt 3:** 54 passed, 1 failed. An unrelated `auth.spec.ts` check timed out after 5 s (the Sign in heading) under shared-machine load; it passed in attempts 1 and 2.
-- **Final run:** **55 of 55 passed**, exit 0, at `f011c49` ([e2e.log](e2e.log)).
-
-The images were built at `0978400`. The commits after it change only `reranker.spec.ts`, which Playwright runs on the host, and this folder.
+- [e2e-attempt1.log](e2e-attempt1.log), at `0978400`: 54 passed, 1 failed. The failure was the new `reranker.spec.ts`. It waited for a save after setting the minimum relevance to 0, which is already the default, so no save came. Fixed in `f011c49`: the spec now checks the field shows 0.
+- [e2e-attempt2.log](e2e-attempt2.log) and [e2e-attempt3.log](e2e-attempt3.log), at `f011c49`: the reranker spec passed. Four and then one unrelated spec (members, organisation switcher, require MFA, projects; then auth) timed out under load average 23–35.
+- [e2e-premerge-f011c49.log](e2e-premerge-f011c49.log): 55 of 55 passed before the candidate merge.
+- On the merged tree:
+  - [e2e-merged-portclash.log](e2e-merged-portclash.log): the stack failed to start because host port 47300 was briefly taken.
+  - [e2e-merged-attempt1.log](e2e-merged-attempt1.log): 55 passed. `members.spec.ts` and `projects.spec.ts` timed out on 5 s toasts under load. Both passed in the final run.
 
 ## Gaps and best guesses
 
@@ -79,4 +79,5 @@ The images were built at `0978400`. The commits after it change only `reranker.s
 - **Sandbox limits:**
   - Images were built with `WITH_PDF=false BUNDLE_MODELS=false` and the egress proxy CA (`build.sh`), as earlier tickets did.
   - E2E ran on moved ports (`compose.sandbox.yml`).
+  - Unrelated e2e specs time out under shared-machine load (see Results). Not changed here: they belong to other tickets.
   - The `rag0405-*` containers, the compose stack, the `rag-agent-studio/*:0405` images and their build cache were removed afterwards.

@@ -1,4 +1,4 @@
-$ make test-frontend @ 0978400
+$ make test-frontend @ 609c87b
 cd frontend && pnpm test
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend
@@ -10,12 +10,12 @@ cd frontend && pnpm test
 
 
  Test Files  38 passed (38)
-      Tests  465 passed (465)
-   Start at  08:36:48
-   Duration  189.47s (tests 64%, environment 18%, import 8%, setup 7%, transform 2%, worker 1%)
+      Tests  466 passed (466)
+   Start at  09:48:53
+   Duration  298.55s (tests 64%, environment 17%, import 8%, setup 7%, transform 2%, worker 2%)
 
-    Isolate  38 workers spawned · ~2.87s startup each (spawn + environment, per file)
-             at least ~33.53s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  38 workers spawned · ~4.48s startup each (spawn + environment, per file)
+             at least ~52.27s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
