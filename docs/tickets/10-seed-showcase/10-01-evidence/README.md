@@ -25,7 +25,7 @@ Branch `ticket/10-01-seed-foundation`, from `origin/candidate` at `a8eedee` (03-
   - It erases only the Organisation that the demo Owner owns under the demo name: every tenant row (by cascade), its Audit Events and its stored files.
   - It then removes the demo accounts and seeds again. An account that another Organisation's Audit Events name is retired instead of deleted (unusable email and password).
   - It refuses, erasing nothing, while a demo account still belongs to another Organisation.
-  - Migration `0018_erase_organisation` lets the append-only audit trigger pass a DELETE only for the Organisation that the transaction names in `app.erasing_organisation`.
+  - Migration `0019_erase_organisation` lets the append-only audit trigger pass a DELETE only for the Organisation that the transaction names in `app.erasing_organisation`.
 - **Demo provider** (`Provider.DEMO` in `app/credentials/registry.py`, adapter `app/gateway/demo.py`):
   - It is named "Demo (not a real model)" and has one chat model, "Demo model" (`demo-chat`), priced at 0.
   - The model is a deterministic Pydantic AI `FunctionModel`. It answers with the first retrieved Chunk, quoted and cited `[C1]`, and every answer starts "Demo model (canned answer, not AI)".
