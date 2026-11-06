@@ -38,7 +38,7 @@ test.describe("Playground Instructions picker", () => {
     const { id: agentId } = (await agent.json()) as { id: string };
 
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
-    const picker = page.getByRole("combobox", { name: "Instructions" });
+    const picker = page.getByRole("combobox", { name: "Instructions", exact: true });
     await expect(picker).toBeVisible({ timeout: 15_000 });
     await expect(picker.getByRole("option")).toHaveText(["Instructions Draft", "v1 (Current) · First rules"]);
     await expect(picker).toHaveValue("");
