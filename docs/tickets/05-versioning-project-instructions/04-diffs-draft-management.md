@@ -7,12 +7,12 @@
 **Blocked by:**
 - [05-02: Publish Agent to Live Version](02-publish-agent-live-version.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A structural AgentConfig diff with text diffs for markdown covers Version-to-Version and Draft-to-Live
-- [ ] An unpublished-changes badge is shown
-- [ ] Editors can discard the Draft, or start a Draft from any Version
-- [ ] Saving a stale Draft returns 409 with the latest Draft, and the UI prompts to resolve the conflict
-- [ ] The publish dialog shows the Draft-to-Live diff
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A structural AgentConfig diff with text diffs for markdown covers Version-to-Version and Draft-to-Live
+- [x] An unpublished-changes badge is shown
+- [x] Editors can discard the Draft, or start a Draft from any Version
+- [x] Saving a stale Draft returns 409 with the latest Draft, and the UI prompts to resolve the conflict
+- [x] The publish dialog shows the Draft-to-Live diff
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

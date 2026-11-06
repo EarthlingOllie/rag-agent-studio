@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, StringConstraints
 
 from app.auth.api import Db, ErrorResponse
@@ -241,6 +242,32 @@ class ProjectInstructions(BaseModel):
     markdown: Annotated[str, StringConstraints(max_length=INSTRUCTIONS_MAX)]
 
 
+class ProjectInstructionsOut(BaseModel):
+    markdown: str
+    # Moves on whenever the Draft's text changes. Send it as ``base_revision`` with a save so
+    # that a Draft someone has changed since is not overwritten.
+    revision: int
+
+
+class InstructionsConflictOut(BaseModel):
+    detail: str
+    # The latest Draft, when the save was refused because the Draft had moved on from the
+    # revision it was made on.
+    latest: ProjectInstructionsOut | None = None
+
+
+STALE_INSTRUCTIONS = (
+    "Someone else saved these Instructions after you opened them. Load their changes, or save "
+    "yours over them."
+)
+
+
+def _instructions(project: Project) -> ProjectInstructionsOut:
+    return ProjectInstructionsOut(
+        markdown=project.instructions, revision=project.instructions_revision
+    )
+
+
 @router.get(
     "/projects/{project_id}/instructions",
     operation_id="getProjectInstructions",
@@ -248,31 +275,57 @@ class ProjectInstructions(BaseModel):
 )
 async def get_project_instructions(
     project_id: uuid.UUID, scope: Scope, db: Db
-) -> ProjectInstructions:
+) -> ProjectInstructionsOut:
     """The Project Instructions, archived Project or not."""
     try:
         project = await service.get_project(db, scope, project_id)
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
-    return ProjectInstructions(markdown=project.instructions)
+    return _instructions(project)
 
 
 @router.put(
     "/projects/{project_id}/instructions",
     operation_id="saveProjectInstructions",
-    responses={**_NOT_FOUND, **_ARCHIVED},
+    response_model=ProjectInstructionsOut,
+    responses={
+        **_NOT_FOUND,
+        409: {
+            "model": InstructionsConflictOut,
+            "description": f"{STALE_INSTRUCTIONS} Or: {PROJECT_ARCHIVED}",
+        },
+    },
 )
 async def save_project_instructions(
-    project_id: uuid.UUID, body: ProjectInstructions, scope: Scope, db: Db, clock: ClockDep
-) -> ProjectInstructions:
+    project_id: uuid.UUID,
+    body: ProjectInstructions,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    base_revision: Annotated[
+        int | None,
+        Query(
+            description=(
+                "The Draft revision the save was made on. When the Draft has moved on since, "
+                "the save is refused with 409 and the latest Draft. Left out, it is replaced."
+            )
+        ),
+    ] = None,
+) -> ProjectInstructionsOut | JSONResponse:
     """Replaces the Project Instructions; records ``project.instructions_updated`` when they
-    change. An archived Project is refused."""
+    change. An archived Project is refused. With ``base_revision``, a Draft someone has changed
+    since is refused with 409 and the latest Draft."""
     try:
         project = await service.save_instructions(
-            db, scope, project_id, body.markdown, now=clock.now()
+            db, scope, project_id, body.markdown, base_revision=base_revision, now=clock.now()
         )
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    return ProjectInstructions(markdown=project.instructions)
+    except service.StaleInstructionsError as error:
+        conflict = InstructionsConflictOut(
+            detail=STALE_INSTRUCTIONS, latest=_instructions(error.latest)
+        )
+        return JSONResponse(conflict.model_dump(mode="json"), status.HTTP_409_CONFLICT)
+    return _instructions(project)

@@ -31,6 +31,18 @@ Live Version pointer, which is None until the first publish (the Agent is then "
   pinned Instructions text. Messages it answers record the Version (``config_source`` is
   ``version``); Playground answers record the Draft marker and no Version.
 
+- **Diff.** ``diff`` compares two sides, each the Draft, the Live Version or any Version of the
+  Agent, as a structural diff of their AgentConfigs (``app.versioning.diff``). Between two
+  Versions it also shows the change of pinned Instructions as a line diff of their text; the
+  Draft pins no Instructions until it is published, so a side that is the Draft shows none.
+
+- **Draft management.** ``discard_draft`` puts the Live Version's configuration back in the
+  Draft (refused with ``NotLiveError`` while the Agent is not live), and ``start_draft_from``
+  puts any of its Versions' in. Neither publishes. Both are Draft changes: they move it to its
+  next revision, honour ``base_revision`` like a save (``StaleDraftError``), check the settings
+  like a save (a Version's credential may have been deleted since), and are audited as
+  ``agent.draft_discarded`` and ``agent.draft_started_from_version``.
+
 Every operation goes through the Project and Agent lookups, so another Organisation's Agent is
 "not found", and an archived Project or Agent can't be published.
 """
@@ -38,6 +50,7 @@ Every operation goes through the Project and Agent lookups, so another Organisat
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,16 +59,19 @@ from sqlalchemy.orm import aliased
 from app import audit
 from app.agents.config import AgentConfig
 from app.agents.models import Agent, AgentDraft, AgentVersion, LiveHistoryEntry
-from app.agents.service import active_agent, get_agent
+from app.agents.service import AgentWithDraft, active_agent, get_agent, replace_draft, with_draft
 from app.agents.validation import DraftProblem, credential_problems
 from app.projects.models import InstructionsVersion
 from app.projects.service import active_project
 from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
+from app.versioning.diff import FieldChange, Line, diff_configs, diff_text
 
 PUBLISHED = "agent.published"
 REVERTED = "agent.reverted"
 PUBLISH = "publish"
+DRAFT_DISCARDED = "agent.draft_discarded"
+DRAFT_STARTED_FROM_VERSION = "agent.draft_started_from_version"
 REVERT = "revert"
 # The Live History actions that put a new Version Live; reverts follow these back.
 _PUSHES = (PUBLISH, "bulk_publish")
@@ -67,6 +83,10 @@ class InstructionsVersionNotFoundError(Exception):
 
 class AgentVersionNotFoundError(Exception):
     """No Version with that ID for the Agent."""
+
+
+class NotLiveError(Exception):
+    """The Agent has never been published, so it has no Live Version."""
 
 
 class NothingToRevertError(Exception):
@@ -363,3 +383,171 @@ async def _version_instructions(session: AsyncSession, version_id: uuid.UUID | N
     if version_id is None:
         return ""
     return (await session.get_one(InstructionsVersion, version_id)).markdown
+
+
+# A side of a diff: the Draft, the Live Version, or a Version by ID.
+Side = Literal["draft", "live"] | uuid.UUID
+
+
+@dataclass(frozen=True)
+class DiffSide:
+    # None for the Draft.
+    version: VersionNumber | None
+    config: AgentConfig
+    instructions_version_id: uuid.UUID | None
+
+
+@dataclass(frozen=True)
+class InstructionsChange:
+    before: PinnedInstructions | None
+    after: PinnedInstructions | None
+    lines: list[Line]
+
+
+@dataclass(frozen=True)
+class ConfigDiff:
+    source: DiffSide
+    target: DiffSide
+    changes: list[FieldChange]
+    # Set when both sides are Versions pinning different Instructions Versions.
+    instructions: InstructionsChange | None
+
+
+async def _side(session: AsyncSession, agent: Agent, side: Side) -> DiffSide:
+    if side == "draft":
+        draft = await session.get_one(AgentDraft, agent.id)
+        return DiffSide(None, AgentConfig.model_validate(draft.config), None)
+    if side == "live":
+        if agent.live_version_id is None:
+            raise NotLiveError
+        side = agent.live_version_id
+    version = await session.scalar(
+        select(AgentVersion).where(AgentVersion.id == side, AgentVersion.agent_id == agent.id)
+    )
+    if version is None:
+        raise AgentVersionNotFoundError
+    return DiffSide(
+        VersionNumber(version.id, version.number),
+        AgentConfig.model_validate(version.config),
+        version.instructions_version_id,
+    )
+
+
+async def _pinned_text(
+    session: AsyncSession, version_id: uuid.UUID | None
+) -> tuple[PinnedInstructions | None, str]:
+    if version_id is None:
+        return None, ""
+    found = await session.get_one(InstructionsVersion, version_id)
+    return PinnedInstructions(found.id, found.number), found.markdown
+
+
+async def diff(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    source: Side,
+    target: Side,
+) -> ConfigDiff:
+    """What changes from ``source`` to ``target``. Archived Agents can be compared."""
+    agent = (await get_agent(session, scope, project_id, agent_id)).agent
+    before = await _side(session, agent, source)
+    after = await _side(session, agent, target)
+    instructions = None
+    both_versions = before.version is not None and after.version is not None
+    if both_versions and before.instructions_version_id != after.instructions_version_id:
+        old, old_text = await _pinned_text(session, before.instructions_version_id)
+        new, new_text = await _pinned_text(session, after.instructions_version_id)
+        instructions = InstructionsChange(old, new, diff_text(old_text, new_text))
+    return ConfigDiff(before, after, diff_configs(before.config, after.config), instructions)
+
+
+async def _restore_draft(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID | Literal["live"],
+    *,
+    action: str,
+    base_revision: int | None,
+    now: datetime,
+) -> AgentWithDraft:
+    project = await active_project(session, scope, project_id)
+    agent = (await active_agent(session, scope, project_id, agent_id)).agent
+    if version_id == "live":
+        if agent.live_version_id is None:
+            raise NotLiveError
+        version_id = agent.live_version_id
+    version = await session.scalar(
+        select(AgentVersion).where(AgentVersion.id == version_id, AgentVersion.agent_id == agent.id)
+    )
+    if version is None:
+        raise AgentVersionNotFoundError
+    draft = await replace_draft(
+        session,
+        scope,
+        project,
+        agent,
+        AgentConfig.model_validate(version.config),
+        base_revision=base_revision,
+        now=now,
+    )
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=action,
+        target=audit.AuditTarget("agent", agent.id),
+        before={"draft_revision": draft.revision - 1},
+        after={"draft_revision": draft.revision, "version": _summary(version)},
+        occurred_at=now,
+    )
+    await session.commit()
+    return await with_draft(session, agent)
+
+
+async def discard_draft(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    base_revision: int | None = None,
+    now: datetime,
+) -> AgentWithDraft:
+    """Puts the Live Version's configuration back in the Draft."""
+    return await _restore_draft(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        "live",
+        action=DRAFT_DISCARDED,
+        base_revision=base_revision,
+        now=now,
+    )
+
+
+async def start_draft_from(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID,
+    *,
+    base_revision: int | None = None,
+    now: datetime,
+) -> AgentWithDraft:
+    """Puts one of the Agent's Versions' configuration in the Draft, publishing nothing."""
+    return await _restore_draft(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        version_id,
+        action=DRAFT_STARTED_FROM_VERSION,
+        base_revision=base_revision,
+        now=now,
+    )

@@ -20,6 +20,23 @@ function draftRefusal(error: Error): string {
   return "Something went wrong. Try again.";
 }
 
+export type DraftInstructions = Schemas["ProjectInstructionsOut"];
+
+/**
+ * A save refused because someone else changed the Instructions Draft after the revision it was
+ * made on. Carries their latest Draft, so the Editor can load it or save over it.
+ */
+export class StaleInstructionsError extends Error {
+  constructor(readonly latest: DraftInstructions) {
+    super("Someone else changed these Instructions.");
+    this.name = "StaleInstructionsError";
+  }
+}
+
+function staleInstructions(error: unknown): DraftInstructions | undefined {
+  return (error as { latest?: DraftInstructions | null } | undefined)?.latest ?? undefined;
+}
+
 /** A publish whose first step, saving the Draft, was refused; nothing was published. */
 export class DraftNotSavedError extends ProjectRequestError {}
 
@@ -38,34 +55,51 @@ export type InstructionsHistory = Schemas["InstructionsHistoryOut"];
 
 const instructionsKey = (organisationId: string, projectId: string) => ["instructions", organisationId, projectId] as const;
 
-/** The Project Instructions: the markdown every Agent in the Project follows. */
+/** The Project Instructions Draft: the markdown every Agent in the Project follows, and its revision. */
 export function useInstructions(organisationId: string, projectId: string) {
   return useQuery({
     queryKey: instructionsKey(organisationId, projectId),
-    queryFn: async (): Promise<string> => {
+    queryFn: async (): Promise<DraftInstructions> => {
       const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/projects/{project_id}/instructions", {
         params: { path: { organisation_id: organisationId, project_id: projectId } },
       });
       if (!data) throw failed(response, error);
-      return data.markdown;
+      return data;
     },
   });
 }
 
-export function useSaveInstructions(organisationId: string, projectId: string) {
+type InstructionsPath = { organisation_id: string; project_id: string };
+
+/**
+ * Saves the Draft made on revision `baseRevision`. A Draft someone has changed since is
+ * refused with a `StaleInstructionsError` instead of being overwritten.
+ */
+async function saveDraft(path: InstructionsPath, markdown: string, baseRevision: number): Promise<DraftInstructions> {
+  const { data, error, response } = await api.PUT("/api/organisations/{organisation_id}/projects/{project_id}/instructions", {
+    params: { path, query: { base_revision: baseRevision } },
+    body: { markdown },
+  });
+  const latest = staleInstructions(error);
+  if (latest) throw new StaleInstructionsError(latest);
+  if (!data) throw failed(response, error);
+  return data;
+}
+
+/** Puts the Instructions Draft the API returned into the cache. */
+export function useStoreInstructions(organisationId: string, projectId: string) {
   const queryClient = useQueryClient();
+  return (draft: DraftInstructions) => {
+    queryClient.setQueryData(instructionsKey(organisationId, projectId), draft);
+  };
+}
+
+export function useSaveInstructions(organisationId: string, projectId: string) {
+  const store = useStoreInstructions(organisationId, projectId);
   return useMutation({
-    mutationFn: async (markdown: string): Promise<string> => {
-      const { data, error, response } = await api.PUT("/api/organisations/{organisation_id}/projects/{project_id}/instructions", {
-        params: { path: { organisation_id: organisationId, project_id: projectId } },
-        body: { markdown },
-      });
-      if (!data) throw failed(response, error);
-      return data.markdown;
-    },
-    onSuccess: (markdown) => {
-      queryClient.setQueryData(instructionsKey(organisationId, projectId), markdown);
-    },
+    mutationFn: ({ markdown, baseRevision }: { markdown: string; baseRevision: number }) =>
+      saveDraft({ organisation_id: organisationId, project_id: projectId }, markdown, baseRevision),
+    onSuccess: store,
   });
 }
 
@@ -103,16 +137,28 @@ export function usePublishInstructions(organisationId: string, projectId: string
   const path = { organisation_id: organisationId, project_id: projectId };
   return useMutation({
     mutationKey: [...changeKey(organisationId, projectId), "publish"],
-    mutationFn: async ({ markdown, note }: { markdown: string; note: string }): Promise<InstructionsVersion> => {
-      const saved = await api.PUT("/api/organisations/{organisation_id}/projects/{project_id}/instructions", {
-        params: { path },
-        body: { markdown },
-      });
-      if (!saved.data) {
-        const refused = failed(saved.response, saved.error);
-        throw new DraftNotSavedError(refused.status, refused.detail);
+    mutationFn: async ({
+      markdown,
+      note,
+      baseRevision,
+      onSaved,
+    }: {
+      markdown: string;
+      note: string;
+      baseRevision: number;
+      /** Told the Draft's new revision once it is saved, before it is published. */
+      onSaved: (revision: number) => void;
+    }): Promise<InstructionsVersion> => {
+      let saved;
+      try {
+        saved = await saveDraft(path, markdown, baseRevision);
+      } catch (refused) {
+        if (refused instanceof StaleInstructionsError) throw refused;
+        const { status, detail } = refused as ProjectRequestError;
+        throw new DraftNotSavedError(status, detail);
       }
-      queryClient.setQueryData(instructionsKey(organisationId, projectId), saved.data.markdown);
+      queryClient.setQueryData(instructionsKey(organisationId, projectId), saved);
+      onSaved(saved.revision);
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions", {
         params: { path },
         body: { note },
@@ -137,5 +183,24 @@ export function useRevertInstructions(organisationId: string, projectId: string)
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: versionsKey(organisationId, projectId) }),
+  });
+}
+
+export type InstructionsDiff = Schemas["InstructionsDiffOut"];
+
+/**
+ * The line diff of the Instructions from one side to the other: the Draft (`draft`) or a
+ * Version's ID. It is fetched again when the Versions or the saved Draft's revision (`draft`) change.
+ */
+export function useInstructionsDiff(organisationId: string, projectId: string, sides: { from: string; to: string; draft: number | undefined }) {
+  return useQuery({
+    queryKey: [...versionsKey(organisationId, projectId), "diff", sides],
+    queryFn: async (): Promise<InstructionsDiff> => {
+      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/projects/{project_id}/instructions/diff", {
+        params: { path: { organisation_id: organisationId, project_id: projectId }, query: { from: sides.from, to: sides.to } },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
   });
 }

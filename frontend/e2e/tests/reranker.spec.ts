@@ -15,7 +15,7 @@ const QUESTION = "What warranty does SKU-4471 have?";
 
 /** Waits for the next Draft save and checks the API accepted it. */
 async function nextSave(page: Page) {
-  const response = await page.waitForResponse((r) => r.url().endsWith("/draft") && r.request().method() === "PUT");
+  const response = await page.waitForResponse((r) => new URL(r.url()).pathname.endsWith("/draft") && r.request().method() === "PUT");
   expect(response.status()).toBe(200);
 }
 
