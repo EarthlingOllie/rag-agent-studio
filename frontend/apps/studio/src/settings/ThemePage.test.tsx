@@ -241,7 +241,7 @@ test("Owners save the whole Theme and are told it applies at once", async () => 
   expect(await screen.findByRole("status", { name: "Saved" })).toHaveTextContent("Theme saved. The widget uses it now.");
   expect(api.saved).toEqual([
     {
-      ...Object.fromEntries(Object.entries(defaultTheme).filter(([key]) => key !== "updated_at")),
+      ...Object.fromEntries(Object.entries(defaultTheme).filter(([key]) => !["updated_at", "logo", "avatar"].includes(key))),
       colours: { ...defaultTheme.colours, primary: { light: "#b91c1c", dark: "#f87171" } },
       radius: 0,
       font: "Roboto",
