@@ -352,6 +352,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "PUT", PROJECTS + "/{project_id}/embedding-model", EDITOR, _an_embedding_model_choice
     ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/embedding-model", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/retrieval-probe", EDITOR, _a_probe),
     ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
     ScopedRoute(

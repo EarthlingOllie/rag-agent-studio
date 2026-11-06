@@ -4,12 +4,13 @@ credential reference a provider model registers.
 - The local model needs no credential and is every new Project's default.
 - A provider model (Voyage, OpenAI or Bedrock) is chosen together with one of the
   Organisation's Provider Credentials that offers it for ``embeddings``.
-- Until re-embedding exists (ticket 03-10), the model can only change while the Project has no
-  Documents, so every Chunk of a Project is embedded with its current model.
+- A Project without Documents switches at once. One with Documents gets the new model as its
+  pending one and a re-embed job (``app.re_embedding``) that switches over when it finishes;
+  until then the active model keeps serving.
 - The chosen credential is a "who references me" source: it can't be deleted while a Project
-  (archived or not) embeds with it. The credential's row is share-locked while the choice is
-  written, so a concurrent delete either finishes first (and the choice is refused) or sees
-  the new reference (and is refused).
+  (archived or not) embeds with it, or re-embeds to one of its models. The credential's row is
+  share-locked while the choice is written, so a concurrent delete either finishes first (and
+  the choice is refused) or sees the new reference (and is refused).
 """
 
 import uuid
@@ -28,6 +29,8 @@ from app.embeddings.registry import EMBEDDING_MODELS, LOCAL_MODEL, EmbeddingMode
 from app.gateway.gateway import ModelUnavailableError, check_offered
 from app.projects.models import Project
 from app.projects.service import active_project
+from app.re_embedding import service as re_embedding
+from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
 from app.tenancy.repository import OrganisationScope
 
 CHANGED = "project.embedding_model_changed"
@@ -35,10 +38,6 @@ CHANGED = "project.embedding_model_changed"
 
 class EmbeddingChoiceError(Exception):
     """The model and credential don't make a usable Embedding Model; the message says why."""
-
-
-class ProjectHasDocumentsError(Exception):
-    """The Project has Documents, so its Embedding Model can't change (until ticket 03-10)."""
 
 
 @dataclass(frozen=True)
@@ -116,6 +115,13 @@ def _summary(project: Project) -> dict[str, str | None]:
     }
 
 
+@dataclass(frozen=True)
+class EmbeddingChange:
+    project: Project
+    # The re-embed job the change started, for the caller to enqueue once committed.
+    started: ReEmbedJob | None = None
+
+
 async def set_embedding_model(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -124,20 +130,62 @@ async def set_embedding_model(
     model_id: str,
     credential_id: uuid.UUID | None,
     now: datetime,
-) -> Project:
-    """Chooses the Project's Embedding Model and records ``project.embedding_model_changed``.
+) -> EmbeddingChange:
+    """Chooses the Project's Embedding Model.
 
-    Choosing the current model again changes nothing. Raises the Project service's errors,
-    ``EmbeddingChoiceError`` and ``ProjectHasDocumentsError``."""
+    - Choosing the active model, or the pending one, again changes nothing.
+    - A running re-embed job is cancelled first (``project.re_embed_cancelled``), so choosing
+      the active model while one runs stops it.
+    - The same model through another credential, or any model for a Project without Documents,
+      switches at once (``project.embedding_model_changed``).
+    - Otherwise the model becomes the pending one and a re-embed job starts
+      (``project.re_embed_started``).
+
+    Raises the Project service's errors and ``EmbeddingChoiceError``."""
     project = await active_project(session, scope, project_id, lock=True)
     model = await _validated(session, scope, model_id, credential_id)
-    if (project.embedding_model_id, project.embedding_credential_id) == (model.id, credential_id):
-        return project
-    if await session.scalar(select(exists().where(Document.project_id == project.id))):
-        raise ProjectHasDocumentsError
+    choice = (model.id, credential_id)
+    running = await re_embedding.running_job(session, project.id, lock=True)
+    if running is not None and (running.model_id, running.credential_id) == choice:
+        return EmbeddingChange(project)
+    active = (project.embedding_model_id, project.embedding_credential_id)
+    if running is None and active == choice:
+        return EmbeddingChange(project)
+    if running is not None:
+        await re_embedding.cancel(session, project, running, actor_id=scope.member_id, now=now)
+    started = None
+    if active == choice:
+        pass  # the running job was cancelled: the active model simply stays
+    elif model.id == project.embedding_model_id or not await _has_documents(session, project):
+        await _switch(session, scope, project, choice, now=now)
+    else:
+        started = await re_embedding.start(
+            session,
+            project,
+            model_id=model.id,
+            credential_id=credential_id,
+            actor_id=scope.member_id,
+            now=now,
+        )
+    await session.commit()
+    return EmbeddingChange(project, started)
+
+
+async def _has_documents(session: AsyncSession, project: Project) -> bool:
+    return bool(await session.scalar(select(exists().where(Document.project_id == project.id))))
+
+
+async def _switch(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project: Project,
+    choice: tuple[str, uuid.UUID | None],
+    *,
+    now: datetime,
+) -> None:
+    """Switches at once: the Project has no Chunks to re-embed, or the model stays the same."""
     before = _summary(project)
-    project.embedding_model_id = model.id
-    project.embedding_credential_id = credential_id
+    project.embedding_model_id, project.embedding_credential_id = choice
     await audit.record(
         session,
         organisation_id=scope.organisation_id,
@@ -148,8 +196,6 @@ async def set_embedding_model(
         after=_summary(project),
         occurred_at=now,
     )
-    await session.commit()
-    return project
 
 
 async def project_credential(session: AsyncSession, project: Project) -> ProviderCredential | None:
@@ -163,14 +209,14 @@ async def project_embedding_references(
     session: AsyncSession, scope: OrganisationScope, credential_id: uuid.UUID
 ) -> list[CredentialReference]:
     """The "who references me" source: the Organisation's Projects, archived or not, that
-    embed with the credential."""
+    embed with the credential, or are re-embedding to one of its models."""
     projects = await session.scalars(
         select(Project).where(
             Project.organisation_id == scope.organisation_id,
             Project.embedding_credential_id == credential_id,
         )
     )
-    return [
+    references = [
         CredentialReference(
             "project",
             str(project.id),
@@ -178,3 +224,21 @@ async def project_embedding_references(
         )
         for project in projects
     ]
+    pending = await session.execute(
+        select(Project, ReEmbedJob)
+        .join(ReEmbedJob, ReEmbedJob.project_id == Project.id)
+        .where(
+            Project.organisation_id == scope.organisation_id,
+            ReEmbedJob.credential_id == credential_id,
+            ReEmbedJob.status == ReEmbedStatus.RUNNING,
+        )
+    )
+    references.extend(
+        CredentialReference(
+            "project",
+            str(project.id),
+            f"{project.name} (re-embedding to {job.model_id})",
+        )
+        for project, job in pending
+    )
+    return references

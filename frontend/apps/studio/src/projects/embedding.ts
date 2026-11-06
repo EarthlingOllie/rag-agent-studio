@@ -6,6 +6,12 @@ import { type Project, ProjectRequestError } from "./projects";
 
 export type EmbeddingModelChoice = Schemas["EmbeddingModelChoiceOut"];
 export type EmbeddingModelSelection = Schemas["SetEmbeddingModelRequest"];
+export type EmbeddingModelState = Schemas["EmbeddingModelStateOut"];
+
+/** How often the Studio reads a running re-embed's progress. */
+export const RE_EMBED_POLL_MS = 1000;
+
+const stateKey = (organisationId: string, projectId: string) => ["projects", organisationId, "one", projectId, "embedding-model"];
 
 function failed(response: Response, error: unknown): ProjectRequestError {
   const detail = (error as { detail?: unknown }).detail;
@@ -33,19 +39,41 @@ export function useEmbeddingChoices(organisationId: string) {
   });
 }
 
+/** The Project's active and pending Embedding Model and its latest re-embed, polled while one runs. */
+export function useEmbeddingState(organisationId: string, projectId: string) {
+  return useQuery({
+    queryKey: stateKey(organisationId, projectId),
+    queryFn: async (): Promise<EmbeddingModelState> => {
+      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/projects/{project_id}/embedding-model", {
+        params: {
+          path: { organisation_id: organisationId, project_id: projectId },
+        },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    refetchInterval: (query) => (query.state.data?.re_embed?.status === "running" ? RE_EMBED_POLL_MS : false),
+  });
+}
+
 export function useSetEmbeddingModel(organisationId: string, projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (selection: EmbeddingModelSelection): Promise<Project> => {
       const { data, error, response } = await api.PUT("/api/organisations/{organisation_id}/projects/{project_id}/embedding-model", {
-        params: { path: { organisation_id: organisationId, project_id: projectId } },
+        params: {
+          path: { organisation_id: organisationId, project_id: projectId },
+        },
         body: selection,
       });
       if (!data) throw failed(response, error);
       return data;
     },
-    onSuccess: (project) => {
+    onSuccess: async (project) => {
       queryClient.setQueryData(["projects", organisationId, "one", project.id], project);
+      await queryClient.invalidateQueries({
+        queryKey: stateKey(organisationId, project.id),
+      });
     },
   });
 }
