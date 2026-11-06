@@ -1,6 +1,7 @@
 """The prompt-assembly contract test: an echoing ``FunctionModel`` shows exactly what the Agent
 runtime gives the model, and in which order. The only test that looks at prompt strings."""
 
+import re
 import uuid
 from collections.abc import AsyncIterator
 from typing import Any
@@ -11,10 +12,11 @@ from pydantic_ai.profiles import ModelProfile
 
 from app.agents.config import AgentConfig, Behaviour, Retrieval
 from app.retrieval.service import Candidate, RetrievalResult
-from app.runtime.prompt import PREAMBLE, Turn
+from app.runtime.prompt import Turn, preamble
 from app.runtime.runtime import CitationEvent, DoneEvent, TokenEvent, run_turn
 
 SEEN: dict[str, Any] = {}
+PREAMBLE_WITH_CANARY = preamble("{canary}")
 # A model without structured output answers in text, so the echo is the answer.
 TEXT_ONLY: ModelProfile = {"supports_json_schema_output": False}
 
@@ -24,7 +26,9 @@ async def echo(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[s
     SEEN["output_mode"] = info.model_request_parameters.output_mode
     for message in messages:
         for part in message.parts:
-            yield f"{type(message).__name__}/{part.part_kind}: {getattr(part, 'content', '')}\n"
+            # The canary is echoed as {canary}: repeating it would get the answer replaced.
+            content = re.sub(r"\b[0-9a-f]{20}\b", "{canary}", str(getattr(part, "content", "")))
+            yield f"{type(message).__name__}/{part.part_kind}: {content}\n"
 
 
 def candidate(rank: int, text: str) -> Candidate:
@@ -87,7 +91,7 @@ async def test_the_prompt_is_assembled_in_a_fixed_order_with_spotlighted_data() 
     assert SEEN["tools"] == ([], [])
     zw = "​"
     assert done.answer == (
-        f"ModelRequest/system-prompt: {PREAMBLE}\n"
+        f"ModelRequest/system-prompt: {PREAMBLE_WITH_CANARY}\n"
         "ModelRequest/system-prompt: Always be polite.\n"
         "ModelRequest/system-prompt: You are the HR helper.\n"
         "ModelRequest/user-prompt: Hi\n"
@@ -125,7 +129,7 @@ async def test_empty_instructions_and_system_prompt_are_left_out() -> None:
     done = events[-1]
     assert isinstance(done, DoneEvent)
     assert done.answer.count("system-prompt") == 1
-    assert done.answer.startswith(f"ModelRequest/system-prompt: {PREAMBLE}\n")
+    assert done.answer.startswith(f"ModelRequest/system-prompt: {PREAMBLE_WITH_CANARY}\n")
 
 
 async def test_structured_output_uses_the_providers_json_schema_output_not_a_tool() -> None:
@@ -157,3 +161,27 @@ async def test_structured_output_uses_the_providers_json_schema_output_not_a_too
     assert citation.label == "C1"
     assert isinstance(done, DoneEvent)
     assert done.cited == [citation.chunk]
+
+
+async def test_an_empty_answer_streams_no_tokens() -> None:
+    async def retrieve(query: str, settings: Retrieval) -> RetrievalResult:
+        return RetrievalResult([candidate(1, "Leave is 25 days.")])
+
+    async def silent(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+        yield ""
+
+    events = [
+        event
+        async for event in run_turn(
+            [],
+            AgentConfig(),
+            "",
+            "Leave?",
+            model=FunctionModel(stream_function=silent, profile=TEXT_ONLY),
+            retrieve=retrieve,
+        )
+    ]
+
+    (done,) = events
+    assert isinstance(done, DoneEvent)
+    assert (done.answer, done.guardrail_outcomes) == ("", [])

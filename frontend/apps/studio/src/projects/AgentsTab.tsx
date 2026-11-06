@@ -6,7 +6,13 @@ import { agentFailure, useAgents, useCreateAgent } from "./agents";
 import { useProject } from "./projects";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 
-function NewAgentForm({ organisationId, projectId }: { organisationId: string; projectId: string }) {
+function NewAgentForm({
+  organisationId,
+  projectId,
+}: {
+  organisationId: string;
+  projectId: string;
+}) {
   const create = useCreateAgent(organisationId, projectId);
   const navigate = useNavigate();
 
@@ -23,7 +29,11 @@ function NewAgentForm({ organisationId, projectId }: { organisationId: string; p
   }
 
   return (
-    <form aria-labelledby="new-agent-heading" onSubmit={onSubmit} className="max-w-md space-y-3">
+    <form
+      aria-labelledby="new-agent-heading"
+      onSubmit={onSubmit}
+      className="max-w-md space-y-3"
+    >
       <h3 id="new-agent-heading" className="font-semibold">
         New Agent
       </h3>
@@ -32,7 +42,13 @@ function NewAgentForm({ organisationId, projectId }: { organisationId: string; p
         <label htmlFor="new-agent-name" className="block text-sm font-medium">
           Name
         </label>
-        <input id="new-agent-name" name="name" required maxLength={200} className={INPUT} />
+        <input
+          id="new-agent-name"
+          name="name"
+          required
+          maxLength={200}
+          className={INPUT}
+        />
       </div>
       <button type="submit" disabled={create.isPending} className={BUTTON}>
         {create.isPending ? "Creating…" : "Create Agent"}
@@ -44,7 +60,9 @@ function NewAgentForm({ organisationId, projectId }: { organisationId: string; p
 /** The Project's Agents, with a form to create one. */
 export function AgentsTab() {
   const { organisationId } = useOrganisationRole();
-  const { projectId } = useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId" });
+  const { projectId } = useParams({
+    from: "/signed-in/organisations/$organisationId/projects/$projectId",
+  });
   const project = useProject(organisationId, projectId);
   const agents = useAgents(organisationId, projectId);
   const archived = project.data?.archived_at != null;
@@ -53,9 +71,16 @@ export function AgentsTab() {
   if (agents.isPending) {
     list = <p role="status">Loading Agents…</p>;
   } else if (agents.isError) {
-    list = <p role="alert">The Agents could not be loaded. Try again shortly.</p>;
+    list = (
+      <p role="alert">The Agents could not be loaded. Try again shortly.</p>
+    );
   } else if (agents.data.length === 0) {
-    list = <p className="text-slate-700">No Agents yet. Create one to answer questions from this Project's Documents.</p>;
+    list = (
+      <p className="text-slate-700">
+        No Agents yet. Create one to answer questions from this Project's
+        Documents.
+      </p>
+    );
   } else {
     list = (
       <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
@@ -80,7 +105,9 @@ export function AgentsTab() {
         Agents
       </h2>
       {list}
-      {!archived && <NewAgentForm organisationId={organisationId} projectId={projectId} />}
+      {!archived && (
+        <NewAgentForm organisationId={organisationId} projectId={projectId} />
+      )}
     </section>
   );
 }
