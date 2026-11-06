@@ -2,9 +2,10 @@
 the Agent runtime, saving the question and the answer as Messages.
 
 A question is answered by the Draft's Model override, or else the Organisation's Default Model,
-through the model gateway, from
-Chunks the retrieval module finds in the Agent's Project. The question is saved before the
-answer streams; the answer, with its tokens, latency and cost, once the stream ends.
+through the model gateway, from Chunks the retrieval module finds in the Agent's Project
+(reranked by the Draft's Reranker, when it has one, also built through the gateway). The
+question is saved before the answer streams; the answer, with its tokens, latency and cost,
+once the stream ends.
 """
 
 import itertools
@@ -17,7 +18,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.config import AgentConfig, Retrieval
+from app.agents.config import AgentConfig, ModelChoice, Retrieval
 from app.agents.service import get_agent
 from app.conversations.models import DRAFT, Conversation, Message, MessageRetrieval, MessageRole
 from app.core.clock import Clock
@@ -49,32 +50,38 @@ class NoDefaultModelError(Exception):
 
 
 @dataclass(frozen=True)
-class ChatModelChoice:
-    """The credential and chat model that answer."""
+class ChosenModel:
+    """A credential and one of its models: the chat model that answers, or the Reranker."""
 
     credential: ProviderCredential
     model: str
 
 
+async def _chosen(
+    session: AsyncSession, scope: OrganisationScope, choice: ModelChoice
+) -> ChosenModel:
+    """The credential a Draft setting names, with its model. Saving the Draft checked the
+    credential offers the model and made it a Credential reference, so it can't have been
+    deleted since."""
+    found = await session.scalars(
+        select(ProviderCredential).where(
+            ProviderCredential.id == choice.credential_id,
+            ProviderCredential.organisation_id == scope.organisation_id,
+        )
+    )
+    return ChosenModel(found.one(), choice.model)
+
+
 async def _chat_model(
     session: AsyncSession, scope: OrganisationScope, config: AgentConfig
-) -> ChatModelChoice:
+) -> ChosenModel:
     override = config.behaviour.model
     if override is not None:
-        # Saving the Draft checked the credential offers the model and made it a Credential
-        # reference, so it can't have been deleted since.
-        found = await session.scalars(
-            select(ProviderCredential).where(
-                ProviderCredential.id == override.credential_id,
-                ProviderCredential.organisation_id == scope.organisation_id,
-            )
-        )
-        credential = found.one()
-        return ChatModelChoice(credential, override.model)
+        return await _chosen(session, scope, override)
     default = await read_default(session, scope.organisation_id)
     if default is None:
         raise NoDefaultModelError
-    return ChatModelChoice(default.credential, default.model)
+    return ChosenModel(default.credential, default.model)
 
 
 async def start_conversation(
@@ -141,7 +148,8 @@ class PreparedTurn:
     config: AgentConfig
     turns: list[Turn]
     question: str
-    chat: ChatModelChoice
+    chat: ChosenModel
+    reranker: ChosenModel | None = None
 
 
 async def prepare_turn(
@@ -161,6 +169,8 @@ async def prepare_turn(
         session, scope, project_id, agent_id, conversation_id
     )
     chat = await _chat_model(session, scope, found.draft)
+    reranker_choice = found.draft.retrieval.reranker
+    reranker = None if reranker_choice is None else await _chosen(session, scope, reranker_choice)
     session.add(
         Message(
             organisation_id=scope.organisation_id,
@@ -179,6 +189,7 @@ async def prepare_turn(
         turns=_turns(messages),
         question=question,
         chat=chat,
+        reranker=reranker,
     )
 
 
@@ -279,10 +290,16 @@ async def answer(
     first_token_ms: int | None = None
     chosen = prepared.chat
     model = gateway.chat_model(chosen.credential, chosen.model)
+    reranking = prepared.reranker
+    reranker = (
+        None if reranking is None else gateway.reranker(reranking.credential, reranking.model)
+    )
     async with sessionmaker() as session:
 
         async def retrieve_in_project(query: str, settings: Retrieval) -> RetrievalResult:
-            return await retrieve(session, prepared.project, query, settings, embedders)
+            return await retrieve(
+                session, prepared.project, query, settings, embedders, reranker=reranker
+            )
 
         async for event in run_turn(
             prepared.turns,

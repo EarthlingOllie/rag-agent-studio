@@ -17,6 +17,9 @@ from pydantic_ai.models.function import AgentInfo
 
 from app.agents.config import DEFAULT_FALLBACK_TEXT
 from app.conversations.models import Message
+from app.credentials.registry import Provider
+from app.gateway.fakes import FakeModelAdapters
+from app.gateway.ports import Reranker
 from app.runtime.prompt import preamble
 from tests.agents import (
     answer_text,
@@ -27,11 +30,12 @@ from tests.agents import (
     playground_path,
     save_draft,
     start_conversation,
+    trace_path,
     use_default_model,
 )
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path, upload
-from tests.integration.test_provider_credentials import ANTHROPIC_KEY, added
+from tests.integration.test_provider_credentials import ANTHROPIC_KEY, VOYAGE_KEY, added
 from tests.knowledge_base import (
     FILES,
     PRODUCT,
@@ -322,6 +326,62 @@ async def test_a_relevant_chunk_above_the_minimum_score_reaches_the_model(
     assert chunk["relevance"] == pytest.approx(3 / 6)
     assert {e["reason"] for e in done["excluded"]} == {"below_min_score"}
     assert chunk["chunk_id"] not in {e["chunk_id"] for e in done["excluded"]}
+
+
+async def test_the_drafts_reranker_chooses_the_chunks_the_model_is_given(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, echo)
+    rerankers: list[str] = []
+    adapters: FakeModelAdapters = app.state.model_gateway.adapters
+    build_reranker = adapters.reranker
+
+    def recording_reranker(provider: Provider, secret: str, model: str) -> Reranker:
+        rerankers.append(f"{provider}:{model}:{secret}")
+        return build_reranker(provider, secret, model)
+
+    adapters.reranker = recording_reranker  # type: ignore[method-assign]
+    await use_default_model(owner)
+    voyage = await added(owner, provider="voyage", api_key=VOYAGE_KEY)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    # Semantic search alone, keeping one Chunk: without the reranker that isn't PRODUCT.
+    retrieval = {"hybrid_weight": 1, "top_k": 1, "min_score": 0}
+    await save_draft(owner, project_id, agent_id, {"retrieval": retrieval})
+    conversation = await start_conversation(owner, project_id, agent_id)
+    plain = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
+    *_, (_, plain_done) = parse_sse(plain.text)
+    reranker = {"credential_id": voyage["id"], "model": "rerank-2.5"}
+    saved = await save_draft(
+        owner, project_id, agent_id, {"retrieval": {**retrieval, "reranker": reranker}}
+    )
+    assert saved.status_code == 200, saved.text
+
+    response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
+
+    assert response.status_code == 200, response.text
+    *_, (_, done) = parse_sse(response.text)
+    question = json.loads(answer_text(response))[-1][2]
+    # The Draft's reranker, built by the gateway from the Voyage credential's secret.
+    assert rerankers == [f"voyage:rerank-2.5:{VOYAGE_KEY}"]
+    # The reranker lifted PRODUCT above the rest before top-k kept one Chunk.
+    assert f"[C1] product.txt\n{PRODUCT}" in question
+    assert "[C2]" not in question
+    (chunk,) = done["chunks"]
+    (plain_chunk,) = plain_done["chunks"]
+    assert chunk["chunk_id"] != plain_chunk["chunk_id"]
+    assert chunk["relevance"] == pytest.approx(2 / 5)
+    assert {e["reason"] for e in done["excluded"]} == {"outside_top_k"}
+    assert len(done["excluded"]) == len(FILES) - 1
+    # The Trace keeps the reranker's relevance.
+    trace = await owner.client.get(
+        trace_path(owner, project_id, agent_id, conversation["id"], done["message_id"])
+    )
+    assert trace.status_code == 200, trace.text
+    traced, *left_out = trace.json()["chunks"]
+    assert (traced["chunk_id"], traced["text"], traced["rank"]) == (chunk["chunk_id"], PRODUCT, 1)
+    assert traced["relevance"] == pytest.approx(2 / 5)
+    assert {e["relevance"] for e in left_out} == {0.0}
 
 
 async def test_questions_must_not_be_empty(app: FastAPI, owner: SignedUpMember) -> None:
