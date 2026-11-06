@@ -41,18 +41,18 @@ The [shared test seams](../../../specs/README.md#shared-test-seams), as spec 08'
 
 ## Results
 
-All local, one suite at a time, from a clean clone of `63b6c5a` (the code commit; later commits only add this evidence and the ticket Status). GitHub Actions is down; the user authorised merging on local results. Driver: [run-checks.sh](run-checks.sh) (sandbox paths; the same sequence as 04-06's).
+All local, one suite at a time, from a clean clone of `34e8f79` (the branch after merging `origin/candidate` @ `cb228e6`; the commit after it only adds these logs). GitHub Actions is down; the user authorised merging on local results. Driver: [run-checks.sh](run-checks.sh) (sandbox paths; the same sequence as 04-06's).
 
 | Check | Command | Result | Log |
 |---|---|---|---|
 | Install | `make install` (`uv sync --frozen`, `pnpm install --frozen-lockfile`) | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
-| Frontend tests + coverage gate | `make test-frontend` | 379 tests passed; 100% (2092 statements, 1219 branches) | [frontend-tests.log](frontend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | 451 tests passed; 100% (2245 statements, 1337 branches) | [frontend-tests.log](frontend-tests.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` | no leaks, no known vulnerabilities | [security.log](security.log) |
-| Backend tests + coverage gate | `make test-backend` against `rag0804-*` Postgres/pgvector, Redis, RustFS | 1275 passed, 7 deselected (live); coverage 100.00% (6092 statements, 624 branches); exit 0 | [backend-tests.log](backend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against `rag0804-*` Postgres/pgvector, Redis, RustFS | 1385 passed, 7 deselected (live); coverage 100.00% (6446 statements, 680 branches); exit 0 | [backend-tests.log](backend-tests.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `CI=1 make e2e` with `compose.sandbox.yml` (project `rag0804`) | **49 passed, exit 0**, no retry needed; includes the canary leak journey in `playground.spec.ts` | [e2e.log](e2e.log) |
+| End-to-end | `CI=1 make e2e` with `compose.sandbox.yml` (project `rag0804`) | **52 passed, exit 0**, no retry needed; includes the canary leak journey in `playground.spec.ts` | [e2e.log](e2e.log) |
 | Guardrail eval | `make eval` | not run: still the placeholder until 08-07 | n/a |
 | Infra | terraform | not run: no infra change | n/a |
 
