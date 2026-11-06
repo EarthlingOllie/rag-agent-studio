@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-02: Markdown editor](../04-agents-retrieval-playground/02-markdown-editor.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Instructions have a Draft, immutable numbered Versions and a Current Version pointer
 - [ ] A migration turns the existing Instructions field into the Draft plus a v1, and the data is asserted
