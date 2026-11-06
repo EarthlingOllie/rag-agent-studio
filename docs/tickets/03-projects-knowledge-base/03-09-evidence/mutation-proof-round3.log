@@ -1,0 +1,25 @@
+# worktree at 7ad3df8
++ python3 docs/tickets/03-projects-knowledge-base/03-09-evidence/mutate.py
+CAUGHT: the model can change while the Project has Documents (backend/app/projects/embedding.py) -> pytest -k 'test_the_model_cannot_change_while_the_project_has_documents' exit 1
+CAUGHT: a Project's credential isn't reported as a reference (backend/app/projects/embedding.py) -> pytest -k 'test_a_credential_a_project_embeds_with_cannot_be_deleted' exit 1
+CAUGHT: the local model accepts a credential (backend/app/projects/embedding.py) -> pytest -k 'test_an_impossible_choice_is_refused' exit 1
+CAUGHT: a choice of the current model is audited again (backend/app/projects/embedding.py) -> pytest -k 'test_choosing_a_model_is_an_audit_event or test_choosing_the_current_model_again_is_allowed_with_documents' exit 1
+CAUGHT: ingestion ignores the Project's provider model (backend/app/documents/pipeline.py) -> pytest -k 'test_an_editor_chooses_a_provider_model_and_documents_embed_with_it' exit 1
+CAUGHT: provider vectors of the wrong size are accepted (backend/app/embeddings/provider.py) -> pytest -k 'test_vectors_of_the_wrong_size_fail_the_document' exit 1
+CAUGHT: the probe searches every Embedding Model's Chunks (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_skips_chunks_of_other_embedding_models' exit 1
+CAUGHT: the probe searches every Project (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_only_searches_its_own_project' exit 1
+CAUGHT: the probe returns the farthest Chunks first (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_returns_the_top_k_chunks_nearest_the_query' exit 1
+CAUGHT: the probe ignores top_k (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_returns_five_chunks_by_default' exit 1
+CAUGHT: an unusable model isn't answered 409 with its reason (backend/app/projects/embedding_api.py) -> pytest -k 'says_why' exit 1
+CAUGHT: the probe breaks distance ties by Chunk ID, so the HNSW index can't order it (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_orders_on_the_models_hnsw_index' exit 1
+CAUGHT: the probe's index scan stops at hnsw.ef_search candidates (backend/app/retrieval/probe.py) -> pytest -k 'test_the_index_finds_a_projects_chunks_behind_other_projects_nearer_ones' exit 1
+CAUGHT: a role is assumed without the Organisation's external ID (backend/app/gateway/gateway.py) -> pytest -k 'test_a_bedrock_role_model_is_chosen_and_documents_embed_with_it' exit 1
+CAUGHT: Bedrock is called with the platform's identity, not the credential's (backend/app/gateway/live.py) -> pytest -k 'test_access_keys_embed_with_titan or test_a_role_is_assumed' exit 1
+CAUGHT: Cohere queries are embedded as documents (backend/app/gateway/live.py) -> pytest -k 'test_cohere_embeds_a_batch_per_call_with_its_input_type' exit 1
+CAUGHT: Cohere is sent more than 96 texts at once (backend/app/gateway/live.py) -> pytest -k 'test_cohere_sends_at_most_96_texts_per_call' exit 1
+CAUGHT: Titan isn't asked for the registered dimension (backend/app/gateway/live.py) -> pytest -k 'test_access_keys_embed_with_titan' exit 1
+CAUGHT: a Bedrock refusal escapes as a botocore error (backend/app/gateway/live.py) -> pytest -k 'model_http_error' exit 1
+CAUGHT: Bedrock credentials offer nothing (backend/app/projects/embedding.py) -> pytest -k 'test_bedrock_credentials_offer_titan_and_cohere' exit 1
+20/20 mutations caught
+unmodified code: tests/integration/test_embedding_models.py tests/unit/test_bedrock_embedder.py tests/integration/test_retrieval_probe_index.py exit 0
+exit 0

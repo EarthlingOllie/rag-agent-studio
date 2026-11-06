@@ -171,7 +171,15 @@ What a model call cost in US dollars: its token counts times the prices in effec
 _Avoid_: Spend, charge, bill
 
 **Embedding Model**:
-The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider.
+The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage or OpenAI; Bedrock once the model gateway can call it) through an embedding-capable Provider Credential, which then becomes a Credential reference. Until re-embedding exists it can only change while the Project has no Documents.
+
+**Embedding Model registry**:
+The list, kept in code, of every Embedding Model a Project can use, with its provider, vector dimension, tokenizer, token limit and the Capability its credential needs.
+_Avoid_: Model catalogue, embedding config
+
+**Retrieval probe**:
+A diagnostic endpoint that returns a Project's top-k Chunks nearest a query by vector alone, using the Project's current Embedding Model. It is for tests and diagnostics, not what Agents retrieve with.
+_Avoid_: Search endpoint, retriever
 
 ## Knowledge
 
@@ -207,6 +215,13 @@ _Avoid_: Reprocess, re-ingest, re-run
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
 
+**Document viewer**:
+The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
+_Avoid_: Document preview, inspector, detail page
+
+**Heading path**:
+The headings above a Chunk in its Document, outermost first, shown as `Leave › Annual leave`. It is embedded with the Chunk so retrieval knows its context.
+_Avoid_: Breadcrumb, section, context
 **Duplicate**:
 An upload whose Content hash matches a Document already in the Project (its current Edition, or a Staged edition still being ingested). It is refused, naming the Document that has the content. A Failed Document or Failed Staged edition holds no content, so its file is not a Duplicate and can be uploaded again, as a new Document or as the next Edition.
 _Avoid_: Copy, clash, repeat upload

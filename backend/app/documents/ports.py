@@ -1,16 +1,23 @@
-"""The adapters ingestion runs through: object store, document converter and embedders.
+"""The adapters ingestion runs through: object store, document converter, the local embedder,
+and the model gateway that provider Embedding Models are called through.
 
 The API builds them at startup and installs them here; the worker does the same at its start.
 Tasks read them with ``current_ports``. In tests the tasks run eagerly in the API's process,
 so they share the API's fakes, which tests configure through ``app.state.ingestion``.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
+import httpx2
+
 from app.core.settings import Settings
+from app.crypto.envelope import EnvelopeEncryption
 from app.documents.converter import DoclingConverter, DocumentConverter, FakeConverter
 from app.embeddings.fake import HashEmbedder
 from app.embeddings.port import Embedder
+from app.gateway.adapters import build_model_gateway
+from app.gateway.gateway import ModelGateway
 from app.storage.factory import build_object_store
 from app.storage.port import ObjectStore
 
@@ -19,8 +26,11 @@ from app.storage.port import ObjectStore
 class IngestionPorts:
     object_store: ObjectStore
     converter: DocumentConverter
-    # By Embedding Model ID.
+    # The local embedders, by Embedding Model ID.
     embedders: dict[str, Embedder]
+    # Builds the model gateway on an HTTP client. Each ingestion run opens its own client, on
+    # its own event loop, and closes it when done.
+    open_gateway: Callable[[httpx2.AsyncClient], ModelGateway]
 
 
 def _local_embedder(settings: Settings) -> Embedder:
@@ -31,7 +41,7 @@ def _local_embedder(settings: Settings) -> Embedder:
     return LocalEmbedder()
 
 
-def build_ports(settings: Settings) -> IngestionPorts:
+def build_ports(settings: Settings, envelope: EnvelopeEncryption) -> IngestionPorts:
     converter: DocumentConverter = (
         FakeConverter() if settings.document_converter == "fake" else DoclingConverter()
     )
@@ -40,6 +50,7 @@ def build_ports(settings: Settings) -> IngestionPorts:
         object_store=build_object_store(settings),
         converter=converter,
         embedders={embedder.model.id: embedder},
+        open_gateway=lambda client: build_model_gateway(settings, envelope, client),
     )
 
 

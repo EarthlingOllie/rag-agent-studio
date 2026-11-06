@@ -369,3 +369,52 @@ export function retryFailure(error: Error | null): string | undefined {
   // Every failed retry is a ProjectRequestError (see `failed`).
   return (error as ProjectRequestError).detail ?? RETRY_FAILED;
 }
+
+export type DocumentDetail = Schemas["DocumentDetailOut"];
+export type ChunkPage = Schemas["ChunkPageOut"];
+
+/** How many Chunks the Document viewer shows at a time. */
+export const CHUNK_PAGE_SIZE = 50;
+
+/** One Document, with the markdown Docling converted it to. */
+export function useDocument(organisationId: string, projectId: string, documentId: string) {
+  return useQuery({
+    queryKey: [...documentsKey(organisationId, projectId), documentId],
+    queryFn: async (): Promise<DocumentDetail> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}",
+        { params: { path: { organisation_id: organisationId, project_id: projectId, document_id: documentId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** One page of the Document's Chunks, ``page`` counting from 0. */
+export function useChunkPage(organisationId: string, projectId: string, documentId: string, page: number) {
+  const offset = page * CHUNK_PAGE_SIZE;
+  return useQuery({
+    queryKey: [...documentsKey(organisationId, projectId), documentId, "chunks", offset],
+    queryFn: async (): Promise<ChunkPage> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks",
+        {
+          params: {
+            path: { organisation_id: organisationId, project_id: projectId, document_id: documentId },
+            query: { offset, limit: CHUNK_PAGE_SIZE },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    // The current page stays on screen while the next one loads.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Where the original file downloads from: the API redirects it to a presigned GET. */
+export function downloadPath(organisationId: string, projectId: string, documentId: string): string {
+  return `/api/organisations/${organisationId}/projects/${projectId}/documents/${documentId}/download`;
+}

@@ -28,7 +28,7 @@ from tests.integration.test_provider_credentials import (
     audit_events,
     credentials_path,
 )
-from tests.unit.test_model_gateway import openai_completion
+from tests.unit.test_model_gateway import NO_BEDROCK, openai_completion
 
 GPT_MODELS = [
     {"id": "gpt-4.1", "name": "GPT-4.1"},
@@ -354,7 +354,8 @@ async def test_the_default_model_calls_its_provider_with_the_stored_key(
         return openai_completion("Hello from the Default Model")
 
     client = httpx2.AsyncClient(transport=httpx2.MockTransport(provider))
-    app.state.model_gateway = ModelGateway(app.state.envelope, LiveModelAdapters(client))
+    adapters = LiveModelAdapters(client, NO_BEDROCK)
+    app.state.model_gateway = ModelGateway(app.state.envelope, adapters)
     openai = await added(owner, provider="openai", api_key=OPENAI_KEY)
     await set_default(owner, openai["id"], "gpt-4.1")
 

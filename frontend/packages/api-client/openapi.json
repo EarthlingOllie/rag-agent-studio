@@ -547,6 +547,37 @@
         "title": "ChunkOut",
         "type": "object"
       },
+      "ChunkPageOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "ChunkPageOut",
+        "type": "object"
+      },
       "CodeRequest": {
         "properties": {
           "code": {
@@ -1135,6 +1166,109 @@
         "title": "DisableRequest",
         "type": "object"
       },
+      "DocumentDetailOut": {
+        "properties": {
+          "chunk_count": {
+            "title": "Chunk Count",
+            "type": "integer"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "edition": {
+            "title": "Edition",
+            "type": "integer"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "markdown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Markdown"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replacement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplacementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DocumentStatus"
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagRef"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "mime_type",
+          "size_bytes",
+          "content_hash",
+          "status",
+          "error_message",
+          "edition",
+          "chunk_count",
+          "tags",
+          "created_at",
+          "updated_at",
+          "replacement",
+          "markdown"
+        ],
+        "title": "DocumentDetailOut",
+        "type": "object"
+      },
       "DocumentOut": {
         "properties": {
           "chunk_count": {
@@ -1298,6 +1432,70 @@
           "tag_ids"
         ],
         "title": "DocumentTagsRequest",
+        "type": "object"
+      },
+      "EmbeddingModelChoiceOut": {
+        "description": "An Embedding Model the Organisation can choose, and the credential it is called\nthrough (none for the built-in local model).",
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Id"
+          },
+          "credential_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Name"
+          },
+          "dimension": {
+            "title": "Dimension",
+            "type": "integer"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "token_limit": {
+            "title": "Token Limit",
+            "type": "integer"
+          },
+          "tokenizer": {
+            "title": "Tokenizer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "name",
+          "provider",
+          "dimension",
+          "tokenizer",
+          "token_limit",
+          "credential_id",
+          "credential_name"
+        ],
+        "title": "EmbeddingModelChoiceOut",
         "type": "object"
       },
       "EnrolmentResponse": {
@@ -2140,6 +2338,126 @@
         "title": "PricesOut",
         "type": "object"
       },
+      "ProbeChunkOut": {
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "heading_path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Heading Path",
+            "type": "array"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page End"
+          },
+          "page_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Start"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "document_name",
+          "ordinal",
+          "text",
+          "heading_path",
+          "page_start",
+          "page_end",
+          "score"
+        ],
+        "title": "ProbeChunkOut",
+        "type": "object"
+      },
+      "ProbeOut": {
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ProbeChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "dimension": {
+            "title": "Dimension",
+            "type": "integer"
+          },
+          "embedding_model_id": {
+            "title": "Embedding Model Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "embedding_model_id",
+          "dimension",
+          "chunks"
+        ],
+        "title": "ProbeOut",
+        "type": "object"
+      },
+      "ProbeRequest": {
+        "properties": {
+          "query": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "top_k": {
+            "default": 5,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "ProbeRequest",
+        "type": "object"
+      },
       "ProjectOut": {
         "properties": {
           "agent_count": {
@@ -2171,6 +2489,18 @@
             "title": "Document Count",
             "type": "integer"
           },
+          "embedding_credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embedding Credential Id"
+          },
           "embedding_model_id": {
             "title": "Embedding Model Id",
             "type": "string"
@@ -2198,7 +2528,8 @@
           "document_count",
           "agent_count",
           "embedding_model_id",
-          "ocr_enabled"
+          "ocr_enabled",
+          "embedding_credential_id"
         ],
         "title": "ProjectOut",
         "type": "object"
@@ -2460,6 +2791,31 @@
           "model"
         ],
         "title": "SetDefaultModelRequest",
+        "type": "object"
+      },
+      "SetEmbeddingModelRequest": {
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Id"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id"
+        ],
+        "title": "SetEmbeddingModelRequest",
         "type": "object"
       },
       "SignInRequest": {
@@ -5246,6 +5602,54 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/embedding-models": {
+      "get": {
+        "description": "The built-in local model, then the Embedding Models each embedding-capable Provider\nCredential offers, by credential name.",
+        "operationId": "listEmbeddingModels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EmbeddingModelChoiceOut"
+                  },
+                  "title": "Response Listembeddingmodels",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Embedding Models",
+        "tags": [
+          "embedding-models"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/invites": {
       "get": {
         "description": "Pending Invites (not accepted or revoked), newest first, including expired ones.",
@@ -7298,12 +7702,10 @@
         "tags": [
           "documents"
         ]
-      }
-    },
-    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
+      },
       "get": {
-        "description": "The Document's Chunks in order, with heading path and pages.",
-        "operationId": "listChunks",
+        "description": "One Document, with the markdown it was converted to: the Document viewer's left pane.",
+        "operationId": "getDocument",
         "parameters": [
           {
             "in": "path",
@@ -7341,11 +7743,104 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ChunkOut"
-                  },
-                  "title": "Response Listchunks",
-                  "type": "array"
+                  "$ref": "#/components/schemas/DocumentDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
+      "get": {
+        "description": "A page of the Document's Chunks in order, with heading path and pages.",
+        "operationId": "listChunks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkPageOut"
                 }
               }
             },
@@ -7373,6 +7868,73 @@
           }
         },
         "summary": "List Chunks",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/download": {
+      "get": {
+        "description": "Downloads the original file: a redirect to a presigned GET on the object store, which\nserves it as an attachment under the Document's name. A link to this route is enough.",
+        "operationId": "downloadDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Redirects to a short-lived presigned GET of the original file."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Document",
         "tags": [
           "documents"
         ]
@@ -7654,6 +8216,90 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/embedding-model": {
+      "put": {
+        "description": "Chooses the Project's Embedding Model: the local one, or a provider model with a\nProvider Credential that offers it. Refused while the Project has Documents. Records\n``project.embedding_model_changed``.",
+        "operationId": "setProjectEmbeddingModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEmbeddingModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: The Embedding Model can't be changed while the Project has Documents. Delete its Documents first."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model or credential can't be used; the detail says why."
+          }
+        },
+        "summary": "Set Project Embedding Model",
+        "tags": [
+          "embedding-models"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
       "post": {
         "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``.",
@@ -7735,6 +8381,100 @@
         "summary": "Restore Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/retrieval-probe": {
+      "post": {
+        "description": "The ``top_k`` Chunks nearest the query by vector, for tests and diagnostics. Searches\nthe Chunks of the Project's current Embedding Model only.",
+        "operationId": "probeRetrieval",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: The Project's Embedding Model can't be used: <why>"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Embedding Model's provider couldn't embed the query. Try again shortly."
+          }
+        },
+        "summary": "Probe Retrieval",
+        "tags": [
+          "embedding-models"
         ]
       }
     },

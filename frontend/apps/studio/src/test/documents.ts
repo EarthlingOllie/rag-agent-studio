@@ -249,3 +249,46 @@ export function fakeDocumentsApi(options: { documents?: ProjectDocument[]; tags?
     ];
   }
 }
+
+export type DocumentDetail = Schemas["DocumentDetailOut"];
+export type Chunk = Schemas["ChunkOut"];
+
+export function aChunk(overrides: Partial<Chunk> = {}): Chunk {
+  return {
+    id: `c0c00000-0000-4000-8000-${String(overrides.ordinal ?? 0).padStart(12, "0")}`,
+    ordinal: 0,
+    text: "Everyone gets 25 days of annual leave a year.",
+    heading_path: ["Northwind staff handbook", "Annual leave"],
+    page_start: 1,
+    page_end: 1,
+    embedding_model_id: "multilingual-e5-small",
+    ...overrides,
+  };
+}
+
+/** The Document as the Document list has it: without its markdown. */
+function listed(document: DocumentDetail): ProjectDocument {
+  return Object.fromEntries(Object.entries(document).filter(([key]) => key !== "markdown")) as ProjectDocument;
+}
+
+/**
+ * A stand-in for the Document viewer's API: the Document list (just this Document), the
+ * Document with its markdown, and its Chunks a page at a time, as the API pages them.
+ */
+export function fakeDocumentViewerApi({ document, chunks }: { document: DocumentDetail; chunks: Chunk[] }) {
+  const requests: { offset: number; limit: number }[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () => HttpResponse.json([listed(document)])),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId", ({ params }) =>
+      params.documentId === document.id ? HttpResponse.json(document) : HttpResponse.json({ detail: "Not found" }, { status: 404 }),
+    ),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks", ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const offset = Number(query.get("offset") ?? 0);
+      const limit = Number(query.get("limit") ?? 50);
+      requests.push({ offset, limit });
+      return HttpResponse.json({ items: chunks.slice(offset, offset + limit), total: chunks.length, offset, limit });
+    }),
+  );
+  return { requests };
+}

@@ -28,3 +28,9 @@ class Project(IdMixin, Base):
     # Whether ingestion runs OCR, so scanned PDFs become readable. Off by default: OCR is slow,
     # and most Projects' files carry their own text.
     ocr_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # The Provider Credential a provider Embedding Model is called through; None for the local
+    # model. Registered as a reference, so the credential can't be deleted while it is in use;
+    # the foreign key backs that up.
+    embedding_credential_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("provider_credentials.id"), index=True
+    )
