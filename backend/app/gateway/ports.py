@@ -5,7 +5,7 @@ Pydantic AI has no reranking, so ``Reranker`` is this project's own small port.
 """
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from pydantic_ai.embeddings import EmbeddingModel
@@ -22,6 +22,18 @@ class RankedDocument:
     score: float
 
 
+@dataclass(frozen=True)
+class BedrockAccount:
+    """Where Bedrock is called, and as whom: an IAM role in the Owner's account, which the
+    platform assumes with the Organisation's external ID, or an IAM user's access keys."""
+
+    region: str
+    role_arn: str | None = None
+    external_id: str | None = None
+    access_key_id: str | None = None
+    secret_access_key: str | None = field(default=None, repr=False)
+
+
 class Reranker(Protocol):
     @property
     def model_name(self) -> str: ...
@@ -34,11 +46,14 @@ class Reranker(Protocol):
 
 
 class ModelAdapters(Protocol):
-    """Builds clients for a provider from its secret. Production calls the providers; the
-    fake (tests, ``docker compose``) answers deterministically without any network."""
+    """Builds clients for a provider from its secret (Bedrock embedders: from its account).
+    Production calls the providers; the fake (tests, ``docker compose``) answers
+    deterministically without any network."""
 
     def chat(self, provider: Provider, secret: str, model: str) -> Model: ...
 
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel: ...
+
+    def bedrock_embedder(self, account: BedrockAccount, model: str) -> EmbeddingModel: ...
 
     def reranker(self, provider: Provider, secret: str, model: str) -> Reranker: ...

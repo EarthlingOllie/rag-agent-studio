@@ -57,11 +57,12 @@ class HashEmbedder:
     def tokenizer(self, max_tokens: int) -> BaseTokenizer:
         return WordTokenizer(max_tokens=max_tokens)
 
-    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+    async def embed_passages(self, texts: list[str]) -> list[list[float]]:
         prefix = self._model.passage_prefix
         return [hash_vector(prefix + text, self._model.dimension) for text in texts]
 
-    def embed_query(self, text: str) -> list[float]:
-        # Hashed like a passage, so a query equal to a Chunk's embedded text finds that Chunk
-        # with a score of 1: tests can say which Chunk is the relevant one.
-        return self.embed_passages([text])[0]
+    async def embed_query(self, text: str) -> list[float]:
+        """A query gets the vector of a passage with the same text, so a query that repeats a
+        Chunk word for word finds it first, the way a real model ranks a near-identical text."""
+        (vector,) = await self.embed_passages([text])
+        return vector

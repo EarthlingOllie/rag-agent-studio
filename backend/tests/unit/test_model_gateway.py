@@ -10,7 +10,7 @@ import base64
 import json
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx2
@@ -20,7 +20,9 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from app.core.clock import SystemClock
 from app.core.settings import Settings
+from app.credentials.bedrock_verifier import AssumedRoleSessions
 from app.credentials.models import ProviderCredential
 from app.credentials.registry import Capability, Provider
 from app.credentials.service import seal_secret
@@ -29,7 +31,7 @@ from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.gateway.adapters import build_model_gateway
 from app.gateway.fakes import FakeModelAdapters
 from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
-from app.gateway.live import LiveModelAdapters
+from app.gateway.live import BedrockClients, LiveModelAdapters
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
 ANTHROPIC_KEY = "sk-ant-gateway-test-only-aaaa"
@@ -37,6 +39,13 @@ OPENAI_KEY = "sk-gateway-test-only-bbbb"
 VOYAGE_KEY = "pa-gateway-test-only-cccc"
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
+
+# For live adapters in tests that never reach Bedrock (tests/unit/test_bedrock_embedder.py
+# covers it with stubbed AWS clients).
+NO_BEDROCK = BedrockClients(
+    AssumedRoleSessions(object(), SystemClock(), refresh_before=timedelta()),
+    lambda *args: pytest.fail("Bedrock isn't called here"),
+)
 
 
 def credential(
@@ -83,7 +92,7 @@ class Recorder:
 
 def live_gateway(recorder: Recorder) -> ModelGateway:
     client = httpx2.AsyncClient(transport=httpx2.MockTransport(recorder))
-    return ModelGateway(ENVELOPE, LiveModelAdapters(client))
+    return ModelGateway(ENVELOPE, LiveModelAdapters(client, NO_BEDROCK))
 
 
 def anthropic_stream(text: str) -> httpx2.Response:
@@ -296,29 +305,6 @@ async def test_a_voyage_error_is_a_model_http_error() -> None:
         assert raised.value.body == {"detail": "Slow down"}
 
 
-@pytest.mark.parametrize(
-    ("capability", "model"),
-    [
-        (Capability.CHAT, "amazon.nova-pro-v1:0"),
-        (Capability.EMBEDDINGS, "amazon.titan-embed-text-v2:0"),
-        (Capability.RERANK, "cohere.rerank-v3-5:0"),
-    ],
-)
-def test_bedrock_credentials_are_not_built_by_the_live_adapters_yet(
-    capability: Capability, model: str
-) -> None:
-    gateway = live_gateway(Recorder(lambda request: httpx2.Response(500)))
-    bedrock = credential(Provider.BEDROCK, "unused-bedrock-secret")
-    build = {
-        Capability.CHAT: gateway.chat_model,
-        Capability.EMBEDDINGS: gateway.embedder,
-        Capability.RERANK: gateway.reranker,
-    }[capability]
-
-    with pytest.raises(UnsupportedCredentialError, match="Bedrock"):
-        build(bedrock, model)
-
-
 @pytest.mark.parametrize("adapters", ["live", "fake"])
 def test_a_bedrock_role_credential_has_no_secret_to_open(adapters: str) -> None:
     gateway = (
@@ -386,7 +372,11 @@ def test_only_a_model_the_credential_offers_for_that_capability_is_built(
     model: str,
     message: str,
 ) -> None:
-    built = LiveModelAdapters(httpx2.AsyncClient()) if adapters == "live" else FakeModelAdapters()
+    built = (
+        LiveModelAdapters(httpx2.AsyncClient(), NO_BEDROCK)
+        if adapters == "live"
+        else FakeModelAdapters()
+    )
     gateway = ModelGateway(ENVELOPE, built)
 
     with pytest.raises(ModelUnavailableError) as raised:
@@ -447,7 +437,7 @@ async def test_the_fake_embedder_is_deterministic_and_tells_texts_apart() -> Non
     refund, hours = first.embeddings
     assert again.embeddings == [refund]
     assert refund != hours
-    assert len(refund) == 16
+    assert len(refund) == 1024  # voyage-3.5's registered dimension
     assert sum(x * x for x in refund) == pytest.approx(1.0)
     assert first.model_name == "voyage-3.5"
     assert first.provider_name == "fake"
