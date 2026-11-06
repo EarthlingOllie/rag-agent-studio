@@ -1,0 +1,253 @@
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: $SCRATCH/wt-0302live/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests/live/test_docling_live.py F..s                                     [ 57%]
+tests/live/test_local_embedder_live.py .F.                               [100%]
+
+=================================== FAILURES ===================================
+___ test_real_docling_converts_and_chunks_the_sample[northwind-handbook.pdf] ___
+
+sample = 'northwind-handbook.pdf'
+
+    @pytest.mark.parametrize(
+        "sample", ["northwind-handbook.pdf", "northwind-handbook.docx", "northwind-handbook.pptx"]
+    )
+    def test_real_docling_converts_and_chunks_the_sample(sample: str) -> None:
+        if sample.endswith(".pdf"):
+            require_models(DOCLING_LAYOUT)
+>       converted = DoclingConverter().convert((SAMPLES / sample).read_bytes(), sample, ocr=False)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/live/test_docling_live.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/documents/converter.py:66: in convert
+    return self._converters[ocr].convert(stream).document
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pydantic/_internal/_validate_call.py:40: in wrapper_function
+    return wrapper(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pydantic/_internal/_validate_call.py:137: in __call__
+    res = self.__pydantic_validator__.validate_python(pydantic_core.ArgsKwargs(args, kwargs))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/docling/document_converter.py:706: in convert
+    first_result = next(all_res, None)
+                   ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <docling.document_converter.DocumentConverter object at 0x7f261b56f620>
+source = ValidatorIterator(index=1, schema=Some(Union(UnionValidator { mode: Smart, choices: [(LaxOrStrict(LaxOrStrictValidator...on-or-python[json=function-after[path_validator(), str],python=is-instance[Path]]],str,DocumentStream,HttpSource]" })))
+headers = None, raises_on_error = True, max_num_pages = 9223372036854775807
+max_file_size = 9223372036854775807, page_range = (1, 9223372036854775807)
+progress_callback = None
+
+    @validate_call(config=ConfigDict(strict=True))
+    def convert_all(
+        self,
+        source: Iterable[
+            Union[Path, str, DocumentStream, HttpSource]
+        ],  # TODO review naming
+        headers: Optional[dict[str, str]] = None,
+        raises_on_error: bool = True,
+        max_num_pages: int = sys.maxsize,
+        max_file_size: int = sys.maxsize,
+        page_range: PageRange = DEFAULT_PAGE_RANGE,
+        progress_callback: Optional[ProgressCallback] = None,
+    ) -> Iterator[ConversionResult]:
+        """Convert multiple documents from file paths, URLs, or DocumentStreams.
+    
+        Args:
+            source: Source of input documents given as an iterable of file paths, URLs,
+                DocumentStreams, or HttpSources (a URL bundled with its own headers).
+            headers: Optional headers given as a (single) dictionary of string
+                key-value pairs, in case of URL input source. Per-source HttpSource
+                headers override these (merged per key) for that source only.
+            raises_on_error: Whether to raise an error on the first conversion failure.
+            max_num_pages: Maximum number of pages accepted per document.
+                Documents exceeding this number will not be converted.
+            max_file_size: Maximum file size in bytes. Documents exceeding this
+                limit will be skipped.
+            page_range: Range of pages to convert in each document.
+            progress_callback: Optional callable that receives the progress
+                events of this call only, on top of the converter-level
+                `progress_callback`. Use it when one converter serves several
+                callers, e.g. the tasks of a service.
+    
+        Yields:
+            The conversion results, each containing a `DoclingDocument` in the
+                `document` attribute and metadata about the conversion process.
+    
+        Raises:
+            ConversionError: An error occurred during conversion.
+    
+        Examples:
+            Convert a batch of local files:
+    
+            >>> from pathlib import Path
+            >>> converter = DocumentConverter()
+            >>> paths = list(Path("docs/").glob("*.pdf"))
+            >>> for result in converter.convert_all(paths):
+            ...     print(result.document.export_to_markdown()[:100])
+    
+            Convert with a file size limit of 20 MB:
+    
+            >>> results = converter.convert_all(
+            ...     paths, max_file_size=20 * 1024 * 1024
+            ... )
+        """
+        limits = DocumentLimits(
+            max_num_pages=max_num_pages,
+            max_file_size=max_file_size,
+            page_range=page_range,
+        )
+        conv_input = _DocumentConversionInput(
+            path_or_stream_iterator=source, limits=limits, headers=headers
+        )
+        conv_res_iter = self._convert(
+            conv_input,
+            raises_on_error=raises_on_error,
+            progress_callback=progress_callback,
+        )
+    
+        had_result = False
+        for conv_res in conv_res_iter:
+            had_result = True
+            if raises_on_error and conv_res.status not in {
+                ConversionStatus.SUCCESS,
+                ConversionStatus.PARTIAL_SUCCESS,
+            }:
+                error_details = ""
+                if conv_res.errors:
+                    error_messages = [err.error_message for err in conv_res.errors]
+                    error_details = f" Errors: {'; '.join(error_messages)}"
+                # Chain the underlying exception (when one was captured during
+                # input construction) so callers can classify failures via
+                # ``__cause__`` — e.g. an encrypted PDF surfaces the original
+                # ``PdfiumError``. See issue #1920.
+>               raise ConversionError(
+                    f"Conversion failed for: {conv_res.input.file} with status: "
+                    f"{conv_res.status.value}.{error_details}"
+                ) from get_input_rejection_cause(conv_res.input)
+E               docling.exceptions.ConversionError: Conversion failed for: northwind-handbook.pdf with status: failure. Errors: The 'rtree' package is required for spatial indexing. Install it with `pip install 'docling-slim[convert-core]'`.; The 'rtree' package is required for spatial indexing. Install it with `pip install 'docling-slim[convert-core]'`.
+
+.venv/lib/python3.13/site-packages/docling/document_converter.py:800: ConversionError
+----------------------------- Captured stderr call -----------------------------
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  24%|██▍       | 184/770 [00:00<00:00, 1839.27it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 6457.28it/s]
+------------------------------ Captured log call -------------------------------
+WARNING  huggingface_hub.utils._http:_http.py:993 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+ERROR    docling.pipeline.standard_pdf_pipeline:standard_pdf_pipeline.py:414 Stage layout_postprocess failed for run 1: The 'rtree' package is required for spatial indexing. Install it with `pip install 'docling-slim[convert-core]'`.
+Traceback (most recent call last):
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/datamodel/spatial.py", line 10, in <module>
+    from rtree import index
+ModuleNotFoundError: No module named 'rtree'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py", line 389, in _process_batch
+    processed_pages = self._run_model(good[0].conv_res, pages)
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py", line 285, in _run_model
+    return self._model_call.result()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/concurrent/futures/_base.py", line 453, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/concurrent/futures/_base.py", line 402, in __get_result
+    raise self._exception
+  File "/usr/local/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py", line 279, in <lambda>
+    lambda: list(self.model(conv_res, pages))
+            ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/models/base_layout_postprocessing_model.py", line 38, in __call__
+    predictions = self.postprocess_layout(conv_res, pages)
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/models/stages/layout/layout_postprocessing_model.py", line 61, in postprocess_layout
+    processed_clusters = LayoutPostprocessor(
+                         ~~~~~~~~~~~~~~~~~~~^
+        page, raw_clusters, self.options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).postprocess()
+    ^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/utils/layout_postprocessor.py", line 173, in __init__
+    self.regular_index = SpatialClusterIndex(self.regular_clusters)
+                         ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/utils/layout_postprocessor.py", line 59, in __init__
+    self.spatial_index = BoundingBoxSpatialIndex()
+                         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/datamodel/spatial.py", line 55, in __init__
+    raise ImportError(_INSTALL_HINT) from _RTREE_IMPORT_ERROR
+ImportError: The 'rtree' package is required for spatial indexing. Install it with `pip install 'docling-slim[convert-core]'`.
+ERROR    docling.pipeline.standard_pdf_pipeline:standard_pdf_pipeline.py:414 Stage layout_postprocess failed for run 1: The 'rtree' package is required for spatial indexing. Install it with `pip install 'docling-slim[convert-core]'`.
+Traceback (most recent call last):
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/datamodel/spatial.py", line 10, in <module>
+    from rtree import index
+ModuleNotFoundError: No module named 'rtree'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py", line 389, in _process_batch
+    processed_pages = self._run_model(good[0].conv_res, pages)
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py", line 285, in _run_model
+    return self._model_call.result()
+           ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/concurrent/futures/_base.py", line 453, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/concurrent/futures/_base.py", line 402, in __get_result
+    raise self._exception
+  File "/usr/local/lib/python3.13/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/pipeline/standard_pdf_pipeline.py", line 279, in <lambda>
+    lambda: list(self.model(conv_res, pages))
+            ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/models/base_layout_postprocessing_model.py", line 38, in __call__
+    predictions = self.postprocess_layout(conv_res, pages)
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/models/stages/layout/layout_postprocessing_model.py", line 61, in postprocess_layout
+    processed_clusters = LayoutPostprocessor(
+                         ~~~~~~~~~~~~~~~~~~~^
+        page, raw_clusters, self.options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).postprocess()
+    ^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/utils/layout_postprocessor.py", line 173, in __init__
+    self.regular_index = SpatialClusterIndex(self.regular_clusters)
+                         ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/utils/layout_postprocessor.py", line 59, in __init__
+    self.spatial_index = BoundingBoxSpatialIndex()
+                         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "$SCRATCH/wt-0302live/backend/.venv/lib/python3.13/site-packages/docling/datamodel/spatial.py", line 55, in __init__
+    raise ImportError(_INSTALL_HINT) from _RTREE_IMPORT_ERROR
+ImportError: The 'rtree' package is required for spatial indexing. Install it with `pip install 'docling-slim[convert-core]'`.
+_____________ test_a_query_is_nearest_the_passage_that_answers_it ______________
+
+    async def test_a_query_is_nearest_the_passage_that_answers_it() -> None:
+        embedder = LocalEmbedder()
+        leave, expenses = await embedder.embed_passages(
+            ["Everyone gets 25 days of annual leave.", "Claim expenses within 30 days."]
+        )
+    
+        query = await embedder.embed_query("How much holiday do I get?")
+    
+        assert len(query) == 384
+>       assert _cosine(query, leave) > _cosine(query, expenses)
+E       assert 0.7956683622683953 > 0.8049633633964268
+E        +  where 0.7956683622683953 = _cosine([0.043778348714113235, 0.001330383587628603, -0.06213802099227905, -0.05592354014515877, 0.04486581310629845, -0.035539720207452774, ...], [0.01688746176660061, 0.02405458129942417, -0.006004852242767811, -0.045452482998371124, 0.10122796893119812, 0.004565095528960228, ...])
+E        +  and   0.8049633633964268 = _cosine([0.043778348714113235, 0.001330383587628603, -0.06213802099227905, -0.05592354014515877, 0.04486581310629845, -0.035539720207452774, ...], [0.046417515724897385, 0.009408802725374699, -0.014081576839089394, -0.10659898817539215, 0.030779242515563965, 0.0037853734102100134, ...])
+
+tests/live/test_local_embedder_live.py:50: AssertionError
+=========================== short test summary info ============================
+SKIPPED [1] tests/live/models.py:73: RapidOCR's models are not on disk and can't be downloaded (https://www.modelscope.cn/models/RapidAI/RapidOCR: ProxyError: 403 Forbidden). Run the live suite where www.modelscope.cn is reachable, or in the worker image.
+============== 2 failed, 4 passed, 1 skipped in 73.64s (0:01:13) ===============
+make: *** [Makefile:34: test-live] Error 1
+
+real	1m36.422s
+user	0m37.795s
+sys	0m7.713s

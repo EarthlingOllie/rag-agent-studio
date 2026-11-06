@@ -1,0 +1,19 @@
+$ HF_HOME=$SCRATCH/hf-cache FASTEMBED_CACHE_PATH=$SCRATCH/hf-cache/fastembed HF_HUB_DISABLE_XET=1 make test-live @ ceb3d41
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Installed 20 packages in 443ms
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: $SCRATCH/wt-0302live/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests/live/test_docling_live.py ...s                                     [ 57%]
+tests/live/test_local_embedder_live.py ...                               [100%]
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/live/models.py:73: RapidOCR's models are not on disk and can't be downloaded (https://www.modelscope.cn/models/RapidAI/RapidOCR: ProxyError: 403 Forbidden). Run the live suite where www.modelscope.cn is reachable, or in the worker image.
+======================== 6 passed, 1 skipped in 34.95s =========================
+exit 0

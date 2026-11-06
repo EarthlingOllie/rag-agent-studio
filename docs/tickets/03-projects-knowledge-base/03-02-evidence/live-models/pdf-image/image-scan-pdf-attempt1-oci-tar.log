@@ -1,0 +1,1364 @@
+$ (Makefile image-scan's flags) trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL --input <OCI archive of rag-agent-studio/api:pdf> @ 210ec94; free before: 3759M
+2026-11-06T15:12:40Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T15:12:40Z	INFO	[secret] Secret scanning is enabled
+2026-11-06T15:12:40Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
+2026-11-06T15:12:40Z	INFO	[secret] Please see https://trivy.dev/docs/v0.69/guide/scanner/secret#recommendation for faster secret detection
+2026-11-06T15:12:44Z	FATAL	Fatal error	run error: image scan error: scan error: unable to initialize a scan service: unable to initialize artifact: unable to initialize archive image: 2 errors occurred:
+	* unable to open $SCRATCH/rag0302-api-pdf.oci.tar as a Docker image: file manifest.json not found in tar
+	* unable to open $SCRATCH/rag0302-api-pdf.oci.tar as an OCI Image: stat $SCRATCH/rag0302-api-pdf.oci.tar/index.json: not a directory
+
+
+exit 1
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/studio:pdf
+2026-11-06T15:12:45Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T15:12:45Z	INFO	[secret] Secret scanning is enabled
+2026-11-06T15:12:45Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
+2026-11-06T15:12:45Z	INFO	[secret] Please see https://trivy.dev/docs/v0.69/guide/scanner/secret#recommendation for faster secret detection
+2026-11-06T15:12:52Z	INFO	Detected OS	family="debian" version="12.15"
+2026-11-06T15:12:52Z	INFO	[debian] Detecting vulnerabilities...	os_version="12" pkg_num=88
+2026-11-06T15:12:52Z	INFO	Number of language-specific files	num=1
+2026-11-06T15:12:52Z	INFO	[node-pkg] Detecting vulnerabilities...
+2026-11-06T15:12:52Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
+
+Report Summary
+
+┌──────────────────────────────────────────────────────────────────────────────────┬──────────┬─────────────────┬─────────┐
+│                                      Target                                      │   Type   │ Vulnerabilities │ Secrets │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ rag-agent-studio/studio:pdf (debian 12.15)                                       │  debian  │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@adobe+css-tools@4.5.0/node_modules/@adobe/css-tools/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@asamuzakjp+css-color@7.1.9/node_modules/@asamuzakjp/css- │ node-pkg │        0        │    -    │
+│ -color/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@asamuzakjp+dom-selector@10.0.5/node_modules/@asamuzakjp- │ node-pkg │        0        │    -    │
+│ /dom-selector/package.json                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_- │ node-pkg │        0        │    -    │
+│ modules/@axe-core/playwright/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+code-frame@7.29.7/node_modules/@babel/code-frame/- │ node-pkg │        0        │    -    │
+│ package.json                                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+compat-data@7.29.7/node_modules/@babel/compat-dat- │ node-pkg │        0        │    -    │
+│ a/package.json                                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+core@7.29.13/node_modules/@babel/core/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+generator@7.29.13/node_modules/@babel/generator/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-compilation-targets@7.29.13/node_modules/@- │ node-pkg │        0        │    -    │
+│ babel/helper-compilation-targets/package.json                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-globals@7.29.7/node_modules/@babel/helper-- │ node-pkg │        0        │    -    │
+│ globals/package.json                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-module-imports@7.29.7/node_modules/@babel/- │ node-pkg │        0        │    -    │
+│ helper-module-imports/package.json                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-module-transforms@7.29.13_@babel+core@7.29- │ node-pkg │        0        │    -    │
+│ .13/node_modules/@babel/helper-module-transforms/package.json                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-string-parser@7.29.13/node_modules/@babel/- │ node-pkg │        0        │    -    │
+│ helper-string-parser/package.json                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-validator-identifier@7.29.7/node_modules/@- │ node-pkg │        0        │    -    │
+│ babel/helper-validator-identifier/package.json                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helper-validator-option@7.29.7/node_modules/@babe- │ node-pkg │        0        │    -    │
+│ l/helper-validator-option/package.json                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+helpers@7.29.13/node_modules/@babel/helpers/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+parser@7.29.13/node_modules/@babel/parser/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+runtime@7.29.13/node_modules/@babel/runtime/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+template@7.29.7/node_modules/@babel/template/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+traverse@7.29.13/node_modules/@babel/traverse/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@babel+types@7.29.11/node_modules/@babel/types/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@bcoe+v8-coverage@1.0.2/node_modules/@bcoe/v8-coverage/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@bramus+specificity@2.4.3/node_modules/@bramus/specifici- │ node-pkg │        0        │    -    │
+│ ty/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@cacheable+memory@2.2.0/node_modules/@cacheable/memory/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@cacheable+utils@2.5.0/node_modules/@cacheable/utils/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@csstools+color-helpers@6.1.2/node_modules/@csstools/col- │ node-pkg │        0        │    -    │
+│ or-helpers/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@csstools+css-calc@3.4.3_@csstools+css-parser-algorithms- │ node-pkg │        0        │    -    │
+│ @4.0.2_@csstools+css-tokenizer@_5d0f8d745a07415aae8a65a2b2b89950/node_modules/@- │          │                 │         │
+│ csstools/css-calc/package.json                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@csstools+css-color-parser@4.2.7_@csstools+css-parser-al- │ node-pkg │        0        │    -    │
+│ gorithms@4.0.2_@csstools+css-to_c1a4ed21d4949d5c136d488809f5af6a/node_modules/@- │          │                 │         │
+│ csstools/css-color-parser/package.json                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@csstools+css-parser-algorithms@4.0.2_@csstools+css-toke- │ node-pkg │        0        │    -    │
+│ nizer@4.0.2/node_modules/@csstools/css-parser-algorithms/package.json            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@csstools+css-syntax-patches-for-csstree@1.1.16_css-tree- │ node-pkg │        0        │    -    │
+│ @3.2.1/node_modules/@csstools/css-syntax-patches-for-csstree/package.json        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@csstools+css-tokenizer@4.0.2/node_modules/@csstools/css- │ node-pkg │        0        │    -    │
+│ -tokenizer/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint+config-array@0.23.5/node_modules/@eslint/config-- │ node-pkg │        0        │    -    │
+│ array/package.json                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint+config-helpers@0.7.0/node_modules/@eslint/config- │ node-pkg │        0        │    -    │
+│ -helpers/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint+core@1.2.1/node_modules/@eslint/core/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint+js@10.0.1_eslint@10.14.0_jiti@2.7.0_/node_module- │ node-pkg │        0        │    -    │
+│ s/@eslint/js/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint+object-schema@3.0.5/node_modules/@eslint/object-- │ node-pkg │        0        │    -    │
+│ schema/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint+plugin-kit@0.7.3/node_modules/@eslint/plugin-kit- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint-community+eslint-utils@4.10.1_eslint@10.14.0_jit- │ node-pkg │        0        │    -    │
+│ i@2.7.0_/node_modules/@eslint-community/eslint-utils/package.json                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@eslint-community+regexpp@4.12.2/node_modules/@eslint-co- │ node-pkg │        0        │    -    │
+│ mmunity/regexpp/package.json                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@exodus+bytes@1.16.0/node_modules/@exodus/bytes/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/util- │ node-pkg │        0        │    -    │
+│ s/package.json                                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@humanfs+core@0.19.2/node_modules/@humanfs/core/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@humanfs+node@0.16.8/node_modules/@humanfs/node/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@humanfs+types@0.15.0/node_modules/@humanfs/types/packag- │ node-pkg │        0        │    -    │
+│ e.json                                                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@humanwhocodes+module-importer@1.0.1/node_modules/@human- │ node-pkg │        0        │    -    │
+│ whocodes/module-importer/package.json                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@humanwhocodes+retry@0.4.3/node_modules/@humanwhocodes/r- │ node-pkg │        0        │    -    │
+│ etry/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@inquirer+ansi@2.0.10/node_modules/@inquirer/ansi/packag- │ node-pkg │        0        │    -    │
+│ e.json                                                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@inquirer+confirm@6.3.5_@types+node@22.20.5/node_modules- │ node-pkg │        0        │    -    │
+│ /@inquirer/confirm/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@inquirer+core@12.0.6_@types+node@22.20.5/node_modules/@- │ node-pkg │        0        │    -    │
+│ inquirer/core/package.json                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@inquirer+figures@2.0.10/node_modules/@inquirer/figures/- │ node-pkg │        0        │    -    │
+│ package.json                                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@inquirer+type@4.2.1_@types+node@22.20.5/node_modules/@i- │ node-pkg │        0        │    -    │
+│ nquirer/type/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@isaacs+nonrecursive-glob-match@1.0.3/node_modules/@isaa- │ node-pkg │        0        │    -    │
+│ cs/nonrecursive-glob-match/package.json                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@jridgewell+gen-mapping@0.3.13/node_modules/@jridgewell/- │ node-pkg │        0        │    -    │
+│ gen-mapping/package.json                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@jridgewell+remapping@2.3.5/node_modules/@jridgewell/rem- │ node-pkg │        0        │    -    │
+│ apping/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@jridgewell+resolve-uri@3.1.2/node_modules/@jridgewell/r- │ node-pkg │        0        │    -    │
+│ esolve-uri/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@jridgewell+sourcemap-codec@1.6.0/node_modules/@jridgewe- │ node-pkg │        0        │    -    │
+│ ll/sourcemap-codec/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@jridgewell+trace-mapping@0.3.31/node_modules/@jridgewel- │ node-pkg │        0        │    -    │
+│ l/trace-mapping/package.json                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@keyv+bigmap@1.3.1_keyv@5.6.0/node_modules/@keyv/bigmap/- │ node-pkg │        0        │    -    │
+│ package.json                                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@keyv+serialize@1.1.1/node_modules/@keyv/serialize/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@msw+url@0.1.2/node_modules/@msw/url/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@mswjs+interceptors@0.45.11/node_modules/@mswjs/intercep- │ node-pkg │        0        │    -    │
+│ tors/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@open-draft+until@3.0.1/node_modules/@open-draft/until/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@oxc-project+types@0.156.0/node_modules/@oxc-project/typ- │ node-pkg │        0        │    -    │
+│ es/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@playwright+test@1.64.1/node_modules/@playwright/test/pa- │ node-pkg │        0        │    -    │
+│ ckage.json                                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@redocly+ajv@8.11.2/node_modules/@redocly/ajv/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@redocly+config@0.22.0/node_modules/@redocly/config/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@redocly+openapi-core@1.34.23_supports-color@10.2.2/node- │ node-pkg │        0        │    -    │
+│ _modules/@redocly/openapi-core/package.json                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@rolldown+binding-linux-x64-gnu@1.2.16/node_modules/@rol- │ node-pkg │        0        │    -    │
+│ ldown/binding-linux-x64-gnu/package.json                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@rolldown+binding-linux-x64-musl@1.2.16/node_modules/@ro- │ node-pkg │        0        │    -    │
+│ lldown/binding-linux-x64-musl/package.json                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@rolldown+pluginutils@1.0.1/node_modules/@rolldown/plugi- │ node-pkg │        0        │    -    │
+│ nutils/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+node@4.3.4/node_modules/@tailwindcss/node/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-linux-x64-gnu@4.3.4/node_modules/@tai- │ node-pkg │        0        │    -    │
+│ lwindcss/oxide-linux-x64-gnu/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-linux-x64-musl@4.3.4/node_modules/@ta- │ node-pkg │        0        │    -    │
+│ ilwindcss/oxide-linux-x64-musl/package.json                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/node_modules/@emnapi/core/package.json                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/node_modules/@emnapi/runtime/package.json               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/node_modules/@emnapi/wasi-threads/package.json          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/node_modules/@napi-rs/wasm-runtime/package.json         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/node_modules/@tybys/wasm-util/package.json              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/node_modules/tslib/package.json                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide-wasm32-wasi@4.3.4/node_modules/@tailw- │ node-pkg │        0        │    -    │
+│ indcss/oxide-wasm32-wasi/package.json                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+oxide@4.3.4/node_modules/@tailwindcss/oxide- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tailwindcss+vite@4.3.4_vite@8.3.5_@types+node@26.6.6_ji- │ node-pkg │        0        │    -    │
+│ ti@2.7.0_/node_modules/@tailwindcss/vite/package.json                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+history@1.162.5/node_modules/@tanstack/history- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+query-core@5.106.0/node_modules/@tanstack/quer- │ node-pkg │        0        │    -    │
+│ y-core/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+react-query@5.106.0_@types+react@19.3.0_react@- │ node-pkg │        0        │    -    │
+│ 19.3.1/node_modules/@tanstack/react-query/package.json                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+react-router@1.170.46_react-dom@19.3.1_react@1- │ node-pkg │        0        │    -    │
+│ 9.3.1__react@19.3.1/node_modules/@tanstack/react-router/package.json             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+react-store@0.11.2_react-dom@19.3.1_react@19.3- │ node-pkg │        0        │    -    │
+│ .1__react@19.3.1/node_modules/@tanstack/react-store/package.json                 │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+router-core@1.171.39/node_modules/@tanstack/ro- │ node-pkg │        0        │    -    │
+│ uter-core/package.json                                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tanstack+store@0.11.2/node_modules/@tanstack/store/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-librar- │ node-pkg │        0        │    -    │
+│ y/dom/package.json                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@testing-library+jest-dom@7.0.1_@testing-library+dom@10.- │ node-pkg │        0        │    -    │
+│ 4.2_vitest@5.1.0/node_modules/@testing-library/jest-dom/package.json             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@testing-library+react@16.3.3_@testing-library+dom@10.4.- │ node-pkg │        0        │    -    │
+│ 2_@types+react-dom@19.3.0_@type_caf0c89dcd807677af52e2a43e70eff8/node_modules/@- │          │                 │         │
+│ testing-library/react/package.json                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@testing-library+user-event@14.6.8_@testing-library+dom@- │ node-pkg │        0        │    -    │
+│ 10.4.2/node_modules/@testing-library/user-event/package.json                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+core@3.32.0_@tiptap+pm@3.32.0/node_modules/@tipt- │ node-pkg │        0        │    -    │
+│ ap/core/package.json                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-blockquote@3.32.0_@tiptap+core@3.32.0_- │ node-pkg │        0        │    -    │
+│ @tiptap+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extension-blockquote/- │          │                 │         │
+│ package.json                                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-bold@3.32.0_@tiptap+core@3.32.0_@tipta- │ node-pkg │        0        │    -    │
+│ p+pm@3.32.0_/node_modules/@tiptap/extension-bold/package.json                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-bubble-menu@3.32.0_@tiptap+core@3.32.0- │ node-pkg │        0        │    -    │
+│ _@tiptap+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extension-bubble-men- │          │                 │         │
+│ u/package.json                                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-bullet-list@3.32.0_@tiptap+extension-l- │ node-pkg │        0        │    -    │
+│ ist@3.32.0_@tiptap+core@3.32.0__f3f964ef4b650ab723e97dbd9eae5b71/node_modules/@- │          │                 │         │
+│ tiptap/extension-bullet-list/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-code-block@3.32.0_@tiptap+core@3.32.0_- │ node-pkg │        0        │    -    │
+│ @tiptap+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extension-code-block/- │          │                 │         │
+│ package.json                                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-code@3.32.0_@tiptap+core@3.32.0_@tipta- │ node-pkg │        0        │    -    │
+│ p+pm@3.32.0_/node_modules/@tiptap/extension-code/package.json                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-document@3.32.0_@tiptap+core@3.32.0_@t- │ node-pkg │        0        │    -    │
+│ iptap+pm@3.32.0_/node_modules/@tiptap/extension-document/package.json            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-dropcursor@3.32.0_@tiptap+extensions@3- │ node-pkg │        0        │    -    │
+│ .32.0_@tiptap+core@3.32.0_@tiptap+pm@3.32.0__@tiptap+pm@3.32.0_/node_modules/@t- │          │                 │         │
+│ iptap/extension-dropcursor/package.json                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-floating-menu@3.32.0_@floating-ui+dom@- │ node-pkg │        0        │    -    │
+│ 1.8.0_@tiptap+core@3.32.0_@tiptap+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@ti- │          │                 │         │
+│ ptap/extension-floating-menu/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-gapcursor@3.32.0_@tiptap+extensions@3.- │ node-pkg │        0        │    -    │
+│ 32.0_@tiptap+core@3.32.0_@tiptap+pm@3.32.0__@tiptap+pm@3.32.0_/node_modules/@ti- │          │                 │         │
+│ ptap/extension-gapcursor/package.json                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-hard-break@3.32.0_@tiptap+core@3.32.0_- │ node-pkg │        0        │    -    │
+│ @tiptap+pm@3.32.0_/node_modules/@tiptap/extension-hard-break/package.json        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-heading@3.32.0_@tiptap+core@3.32.0_@ti- │ node-pkg │        0        │    -    │
+│ ptap+pm@3.32.0_/node_modules/@tiptap/extension-heading/package.json              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-horizontal-rule@3.32.0_@tiptap+core@3.- │ node-pkg │        0        │    -    │
+│ 32.0_@tiptap+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extension-horizo- │          │                 │         │
+│ ntal-rule/package.json                                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-italic@3.32.0_@tiptap+core@3.32.0_@tip- │ node-pkg │        0        │    -    │
+│ tap+pm@3.32.0_/node_modules/@tiptap/extension-italic/package.json                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-link@3.32.0_@tiptap+core@3.32.0_@tipta- │ node-pkg │        0        │    -    │
+│ p+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extension-link/package.json  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-list-item@3.32.0_@tiptap+extension-lis- │ node-pkg │        0        │    -    │
+│ t@3.32.0_@tiptap+core@3.32.0_@t_d3863e94766d6198411ccbf740b3cd38/node_modules/@- │          │                 │         │
+│ tiptap/extension-list-item/package.json                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-list-keymap@3.32.0_@tiptap+extension-l- │ node-pkg │        0        │    -    │
+│ ist@3.32.0_@tiptap+core@3.32.0__9edc9cef1be2f12d2d6a8d06e08008d5/node_modules/@- │          │                 │         │
+│ tiptap/extension-list-keymap/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-list@3.32.0_@tiptap+core@3.32.0_@tipta- │ node-pkg │        0        │    -    │
+│ p+pm@3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extension-list/package.json  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-ordered-list@3.32.0_@tiptap+extension-- │ node-pkg │        0        │    -    │
+│ list@3.32.0_@tiptap+core@3.32.0_fefaaba43bf7b9561135b2df4845726c/node_modules/@- │          │                 │         │
+│ tiptap/extension-ordered-list/package.json                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-paragraph@3.32.0_@tiptap+core@3.32.0_@- │ node-pkg │        0        │    -    │
+│ tiptap+pm@3.32.0_/node_modules/@tiptap/extension-paragraph/package.json          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-strike@3.32.0_@tiptap+core@3.32.0_@tip- │ node-pkg │        0        │    -    │
+│ tap+pm@3.32.0_/node_modules/@tiptap/extension-strike/package.json                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-text@3.32.0_@tiptap+core@3.32.0_@tipta- │ node-pkg │        0        │    -    │
+│ p+pm@3.32.0_/node_modules/@tiptap/extension-text/package.json                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extension-underline@3.32.0_@tiptap+core@3.32.0_@- │ node-pkg │        0        │    -    │
+│ tiptap+pm@3.32.0_/node_modules/@tiptap/extension-underline/package.json          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+extensions@3.32.0_@tiptap+core@3.32.0_@tiptap+pm- │ node-pkg │        0        │    -    │
+│ @3.32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/extensions/package.json          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+markdown@3.32.0_@tiptap+core@3.32.0_@tiptap+pm@3- │ node-pkg │        0        │    -    │
+│ .32.0__@tiptap+pm@3.32.0/node_modules/@tiptap/markdown/package.json              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+pm@3.32.0/node_modules/@tiptap/pm/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+react@3.32.0_@floating-ui+dom@1.8.0_@tiptap+core- │ node-pkg │        0        │    -    │
+│ @3.32.0_@tiptap+pm@3.32.0__@tip_8215e90eae23fe6dcd148429648d62d6/node_modules/@- │          │                 │         │
+│ tiptap/react/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@tiptap+starter-kit@3.32.0/node_modules/@tiptap/starter-- │ node-pkg │        0        │    -    │
+│ kit/package.json                                                                 │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+aria-query@5.0.4/node_modules/@types/aria-query/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+chai@5.2.3/node_modules/@types/chai/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+debug@4.1.13/node_modules/@types/debug/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+deep-eql@4.0.2/node_modules/@types/deep-eql/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+esrecurse@4.3.1/node_modules/@types/esrecurse/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+estree-jsx@1.0.5/node_modules/@types/estree-jsx/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+estree@1.0.10/node_modules/@types/estree/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+hast@3.0.5/node_modules/@types/hast/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+json-schema@7.0.15/node_modules/@types/json-schem- │ node-pkg │        0        │    -    │
+│ a/package.json                                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+mdast@4.0.4/node_modules/@types/mdast/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+ms@2.1.0/node_modules/@types/ms/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+node@22.20.5/node_modules/@types/node/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+node@26.6.6/node_modules/@types/node/package.json  │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+react-dom@19.3.0_@types+react@19.3.0/node_modules- │ node-pkg │        0        │    -    │
+│ /@types/react-dom/package.json                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+react@19.3.0/node_modules/@types/react/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+set-cookie-parser@2.4.10/node_modules/@types/set-- │ node-pkg │        0        │    -    │
+│ cookie-parser/package.json                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+unist@2.0.11/node_modules/@types/unist/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+unist@3.0.3/node_modules/@types/unist/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@types+use-sync-external-store@0.0.6/node_modules/@types- │ node-pkg │        0        │    -    │
+│ /use-sync-external-store/package.json                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+eslint-plugin@8.72.1_@typescript-esli- │ node-pkg │        0        │    -    │
+│ nt+parser@8.72.1_eslint@10.14.0_fee7ebe652999a7c3c832912ce95e072/node_modules/@- │          │                 │         │
+│ typescript-eslint/eslint-plugin/package.json                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+parser@8.72.1_eslint@10.14.0_jiti@2.7- │ node-pkg │        0        │    -    │
+│ .0__typescript@6.0.3/node_modules/@typescript-eslint/parser/package.json         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+project-service@8.72.1_typescript@6.0- │ node-pkg │        0        │    -    │
+│ .3/node_modules/@typescript-eslint/project-service/package.json                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+scope-manager@8.72.1/node_modules/@ty- │ node-pkg │        0        │    -    │
+│ pescript-eslint/scope-manager/package.json                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+tsconfig-utils@8.72.1_typescript@6.0.- │ node-pkg │        0        │    -    │
+│ 3/node_modules/@typescript-eslint/tsconfig-utils/package.json                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+type-utils@8.72.1_eslint@10.14.0_jiti- │ node-pkg │        0        │    -    │
+│ @2.7.0__typescript@6.0.3/node_modules/@typescript-eslint/type-utils/package.json │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+types@8.72.1/node_modules/@typescript- │ node-pkg │        0        │    -    │
+│ -eslint/types/package.json                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+typescript-estree@8.72.1_typescript@6- │ node-pkg │        0        │    -    │
+│ .0.3/node_modules/@typescript-eslint/typescript-estree/package.json              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+utils@8.72.1_eslint@10.14.0_jiti@2.7.- │ node-pkg │        0        │    -    │
+│ 0__typescript@6.0.3/node_modules/@typescript-eslint/utils/package.json           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@typescript-eslint+visitor-keys@8.72.1/node_modules/@typ- │ node-pkg │        0        │    -    │
+│ escript-eslint/visitor-keys/package.json                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@ungap+structured-clone@1.4.0/node_modules/@ungap/struct- │ node-pkg │        0        │    -    │
+│ ured-clone/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@vitejs+plugin-react@6.2.1_vite@8.3.5_@types+node@22.20.- │ node-pkg │        0        │    -    │
+│ 5_jiti@2.7.0_/node_modules/@vitejs/plugin-react/package.json                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@vitest+coverage-v8@5.1.0_vitest@5.1.0/node_modules/@vit- │ node-pkg │        0        │    -    │
+│ est/coverage-v8/package.json                                                     │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@vitest+istanbul-lib-coverage@2.1.0/node_modules/@vitest- │ node-pkg │        0        │    -    │
+│ /istanbul-lib-coverage/package.json                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@vitest+istanbul-lib-report@2.1.0/node_modules/@vitest/i- │ node-pkg │        0        │    -    │
+│ stanbul-lib-report/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@vitest+mocker@5.1.0_msw@3.0.3_@types+node@22.20.5_types- │ node-pkg │        0        │    -    │
+│ cript@6.0.3_vite@8.3.5_@types+n_ee71ac57fac07cf2b877da19f7d48052/node_modules/@- │          │                 │         │
+│ vitest/mocker/package.json                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/@vitest+spy@5.1.0/node_modules/@vitest/spy/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/acorn-jsx@5.3.2_acorn@8.19.0/node_modules/acorn-jsx/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/acorn@8.19.0/node_modules/acorn/package.json              │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/agent-base@7.1.4/node_modules/agent-base/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ajv@6.15.0/node_modules/ajv/package.json                  │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ansi-colors@4.1.3/node_modules/ansi-colors/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ansi-regex@5.0.1/node_modules/ansi-regex/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ansi-regex@6.5.0/node_modules/ansi-regex/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ansi-styles@5.2.0/node_modules/ansi-styles/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ansi-styles@6.2.3/node_modules/ansi-styles/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/argparse@2.0.1/node_modules/argparse/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/aria-query@5.3.0/node_modules/aria-query/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/aria-query@5.3.2/node_modules/aria-query/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/assertion-error@2.0.1/node_modules/assertion-error/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ast-v8-to-istanbul@1.0.7/node_modules/ast-v8-to-istanbul- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/axe-core@4.14.0/node_modules/axe-core/package.json        │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/bail@2.0.2/node_modules/bail/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/balanced-match@4.0.4/node_modules/balanced-match/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/baseline-browser-mapping@2.11.35/node_modules/baseline-b- │ node-pkg │        0        │    -    │
+│ rowser-mapping/package.json                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/bidi-js@1.1.0/node_modules/bidi-js/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/brace-expansion@5.0.12/node_modules/brace-expansion/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/browserslist@4.29.5/node_modules/browserslist/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/cacheable@2.5.0/node_modules/cacheable/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/caniuse-lite@1.0.30001820/node_modules/caniuse-lite/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ccount@2.0.1/node_modules/ccount/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/chai@6.3.0/node_modules/chai/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/change-case@5.4.4/node_modules/change-case/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/character-entities-html4@2.1.0/node_modules/character-en- │ node-pkg │        0        │    -    │
+│ tities-html4/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/character-entities-legacy@3.0.0/node_modules/character-e- │ node-pkg │        0        │    -    │
+│ ntities-legacy/package.json                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/character-entities@2.0.2/node_modules/character-entities- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/character-reference-invalid@2.0.1/node_modules/character- │ node-pkg │        0        │    -    │
+│ -reference-invalid/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/cli-width@4.1.0/node_modules/cli-width/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/cliui@9.0.1/node_modules/cliui/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/colorette@1.4.0/node_modules/colorette/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/comma-separated-tokens@2.0.3/node_modules/comma-separate- │ node-pkg │        0        │    -    │
+│ d-tokens/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/convert-source-map@2.0.0/node_modules/convert-source-map- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/cookie-es@3.1.1/node_modules/cookie-es/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/cookie@2.0.1/node_modules/cookie/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/cross-spawn@7.0.6/node_modules/cross-spawn/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/css-tree@3.2.1/node_modules/css-tree/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/css.escape@1.5.1/node_modules/css.escape/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/csstype@3.2.3/node_modules/csstype/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/data-urls@8.0.0/node_modules/data-urls/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/debug@4.4.3_supports-color@10.2.2/node_modules/debug/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/decimal.js@10.6.0/node_modules/decimal.js/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/decode-named-character-reference@1.3.0/node_modules/deco- │ node-pkg │        0        │    -    │
+│ de-named-character-reference/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/deep-is@0.1.4/node_modules/deep-is/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/dequal@2.0.3/node_modules/dequal/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/detect-libc@2.1.2/node_modules/detect-libc/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/devlop@1.1.0/node_modules/devlop/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/dom-accessibility-api@0.5.16/node_modules/dom-accessibil- │ node-pkg │        0        │    -    │
+│ ity-api/package.json                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/dom-accessibility-api@0.6.3/node_modules/dom-accessibili- │ node-pkg │        0        │    -    │
+│ ty-api/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/electron-to-chromium@1.5.477/node_modules/electron-to-ch- │ node-pkg │        0        │    -    │
+│ romium/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/emoji-regex@10.6.0/node_modules/emoji-regex/package.json  │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/enhanced-resolve@5.26.1/node_modules/enhanced-resolve/pa- │ node-pkg │        0        │    -    │
+│ ckage.json                                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/entities@9.0.0/node_modules/entities/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/es-module-lexer@2.3.2/node_modules/es-module-lexer/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/escalade@3.2.0/node_modules/escalade/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/escape-string-regexp@4.0.0/node_modules/escape-string-re- │ node-pkg │        0        │    -    │
+│ gexp/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/escape-string-regexp@5.0.0/node_modules/escape-string-re- │ node-pkg │        0        │    -    │
+│ gexp/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/eslint-plugin-react-hooks@7.1.1_eslint@10.14.0_jiti@2.7.- │ node-pkg │        0        │    -    │
+│ 0_/node_modules/eslint-plugin-react-hooks/package.json                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/eslint-scope@9.1.2/node_modules/eslint-scope/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/eslint-visitor-keys@3.4.3/node_modules/eslint-visitor-ke- │ node-pkg │        0        │    -    │
+│ ys/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/eslint-visitor-keys@5.0.1/node_modules/eslint-visitor-ke- │ node-pkg │        0        │    -    │
+│ ys/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/eslint@10.14.0_jiti@2.7.0/node_modules/eslint/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/espree@11.2.0/node_modules/espree/package.json            │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/esquery@1.7.0/node_modules/esquery/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/esrecurse@4.3.0/node_modules/esrecurse/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/estraverse@5.3.0/node_modules/estraverse/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/estree-util-is-identifier-name@3.0.0/node_modules/estree- │ node-pkg │        0        │    -    │
+│ -util-is-identifier-name/package.json                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/estree-walker@3.0.3/node_modules/estree-walker/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/esutils@2.0.3/node_modules/esutils/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/expect-type@1.4.0/node_modules/expect-type/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/extend@3.0.2/node_modules/extend/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-deep-equal@3.1.3/node_modules/fast-deep-equal/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-equals@5.4.5/node_modules/fast-equals/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-json-stable-stringify@2.1.0/node_modules/fast-json-- │ node-pkg │        0        │    -    │
+│ stable-stringify/package.json                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-levenshtein@2.0.6/node_modules/fast-levenshtein/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-string-truncated-width@3.0.3/node_modules/fast-stri- │ node-pkg │        0        │    -    │
+│ ng-truncated-width/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-string-width@3.0.2/node_modules/fast-string-width/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fast-wrap-ansi@0.2.2/node_modules/fast-wrap-ansi/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/fdir@6.5.0_picomatch@4.0.7/node_modules/fdir/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/file-entry-cache@11.1.5/node_modules/file-entry-cache/pa- │ node-pkg │        0        │    -    │
+│ ckage.json                                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/find-up@5.0.0/node_modules/find-up/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/flat-cache@6.1.23/node_modules/flat-cache/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/flatted@3.4.4/node_modules/flatted/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/gensync@1.0.0-beta.2/node_modules/gensync/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/get-caller-file@2.0.5/node_modules/get-caller-file/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/get-east-asian-width@1.7.0/node_modules/get-east-asian-w- │ node-pkg │        0        │    -    │
+│ idth/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/glob-parent@6.0.2/node_modules/glob-parent/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/globals@17.14.0/node_modules/globals/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/graceful-fs@4.2.11/node_modules/graceful-fs/package.json  │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hashery@1.5.1/node_modules/hashery/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hast-util-to-jsx-runtime@2.3.7/node_modules/hast-util-to- │ node-pkg │        0        │    -    │
+│ -jsx-runtime/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hast-util-whitespace@3.0.0/node_modules/hast-util-whites- │ node-pkg │        0        │    -    │
+│ pace/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/headers-polyfill@5.0.1/node_modules/headers-polyfill/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hermes-estree@0.25.1/node_modules/hermes-estree/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hermes-parser@0.25.1/node_modules/hermes-parser/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hookified@1.15.1/node_modules/hookified/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/hookified@2.2.0/node_modules/hookified/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/html-encoding-sniffer@7.0.0/node_modules/html-encoding-s- │ node-pkg │        0        │    -    │
+│ niffer/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/html-url-attributes@3.0.1/node_modules/html-url-attribut- │ node-pkg │        0        │    -    │
+│ es/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/https-proxy-agent@7.0.6_supports-color@10.2.2/node_modul- │ node-pkg │        0        │    -    │
+│ es/https-proxy-agent/package.json                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ignore@5.3.2/node_modules/ignore/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ignore@7.0.14/node_modules/ignore/package.json            │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/imurmurhash@0.1.4/node_modules/imurmurhash/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/indent-string@4.0.0/node_modules/indent-string/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/index-to-position@1.2.0/node_modules/index-to-position/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/inline-style-parser@0.2.9/node_modules/inline-style-pars- │ node-pkg │        0        │    -    │
+│ er/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-alphabetical@2.0.1/node_modules/is-alphabetical/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-alphanumerical@2.0.1/node_modules/is-alphanumerical/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-decimal@2.0.1/node_modules/is-decimal/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-extglob@2.1.1/node_modules/is-extglob/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-glob@4.0.3/node_modules/is-glob/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-hexadecimal@2.0.1/node_modules/is-hexadecimal/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-node-process@1.2.0/node_modules/is-node-process/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-plain-obj@4.1.0/node_modules/is-plain-obj/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/is-potential-custom-element-name@1.0.1/node_modules/is-p- │ node-pkg │        0        │    -    │
+│ otential-custom-element-name/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/isbot@5.2.2/node_modules/isbot/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/isexe@2.0.0/node_modules/isexe/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/jiti@2.7.0/node_modules/jiti/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/js-levenshtein@1.1.6/node_modules/js-levenshtein/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/js-tokens@10.0.0/node_modules/js-tokens/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/js-tokens@4.0.0/node_modules/js-tokens/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/js-yaml@4.3.2/node_modules/js-yaml/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/jsdom@30.1.3/node_modules/jsdom/package.json              │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/jsesc@3.1.0/node_modules/jsesc/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/json-schema-traverse@0.4.1/node_modules/json-schema-trav- │ node-pkg │        0        │    -    │
+│ erse/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/json-schema-traverse@1.0.0/node_modules/json-schema-trav- │ node-pkg │        0        │    -    │
+│ erse/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/json-stable-stringify-without-jsonify@1.0.1/node_modules- │ node-pkg │        0        │    -    │
+│ /json-stable-stringify-without-jsonify/package.json                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/json5@2.2.3/node_modules/json5/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/keyv@5.6.0/node_modules/keyv/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/levn@0.4.1/node_modules/levn/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/lightningcss-linux-x64-gnu@1.33.0/node_modules/lightning- │ node-pkg │        0        │    -    │
+│ css-linux-x64-gnu/package.json                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/lightningcss-linux-x64-musl@1.33.0/node_modules/lightnin- │ node-pkg │        0        │    -    │
+│ gcss-linux-x64-musl/package.json                                                 │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/lightningcss@1.33.0/node_modules/lightningcss/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/linkifyjs@4.4.0/node_modules/linkifyjs/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/locate-path@6.0.0/node_modules/locate-path/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/longest-streak@3.1.0/node_modules/longest-streak/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/lru-cache@11.5.3/node_modules/lru-cache/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/lru-cache@5.1.1/node_modules/lru-cache/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/lz-string@1.5.0/node_modules/lz-string/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/magic-string@1.4.5/node_modules/magic-string/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/magicast@0.5.5/node_modules/magicast/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/markdown-table@3.1.0/node_modules/markdown-table/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/marked@17.0.6/node_modules/marked/package.json            │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-find-and-replace@3.0.4/node_modules/mdast-uti- │ node-pkg │        0        │    -    │
+│ l-find-and-replace/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-from-markdown@2.1.0/node_modules/mdast-util-f- │ node-pkg │        0        │    -    │
+│ rom-markdown/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-gfm-autolink-literal@2.0.1/node_modules/mdast- │ node-pkg │        0        │    -    │
+│ -util-gfm-autolink-literal/package.json                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-gfm-footnote@2.1.0/node_modules/mdast-util-gf- │ node-pkg │        0        │    -    │
+│ m-footnote/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-gfm-strikethrough@2.0.1/node_modules/mdast-ut- │ node-pkg │        0        │    -    │
+│ il-gfm-strikethrough/package.json                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-gfm-table@2.0.1/node_modules/mdast-util-gfm-t- │ node-pkg │        0        │    -    │
+│ able/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-gfm-task-list-item@2.0.0/node_modules/mdast-u- │ node-pkg │        0        │    -    │
+│ til-gfm-task-list-item/package.json                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-gfm@3.1.0/node_modules/mdast-util-gfm/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-mdx-expression@2.0.1/node_modules/mdast-util-- │ node-pkg │        0        │    -    │
+│ mdx-expression/package.json                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-mdx-jsx@3.2.1/node_modules/mdast-util-mdx-jsx- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-mdxjs-esm@2.0.1/node_modules/mdast-util-mdxjs- │ node-pkg │        0        │    -    │
+│ -esm/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-phrasing@4.1.0/node_modules/mdast-util-phrasi- │ node-pkg │        0        │    -    │
+│ ng/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-to-hast@13.2.1/node_modules/mdast-util-to-has- │ node-pkg │        0        │    -    │
+│ t/package.json                                                                   │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-to-markdown@2.2.2/node_modules/mdast-util-to-- │ node-pkg │        0        │    -    │
+│ markdown/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdast-util-to-string@4.0.0/node_modules/mdast-util-to-st- │ node-pkg │        0        │    -    │
+│ ring/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mdn-data@2.27.1/node_modules/mdn-data/package.json        │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-core-commonmark@2.0.4/node_modules/micromark-c- │ node-pkg │        0        │    -    │
+│ ore-commonmark/package.json                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm-autolink-literal@2.1.0/node_modu- │ node-pkg │        0        │    -    │
+│ les/micromark-extension-gfm-autolink-literal/package.json                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm-footnote@2.1.0/node_modules/micr- │ node-pkg │        0        │    -    │
+│ omark-extension-gfm-footnote/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm-strikethrough@2.1.0/node_modules- │ node-pkg │        0        │    -    │
+│ /micromark-extension-gfm-strikethrough/package.json                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm-table@2.1.2/node_modules/microma- │ node-pkg │        0        │    -    │
+│ rk-extension-gfm-table/package.json                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm-tagfilter@2.0.0/node_modules/mic- │ node-pkg │        0        │    -    │
+│ romark-extension-gfm-tagfilter/package.json                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm-task-list-item@2.1.0/node_module- │ node-pkg │        0        │    -    │
+│ s/micromark-extension-gfm-task-list-item/package.json                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-extension-gfm@3.0.0/node_modules/micromark-ext- │ node-pkg │        0        │    -    │
+│ ension-gfm/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-factory-destination@2.0.1/node_modules/microma- │ node-pkg │        0        │    -    │
+│ rk-factory-destination/package.json                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-factory-label@2.0.1/node_modules/micromark-fac- │ node-pkg │        0        │    -    │
+│ tory-label/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-factory-space@2.1.0/node_modules/micromark-fac- │ node-pkg │        0        │    -    │
+│ tory-space/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-factory-title@2.0.1/node_modules/micromark-fac- │ node-pkg │        0        │    -    │
+│ tory-title/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-factory-whitespace@2.0.1/node_modules/micromar- │ node-pkg │        0        │    -    │
+│ k-factory-whitespace/package.json                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-character@2.1.1/node_modules/micromark-ut- │ node-pkg │        0        │    -    │
+│ il-character/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-chunked@2.0.1/node_modules/micromark-util- │ node-pkg │        0        │    -    │
+│ -chunked/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-classify-character@2.0.1/node_modules/mic- │ node-pkg │        0        │    -    │
+│ romark-util-classify-character/package.json                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-combine-extensions@2.0.1/node_modules/mic- │ node-pkg │        0        │    -    │
+│ romark-util-combine-extensions/package.json                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-decode-numeric-character-reference@2.0.2/- │ node-pkg │        0        │    -    │
+│ node_modules/micromark-util-decode-numeric-character-reference/package.json      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-decode-string@2.0.1/node_modules/micromar- │ node-pkg │        0        │    -    │
+│ k-util-decode-string/package.json                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-edit-map@1.0.0/node_modules/micromark-uti- │ node-pkg │        0        │    -    │
+│ l-edit-map/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-encode@2.0.1/node_modules/micromark-util-- │ node-pkg │        0        │    -    │
+│ encode/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-html-tag-name@2.0.1/node_modules/micromar- │ node-pkg │        0        │    -    │
+│ k-util-html-tag-name/package.json                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-normalize-identifier@2.0.1/node_modules/m- │ node-pkg │        0        │    -    │
+│ icromark-util-normalize-identifier/package.json                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-resolve-all@2.0.1/node_modules/micromark-- │ node-pkg │        0        │    -    │
+│ util-resolve-all/package.json                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-sanitize-uri@2.0.1/node_modules/micromark- │ node-pkg │        0        │    -    │
+│ -util-sanitize-uri/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-subtokenize@2.1.0/node_modules/micromark-- │ node-pkg │        0        │    -    │
+│ util-subtokenize/package.json                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-symbol@2.0.1/node_modules/micromark-util-- │ node-pkg │        0        │    -    │
+│ symbol/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark-util-types@2.0.3/node_modules/micromark-util-t- │ node-pkg │        0        │    -    │
+│ ypes/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/micromark@4.0.3/node_modules/micromark/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/min-indent@1.0.1/node_modules/min-indent/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/minimatch@11.0.4/node_modules/minimatch/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ms@2.1.3/node_modules/ms/package.json                     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/msw@3.0.3_@types+node@22.20.5_typescript@6.0.3_vite@8.3.- │ node-pkg │        0        │    -    │
+│ 5_@types+node@22.20.5_jiti@2.7.0_/node_modules/msw/package.json                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/mute-stream@3.0.0/node_modules/mute-stream/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/nanoid@3.3.20/node_modules/nanoid/package.json            │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/natural-compare@1.4.0/node_modules/natural-compare/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/node-releases@2.0.63/node_modules/node-releases/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/obug@3.0.0/node_modules/obug/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/openapi-fetch@0.17.0/node_modules/openapi-fetch/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/openapi-typescript-helpers@0.1.0/node_modules/openapi-ty- │ node-pkg │        0        │    -    │
+│ pescript-helpers/package.json                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/openapi-typescript@7.13.0_typescript@6.0.3/node_modules/- │ node-pkg │        0        │    -    │
+│ openapi-typescript/package.json                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/optionator@0.9.4/node_modules/optionator/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/orderedmap@2.1.1/node_modules/orderedmap/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/outvariant@1.4.3/node_modules/outvariant/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/p-limit@3.1.0/node_modules/p-limit/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/p-locate@5.0.0/node_modules/p-locate/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/parse-entities@4.0.2/node_modules/parse-entities/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/parse-json@8.3.0/node_modules/parse-json/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/parse5@8.1.0/node_modules/parse5/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/path-exists@4.0.0/node_modules/path-exists/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/path-key@3.1.1/node_modules/path-key/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/picocolors@1.1.1/node_modules/picocolors/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/picomatch@4.0.7/node_modules/picomatch/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/playwright-core@1.64.1/node_modules/playwright-core/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/playwright@1.64.1/node_modules/playwright/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/pluralize@8.0.0/node_modules/pluralize/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/postcss@8.5.32/node_modules/postcss/package.json          │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prelude-ls@1.2.1/node_modules/prelude-ls/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/pretty-format@27.5.1/node_modules/pretty-format/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/property-information@7.2.0/node_modules/property-informa- │ node-pkg │        0        │    -    │
+│ tion/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-changeset@2.4.6/node_modules/prosemirror-cha- │ node-pkg │        0        │    -    │
+│ ngeset/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-commands@1.7.2/node_modules/prosemirror-comm- │ node-pkg │        0        │    -    │
+│ ands/package.json                                                                │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-dropcursor@1.8.4/node_modules/prosemirror-dr- │ node-pkg │        0        │    -    │
+│ opcursor/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-gapcursor@1.4.1/node_modules/prosemirror-gap- │ node-pkg │        0        │    -    │
+│ cursor/package.json                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-history@1.5.1/node_modules/prosemirror-histo- │ node-pkg │        0        │    -    │
+│ ry/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-inputrules@1.5.1/node_modules/prosemirror-in- │ node-pkg │        0        │    -    │
+│ putrules/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-keymap@1.2.3/node_modules/prosemirror-keymap- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-model@1.25.12/node_modules/prosemirror-model- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-schema-list@1.6.0/node_modules/prosemirror-s- │ node-pkg │        0        │    -    │
+│ chema-list/package.json                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-state@1.4.4/node_modules/prosemirror-state/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-tables@1.8.5/node_modules/prosemirror-tables- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-transform@1.12.5/node_modules/prosemirror-tr- │ node-pkg │        0        │    -    │
+│ ansform/package.json                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/prosemirror-view@1.42.9/node_modules/prosemirror-view/pa- │ node-pkg │        0        │    -    │
+│ ckage.json                                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/qified@0.10.1/node_modules/qified/package.json            │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/react-dom@19.3.1_react@19.3.1/node_modules/react-dom/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/react-is@17.0.2/node_modules/react-is/package.json        │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/react-markdown@10.1.0_@types+react@19.3.0_react@19.3.1/n- │ node-pkg │        0        │    -    │
+│ ode_modules/react-markdown/package.json                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/react@19.3.1/node_modules/react/package.json              │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/redent@3.0.0/node_modules/redent/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/remark-gfm@4.0.1/node_modules/remark-gfm/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/remark-parse@11.0.0/node_modules/remark-parse/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/remark-rehype@11.1.2/node_modules/remark-rehype/package.- │ node-pkg │        0        │    -    │
+│ json                                                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/remark-stringify@11.0.0/node_modules/remark-stringify/pa- │ node-pkg │        0        │    -    │
+│ ckage.json                                                                       │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/require-from-string@2.0.2/node_modules/require-from-stri- │ node-pkg │        0        │    -    │
+│ ng/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/rettime@0.11.12/node_modules/rettime/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/rolldown@1.2.16/node_modules/rolldown/package.json        │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/rope-sequence@1.3.4/node_modules/rope-sequence/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/saxes@6.0.0/node_modules/saxes/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/scheduler@0.28.0/node_modules/scheduler/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/semver@6.3.2/node_modules/semver/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/semver@7.8.6/node_modules/semver/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/seroval-plugins@1.7.7_seroval@1.7.7/node_modules/seroval- │ node-pkg │        0        │    -    │
+│ -plugins/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/seroval@1.7.7/node_modules/seroval/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/set-cookie-parser@3.2.2/node_modules/set-cookie-parser/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/shebang-command@2.0.0/node_modules/shebang-command/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/shebang-regex@3.0.0/node_modules/shebang-regex/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/signal-exit@4.1.0/node_modules/signal-exit/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/source-map-js@1.2.2/node_modules/source-map-js/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/space-separated-tokens@2.0.2/node_modules/space-separate- │ node-pkg │        0        │    -    │
+│ d-tokens/package.json                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/std-env@4.3.0/node_modules/std-env/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/string-width@7.2.0/node_modules/string-width/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/string-width@8.3.0/node_modules/string-width/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/stringify-entities@4.0.4/node_modules/stringify-entities- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/strip-ansi@7.2.0/node_modules/strip-ansi/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/strip-indent@3.0.0/node_modules/strip-indent/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/style-to-object@2.0.2/node_modules/style-to-object/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/supports-color@10.2.2/node_modules/supports-color/packag- │ node-pkg │        0        │    -    │
+│ e.json                                                                           │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tagged-tag@1.0.0/node_modules/tagged-tag/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tailwindcss@4.3.4/node_modules/tailwindcss/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tapable@2.3.3/node_modules/tapable/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tinybench@6.2.3/node_modules/tinybench/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tinyexec@1.3.1/node_modules/tinyexec/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tinyglobby@0.2.17/node_modules/tinyglobby/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tinyrainbow@3.2.0/node_modules/tinyrainbow/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tldts-core@7.4.20/node_modules/tldts-core/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tldts@7.4.19/node_modules/tldts/package.json              │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tough-cookie@6.0.2/node_modules/tough-cookie/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/tr46@7.0.0/node_modules/tr46/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/trim-lines@3.0.1/node_modules/trim-lines/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/trough@2.2.0/node_modules/trough/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/ts-api-utils@2.5.0_typescript@6.0.3/node_modules/ts-api-- │ node-pkg │        0        │    -    │
+│ utils/package.json                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/type-check@0.4.0/node_modules/type-check/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/type-fest@4.41.0/node_modules/type-fest/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/type-fest@5.10.0/node_modules/type-fest/package.json      │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/typescript-eslint@8.72.1_eslint@10.14.0_jiti@2.7.0__type- │ node-pkg │        0        │    -    │
+│ script@6.0.3/node_modules/typescript-eslint/package.json                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/typescript@6.0.3/node_modules/typescript/package.json     │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/undici-types@6.21.0/node_modules/undici-types/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/undici-types@8.9.0/node_modules/undici-types/package.json │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/undici@8.12.3/node_modules/undici/package.json            │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/unified@11.0.5/node_modules/unified/package.json          │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/unist-util-is@6.0.1/node_modules/unist-util-is/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/unist-util-position@5.0.0/node_modules/unist-util-positi- │ node-pkg │        0        │    -    │
+│ on/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/unist-util-stringify-position@4.0.0/node_modules/unist-u- │ node-pkg │        0        │    -    │
+│ til-stringify-position/package.json                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/unist-util-visit-parents@6.1.0/node_modules/unist-util-v- │ node-pkg │        0        │    -    │
+│ isit-parents/package.json                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/unist-util-visit@5.2.0/node_modules/unist-util-visit/pac- │ node-pkg │        0        │    -    │
+│ kage.json                                                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/until-async@3.0.2/node_modules/until-async/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/update-browserslist-db@1.3.4_browserslist@4.29.5/node_mo- │ node-pkg │        0        │    -    │
+│ dules/update-browserslist-db/package.json                                        │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/uri-js-replace@1.0.2/node_modules/uri-js-replace/package- │ node-pkg │        0        │    -    │
+│ .json                                                                            │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/uri-js@4.4.1/node_modules/uri-js/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/use-sync-external-store@1.7.0_react@19.3.1/node_modules/- │ node-pkg │        0        │    -    │
+│ use-sync-external-store/package.json                                             │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/vfile-message@4.0.3/node_modules/vfile-message/package.j- │ node-pkg │        0        │    -    │
+│ son                                                                              │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/vfile@6.0.3/node_modules/vfile/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/vite@8.3.5_@types+node@22.20.5_jiti@2.7.0/node_modules/v- │ node-pkg │        0        │    -    │
+│ ite/package.json                                                                 │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1- │ node-pkg │        0        │    -    │
+│ .0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/v- │          │                 │         │
+│ itest/package.json                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/w3c-keyname@2.2.8/node_modules/w3c-keyname/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/w3c-xmlserializer@6.0.0/node_modules/w3c-xmlserializer/p- │ node-pkg │        0        │    -    │
+│ ackage.json                                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/webidl-conversions@8.0.1/node_modules/webidl-conversions- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/whatwg-mimetype@5.0.0/node_modules/whatwg-mimetype/packa- │ node-pkg │        0        │    -    │
+│ ge.json                                                                          │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/whatwg-url@17.3.0/node_modules/whatwg-url/package.json    │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/which@2.0.2/node_modules/which/package.json               │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/why-is-node-running@3.2.1/node_modules/why-is-node-runni- │ node-pkg │        0        │    -    │
+│ ng/package.json                                                                  │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/word-wrap@1.2.5/node_modules/word-wrap/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/wrap-ansi@9.0.2/node_modules/wrap-ansi/package.json       │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/xml-name-validator@5.0.0/node_modules/xml-name-validator- │ node-pkg │        0        │    -    │
+│ /package.json                                                                    │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/xmlchars@2.2.0/node_modules/xmlchars/package.json         │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/y18n@5.0.8/node_modules/y18n/package.json                 │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yallist@3.1.1/node_modules/yallist/package.json           │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yaml-ast-parser@0.0.43/node_modules/yaml-ast-parser/pack- │ node-pkg │        0        │    -    │
+│ age.json                                                                         │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yargs-parser@21.1.1/node_modules/yargs-parser/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yargs-parser@22.0.0/node_modules/yargs-parser/package.js- │ node-pkg │        0        │    -    │
+│ on                                                                               │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yargs@18.2.0/node_modules/yargs/package.json              │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/yocto-queue@0.1.0/node_modules/yocto-queue/package.json   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/zod-validation-error@4.0.2_zod@4.6.7/node_modules/zod-va- │ node-pkg │        0        │    -    │
+│ lidation-error/package.json                                                      │          │                 │         │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/zod@4.6.7/node_modules/zod/package.json                   │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ app/node_modules/.pnpm/zwitch@2.0.4/node_modules/zwitch/package.json             │ node-pkg │        0        │    -    │
+├──────────────────────────────────────────────────────────────────────────────────┼──────────┼─────────────────┼─────────┤
+│ opt/yarn-v1.22.22/package.json                                                   │ node-pkg │        0        │    -    │
+└──────────────────────────────────────────────────────────────────────────────────┴──────────┴─────────────────┴─────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+exit 0
+$ trivy image --list-all-pkgs --format json --input <archive> | package counts (proves the pdf group and models' packages were in scope)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import json,sys; d=json.load(sys.stdin); [print(r['Target'], r.get('Type'), len(r.get('Packages') or []), [p['Name']+' '+p['Version'] for p in (r.get('Packages') or []) if p['Name'] in ('torch','docling','fastembed','onnxruntime')]) for r in d.get('Results',[])]
+                       ~~~~~~~~~^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/json/__init__.py", line 298, in load
+    return loads(fp.read(),
+        cls=cls, object_hook=object_hook,
+        parse_float=parse_float, parse_int=parse_int,
+        parse_constant=parse_constant, object_pairs_hook=object_pairs_hook, **kw)
+  File "/usr/local/lib/python3.13/json/__init__.py", line 352, in loads
+    return _default_decoder.decode(s)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/local/lib/python3.13/json/decoder.py", line 345, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/json/decoder.py", line 363, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+free after: 3758M

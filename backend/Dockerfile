@@ -38,10 +38,14 @@ COPY alembic.ini ./
 COPY app ./app
 COPY migrations ./migrations
 
-# The local Embedding Model, its tokenizer and (with PDF) Docling's layout models are downloaded
-# at build time, so the worker doesn't fetch them at startup.
+# The local Embedding Model, its tokenizer and (with PDF) the Docling models the PDF pipeline
+# uses (layout, table structure and RapidOCR's) are downloaded at build time, so the worker
+# doesn't fetch them at startup. ``embed_passages`` is a coroutine, so it is run to load the model.
+# RapidOCR's models come from ModelScope, not Hugging Face; BUNDLE_OCR_MODELS=false leaves them
+# out for a network that can't reach it (OCR then fails until they can be fetched).
 ARG WITH_PDF=true
 ARG BUNDLE_MODELS=true
+ARG BUNDLE_OCR_MODELS=true
 ENV HF_HOME=/opt/models/huggingface \
     FASTEMBED_CACHE_PATH=/opt/models/fastembed \
     DOCLING_ARTIFACTS_PATH=/opt/models/docling
@@ -49,9 +53,9 @@ ENV HF_HOME=/opt/models/huggingface \
 # formats that need no models, so an image built without the models still converts Markdown, DOCX and PPTX.
 RUN mkdir -p /opt/models/docling \
     && if [ "$BUNDLE_MODELS" = "true" ]; then \
-        python -c "from app.embeddings.local import LocalEmbedder as E; e = E(); e.embed_passages(['warm up']); e.tokenizer(512)" \
+        python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)" \
         && if [ "$WITH_PDF" = "true" ]; then \
-            python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'))"; \
+            python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='$BUNDLE_OCR_MODELS' == 'true')"; \
         fi; \
     fi
 
