@@ -303,6 +303,19 @@ async def _a_playground_question(owner: SignedUpMember, add_member: MemberFactor
     return params, {"content": "Hello?"}
 
 
+async def _a_playground_answer(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_playground_question(owner, add_member)
+    asked = await owner.client.post(
+        _CONVERSATION.format(organisation_id=owner.organisation_id, **params) + "/messages",
+        json=body,
+    )
+    assert asked.status_code == 200, asked.text
+    conversation = await owner.client.get(
+        _CONVERSATION.format(organisation_id=owner.organisation_id, **params)
+    )
+    return params | {"message_id": conversation.json()["messages"][-1]["id"]}, None
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
 
@@ -356,6 +369,9 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),
+    ScopedRoute(
+        "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
+    ),
 ]
 
 
