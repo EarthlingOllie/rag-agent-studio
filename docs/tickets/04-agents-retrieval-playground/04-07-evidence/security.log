@@ -1,4 +1,4 @@
-$ make audit @ 89a46fe
+$ make audit @ b315f12
 cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
 	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
@@ -14,7 +14,7 @@ $ gitleaks git (commits on this branch, not on origin/candidate)
     ○ ░
     ░    gitleaks
 
-11:21PM INF 6 commits scanned.
-11:21PM INF scanned ~209902 bytes (209.90 KB) in 314ms
-11:21PM INF no leaks found
+12:00AM INF 7 commits scanned.
+12:00AM INF scanned ~234940 bytes (234.94 KB) in 377ms
+12:00AM INF no leaks found
 exit 0

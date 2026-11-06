@@ -1,4 +1,4 @@
-$ make test-frontend @ 89a46fe
+$ make test-frontend @ b315f12
 cd frontend && pnpm test
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0407/frontend
@@ -9,22 +9,22 @@ cd frontend && pnpm test
       Coverage enabled with v8
 
 
- Test Files  32 passed (32)
-      Tests  349 passed (349)
-   Start at  23:13:16
-   Duration  113.89s (tests 69%, environment 18%, setup 7%, import 4%, worker 1%, transform 1%)
+ Test Files  33 passed (33)
+      Tests  356 passed (356)
+   Start at  23:53:43
+   Duration  121.04s (tests 67%, environment 16%, import 6%, setup 6%, transform 3%, worker 1%)
 
-    Isolate  32 workers spawned · ~2.11s startup each (spawn + environment, per file)
-             at least ~20.38s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  33 workers spawned · ~1.97s startup each (spawn + environment, per file)
+             at least ~19.65s faster with isolate: false — reuses workers across files instead of one per file
 
  % Coverage report from v8
 No files with missing coverage.
-51 files fully covered.
+52 files fully covered.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 1928/1928 )
-Branches     : 100% ( 1102/1102 )
-Functions    : 100% ( 748/748 )
-Lines        : 100% ( 1697/1697 )
+Statements   : 100% ( 1973/1973 )
+Branches     : 100% ( 1132/1132 )
+Functions    : 100% ( 762/762 )
+Lines        : 100% ( 1739/1739 )
 ================================================================================
