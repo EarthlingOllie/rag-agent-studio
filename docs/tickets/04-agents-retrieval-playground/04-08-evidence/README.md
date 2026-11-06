@@ -48,17 +48,17 @@ Each behaviour was driven test-first: the first API test failed with the raw `Mo
 
 ## Results
 
-All runs are local and sequential, on `abf5acb` (the implementation commit; `origin/candidate` was still `00f8214` when they finished, so no merge was needed). This evidence commit changes only the ticket, this folder and nothing that is built or tested. GitHub Actions is down; the user authorised merging on local results.
+All runs are local and sequential, on `81aaaa4`: the branch after merging `origin/candidate` at `dc9a3b9` (03-11 and 04-04 had landed; both merges were clean). The first run on `abf5acb`, before those merges, was also green (1500 backend, 474 frontend, 57 e2e). This evidence commit changes only this folder and nothing that is built or tested. GitHub Actions is down; the user authorised merging on local results.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0408-pg` (pgvector), `rag0408-redis` and `rag0408-rustfs` containers | **1500 passed**, 7 deselected (live); coverage **100%** lines and branches (7057 statements, 790 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **38 files, 474 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0408-pg` (pgvector), `rag0408-redis` and `rag0408-rustfs` containers | **1529 passed**, 7 deselected (live); coverage **100%** lines and branches (7174 statements, 816 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **38 files, 479 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks over this branch's commits not on candidate; `make audit` (pip-audit, pnpm audit) | no leaks found; no known vulnerabilities | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0408`), on the images just built | **57 passed** first run, including `playground-errors.spec.ts` and `playground.spec.ts` | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0408`), on the images just built | **59 passed** first run, including `playground-errors.spec.ts` and `playground.spec.ts` | [e2e.log](e2e.log) |
 | Infra | not run | this branch changes nothing under `infra/` | |
 
 ## Gaps and best guesses
