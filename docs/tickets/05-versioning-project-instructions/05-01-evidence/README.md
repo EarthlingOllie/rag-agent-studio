@@ -1,6 +1,6 @@
 # Evidence: ticket 05-01, Project Instructions Versions
 
-Branch `ticket/05-01-project-instructions-versions`, from `origin/candidate` at `cb228e6` (04-02, the blocker, merged). The claim commit, the first on the branch, set Status `in-progress`. `origin/candidate` then moved four times and was merged each time: `c3e8db7` (08-04, Canary token, migration `0021`), `f0d632d` (02-06, Theme logo and avatar, migration `0022`), `00f8214` (10-01, Seed foundation, migration `0023_erase_organisation`) and `a123fa1` (03-11, Permanent Project deletion, no migration; only the MSW fake's constants conflicted, and both sets were kept). This ticket's migration is therefore `0024_instructions_versions`, revising `0023_erase_organisation`, so candidate keeps one Alembic head.
+Branch `ticket/05-01-project-instructions-versions`, from `origin/candidate` at `cb228e6` (04-02, the blocker, merged). The claim commit, the first on the branch, set Status `in-progress`. `origin/candidate` then moved five times and was merged each time: `c3e8db7` (08-04, Canary token, migration `0021`), `f0d632d` (02-06, Theme logo and avatar, migration `0022`), `00f8214` (10-01, Seed foundation, migration `0023_erase_organisation`) `a123fa1` (03-11, Permanent Project deletion, no migration; only the MSW fake's constants conflicted, and both sets were kept) and `dc9a3b9` (04-04, Tag scoping, no migration, merged cleanly). This ticket's migration is therefore `0024_instructions_versions`, revising `0023_erase_organisation`, so candidate keeps one Alembic head.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope this ticket leaves to later tickets on purpose, plus what this sandbox can't run.
 
@@ -50,14 +50,14 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `fe7f7e2`, the merge of `origin/candidate` at `a123fa1` (03-11) on top of the round-2 fixes: migration `0024_instructions_versions` after `0023_erase_organisation`, the erasure test, the refused-Draft-save message and the latest-outcome-only status, plus the permanent-deletion test. The next commit changes only this folder. Every log's first line names the commit it ran at.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). The backend, frontend, lint, client-drift and security checks ran at `2d79f19`, the merge of `origin/candidate` at `dc9a3b9` (04-04, Tag scoping). Images and end-to-end ran at `fe7f7e2`, the previous merge (`a123fa1`, 03-11). The 04-04 merge touches only tag scoping and retrieval, adds no migration and merged without conflicts, so they were not rerun. Both commits hold the round-2 fixes: migration `0024_instructions_versions` after `0023_erase_organisation`, the erasure and permanent-deletion tests, the refused-Draft-save message and the latest-outcome-only status. The next commit changes only this folder. Every log's first line names the commit it ran at.
 
 Earlier runs at `f63d874` (after 08-04), `7521221` (after 02-06) and `bb29854` (after 10-01) also passed, the first after an environment rerun; their logs were superseded by the runs below.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1555 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **39 files, 485 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1559 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **39 files, 486 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
