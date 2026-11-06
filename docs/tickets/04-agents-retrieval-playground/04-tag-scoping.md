@@ -8,7 +8,7 @@
 - [04-03: Hybrid retrieval and fallback](03-hybrid-retrieval-fallback.md)
 - [03-06: Tags](../03-projects-knowledge-base/06-tags.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] AgentConfig holds Tag IDs, and retrieval filters by them
 - [ ] Unknown Tags, or Tags from another Project, are rejected
