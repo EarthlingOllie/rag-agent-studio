@@ -28,4 +28,27 @@ To recapture against a running stack (`make dev`) on a fresh database — the sc
 node docs/screenshots/capture.cjs   # needs Playwright; E2E_BASE_URL overrides http://localhost:5173
 ```
 
-There is no `05-` shot yet: the document viewer arrives with ticket 03-03.
+There is no `05-` shot: the first set predates the document viewer (ticket 03-03).
+
+## Seeded demo (through ticket 03-02's live-model follow-up, PR #47)
+
+Captured after `make seed`, signed in as the demo Owner. The Default Model is the seed's labelled
+demo model, which gives canned answers, so the answers show citations and Traces rather than real model
+output. `capture-seeded.cjs` recaptures them (`node docs/screenshots/capture-seeded.cjs docs/screenshots`).
+
+| File | Screen |
+| --- | --- |
+| `14-projects-seeded.png` | Projects, with the seeded Northwind Handbook |
+| `15-documents-seeded.png` | Four Documents (MD, DOCX, PPTX) with Tags, quota, Flagged Chunks and actions |
+| `16-document-viewer.png` | Document viewer: converted markdown beside Chunks with heading paths |
+| `17-instructions.png` | Instructions tab with the Markdown editor, before publishing |
+| `18-instructions-versions.png` | Instructions Versions: v2 Current, history and Revert |
+| `19-agents-list.png` | Agents: HR helper and Product FAQ |
+| `20-agent-config.png` | Full AgentConfig editor (Behaviour, Model override, Experience, Guardrails) |
+| `21-playground-citations.png` | Playground answer with a citation chip and Trace link |
+| `22-trace-drawer.png` | Trace drawer: model, tokens, cost, latency, Guardrails, retrieved Chunks |
+| `23-models-demo.png` | Models: the demo model as Default Model |
+| `24-theme-seeded.png` | The seeded Northwind Theme |
+| `25-credentials-seeded.png` | Credentials |
+| `26-members-seeded.png` | Members: the demo Owner and Editor |
+| `27-audit-seeded.png` | Audit Events from the seed |
