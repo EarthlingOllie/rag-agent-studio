@@ -1,18 +1,63 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { type Agent, type AgentVersion, publishFailure, usePublishAgent } from "./agents";
+import { AgentDiffView } from "./AgentDiff";
+import { type Agent, type AgentVersion, agentFailure, publishFailure, useAgentDiff, usePublishAgent } from "./agents";
 import { useInstructionsVersions } from "./instructions";
 import { BUTTON, INPUT } from "./ProjectsPage";
+import { useTags } from "./tags";
 
-/** "Live v3", or "Not live" for an Agent that has never been published. */
+/** "Live v3", or "Not live" for an Agent that has never been published; and "Unpublished
+ * changes" while its Draft differs from the Live Version. */
 export function LiveStatus({ agent }: { agent: Agent }) {
-  return agent.live_version ? (
-    <span className="rounded-full bg-green-100 px-2 py-0.5 text-sm font-medium text-green-900">
-      Live v{agent.live_version.number}
-    </span>
-  ) : (
-    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-sm font-medium text-slate-900">Not live</span>
+  return (
+    <>
+      {agent.live_version ? (
+        <span className="rounded-full bg-green-100 px-2 py-0.5 text-sm font-medium text-green-900">
+          Live v{agent.live_version.number}
+        </span>
+      ) : (
+        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-sm font-medium text-slate-900">Not live</span>
+      )}
+      {agent.has_unpublished_changes && (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-medium text-amber-950">Unpublished changes</span>
+      )}
+    </>
+  );
+}
+
+/** The Tags' names by ID, so diffs of Tag scoping read as names. */
+export function useTagNames(organisationId: string, projectId: string): Record<string, string> {
+  const tags = useTags(organisationId, projectId);
+  return Object.fromEntries((tags.data ?? []).map((tag) => [tag.id, tag.name]));
+}
+
+/** What publishing changes: the saved Draft compared with the Live Version. */
+function ChangesToPublish({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+  const live = agent.live_version;
+  const diff = useAgentDiff(
+    organisationId,
+    agent.project_id,
+    agent.id,
+    { from: "live", to: "draft", revision: agent.draft_revision },
+    live !== null,
+  );
+  const names = useTagNames(organisationId, agent.project_id);
+  let body;
+  if (!live) {
+    body = <p className="text-sm text-slate-700">This is the first Version: all of the Draft&apos;s settings go live.</p>;
+  } else if (diff.isPending) {
+    body = <p className="text-sm text-slate-700">Comparing the Draft with the Live Version (v{live.number})…</p>;
+  } else if (diff.isError) {
+    body = <p className="text-sm text-slate-700">The changes could not be loaded. {agentFailure(diff.error)}</p>;
+  } else {
+    body = <AgentDiffView diff={diff.data} names={names} />;
+  }
+  return (
+    <section aria-label="Changes to publish" className="space-y-2">
+      <h4 className="text-sm font-semibold">{live ? `Changes from the Live Version (v${String(live.number)})` : "Changes"}</h4>
+      {body}
+    </section>
   );
 }
 
@@ -105,6 +150,7 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
         }}
       />
       {options}
+      <ChangesToPublish agent={agent} organisationId={organisationId} />
       <FormError message={noteMissing ? "Add a note of up to 500 characters." : publishFailure(publish.error)} />
       <button type="submit" className={BUTTON} disabled={publish.isPending}>
         {publish.isPending ? "Publishing…" : "Publish"}

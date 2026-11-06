@@ -64,7 +64,7 @@ test.describe("Tag scoping", () => {
     // The Editor limits the Agent to HR in its Retrieval settings.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
     const scoping = page.getByRole("group", { name: "Tag scoping" });
-    const saved = page.waitForResponse((r) => r.url().endsWith("/draft") && r.request().method() === "PUT");
+    const saved = page.waitForResponse((r) => new URL(r.url()).pathname.endsWith("/draft") && r.request().method() === "PUT");
     await scoping.getByRole("checkbox", { name: "HR" }).check();
     expect((await saved).status()).toBe(200);
     await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("All changes saved");

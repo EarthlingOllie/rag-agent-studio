@@ -140,7 +140,8 @@ export function useAgent(
   });
 }
 
-function useStoreAgent(organisationId: string, projectId: string) {
+/** Puts an Agent the API returned into the cache, and refreshes the lists that show it. */
+export function useStoreAgent(organisationId: string, projectId: string) {
   const queryClient = useQueryClient();
   return async (agent: Agent) => {
     queryClient.setQueryData(
@@ -176,6 +177,25 @@ export function useCreateAgent(organisationId: string, projectId: string) {
   });
 }
 
+/**
+ * A Draft change refused because someone else changed the Draft after the revision it was
+ * made on. Carries their latest Draft, so the Editor can load it or save over it.
+ */
+export class StaleDraftError extends Error {
+  constructor(readonly latest: Agent) {
+    super("Someone else changed this Draft.");
+    this.name = "StaleDraftError";
+  }
+}
+
+function staleOr(error: unknown): Agent | undefined {
+  return (error as { latest?: Agent | null } | undefined)?.latest ?? undefined;
+}
+
+/**
+ * Saves the Draft made on revision `baseRevision`. A Draft someone has changed since is
+ * refused with a `StaleDraftError` instead of being overwritten.
+ */
 export function useSaveDraft(
   organisationId: string,
   projectId: string,
@@ -183,7 +203,13 @@ export function useSaveDraft(
 ) {
   const store = useStoreAgent(organisationId, projectId);
   return useMutation({
-    mutationFn: async (draft: AgentDraft): Promise<Agent> => {
+    mutationFn: async ({
+      draft,
+      baseRevision,
+    }: {
+      draft: AgentDraft;
+      baseRevision: number;
+    }): Promise<Agent> => {
       const { data, error, response } = await api.PUT(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft",
         {
@@ -193,10 +219,13 @@ export function useSaveDraft(
               project_id: projectId,
               agent_id: agentId,
             },
+            query: { base_revision: baseRevision },
           },
           body: draft,
         },
       );
+      const latest = staleOr(error);
+      if (latest) throw new StaleDraftError(latest);
       if (!data) throw draftFailed(response, error);
       return data;
     },
@@ -421,6 +450,126 @@ export function usePublishAgent(
       queryClient.invalidateQueries({
         queryKey: agentsKey(organisationId, projectId),
       }),
+  });
+}
+
+export type AgentDiff = Schemas["AgentDiffOut"];
+/** A side of a diff: the Draft, the Live Version, or a Version's ID. */
+export type DiffSide = "draft" | "live" | (string & {});
+
+/**
+ * What changes from one side to the other. `revision` is the Draft revision it was made on, so
+ * a diff involving the Draft is fetched again once the Draft changes.
+ */
+export function useAgentDiff(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+  sides: { from: DiffSide; to: DiffSide; revision: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...agentsKey(organisationId, projectId), agentId, "diff", sides],
+    enabled,
+    queryFn: async (): Promise<AgentDiff> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+            query: { from: sides.from, to: sides.to },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** The Agent's Versions, newest first, and which is Live. */
+export function useAgentVersions(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  return useQuery({
+    queryKey: [...agentsKey(organisationId, projectId), agentId, "versions"],
+    queryFn: async (): Promise<Schemas["AgentVersionsOut"]> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** What to tell the Editor about a refused Draft change: discarding it or starting it again. */
+export function draftChangeFailure(error: Error | null): string | undefined {
+  if (error instanceof StaleDraftError)
+    return "Someone else changed this Draft since you opened it. Their changes are shown now: review them and try again.";
+  if (error instanceof ProjectRequestError && error.status === 422)
+    return "That Version names a credential or Tag that no longer exists, so it can't start the Draft.";
+  return agentFailure(error);
+}
+
+/**
+ * Replaces the Draft made on revision `baseRevision`: with the Live Version's configuration
+ * (`discard`), or with a Version's (`versionId`). Nothing is published.
+ */
+export function useReplaceDraft(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  const store = useStoreAgent(organisationId, projectId);
+  return useMutation({
+    mutationFn: async ({
+      versionId,
+      baseRevision,
+    }: {
+      versionId: "live" | (string & {});
+      baseRevision: number;
+    }): Promise<Agent> => {
+      const path = {
+        organisation_id: organisationId,
+        project_id: projectId,
+        agent_id: agentId,
+      };
+      const query = { base_revision: baseRevision };
+      const { data, error, response } =
+        versionId === "live"
+          ? await api.POST(
+              "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/discard",
+              { params: { path, query } },
+            )
+          : await api.POST(
+              "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/from-version",
+              { params: { path, query }, body: { version_id: versionId } },
+            );
+      const latest = staleOr(error);
+      if (latest) {
+        await store(latest);
+        throw new StaleDraftError(latest);
+      }
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: store,
   });
 }
 

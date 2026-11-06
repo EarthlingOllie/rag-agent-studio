@@ -5,10 +5,10 @@ Versions are immutable, so there is no route that changes or deletes one."""
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, StringConstraints
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.agents import bulk
 from app.auth.api import Db, ErrorResponse
@@ -17,11 +17,13 @@ from app.projects.api import PROJECT_ARCHIVED, ClockDep
 from app.projects.models import NOTE_MAX
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, Scope
+from app.versioning.api import DiffLineOut, lines_out
 
 router = APIRouter(prefix=ORGANISATION_PREFIX, tags=["project-instructions"])
 
 NOTHING_TO_PUBLISH = "The Draft is the same as the Current Version, so there's nothing to publish."
 NOTHING_TO_REVERT = "There's no earlier Version to revert to."
+NO_CURRENT_VERSION = "The Instructions have never been published, so there's no Current Version."
 
 _PATH = "/projects/{project_id}/instructions"
 
@@ -171,4 +173,61 @@ async def revert_instructions(
             )
             for agent, live in candidates
         ],
+    )
+
+
+class InstructionsVersionNumberOut(BaseModel):
+    id: uuid.UUID
+    number: int
+
+
+class InstructionsDiffSideOut(BaseModel):
+    kind: Literal["draft", "version"]
+    # Null for the Draft.
+    version: InstructionsVersionNumberOut | None
+
+
+class InstructionsDiffOut(BaseModel):
+    from_: InstructionsDiffSideOut = Field(alias="from")
+    to: InstructionsDiffSideOut
+    # The line diff of the two texts.
+    lines: list[DiffLineOut]
+
+
+def _side_out(side: instructions.DiffSide) -> InstructionsDiffSideOut:
+    if side.version is None:
+        return InstructionsDiffSideOut(kind="draft", version=None)
+    version = InstructionsVersionNumberOut(id=side.version.id, number=side.version.number)
+    return InstructionsDiffSideOut(kind="version", version=version)
+
+
+SIDE_HELP = "The Draft (draft), the Current Version (current), or a Version's ID."
+
+
+@router.get(
+    f"{_PATH}/diff",
+    operation_id="diffProjectInstructions",
+    responses=_errors((404, NOT_FOUND), (409, NO_CURRENT_VERSION)),
+)
+async def diff_instructions(
+    project_id: uuid.UUID,
+    source: Annotated[instructions.Side, Query(alias="from", description=SIDE_HELP)],
+    target: Annotated[instructions.Side, Query(alias="to", description=SIDE_HELP)],
+    scope: Scope,
+    db: Db,
+) -> InstructionsDiffOut:
+    """The line diff of the Project Instructions from one side to the other.
+    ``from=current&to=draft`` shows what publishing the Draft would change."""
+    try:
+        found = await instructions.diff(db, scope, project_id, source, target)
+    except (service.ProjectNotFoundError, instructions.InstructionsVersionNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except instructions.NoCurrentVersionError:
+        raise HTTPException(status.HTTP_409_CONFLICT, NO_CURRENT_VERSION) from None
+    return InstructionsDiffOut.model_validate(
+        {
+            "from": _side_out(found.source),
+            "to": _side_out(found.target),
+            "lines": lines_out(found.lines),
+        }
     )

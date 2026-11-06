@@ -2,7 +2,7 @@ import { MarkdownEditor } from "@studio/ui";
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
-import { type Agent, useSaveDraft } from "./agents";
+import { type Agent, StaleDraftError, useSaveDraft, useStoreAgent } from "./agents";
 import { type Draft, DraftRequestError, errorsFor, type FieldError, type ModelChoice, useCredentialModels } from "./draft";
 import { INPUT } from "./ProjectsPage";
 import { useTags } from "./tags";
@@ -19,11 +19,12 @@ const PROVIDER_NAMES: Record<Credential["provider"], string> = {
   demo: "Demo: canned answers, not a real model",
 };
 
-type Status = "saved" | "dirty" | "saving" | "invalid" | "failed";
+type Status = "saved" | "dirty" | "saving" | "invalid" | "failed" | "conflict";
 
 const FAILED_TEXT = "something went wrong. Your next change tries again.";
 
 const STATUS_TEXT: Record<Exclude<Status, "failed">, string> = {
+  conflict: "Not saved: someone else changed this Draft.",
   saved: "All changes saved",
   dirty: "Unsaved changes",
   saving: "Saving…",
@@ -371,11 +372,38 @@ function localErrors(draft: Draft): FieldError[] {
 const orNull = (text: string) => (text.trim() === "" ? null : text);
 
 /**
+ * Someone else saved the Draft after the revision these edits were made on: the Editor loads
+ * their Draft (losing these edits) or saves these edits over theirs.
+ */
+function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () => void; onKeep: () => void }) {
+  return (
+    <div role="alert" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+      <p>
+        Someone else saved this Draft while you were editing (saved {new Date(latest.draft_updated_at).toLocaleString()}). Your
+        changes aren&apos;t saved. Load their Draft, or save yours over it.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={CONFLICT_BUTTON} onClick={onLoad}>
+          Load their changes
+        </button>
+        <button type="button" className={CONFLICT_BUTTON} onClick={onKeep}>
+          Save mine over theirs
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const CONFLICT_BUTTON = "rounded border border-slate-400 bg-white px-3 py-1 text-sm text-slate-900 hover:bg-slate-100";
+
+/**
  * The Agent's Draft, every group of its AgentConfig. Each change is saved automatically once
  * typing pauses; the status says whether everything is saved, and the API's reasons for
- * refusing a setting appear beside it.
+ * refusing a setting appear beside it. Saves name the Draft revision they were made on; when
+ * someone else has saved since, the Editor is asked to load their Draft or save their own over it,
+ * and `onReplaced` is called once the Draft is replaced so the editor starts again from it.
  */
-export function DraftEditor({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agent; organisationId: string; onReplaced: () => void }) {
   // An archived Agent's Draft can't change until an Owner restores it.
   const readOnly = agent.archived_at !== null;
   const save = useSaveDraft(organisationId, agent.project_id, agent.id);
@@ -395,6 +423,11 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
   // Pickers with a credential chosen but no model yet: a change not yet in the Draft.
   const [incomplete, setIncomplete] = useState<Record<string, boolean>>({});
   const { mutateAsync } = save;
+  const store = useStoreAgent(organisationId, agent.project_id);
+  // The Draft revision these edits are made on: the last one this editor saved or loaded.
+  const base = useRef(agent.draft_revision);
+  // Someone else's Draft, when a save was refused because they had saved since.
+  const [conflict, setConflict] = useState<Agent | null>(null);
 
   const enqueue = useCallback(
     (next: Draft, version: number) => {
@@ -402,11 +435,17 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
       queue.current = queue.current.then(async () => {
         if (version !== queued.current) return;
         try {
-          await mutateAsync(next);
+          const saved = await mutateAsync({ draft: next, baseRevision: base.current });
+          base.current = saved.draft_revision;
           if (version !== latest.current) return;
           setErrors([]);
           setStatus("saved");
         } catch (error) {
+          if (error instanceof StaleDraftError) {
+            setConflict(error.latest);
+            setStatus("conflict");
+            return;
+          }
           if (version !== latest.current) return;
           const fields = error instanceof DraftRequestError ? error.fields : [];
           setErrors(fields);
@@ -492,6 +531,21 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
                 : STATUS_TEXT[status]}
         </p>
       </div>
+      {conflict && (
+        <DraftConflict
+          latest={conflict}
+          onLoad={() => {
+            void store(conflict);
+            onReplaced();
+          }}
+          onKeep={() => {
+            base.current = conflict.draft_revision;
+            setConflict(null);
+            setStatus("saving");
+            enqueue(draft, ++latest.current);
+          }}
+        />
+      )}
 
       <Group legend="Behaviour" disabled={readOnly}>
         <div>

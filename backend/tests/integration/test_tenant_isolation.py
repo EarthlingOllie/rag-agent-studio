@@ -50,6 +50,8 @@ class ScopedRoute:
     # The lowest role allowed: Editor (any Member) or Owner.
     role: Role
     prepare: Prepare = field(default=_nothing_to_prepare)
+    # Query parameters the route requires.
+    query: dict[str, str] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return f"{self.method} {self.path}"
@@ -371,6 +373,16 @@ async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) ->
     return params | {"version_id": published.json()["id"]}, None
 
 
+async def _a_live_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    return params, None
+
+
+async def _a_version_to_start_from(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    return params, {"version_id": params["version_id"]}
+
+
 async def _an_archived_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _an_agent(owner, add_member)
     archived = await owner.client.post(
@@ -434,6 +446,13 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions", EDITOR, _a_project),
     ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _a_project),
+    ScopedRoute(
+        "GET",
+        PROJECTS + "/{project_id}/instructions/diff",
+        EDITOR,
+        _a_project,
+        {"from": "draft", "to": "draft"},
+    ),
     ScopedRoute(
         "POST", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _instructions_to_publish
     ),
@@ -504,6 +523,9 @@ PROJECT_SCOPED_ROUTES = [
         "POST", PROJECTS + "/{project_id}/agents/bulk-revert", EDITOR, _agents_to_bulk_revert
     ),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/rollout", EDITOR, _a_project),
+    ScopedRoute("GET", _AGENT + "/diff", EDITOR, _an_agent, {"from": "draft", "to": "draft"}),
+    ScopedRoute("POST", _AGENT + "/draft/discard", EDITOR, _a_live_agent),
+    ScopedRoute("POST", _AGENT + "/draft/from-version", EDITOR, _a_version_to_start_from),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),
@@ -580,7 +602,7 @@ async def _call(
 ) -> httpx.Response:
     params, body = prepared
     path = route.path.format(organisation_id=organisation_id, **params)
-    return await client.request(route.method, path, json=body)
+    return await client.request(route.method, path, params=route.query, json=body)
 
 
 @pytest.mark.parametrize("route", ORGANISATION_SCOPED_ROUTES, ids=str)

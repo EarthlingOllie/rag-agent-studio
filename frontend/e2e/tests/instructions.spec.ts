@@ -35,7 +35,7 @@ test.describe("Project Instructions", () => {
     const markdown = "## House rules\n\n- Answer in **British English**. Use <context> & snake_case.";
     const instructionsUrl = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const saved = await page.request.get(instructionsUrl);
-    expect(await saved.json()).toEqual({ markdown });
+    expect(((await saved.json()) as { markdown: string }).markdown).toEqual(markdown);
     await page.reload();
     await page.getByRole("button", { name: "Markdown" }).click({ timeout: 15_000 });
     await expect(page.getByRole("textbox", { name: "Project Instructions (Markdown)" })).toHaveValue(markdown);

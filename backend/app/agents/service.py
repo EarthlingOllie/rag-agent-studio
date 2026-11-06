@@ -5,6 +5,11 @@ Every function takes an ``OrganisationScope`` and a Project ID, so an Agent is o
 its own Project of the Organisation the Member works in. Changes go through
 ``active_project``, so an archived Project's Agents can't be created or changed; an archived
 Agent's Draft can't be changed either, and it starts no Playground Conversation.
+
+Every change of a Draft moves it to its next revision. A change may name the revision it was
+made on (``base_revision``); when the Draft has moved on since, it is refused with
+``StaleDraftError`` carrying the latest Draft, so nobody silently overwrites a colleague's
+edits. ``replace_draft`` applies that rule for saving, discarding and starting from a Version.
 """
 
 import uuid
@@ -19,6 +24,7 @@ from app.agents.config import AgentConfig
 from app.agents.models import Agent, AgentDraft, AgentVersion
 from app.agents.validation import check_draft
 from app.conversations.models import Conversation
+from app.projects.models import Project
 from app.projects.service import active_project, get_project
 from app.tenancy.repository import OrganisationScope
 
@@ -55,17 +61,31 @@ class AgentWithDraft:
     agent: Agent
     draft: AgentConfig
     draft_updated_at: datetime
+    draft_revision: int
     # None while the Agent has never been published, so it is not live.
-    live_version: LiveVersion | None = None
+    live_version: LiveVersion | None
+    # Whether the Draft differs from the Live Version's configuration; False while not live.
+    has_unpublished_changes: bool
 
 
-async def _with_draft(session: AsyncSession, agent: Agent) -> AgentWithDraft:
+class StaleDraftError(Exception):
+    """The Draft has moved on since the revision the change was made on."""
+
+    def __init__(self, latest: AgentWithDraft) -> None:
+        self.latest = latest
+
+
+async def with_draft(session: AsyncSession, agent: Agent) -> AgentWithDraft:
+    """The Agent with its Draft, its revision and its Live Version."""
     draft = await session.get_one(AgentDraft, agent.id)
+    config = AgentConfig.model_validate(draft.config)
     live = None
+    changed = False
     if agent.live_version_id is not None:
         version = await session.get_one(AgentVersion, agent.live_version_id)
         live = LiveVersion(version.id, version.number)
-    return AgentWithDraft(agent, AgentConfig.model_validate(draft.config), draft.updated_at, live)
+        changed = AgentConfig.model_validate(version.config) != config
+    return AgentWithDraft(agent, config, draft.updated_at, draft.revision, live, changed)
 
 
 async def create_agent(
@@ -100,7 +120,7 @@ async def create_agent(
     )
     await session.commit()
     await session.refresh(agent)
-    return await _with_draft(session, agent)
+    return await with_draft(session, agent)
 
 
 async def list_agents(
@@ -118,7 +138,7 @@ async def list_agents(
         .where(Agent.project_id == project.id, archived_filter)
         .order_by(Agent.created_at, Agent.id)
     )
-    return [await _with_draft(session, agent) for agent in agents]
+    return [await with_draft(session, agent) for agent in agents]
 
 
 async def _find(
@@ -147,7 +167,7 @@ async def get_agent(
 ) -> AgentWithDraft:
     """The Agent, archived or not; with ``lock`` its row is locked until the transaction
     ends."""
-    return await _with_draft(session, await _find(session, scope, project_id, agent_id, lock=lock))
+    return await with_draft(session, await _find(session, scope, project_id, agent_id, lock=lock))
 
 
 async def active_agent(
@@ -191,7 +211,7 @@ async def _set_archived(
         occurred_at=now,
     )
     await session.commit()
-    return await _with_draft(session, agent)
+    return await with_draft(session, agent)
 
 
 async def archive_agent(
@@ -260,6 +280,30 @@ async def delete_agent(
     await session.commit()
 
 
+async def replace_draft(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project: Project,
+    agent: Agent,
+    config: AgentConfig,
+    *,
+    base_revision: int | None,
+    now: datetime,
+) -> AgentDraft:
+    """Replaces the active ``agent``'s Draft with ``config`` and moves it to its next revision,
+    in the caller's transaction. Refused with ``StaleDraftError`` when ``base_revision`` is
+    given and the Draft has moved on from it, then with ``InvalidDraftError`` when
+    ``check_draft`` finds a problem. The credentials it names become Credential references."""
+    draft = await session.get_one(AgentDraft, agent.id, with_for_update=True)
+    if base_revision is not None and base_revision != draft.revision:
+        raise StaleDraftError(await with_draft(session, agent))
+    await check_draft(session, scope, project, config)
+    draft.config = config.model_dump(mode="json")
+    draft.updated_at = now
+    draft.revision += 1
+    return draft
+
+
 async def save_draft(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -267,15 +311,14 @@ async def save_draft(
     agent_id: uuid.UUID,
     config: AgentConfig,
     *,
+    base_revision: int | None = None,
     now: datetime,
 ) -> AgentWithDraft:
-    """Replaces the Agent's Draft with ``config``, once ``check_draft`` finds no problem (it
-    raises ``InvalidDraftError``). The credentials it names become Credential references."""
+    """Replaces the Agent's Draft with ``config`` (see ``replace_draft``)."""
     project = await active_project(session, scope, project_id)
-    found = await active_agent(session, scope, project_id, agent_id)
-    await check_draft(session, scope, project, config)
-    draft = await session.get_one(AgentDraft, found.agent.id, with_for_update=True)
-    draft.config = config.model_dump(mode="json")
-    draft.updated_at = now
+    agent = (await active_agent(session, scope, project_id, agent_id)).agent
+    await replace_draft(
+        session, scope, project, agent, config, base_revision=base_revision, now=now
+    )
     await session.commit()
-    return AgentWithDraft(found.agent, config, now, found.live_version)
+    return await with_draft(session, agent)

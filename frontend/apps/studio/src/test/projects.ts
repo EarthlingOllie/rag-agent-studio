@@ -9,6 +9,8 @@ export const PROJECT_ARCHIVED = "This Project is archived. An Owner can restore 
 export const ARCHIVE_BEFORE_DELETING = "Only an archived Project can be deleted. Archive it first.";
 export const NAME_MISMATCH = "Type the Project's name exactly to delete it.";
 
+export const STALE_INSTRUCTIONS =
+  "Someone else saved these Instructions after you opened them. Load their changes, or save yours over them.";
 export const NOTHING_TO_PUBLISH = "The Draft is the same as the Current Version, so there's nothing to publish.";
 export const NOTHING_TO_REVERT = "There's no earlier Version to revert to.";
 
@@ -84,6 +86,8 @@ export function fakeProjectsApi(
     versions?: Record<string, InstructionsHistory>;
     /** The Agents a revert reports as still pinned to the reverted Version; none when left out. */
     revertCandidates?: Schemas["BulkRevertCandidateOut"][];
+    /** Refuses every Instructions diff with this status. */
+    diffStatus?: number;
   } = {},
 ) {
   let projects = [...(options.projects ?? [hrProject, salesProject, oldProject])];
@@ -92,6 +96,14 @@ export function fakeProjectsApi(
   const historyOf = (id: string): InstructionsHistory => versions[id] ?? { current_version_id: null, versions: [] };
   const currentOf = (history: InstructionsHistory) => history.versions.find((version) => version.id === history.current_version_id);
   const requests: { route: string; projectId?: string; body?: unknown }[] = [];
+  // Each Project's Instructions Draft revision: it moves on whenever the text changes.
+  const revisions: Record<string, number> = {};
+  const draftOf = (projectId: string) => ({ markdown: instructions[projectId] ?? "", revision: revisions[projectId] ?? 1 });
+  const saveInstructions = (projectId: string, markdown: string) => {
+    if (markdown !== draftOf(projectId).markdown) revisions[projectId] = draftOf(projectId).revision + 1;
+    instructions[projectId] = markdown;
+    return draftOf(projectId);
+  };
   const find = (id: string) => projects.find((project) => project.id === id);
   const notFound = () => HttpResponse.json({ detail: "Not found" }, { status: 404 });
   const replace = (changed: Project) => {
@@ -163,7 +175,7 @@ export function fakeProjectsApi(
     }),
     http.get("*/api/organisations/:organisationId/projects/:projectId/instructions", ({ params }) => {
       const projectId = params.projectId as string;
-      return find(projectId) ? HttpResponse.json({ markdown: instructions[projectId] ?? "" }) : notFound();
+      return find(projectId) ? HttpResponse.json(draftOf(projectId)) : notFound();
     }),
     http.put("*/api/organisations/:organisationId/projects/:projectId/instructions", async ({ params, request }) => {
       const projectId = params.projectId as string;
@@ -171,8 +183,10 @@ export function fakeProjectsApi(
       requests.push({ route: "instructions", projectId, body });
       if ((find(projectId) as Project).archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
       if (body.markdown.length > 20_000) return HttpResponse.json({ detail: [{ msg: "too long" }] }, { status: 422 });
-      instructions[projectId] = body.markdown;
-      return HttpResponse.json({ markdown: body.markdown });
+      const base = new URL(request.url).searchParams.get("base_revision");
+      if (base !== null && Number(base) !== draftOf(projectId).revision)
+        return HttpResponse.json({ detail: STALE_INSTRUCTIONS, latest: draftOf(projectId) }, { status: 409 });
+      return HttpResponse.json(saveInstructions(projectId, body.markdown));
     }),
     http.get("*/api/organisations/:organisationId/projects/:projectId/instructions/versions", ({ params }) => {
       const projectId = params.projectId as string;
@@ -197,6 +211,26 @@ export function fakeProjectsApi(
       });
       versions[projectId] = { current_version_id: version.id, versions: [version, ...history.versions] };
       return HttpResponse.json(version, { status: 201 });
+    }),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/instructions/diff", ({ params, request }) => {
+      const projectId = params.projectId as string;
+      const query = new URL(request.url).searchParams;
+      if (options.diffStatus) return HttpResponse.json({ detail: "Boom" }, { status: options.diffStatus });
+      const side = (id: string) => {
+        const version = historyOf(projectId).versions.find((candidate) => candidate.id === id);
+        return {
+          side: version ? { kind: "version" as const, version: { id: version.id, number: version.number } } : { kind: "draft" as const, version: null },
+          lines: (version ? version.markdown : (instructions[projectId] ?? "")).split("\n").filter(Boolean),
+        };
+      };
+      const before = side(query.get("from") as string);
+      const after = side(query.get("to") as string);
+      // A simple line diff: lines on both sides are equal, the rest deleted or inserted.
+      const lines = [
+        ...before.lines.map((text) => ({ op: after.lines.includes(text) ? ("equal" as const) : ("delete" as const), text })),
+        ...after.lines.filter((text) => !before.lines.includes(text)).map((text) => ({ op: "insert" as const, text })),
+      ];
+      return HttpResponse.json({ from: before.side, to: after.side, lines });
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/instructions/revert", ({ params }) => {
       const projectId = params.projectId as string;
@@ -231,5 +265,9 @@ export function fakeProjectsApi(
       return new HttpResponse(null, { status: 202 });
     }),
   );
-  return { requests };
+  return {
+    requests,
+    /** A colleague saves `markdown` as the Project's Instructions Draft. */
+    colleagueSavesInstructions: (projectId: string, markdown: string) => saveInstructions(projectId, markdown),
+  };
 }
