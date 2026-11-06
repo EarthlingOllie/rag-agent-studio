@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
 from app.agents.config import AgentConfig
-from app.agents.models import Agent, AgentDraft
+from app.agents.models import Agent, AgentDraft, AgentVersion
 from app.agents.validation import check_draft
 from app.conversations.models import Conversation
 from app.projects.service import active_project, get_project
@@ -45,15 +45,27 @@ class AgentNameMismatchError(Exception):
 
 
 @dataclass(frozen=True)
+class LiveVersion:
+    id: uuid.UUID
+    number: int
+
+
+@dataclass(frozen=True)
 class AgentWithDraft:
     agent: Agent
     draft: AgentConfig
     draft_updated_at: datetime
+    # None while the Agent has never been published, so it is not live.
+    live_version: LiveVersion | None = None
 
 
 async def _with_draft(session: AsyncSession, agent: Agent) -> AgentWithDraft:
     draft = await session.get_one(AgentDraft, agent.id)
-    return AgentWithDraft(agent, AgentConfig.model_validate(draft.config), draft.updated_at)
+    live = None
+    if agent.live_version_id is not None:
+        version = await session.get_one(AgentVersion, agent.live_version_id)
+        live = LiveVersion(version.id, version.number)
+    return AgentWithDraft(agent, AgentConfig.model_validate(draft.config), draft.updated_at, live)
 
 
 async def create_agent(
@@ -126,17 +138,28 @@ async def _find(
 
 
 async def get_agent(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    lock: bool = False,
 ) -> AgentWithDraft:
-    """The Agent, archived or not."""
-    return await _with_draft(session, await _find(session, scope, project_id, agent_id))
+    """The Agent, archived or not; with ``lock`` its row is locked until the transaction
+    ends."""
+    return await _with_draft(session, await _find(session, scope, project_id, agent_id, lock=lock))
 
 
 async def active_agent(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    lock: bool = False,
 ) -> AgentWithDraft:
     """The Agent, refused with ``AgentArchivedError`` while it is archived."""
-    found = await get_agent(session, scope, project_id, agent_id)
+    found = await get_agent(session, scope, project_id, agent_id, lock=lock)
     if found.agent.archived_at is not None:
         raise AgentArchivedError
     return found
@@ -255,4 +278,4 @@ async def save_draft(
     draft.config = config.model_dump(mode="json")
     draft.updated_at = now
     await session.commit()
-    return AgentWithDraft(found.agent, config, now)
+    return AgentWithDraft(found.agent, config, now, found.live_version)

@@ -47,6 +47,11 @@ OWNERS_ONLY_RESPONSE: dict[int | str, dict[str, Any]] = {
 }
 
 
+class LiveVersionOut(BaseModel):
+    id: uuid.UUID
+    number: int
+
+
 class AgentOut(BaseModel):
     id: uuid.UUID
     # Unguessable; the embed (spec 06) addresses the Agent by it.
@@ -57,6 +62,9 @@ class AgentOut(BaseModel):
     archived_at: datetime | None
     draft: AgentConfig
     draft_updated_at: datetime
+    # The Version Visitors are served; null while the Agent has never been published, so it
+    # is not live.
+    live_version: LiveVersionOut | None
 
 
 class CreateAgentRequest(BaseModel):
@@ -74,6 +82,8 @@ def _out(found: service.AgentWithDraft) -> AgentOut:
         archived_at=agent.archived_at,
         draft=found.draft,
         draft_updated_at=found.draft_updated_at,
+        live_version=found.live_version
+        and LiveVersionOut(id=found.live_version.id, number=found.live_version.number),
     )
 
 

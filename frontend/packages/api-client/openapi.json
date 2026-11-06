@@ -92,6 +92,16 @@
             "title": "Id",
             "type": "string"
           },
+          "live_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -114,9 +124,88 @@
           "created_at",
           "archived_at",
           "draft",
-          "draft_updated_at"
+          "draft_updated_at",
+          "live_version"
         ],
         "title": "AgentOut",
+        "type": "object"
+      },
+      "AgentVersionOut": {
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/PersonOut"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AgentConfig-Output"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instructions_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "note",
+          "author",
+          "created_at",
+          "config",
+          "instructions_version"
+        ],
+        "title": "AgentVersionOut",
+        "type": "object"
+      },
+      "AgentVersionsOut": {
+        "properties": {
+          "live_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Version Id"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/AgentVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "live_version_id",
+          "versions"
+        ],
+        "title": "AgentVersionsOut",
         "type": "object"
       },
       "AuditActorOut": {
@@ -2446,6 +2535,76 @@
         "title": "LauncherType",
         "type": "string"
       },
+      "LiveHistoryEntryOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/PersonOut"
+          },
+          "bulk_operation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bulk Operation Id"
+          },
+          "from_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "to_version": {
+            "$ref": "#/components/schemas/VersionNumberOut"
+          }
+        },
+        "required": [
+          "from_version",
+          "to_version",
+          "action",
+          "actor",
+          "occurred_at",
+          "bulk_operation_id"
+        ],
+        "title": "LiveHistoryEntryOut",
+        "type": "object"
+      },
+      "LiveVersionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "title": "LiveVersionOut",
+        "type": "object"
+      },
       "MemberOut": {
         "properties": {
           "email": {
@@ -2508,6 +2667,18 @@
       },
       "MessageOut": {
         "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
           "config_source": {
             "anyOf": [
               {
@@ -2621,6 +2792,7 @@
           "content",
           "created_at",
           "config_source",
+          "agent_version_id",
           "model_provider",
           "model_name",
           "input_tokens",
@@ -2959,6 +3131,25 @@
         "title": "PasswordResetRequest",
         "type": "object"
       },
+      "PersonOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PersonOut",
+        "type": "object"
+      },
       "PricesOut": {
         "properties": {
           "cached_input": {
@@ -3235,6 +3426,33 @@
           "capabilities"
         ],
         "title": "ProviderOut",
+        "type": "object"
+      },
+      "PublishAgentRequest": {
+        "properties": {
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "PublishAgentRequest",
         "type": "object"
       },
       "PublishInstructionsRequest": {
@@ -4165,6 +4383,18 @@
       "TraceOut": {
         "description": "Why an answer came out as it did: the model, its usage, cost and latency, and every\nChunk retrieval found, given to the model (cited or not) or left out with the reason.",
         "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
           "chunks": {
             "items": {
               "$ref": "#/components/schemas/TracedChunkOut"
@@ -4280,6 +4510,7 @@
         "required": [
           "message_id",
           "config_source",
+          "agent_version_id",
           "model_provider",
           "model_name",
           "input_tokens",
@@ -4663,6 +4894,25 @@
           "name"
         ],
         "title": "VersionAuthor",
+        "type": "object"
+      },
+      "VersionNumberOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "title": "VersionNumberOut",
         "type": "object"
       },
       "WorkerHealthResponse": {
@@ -8590,6 +8840,84 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/live-history": {
+      "get": {
+        "description": "Every change of the Agent's Live Version, newest first: from which Version to which,\nby what action, who and when.",
+        "operationId": "listAgentLiveHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LiveHistoryEntryOut"
+                  },
+                  "title": "Response Listagentlivehistory",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Agent Live History",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations": {
       "post": {
         "description": "Starts an empty Playground Conversation with the Agent's Draft. An archived Agent starts\nnone.",
@@ -9047,6 +9375,256 @@
         "summary": "Restore Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions": {
+      "get": {
+        "description": "The Agent's Versions, newest first, and which is the Live Version.",
+        "operationId": "listAgentVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Agent Versions",
+        "tags": [
+          "agent-versions"
+        ]
+      },
+      "post": {
+        "description": "Publishes the Agent's Draft with a note as its next Version, pinning the chosen Project\nInstructions Version (the Current Version by default), and makes it the Live Version.\nRecords ``agent.published`` and a Live History entry.",
+        "operationId": "publishAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "That Instructions Version isn't one of this Project's."
+          }
+        },
+        "summary": "Publish Agent",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions/{version_id}": {
+      "get": {
+        "description": "One of the Agent's Versions.",
+        "operationId": "getAgentVersion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent Version",
+        "tags": [
+          "agent-versions"
         ]
       }
     },

@@ -70,8 +70,10 @@ class MessageOut(BaseModel):
     role: str
     content: str
     created_at: datetime
-    # The rest are set on the Agent's answers only.
+    # The rest are set on the Agent's answers only. ``config_source`` is ``draft`` for a
+    # Draft answer, or ``version`` with the answering ``agent_version_id``.
     config_source: str | None
+    agent_version_id: uuid.UUID | None
     model_provider: str | None
     model_name: str | None
     input_tokens: int | None
@@ -120,6 +122,7 @@ class TraceOut(BaseModel):
 
     message_id: uuid.UUID
     config_source: str | None
+    agent_version_id: uuid.UUID | None
     model_provider: str | None
     model_name: str | None
     input_tokens: int | None
@@ -151,6 +154,7 @@ def _out(conversation: Conversation, messages: list[Message]) -> ConversationOut
                 content=m.content,
                 created_at=m.created_at,
                 config_source=m.config_source,
+                agent_version_id=m.agent_version_id,
                 model_provider=m.model_provider,
                 model_name=m.model_name,
                 input_tokens=m.input_tokens,
@@ -234,6 +238,7 @@ async def get_trace(
     return TraceOut(
         message_id=message.id,
         config_source=message.config_source,
+        agent_version_id=message.agent_version_id,
         model_provider=message.model_provider,
         model_name=message.model_name,
         input_tokens=message.input_tokens,

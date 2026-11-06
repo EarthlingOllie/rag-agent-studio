@@ -1,11 +1,15 @@
 """Playground Conversations: starting one, reading it back, and answering a question with
 the Agent runtime, saving the question and the answer as Messages.
 
-A question is answered by the Draft's Model override, or else the Organisation's Default Model,
-through the model gateway, from Chunks the retrieval module finds in the Agent's Project
-(reranked by the Draft's Reranker, when it has one, also built through the gateway). The
-question is saved before the answer streams; the answer, with its tokens, latency and cost,
-once the stream ends.
+In the Playground a question is answered by the Draft with the Project Instructions Draft, and
+the answer records the Draft marker. ``save_question`` and ``answer`` are shared with serving
+the Live Version (``app.agents.serving``), whose answers record the Agent Version instead.
+
+A question is answered by the configuration's Model override, or else the Organisation's
+Default Model, through the model gateway, from Chunks the retrieval module finds in the Agent's
+Project (reranked by the configuration's Reranker, when it has one, also built through the
+gateway). The question is saved before the answer streams; the answer, with its tokens, latency
+and cost, once the stream ends.
 """
 
 import itertools
@@ -20,7 +24,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, ModelChoice, Retrieval
 from app.agents.service import active_agent, get_agent
-from app.conversations.models import DRAFT, Conversation, Message, MessageRetrieval, MessageRole
+from app.conversations.models import (
+    DRAFT,
+    VERSION,
+    Conversation,
+    Message,
+    MessageRetrieval,
+    MessageRole,
+)
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.default_model.service import read_default
@@ -60,7 +71,7 @@ class ChosenModel:
 
 
 async def _chosen(
-    session: AsyncSession, scope: OrganisationScope, choice: ModelChoice
+    session: AsyncSession, organisation_id: uuid.UUID, choice: ModelChoice
 ) -> ChosenModel:
     """The credential a Draft setting names, with its model. Saving the Draft checked the
     credential offers the model and made it a Credential reference, so it can't have been
@@ -68,19 +79,19 @@ async def _chosen(
     found = await session.scalars(
         select(ProviderCredential).where(
             ProviderCredential.id == choice.credential_id,
-            ProviderCredential.organisation_id == scope.organisation_id,
+            ProviderCredential.organisation_id == organisation_id,
         )
     )
     return ChosenModel(found.one(), choice.model)
 
 
 async def _chat_model(
-    session: AsyncSession, scope: OrganisationScope, config: AgentConfig
+    session: AsyncSession, organisation_id: uuid.UUID, config: AgentConfig
 ) -> ChosenModel:
     override = config.behaviour.model
     if override is not None:
-        return await _chosen(session, scope, override)
-    default = await read_default(session, scope.organisation_id)
+        return await _chosen(session, organisation_id, override)
+    default = await read_default(session, organisation_id)
     if default is None:
         raise NoDefaultModelError
     return ChosenModel(default.credential, default.model)
@@ -142,16 +153,20 @@ def _turns(messages: list[Message]) -> list[Turn]:
 
 @dataclass(frozen=True)
 class PreparedTurn:
-    """A question saved and ready to answer."""
+    """A question saved and ready to answer, with the configuration and Project Instructions
+    that answer it: the Draft's in the Playground, or an Agent Version's when it is served."""
 
     organisation_id: uuid.UUID
     conversation_id: uuid.UUID
     project: Project
     config: AgentConfig
+    instructions: str
     turns: list[Turn]
     question: str
     chat: ChosenModel
     reranker: ChosenModel | None = None
+    # The Agent Version answering; None for the Draft.
+    agent_version_id: uuid.UUID | None = None
 
 
 async def prepare_turn(
@@ -164,18 +179,49 @@ async def prepare_turn(
     *,
     now: datetime,
 ) -> PreparedTurn:
-    """Checks the question can be answered, then saves it."""
+    """Checks the question can be answered by the Draft, then saves it."""
     project = await active_project(session, scope, project_id)
     found = await active_agent(session, scope, project_id, agent_id)
     conversation, messages = await get_conversation(
         session, scope, project_id, agent_id, conversation_id
     )
-    chat = await _chat_model(session, scope, found.draft)
-    reranker_choice = found.draft.retrieval.reranker
-    reranker = None if reranker_choice is None else await _chosen(session, scope, reranker_choice)
+    return await save_question(
+        session,
+        project,
+        conversation,
+        messages,
+        found.draft,
+        project.instructions,
+        question,
+        agent_version_id=None,
+        now=now,
+    )
+
+
+async def save_question(
+    session: AsyncSession,
+    project: Project,
+    conversation: Conversation,
+    messages: list[Message],
+    config: AgentConfig,
+    instructions: str,
+    question: str,
+    *,
+    agent_version_id: uuid.UUID | None,
+    now: datetime,
+) -> PreparedTurn:
+    """Checks ``config`` has a chat model, then saves the question in the Conversation."""
+    organisation_id = conversation.organisation_id
+    chat = await _chat_model(session, organisation_id, config)
+    reranker_choice = config.retrieval.reranker
+    reranker = (
+        None
+        if reranker_choice is None
+        else await _chosen(session, organisation_id, reranker_choice)
+    )
     session.add(
         Message(
-            organisation_id=scope.organisation_id,
+            organisation_id=organisation_id,
             conversation_id=conversation.id,
             role=MessageRole.USER,
             content=question,
@@ -184,14 +230,16 @@ async def prepare_turn(
     conversation.last_activity_at = now
     await session.commit()
     return PreparedTurn(
-        organisation_id=scope.organisation_id,
+        organisation_id=organisation_id,
         conversation_id=conversation.id,
         project=project,
-        config=found.draft,
+        config=config,
+        instructions=instructions,
         turns=_turns(messages),
         question=question,
         chat=chat,
         reranker=reranker,
+        agent_version_id=agent_version_id,
     )
 
 
@@ -315,7 +363,7 @@ async def answer(
         async for event in run_turn(
             prepared.turns,
             prepared.config,
-            prepared.project.instructions,
+            prepared.instructions,
             prepared.question,
             model=model,
             retrieve=retrieve_in_project,
@@ -337,7 +385,8 @@ async def answer(
                 conversation_id=prepared.conversation_id,
                 role=MessageRole.ASSISTANT,
                 content=event.answer,
-                config_source=DRAFT,
+                config_source=DRAFT if prepared.agent_version_id is None else VERSION,
+                agent_version_id=prepared.agent_version_id,
                 # A fallback reply asked no model, so it names none.
                 model_provider=None if event.fallback else chosen.credential.provider,
                 model_name=None if event.fallback else chosen.model,
