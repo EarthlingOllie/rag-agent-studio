@@ -1,40 +1,97 @@
 import { MarkdownEditor } from "@studio/ui";
 import { useParams } from "@tanstack/react-router";
-import { type SubmitEvent, useRef } from "react";
+import { type SubmitEvent, useRef, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { instructionsFailure, useInstructions, useSaveInstructions } from "./instructions";
+import {
+  type DraftInstructions,
+  instructionsFailure,
+  StaleInstructionsError,
+  useInstructions,
+  useSaveInstructions,
+  useStoreInstructions,
+} from "./instructions";
 import { InstructionsVersions, PublishInstructionsForm } from "./InstructionsVersions";
 import { useProject } from "./projects";
 import { BUTTON, useOrganisationRole } from "./ProjectsPage";
 
+const CONFLICT_BUTTON = "rounded border border-slate-400 bg-white px-3 py-1 text-sm text-slate-900 hover:bg-slate-100";
+
 function InstructionsForm({
   organisationId,
   projectId,
-  markdown,
+  draft,
   archived,
+  onReplaced,
 }: {
   organisationId: string;
   projectId: string;
-  markdown: string;
+  draft: DraftInstructions;
   archived: boolean;
+  onReplaced: () => void;
 }) {
   const save = useSaveInstructions(organisationId, projectId);
+  const store = useStoreInstructions(organisationId, projectId);
   // Exactly what was loaded until it is edited, then exactly what the editor wrote.
-  const current = useRef(markdown);
+  const current = useRef(draft.markdown);
+  // The Draft revision these edits are made on: the last one saved or loaded here.
+  const base = useRef(draft.revision);
+  // Someone else's Draft, when a save was refused because they had saved since.
+  const [conflict, setConflict] = useState<DraftInstructions | null>(null);
+
+  function saveOver(baseRevision: number) {
+    setConflict(null);
+    save.mutate(
+      { markdown: current.current, baseRevision },
+      {
+        onSuccess: (saved) => {
+          base.current = saved.revision;
+        },
+        onError: (error) => {
+          if (error instanceof StaleInstructionsError) setConflict(error.latest);
+        },
+      },
+    );
+  }
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    save.mutate(current.current);
+    saveOver(base.current);
   }
 
   return (
     <>
       <form aria-label="Project Instructions" onSubmit={onSubmit} className="space-y-3">
-        <FormError message={instructionsFailure(save.error)} />
+        <FormError message={save.error instanceof StaleInstructionsError ? undefined : instructionsFailure(save.error)} />
+        {conflict && (
+          <div role="alert" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            <p>Someone else saved these Instructions while you were editing. Yours aren&apos;t saved. Load theirs, or save yours over them.</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={CONFLICT_BUTTON}
+                onClick={() => {
+                  store(conflict);
+                  onReplaced();
+                }}
+              >
+                Load their changes
+              </button>
+              <button
+                type="button"
+                className={CONFLICT_BUTTON}
+                onClick={() => {
+                  saveOver(conflict.revision);
+                }}
+              >
+                Save mine over theirs
+              </button>
+            </div>
+          </div>
+        )}
         <MarkdownEditor
           label="Project Instructions"
-          defaultValue={markdown}
+          defaultValue={draft.markdown}
           maxLength={20000}
           disabled={archived}
           onChange={(changed) => {
@@ -58,7 +115,16 @@ function InstructionsForm({
         )}
       </form>
       {!archived && (
-        <PublishInstructionsForm organisationId={organisationId} projectId={projectId} markdown={() => current.current} />
+        <PublishInstructionsForm
+          organisationId={organisationId}
+          projectId={projectId}
+          markdown={() => current.current}
+          baseRevision={() => base.current}
+          onSaved={(revision) => {
+            base.current = revision;
+          }}
+          onStale={setConflict}
+        />
       )}
     </>
   );
@@ -70,6 +136,8 @@ export function InstructionsTab() {
   const { projectId } = useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId" });
   const project = useProject(organisationId, projectId);
   const instructions = useInstructions(organisationId, projectId);
+  // Moves on when someone else's Draft is loaded, so the editor starts again from it.
+  const [generation, setGeneration] = useState(0);
 
   let body;
   if (instructions.isError) {
@@ -79,10 +147,14 @@ export function InstructionsTab() {
   } else {
     body = (
       <InstructionsForm
+        key={generation}
         organisationId={organisationId}
         projectId={projectId}
-        markdown={instructions.data}
+        draft={instructions.data}
         archived={project.data.archived_at !== null}
+        onReplaced={() => {
+          setGeneration((count) => count + 1);
+        }}
       />
     );
   }
