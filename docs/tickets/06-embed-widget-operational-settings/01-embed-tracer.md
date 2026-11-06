@@ -7,7 +7,7 @@
 **Blocked by:**
 - [05-02: Publish Agent to Live Version](../05-versioning-project-instructions/02-publish-agent-live-version.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Studio shows the Embed Snippet with a copy button, only once the Agent has a Live Version
 - [ ] The loader script injects the iframe, and CI enforces a size budget for it
