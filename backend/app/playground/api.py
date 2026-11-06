@@ -1,10 +1,13 @@
 """Playground routes: start a Playground Conversation with an Agent's Draft, read it back, and
 send a question, answered as a Server-Sent Events stream. Editors and Owners may use them.
 
-The stream sends ``token`` events (``{"text": …}``) as the answer arrives, then one ``done``
+The stream sends ``token`` events (``{"text": …}``) as the answer arrives, then a ``citation``
+event per Chunk the answer cites, then one ``done``
 event with the saved Message's ID, its token counts and latency, whether the answer is the
 Agent's fallback text, the Chunks the model was given and the Chunks retrieval left out (with
-the reason: below the minimum score, or outside top-k).
+the reason: below the minimum score, or outside top-k). If the answer starts to leak the Canary
+token, the stream is cut: a ``replace`` event (``{"text": …}``) carries the fallback text that
+replaces everything sent so far, then ``done``.
 """
 
 import json
@@ -12,7 +15,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -27,7 +30,7 @@ from app.documents.ports import IngestionPorts
 from app.playground import service
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.retrieval.service import ExcludedReason
-from app.runtime.runtime import CitationEvent, TokenEvent
+from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 
@@ -92,6 +95,15 @@ class TracedChunkOut(BaseModel):
     excluded_reason: ExcludedReason | None
 
 
+class GuardrailOutcomeOut(BaseModel):
+    """What one Guardrail layer decided about the answer, and what it did."""
+
+    layer: Literal["canary"]
+    verdict: Literal["leak"]
+    action: Literal["replaced", "flagged"]
+    reason: str
+
+
 class TraceOut(BaseModel):
     """Why an answer came out as it did: the model, its usage, cost and latency, and every
     Chunk retrieval found, given to the model (cited or not) or left out with the reason."""
@@ -108,6 +120,7 @@ class TraceOut(BaseModel):
     # True when no Chunk reached the minimum score, so the answer is the fallback text.
     fallback: bool
     chunks: list[TracedChunkOut]
+    guardrail_outcomes: list[GuardrailOutcomeOut]
 
 
 class SendMessageRequest(BaseModel):
@@ -216,6 +229,9 @@ async def get_trace(
         first_token_ms=message.first_token_ms,
         latency_ms=message.latency_ms,
         fallback=message.fallback,
+        guardrail_outcomes=[
+            GuardrailOutcomeOut.model_validate(o) for o in message.guardrail_outcomes
+        ],
         chunks=[
             TracedChunkOut(
                 chunk_id=c.retrieval.chunk_id,
@@ -240,7 +256,10 @@ def _sse(event: str, data: dict[str, Any]) -> str:
 _STREAM: dict[int | str, dict[str, Any]] = {
     200: {
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
-        "description": "Server-Sent Events: `token` events, then one `done` event.",
+        "description": (
+            "Server-Sent Events: `token` events, then `citation` events and one `done` event; "
+            "or, when the answer leaks the Canary token, a `replace` event then `done`."
+        ),
     },
     409: {"model": ErrorResponse, "description": "The Project is archived, or no Default Model."},
 }
@@ -285,6 +304,8 @@ async def send_message(
         ):
             if isinstance(event, TokenEvent):
                 yield _sse("token", {"text": event.text})
+            elif isinstance(event, ReplaceEvent):
+                yield _sse("replace", {"text": event.text})
             elif isinstance(event, CitationEvent):
                 yield _sse(
                     "citation",

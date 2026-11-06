@@ -2,10 +2,21 @@ import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { type Project, projectFailure, useProject, useUpdateProject } from "./projects";
+import {
+  type Project,
+  projectFailure,
+  useProject,
+  useUpdateProject,
+} from "./projects";
 import { useOrganisationRole } from "./ProjectsPage";
 
-function OcrSetting({ project, organisationId }: { project: Project; organisationId: string }) {
+function OcrSetting({
+  project,
+  organisationId,
+}: {
+  project: Project;
+  organisationId: string;
+}) {
   const update = useUpdateProject(organisationId, project.id);
   const archived = project.archived_at !== null;
   // The setting asked for while it saves. Kept in component state, set in the click itself, so
@@ -23,15 +34,22 @@ function OcrSetting({ project, organisationId }: { project: Project; organisatio
           disabled={archived || requested !== null}
           onChange={(event) => {
             setRequested(event.target.checked);
-            update.mutate({ ocr_enabled: event.target.checked }, { onSettled: () => { setRequested(null); } });
+            update.mutate(
+              { ocr_enabled: event.target.checked },
+              {
+                onSettled: () => {
+                  setRequested(null);
+                },
+              },
+            );
           }}
           className="h-4 w-4"
         />
         Read scanned PDFs with OCR
       </label>
       <p id="ocr-help" className="text-sm text-slate-700">
-        OCR reads text in images, such as scanned pages. It makes processing slower, so leave it off unless this
-        Project has scanned PDFs.
+        OCR reads text in images, such as scanned pages. It makes processing
+        slower, so leave it off unless this Project has scanned PDFs.
       </p>
       <p role="status" className="text-sm text-slate-700">
         {project.ocr_enabled
@@ -45,14 +63,18 @@ function OcrSetting({ project, organisationId }: { project: Project; organisatio
 /** The Project's settings: for now, whether ingestion runs OCR. */
 export function ProjectSettingsTab() {
   const { organisationId } = useOrganisationRole();
-  const { projectId } = useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId" });
+  const { projectId } = useParams({
+    from: "/signed-in/organisations/$organisationId/projects/$projectId",
+  });
   const project = useProject(organisationId, projectId);
   return (
     <section aria-labelledby="tab-heading" className="space-y-4">
       <h2 id="tab-heading" className="text-lg font-semibold">
         Settings
       </h2>
-      {project.data && <OcrSetting project={project.data} organisationId={organisationId} />}
+      {project.data && (
+        <OcrSetting project={project.data} organisationId={organisationId} />
+      )}
     </section>
   );
 }
