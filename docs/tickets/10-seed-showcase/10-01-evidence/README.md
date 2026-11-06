@@ -1,6 +1,6 @@
 # Evidence: ticket 10-01, Seed foundation
 
-Branch `ticket/10-01-seed-foundation`, from `origin/candidate` at `a8eedee` (03-06, 02-05 and 04-07, the blockers, all merged). The claim commit `577918a`, the first on the branch, set Status `in-progress`. `origin/candidate` at `05e1a18` (04-06) was merged in, and every check below ran on the merged tree at `1ea05d8`. Only this README, the logs and the ticket's Status changed after that.
+Branch `ticket/10-01-seed-foundation`, from `origin/candidate` at `a8eedee` (03-06, 02-05 and 04-07, the blockers, all merged). The claim commit `577918a`, the first on the branch, set Status `in-progress`. `origin/candidate` was merged in up to `f0d632d` (03-04, 04-02, 03-07, 08-04 and 02-06 since the first evidence run), and every check below ran on the merged tree at `4f0bcf7`. Each merge moved the erasure migration to the next free number, now `0023_erase_organisation` after `0022_theme_images`. Only this README and the logs changed after that.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to later spec 10 tickets on purpose, plus best guesses recorded instead of asking.
 
@@ -65,20 +65,20 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 | 3 | Owner and Editor accounts are created and their sign-in details printed | **Tests:**<br>• `test_the_owner_and_editor_sign_in_with_the_printed_details`: the printed lines hold both emails and passwords and the Studio URL; both accounts sign in, as Owner and Editor.<br>• `test_the_seed_builds_…`: members `{owner: owner, editor: editor}`.<br>• `test_the_command_…` checks stdout.<br>**Docs:** `seed/README.md` lists them.<br>**Real stack:** [make-seed.log](make-seed.log) shows the printed block. In `seed.spec.ts` the Owner and the Editor sign in with those details. |
 | 4 | The Northwind Project has synthetic Documents (one with an injection footnote) with a licence note, plus Tags and a Theme | **Tests:**<br>• `test_the_seed_builds_…`: four Documents, all Ready with Chunks. They are tagged HR ×1 and Products ×3, the deck's slide text is a Chunk, the Agents are scoped to their Tags, and the Theme is olive and Lora.<br>• `test_one_document_has_a_planted_injection_in_a_footnote`: exactly one Chunk across all Documents holds the payload, in `northwind-returns-policy.md`.<br>• `test_the_seed_content_is_synthetic_and_freely_licensed`: `seed/LICENCE.md` is CC0, says the content is synthetic, and lists every seeded file.<br>**E2E:** `seed.spec.ts` "the demo Owner finds Northwind's Project, Documents, Tags and Agents" checks each Document Ready with its Tag, the axe scan is clean, and both Agents are listed. |
 | 5 | A real credential can optionally be read from the environment | **Tests:**<br>• `test_a_real_credential_is_read_from_the_environment` (5 cases: none, blank, Anthropic default model, OpenAI default model, explicit model).<br>• `test_a_half_set_or_unusable_real_credential_is_refused` (3 cases).<br>• `test_a_real_credential_can_answer_instead_of_the_demo_model`: "Northwind OpenAI" is added beside the demo credential and becomes the Default Model, idempotently.<br>• `test_the_command_reports_why_it_failed`: exit 1 with the reason.<br>**Make:** `make seed` passes `SEED_CREDENTIAL_*` into the container. |
-| 6 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | **Backend:** 1242 passed, coverage 100.00% (6259 statements, 652 branches) ([backend-tests.log](backend-tests.log)).<br>**Frontend:** 378 tests passed with the 100% thresholds ([frontend-tests.log](frontend-tests.log)).<br>**E2E:** 51 passed ([e2e.log](e2e.log)). |
+| 6 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | **Backend:** 1478 passed, coverage 100.00% (6993 statements, 772 branches) ([backend-tests.log](backend-tests.log)).<br>**Frontend:** 466 tests passed with the 100% thresholds ([frontend-tests.log](frontend-tests.log)).<br>**E2E:** 56 passed ([e2e.log](e2e.log)). |
 | 7 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | **Glossary:** "Demo Organisation" (Tenancy) and "Demo model" (Models).<br>**ADR:** ADR-0012 records the decisions (through the API, the demo provider, the audit-erasure exception, and why no slug column). |
 
 ## Checks
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage | `make test-backend` (`uv run pytest`) against Postgres, Redis and RustFS containers on moved ports | 1242 passed, 7 deselected (live), 100.00% | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage | `make test-frontend` | 35 files, 378 tests passed | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage | `make test-backend` (`uv run pytest`) against Postgres, Redis and RustFS containers on moved ports | 1478 passed, 7 deselected (live), 100.00% | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage | `make test-frontend` | 38 files, 466 tests passed | [frontend-tests.log](frontend-tests.log) |
 | Lint and types | `make lint` (ruff, ruff format, mypy strict, eslint, tsc) | clean | [lint.log](lint.log) |
 | API client drift | `make check-client` | up to date | [client-drift.log](client-drift.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag1001`), which includes `make seed` | 51 passed, including `seed.spec.ts` | [e2e.log](e2e.log) |
-| Seed on the stack | `make seed` again, `make seed-reset` | idempotent, reset recreates | [make-seed.log](make-seed.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag1001`), which includes `make seed` | 56 passed, including `seed.spec.ts` | [e2e.log](e2e.log) |
+| Seed on the stack | `make seed` again, `make seed-reset` | idempotent, reset recreates | [make-seed.log](make-seed.log) (first run, with counts); [seed-rerun.log](seed-rerun.log) (on `4f0bcf7`) |
 
 ## Gaps and best guesses
 
@@ -86,7 +86,8 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
   - Versions, Live History, Project Instructions, historical Conversations and analytics (10-02).
   - The per-Agent Theme override and the low Token Budget Agent (spec 06, 10-03).
   - Demo host pages (10-03), the attack panel (10-04), seeding in AWS (10-05), and the README with the automated five-minute demo (10-06).
-  - The injection footnote is seeded and is a Chunk. Flagging it in the viewer is the ingestion scan's job (03-07, built in parallel).
+  - The injection footnote is seeded and is a Chunk. Since 03-07 merged, the ingestion scan flags it, and the staff handbook carries 03-07's own planted note ("A note for AI assistants"); the seed adds no assertion on the flags, which are 03-07's to test.
+- **Theme logo and avatar files are not erased by `seed-reset`.** 02-06 (merged during this ticket's final update) stores them under `organisations/<id>/theme/`. The seed sets no logo or avatar, so a reset of the seeded demo leaves nothing behind; one uploaded by hand into the demo Organisation would stay in the object store after a reset. Best guess: leave the erasure to Document files for now, and extend it when a later spec 10 ticket seeds a logo.
 - **No PDF in the seed set.** The spec mentions markdown converted to PDF, DOCX and PPTX. Docling's PDF pipeline needs the layout models, which the test environment and images built `WITH_PDF=false` don't have, so a seeded PDF would sit Failed there. The four Documents the spec names (handbook, product FAQ, returns policy, slide deck) are md, md, docx and pptx.
 - **Best guesses, recorded instead of asking:**
   - **The Demo Organisation is found through the demo Owner's account**, not a slug column. ADR-0012 gives the reason.
