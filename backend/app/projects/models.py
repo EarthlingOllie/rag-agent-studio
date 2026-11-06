@@ -27,6 +27,12 @@ class Project(IdMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Embedding Model the Project's Chunks are embedded with; the local model by default.
     embedding_model_id: Mapped[str] = mapped_column(String(100), default=DEFAULT_MODEL_ID)
+    # The Provider Credential a provider Embedding Model is called through; None for the local
+    # model. Registered as a reference, so the credential can't be deleted while it is in use;
+    # the foreign key backs that up.
+    embedding_credential_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("provider_credentials.id"), index=True
+    )
     # The Project Instructions: one markdown Draft every Agent in the Project follows, stored
     # exactly as written. Spec 05 adds its Versions.
     instructions: Mapped[str] = mapped_column(Text, default="", server_default="")

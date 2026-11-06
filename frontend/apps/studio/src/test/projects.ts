@@ -16,6 +16,7 @@ export const hrProject: Project = {
   document_count: 12,
   agent_count: 2,
   embedding_model_id: "multilingual-e5-small",
+  embedding_credential_id: null,
 };
 
 export const salesProject: Project = {
@@ -27,6 +28,7 @@ export const salesProject: Project = {
   document_count: 0,
   agent_count: 0,
   embedding_model_id: "multilingual-e5-small",
+  embedding_credential_id: null,
 };
 
 export const oldProject: Project = {
@@ -38,6 +40,7 @@ export const oldProject: Project = {
   document_count: 3,
   agent_count: 1,
   embedding_model_id: "multilingual-e5-small",
+  embedding_credential_id: null,
 };
 
 const ARCHIVED_AT = "2026-11-05T09:00:00Z";
@@ -77,6 +80,7 @@ export function fakeProjectsApi(options: { projects?: Project[]; instructions?: 
         document_count: 0,
         agent_count: 0,
         embedding_model_id: "multilingual-e5-small",
+  embedding_credential_id: null,
       };
       projects.push(created);
       return HttpResponse.json(created, { status: 201 });

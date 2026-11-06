@@ -89,8 +89,17 @@ locals {
       ])
     }
     worker = {
-      Version   = "2012-10-17"
-      Statement = local.documents_statements
+      Version = "2012-10-17"
+      Statement = concat(local.documents_statements, [
+        {
+          # Ingestion embeds with the Project's provider Embedding Model (ticket 03-09), so the worker opens the
+          # credential's envelope. It only decrypts: sealing secrets stays with the API.
+          Sid      = "OpenProviderCredentialEnvelopes"
+          Effect   = "Allow"
+          Action   = ["kms:Decrypt"]
+          Resource = var.credentials_key_arn
+        },
+      ])
     }
     beat = null
   }
@@ -147,7 +156,8 @@ locals {
       CREDENTIALS_KMS_KEY_ARN = var.credentials_key_arn
     })
     worker = merge(local.common_environment, local.database_environment, local.cache_environment, {
-      DOCUMENTS_BUCKET = local.documents_bucket
+      DOCUMENTS_BUCKET        = local.documents_bucket
+      CREDENTIALS_KMS_KEY_ARN = var.credentials_key_arn
     })
     beat = merge(local.common_environment, local.cache_environment)
   }

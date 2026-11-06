@@ -2,6 +2,7 @@ import { Link, Outlet, useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { EmbeddingModelSetting } from "./EmbeddingModel";
 import { type Project, ProjectRequestError, projectFailure, useArchiveOrRestore, useProject, useUpdateProject } from "./projects";
 import { BUTTON, ProjectFields, projectDetails, useOrganisationRole } from "./ProjectsPage";
 
@@ -153,6 +154,7 @@ function ProjectHeader({ project, organisationId, isOwner }: { project: Project;
             />
           )}
           <ArchiveProject project={project} organisationId={organisationId} />
+          <EmbeddingModelSetting project={project} organisationId={organisationId} />
         </>
       )}
     </div>

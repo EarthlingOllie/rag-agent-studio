@@ -1,0 +1,169 @@
+# fresh clone clean0309 at 7520ea7
++ docs/tickets/03-projects-knowledge-base/03-09-evidence/build.sh $PWD 0309
++ docker build -t rag-agent-studio/api:0309 backend (WITH_PDF=false BUNDLE_MODELS=false, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 2.66kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 1.67MB 0.3s done
+#7 DONE 0.4s
+
+#8 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#8 CACHED
+
+#9 [build 4/6] WORKDIR /app
+#9 CACHED
+
+#10 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
+#10 CACHED
+
+#11 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#11 CACHED
+
+#12 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#12 CACHED
+
+#13 [build 5/6] COPY pyproject.toml uv.lock ./
+#13 CACHED
+
+#14 [stage-1  5/10] WORKDIR /app
+#14 CACHED
+
+#15 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#15 CACHED
+
+#16 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#16 CACHED
+
+#17 [stage-1  6/10] COPY alembic.ini ./
+#17 CACHED
+
+#18 [stage-1  7/10] COPY app ./app
+#18 DONE 0.1s
+
+#19 [stage-1  8/10] COPY migrations ./migrations
+#19 DONE 0.1s
+
+#20 [stage-1  9/10] RUN mkdir -p /opt/models/docling     && if [ "false" = "true" ]; then         python -c "from app.embeddings.local import LocalEmbedder as E; e = E(); e.embed_passages(['warm up']); e.tokenizer(512)"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'))";         fi;     fi
+#20 DONE 0.3s
+
+#21 [stage-1 10/10] RUN useradd --system --uid 10001 studio
+#21 0.146 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.2s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 0.2s done
+#22 exporting manifest sha256:abd0a3556d49b61e7ef781dc94d55d136a7fd84134af7e24cc813e017ada3f30 0.0s done
+#22 exporting config sha256:ee24206ace7fe61d4533f4581109a98a71ae4f24e963877e7e60ad9048bb9cb4 0.0s done
+#22 exporting attestation manifest sha256:178d8134adf09acf769127227c95f5cccfd97d384635a67dd4463dcfdb1163fc 0.0s done
+#22 exporting manifest list sha256:b065f35de37c29fc5155458508674fe0a9573adeca7fcd190f10603f54a8b0f8 0.0s done
+#22 naming to docker.io/rag-agent-studio/api:0309
+#22 naming to docker.io/rag-agent-studio/api:0309 done
+#22 unpacking to docker.io/rag-agent-studio/api:0309 0.1s done
+#22 DONE 0.5s
++ docker build -t rag-agent-studio/studio:0309 frontend (sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 transferring dockerfile: 1.60kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 104B done
+#4 DONE 0.0s
+
+#5 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 1.30MB 0.2s done
+#7 DONE 0.2s
+
+#8 [install  6/10] COPY apps/studio/package.json apps/studio/
+#8 CACHED
+
+#9 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#9 CACHED
+
+#10 [install  4/10] WORKDIR /app
+#10 CACHED
+
+#11 [install  7/10] COPY packages/api-client/package.json packages/api-client/
+#11 CACHED
+
+#12 [install  3/10] RUN corepack enable
+#12 CACHED
+
+#13 [install  8/10] COPY packages/ui/package.json packages/ui/
+#13 CACHED
+
+#14 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#14 CACHED
+
+#15 [install  9/10] RUN pnpm install --frozen-lockfile
+#15 CACHED
+
+#16 [install 10/10] COPY . .
+#16 DONE 0.1s
+
+#17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#17 CACHED
+
+#18 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#18 CACHED
+
+#19 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
+#19 DONE 2.5s
+
+#20 [stage-1 5/5] WORKDIR /app/apps/studio
+#20 DONE 0.2s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 11.9s done
+#21 exporting manifest sha256:e433bb7ca93fc068320f072ac82cb6deb666568697a82e5bee808c30da71aefb
+#21 exporting manifest sha256:e433bb7ca93fc068320f072ac82cb6deb666568697a82e5bee808c30da71aefb 0.0s done
+#21 exporting config sha256:d3db216e512744a0d7f2f72951b708a6db4ad23951693de8ba10791707b4d867 0.0s done
+#21 exporting attestation manifest sha256:f0505dd7f607c413e2a79bb3d3b44e0782395a77c474dd0702d62452f24c9c64
+#21 exporting attestation manifest sha256:f0505dd7f607c413e2a79bb3d3b44e0782395a77c474dd0702d62452f24c9c64 0.0s done
+#21 exporting manifest list sha256:a54e4171ab4ea0f3ed11d698f7b550e2008b936373d56d78538074f9bcfef33c 0.0s done
+#21 naming to docker.io/rag-agent-studio/studio:0309 done
+#21 unpacking to docker.io/rag-agent-studio/studio:0309
+#21 unpacking to docker.io/rag-agent-studio/studio:0309 5.9s done
+#21 DONE 18.0s
+exit 0
