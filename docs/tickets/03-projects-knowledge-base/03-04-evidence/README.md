@@ -45,5 +45,5 @@ Every log in this folder comes from a **fresh clone** of the branch, made at `2c
 - **Earlier rounds.** Earlier clean-clone rounds, at `6709d9e` and `ab554f2`, are superseded. The second round's e2e found the two Studio bugs fixed in `bb90ee7`, and one of its attempts hit a host-port clash with another ticket's stack.
 
 - **Live Docling suite: closed on 2026-11-06** by the 03-02 gap closure (branch `ticket/03-02-live-docling-models`, [03-02's live-model evidence](../03-02-evidence/live-models/)): real Docling on the sample PDF, DOCX and PPTX and the real local Embedding Model, 6 passed, only the OCR test skipped (ModelScope refused; see 03-08). This ticket changes no conversion or embedding model code.
-- **Still not run here:** the PDF-enabled image (`WITH_PDF=true`) with the bundled models, for lack of disk: the 03-02 gap closure built it as far as exporting the image, where the shared disk (7.7 GB free) ran out. The e2e stack uses the fake embedder.
+- **Still not run here:** the PDF-enabled image (`WITH_PDF=true`) with the bundled models, for lack of disk: the 03-02 gap closure built it, but the shared disk had too little space left to unpack, scan or run it. The e2e stack uses the fake embedder.
 - **Not run here:** `make security` (gitleaks, pip-audit, pnpm audit, Trivy). This ticket adds no dependencies.
