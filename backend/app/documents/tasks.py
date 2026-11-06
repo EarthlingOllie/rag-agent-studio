@@ -3,6 +3,8 @@
 import asyncio
 import uuid
 
+import httpx2
+
 from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
 from app.documents import pipeline
@@ -16,14 +18,17 @@ DELETE_OBJECTS_TASK = "documents.delete_objects"
 async def _ingest(document_id: uuid.UUID) -> None:
     settings = load_settings()
     engine = create_engine(settings)
+    ports = current_ports()
     try:
-        await pipeline.ingest(
-            create_sessionmaker(engine),
-            current_ports(),
-            document_id,
-            chunk_max_tokens=settings.chunk_max_tokens,
-            delete_objects=enqueue_object_deletion,
-        )
+        async with httpx2.AsyncClient(timeout=settings.model_timeout_seconds) as client:
+            await pipeline.ingest(
+                create_sessionmaker(engine),
+                ports,
+                ports.open_gateway(client),
+                document_id,
+                chunk_max_tokens=settings.chunk_max_tokens,
+                delete_objects=enqueue_object_deletion,
+            )
     finally:
         await engine.dispose()
 

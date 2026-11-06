@@ -189,6 +189,14 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _an_embedding_model_choice(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"model_id": "multilingual-e5-small"}
+
+
+async def _a_probe(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"query": "annual leave"}
+
+
 async def _a_document_and_its_next_edition(
     owner: SignedUpMember, add_member: MemberFactory
 ) -> Prepared:
@@ -298,6 +306,10 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),
+    ScopedRoute(
+        "PUT", PROJECTS + "/{project_id}/embedding-model", EDITOR, _an_embedding_model_choice
+    ),
+    ScopedRoute("POST", PROJECTS + "/{project_id}/retrieval-probe", EDITOR, _a_probe),
     ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
     ScopedRoute(
         "POST",
@@ -377,6 +389,7 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/default-model", OWNER, _a_chat_model_choice
     ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/theme", OWNER, _a_theme),
 ]
