@@ -344,9 +344,10 @@ function TagScoping({
   );
 }
 
-function Group({ legend, children }: { legend: string; children: ReactNode }) {
+/** A group of settings; disabling it disables every control in it. */
+function Group({ legend, disabled, children }: { legend: string; disabled: boolean; children: ReactNode }) {
   return (
-    <fieldset className="space-y-3 rounded border border-slate-300 p-4">
+    <fieldset disabled={disabled} className="space-y-3 rounded border border-slate-300 p-4">
       <legend className="px-1 text-base font-semibold">{legend}</legend>
       {children}
     </fieldset>
@@ -375,6 +376,8 @@ const orNull = (text: string) => (text.trim() === "" ? null : text);
  * refusing a setting appear beside it.
  */
 export function DraftEditor({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+  // An archived Agent's Draft can't change until an Owner restores it.
+  const readOnly = agent.archived_at !== null;
   const save = useSaveDraft(organisationId, agent.project_id, agent.id);
   const [draft, setDraft] = useState<Draft>(agent.draft);
   const [status, setStatus] = useState<Status>("saved");
@@ -480,20 +483,23 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
           Draft
         </h2>
         <p role="status" aria-label="Draft status" className={`text-sm ${status === "saved" ? "text-slate-700" : "text-slate-900"}`}>
-          {status === "failed"
-            ? `Not saved: ${failure}`
-            : awaitingModel && (status === "saved" || status === "saving")
-              ? "Unsaved changes: choose a model."
-              : STATUS_TEXT[status]}
+          {readOnly
+            ? "Read only while archived."
+            : status === "failed"
+              ? `Not saved: ${failure}`
+              : awaitingModel && (status === "saved" || status === "saving")
+                ? "Unsaved changes: choose a model."
+                : STATUS_TEXT[status]}
         </p>
       </div>
 
-      <Group legend="Behaviour">
+      <Group legend="Behaviour" disabled={readOnly}>
         <div>
           {/* Written and stored as markdown (ticket 04-02). */}
           <MarkdownEditor
             label="System prompt"
             maxLength={20000}
+            disabled={readOnly}
             defaultValue={behaviour.system_prompt}
             onChange={(system_prompt) => {
               setBehaviour({ system_prompt });
@@ -560,7 +566,7 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
         />
       </Group>
 
-      <Group legend="Retrieval">
+      <Group legend="Retrieval" disabled={readOnly}>
         <NumberField
           label="Chunks per answer (top-k)"
           min={1}
@@ -629,7 +635,7 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
         </label>
       </Group>
 
-      <Group legend="Experience">
+      <Group legend="Experience" disabled={readOnly}>
         <TextField
           label="Display name"
           hint={`Empty shows the Agent's name, ${agent.name}.`}
@@ -706,7 +712,7 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
         />
       </Group>
 
-      <Group legend="Guardrails">
+      <Group legend="Guardrails" disabled={readOnly}>
         <p className="text-sm text-slate-700">These settings are saved with the Draft and enforced in a later release.</p>
         <ChoiceField
           label="Input Guardrail mode"

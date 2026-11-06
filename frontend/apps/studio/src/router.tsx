@@ -113,7 +113,14 @@ const instructionsTabRoute = createRoute({
   path: "/instructions",
   component: InstructionsTab,
 });
-const agentsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents", component: AgentsTab });
+const agentsTabRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/agents",
+  // After a permanent deletion the tab says which Agent was deleted, as `?deleted=`.
+  validateSearch: (search: Record<string, unknown>): { deleted?: string } =>
+    typeof search.deleted === "string" ? { deleted: search.deleted } : {},
+  component: AgentsTab,
+});
 const agentRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents/$agentId", component: AgentPage });
 const conversationsTabRoute = createRoute({
   getParentRoute: () => projectRoute,

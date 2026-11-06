@@ -1,5 +1,5 @@
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { type SubmitEvent } from "react";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { type SubmitEvent, useState } from "react";
 
 import { FormError, formValues } from "../auth/AuthLayout";
 import { agentFailure, useAgents, useCreateAgent } from "./agents";
@@ -57,55 +57,107 @@ function NewAgentForm({
   );
 }
 
-/** The Project's Agents, with a form to create one. */
-export function AgentsTab() {
-  const { organisationId } = useOrganisationRole();
-  const { projectId } = useParams({
-    from: "/signed-in/organisations/$organisationId/projects/$projectId",
-  });
-  const project = useProject(organisationId, projectId);
-  const agents = useAgents(organisationId, projectId);
-  const archived = project.data?.archived_at != null;
-
-  let list;
-  if (agents.isPending) {
-    list = <p role="status">Loading Agents…</p>;
-  } else if (agents.isError) {
-    list = (
+/** The Project's active Agents, or its archived ones, each linking to its page. */
+function AgentList({
+  organisationId,
+  projectId,
+  archived,
+}: {
+  organisationId: string;
+  projectId: string;
+  archived: boolean;
+}) {
+  const agents = useAgents(organisationId, projectId, archived);
+  if (agents.isPending)
+    return <p role="status">Loading Agents…</p>;
+  if (agents.isError)
+    return (
       <p role="alert">The Agents could not be loaded. Try again shortly.</p>
     );
-  } else if (agents.data.length === 0) {
-    list = (
+  if (agents.data.length === 0)
+    return archived ? (
+      <p className="text-slate-700">No archived Agents.</p>
+    ) : (
       <p className="text-slate-700">
         No Agents yet. Create one to answer questions from this Project's
         Documents.
       </p>
     );
-  } else {
-    list = (
-      <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
-        {agents.data.map((agent) => (
-          <li key={agent.id} className="px-4 py-3">
-            <Link
-              to="/organisations/$organisationId/projects/$projectId/agents/$agentId"
-              params={{ organisationId, projectId, agentId: agent.id }}
-              className="font-medium underline"
-            >
-              {agent.name}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    );
-  }
+  return (
+    <ul
+      aria-label={archived ? "Archived Agents" : "Agents"}
+      className="divide-y divide-slate-200 rounded border border-slate-200 bg-white"
+    >
+      {agents.data.map((agent) => (
+        <li key={agent.id} className="flex justify-between gap-4 px-4 py-3">
+          <Link
+            to="/organisations/$organisationId/projects/$projectId/agents/$agentId"
+            params={{ organisationId, projectId, agentId: agent.id }}
+            className="font-medium underline"
+          >
+            {agent.name}
+          </Link>
+          {agent.archived_at && (
+            <span className="text-sm text-slate-700">
+              Archived {agent.archived_at.slice(0, 10)}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The Project's Agents, with a form to create one, and its archived Agents on request. */
+export function AgentsTab() {
+  const { organisationId, isOwner } = useOrganisationRole();
+  const { projectId } = useParams({
+    from: "/signed-in/organisations/$organisationId/projects/$projectId",
+  });
+  const { deleted } = useSearch({
+    from: "/signed-in/organisations/$organisationId/projects/$projectId/agents",
+  });
+  const project = useProject(organisationId, projectId);
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedProject = project.data?.archived_at != null;
 
   return (
     <section aria-labelledby="tab-heading" className="space-y-4">
-      <h2 id="tab-heading" className="text-lg font-semibold">
-        Agents
-      </h2>
-      {list}
-      {!archived && (
+      <div className="flex items-center justify-between gap-4">
+        <h2 id="tab-heading" className="text-lg font-semibold">
+          {showArchived ? "Archived Agents" : "Agents"}
+        </h2>
+        <button
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            setShowArchived(!showArchived);
+          }}
+        >
+          {showArchived ? "Show active Agents" : "Show archived Agents"}
+        </button>
+      </div>
+      {deleted && (
+        <p role="status" className="text-sm text-green-900">
+          {deleted} was deleted permanently.
+        </p>
+      )}
+      {showArchived && (
+        <p className="text-sm text-slate-700">
+          Archived Agents are hidden from this list and the Playground, but
+          keep their Draft and Conversations.{" "}
+          {isOwner
+            ? "Open one to restore it or delete it permanently."
+            : "Only Owners can restore or delete them."}
+        </p>
+      )}
+      <AgentList
+        key={String(showArchived)}
+        organisationId={organisationId}
+        projectId={projectId}
+        archived={showArchived}
+      />
+      {!archivedProject && !showArchived && (
         <NewAgentForm organisationId={organisationId} projectId={projectId} />
       )}
     </section>
