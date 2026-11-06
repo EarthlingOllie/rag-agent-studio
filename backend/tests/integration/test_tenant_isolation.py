@@ -30,7 +30,7 @@ from app.core.db import Base
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
-from tests import documents
+from tests import documents, theme_images
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory, join_organisation
 
 Prepared = tuple[dict[str, str], dict[str, Any] | None]
@@ -125,9 +125,27 @@ async def _a_price_override(owner: SignedUpMember, add_member: MemberFactory) ->
 
 async def _a_theme(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     theme = (await owner.client.get(f"/api/organisations/{owner.organisation_id}/theme")).json()
-    del theme["updated_at"]
+    for key in ("updated_at", "logo", "avatar"):
+        del theme[key]
     theme["radius"] = 3
     return {}, theme
+
+
+THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
+
+
+async def _a_theme_image_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"kind": "logo"}, {"filename": "logo.png", "size_bytes": 10}
+
+
+async def _an_uploaded_theme_image(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    ticket = await theme_images.uploaded_ticket(owner, "logo", theme_images.png())
+    return {"kind": "logo"}, {"upload_id": ticket["upload_id"]}
+
+
+async def _a_theme_image(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    await theme_images.upload(owner, "avatar", theme_images.png())
+    return {"kind": "avatar"}, None
 
 
 async def _new_project_body(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
@@ -439,6 +457,10 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/theme", OWNER, _a_theme),
+    ScopedRoute("POST", THEME_IMAGE + "/uploads", OWNER, _a_theme_image_to_start),
+    ScopedRoute("PUT", THEME_IMAGE, OWNER, _an_uploaded_theme_image),
+    ScopedRoute("DELETE", THEME_IMAGE, OWNER, _a_theme_image),
+    ScopedRoute("GET", THEME_IMAGE, EDITOR, _a_theme_image),
 ]
 OWNER_ONLY_ROUTES = [route for route in ORGANISATION_SCOPED_ROUTES if route.role is OWNER]
 
@@ -556,7 +578,9 @@ async def _switch(member: SignedUpMember, organisation_id: str) -> None:
 
 
 def _has_resource(route: ScopedRoute) -> bool:
-    return "{" in route.path.replace("{organisation_id}", "")
+    """Whether the path names a resource by ID. ``{kind}`` (a Theme image) or ``{capability}``
+    only choose among things every Organisation has."""
+    return "_id}" in route.path.replace("{organisation_id}", "")
 
 
 @pytest.mark.parametrize("route", ORGANISATION_SCOPED_ROUTES, ids=str)

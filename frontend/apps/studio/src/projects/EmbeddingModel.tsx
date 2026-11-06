@@ -13,7 +13,8 @@ import {
 import type { Project } from "./projects";
 import { BUTTON, INPUT } from "./ProjectsPage";
 
-export const RE_EMBEDS = "Changing it re-embeds every Document in the background; the current model keeps serving until that finishes.";
+export const RE_EMBEDS =
+  "Changing it re-embeds every Document in the background; the current model keeps serving until that finishes.";
 
 interface Active {
   modelId: string;
@@ -34,12 +35,20 @@ function ChooseModel({
   const choices = useEmbeddingChoices(organisationId);
   const save = useSetEmbeddingModel(organisationId, project.id);
 
-  if (choices.isPending) return <p role="status">Loading the Embedding Models…</p>;
-  if (choices.isError) return <p role="alert">The Embedding Models could not be loaded. Try again shortly.</p>;
+  if (choices.isPending)
+    return <p role="status">Loading the Embedding Models…</p>;
+  if (choices.isError)
+    return (
+      <p role="alert">
+        The Embedding Models could not be loaded. Try again shortly.
+      </p>
+    );
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const select = event.currentTarget.elements.namedItem("embedding-model") as HTMLSelectElement;
+    const select = event.currentTarget.elements.namedItem(
+      "embedding-model",
+    ) as HTMLSelectElement;
     const [modelId, credentialId] = select.value.split("|") as [string, string];
     save.mutate(
       {
@@ -51,7 +60,11 @@ function ChooseModel({
   }
 
   return (
-    <form aria-label="Choose the Embedding Model" onSubmit={onSubmit} className="max-w-md space-y-3">
+    <form
+      aria-label="Choose the Embedding Model"
+      onSubmit={onSubmit}
+      className="max-w-md space-y-3"
+    >
       <FormError message={embeddingFailure(save.error)} />
       <label htmlFor="embedding-model" className="block text-sm font-medium">
         Embedding Model
@@ -62,14 +75,18 @@ function ChooseModel({
           defaultValue={choiceValue(active.modelId, active.credentialId)}
         >
           {choices.data.map((choice) => (
-            <option key={choiceValue(choice.model_id, choice.credential_id)} value={choiceValue(choice.model_id, choice.credential_id)}>
+            <option
+              key={choiceValue(choice.model_id, choice.credential_id)}
+              value={choiceValue(choice.model_id, choice.credential_id)}
+            >
               {choiceLabel(choice)}
             </option>
           ))}
         </select>
       </label>
       <p className="text-sm text-slate-700">
-        Provider models come from the Organisation's Provider Credentials that can embed. The built-in model needs none.
+        Provider models come from the Organisation's Provider Credentials that
+        can embed. The built-in model needs none.
       </p>
       <div className="flex gap-2">
         <button type="submit" disabled={save.isPending} className={BUTTON}>
@@ -90,8 +107,10 @@ function ReEmbed({ state }: { state: EmbeddingModelState }) {
     return (
       <div role="status" className="space-y-1">
         <p>
-          Re-embedding with <span className="font-medium text-slate-900">{job.model_id}</span>: {job.embedded_chunks} of {job.total_chunks}{" "}
-          Chunks. Retrieval uses {job.from_model_id} until it finishes.
+          Re-embedding with{" "}
+          <span className="font-medium text-slate-900">{job.model_id}</span>:{" "}
+          {job.embedded_chunks} of {job.total_chunks} Chunks. Retrieval uses{" "}
+          {job.from_model_id} until it finishes.
         </p>
         <progress
           aria-label="Re-embedding progress"
@@ -113,7 +132,13 @@ function ReEmbed({ state }: { state: EmbeddingModelState }) {
 }
 
 /** The Project's Embedding Model, choosing another, and the re-embed a change starts when the Project has Documents. */
-export function EmbeddingModelSetting({ project, organisationId }: { project: Project; organisationId: string }) {
+export function EmbeddingModelSetting({
+  project,
+  organisationId,
+}: {
+  project: Project;
+  organisationId: string;
+}) {
   const [choosing, setChoosing] = useState(false);
   const state = useEmbeddingState(organisationId, project.id);
   const active: Active = state.data
@@ -124,12 +149,16 @@ export function EmbeddingModelSetting({ project, organisationId }: { project: Pr
       };
   const running = state.data?.re_embed?.status === "running";
   return (
-    <section aria-labelledby="embedding-model-heading" className="space-y-2 text-sm">
+    <section
+      aria-labelledby="embedding-model-heading"
+      className="space-y-2 text-sm"
+    >
       <h2 id="embedding-model-heading" className="font-medium">
         Embedding Model
       </h2>
       <p className="text-slate-700">
-        Documents are embedded with <span className="font-medium text-slate-900">{active.modelId}</span>.{" "}
+        Documents are embedded with{" "}
+        <span className="font-medium text-slate-900">{active.modelId}</span>.{" "}
         {project.document_count === 0 || running ? "" : RE_EMBEDS}
       </p>
       {state.data && <ReEmbed state={state.data} />}

@@ -9,7 +9,7 @@ The tenant. Owns Members, Projects and Provider Credentials.
 _Avoid_: Tenant, account, company
 
 **Theme**:
-An Organisation's visual styling for embedded Agents: Colour Tokens, corner radius, a font from the Font Allowlist, a Theme Mode and a Launcher. Owners change it and every Member can view it; a saved change applies at once, with no publishing. An Agent may override its colours and avatar.
+An Organisation's visual styling for embedded Agents: Colour Tokens, corner radius, a font from the Font Allowlist, a Theme Mode, a Launcher, and its Theme Images. Owners change it and every Member can view it; a saved change applies at once, with no publishing. An Agent may override its colours and avatar.
 _Avoid_: Branding, skin, styles
 
 **Colour Token**:
@@ -27,6 +27,10 @@ _Avoid_: Colour scheme setting, dark mode toggle
 **Launcher**:
 How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat, or an inline container that shows it in place.
 _Avoid_: Chat button, trigger
+
+**Theme Image**:
+One of the two images a Theme can have: the **logo**, shown in the widget's header, and the **default Agent avatar**, shown beside the Agent's name for every Agent without an avatar of its own. Each is a PNG, JPEG or WebP image of at most 1 MB, uploaded straight to object storage, and applies as soon as it is uploaded; Owners replace or remove it.
+_Avoid_: Branding asset, icon, picture
 
 **Contrast Warning**:
 A notice that a pair of Colour Tokens falls below WCAG AA contrast (4.5:1 for text, 3:1 for the accent against the surface) in a mode the Theme shows. It warns and never blocks saving.
@@ -96,6 +100,10 @@ _Avoid_: Backup code
 An append-only record of who changed what in an Organisation, and when, with the values before and after the change. Secret-like values are never stored. Only Owners can see Audit Events.
 _Avoid_: Activity, history, log
 
+**Demo Organisation**:
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+_Avoid_: Sample org, test tenant, sandbox
+
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
 _Avoid_: Disable, soft delete
@@ -149,6 +157,10 @@ _Avoid_: Dependency, usage, link
 **Default Model**:
 The chat model an Organisation's Agents use unless an Agent overrides it: one chat-capable Provider Credential and one of its chat models, chosen by an Owner. It is a Credential reference, so its credential can't be deleted while it is chosen.
 _Avoid_: Global model, org model
+
+**Demo model**:
+The demo provider's only chat model. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+_Avoid_: Fake model (that is the test double), mock, stub model
 
 **Model gateway**:
 The single factory every model call goes through: it turns a Provider Credential and a model name into a chat model, an embedder or a reranker, refusing a model the credential doesn't offer for that Capability. Tests and `docker compose` swap in fake adapters here and nowhere else.
@@ -390,6 +402,13 @@ The sites permitted to display an Agent through its Embed Snippet.
 
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
+
+**Canary token**:
+A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
+_Avoid_: Canary, honeytoken, tripwire
+
+**Guardrail outcome**:
+What one Guardrail layer decided about an answer: its layer, verdict, action (such as replaced or flagged) and reason. Saved on the Message and shown in its Trace.
 
 ## Conversations
 

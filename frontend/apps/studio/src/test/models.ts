@@ -35,6 +35,26 @@ export const embeddingsOnlyOpenAi: Credential = {
   capabilities: ["embeddings"],
 };
 
+/** The seed's demo credential: the demo provider's one model, which needs no API key. */
+export const demoCredential: Credential = {
+  ...marketingOpenAi,
+  id: "c0000000-0000-4000-8000-000000000005",
+  name: "Northwind demo model",
+  provider: "demo",
+  masked_suffix: "eded",
+  capabilities: ["chat"],
+};
+chatModels[demoCredential.id] = [{ id: "demo-chat", name: "Demo model" }];
+
+export const demoDefault: DefaultModel = {
+  credential_id: demoCredential.id,
+  credential_name: demoCredential.name,
+  provider: "demo",
+  model: "demo-chat",
+  model_name: "Demo model",
+  updated_at: "2026-11-06T09:00:00Z",
+};
+
 export const claudeDefault: DefaultModel = {
   credential_id: legalClaude.id,
   credential_name: "Legal Claude",

@@ -12,9 +12,17 @@ the answer cites (``app.runtime.citations``), then one ``DoneEvent``. A model th
 structured output is asked for a ``CitedAnswer`` through the provider's native JSON schema
 output (not an output tool), and its answer text is streamed as the JSON arrives; any other
 model answers in text, and its citations are the labels written in it.
+
+Every model call carries a fresh Canary token in its preamble, and the answer streams through a
+``CanaryFilter``. If the canary starts to appear, the model stream is stopped, nothing more of
+the answer is sent, and a ``ReplaceEvent`` carrying the fallback text replaces what was sent; the
+``DoneEvent``'s answer is then the fallback text. A completed answer is checked again for an
+encoded canary, which is logged and flagged but can't be un-sent.
 """
 
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+import logging
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Sequence
+from contextlib import aclosing
 from dataclasses import dataclass, field
 
 from pydantic_ai import Agent, NativeOutput
@@ -24,15 +32,26 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage
 
 from app.agents.config import AgentConfig, Retrieval
+from app.guardrails.canary import CanaryFilter, encoded_leak, new_canary
+from app.guardrails.outcomes import GuardrailOutcome
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.citations import CitedAnswer, labels_in, resolve
 from app.runtime.prompt import Turn, chunk_label, data_blocks, history
+
+logger = logging.getLogger(__name__)
 
 Retrieve = Callable[[str, Retrieval], Awaitable[RetrievalResult]]
 
 
 @dataclass(frozen=True)
 class TokenEvent:
+    text: str
+
+
+@dataclass(frozen=True)
+class ReplaceEvent:
+    """The answer leaked the Canary token: what was sent so far is replaced by ``text``."""
+
     text: str
 
 
@@ -48,7 +67,8 @@ class CitationEvent:
 class DoneEvent:
     """The end of the turn: the full answer, token usage, the Chunks the model was given and
     the Chunks retrieval left out. ``fallback`` is true when no Chunk reached the minimum score,
-    so the answer is the fallback text and the model wasn't asked."""
+    so the answer is the fallback text and the model wasn't asked. ``guardrail_outcomes`` holds
+    what the Guardrails decided (a canary leak replaced or flagged)."""
 
     answer: str
     input_tokens: int
@@ -57,9 +77,13 @@ class DoneEvent:
     excluded: list[Excluded]
     fallback: bool = False
     cited: list[Candidate] = field(default_factory=list)
+    guardrail_outcomes: list[GuardrailOutcome] = field(default_factory=list)
 
 
-TurnEvent = TokenEvent | CitationEvent | DoneEvent
+TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | DoneEvent
+
+CANARY_REPLACED = "The reply contained the canary token, so it was cut off and replaced."
+CANARY_ENCODED = "The reply contained the canary token, encoded ({encoding})"
 
 
 @dataclass
@@ -77,12 +101,13 @@ async def _stream_text(
     messages: list[ModelMessage],
     settings: ModelSettings,
     streamed: _Streamed,
-) -> AsyncIterator[str]:
+) -> AsyncGenerator[str]:
     async with Agent(model).run_stream(
         question, message_history=messages, model_settings=settings
     ) as result:
         async for text in result.stream_text(delta=True, debounce_by=None):
             streamed.text += text
+            streamed.usage = result.usage
             yield text
         streamed.usage = result.usage
     streamed.labels = labels_in(streamed.text)
@@ -94,7 +119,7 @@ async def _stream_structured(
     messages: list[ModelMessage],
     settings: ModelSettings,
     streamed: _Streamed,
-) -> AsyncIterator[str]:
+) -> AsyncGenerator[str]:
     agent = Agent(model, output_type=NativeOutput(CitedAnswer))
     async with agent.run_stream(
         question, message_history=messages, model_settings=settings
@@ -102,10 +127,11 @@ async def _stream_structured(
         async for partial in result.stream_output(debounce_by=None):
             # A partly streamed JSON string only ever grows, so the new text is its tail.
             delta = partial.answer[len(streamed.text) :]
+            streamed.labels = partial.citations
             if delta:
                 streamed.text += delta
+                streamed.usage = result.usage
                 yield delta
-            streamed.labels = partial.citations
         streamed.usage = result.usage
 
 
@@ -134,7 +160,8 @@ async def run_turn(
         )
         return
     remembered = list(turns)[-behaviour.remembered_turns :] if behaviour.remembered_turns else []
-    messages = history(instructions, behaviour.system_prompt, remembered)
+    canary = new_canary()
+    messages = history(instructions, behaviour.system_prompt, remembered, canary=canary)
     question = data_blocks(retrieved.candidates, visitor_input)
     settings = ModelSettings(
         temperature=behaviour.temperature, max_tokens=behaviour.max_output_tokens
@@ -142,8 +169,35 @@ async def run_turn(
     structured = model.profile.get("supports_json_schema_output", False)
     stream = _stream_structured if structured else _stream_text
     streamed = _Streamed()
-    async for text in stream(model, question, messages, settings, streamed):
-        yield TokenEvent(text)
+    canary_filter = CanaryFilter(canary)
+    async with aclosing(stream(model, question, messages, settings, streamed)) as texts:
+        async for text in texts:
+            safe = canary_filter.feed(text)
+            if canary_filter.leaked:
+                # Leaving the loop closes the stream, which stops the model.
+                break
+            if safe:
+                yield TokenEvent(safe)
+    if canary_filter.leaked:
+        yield ReplaceEvent(behaviour.fallback_text)
+        yield DoneEvent(
+            answer=behaviour.fallback_text,
+            input_tokens=streamed.usage.input_tokens,
+            output_tokens=streamed.usage.output_tokens,
+            retrieved=retrieved.candidates,
+            excluded=retrieved.excluded,
+            guardrail_outcomes=[GuardrailOutcome("canary", "leak", "replaced", CANARY_REPLACED)],
+        )
+        return
+    rest = canary_filter.finish()
+    if rest:
+        yield TokenEvent(rest)
+    outcomes = []
+    encoding = encoded_leak(streamed.text, canary)
+    if encoding is not None:
+        reason = CANARY_ENCODED.format(encoding=encoding)
+        logger.warning(reason)
+        outcomes.append(GuardrailOutcome("canary", "leak", "flagged", f"{reason}."))
     cited = resolve(streamed.labels, retrieved.candidates)
     for chunk in cited:
         yield CitationEvent(chunk_label(chunk.rank), chunk)
@@ -154,4 +208,5 @@ async def run_turn(
         retrieved=retrieved.candidates,
         excluded=retrieved.excluded,
         cited=cited,
+        guardrail_outcomes=outcomes,
     )

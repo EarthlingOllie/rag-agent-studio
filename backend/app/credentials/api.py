@@ -95,7 +95,7 @@ BEDROCK_ACTIONS = (
 CredentialName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
-ApiKeyProvider = Literal[Provider.ANTHROPIC, Provider.OPENAI, Provider.VOYAGE]
+ApiKeyProvider = Literal[Provider.ANTHROPIC, Provider.OPENAI, Provider.VOYAGE, Provider.DEMO]
 
 
 class CreateCredentialRequest(BaseModel):

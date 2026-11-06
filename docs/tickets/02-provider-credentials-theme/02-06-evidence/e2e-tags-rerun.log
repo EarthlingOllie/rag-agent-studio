@@ -1,0 +1,13 @@
+$ pnpm e2e --last-failed --repeat-each 3   (the one test attempt 3 failed: 03-06's tags.spec.ts, three times; same stack)
+# 2026-11-06T00:38:54Z in a fresh clone at f508a61; load: 20.80 23.84 20.31
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0206/frontend
+> playwright test --last-failed --repeat-each 3
+
+
+Running 1 test using 1 worker
+
+  ✓  1 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (9.8s)
+
+  1 passed (11.5s)
+# exit code: 0

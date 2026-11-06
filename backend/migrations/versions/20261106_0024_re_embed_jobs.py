@@ -1,7 +1,7 @@
 """Re-embed jobs: a Project's pending Embedding Model and the job moving its Chunks to it.
 
-Revision ID: 0021_re_embed_jobs
-Revises: 0020_chunk_guardrail_flags
+Revision ID: 0024_re_embed_jobs
+Revises: 0023_erase_organisation
 Create Date: 2026-11-06
 """
 
@@ -10,8 +10,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0021_re_embed_jobs"
-down_revision: str | None = "0020_chunk_guardrail_flags"
+revision: str = "0024_re_embed_jobs"
+down_revision: str | None = "0023_erase_organisation"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

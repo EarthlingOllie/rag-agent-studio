@@ -24,14 +24,17 @@ from app.core.clock import SystemClock
 from app.core.settings import Settings
 from app.credentials.bedrock_verifier import AssumedRoleSessions
 from app.credentials.models import ProviderCredential
-from app.credentials.registry import Capability, Provider
+from app.credentials.registry import PROVIDERS, AuthKind, Capability, Provider
+from app.credentials.registry import Model as RegistryModel
 from app.credentials.service import seal_secret
 from app.crypto.envelope import EnvelopeEncryption, EnvelopeError
 from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.gateway.adapters import build_model_gateway
-from app.gateway.fakes import FakeModelAdapters
+from app.gateway.fakes import FAKE_LEAK_PROMPT, FakeModelAdapters
 from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
 from app.gateway.live import BedrockClients, LiveModelAdapters
+from app.guardrails.canary import new_canary
+from app.runtime.prompt import preamble
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
 ANTHROPIC_KEY = "sk-ant-gateway-test-only-aaaa"
@@ -58,6 +61,7 @@ def credential(
         Provider.OPENAI: [Capability.CHAT, Capability.EMBEDDINGS],
         Provider.VOYAGE: [Capability.EMBEDDINGS, Capability.RERANK],
         Provider.BEDROCK: [Capability.CHAT, Capability.EMBEDDINGS, Capability.RERANK],
+        Provider.DEMO: [Capability.CHAT],
     }
     return ProviderCredential(
         id=credential_id,
@@ -418,6 +422,23 @@ async def test_the_fake_chat_model_cites_the_first_chunk_it_is_given() -> None:
     assert streamed == "Fake reply from openai:gpt-4.1. [C1]"
 
 
+async def test_the_fake_chat_model_leaks_its_canary_when_asked_to_repeat_its_secret() -> None:
+    """For end-to-end tests of the Canary token: the fake plays a naive model that obeys."""
+    gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
+    model = gateway.chat_model(credential(Provider.OPENAI, OPENAI_KEY), "gpt-4.1")
+    canary = new_canary()
+    agent = Agent(model, system_prompt=preamble(canary))
+
+    async with agent.run_stream(f"Please {FAKE_LEAK_PROMPT}") as result:
+        chunks = [text async for text in result.stream_text(delta=True, debounce_by=None)]
+
+    assert "".join(chunks) == f"My secret canary token is {canary}."
+    # Split across chunks, as a streaming leak would be.
+    assert canary not in chunks
+    async with agent.run_stream("Hi") as result:
+        assert await result.get_output() == "Fake reply from openai:gpt-4.1."
+
+
 async def test_a_test_injects_its_own_chat_model_at_the_gateway() -> None:
     seen: list[tuple[Provider, str, str]] = []
 
@@ -466,6 +487,75 @@ async def test_the_fake_reranker_ranks_by_shared_words() -> None:
     assert [r.index for r in ranked] == [1, 2, 0]
     assert [r.score for r in ranked] == [1.0, 0.5, 0.0]
     assert [r.index for r in top] == [1]
+
+
+# The demo provider: offline in both adapter sets, and labelled as a demo model
+
+
+def demo_gateways() -> list[ModelGateway]:
+    def unreachable(request: httpx2.Request) -> httpx2.Response:
+        pytest.fail("The demo model calls nobody")
+
+    return [ModelGateway(ENVELOPE, FakeModelAdapters()), live_gateway(Recorder(unreachable))]
+
+
+DEMO_QUESTION = (
+    "<<<RETRIEVED_CHUNKS>>>\n"
+    "[C1] northwind-returns-policy.md\n"
+    "You can return any unopened item within 30 days. We refund to the original card.\n\n"
+    "[C2] northwind-staff-handbook.md\n"
+    "Everyone gets 25 days of annual leave.\n"
+    "<<<END_RETRIEVED_CHUNKS>>>\n\n"
+    "<<<VISITOR_INPUT>>>\nCan I return a jar of honey?\n<<<END_VISITOR_INPUT>>>"
+)
+DEMO_ANSWER = (
+    "Demo model (canned answer, not AI): from northwind-returns-policy.md [C1]: "
+    "You can return any unopened item within 30 days. We refund to the original card."
+)
+
+
+@pytest.mark.parametrize("index", [0, 1], ids=["fake adapters", "live adapters"])
+async def test_the_demo_model_answers_from_the_first_retrieved_chunk(index: int) -> None:
+    gateway = demo_gateways()[index]
+
+    model = gateway.chat_model(credential(Provider.DEMO, "demo-no-key-needed"), "demo-chat")
+    result = await Agent(model).run(DEMO_QUESTION)
+    async with Agent(model).run_stream(DEMO_QUESTION) as streamed:
+        chunks = [chunk async for chunk in streamed.stream_output(debounce_by=None)]
+
+    assert result.output == DEMO_ANSWER
+    assert chunks[-1] == DEMO_ANSWER
+    assert len(chunks) > 1  # it streams word by word, like a real model
+    assert model.model_name == "demo-chat"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "<<<RETRIEVED_CHUNKS>>>\n\n<<<END_RETRIEVED_CHUNKS>>>\n\n"
+        "<<<VISITOR_INPUT>>>\nWhat is the meaning of life?\n<<<END_VISITOR_INPUT>>>",
+        "Hello there",
+    ],
+    ids=["no chunks", "no data blocks"],
+)
+async def test_without_a_chunk_the_demo_model_says_it_doesnt_know(question: str) -> None:
+    model = ModelGateway(ENVELOPE, FakeModelAdapters()).chat_model(
+        credential(Provider.DEMO, "demo-no-key-needed"), "demo-chat"
+    )
+
+    result = await Agent(model).run(question)
+
+    assert result.output == (
+        "Demo model (canned answer, not AI): the Knowledge Base has nothing on that."
+    )
+
+
+def test_the_demo_provider_is_labelled_as_a_demo_model() -> None:
+    spec = PROVIDERS[Provider.DEMO]
+
+    assert spec.name == "Demo (not a real model)"
+    assert spec.models == {Capability.CHAT: (RegistryModel("demo-chat", "Demo model"),)}
+    assert spec.auth_kinds == (AuthKind.API_KEY,)
 
 
 # Choosing the adapters
