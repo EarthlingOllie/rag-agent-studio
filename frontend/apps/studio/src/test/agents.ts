@@ -311,6 +311,12 @@ export function fakeAgentsApi(
     publish?: (
       body: Schemas["PublishAgentRequest"],
     ) => Response | undefined | Promise<Response | undefined>;
+    /** Each Agent's Live History, newest first; empty when left out. */
+    liveHistory?: Record<string, Schemas["LiveHistoryEntryOut"][]>;
+    /** Answers each Live History read instead of the stored history. */
+    liveHistoryResponse?: () => Response | undefined;
+    /** Decides each revert's response instead of following the Live History. */
+    revert?: () => Response | undefined | Promise<Response | undefined>;
   } = {},
 ) {
   let agents = [...(options.agents ?? [])];
@@ -318,7 +324,68 @@ export function fakeAgentsApi(
   const answer =
     options.answer ?? (() => streamedAnswer(["Twenty-five ", "days."]));
   const published: Record<string, number> = {};
+  const history: Record<string, Schemas["LiveHistoryEntryOut"][]> = {
+    ...options.liveHistory,
+  };
+  const ada = { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" };
+  const versionId = (number: number) =>
+    `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`;
   server.use(
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/live-history",
+      ({ params }) =>
+        options.liveHistoryResponse?.() ??
+        HttpResponse.json(history[params.agentId as string] ?? []),
+    ),
+    http.post(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/revert",
+      async ({ params }) => {
+        requests.push({ route: "revert" });
+        const refused = await options.revert?.();
+        if (refused) return refused;
+        const agent = agents.find(
+          (candidate) => candidate.id === params.agentId,
+        ) as Agent;
+        const entries = history[agent.id] ?? [];
+        const live = agent.live_version as { id: string; number: number };
+        // The same rule as the API: back to the Version Live when this one was published.
+        const target = entries.find(
+          (entry) =>
+            entry.to_version.id === live.id &&
+            entry.action.endsWith("publish"),
+        )?.from_version;
+        if (!target)
+          return HttpResponse.json(
+            { detail: "There's no earlier Live Version to revert to." },
+            { status: 409 },
+          );
+        history[agent.id] = [
+          {
+            from_version: live,
+            to_version: target,
+            action: "revert",
+            actor: ada,
+            occurred_at: "2026-11-06T12:00:00Z",
+            bulk_operation_id: null,
+          },
+          ...entries,
+        ];
+        agents = agents.map((candidate) =>
+          candidate.id === agent.id
+            ? { ...agent, live_version: target }
+            : candidate,
+        );
+        const version: Schemas["AgentVersionOut"] = {
+          ...target,
+          note: `Release ${String(target.number)}`,
+          author: ada,
+          created_at: "2026-11-06T11:00:00Z",
+          config: agent.draft,
+          instructions_version: options.currentInstructions ?? null,
+        };
+        return HttpResponse.json(version);
+      },
+    ),
     http.post(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/versions",
       async ({ request, params }) => {
@@ -333,10 +400,10 @@ export function fakeAgentsApi(
           (published[agent.id] ?? agent.live_version?.number ?? 0) + 1;
         published[agent.id] = number;
         const version: Schemas["AgentVersionOut"] = {
-          id: `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`,
+          id: versionId(number),
           number,
           note: body.note.trim(),
-          author: { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" },
+          author: ada,
           created_at: "2026-11-06T11:00:00Z",
           config: agent.draft,
           // Instructions Version IDs end in their number (see `instructionsVersion`).
@@ -347,6 +414,17 @@ export function fakeAgentsApi(
               }
             : (options.currentInstructions ?? null),
         };
+        history[agent.id] = [
+          {
+            from_version: agent.live_version,
+            to_version: { id: version.id, number },
+            action: "publish",
+            actor: ada,
+            occurred_at: "2026-11-06T11:00:00Z",
+            bulk_operation_id: null,
+          },
+          ...(history[agent.id] ?? []),
+        ];
         agents = agents.map((candidate) =>
           candidate.id === agent.id
             ? { ...agent, live_version: { id: version.id, number } }

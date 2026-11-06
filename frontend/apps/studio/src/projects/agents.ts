@@ -402,3 +402,80 @@ export function usePublishAgent(
       }),
   });
 }
+
+export type LiveHistoryEntry = Schemas["LiveHistoryEntryOut"];
+
+/** Every change of the Agent's Live Version, newest first. */
+export function useLiveHistory(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  return useQuery({
+    queryKey: [...agentsKey(organisationId, projectId), agentId, "live-history"],
+    queryFn: async (): Promise<LiveHistoryEntry[]> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/live-history",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/**
+ * The Version a revert would make Live again: the one Live when the present Live Version was
+ * published. Reverts aren't followed, so reverting twice walks further back. The API applies
+ * the same rule and has the final say.
+ */
+export function revertTarget(
+  liveVersionId: string,
+  history: LiveHistoryEntry[],
+): LiveHistoryEntry["from_version"] {
+  const pushed = history.find(
+    (entry) =>
+      entry.to_version.id === liveVersionId &&
+      (entry.action === "publish" || entry.action === "bulk_publish"),
+  );
+  return pushed?.from_version ?? null;
+}
+
+/** Moves the Live Version back one step in the Live History and returns the Version now Live. */
+export function useRevertAgent(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<AgentVersion> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/revert",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: agentsKey(organisationId, projectId),
+      }),
+  });
+}

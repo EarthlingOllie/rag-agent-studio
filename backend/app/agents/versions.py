@@ -11,6 +11,19 @@ Live Version pointer, which is None until the first publish (the Agent is then "
   inside the lock, so concurrent publishes get consecutive, unique numbers. The new Version
   becomes the Live Version, a Live History entry records the move (from-Version, to-Version,
   ``publish``, actor, time), and ``agent.published`` is audited, all in one transaction.
+- **Revert** moves the Live Version back one step in the Agent's **Live History**, restoring
+  the configuration and the pinned Instructions it ran with. The rule: the target is the
+  from-Version of the entry that moved Live onto the current Live Version by a *publish* (or
+  bulk publish). Revert entries are not followed, so publish → revert → revert walks further
+  back instead of toggling between two Versions. This works as a stack: every publish pushes a
+  new Version (each Version is pushed exactly once, when it's created) and every revert pops
+  one. For example, with v1, v2, v3 published in turn, revert gives v2 then v1; and after
+  v1, v2, revert (v1), publish v3, revert gives v1, skipping v2, which was already reverted.
+  When that entry has no from-Version (the first publish) or the Agent is not live, there is
+  nothing to revert to and the revert is refused. The Agent row is locked as for publish, the
+  move is written to the Live History as ``revert``, and ``agent.reverted`` is audited. The
+  Draft is left alone. A Version whose credentials have since been deleted can't be made Live
+  again.
 - **Versions are immutable.** No route changes or deletes one, and migration
   ``0026_agent_versions`` adds a trigger refusing every UPDATE to Versions and Live History
   entries. They go only with their Agent.
@@ -34,13 +47,18 @@ from app import audit
 from app.agents.config import AgentConfig
 from app.agents.models import Agent, AgentDraft, AgentVersion, LiveHistoryEntry
 from app.agents.service import active_agent, get_agent
+from app.agents.validation import DraftProblem, credential_problems
 from app.projects.models import InstructionsVersion
 from app.projects.service import active_project
 from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
 
 PUBLISHED = "agent.published"
+REVERTED = "agent.reverted"
 PUBLISH = "publish"
+REVERT = "revert"
+# The Live History actions that put a new Version Live; reverts follow these back.
+_PUSHES = (PUBLISH, "bulk_publish")
 
 
 class InstructionsVersionNotFoundError(Exception):
@@ -49,6 +67,17 @@ class InstructionsVersionNotFoundError(Exception):
 
 class AgentVersionNotFoundError(Exception):
     """No Version with that ID for the Agent."""
+
+
+class NothingToRevertError(Exception):
+    """The Agent is not live, or its Live Version was its first."""
+
+
+class RevertTargetInvalidError(Exception):
+    """The Version a revert would make Live names something that no longer exists."""
+
+    def __init__(self, problems: list[DraftProblem]) -> None:
+        self.problems = problems
 
 
 @dataclass(frozen=True)
@@ -179,17 +208,78 @@ async def publish(
             "live_version": {
                 **(_summary(version) or {}),
                 "note": note,
-                "instructions_version": view.instructions
-                and {
-                    "version_id": str(view.instructions.id),
-                    "number": view.instructions.number,
-                },
+                **_pinned(view),
             }
         },
         occurred_at=now,
     )
     await session.commit()
     return view
+
+
+async def revert(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> VersionView:
+    """Moves the Live Version back one step in the Live History (see the module docstring for
+    the rule) and returns the Version that is Live again."""
+    await active_project(session, scope, project_id)
+    agent = (await active_agent(session, scope, project_id, agent_id, lock=True)).agent
+    current = await _version(session, agent.live_version_id)
+    target = None
+    if current is not None:
+        target_id = await session.scalar(
+            select(LiveHistoryEntry.from_version_id)
+            .where(
+                LiveHistoryEntry.agent_id == agent.id,
+                LiveHistoryEntry.to_version_id == current.id,
+                LiveHistoryEntry.action.in_(_PUSHES),
+            )
+            .order_by(LiveHistoryEntry.seq.desc())
+            .limit(1)
+        )
+        target = await _version(session, target_id)
+    if current is None or target is None:
+        raise NothingToRevertError
+    problems = await credential_problems(session, scope, AgentConfig.model_validate(target.config))
+    if problems:
+        raise RevertTargetInvalidError(problems)
+    agent.live_version_id = target.id
+    session.add(
+        LiveHistoryEntry(
+            organisation_id=scope.organisation_id,
+            agent_id=agent.id,
+            from_version_id=current.id,
+            to_version_id=target.id,
+            action=REVERT,
+            actor_id=scope.member_id,
+            occurred_at=now,
+        )
+    )
+    view = await _view(session, target)
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=REVERTED,
+        target=audit.AuditTarget("agent", agent.id),
+        before={"live_version": _summary(current)},
+        after={"live_version": {**(_summary(target) or {}), **_pinned(view)}},
+        occurred_at=now,
+    )
+    await session.commit()
+    return view
+
+
+def _pinned(view: VersionView) -> dict[str, object]:
+    pinned = view.instructions
+    return {
+        "instructions_version": pinned and {"version_id": str(pinned.id), "number": pinned.number}
+    }
 
 
 async def _version(session: AsyncSession, version_id: uuid.UUID | None) -> AgentVersion | None:

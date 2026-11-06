@@ -387,14 +387,14 @@ The Project Instructions Version that newly published Agent Versions pin by defa
 _Avoid_: Live (for Project Instructions), latest
 
 **Live History**:
-The ordered, append-only record of an Agent's Live Version changes. Each entry has the from-Version (none for the first publish), the to-Version, the action (publish, revert, bulk publish or bulk revert), who and when, and the bulk operation that made it, if any. Reverting steps back one entry.
+The ordered, append-only record of an Agent's Live Version changes. Each entry has the from-Version (none for the first publish), the to-Version, the action (publish, revert, bulk publish or bulk revert), who and when, and the bulk operation that made it, if any. The Studio shows it as the Live History timeline on the Agent page. Reverting follows it back: the Agent returns to the Version that was Live when its present Live Version was published, so publishing v1, v2 and v3 and then reverting twice gives v2 and then v1, never v3 again.
 _Avoid_: Changelog, deployments
 
 **Publish**:
 To freeze a Draft into a new Version and make it the Live Version for an Agent, or the Current Version for Project Instructions.
 
 **Revert**:
-To move the Live Version (Agents) or the Current Version (Project Instructions) back one step in its history. It never edits a Version or the Draft.
+To move the Live Version (Agents) or the Current Version (Project Instructions) back one step in its history. For an Agent this restores both the configuration and the Instructions Version it was pinned to, and is refused when there's nothing to revert to (the Agent is not live, or its Live Version was its first) or the earlier Version's Provider Credential is gone. Reverting never creates, edits or deletes a Version, and it never changes the Draft.
 _Avoid_: Rollback, undo
 
 **Playground**:
