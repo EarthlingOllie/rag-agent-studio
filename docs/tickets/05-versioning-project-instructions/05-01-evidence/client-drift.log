@@ -1,4 +1,4 @@
-$ make check-client @ 49c09db
+$ make check-client @ eef0819
 cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 cd frontend && pnpm gen-client
@@ -11,6 +11,6 @@ cd frontend && pnpm gen-client
 > openapi-typescript ./openapi.json --output ./src/schema.gen.ts
 
 ✨ openapi-typescript 7.13.0
-🚀 ./openapi.json → ./src/schema.gen.ts [500.6ms]
+🚀 ./openapi.json → ./src/schema.gen.ts [257.5ms]
 API client is up to date.
 exit 0
