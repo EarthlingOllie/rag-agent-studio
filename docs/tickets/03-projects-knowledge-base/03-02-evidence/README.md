@@ -82,6 +82,7 @@ Where each log ran (each starts with its command and ends with its exit code):
 
 ## Gaps and sandbox notes (local and test-double routes used)
 
+- **Closure in progress (2026-11-06):** huggingface.co and its weight CDN are now reachable. Branch `ticket/03-02-live-docling-models` is running the live-model suite and building and scanning the bundled-model image to close the criterion-6 gap below.
 - **GAP (criterion 6): no Hugging Face access, so no live-model run.** The egress proxy answers `403 Forbidden` for huggingface.co. That is a policy of this sandbox, and this session may not work around it. Not run here:
   - the live suite's PDF case and the two local-embedder tests: they skip with the reason ([live-suite.log](live-suite.log)). They need the PDF layout model, and the `multilingual-e5-small` model and tokenizer.
   - recording real Docling output for the PDF. `northwind-handbook.pdf.json` is hand-built instead.
