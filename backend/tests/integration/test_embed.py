@@ -367,10 +367,24 @@ def streamed(events: list[tuple[str, Any]]) -> str:
 
 
 async def attribution(app: FastAPI, message_id: str) -> str | None:
+    """The Agent Version a widget answer names. Like any Live answer it records no Instructions
+    of its own (no Draft marker, no Instructions Version): the Version pins them."""
     async with app.state.sessionmaker() as session:
-        found: str | None = await session.scalar(
-            text("SELECT agent_version_id::text FROM messages WHERE id = :id"), {"id": message_id}
-        )
+        row = (
+            await session.execute(
+                text(
+                    "SELECT config_source, agent_version_id::text, instructions_source,"
+                    " instructions_version_id FROM messages WHERE id = :id"
+                ),
+                {"id": message_id},
+            )
+        ).one()
+    assert (row.config_source, row.instructions_source, row.instructions_version_id) == (
+        "version",
+        None,
+        None,
+    )
+    found: str | None = row.agent_version_id
     return found
 
 

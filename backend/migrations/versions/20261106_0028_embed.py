@@ -1,8 +1,8 @@
 """Embedding: an Agent's Allowed Origins, the sites that may frame its widget; and the hash of
 each Visitor Conversation's Conversation token.
 
-Revision ID: 0027_embed
-Revises: 0026_agent_versions
+Revision ID: 0028_embed
+Revises: 0027_playground_instructions
 Create Date: 2026-11-06
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0027_embed"
-down_revision: str | None = "0026_agent_versions"
+revision: str = "0028_embed"
+down_revision: str | None = "0027_playground_instructions"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
