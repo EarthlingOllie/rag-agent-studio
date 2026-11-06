@@ -57,6 +57,26 @@ async def test_an_object_is_stored_read_and_deleted(store: ObjectStore) -> None:
     await store.delete(key)  # deleting what isn't there is fine
 
 
+async def test_every_object_under_a_prefix_is_deleted_and_nothing_else(
+    store: ObjectStore,
+) -> None:
+    root = f"tests/{uuid.uuid4()}"
+    # More than one page of a listing (1,000 keys), so deleting walks every page.
+    doomed = [f"{root}/project/{n:04}" for n in range(1003)]
+    kept = [f"{root}/project-other/a", f"{root}/projec", f"{root}/a"]
+    for key in [*doomed, *kept]:
+        await store.put(key, key.encode(), content_type="text/plain")
+
+    await store.delete_prefix(f"{root}/project/")
+
+    for key in (doomed[0], doomed[999], doomed[-1]):
+        with pytest.raises(ObjectNotFoundError):
+            await store.get(key)
+    assert [await store.get(key) for key in kept] == [key.encode() for key in kept]
+    await store.delete_prefix(f"{root}/project/")  # deleting nothing is fine
+    await store.delete_prefix(f"{root}/")
+
+
 async def test_an_objects_size_is_read_without_its_bytes(store: ObjectStore) -> None:
     key = f"tests/{uuid.uuid4()}/logo.png"
     await store.put(key, b"0123456789", content_type="image/png")
@@ -196,6 +216,44 @@ async def test_a_document_uploaded_through_rustfs_becomes_ready(rustfs_app: Fast
     assert (redirect.status_code, original.status_code) == (307, 200)
     assert original.content == data
     assert original.headers["content-disposition"].startswith('attachment; filename="leave.md"')
+
+
+async def test_a_permanently_deleted_project_leaves_nothing_in_rustfs(rustfs_app: FastAPI) -> None:
+    store = rustfs_app.state.ingestion.object_store
+    assert isinstance(store, S3ObjectStore)
+    transport = httpx.ASGITransport(app=rustfs_app)
+    async with (
+        httpx.AsyncClient(transport=transport, base_url=BASE_URL) as studio,
+        httpx.AsyncClient() as browser,
+    ):
+        signed_up = (await studio.post("/api/auth/sign-up", json=new_member_details())).json()
+        organisation_id = signed_up["organisations"][0]["id"]
+        organisation = f"/api/organisations/{organisation_id}"
+        project = (await studio.post(f"{organisation}/projects", json={"name": "HR"})).json()
+        path = f"{organisation}/projects/{project['id']}"
+        for name in ("leave.md", "unconfirmed.md"):
+            data = f"# {name}\n\nText.".encode()
+            ticket = (
+                await studio.post(
+                    f"{path}/uploads", json={"filename": name, "size_bytes": len(data)}
+                )
+            ).json()
+            await browser.put(
+                ticket["url"], content=data, headers={"Content-Type": ticket["content_type"]}
+            )
+            if name == "leave.md":
+                await studio.post(f"{path}/documents", json={"upload_id": ticket["upload_id"]})
+        prefix = f"organisations/{organisation_id}/projects/{project['id']}/"
+        before = store._client.list_objects_v2(Bucket=store.bucket, Prefix=prefix)
+        await studio.post(f"{path}/archive")
+
+        deleted = await studio.request("DELETE", path, json={"confirm_name": "HR"})
+
+    after = store._client.list_objects_v2(Bucket=store.bucket, Prefix=prefix)
+    # The original and converted markdown of the Document, and the unconfirmed upload ...
+    assert before["KeyCount"] == 3
+    # ... are all gone.
+    assert (deleted.status_code, after["KeyCount"]) == (202, 0)
 
 
 async def test_a_theme_logo_uploaded_through_rustfs_is_served_and_replaced(
