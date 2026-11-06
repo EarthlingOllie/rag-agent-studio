@@ -1,0 +1,43 @@
+$ bash build.sh <clone> 0206
+# 2026-11-06T06:56:58Z in a fresh clone at 1c5d246
+
+#12 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#12 CACHED
+
+#13 [install  6/10] COPY apps/studio/package.json apps/studio/
+#13 CACHED
+
+#14 [install  3/10] RUN corepack enable
+#14 CACHED
+
+#15 [install  9/10] RUN pnpm install --frozen-lockfile
+#15 CACHED
+
+#16 [install 10/10] COPY . .
+#16 DONE 0.1s
+
+#17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#17 CACHED
+
+#18 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#18 CACHED
+
+#19 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
+#19 DONE 2.3s
+
+#20 [stage-1 5/5] WORKDIR /app/apps/studio
+#20 DONE 0.2s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 10.2s done
+#21 exporting manifest sha256:28681a8d1b79e65faa6f45e3bfc1445a99284eb70c2250a23e7ce3bea4c1bb15
+#21 exporting manifest sha256:28681a8d1b79e65faa6f45e3bfc1445a99284eb70c2250a23e7ce3bea4c1bb15 0.0s done
+#21 exporting config sha256:35a6e32db810f5dc8f7a418808bca25a6d4bb9acb33b6bdf27eac48968e7eacf done
+#21 exporting attestation manifest sha256:fda7ee80ae3e317cf41d70dd8a07d68146ebd3036f15934f0311a6c9d7fd9641 0.0s done
+#21 exporting manifest list sha256:4ab0e4e725aafb363a5f8ed49ddfb1d6e49efcc633f49e9b7009bdb88196e7c1 0.0s done
+#21 naming to docker.io/rag-agent-studio/studio:0206 done
+#21 unpacking to docker.io/rag-agent-studio/studio:0206
+#21 unpacking to docker.io/rag-agent-studio/studio:0206 4.0s done
+#21 DONE 14.3s
+# exit code: 0

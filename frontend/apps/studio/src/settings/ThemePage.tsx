@@ -16,6 +16,8 @@ import { type ReactNode, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { type ThemeFont, type ThemeSettings, useSaveTheme, useTheme, useThemeFonts } from "./theme";
+import { ThemeImages } from "./ThemeImages";
+import type { ThemeImage } from "./themeImages";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_RADIUS = 24;
@@ -178,12 +180,14 @@ const SCHEMES = [
 ] as const;
 
 /** The widget as a Visitor will see it, built from the same primitives the widget renders. */
-function WidgetPreview({ theme, scheme }: { theme: ThemeSettings; scheme: ColourScheme }) {
+function WidgetPreview({ theme, scheme, images }: { theme: ThemeSettings; scheme: ColourScheme; images: SavedImages }) {
   const [open, setOpen] = useState(true);
   const bubble = theme.launcher_type === "bubble";
   const chat = (
     <ChatWindow
       agentName="Assistant"
+      logoUrl={images.logo?.url}
+      avatarUrl={images.avatar?.url}
       composer={
         <Composer
           onSend={() => {
@@ -247,7 +251,24 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function ThemeEditor({ saved, fonts, isOwner, organisationId }: { saved: ThemeSettings; fonts: ThemeFont[]; isOwner: boolean; organisationId: string }) {
+interface SavedImages {
+  logo: ThemeImage | null;
+  avatar: ThemeImage | null;
+}
+
+function ThemeEditor({
+  saved,
+  images,
+  fonts,
+  isOwner,
+  organisationId,
+}: {
+  saved: ThemeSettings;
+  images: SavedImages;
+  fonts: ThemeFont[];
+  isOwner: boolean;
+  organisationId: string;
+}) {
   const save = useSaveTheme(organisationId);
   const [draft, setDraft] = useState<ThemeSettings>(saved);
   const [invalid, setInvalid] = useState<Record<string, boolean>>({});
@@ -275,122 +296,125 @@ function ThemeEditor({ saved, fonts, isOwner, organisationId }: { saved: ThemeSe
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
       <link rel="stylesheet" href={fontStylesheetUrl(draft.font)} />
-      <form
-        aria-label="Theme"
-        className="space-y-6"
-        onSubmit={(event) => {
-          event.preventDefault();
-          save.mutate(draft);
-        }}
-      >
-        {!isOwner && <p className="rounded bg-slate-100 px-3 py-2 text-sm text-slate-700">Only Owners can change the Theme.</p>}
-        <fieldset disabled={!isOwner} className="space-y-6">
-          <Section title="Colours">
-            <p className="text-sm text-slate-700">Each colour has a value for light mode and one for dark mode.</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {COLOUR_TOKENS.map(({ token, label }) => (
-                <div key={token} className="flex flex-wrap gap-4 rounded border border-slate-200 p-3">
-                  {(["light", "dark"] as const).map((colourScheme) => (
-                    <ColourField
-                      key={colourScheme}
-                      label={`${label} (${colourScheme})`}
-                      value={draft.colours[token][colourScheme]}
-                      onChange={(hex) => {
-                        setColour(token, colourScheme, hex);
-                      }}
-                      onValidity={onValidity}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </Section>
-          <Section title="Shape and type">
-            <RadiusField
-              value={draft.radius}
-              onChange={(radius) => {
-                update({ radius });
-              }}
-              onValidity={onValidity}
-            />
-            <div className="space-y-1">
-              <label htmlFor={fontId} className="block text-sm font-medium">
-                Font
-              </label>
-              <select
-                id={fontId}
-                value={draft.font}
-                onChange={(event) => {
-                  update({ font: event.target.value as ThemeSettings["font"] });
-                }}
-                className={INPUT}
-              >
-                {fonts.map((font) => (
-                  <option key={font.family} value={font.family}>
-                    {font.family} ({font.category})
-                  </option>
+      <div className="space-y-8">
+        <form
+          aria-label="Theme"
+          className="space-y-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate(draft);
+          }}
+        >
+          {!isOwner && <p className="rounded bg-slate-100 px-3 py-2 text-sm text-slate-700">Only Owners can change the Theme.</p>}
+          <fieldset disabled={!isOwner} className="space-y-6">
+            <Section title="Colours">
+              <p className="text-sm text-slate-700">Each colour has a value for light mode and one for dark mode.</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {COLOUR_TOKENS.map(({ token, label }) => (
+                  <div key={token} className="flex flex-wrap gap-4 rounded border border-slate-200 p-3">
+                    {(["light", "dark"] as const).map((colourScheme) => (
+                      <ColourField
+                        key={colourScheme}
+                        label={`${label} (${colourScheme})`}
+                        value={draft.colours[token][colourScheme]}
+                        onChange={(hex) => {
+                          setColour(token, colourScheme, hex);
+                        }}
+                        onValidity={onValidity}
+                      />
+                    ))}
+                  </div>
                 ))}
-              </select>
-            </div>
-          </Section>
-          <Section title="Mode and launcher">
-            <Choices
-              label="Mode"
-              name="mode"
-              value={draft.mode}
-              options={MODES}
-              onChange={(mode) => {
-                update({ mode });
-              }}
-            />
-            <Choices
-              label="Launcher"
-              name="launcher"
-              value={draft.launcher_type}
-              options={LAUNCHERS}
-              onChange={(launcher_type) => {
-                update({ launcher_type });
-              }}
-            />
-            {draft.launcher_type === "bubble" && (
+              </div>
+            </Section>
+            <Section title="Shape and type">
+              <RadiusField
+                value={draft.radius}
+                onChange={(radius) => {
+                  update({ radius });
+                }}
+                onValidity={onValidity}
+              />
+              <div className="space-y-1">
+                <label htmlFor={fontId} className="block text-sm font-medium">
+                  Font
+                </label>
+                <select
+                  id={fontId}
+                  value={draft.font}
+                  onChange={(event) => {
+                    update({ font: event.target.value as ThemeSettings["font"] });
+                  }}
+                  className={INPUT}
+                >
+                  {fonts.map((font) => (
+                    <option key={font.family} value={font.family}>
+                      {font.family} ({font.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Section>
+            <Section title="Mode and launcher">
               <Choices
-                label="Bubble position"
-                name="position"
-                value={draft.launcher_position}
-                options={POSITIONS}
-                onChange={(launcher_position) => {
-                  update({ launcher_position });
+                label="Mode"
+                name="mode"
+                value={draft.mode}
+                options={MODES}
+                onChange={(mode) => {
+                  update({ mode });
                 }}
               />
+              <Choices
+                label="Launcher"
+                name="launcher"
+                value={draft.launcher_type}
+                options={LAUNCHERS}
+                onChange={(launcher_type) => {
+                  update({ launcher_type });
+                }}
+              />
+              {draft.launcher_type === "bubble" && (
+                <Choices
+                  label="Bubble position"
+                  name="position"
+                  value={draft.launcher_position}
+                  options={POSITIONS}
+                  onChange={(launcher_position) => {
+                    update({ launcher_position });
+                  }}
+                />
+              )}
+            </Section>
+          </fieldset>
+          <div role="status" aria-label="Contrast" className="space-y-2">
+            {warnings.length > 0 && (
+              <div className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <p className="font-medium">Some colours fail WCAG AA contrast. You can still save.</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {warnings.map((warning) => (
+                    <li key={`${warning.scheme}-${warning.foreground}`}>{warning.message}</li>
+                  ))}
+                </ul>
+              </div>
             )}
-          </Section>
-        </fieldset>
-        <div role="status" aria-label="Contrast" className="space-y-2">
-          {warnings.length > 0 && (
-            <div className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <p className="font-medium">Some colours fail WCAG AA contrast. You can still save.</p>
-              <ul className="mt-1 list-disc pl-5">
-                {warnings.map((warning) => (
-                  <li key={`${warning.scheme}-${warning.foreground}`}>{warning.message}</li>
-                ))}
-              </ul>
+          </div>
+          {isOwner && (
+            <div className="space-y-3">
+              <FormError message={save.isError ? "Something went wrong. Try again." : undefined} />
+              {save.isSuccess && (
+                <p role="status" aria-label="Saved" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+                  Theme saved. The widget uses it now.
+                </p>
+              )}
+              <button type="submit" className={BUTTON} disabled={hasInvalid || save.isPending}>
+                {save.isPending ? "Saving…" : "Save Theme"}
+              </button>
             </div>
           )}
-        </div>
-        {isOwner && (
-          <div className="space-y-3">
-            <FormError message={save.isError ? "Something went wrong. Try again." : undefined} />
-            {save.isSuccess && (
-              <p role="status" aria-label="Saved" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
-                Theme saved. The widget uses it now.
-              </p>
-            )}
-            <button type="submit" className={BUTTON} disabled={hasInvalid || save.isPending}>
-              {save.isPending ? "Saving…" : "Save Theme"}
-            </button>
-          </div>
-        )}
-      </form>
+        </form>
+        <ThemeImages organisationId={organisationId} logo={images.logo} avatar={images.avatar} isOwner={isOwner} />
+      </div>
       <section aria-labelledby="preview-heading" className="space-y-3 lg:sticky lg:top-6 lg:self-start">
         <h3 id="preview-heading" className="text-base font-semibold">
           Preview
@@ -398,7 +422,7 @@ function ThemeEditor({ saved, fonts, isOwner, organisationId }: { saved: ThemeSe
         {draft.mode === "auto" && (
           <Choices label="Preview colours" name="preview" value={previewScheme} options={SCHEMES} onChange={setPreviewScheme} />
         )}
-        <WidgetPreview theme={draft} scheme={scheme} />
+        <WidgetPreview theme={draft} scheme={scheme} images={images} />
       </section>
     </div>
   );
@@ -412,9 +436,18 @@ export function ThemePage({ organisationId, isOwner }: { organisationId: string;
   if (theme.isError || fonts.isError) {
     body = <FormError message="The Theme could not be loaded. Try again." />;
   } else if (theme.data && fonts.data) {
-    const { colours, radius, font, mode, launcher_type, launcher_position } = theme.data;
+    const { colours, radius, font, mode, launcher_type, launcher_position, logo, avatar } = theme.data;
     const saved = { colours, radius, font, mode, launcher_type, launcher_position };
-    body = <ThemeEditor key={organisationId} saved={saved} fonts={fonts.data} isOwner={isOwner} organisationId={organisationId} />;
+    body = (
+      <ThemeEditor
+        key={organisationId}
+        saved={saved}
+        images={{ logo, avatar }}
+        fonts={fonts.data}
+        isOwner={isOwner}
+        organisationId={organisationId}
+      />
+    );
   } else {
     body = <p className="text-sm text-slate-700">Loading the Theme…</p>;
   }

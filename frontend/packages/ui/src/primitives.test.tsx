@@ -37,3 +37,25 @@ test("the Composer sends the typed Message and clears the box", async () => {
   expect(sent).toEqual(["Opening hours?"]);
   expect(screen.getByRole("textbox", { name: "Message" })).toHaveValue("");
 });
+
+test("the chat header shows the Theme's logo and the Agent's avatar when there are images", () => {
+  render(
+    <ChatWindow agentName="Ada" logoUrl="/logo.png" avatarUrl="/avatar.png" composer={<Composer onSend={() => undefined} />}>
+      <MessageBubble from="agent">Hi</MessageBubble>
+    </ChatWindow>,
+  );
+
+  const chat = screen.getByRole("region", { name: "Chat with Ada" });
+  expect(within(chat).getByRole("img", { name: "Logo" })).toHaveAttribute("src", "/logo.png");
+  expect(within(chat).getByRole("img", { name: "Ada's avatar" })).toHaveAttribute("src", "/avatar.png");
+  // The avatar replaces the initial.
+  expect(within(chat).queryByText("A")).not.toBeInTheDocument();
+});
+
+test("without images the header shows the Agent's initial and no logo", () => {
+  render(<ChatWindow agentName="Ada" composer={null}>{null}</ChatWindow>);
+
+  const chat = screen.getByRole("region", { name: "Chat with Ada" });
+  expect(within(chat).queryByRole("img")).not.toBeInTheDocument();
+  expect(within(chat).getByText("A")).toBeInTheDocument();
+});
