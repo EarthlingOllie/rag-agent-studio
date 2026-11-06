@@ -7,7 +7,7 @@
 **Blocked by:**
 - [05-02: Publish Agent to Live Version](02-publish-agent-live-version.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A structural AgentConfig diff with text diffs for markdown covers Version-to-Version and Draft-to-Live
 - [ ] An unpublished-changes badge is shown
