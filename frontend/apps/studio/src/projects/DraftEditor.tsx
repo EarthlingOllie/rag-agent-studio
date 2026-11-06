@@ -1,26 +1,9 @@
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { MarkdownEditor } from "@studio/ui";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
-import {
-  type Capability,
-  type Credential,
-  useCredentials,
-} from "../settings/credentials";
+import { type Capability, type Credential, useCredentials } from "../settings/credentials";
 import { type Agent, useSaveDraft } from "./agents";
-import {
-  type Draft,
-  DraftRequestError,
-  errorsFor,
-  type FieldError,
-  type ModelChoice,
-  useCredentialModels,
-} from "./draft";
+import { type Draft, DraftRequestError, errorsFor, type FieldError, type ModelChoice, useCredentialModels } from "./draft";
 import { INPUT } from "./ProjectsPage";
 import { useTags } from "./tags";
 
@@ -73,9 +56,7 @@ type ControlProps = {
 /** A labelled control with its hint and the reasons it was refused. */
 function Field({ label, hint, errors, children }: FieldProps) {
   const id = useId();
-  const described = [hint && `${id}-hint`, errors.length > 0 && `${id}-error`]
-    .filter(Boolean)
-    .join(" ");
+  const described = [hint && `${id}-hint`, errors.length > 0 && `${id}-error`].filter(Boolean).join(" ");
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium">
@@ -131,11 +112,7 @@ function NumberField({
           value={text}
           onChange={(event) => {
             setText(event.target.value);
-            onChange(
-              event.target.value === ""
-                ? Number.NaN
-                : Number(event.target.value),
-            );
+            onChange(event.target.value === "" ? Number.NaN : Number(event.target.value));
           }}
         />
       )}
@@ -260,8 +237,7 @@ function ModelChoiceField({
     .sort((a, b) => a.name.localeCompare(b.name));
   const options = models.data ?? [];
   const model = value?.credential_id === credentialId ? value.model : "";
-  const incomplete =
-    credentialId !== "" && value?.credential_id !== credentialId;
+  const incomplete = credentialId !== "" && value?.credential_id !== credentialId;
   useEffect(() => {
     onIncomplete(field, incomplete);
   }, [field, incomplete, onIncomplete]);
@@ -294,9 +270,7 @@ function ModelChoiceField({
           </select>
           {credentialId !== "" &&
             (!models.isPending && options.length === 0 ? (
-              <p className="text-sm text-slate-700">
-                This credential offers no models for this.
-              </p>
+              <p className="text-sm text-slate-700">This credential offers no models for this.</p>
             ) : (
               <>
                 <label htmlFor={`${id}-model`} className="block text-sm">
@@ -322,11 +296,7 @@ function ModelChoiceField({
                     </option>
                   ))}
                 </select>
-                {incomplete && (
-                  <p className="text-sm text-slate-700">
-                    Choose a model to use this credential.
-                  </p>
-                )}
+                {incomplete && <p className="text-sm text-slate-700">Choose a model to use this credential.</p>}
               </>
             ))}
         </>
@@ -353,24 +323,15 @@ function TagScoping({
   return (
     <fieldset className="space-y-1">
       <legend className="text-sm font-medium">Tag scoping</legend>
-      <p className="text-xs text-slate-700">
-        Only search Documents with one of these Tags. None searches every
-        Document.
-      </p>
-      {tags.data?.length === 0 && (
-        <p className="text-sm text-slate-700">This Project has no Tags yet.</p>
-      )}
+      <p className="text-xs text-slate-700">Only search Documents with one of these Tags. None searches every Document.</p>
+      {tags.data?.length === 0 && <p className="text-sm text-slate-700">This Project has no Tags yet.</p>}
       {(tags.data ?? []).map((tag) => (
         <label key={tag.id} className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={value.includes(tag.id)}
             onChange={(event) => {
-              onChange(
-                event.target.checked
-                  ? [...value, tag.id]
-                  : value.filter((id) => id !== tag.id),
-              );
+              onChange(event.target.checked ? [...value, tag.id] : value.filter((id) => id !== tag.id));
             }}
           />
           {tag.name}
@@ -401,9 +362,7 @@ function localErrors(draft: Draft): FieldError[] {
     ["retrieval.min_score", draft.retrieval.min_score],
     ["experience.rating_prompt_after", draft.experience.rating_prompt_after],
   ];
-  return numbers
-    .filter(([, value]) => Number.isNaN(value))
-    .map(([field]) => ({ field, message: "Enter a number." }));
+  return numbers.filter(([, value]) => Number.isNaN(value)).map(([field]) => ({ field, message: "Enter a number." }));
 }
 
 const orNull = (text: string) => (text.trim() === "" ? null : text);
@@ -413,13 +372,7 @@ const orNull = (text: string) => (text.trim() === "" ? null : text);
  * typing pauses; the status says whether everything is saved, and the API's reasons for
  * refusing a setting appear beside it.
  */
-export function DraftEditor({
-  agent,
-  organisationId,
-}: {
-  agent: Agent;
-  organisationId: string;
-}) {
+export function DraftEditor({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const save = useSaveDraft(organisationId, agent.project_id, agent.id);
   const [draft, setDraft] = useState<Draft>(agent.draft);
   const [status, setStatus] = useState<Status>("saved");
@@ -455,10 +408,7 @@ export function DraftEditor({
           if (fields.length > 0) {
             setStatus("invalid");
           } else {
-            setFailure(
-              (error instanceof DraftRequestError && error.detail) ||
-                FAILED_TEXT,
-            );
+            setFailure((error instanceof DraftRequestError && error.detail) || FAILED_TEXT);
             setStatus("failed");
           }
         }
@@ -517,9 +467,8 @@ export function DraftEditor({
     change({ ...draft, guardrails: { ...guardrails, ...update } });
   };
   const at = (field: string) => errorsFor(errors, field);
-  const [questions, setQuestions] = useState(
-    experience.starter_questions.join("\n"),
-  );
+  const systemPromptErrorId = useId();
+  const [questions, setQuestions] = useState(experience.starter_questions.join("\n"));
 
   return (
     // No submit button: changes save themselves.
@@ -528,11 +477,7 @@ export function DraftEditor({
         <h2 id="draft-heading" className="text-lg font-semibold">
           Draft
         </h2>
-        <p
-          role="status"
-          aria-label="Draft status"
-          className={`text-sm ${status === "saved" ? "text-slate-700" : "text-slate-900"}`}
-        >
+        <p role="status" aria-label="Draft status" className={`text-sm ${status === "saved" ? "text-slate-700" : "text-slate-900"}`}>
           {status === "failed"
             ? `Not saved: ${failure}`
             : awaitingModel && (status === "saved" || status === "saving")
@@ -542,15 +487,18 @@ export function DraftEditor({
       </div>
 
       <Group legend="Behaviour">
-        <TextField
-          label="System prompt"
-          rows={8}
-          errors={at("behaviour.system_prompt")}
-          value={behaviour.system_prompt}
-          onChange={(system_prompt) => {
-            setBehaviour({ system_prompt });
-          }}
-        />
+        <div>
+          {/* Written and stored as markdown (ticket 04-02). */}
+          <MarkdownEditor
+            label="System prompt"
+            maxLength={20000}
+            defaultValue={behaviour.system_prompt}
+            onChange={(system_prompt) => {
+              setBehaviour({ system_prompt });
+            }}
+          />
+          <Errors id={systemPromptErrorId} messages={at("behaviour.system_prompt")} />
+        </div>
         <ModelChoiceField
           legend="Model override"
           noneLabel="None: use the Default Model"
@@ -757,10 +705,7 @@ export function DraftEditor({
       </Group>
 
       <Group legend="Guardrails">
-        <p className="text-sm text-slate-700">
-          These settings are saved with the Draft and enforced in a later
-          release.
-        </p>
+        <p className="text-sm text-slate-700">These settings are saved with the Draft and enforced in a later release.</p>
         <ChoiceField
           label="Input Guardrail mode"
           errors={at("guardrails.input_mode")}

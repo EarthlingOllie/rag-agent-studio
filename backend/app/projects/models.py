@@ -11,6 +11,9 @@ from app.embeddings.registry import DEFAULT_MODEL_ID
 
 NAME_MAX = 200
 DESCRIPTION_MAX = 2000
+# The same limit as an Agent's system prompt.
+INSTRUCTIONS_MAX = 20_000
+
 # How many Documents (not counting Failed ones) a new Project may hold; an Owner can change it.
 DEFAULT_DOCUMENT_QUOTA = 500
 
@@ -40,3 +43,6 @@ class Project(IdMixin, Base):
     embedding_credential_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("provider_credentials.id"), index=True
     )
+    # The Project Instructions: one markdown Draft every Agent in the Project follows, stored
+    # exactly as written. Spec 05 adds its Versions.
+    instructions: Mapped[str] = mapped_column(Text, default="", server_default="")

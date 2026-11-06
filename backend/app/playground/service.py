@@ -287,7 +287,7 @@ async def answer(
         async for event in run_turn(
             prepared.turns,
             prepared.config,
-            "",  # Project Instructions arrive with ticket 05-01.
+            prepared.project.instructions,
             prepared.question,
             model=model,
             retrieve=retrieve_in_project,
