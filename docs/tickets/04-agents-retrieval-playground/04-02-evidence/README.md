@@ -14,7 +14,7 @@ Branch `ticket/04-02-markdown-editor`, from `origin/candidate` at `7a89f6e` (04-
   - **Markdown view:** it opens on the stored text exactly, not on the editor's rewrite of it, so text loaded in a spelling the editor would normalise (`*` bullets, `__bold__`) keeps it when edited there. Text typed there is stored exactly as typed. Switching back shows it formatted and isn't an edit.
   - **Soft breaks survive edits.** Typing in a paragraph makes ProseMirror read that paragraph back from the page, and by default it turns a newline in the text into a hard break (`  \n`). Paragraphs are `whitespace: "pre"` (`@tiptap/extension-paragraph`, `3.32.0`), so a soft break stays a soft break.
 - **Project Instructions** (backend): one markdown Draft per Project.
-  - The column is `projects.instructions` (migration `0015_project_instructions`, after 03-05's `0014_staged_editions`, `text NOT NULL DEFAULT ''`).
+  - The column is `projects.instructions` (migration `0016_project_instructions`, after 03-09's `0015_provider_embedding_models`, `text NOT NULL DEFAULT ''`).
   - `getProjectInstructions` (GET) and `saveProjectInstructions` (PUT `…/projects/{id}/instructions`, body `{markdown}`, up to 20,000 characters like the system prompt) are open to Editors and Owners. An archived Project is read-only (409).
   - A save that changes the text records `project.instructions_updated` with the before and after text.
   - The Playground now passes the Project's Instructions to `run_turn`. 04-01 passed `""`.
@@ -53,17 +53,17 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). They ran at `c4a172a`, the merge of `origin/candidate` at `9e5a8bb` (03-03, after 03-05 and the tickets before it) into the branch, after `0c41e72` fixed the three points of the first review: `disabled` is live, the Markdown view opens on the stored text, and the formatted view shows the character count (plus soft breaks kept on edit, which the stronger round-trip test found). The Instructions migration is `0015`, after 03-05's `0014`. The next commit changes only this folder. Every log's first line names the commit it ran at.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). They ran at `db20434`, the merge of `origin/candidate` at `55e017e` (03-09, after 03-03, 03-05 and the tickets before them) into the branch, after `0c41e72` fixed the three points of the first review: `disabled` is live, the Markdown view opens on the stored text, and the formatted view shows the character count (plus soft breaks kept on edit, which the stronger round-trip test found). The merge re-parents the Instructions migration as `0016`, after 03-09's `0015_provider_embedding_models`. The next commit changes only this folder. Every log's first line names the commit it ran at.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against the `rag0402-*` Postgres/pgvector, Redis and RustFS containers | **1052 passed**, 5 deselected (live); coverage **100.00%** lines and branches (5295 statements, 504 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **34 files, 387 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0402-*` Postgres/pgvector, Redis and RustFS containers | **1146 passed**, 6 deselected (live); coverage **100.00%** lines and branches (5657 statements, 542 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **35 files, 392 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit, covering the new TipTap and marked packages) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0402`) | **47 passed**, including `instructions.spec.ts` (now also archiving and restoring the Project with the tab open) and the updated `playground.spec.ts`, each with axe scans. In the first round, the first run caught an axe `label-content-name-mismatch` on the toolbar (symbol text with a different `aria-label`), and the new spec was missing its initial `goto`. Both were fixed in `12655aa` and the full suite re-run. | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0402`) | **48 passed**, including `instructions.spec.ts` (now also archiving and restoring the Project with the tab open) and the updated `playground.spec.ts`, each with axe scans. In the first round, the first run caught an axe `label-content-name-mismatch` on the toolbar (symbol text with a different `aria-label`), and the new spec was missing its initial `goto`. Both were fixed in `12655aa` and the full suite re-run. In this round the first attempt could not start: another stack briefly held host port 48742 (`address already in use`); the re-run, with nothing changed, passed. | [e2e.log](e2e.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
 The last lines of `backend-tests.log` are telemetry spans the console exporter flushes at exit, from the fake model transports. They are not real provider calls.
