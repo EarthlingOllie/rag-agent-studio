@@ -52,7 +52,8 @@ test.describe("Reranker", () => {
       await expect(documents.getByRole("row", { name }).getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     }
 
-    // Retrieval: one Chunk per answer, any relevance, and the Voyage reranker.
+    // Retrieval: one Chunk per answer (the minimum relevance stays at its default, 0), and the
+    // Voyage reranker.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
     const status = page.getByRole("status", { name: "Draft status" });
     await expect(status).toHaveText("All changes saved", { timeout: 15_000 });
@@ -60,9 +61,7 @@ test.describe("Reranker", () => {
     let save = nextSave(page);
     await retrieval.getByLabel("Chunks per answer (top-k)").fill("1");
     await save;
-    save = nextSave(page);
-    await retrieval.getByLabel("Minimum relevance (0 to 1)").fill("0");
-    await save;
+    await expect(retrieval.getByLabel("Minimum relevance (0 to 1)")).toHaveValue("0");
     const reranker = retrieval.getByRole("group", { name: "Reranker" });
     await reranker.getByLabel("Credential").selectOption({ label: "Search Voyage (Voyage AI)" });
     save = nextSave(page);
