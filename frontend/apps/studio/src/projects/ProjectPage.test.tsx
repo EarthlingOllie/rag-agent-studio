@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
-import { fakeProjectsApi, hrProject, oldProject, PROJECT_ARCHIVED } from "../test/projects";
+import { fakeProjectsApi, hrProject, NAME_MISMATCH, oldProject, PROJECT_ARCHIVED } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -169,6 +169,84 @@ test("a refused archive or restore shows the API's reason", async () => {
   renderStudio(projectPage(oldProject.id));
   await userEvent.click(await screen.findByRole("button", { name: "Restore Old launch" }));
   expect(await screen.findByText("This Project isn't archived.")).toBeInTheDocument();
+});
+
+test("an Owner permanently deletes an archived Project after typing its name", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const { requests } = fakeProjectsApi();
+  renderStudio(projectPage(oldProject.id));
+
+  const notice = (await screen.findByText(/This Project is archived/)).closest("[role=status]") as HTMLElement;
+  await userEvent.click(within(notice).getByRole("button", { name: "Delete permanently" }));
+  const form = screen.getByRole("form", { name: "Delete Old launch permanently" });
+  expect(form).toHaveTextContent(
+    "Deleting Old launch removes its Documents, stored files, Agents and Conversations for good. This can't be undone.",
+  );
+  const confirm = within(form).getByRole("button", { name: "Delete Old launch permanently" });
+  const typed = within(form).getByLabelText("Type Old launch to confirm");
+  // Nothing happens until the name is typed exactly.
+  expect(confirm).toBeDisabled();
+  await userEvent.type(typed, "old launch");
+  expect(confirm).toBeDisabled();
+  await userEvent.clear(typed);
+  await userEvent.type(typed, "Old launch");
+  expect(confirm).toBeEnabled();
+
+  await userEvent.click(confirm);
+
+  // Back on the Projects list, where the Project is gone, archived or not.
+  expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  expect(await screen.findByText("Old launch is being deleted permanently.")).toHaveAttribute("role", "status");
+  expect(requests).toEqual([{ route: "delete", projectId: oldProject.id, body: { confirm_name: "Old launch" } }]);
+  await userEvent.click(screen.getByRole("button", { name: "Show archived Projects" }));
+  expect(await screen.findByText("No archived Projects.")).toBeInTheDocument();
+});
+
+test("deleting can be cancelled, and a refused deletion says why", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const { requests } = fakeProjectsApi();
+  renderStudio(projectPage(oldProject.id));
+
+  await userEvent.click(await screen.findByRole("button", { name: "Delete permanently" }));
+  await userEvent.type(screen.getByLabelText("Type Old launch to confirm"), "Old");
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("form", { name: "Delete Old launch permanently" })).not.toBeInTheDocument();
+  expect(requests).toEqual([]);
+
+  server.use(
+    http.delete("*/api/organisations/:organisationId/projects/:projectId", () =>
+      HttpResponse.json({ detail: NAME_MISMATCH }, { status: 400 }),
+    ),
+  );
+  // The form starts empty again.
+  await userEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
+  const typed = screen.getByLabelText("Type Old launch to confirm");
+  expect(typed).toHaveValue("");
+  await userEvent.type(typed, "Old launch");
+  await userEvent.click(screen.getByRole("button", { name: "Delete Old launch permanently" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(NAME_MISMATCH);
+  expect(screen.getByRole("heading", { level: 1, name: "Old launch" })).toBeInTheDocument();
+});
+
+test("only Owners are offered permanent deletion", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(oldProject.id));
+
+  await screen.findByText(/This Project is archived/);
+
+  expect(screen.queryByRole("button", { name: "Delete permanently" })).not.toBeInTheDocument();
+});
+
+test("an active Project offers no permanent deletion", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+
+  await screen.findByRole("button", { name: "Archive" });
+
+  expect(screen.queryByRole("button", { name: "Delete permanently" })).not.toBeInTheDocument();
 });
 
 test("an unknown Project is not found", async () => {

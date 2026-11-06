@@ -849,7 +849,13 @@ export interface paths {
         get: operations["getProject"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Project
+         * @description Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its
+         *     name. A Celery task removes the Project and everything in it (Documents, Chunks, stored
+         *     files, Agents and Conversations) and records ``project.deleted``. This can't be undone.
+         */
+        delete: operations["deleteProject"];
         options?: never;
         head?: never;
         /**
@@ -1999,6 +2005,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** DeleteProjectRequest */
+        DeleteProjectRequest: {
+            /** Confirm Name */
+            confirm_name: string;
         };
         /** DisableRequest */
         DisableRequest: {
@@ -5439,6 +5450,76 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Type the Project's name exactly to delete it. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Only an archived Project can be deleted. Archive it first. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

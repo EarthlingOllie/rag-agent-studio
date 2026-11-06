@@ -79,6 +79,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "/api/organisations/{organisation_id}/projects/{project_id}/archive",
             "post",
         ),
+        "deleteProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "delete"),
         "restoreProject": (
             "/api/organisations/{organisation_id}/projects/{project_id}/restore",
             "post",
