@@ -24,15 +24,11 @@ import {
 } from "./settings/OrganisationSettings";
 import { AgentPage } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
-import {
-  AnalyticsTab,
-  ConversationsTab,
-  InstructionsTab,
-  ProjectLayout,
-} from "./projects/ProjectPage";
+import { AnalyticsTab, ConversationsTab, ProjectLayout } from "./projects/ProjectPage";
 import { DocumentsTab } from "./projects/DocumentsTab";
 import { ProjectSettingsTab } from "./projects/ProjectSettingsTab";
 import { DocumentViewer } from "./projects/DocumentViewer";
+import { InstructionsTab } from "./projects/InstructionsTab";
 import { ProjectsPage } from "./projects/ProjectsPage";
 import { HomeRedirect, OrganisationShell, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
