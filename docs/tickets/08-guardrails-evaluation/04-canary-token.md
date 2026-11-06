@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-06: Citations and Trace drawer](../04-agents-retrieval-playground/06-citations-trace.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A per-request canary is placed in the platform preamble
 - [ ] A streaming filter holds back a buffer as long as the canary, then cuts the stream and emits a replace event
