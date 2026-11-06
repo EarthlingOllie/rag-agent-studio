@@ -70,9 +70,31 @@ def _choice(config: AgentConfig, use: CredentialUse) -> ModelChoice | None:
 async def check_draft(
     session: AsyncSession, scope: OrganisationScope, project: Project, config: AgentConfig
 ) -> None:
-    """Raises ``InvalidDraftError`` listing every problem. The credentials the Draft names are
-    share-locked until the transaction ends, so a concurrent delete of one either finishes
-    first (and this save is refused) or sees the new reference (and is refused)."""
+    """Raises ``InvalidDraftError`` listing every problem."""
+    problems = await credential_problems(session, scope, config)
+    tag_ids = config.retrieval.tag_ids
+    if tag_ids:
+        known = set(
+            await session.scalars(
+                select(Tag.id).where(Tag.project_id == project.id, Tag.id.in_(tag_ids))
+            )
+        )
+        problems.extend(
+            DraftProblem(("retrieval", "tag_ids", index), UNKNOWN_TAG, "unknown_tag")
+            for index, tag_id in enumerate(tag_ids)
+            if tag_id not in known
+        )
+    if problems:
+        raise InvalidDraftError(problems)
+
+
+async def credential_problems(
+    session: AsyncSession, scope: OrganisationScope, config: AgentConfig
+) -> list[DraftProblem]:
+    """Each credential the configuration names that isn't the Organisation's or doesn't offer
+    the chosen model. The credentials are share-locked until the transaction ends, so a
+    concurrent delete of one either finishes first (and is reported here) or sees the new
+    reference (and is refused)."""
     problems: list[DraftProblem] = []
     for use in CREDENTIAL_USES:
         choice = _choice(config, use)
@@ -96,20 +118,7 @@ async def check_draft(
         except ModelUnavailableError as error:
             field = "credential_id" if isinstance(error, CapabilityNotGrantedError) else "model"
             problems.append(DraftProblem((*use.loc, field), str(error), "model_unavailable"))
-    tag_ids = config.retrieval.tag_ids
-    if tag_ids:
-        known = set(
-            await session.scalars(
-                select(Tag.id).where(Tag.project_id == project.id, Tag.id.in_(tag_ids))
-            )
-        )
-        problems.extend(
-            DraftProblem(("retrieval", "tag_ids", index), UNKNOWN_TAG, "unknown_tag")
-            for index, tag_id in enumerate(tag_ids)
-            if tag_id not in known
-        )
-    if problems:
-        raise InvalidDraftError(problems)
+    return problems
 
 
 async def agent_references(

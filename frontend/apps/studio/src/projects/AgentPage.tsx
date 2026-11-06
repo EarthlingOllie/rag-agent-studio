@@ -13,6 +13,7 @@ import {
   useArchiveOrRestoreAgent,
   useDeleteAgent,
 } from "./agents";
+import { LiveHistory } from "./AgentLiveHistory";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
 import { DraftEditor } from "./DraftEditor";
 import { useInstructionsVersions } from "./instructions";
@@ -589,6 +590,12 @@ export function AgentPage() {
             isOwner={isOwner}
           />
         )}
+        <LiveHistory
+          key={`live-history-${agent.data.id}`}
+          agent={agent.data}
+          organisationId={organisationId}
+          archived={archived}
+        />
         <div className="grid gap-8 lg:grid-cols-2">
           <DraftEditor
             key={`${agent.data.id}-${String(archived)}`}
