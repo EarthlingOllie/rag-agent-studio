@@ -1,6 +1,6 @@
 # Evidence: ticket 04-09, Agent Archive and delete
 
-Branch `ticket/04-09-agent-archive-delete`, from `origin/candidate` at `a123fa1` (03-11 #40 merged; 04-01, the only blocker, done). The claim commit `9f059ec`, the first on the branch, set Status `in-progress`. Every check below ran on `57e49b4`; `origin/candidate` had not moved since the branch was cut.
+Branch `ticket/04-09-agent-archive-delete`, from `origin/candidate` at `a123fa1` (03-11 #40 merged; 04-01, the only blocker, done). The claim commit `9f059ec`, the first on the branch, set Status `in-progress`. The branch was then updated from `origin/candidate` twice: `df5d793` merged up to `198d5e6` (04-08 #42; one conflict in the fake Agents API's options, both kept) and `9d65bd8` merged up to `f3bd85f` (03-10 #43, clean). The checks below ran on `9d65bd8`; under load one Studio test read the Agents list before it had loaded, so `cbbf4df` makes it wait for the list, and the frontend tests and lint were run again on `cbbf4df` (a test-only change; the backend, images and e2e results at `9d65bd8` cover the same application code).
 
 **Status: done.** Every criterion is met and evidenced below. Best guesses made instead of asking are listed at the end.
 
@@ -41,17 +41,17 @@ Tests were written first and seen failing (404 for the routes; missing UI) befor
 
 ## Results
 
-All runs are local and sequential (`checks.sh`), at `57e49b4`. GitHub Actions is down; the user authorised merging on local results.
+All runs are local and sequential (`checks.sh`, then `full0409r3.sh` in the session scratchpad with the same commands), at `9d65bd8` (frontend tests and lint at `cbbf4df`). GitHub Actions is down; the user authorised merging on local results.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against the `rag0409-pg` (pgvector), `rag0409-redis` and `rag0409-rustfs` containers | **1543 passed**, 7 deselected (live); coverage **100%** lines and branches (7156 statements, 794 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **39 files, 480 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0409-pg` (pgvector), `rag0409-redis` and `rag0409-rustfs` containers | **1602 passed**, 7 deselected (live); coverage **100%** lines and branches (7565 statements, 862 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **39 files, 491 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | `make audit` (pip-audit, pnpm audit); gitleaks over this branch's commits | no known vulnerabilities, no leaks | [security.log](security.log), [secret-scan.log](secret-scan.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0409`) | **58 passed**, including `agent-archive.spec.ts`, `playground.spec.ts` and `agent-config.spec.ts` | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0409`) | **61 passed**, including `agent-archive.spec.ts`, `playground.spec.ts` and `agent-config.spec.ts` | [e2e.log](e2e.log) |
 | Infra | not run | this branch changes nothing under `infra/` | |
 
 ## Gaps and best guesses
@@ -64,4 +64,5 @@ All runs are local and sequential (`checks.sh`), at `57e49b4`. GitHub Actions is
   - **The Project's `agent_count`** still counts archived Agents (it is what the Project holds, and 03-11's deletion audit relies on it); only the lists exclude them.
   - **Credential references stay while archived**: an archived Agent can be restored with its Draft, so its credentials remain protected until it is deleted.
   - Serving to Visitors (spec 06) doesn't exist yet; when it does it must refuse archived Agents too (the Glossary's Archive says it stops serving).
+- **Shared disk:** the first rerun after updating hit ENOSPC (another ticket's build filled the disk) in the frontend tests and image build; both were run again once space was free. Logs here are the final runs.
 - **Sandbox limits:** images built with `WITH_PDF=false BUNDLE_MODELS=false` and the egress proxy CA (`build.sh`); e2e ran on the `rag0409` compose project on moved ports (`compose.sandbox.yml`, 47xxx). No real provider was called: fake verifier and fake gateway throughout. GitHub Actions is down; the user authorised merging on local results.
