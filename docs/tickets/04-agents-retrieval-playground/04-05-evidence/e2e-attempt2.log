@@ -1,0 +1,403 @@
+$ (env from e2e.env) make e2e COMPOSE='docker compose -p rag0405 -f docker-compose.yml -f docs/tickets/04-agents-retrieval-playground/04-05-evidence/compose.sandbox.yml' @ f011c49 (images from 0978400; this commit changes only reranker.spec.ts, which runs on the host)
+docker compose -p rag0405 -f docker-compose.yml -f docs/tickets/04-agents-retrieval-playground/04-05-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0405_default Creating 
+ Network rag0405_default Creating 
+ Volume rag0405_postgres-data Creating 
+ Volume rag0405_postgres-data Creating 
+ Volume rag0405_rustfs-data Creating 
+ Volume rag0405_rustfs-data Creating 
+ Volume rag0405_rustfs-data Created 
+ Volume rag0405_rustfs-data Created 
+ Volume rag0405_postgres-data Created 
+ Volume rag0405_postgres-data Created 
+ Network rag0405_default Created 
+ Network rag0405_default Created 
+ Container rag0405-rustfs-1 Creating 
+ Container rag0405-postgres-1 Creating 
+ Container rag0405-redis-1 Creating 
+ Container rag0405-mailpit-1 Creating 
+ Container rag0405-mailpit-1 Created 
+ Container rag0405-rustfs-1 Created 
+ Container rag0405-postgres-1 Created 
+ Container rag0405-redis-1 Created 
+ Container rag0405-worker-1 Creating 
+ Container rag0405-api-1 Creating 
+ Container rag0405-beat-1 Creating 
+ Container rag0405-beat-1 Created 
+ Container rag0405-api-1 Created 
+ Container rag0405-studio-1 Creating 
+ Container rag0405-worker-1 Created 
+ Container rag0405-studio-1 Created 
+ Container rag0405-mailpit-1 Starting 
+ Container rag0405-redis-1 Starting 
+ Container rag0405-rustfs-1 Starting 
+ Container rag0405-postgres-1 Starting 
+ Container rag0405-mailpit-1 Started 
+ Container rag0405-redis-1 Started 
+ Container rag0405-rustfs-1 Started 
+ Container rag0405-postgres-1 Started 
+ Container rag0405-rustfs-1 Waiting 
+ Container rag0405-postgres-1 Waiting 
+ Container rag0405-redis-1 Waiting 
+ Container rag0405-redis-1 Waiting 
+ Container rag0405-rustfs-1 Waiting 
+ Container rag0405-postgres-1 Waiting 
+ Container rag0405-rustfs-1 Waiting 
+ Container rag0405-postgres-1 Waiting 
+ Container rag0405-redis-1 Waiting 
+ Container rag0405-rustfs-1 Healthy 
+ Container rag0405-redis-1 Healthy 
+ Container rag0405-redis-1 Healthy 
+ Container rag0405-rustfs-1 Healthy 
+ Container rag0405-redis-1 Healthy 
+ Container rag0405-rustfs-1 Healthy 
+ Container rag0405-postgres-1 Healthy 
+ Container rag0405-beat-1 Starting 
+ Container rag0405-postgres-1 Healthy 
+ Container rag0405-api-1 Starting 
+ Container rag0405-postgres-1 Healthy 
+ Container rag0405-worker-1 Starting 
+ Container rag0405-beat-1 Started 
+ Container rag0405-api-1 Started 
+ Container rag0405-api-1 Waiting 
+ Container rag0405-worker-1 Started 
+ Container rag0405-api-1 Healthy 
+ Container rag0405-studio-1 Starting 
+ Container rag0405-studio-1 Started 
+ Container rag0405-api-1 Waiting 
+ Container rag0405-postgres-1 Waiting 
+ Container rag0405-worker-1 Waiting 
+ Container rag0405-beat-1 Waiting 
+ Container rag0405-studio-1 Waiting 
+ Container rag0405-mailpit-1 Waiting 
+ Container rag0405-redis-1 Waiting 
+ Container rag0405-rustfs-1 Waiting 
+ Container rag0405-worker-1 Healthy 
+ Container rag0405-postgres-1 Healthy 
+ Container rag0405-rustfs-1 Healthy 
+ Container rag0405-beat-1 Healthy 
+ Container rag0405-mailpit-1 Healthy 
+ Container rag0405-api-1 Healthy 
+ Container rag0405-redis-1 Healthy 
+ Container rag0405-studio-1 Healthy 
+cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend
+> playwright test
+
+
+Running 55 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (975ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.7s)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (450ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (751ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (416ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   4 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.4s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (192ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (282ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (204ms)
+  ✓  12 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (13.9s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (7.0s)
+  ✓  14 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (8.7s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (5.0s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (3.6s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.7s)
+  ✓  11 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (45.6s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (5.1s)
+  ✓  20 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (8.3s)
+  ✓  19 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (12.6s)
+  ✓  21 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (12.8s)
+  ✓  23 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (8.5s)
+  ✓  22 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (20.8s)
+  ✓  24 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (14.5s)
+  ✓  25 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (17.8s)
+  ✓  26 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook (13.1s)
+  ✓  27 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (15.4s)
+  ✓  28 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (18.1s)
+  ✓  29 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (19.7s)
+  ✓  31 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (15.3s)
+  ✘  30 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (30.1s)
+  ✓  32 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (25.3s)
+  ✓  33 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (21.8s)
+  ✓  34 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (16.7s)
+  ✓  35 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (22.6s)
+  ✓  36 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (22.0s)
+  ✓  38 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (16.0s)
+  ✘  37 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (30.3s)
+  ✓  39 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (16.6s)
+  ✓  41 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (5.9s)
+  ✓  42 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (5.6s)
+  ✓  43 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (8.1s)
+  ✓  40 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (42.1s)
+  ✓  44 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (20.9s)
+  ✓  45 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (26.4s)
+  ✘  46 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (30.9s)
+  ✘  47 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (30.4s)
+  ✓  49 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (5.5s)
+  ✓  50 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (5.5s)
+  ✓  48 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (33.6s)
+  ✓  52 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (15.2s)
+  ✓  53 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (13.0s)
+  ✓  51 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (39.6s)
+  ✓  54 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (25.1s)
+  ✓  55 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (17.2s)
+
+
+  1) [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('navigation', { name: 'Organisation' }).getByRole('link', { name: 'Organisation settings' })
+
+
+       8 | async function openSettings(page: Page, tab?: "Members") {
+       9 |   await page.goto("/");
+    > 10 |   await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+         |                                                                                                                     ^
+      11 |   if (tab) {
+      12 |     await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: tab }).click();
+      13 |     await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
+        at openSettings (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend/e2e/tests/members.spec.ts:10:117)
+        at inviteNewEditor (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend/e2e/tests/members.spec.ts:24:3)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend/e2e/tests/members.spec.ts:48:24
+
+    Error Context: test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-members-members-and--7058f--a-Member-whose-access-ends-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins 
+
+    Test timeout of 30000ms exceeded.
+
+    Error Context: test-results/tests-organisation-switche-8b20b-rvives-reloads-and-sign-ins-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-organisation-switche-8b20b-rvives-reloads-and-sign-ins-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-organisation-switche-8b20b-rvives-reloads-and-sign-ins-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: browserContext.close: Test ended.
+    Browser logs:
+
+    <launching> /usr/bin/google-chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,AvoidCorsURLLoaderRestartOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-1k1AHX --remote-debugging-pipe --no-startup-window
+    <launched> pid=5220
+    [pid=5220][err] [5220:5294:1106/085417.740234:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+    [pid=5220][err] [5220:5294:1106/085417.740284:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5294:1106/085417.740296:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+    [pid=5220][err] [5220:5294:1106/085417.740308:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+    [pid=5220][err] [5220:5294:1106/085417.740311:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5294:1106/085417.928052:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5220:1106/085417.933943:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5294:1106/085417.934016:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5220:1106/085417.934070:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5294:1106/085417.934103:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5220:1106/085417.943614:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5294:1106/085417.944192:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5294:1106/085417.944917:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+    [pid=5220][err] [5220:5294:1106/085417.945171:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+    [pid=5220][err] [5220:5220:1106/085417.945351:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5220:1106/085417.946211:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5294:1106/085417.946391:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5220:1106/085417.946914:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5220:1106/085417.946987:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.Properties.GetAll: object_path= /org/freedesktop/UPower/devices/DisplayDevice: unknown error type: 
+    [pid=5220][err] [5220:5220:1106/085417.947013:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5294:1106/085417.947204:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5220:1106/085417.947472:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5220:5294:1106/085417.947559:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+    [pid=5220][err] [5220:5220:1106/085417.947621:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+    [pid=5220][err] [5318:5509:1106/085421.023037:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085421.199021:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085421.220177:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085421.330922:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085421.332019:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085421.332302:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085421.629922:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085427.310524:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085427.310859:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085427.328103:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085427.329349:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085427.631570:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085428.241139:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085428.296823:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085428.759695:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085428.760692:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085428.880096:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085431.028541:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085433.149241:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085433.151080:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085433.152604:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085434.237727:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085434.633441:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085435.164131:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085435.997197:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085435.999066:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085436.005317:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085436.006793:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085436.831316:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085437.385964:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085441.468483:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085442.736633:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085446.850481:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085449.313959:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085450.854600:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085456.675359:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085456.750894:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085456.776107:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085456.894997:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085457.266145:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085457.266297:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085457.266366:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085459.796838:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.062430:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.132329:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.138538:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.258821:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.259145:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.259416:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085506.265476:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.180820:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.181187:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.181957:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.183428:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.822424:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.822664:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.822790:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085512.936235:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085514.846316:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085516.915531:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085516.918555:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085518.283064:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085518.287646:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085518.288190:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085518.288314:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085518.288372:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085518.571151:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085520.396081:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085520.396849:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085521.819140:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085523.206684:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085523.590190:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085524.955909:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085525.887203:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085526.062628:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085526.062949:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085530.694396:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085530.718229:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085530.725129:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085530.745498:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085530.745704:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085530.745898:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085531.208357:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085536.942865:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085537.114923:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085537.952169:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085538.262549:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085538.296213:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085538.444362:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085538.444710:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085538.444986:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085538.820403:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085543.464286:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085543.475477:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085543.496421:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085543.720797:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085543.722040:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085543.722486:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085548.000239:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085548.003681:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085548.005515:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085548.007391:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085548.418326:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085549.689248:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085550.512675:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085550.519627:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085550.749298:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085550.926058:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085550.927998:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085551.098345:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085553.975323:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085554.089693:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085554.102535:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085554.140140:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085554.316710:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085554.317336:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220][err] [5318:5509:1106/085554.494363:ERROR:net/socket/socket_posix.cc:121] CreatePlatformSocket() failed: Address family not supported by protocol (97)
+    [pid=5220] <gracefully close start>
+
+      120 |     await openProjects(editorPage);
+      121 |     await expect(editorPage.getByRole("table", { name: "Projects" }).getByRole("link", { name: "Sales enablement" })).toBeVisible();
+    > 122 |     await editorPage.context().close();
+          |     ^
+      123 |   });
+      124 | });
+      125 |
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend/e2e/tests/projects.spec.ts:122:5
+
+    Error Context: test-results/tests-projects-Projects-an-55e2a-t-only-an-Owner-restores-it-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-projects-Projects-an-55e2a-t-only-an-Owner-restores-it-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-projects-Projects-an-55e2a-t-only-an-Owner-restores-it-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: apiRequestContext.get: Test ended.
+    Call log:
+      - → GET http://localhost:47473/api/organisations/c37a28d8-0e39-4d40-8ae7-c0feffb3efab
+        - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - cookie: studio_session=0mb1-4WtYQRkX3BfrpBnJrDBCm-0KML6mfwhCz54FDI
+
+
+      82 |   await editorPage.goto(`/organisations/${organisationId ?? ""}/settings`);
+      83 |   await expect(editorPage.getByRole("heading", { name: "Security", level: 1 })).toBeVisible();
+    > 84 |   const refused = await editorPage.request.get(`/api/organisations/${organisationId ?? ""}`);
+         |                                            ^
+      85 |   expect(refused.status()).toBe(403);
+      86 |   expect(await refused.json()).toEqual({ detail: MFA_REQUIRED });
+      87 |
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0405/frontend/e2e/tests/require-mfa.spec.ts:84:44
+
+    Error Context: test-results/tests-require-mfa-an-Owner-437e5-o-enrol-on-their-next-visit-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-require-mfa-an-Owner-437e5-o-enrol-on-their-next-visit-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-require-mfa-an-Owner-437e5-o-enrol-on-their-next-visit-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends 
+    [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins 
+    [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it 
+    [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit 
+  51 passed (7.2m)
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:103: e2e] Error 1
+exit 2
