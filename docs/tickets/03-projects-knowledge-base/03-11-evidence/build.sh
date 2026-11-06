@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Sandbox-only `make images`: the same two `docker build`s as the Makefile's `images` target, on the
 # committed Dockerfiles with only the egress proxy's CA and proxy env added to the first stage.
-# WITH_PDF=false and BUNDLE_MODELS=false: Hugging Face (models) is blocked by this sandbox's
-# egress policy and the disk has ~3 GB free, so PyTorch and the models can't be installed here.
+# WITH_PDF=false and BUNDLE_MODELS=false: the shared disk (~8 GB free, six parallel tickets) cannot hold
+# PyTorch and the Docling models; this ticket changes no conversion code, and e2e runs EMBEDDER=fake.
 set -euo pipefail
 WT=$1; TAG=${2:-local}; OUT=$(dirname "$(readlink -f "$0")")
 inject() { awk -v extra="$2" 'NR==1,/^FROM/{ if (/^FROM/ && !done) { print; print extra; done=1; next } } { print }' "$1"; }
