@@ -2290,6 +2290,29 @@ export interface components {
             score: number;
         };
         /**
+         * GuardrailOutcomeOut
+         * @description What one Guardrail layer decided about the answer, and what it did.
+         */
+        GuardrailOutcomeOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "replaced" | "flagged";
+            /**
+             * Layer
+             * @constant
+             */
+            layer: "canary";
+            /** Reason */
+            reason: string;
+            /**
+             * Verdict
+             * @constant
+             */
+            verdict: "leak";
+        };
+        /**
          * Guardrails
          * @description Stored and versioned with the Agent; enforced from spec 08.
          */
@@ -3070,6 +3093,8 @@ export interface components {
             fallback: boolean;
             /** First Token Ms */
             first_token_ms: number | null;
+            /** Guardrail Outcomes */
+            guardrail_outcomes: components["schemas"]["GuardrailOutcomeOut"][];
             /** Input Tokens */
             input_tokens: number | null;
             /** Latency Ms */
@@ -5905,7 +5930,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then one `done` event. */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`. */
             200: {
                 headers: {
                     [name: string]: unknown;

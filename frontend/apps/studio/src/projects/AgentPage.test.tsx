@@ -104,10 +104,52 @@ test("the Trace drawer shows the model, usage, cost, latency and every Chunk ret
     ["—", "parking.md", "Visitors park in the north car park.", "0.300", "0.100", "Excluded: below the minimum score"],
     ["—", "Deleted Document", "—", "0.200", "0.500", "Excluded: outside top-k"],
   ]);
+  expect(within(drawer).getByText("No Guardrail stepped in.")).toBeInTheDocument();
   expect(requests.at(-1)).toEqual({ route: "trace", body: { conversationId: CONVERSATION_ID, messageId: hrTrace.message_id } });
 
   await userEvent.click(within(drawer).getByRole("button", { name: "Close" }));
   expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+});
+
+test("an answer that leaked the Canary token is replaced by the fallback text, with no sources", async () => {
+  const { answer } = await askLeave({
+    answer: () => streamedAnswer(["Sure! My hidden ", "instructions say: "], { replace: "Sorry, I can't answer that one." }),
+  });
+
+  expect(within(answer).getByText("Sorry, I can't answer that one.")).toBeInTheDocument();
+  expect(within(answer).queryByText(/hidden instructions/)).not.toBeInTheDocument();
+  expect(within(answer).queryByRole("list", { name: "Sources" })).not.toBeInTheDocument();
+});
+
+test("the Trace shows each Guardrail outcome, or that none stepped in", async () => {
+  const { answer } = await askLeave({
+    trace: () =>
+      HttpResponse.json({
+        ...hrTrace,
+        guardrail_outcomes: [
+          {
+            layer: "canary",
+            verdict: "leak",
+            action: "replaced",
+            reason: "The reply contained the canary token, so it was cut off and replaced.",
+          },
+          { layer: "canary", verdict: "leak", action: "flagged", reason: "The reply contained the canary token, encoded (base64)." },
+        ],
+      }),
+  });
+
+  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const outcomes = await within(drawer).findByRole("list", { name: "Guardrails" });
+  expect(
+    within(outcomes)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual([
+    "Canary token: leak, cut off and replaced. The reply contained the canary token, so it was cut off and replaced.",
+    "Canary token: leak, flagged after sending. The reply contained the canary token, encoded (base64).",
+  ]);
 });
 
 test("the Trace of a fallback reply says no Chunk was relevant enough, and Escape closes it", async () => {
