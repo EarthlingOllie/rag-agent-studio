@@ -147,6 +147,8 @@ class DocumentOut(BaseModel):
     error_message: str | None
     edition: int
     chunk_count: int
+    # How many of its Chunks the ingestion Guardrail scan flagged as instructions aimed at an AI.
+    flagged_chunk_count: int
     # The Document's Tags, by name.
     tags: list[TagRef]
     created_at: datetime
@@ -164,7 +166,19 @@ class DocumentStatusOut(BaseModel):
     status: DocumentStatus
     error_message: str | None
     chunk_count: int
+    flagged_chunk_count: int
     replacement: ReplacementOut | None
+
+
+class GuardrailFlagOut(BaseModel):
+    """Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI."""
+
+    # What the injection classifier thinks the Chunk is, such as ``prompt_injection``.
+    label: str
+    # How sure the classifier is, from 0 to 1.
+    score: float
+    # What in the Chunk looks like instructions to an AI.
+    reason: str
 
 
 class ChunkOut(BaseModel):
@@ -175,6 +189,8 @@ class ChunkOut(BaseModel):
     page_start: int | None
     page_end: int | None
     embedding_model_id: str
+    # The ingestion Guardrail scan's flag; null when the Chunk wasn't flagged.
+    flag: GuardrailFlagOut | None
 
 
 # The Chunk list's page size: the default, and the most one request may ask for.
@@ -203,7 +219,7 @@ def _replacement_out(staged: StagedEdition | None) -> ReplacementOut | None:
 
 def _document_out(
     document: Document,
-    chunk_count: int,
+    chunks: service.ChunkCounts,
     tags: list[Tag],
     staged: StagedEdition | None = None,
 ) -> DocumentOut:
@@ -216,7 +232,8 @@ def _document_out(
         status=DocumentStatus(document.status),
         error_message=document.error_message,
         edition=document.edition,
-        chunk_count=chunk_count,
+        chunk_count=chunks.total,
+        flagged_chunk_count=chunks.flagged,
         tags=[tag_ref(tag) for tag in tags],
         created_at=document.created_at,
         updated_at=document.updated_at,
@@ -233,7 +250,16 @@ def _chunk_out(chunk: Chunk) -> ChunkOut:
         page_start=chunk.page_start,
         page_end=chunk.page_end,
         embedding_model_id=chunk.embedding_model_id,
+        flag=_flag_out(chunk),
     )
+
+
+def _flag_out(chunk: Chunk) -> GuardrailFlagOut | None:
+    # The three are set together or not at all (``ck_chunks_guardrail_flag_complete``).
+    label, score, reason = chunk.guardrail_label, chunk.guardrail_score, chunk.guardrail_reason
+    if label is None or score is None or reason is None:
+        return None
+    return GuardrailFlagOut(label=label, score=score, reason=reason)
 
 
 @router.post(
@@ -334,7 +360,7 @@ async def confirm_upload(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
     except service.DuplicateDocumentError as duplicate:
         return _duplicate(duplicate)
-    queued = _document_out(document, chunk_count=0, tags=[])
+    queued = _document_out(document, service.ChunkCounts(), tags=[])
     await enqueue_ingestion(document.id)
     return queued
 
@@ -366,7 +392,7 @@ async def list_documents(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     tags = await tags_of(db, [s.document.id for s in summaries])
     return [
-        _document_out(s.document, s.chunk_count, tags.get(s.document.id, []), s.replacement)
+        _document_out(s.document, s.chunks, tags.get(s.document.id, []), s.replacement)
         for s in summaries
     ]
 
@@ -388,7 +414,8 @@ async def list_document_statuses(
             id=s.document.id,
             status=DocumentStatus(s.document.status),
             error_message=s.document.error_message,
-            chunk_count=s.chunk_count,
+            chunk_count=s.chunks.total,
+            flagged_chunk_count=s.chunks.flagged,
             replacement=_replacement_out(s.replacement),
         )
         for s in summaries
@@ -407,7 +434,7 @@ async def get_document(
     tags = await tags_of(db, [opened.document.id])
     summary = _document_out(
         opened.document,
-        opened.chunk_count,
+        opened.chunks,
         tags.get(opened.document.id, []),
         opened.replacement,
     )
@@ -547,7 +574,7 @@ async def replace_document(
     tags = await tags_of(db, [document.id])
     accepted = _document_out(
         document,
-        await service.chunk_count(db, document),
+        await service.chunk_counts(db, document),
         tags.get(document.id, []),
         replacement.staged,
     )

@@ -63,4 +63,32 @@ test.describe("Documents", () => {
     expect(download.suggestedFilename()).toBe("northwind-staff-handbook.md");
     expect(readFileSync(await download.path(), "utf8")).toBe(readFileSync(HANDBOOK, "utf8"));
   });
+
+  test("the ingestion scan flags the injection planted in the seed handbook", async ({ signedInPage: page, makeAxeBuilder }) => {
+    await page.goto("/");
+    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    const form = page.getByRole("form", { name: "New Project" });
+    await form.getByLabel("Name").fill("Handbook scan");
+    await form.getByRole("button", { name: "Create Project" }).click();
+    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
+    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
+
+    // Columns: select, Name, Status, Tags, Chunks, Flagged, Size. One Chunk is flagged, by the heuristic classifier.
+    await expect(row.getByRole("cell").nth(5)).toHaveText("1");
+    await row.getByRole("link", { name: "northwind-staff-handbook.md" }).click();
+
+    await expect(page.getByText("1 Chunk flagged as possible instructions to an AI.")).toBeVisible();
+    const chunks = page.getByRole("region", { name: "Chunks" });
+    const planted = chunks.getByRole("listitem").filter({ has: page.getByRole("note", { name: "Guardrail flag" }) });
+    await expect(planted).toHaveCount(1);
+    await expect(planted.getByText("Northwind Traders staff handbook › A note for AI assistants")).toBeVisible();
+    await expect(planted.getByRole("note", { name: "Guardrail flag" })).toContainText(
+      'Flagged: Prompt injection, score 0.96. Tells the AI to ignore its instructions ("Ignore all previous instructions").',
+    );
+    // The handbook's ordinary policy text isn't flagged.
+    const leave = chunks.getByRole("listitem").filter({ hasText: "25 days of annual leave" });
+    await expect(leave.getByRole("note")).toHaveCount(0);
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+  });
 });

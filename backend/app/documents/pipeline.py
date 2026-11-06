@@ -6,7 +6,9 @@
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
 5. Embed the Chunks through the embedder port, in batches: the local model, or the Project's
    provider model through the model gateway with its Provider Credential.
-6. Write the Chunks and set Ready, in one transaction.
+6. Scan the Chunks through the injection-classifier port (the ingestion Guardrail scan): each
+   Chunk the classifier flags as instructions aimed at an AI keeps its label, score and reason.
+7. Write the Chunks and set Ready, in one transaction.
 
 A replacement goes through the same steps as the Document's staged edition: its Chunks are
 written under the new edition number, and in the same transaction the staged edition is swapped
@@ -14,7 +16,7 @@ in and the old edition's Chunks removed, so retrieval goes from the old edition 
 in one step. Until then, and if the replacement fails, the old edition keeps serving.
 
 A failure sets Failed with a readable message. Ticket 03-04 categorises failures and retries
-transient ones; the ingestion Guardrail scan joins between steps 5 and 6 in ticket 03-07.
+transient ones.
 """
 
 import asyncio
@@ -142,6 +144,7 @@ async def ingest(
         tokenizer = embedder.tokenizer(min(chunk_max_tokens, embedder.model.max_tokens))
         drafts = await asyncio.to_thread(chunk_document, converted, tokenizer)
         vectors = await _embed(embedder, drafts)
+        flags = await asyncio.to_thread(ports.classifier.classify, [draft.text for draft in drafts])
     except Exception:
         logger.exception("Ingestion failed", extra={"document_id": str(document_id)})
         await _fail(sessionmaker, job, delete_objects)
@@ -166,8 +169,13 @@ async def ingest(
                     page_end=draft.page_end,
                     embedding=vector,
                     embedding_model_id=model_id,
+                    guardrail_label=flag.label if flag else None,
+                    guardrail_score=flag.score if flag else None,
+                    guardrail_reason=flag.reason if flag else None,
                 )
-                for ordinal, (draft, vector) in enumerate(zip(drafts, vectors, strict=True))
+                for ordinal, (draft, vector, flag) in enumerate(
+                    zip(drafts, vectors, flags, strict=True)
+                )
             )
             replaced = await _swap(session, document) if job.staged else []
             document.status = DocumentStatus.READY

@@ -22,6 +22,7 @@ from pathlib import PurePath
 from redis.asyncio import Redis
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.selectable import ScalarSelect
 
 from app import audit
 from app.documents.models import (
@@ -252,9 +253,29 @@ async def confirm_upload(
 
 
 @dataclass(frozen=True)
+class ChunkCounts:
+    """How many Chunks a Document's current edition has, and how many of them the ingestion
+    Guardrail scan flagged."""
+
+    total: int = 0
+    flagged: int = 0
+
+
+def _chunk_counts() -> tuple[ScalarSelect[int], ScalarSelect[int]]:
+    """Correlated subqueries counting the current edition's Chunks, and its flagged ones, for
+    a query over ``Document``."""
+    current = (Chunk.document_id == Document.id, Chunk.edition == Document.edition)
+    total = select(func.count()).where(*current).scalar_subquery()
+    flagged = (
+        select(func.count()).where(*current, Chunk.guardrail_label.is_not(None)).scalar_subquery()
+    )
+    return total, flagged
+
+
+@dataclass(frozen=True)
 class DocumentSummary:
     document: Document
-    chunk_count: int
+    chunks: ChunkCounts
     # A newer edition being ingested, or one that failed; ``None`` when there is neither.
     replacement: StagedEdition | None
 
@@ -286,13 +307,9 @@ async def list_documents(
 ) -> list[DocumentSummary]:
     """The Project's Documents, newest first, with their Chunk counts and replacements."""
     project = await projects.get_project(session, scope, project_id)
-    chunk_count = (
-        select(func.count())
-        .where(Chunk.document_id == Document.id, Chunk.edition == Document.edition)
-        .scalar_subquery()
-    )
+    total, flagged = _chunk_counts()
     query = (
-        select(Document, chunk_count, StagedEdition)
+        select(Document, total, flagged, StagedEdition)
         .outerjoin(StagedEdition, StagedEdition.document_id == Document.id)
         .where(Document.project_id == project.id)
     )
@@ -307,7 +324,10 @@ async def list_documents(
             .exists()
         )
     rows = await session.execute(query.order_by(Document.created_at.desc(), Document.name))
-    return [DocumentSummary(document, count, staged) for document, count, staged in rows]
+    return [
+        DocumentSummary(document, ChunkCounts(count, flagged_count), staged)
+        for document, count, flagged_count, staged in rows
+    ]
 
 
 async def get_document(
@@ -325,7 +345,7 @@ async def get_document(
 @dataclass(frozen=True)
 class OpenedDocument:
     document: Document
-    chunk_count: int
+    chunks: ChunkCounts
     # The converted markdown; ``None`` until the Document has been converted.
     markdown: str | None
     # A newer edition being ingested, if any.
@@ -341,16 +361,12 @@ async def open_document(
 ) -> OpenedDocument:
     """One Document, with its Chunk count and the markdown Docling converted it to."""
     document = await get_document(session, scope, project_id, document_id)
-    chunk_count = await session.scalar(
-        select(func.count()).where(
-            Chunk.document_id == document.id, Chunk.edition == document.edition
-        )
-    )
+    counts = await chunk_counts(session, document)
     markdown = None
     if document.markdown_key is not None:
         markdown = (await store.get(document.markdown_key)).decode()
     replacement = await session.get(StagedEdition, document.id)
-    return OpenedDocument(document, chunk_count or 0, markdown, replacement)
+    return OpenedDocument(document, counts, markdown, replacement)
 
 
 @dataclass(frozen=True)
@@ -484,11 +500,8 @@ async def replace_document(
     return Replacement(document, staged, discarded)
 
 
-async def chunk_count(session: AsyncSession, document: Document) -> int:
-    """How many Chunks the Document's current edition has."""
-    count = await session.scalar(
-        select(func.count()).where(
-            Chunk.document_id == document.id, Chunk.edition == document.edition
-        )
-    )
-    return count or 0
+async def chunk_counts(session: AsyncSession, document: Document) -> ChunkCounts:
+    """How many Chunks the Document's current edition has, and how many are flagged."""
+    total, flagged = _chunk_counts()
+    row = (await session.execute(select(total, flagged).where(Document.id == document.id))).one()
+    return ChunkCounts(row[0], row[1])

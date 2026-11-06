@@ -452,6 +452,7 @@ function DocumentRows({
           <th scope="col">Status</th>
           <th scope="col">Tags</th>
           <th scope="col">Chunks</th>
+          <th scope="col">Flagged</th>
           <th scope="col">Size</th>
           {editable && <th scope="col">Actions</th>}
         </tr>
@@ -522,6 +523,14 @@ function DocumentRows({
               )}
             </td>
             <td>{document.chunk_count}</td>
+            <td>
+              {/* Chunks the ingestion Guardrail scan flagged: emphasised, so risky Documents stand out. */}
+              {document.flagged_chunk_count > 0 ? (
+                <strong className="text-amber-800">{document.flagged_chunk_count}</strong>
+              ) : (
+                document.flagged_chunk_count
+              )}
+            </td>
             <td>{formatSize(document.size_bytes)}</td>
             {editable && (
               <td>

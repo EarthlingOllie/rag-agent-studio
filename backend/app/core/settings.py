@@ -114,6 +114,9 @@ class Settings(BaseSettings):
     # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
     # deterministic hash-based fake (tests, and stacks that can't download the model).
     embedder: Literal["local", "fake"] = "local"
+    # Scans Chunks for instructions aimed at an AI during ingestion: the heuristic baseline, or
+    # the rule-driven fake (tests). Spec 08 adds the local ONNX classifier.
+    injection_classifier: Literal["heuristic", "fake"] = "heuristic"
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
