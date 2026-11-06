@@ -106,12 +106,14 @@ export const hrTag: Tag = {
   id: "d1000000-0000-4000-8000-000000000001",
   name: "HR",
   document_count: 2,
+  agents: [],
   created_at: "2026-11-05T09:00:00Z",
 };
 export const payTag: Tag = {
   id: "d1000000-0000-4000-8000-000000000002",
   name: "Pay",
   document_count: 1,
+  agents: [],
   created_at: "2026-11-05T09:00:00Z",
 };
 
@@ -142,6 +144,8 @@ export const oldHelper: Agent = {
 };
 
 export const CONVERSATION_ID = "c0000000-0000-4000-8000-000000000001";
+/** The Conversation a reset starts: each later start gets the next ID. */
+export const RESET_CONVERSATION_ID = "c0000000-0000-4000-8000-000000000002";
 
 const done = {
   message_id: "e0000000-0000-4000-8000-000000000001",
@@ -226,6 +230,17 @@ export const hrTrace: Schemas["TraceOut"] = {
       cited: false,
       excluded_reason: "outside_top_k",
     },
+    {
+      chunk_id: "f0000000-0000-4000-8000-000000000005",
+      document_id: "d0000000-0000-4000-8000-000000000005",
+      document_name: "price-list.md",
+      text: "Model SKU-4471 ships with a two-year warranty.",
+      score: 0.15,
+      relevance: 0.6,
+      rank: null,
+      cited: false,
+      excluded_reason: "outside_tags",
+    },
   ],
 };
 
@@ -240,6 +255,8 @@ export function streamedAnswer(
     end?: boolean;
     citations?: (typeof leaveCitation)[];
     replace?: string;
+    /** Ends the stream with a provider `error` event instead of `done`. */
+    error?: { code: string; message: string };
   } = {},
 ) {
   const body =
@@ -250,7 +267,8 @@ export function streamedAnswer(
     (options.citations ?? [])
       .map((citation) => sse("citation", citation))
       .join("") +
-    (options.end === false ? "" : sse("done", done));
+    (options.error ? sse("error", options.error) : "") +
+    (options.end === false || options.error ? "" : sse("done", done));
   const encoder = new TextEncoder();
   const pieces = [body.slice(0, 7), body.slice(7, 40), body.slice(40)];
   return new HttpResponse(
@@ -271,9 +289,11 @@ export function streamedAnswer(
 export function fakeAgentsApi(
   options: {
     agents?: Agent[];
-    answer?: (question: string) => Response;
+    answer?: (question: string) => Response | Promise<Response>;
     startStatus?: number;
     startDetail?: string;
+    /** Decides the status of each start after the first (a reset) instead of 201. */
+    restartStatus?: number;
     trace?: () => Response;
     /** Decides each Draft save's response instead of accepting it. */
     saveDraft?: (
@@ -412,7 +432,15 @@ export function fakeAgentsApi(
     http.post(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/playground/conversations",
       ({ params }) => {
+        const starts = requests.filter(
+          (request) => request.route === "start",
+        ).length;
         requests.push({ route: "start" });
+        if (starts > 0 && options.restartStatus)
+          return HttpResponse.json(
+            { detail: "This Agent is archived." },
+            { status: options.restartStatus },
+          );
         if (options.startStatus)
           return HttpResponse.json(
             {
@@ -424,7 +452,7 @@ export function fakeAgentsApi(
           );
         return HttpResponse.json(
           {
-            id: CONVERSATION_ID,
+            id: `c0000000-0000-4000-8000-00000000000${String(starts + 1)}`,
             agent_id: params.agentId as string,
             is_playground: true,
             created_at: "2026-11-05T09:00:00Z",

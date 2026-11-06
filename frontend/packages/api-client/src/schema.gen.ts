@@ -1428,7 +1428,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Tag
-         * @description Deletes a Tag and takes it off every Document. The Documents stay.
+         * @description Deletes a Tag and takes it off every Document, and out of every Agent Draft scoped to it
+         *     (the Tag's ``agents``). The Documents and Agents stay.
          */
         delete: operations["deleteTag"];
         options?: never;
@@ -2932,6 +2933,19 @@ export interface components {
              */
             api_key: string;
         };
+        /**
+         * ScopedAgentOut
+         * @description An Agent whose Draft is scoped to the Tag.
+         */
+        ScopedAgentOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** SendMessageRequest */
         SendMessageRequest: {
             /** Content */
@@ -3058,6 +3072,8 @@ export interface components {
         };
         /** TagOut */
         TagOut: {
+            /** Agents */
+            agents: components["schemas"]["ScopedAgentOut"][];
             /**
              * Created At
              * Format: date-time
@@ -3226,7 +3242,7 @@ export interface components {
             /** Document Name */
             document_name: string | null;
             /** Excluded Reason */
-            excluded_reason: ("below_min_score" | "outside_top_k") | null;
+            excluded_reason: ("below_min_score" | "outside_top_k" | "outside_tags") | null;
             /** Rank */
             rank: number | null;
             /** Relevance */
@@ -6213,7 +6229,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`. */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;

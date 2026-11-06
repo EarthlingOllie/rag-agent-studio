@@ -3294,6 +3294,26 @@
         "title": "RotateCredentialRequest",
         "type": "object"
       },
+      "ScopedAgentOut": {
+        "description": "An Agent whose Draft is scoped to the Tag.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ScopedAgentOut",
+        "type": "object"
+      },
       "SendMessageRequest": {
         "properties": {
           "content": {
@@ -3600,6 +3620,13 @@
       },
       "TagOut": {
         "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/ScopedAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3623,6 +3650,7 @@
           "id",
           "name",
           "document_count",
+          "agents",
           "created_at"
         ],
         "title": "TagOut",
@@ -4039,7 +4067,8 @@
               {
                 "enum": [
                   "below_min_score",
-                  "outside_top_k"
+                  "outside_top_k",
+                  "outside_tags"
                 ],
                 "type": "string"
               },
@@ -8516,7 +8545,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`."
+            "description": "Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`)."
           },
           "404": {
             "content": {
@@ -10427,7 +10456,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}": {
       "delete": {
-        "description": "Deletes a Tag and takes it off every Document. The Documents stay.",
+        "description": "Deletes a Tag and takes it off every Document, and out of every Agent Draft scoped to it\n(the Tag's ``agents``). The Documents and Agents stay.",
         "operationId": "deleteTag",
         "parameters": [
           {

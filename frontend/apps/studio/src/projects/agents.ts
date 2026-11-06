@@ -29,6 +29,24 @@ export type AnswerDone = {
   chunks: { chunk_id: string; score: number; rank: number }[];
 };
 
+/** Why the model provider failed, from a Playground stream's `error` event. */
+export type ProviderErrorCode =
+  | "invalid_key"
+  | "rate_limited"
+  | "model_unavailable"
+  | "provider_error";
+
+/** The provider failed while answering: the stream ended with an `error` event, no answer. */
+export class ProviderError extends Error {
+  constructor(
+    readonly code: ProviderErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ProviderError";
+  }
+}
+
 function failed(response: Response, error: unknown): ProjectRequestError {
   const detail = (error as { detail?: unknown }).detail;
   return new ProjectRequestError(
@@ -40,6 +58,7 @@ function failed(response: Response, error: unknown): ProjectRequestError {
 /** What to tell the Editor about a failed Agent or Playground request. */
 export function agentFailure(error: Error | null): string | undefined {
   if (error === null) return undefined;
+  if (error instanceof ProviderError) return error.message;
   if (
     error instanceof ProjectRequestError &&
     error.detail &&
@@ -275,7 +294,8 @@ function parseEvent(block: string): StreamEvent {
  * Asks the Agent's Draft a question. `onToken` receives the answer as it streams in, and
  * `onCitation` each Chunk it cites; `onReplace` the text that replaces everything streamed so
  * far when the answer leaked the Canary token. The returned promise resolves with the `done`
- * event once the answer is complete and saved.
+ * event once the answer is complete and saved, or rejects with a `ProviderError` when the
+ * stream ends with an `error` event because the model provider failed.
  */
 export async function askPlayground(
   path: AgentPath & { conversation_id: string },
@@ -307,6 +327,13 @@ export async function askPlayground(
       if (event.event === "replace")
         onReplace((event.data as { text: string }).text);
       if (event.event === "done") return event.data as AnswerDone;
+      if (event.event === "error") {
+        const { code, message } = event.data as {
+          code: ProviderErrorCode;
+          message: string;
+        };
+        throw new ProviderError(code, message);
+      }
     }
   }
   throw new Error("The answer ended before it was complete.");

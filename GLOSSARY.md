@@ -342,7 +342,11 @@ What an Agent replies, in its own words, when retrieval finds nothing relevant. 
 _Avoid_: Default answer, "I don't know" message
 
 **Excluded Chunk**:
-A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, or outside the Top-k. It feeds the Trace.
+A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, outside the Top-k, or outside the Agent's Tags (Tag scoping). It feeds the Trace.
+
+**Tag scoping**:
+Limiting an Agent to the Documents carrying at least one of the Tags its AgentConfig names, so several Agents can share one Project but see different material. Both searches of Hybrid search are limited before fusion; no Tags searches every Document. The Tags must be the Agent's Project's own. The best Top-k Chunks it left out are shown in the Trace as Excluded Chunks. Deleting a Tag takes it out of the Drafts scoped to it, and the Studio first warns which Agents those are, since an Agent left with no Tags searches every Document.
+_Avoid_: Tag filter, document permissions, ACL
 
 **Markdown editor**:
 The Studio's editor for prompt fields (an Agent's system prompt, Project Instructions). It shows markdown formatted but stores markdown: text is kept exactly until it is edited, and its Markdown view edits the stored text itself.
@@ -386,6 +390,14 @@ The place in the Studio where Members chat with a Draft. Its Conversations are e
 
 **Playground Conversation**:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
+
+**Playground reset**:
+Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was.
+_Avoid_: Clear, restart, new chat
+
+**Provider error**:
+A model provider's failure while answering, reported at the end of the answer's stream as one of four kinds, each with a readable message: invalid key, rate limited (including an exhausted quota), model unavailable, or another provider error. No answer is saved, so the question is not among the remembered turns.
+_Avoid_: Model error, API error, crash
 
 **Embed Snippet**:
 The code an Organisation pastes into its site to show an Agent.
