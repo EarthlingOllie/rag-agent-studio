@@ -1,4 +1,4 @@
-$ make test-backend (TEST_* -> rag0406-pg/redis/rustfs) @ 811bcc8
+$ make test-backend (TEST_* -> rag0406-pg/redis/rustfs) @ ad97c2b (merge of origin/candidate 9e5a8bb + round-2 fixes)
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -8,28 +8,31 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 1026 items / 5 deselected / 1021 selected
+collected 1049 items / 5 deselected / 1044 selected
 
 tests/integration/test_agents.py ....................                    [  1%]
 tests/integration/test_audit_events.py ...................               [  3%]
 tests/integration/test_bedrock_credentials.py .......................... [  6%]
 ............                                                             [  7%]
 tests/integration/test_chunk_storage.py ...                              [  7%]
-tests/integration/test_citations_trace.py .......                        [  8%]
+tests/integration/test_citations_trace.py ........                       [  8%]
 tests/integration/test_default_model.py ....................             [ 10%]
 tests/integration/test_document_editions.py ...............              [ 11%]
+tests/integration/test_document_viewer.py .....                          [ 12%]
 tests/integration/test_documents.py .....................                [ 14%]
 tests/integration/test_health.py ...                                     [ 14%]
 tests/integration/test_invites.py ..............................         [ 17%]
-tests/integration/test_logging.py .......                                [ 17%]
-tests/integration/test_mailer.py ........                                [ 18%]
+tests/integration/test_logging.py .......                                [ 18%]
+tests/integration/test_mailer.py {"timestamp": "2026-11-06T00:02:36.447549+00:00", "level": "INFO", "logger": "mail.log", "message": "('127.0.0.1', 58334) connection lost", "service": "api"}
+{"timestamp": "2026-11-06T00:02:36.447859+00:00", "level": "INFO", "logger": "mail.log", "message": "('127.0.0.1', 58334) Connection lost during _handle_client()", "service": "api"}
+........                                [ 18%]
 tests/integration/test_members.py ...............                        [ 20%]
 tests/integration/test_mfa.py .....................................      [ 23%]
-tests/integration/test_migrations.py ..                                  [ 23%]
+tests/integration/test_migrations.py ..                                  [ 24%]
 tests/integration/test_no_secret_in_responses.py ....                    [ 24%]
-tests/integration/test_object_store.py .......                           [ 25%]
+tests/integration/test_object_store.py ........                          [ 25%]
 tests/integration/test_openapi.py ..                                     [ 25%]
-tests/integration/test_organisation_switcher.py .......                  [ 25%]
+tests/integration/test_organisation_switcher.py .......                  [ 26%]
 tests/integration/test_password_audit_events.py ..                       [ 26%]
 tests/integration/test_password_reset.py ...........                     [ 27%]
 tests/integration/test_playground.py ..........                          [ 28%]
@@ -38,8 +41,8 @@ tests/integration/test_profile.py .......                                [ 32%]
 tests/integration/test_projects.py ....................                  [ 34%]
 tests/integration/test_provider_credentials.py ......................... [ 36%]
 ...........                                                              [ 37%]
-tests/integration/test_require_mfa.py .................................. [ 41%]
-................................                                         [ 44%]
+tests/integration/test_require_mfa.py .................................. [ 40%]
+..................................                                       [ 44%]
 tests/integration/test_retrieval.py ..........                           [ 45%]
 tests/integration/test_settings.py ....                                  [ 45%]
 tests/integration/test_sign_in_and_out.py ........                       [ 46%]
@@ -50,20 +53,20 @@ tests/integration/test_telemetry.py ........                             [ 50%]
 tests/integration/test_tenant_isolation.py ............................. [ 53%]
 ........................................................................ [ 60%]
 ........................................................................ [ 67%]
-........................................................................ [ 74%]
-........................................................................ [ 81%]
-....................                                                     [ 83%]
-tests/integration/test_theme.py .....................                    [ 85%]
+........................................................................ [ 73%]
+........................................................................ [ 80%]
+..................................                                       [ 84%]
+tests/integration/test_theme.py .....................                    [ 86%]
 tests/integration/test_worker_entrypoint.py ....                         [ 86%]
 tests/integration/test_worker_health.py ....                             [ 86%]
 tests/unit/test_bedrock_verifier.py ...............................      [ 89%]
 tests/unit/test_chunking.py .....                                        [ 90%]
-tests/unit/test_cost.py .........                                        [ 90%]
+tests/unit/test_cost.py .........                                        [ 91%]
 tests/unit/test_docling_converter.py ..                                  [ 91%]
-tests/unit/test_envelope_encryption.py .................                 [ 92%]
+tests/unit/test_envelope_encryption.py .................                 [ 93%]
 tests/unit/test_http_credential_verifier.py ............................ [ 95%]
 .                                                                        [ 95%]
-tests/unit/test_ingestion_ports.py ...                                   [ 95%]
+tests/unit/test_ingestion_ports.py ...                                   [ 96%]
 tests/unit/test_kms_key_wrapper.py ........                              [ 96%]
 tests/unit/test_model_gateway.py ..............................          [ 99%]
 tests/unit/test_prompt_assembly.py ...                                   [100%]
@@ -97,13 +100,13 @@ app/auth/service.py                      94      0     18      0   100%
 app/auth/sessions.py                     34      0      0      0   100%
 app/auth/throttle.py                     76      0     18      0   100%
 app/conversations/__init__.py             0      0      0      0   100%
-app/conversations/models.py              45      0      0      0   100%
+app/conversations/models.py              46      0      0      0   100%
 app/core/__init__.py                      0      0      0      0   100%
 app/core/clock.py                        11      0      0      0   100%
 app/core/db.py                           16      0      0      0   100%
 app/core/deps.py                          7      0      0      0   100%
 app/core/logs.py                         59      0     18      0   100%
-app/core/settings.py                     78      0      4      0   100%
+app/core/settings.py                     79      0      4      0   100%
 app/core/telemetry.py                    73      0     10      0   100%
 app/credentials/__init__.py               0      0      0      0   100%
 app/credentials/adapters.py              24      0      2      0   100%
@@ -125,13 +128,13 @@ app/default_model/api.py                 43      0      0      0   100%
 app/default_model/models.py              11      0      0      0   100%
 app/default_model/service.py             60      0     10      0   100%
 app/documents/__init__.py                 0      0      0      0   100%
-app/documents/api.py                    199      0      4      0   100%
+app/documents/api.py                    225      0      4      0   100%
 app/documents/chunking.py                20      0      2      0   100%
 app/documents/converter.py               47      0     14      0   100%
 app/documents/models.py                  71      0      2      0   100%
 app/documents/pipeline.py               111      0     22      0   100%
 app/documents/ports.py                   29      0      4      0   100%
-app/documents/service.py                177      0     26      0   100%
+app/documents/service.py                197      0     28      0   100%
 app/documents/tasks.py                   29      0      2      0   100%
 app/embeddings/__init__.py                0      0      0      0   100%
 app/embeddings/fake.py                   37      0      2      0   100%
@@ -153,7 +156,7 @@ app/mail/templates.py                    19      0      2      0   100%
 app/main.py                              81      0      4      0   100%
 app/openapi.py                            6      0      0      0   100%
 app/playground/__init__.py                0      0      0      0   100%
-app/playground/api.py                   117      0      6      0   100%
+app/playground/api.py                   118      0      6      0   100%
 app/playground/service.py               121      0     16      0   100%
 app/pricing/__init__.py                   0      0      0      0   100%
 app/pricing/api.py                       70      0      0      0   100%
@@ -174,9 +177,9 @@ app/runtime/runtime.py                   68      0     12      0   100%
 app/serve.py                              0      0      0      0   100%
 app/storage/__init__.py                   2      0      0      0   100%
 app/storage/factory.py                   11      0      2      0   100%
-app/storage/memory.py                    18      0      0      0   100%
-app/storage/port.py                       7      0      0      0   100%
-app/storage/s3.py                        38      0      4      0   100%
+app/storage/memory.py                    21      0      0      0   100%
+app/storage/port.py                      12      0      0      0   100%
+app/storage/s3.py                        41      0      4      0   100%
 app/tags/__init__.py                      0      0      0      0   100%
 app/tags/api.py                         104      0      0      0   100%
 app/tags/models.py                       19      0      0      0   100%
@@ -204,9 +207,9 @@ app/worker/celery_app.py                  8      0      0      0   100%
 app/worker/main.py                       16      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                  5342      0    520      0   100%
+TOTAL                                  5402      0    522      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=============== 1021 passed, 5 deselected in 1204.10s (0:20:04) ================
-{"name": "anthropic.messages.create", "context": {"trace_id": "0x01a1adf6945e76de888c706ef0fe1f46", "span_id": "0xf08647a45e8e1d99", "trace_state": "[]"}, "kind": "SpanKind.CLIENT", "parent_id": null, "start_time": "2026-11-05T23:06:20.638424Z", "end_time": "2026-11-05T23:06:21.162213Z", "status": {"status_code": "OK"}, "attributes": {"server.address": "api.anthropic.com", "server.port": 443, "http.request.method": "POST", "http.route": "/v1/messages", "gen_ai.provider.name": "anthropic", "gen_ai.operation.name": "chat", "gen_ai.request.model": "claude-haiku-4-5", "gen_ai.request.max_tokens": 64000, "gen_ai.request.stream": true, "logfire.span_type": "span", "logfire.msg": "anthropic.messages.create", "url.scheme": "https", "url.path": "/v1/messages", "url.full": "https://api.anthropic.com/v1/messages", "http.response.status_code": 200, "gen_ai.response.time_to_first_chunk": 0.5228555, "gen_ai.response.id": "msg_01", "gen_ai.response.model": "claude-haiku-4-5", "anthropic.message.stop_reason": "end_turn", "gen_ai.usage.input_tokens": 3, "gen_ai.usage.output_tokens": 1}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]", "host.name": "vm", "host.arch": "x86_64", "host.id": "d165c2d88d894a4787be219662b439ad", "os.type": "linux", "os.version": "6.18.44-fc-v242", "service.instance.id": "f56e3155-8acb-4f32-96c4-d03049fb0fd2", "service.version": "811bcc847f3d8b5a7f1627a0df2608eee54b8b19", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "test", "logfire.version": "5.4.0", "process.pid": 5157}, "schema_url": ""}}
+=============== 1044 passed, 5 deselected in 1214.73s (0:20:14) ================
+{"name": "anthropic.messages.create", "context": {"trace_id": "0x01a1ae399622d596c0c35376c313087b", "span_id": "0xd6cb382263ba3b50", "trace_state": "[]"}, "kind": "SpanKind.CLIENT", "parent_id": null, "start_time": "2026-11-06T00:19:32.002818Z", "end_time": "2026-11-06T00:19:32.419140Z", "status": {"status_code": "OK"}, "attributes": {"server.address": "api.anthropic.com", "server.port": 443, "http.request.method": "POST", "http.route": "/v1/messages", "gen_ai.provider.name": "anthropic", "gen_ai.operation.name": "chat", "gen_ai.request.model": "claude-haiku-4-5", "gen_ai.request.max_tokens": 64000, "gen_ai.request.stream": true, "logfire.span_type": "span", "logfire.msg": "anthropic.messages.create", "url.scheme": "https", "url.path": "/v1/messages", "url.full": "https://api.anthropic.com/v1/messages", "http.response.status_code": 200, "gen_ai.response.time_to_first_chunk": 0.415657899, "gen_ai.response.id": "msg_01", "gen_ai.response.model": "claude-haiku-4-5", "anthropic.message.stop_reason": "end_turn", "gen_ai.usage.input_tokens": 3, "gen_ai.usage.output_tokens": 1}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]", "host.name": "vm", "host.arch": "x86_64", "host.id": "d165c2d88d894a4787be219662b439ad", "os.type": "linux", "os.version": "6.18.44-fc-v242", "service.instance.id": "df166a54-5070-4a8b-bc79-659136f15366", "service.version": "ad97c2ba32e28e45f76c2e685162aa49e28a13dc", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "test", "logfire.version": "5.4.0", "process.pid": 31454}, "schema_url": ""}}
 exit 0
