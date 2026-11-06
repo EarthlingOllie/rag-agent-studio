@@ -8,7 +8,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
-from app.storage.port import ObjectNotFoundError
+from app.storage.port import ObjectNotFoundError, attachment_disposition
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
@@ -65,6 +65,19 @@ class S3ObjectStore:
         url: str = self._presigner.generate_presigned_url(
             "put_object",
             Params={"Bucket": self.bucket, "Key": key, "ContentType": content_type},
+            ExpiresIn=expires_in,
+        )
+        return url
+
+    def presign_get(self, key: str, *, filename: str, content_type: str, expires_in: int) -> str:
+        url: str = self._presigner.generate_presigned_url(
+            "get_object",
+            Params={
+                "Bucket": self.bucket,
+                "Key": key,
+                "ResponseContentType": content_type,
+                "ResponseContentDisposition": attachment_disposition(filename),
+            },
             ExpiresIn=expires_in,
         )
         return url
