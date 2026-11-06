@@ -103,6 +103,7 @@ test("the Trace drawer shows the model, usage, cost, latency and every Chunk ret
     ["C2", "expenses.md", "Claim expenses within 30 days.", "0.510", "0.400", "Given, not cited"],
     ["—", "parking.md", "Visitors park in the north car park.", "0.300", "0.100", "Excluded: below the minimum score"],
     ["—", "Deleted Document", "—", "0.200", "0.500", "Excluded: outside top-k"],
+    ["—", "price-list.md", "Model SKU-4471 ships with a two-year warranty.", "0.150", "0.600", "Excluded: outside the Agent's Tags"],
   ]);
   expect(within(drawer).getByText("No Guardrail stepped in.")).toBeInTheDocument();
   expect(requests.at(-1)).toEqual({ route: "trace", body: { conversationId: CONVERSATION_ID, messageId: hrTrace.message_id } });
