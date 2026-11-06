@@ -107,6 +107,12 @@ def provider_setup_message(reason: str) -> str:
     return f"The Embedding Model's provider can't be used: {reason} Retry once it is fixed."
 
 
+MODEL_CHANGED = (
+    "The Project's Embedding Model changed while this Document was processed. "
+    "Processing it again with the new model."
+)
+
+
 def provider_retrying_message(next_attempt: int, max_attempts: int) -> str:
     return (
         "The Embedding Model's provider didn't respond. Retrying automatically "

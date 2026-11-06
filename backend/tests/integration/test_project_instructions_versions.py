@@ -458,7 +458,7 @@ async def test_the_migration_turns_existing_instructions_into_the_draft_and_v1(
     await save_draft(owner, with_rules, "Be kind.")
     without_rules = await create_project(owner, "Without rules")
     # Back to spec 04's schema, where the Instructions were one field; then migrate forward.
-    await asyncio.to_thread(_migrate, "downgrade", "0023_erase_organisation")
+    await asyncio.to_thread(_migrate, "downgrade", "0024_re_embed_jobs")
     try:
         await asyncio.to_thread(_migrate, "upgrade", "head")
     finally:

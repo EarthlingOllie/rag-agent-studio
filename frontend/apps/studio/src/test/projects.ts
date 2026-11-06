@@ -123,6 +123,18 @@ export function fakeProjectsApi(
       const project = find(params.projectId as string);
       return project ? HttpResponse.json(project) : notFound();
     }),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/embedding-model", ({ params }) => {
+      const project = find(params.projectId as string);
+      if (!project) return notFound();
+      const state: Schemas["EmbeddingModelStateOut"] = {
+        model_id: project.embedding_model_id,
+        credential_id: project.embedding_credential_id ?? null,
+        pending_model_id: null,
+        pending_credential_id: null,
+        re_embed: null,
+      };
+      return HttpResponse.json(state);
+    }),
     http.patch("*/api/organisations/:organisationId/projects/:projectId", async ({ params, request }) => {
       const projectId = params.projectId as string;
       const body = (await request.json()) as Schemas["UpdateProjectRequest"];

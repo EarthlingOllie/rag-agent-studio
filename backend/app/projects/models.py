@@ -61,7 +61,7 @@ class Project(IdMixin, Base):
 
 class InstructionsVersion(IdMixin, Base):
     """An immutable, numbered snapshot of a Project's Instructions Draft. Migration
-    ``0024_instructions_versions`` adds a trigger that refuses every UPDATE; rows go only with
+    ``0025_instructions_versions`` adds a trigger that refuses every UPDATE; rows go only with
     their Project."""
 
     __tablename__ = "project_instructions_versions"

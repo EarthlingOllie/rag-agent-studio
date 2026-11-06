@@ -3,6 +3,7 @@ and the retrieval probe. Any Member (Owner or Editor) may use them."""
 
 import logging
 import uuid
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -15,6 +16,9 @@ from app.embeddings.registry import embedding_model
 from app.gateway.gateway import ModelGateway
 from app.projects import embedding, service
 from app.projects.api import PROJECT_ARCHIVED, ClockDep, ProjectOut, respond
+from app.re_embedding import service as re_embedding
+from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
+from app.re_embedding.tasks import enqueue_re_embed
 from app.retrieval.probe import probe
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, Scope
@@ -23,10 +27,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix=ORGANISATION_PREFIX, tags=["embedding-models"])
 
-PROJECT_HAS_DOCUMENTS = (
-    "The Embedding Model can't be changed while the Project has Documents. "
-    "Delete its Documents first."
-)
 PROVIDER_FAILED = "The Embedding Model's provider couldn't embed the query. Try again shortly."
 MODEL_UNUSABLE = "The Project's Embedding Model can't be used: {reason}"
 # Setup problems (``UNUSABLE_ERRORS``) are a 409 with the reason rather than the 502 kept for
@@ -57,6 +57,35 @@ class SetEmbeddingModelRequest(BaseModel):
     model_id: str
     # Required for a provider model; must be empty for the local model.
     credential_id: uuid.UUID | None = None
+
+
+class ReEmbedOut(BaseModel):
+    """A re-embed job: the Knowledge Base moving from one Embedding Model to another."""
+
+    id: uuid.UUID
+    status: ReEmbedStatus
+    # The model the Project used when the job started, and the one it re-embeds to.
+    from_model_id: str
+    model_id: str
+    credential_id: uuid.UUID | None
+    # The Chunks with the new model's vector so far, of all the Knowledge Base's Chunks.
+    embedded_chunks: int
+    total_chunks: int
+    # Why a failed job failed.
+    error_message: str | None
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class EmbeddingModelStateOut(BaseModel):
+    """The Project's active Embedding Model, the pending one while a re-embed runs, and the
+    latest re-embed job (running or ended), if there has been one."""
+
+    model_id: str
+    credential_id: uuid.UUID | None
+    pending_model_id: str | None
+    pending_credential_id: uuid.UUID | None
+    re_embed: ReEmbedOut | None
 
 
 class ProbeRequest(BaseModel):
@@ -108,7 +137,7 @@ async def list_embedding_models(scope: Scope, db: Db) -> list[EmbeddingModelChoi
     operation_id="setProjectEmbeddingModel",
     responses=_errors(
         (404, NOT_FOUND),
-        (409, f"{PROJECT_ARCHIVED} Or: {PROJECT_HAS_DOCUMENTS}"),
+        (409, PROJECT_ARCHIVED),
         (422, "The model or credential can't be used; the detail says why."),
     ),
 )
@@ -116,10 +145,13 @@ async def set_project_embedding_model(
     project_id: uuid.UUID, body: SetEmbeddingModelRequest, scope: Scope, db: Db, clock: ClockDep
 ) -> ProjectOut:
     """Chooses the Project's Embedding Model: the local one, or a provider model with a
-    Provider Credential that offers it. Refused while the Project has Documents. Records
-    ``project.embedding_model_changed``."""
+    Provider Credential that offers it. A Project without Documents switches at once
+    (``project.embedding_model_changed``). One with Documents gets it as its pending model and
+    a background re-embed (``project.re_embed_started``); its active model keeps serving until
+    the job switches over. Choosing again while a re-embed runs cancels it
+    (``project.re_embed_cancelled``). Follow the re-embed with ``getProjectEmbeddingModel``."""
     try:
-        project = await embedding.set_embedding_model(
+        change = await embedding.set_embedding_model(
             db,
             scope,
             project_id,
@@ -131,11 +163,54 @@ async def set_project_embedding_model(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    except embedding.ProjectHasDocumentsError:
-        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_HAS_DOCUMENTS) from None
     except embedding.EmbeddingChoiceError as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from None
-    return await respond(db, project)
+    if change.started is not None:
+        await enqueue_re_embed(change.started.id)
+        # The job may have finished already (tasks run eagerly in tests).
+        await db.refresh(change.project)
+    return await respond(db, change.project)
+
+
+async def _re_embed_out(db: Db, job: ReEmbedJob) -> ReEmbedOut:
+    progress = await re_embedding.progress(db, job)
+    return ReEmbedOut(
+        id=job.id,
+        status=ReEmbedStatus(job.status),
+        from_model_id=job.from_model_id,
+        model_id=job.model_id,
+        credential_id=job.credential_id,
+        embedded_chunks=progress.embedded,
+        total_chunks=progress.total,
+        error_message=job.error_message,
+        started_at=job.created_at,
+        finished_at=job.finished_at,
+    )
+
+
+@router.get(
+    "/projects/{project_id}/embedding-model",
+    operation_id="getProjectEmbeddingModel",
+    responses=_errors((404, NOT_FOUND)),
+)
+async def get_project_embedding_model(
+    project_id: uuid.UUID, scope: Scope, db: Db
+) -> EmbeddingModelStateOut:
+    """The Project's Embedding Model, archived or not: the active one, the pending one while a
+    re-embed runs, and the latest re-embed with its progress (or why it failed)."""
+    try:
+        project = await service.get_project(db, scope, project_id)
+    except service.ProjectNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    latest = await re_embedding.latest_job(db, project.id)
+    running = latest is not None and latest.status == ReEmbedStatus.RUNNING
+    return EmbeddingModelStateOut(
+        model_id=project.embedding_model_id,
+        credential_id=project.embedding_credential_id,
+        pending_model_id=latest.model_id if latest is not None and running else None,
+        pending_credential_id=latest.credential_id if latest is not None and running else None,
+        re_embed=None if latest is None else await _re_embed_out(db, latest),
+    )
 
 
 @router.post(

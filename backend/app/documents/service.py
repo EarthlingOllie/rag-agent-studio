@@ -22,6 +22,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
 from redis.asyncio import Redis
 from sqlalchemy import and_, delete, func, or_, select
@@ -345,10 +346,25 @@ class ChunkCounts:
     flagged: int = 0
 
 
+def _active_model(project_id: Any) -> ScalarSelect[str]:
+    """The Project's active Embedding Model, as a subquery."""
+    return (
+        select(Project.embedding_model_id)
+        .where(Project.id == project_id)
+        .correlate_except(Project)
+        .scalar_subquery()
+    )
+
+
 def _chunk_counts() -> tuple[ScalarSelect[int], ScalarSelect[int]]:
     """Correlated subqueries counting the current edition's Chunks, and its flagged ones, for
-    a query over ``Document``."""
-    current = (Chunk.document_id == Document.id, Chunk.edition == Document.edition)
+    a query over ``Document``. Only the Project's active Embedding Model's rows count: a
+    re-embed writes a second row per Chunk for the pending model."""
+    current = (
+        Chunk.document_id == Document.id,
+        Chunk.edition == Document.edition,
+        Chunk.embedding_model_id == _active_model(Document.project_id),
+    )
     total = select(func.count()).where(*current).scalar_subquery()
     flagged = (
         select(func.count()).where(*current, Chunk.guardrail_label.is_not(None)).scalar_subquery()
@@ -471,7 +487,11 @@ async def list_chunks(
 ) -> ChunkPage:
     """A page of the current edition's Chunks, in Document order."""
     document = await get_document(session, scope, project_id, document_id)
-    current = (Chunk.document_id == document.id, Chunk.edition == document.edition)
+    current = (
+        Chunk.document_id == document.id,
+        Chunk.edition == document.edition,
+        Chunk.embedding_model_id == _active_model(document.project_id),
+    )
     total = await session.scalar(select(func.count()).where(*current))
     chunks = await session.scalars(
         select(Chunk).where(*current).order_by(Chunk.ordinal).offset(offset).limit(limit)
