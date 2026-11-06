@@ -50,19 +50,19 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `bb29854`, which is on top of the merge of `origin/candidate` at `00f8214` (10-01) and holds the round-2 fixes: migration `0024_instructions_versions` after `0023_erase_organisation`, the erasure test, the refused-Draft-save message and the latest-outcome-only status. The next commit changes only this folder. Every log's first line names the commit it ran at.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `fe7f7e2`, the merge of `origin/candidate` at `a123fa1` (03-11) on top of the round-2 fixes: migration `0024_instructions_versions` after `0023_erase_organisation`, the erasure test, the refused-Draft-save message and the latest-outcome-only status, plus the permanent-deletion test. The next commit changes only this folder. Every log's first line names the commit it ran at.
 
-Earlier runs at `f63d874` (after 08-04) and `7521221` (after 02-06) also passed, the first after an environment rerun; their logs were superseded by the runs below.
+Earlier runs at `f63d874` (after 08-04), `7521221` (after 02-06) and `bb29854` (after 10-01) also passed, the first after an environment rerun; their logs were superseded by the runs below.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1529 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **39 files, 481 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1555 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **39 files, 485 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0501`) | **57 passed** on the first attempt, including `instructions-versions.spec.ts` with its axe scans, and `instructions.spec.ts` | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0501`) | **58 passed** on the first attempt, including `instructions-versions.spec.ts` with its axe scans, and `instructions.spec.ts` | [e2e.log](e2e.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
 ## Gaps and best guesses
