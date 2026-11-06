@@ -156,7 +156,8 @@ async def test_an_editor_deletes_a_document_and_it_stops_being_retrieved_at_once
 HANDBOOK_2027 = (
     b"# Handbook\n\nEveryone gets 28 days of annual leave.\n\n## Expenses\n\nClaim in 30 days.\n"
 )
-FAILED_MESSAGE = "This Document couldn't be processed. Try uploading it again."
+BROKEN = b"# Broken\n\nIt has some text."
+FAILED_MESSAGE = "This file couldn't be converted. Retry it, or upload a fixed copy."
 BUSY = "This Document is still being processed. Try again once it is Ready or Failed."
 
 
@@ -200,6 +201,7 @@ async def test_a_newer_edition_replaces_the_document_in_place(
         "name": "handbook-2027.md",
         "status": "queued",
         "error_message": None,
+        "error_category": None,
     }
     (listed,) = await documents(owner, project_id)
     assert (listed["id"], listed["created_at"]) == (original["id"], original["created_at"])
@@ -260,6 +262,7 @@ async def test_the_old_edition_keeps_serving_until_the_new_one_is_ready(
         "name": "handbook.md",
         "status": "processing",
         "error_message": None,
+        "error_category": None,
     }
     statuses = await owner.client.get(f"{project_path(owner, project_id)}/documents/statuses")
     (status,) = statuses.json()
@@ -298,7 +301,7 @@ async def test_a_failed_replacement_leaves_the_old_edition_serving(
     original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
     app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
 
-    failed = await replace(app, owner, project_id, original["id"], "broken.md", b"# Broken")
+    failed = await replace(app, owner, project_id, original["id"], "broken.md", BROKEN)
 
     assert failed.status_code == 202, failed.text
     (listed,) = await documents(owner, project_id)
@@ -308,6 +311,7 @@ async def test_a_failed_replacement_leaves_the_old_edition_serving(
         "name": "broken.md",
         "status": "failed",
         "error_message": FAILED_MESSAGE,
+        "error_category": "conversion",
     }
     assert texts(await chunks(owner, project_id, original["id"])) == [
         "Everyone gets 25 days of annual leave."
@@ -315,34 +319,36 @@ async def test_a_failed_replacement_leaves_the_old_edition_serving(
 
     # A failed replacement's file can be uploaded again as a new Document or edition.
     app.state.ingestion.converter.failure = None
-    retried = await replace(app, owner, project_id, original["id"], "fixed.md", b"# Broken")
+    retried = await replace(app, owner, project_id, original["id"], "fixed.md", BROKEN)
 
     assert retried.status_code == 202, retried.text
     (listed,) = await documents(owner, project_id)
     assert (listed["name"], listed["edition"], listed["replacement"]) == ("fixed.md", 2, None)
-    assert stored(app) == [b"# Broken", b"## Broken"]
+    assert stored(app) == [BROKEN, b"## Broken\n\nIt has some text."]
 
 
-async def test_retry_reprocesses_the_current_edition_beside_a_failed_replacement(
+async def test_retry_beside_a_failed_replacement_retries_the_replacement(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
     project_id = await create_project(owner)
     original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
     app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
-    await replace(app, owner, project_id, original["id"], "broken.md", b"# Broken")
+    await replace(app, owner, project_id, original["id"], "fixed.md", HANDBOOK_2027)
     app.state.ingestion.converter.failure = None
 
     retried = await owner.client.post(
         f"{project_path(owner, project_id)}/documents/{original['id']}/retry"
     )
 
+    # What failed is retried (ticket 03-04): the new edition, which then replaces the old one.
     assert retried.status_code == 202, retried.text
-    assert (retried.json()["edition"], retried.json()["replacement"]["status"]) == (1, "failed")
+    assert (retried.json()["edition"], retried.json()["replacement"]["status"]) == (1, "queued")
     (listed,) = await documents(owner, project_id)
-    assert (listed["name"], listed["edition"], listed["status"]) == ("handbook.md", 1, "ready")
-    assert listed["replacement"]["status"] == "failed"
+    assert (listed["name"], listed["edition"], listed["status"]) == ("fixed.md", 2, "ready")
+    assert listed["replacement"] is None
     assert texts(await chunks(owner, project_id, original["id"])) == [
-        "Everyone gets 25 days of annual leave."
+        "Everyone gets 28 days of annual leave.",
+        "Claim in 30 days.",
     ]
 
 
@@ -352,7 +358,7 @@ async def test_deleting_a_document_also_deletes_its_failed_replacements_file(
     project_id = await create_project(owner)
     original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
     app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
-    await replace(app, owner, project_id, original["id"], "broken.md", b"# Broken")
+    await replace(app, owner, project_id, original["id"], "broken.md", BROKEN)
 
     deleted = await owner.client.delete(
         f"{project_path(owner, project_id)}/documents/{original['id']}"

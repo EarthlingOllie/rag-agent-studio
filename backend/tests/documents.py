@@ -25,12 +25,18 @@ async def create_project(member: SignedUpMember, name: str = "Handbook") -> str:
 
 
 async def start_upload(
-    member: SignedUpMember, project_id: str, filename: str, size: int
+    member: SignedUpMember,
+    project_id: str,
+    filename: str,
+    size: int,
+    *,
+    replacing: str | None = None,
 ) -> httpx.Response:
-    return await member.client.post(
-        f"{project_path(member, project_id)}/uploads",
-        json={"filename": filename, "size_bytes": size},
-    )
+    """Starts an upload; ``replacing`` names the Document the file will be a new edition of."""
+    body: dict[str, Any] = {"filename": filename, "size_bytes": size}
+    if replacing is not None:
+        body["replacing_document_id"] = replacing
+    return await member.client.post(f"{project_path(member, project_id)}/uploads", json=body)
 
 
 async def put_to_memory_store(app: FastAPI, url: str, data: bytes, content_type: str) -> None:
@@ -128,7 +134,7 @@ async def replace(
 ) -> httpx.Response:
     """Presign, PUT to the in-memory store, then confirm the file as the Document's new
     edition; returns the confirmation's response."""
-    started = await start_upload(member, project_id, filename, len(data))
+    started = await start_upload(member, project_id, filename, len(data), replacing=document_id)
     assert started.status_code == 201, started.text
     ticket = started.json()
     await put_to_memory_store(app, ticket["url"], data, ticket["content_type"])
