@@ -1,0 +1,16 @@
+$ make lint
+# 2026-11-05T23:29:02Z in a fresh clone at f508a61
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+218 files already formatted
+Success: no issues found in 218 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0206/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0206/frontend
+> tsc
+
+# exit code: 0
