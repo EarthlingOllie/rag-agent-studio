@@ -1,10 +1,10 @@
-# fresh clone clean0309 at 25e6cd1
+# fresh clone clean0309 at 7520ea7
 + make install
 cd backend && uv sync --frozen
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 Using CPython 3.13.18 interpreter at: /usr/local/bin/python3
 Creating virtual environment at: .venv
-Installed 172 packages in 685ms
+Installed 172 packages in 553ms
  + aiosmtpd==1.4.6
  + alembic==1.20.1
  + amqp==5.4.2
@@ -181,10 +181,10 @@ cd frontend && pnpm install --frozen-lockfile
 Scope: all 4 workspace projects
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 1, reused 0, downloaded 0, added 0
-Packages: +336
+Packages: +430
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Progress: resolved 336, reused 280, downloaded 0, added 0
-Progress: resolved 336, reused 335, downloaded 0, added 336, done
+Progress: resolved 430, reused 429, downloaded 0, added 15
+Progress: resolved 430, reused 429, downloaded 0, added 430, done
 
 devDependencies:
 + @axe-core/playwright 4.14.0
@@ -208,5 +208,5 @@ devDependencies:
 + vite 8.3.5
 + vitest 5.1.0
 
-Done in 3.3s using pnpm v10.28.0
+Done in 2.8s using pnpm v10.28.0
 exit 0

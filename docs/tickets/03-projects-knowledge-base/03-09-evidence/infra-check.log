@@ -1,3 +1,5 @@
+# fresh clone clean0309 at 7520ea7
++ TF_CLI_CONFIG_FILE=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/tf0309.rc make infra-check
 terraform fmt -check -recursive -diff infra
 infra/tests/backend.test.sh
 ok   demo: S3 backend with native locking
@@ -7,37 +9,37 @@ TAP version 13
 # Subtest: a deep link to a Studio route loads the Studio's index.html
 ok 1 - a deep link to a Studio route loads the Studio's index.html
   ---
-  duration_ms: 1.066957
+  duration_ms: 1.858213
   type: 'test'
   ...
 # Subtest: the root loads index.html
 ok 2 - the root loads index.html
   ---
-  duration_ms: 0.316715
+  duration_ms: 0.178781
   type: 'test'
   ...
 # Subtest: a route with a trailing slash loads index.html
 ok 3 - a route with a trailing slash loads index.html
   ---
-  duration_ms: 0.198839
+  duration_ms: 0.123394
   type: 'test'
   ...
 # Subtest: a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
 ok 4 - a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
   ---
-  duration_ms: 0.160817
+  duration_ms: 0.087541
   type: 'test'
   ...
 # Subtest: a dot in an earlier path segment does not make a route a file
 ok 5 - a dot in an earlier path segment does not make a route a file
   ---
-  duration_ms: 0.184767
+  duration_ms: 0.112984
   type: 'test'
   ...
 # Subtest: the rest of the request (method, query string, headers, cookies) is untouched
 ok 6 - the rest of the request (method, query string, headers, cookies) is untouched
   ---
-  duration_ms: 1.009566
+  duration_ms: 0.895256
   type: 'test'
   ...
 1..6
@@ -48,7 +50,7 @@ ok 6 - the rest of the request (method, query string, headers, cookies) is untou
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 105.601204
+# duration_ms 103.448592
 # start of coverage report
 # --------------------------------------------------------------------------
 # file                      | line % | branch % | funcs % | uncovered lines
@@ -358,8 +360,10 @@ Success! 19 passed, 0 failed.
 cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
 All plugins are already installed
 cd infra && checkov --config-file .checkov.yaml
+2026-11-06 00:41:58,602 [MainThread  ] [WARNI]  Failed to find context for resource.aws_vpc_endpoint.interface["ecr.api"]
 terraform scan results:
 
 Passed checks: 262, Failed checks: 0, Skipped checks: 53
 
 
+exit 0
