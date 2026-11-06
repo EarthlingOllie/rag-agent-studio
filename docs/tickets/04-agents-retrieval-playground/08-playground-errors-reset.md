@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-01: Agent and Playground tracer](01-agent-playground-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Provider errors become typed error events with readable messages
 - [ ] Reset starts a new Playground Conversation
