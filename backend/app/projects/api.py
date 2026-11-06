@@ -1,18 +1,19 @@
 """Project routes: the Projects list, a Project, renaming and describing it (Editors), Archive
-(Editors) and restore (Owners). Each takes the Organisation from its path through the policy
-dependency, and finds the Project only inside that Organisation."""
+(Editors), restore (Owners) and permanent deletion (Owners). Each takes the Organisation from
+its path through the policy dependency, and finds the Project only inside that Organisation."""
 
 import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, StringConstraints
 
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.projects import service
 from app.projects.models import DESCRIPTION_MAX, INSTRUCTIONS_MAX, NAME_MAX, Project
+from app.projects.tasks import enqueue_deletion
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope, Scope
 
@@ -20,6 +21,8 @@ router = APIRouter(prefix=ORGANISATION_PREFIX, tags=["projects"])
 
 PROJECT_ARCHIVED = "This Project is archived. An Owner can restore it."
 PROJECT_NOT_ARCHIVED = "This Project isn't archived."
+ARCHIVE_BEFORE_DELETING = "Only an archived Project can be deleted. Archive it first."
+NAME_MISMATCH = "Type the Project's name exactly to delete it."
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
 
@@ -193,6 +196,43 @@ async def restore_project(
     except service.ProjectNotArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_NOT_ARCHIVED) from None
     return await respond(db, project)
+
+
+class DeleteProjectRequest(BaseModel):
+    # The Project's name, typed by the Owner to confirm; it must match exactly.
+    confirm_name: str
+
+
+@router.delete(
+    "/projects/{project_id}",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_class=Response,
+    operation_id="deleteProject",
+    responses={
+        400: {"model": ErrorResponse, "description": NAME_MISMATCH},
+        403: {"model": ErrorResponse, "description": OWNERS_ONLY},
+        **_NOT_FOUND,
+        409: {"model": ErrorResponse, "description": ARCHIVE_BEFORE_DELETING},
+    },
+)
+async def delete_project(
+    project_id: uuid.UUID, body: DeleteProjectRequest, scope: OwnerScope, db: Db, clock: ClockDep
+) -> Response:
+    """Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its
+    name. A Celery task removes the Project and everything in it (Documents, Chunks, stored
+    files, Agents and Conversations) and records ``project.deleted``. This can't be undone."""
+    try:
+        await service.check_deletion(db, scope, project_id, confirm_name=body.confirm_name)
+    except service.ProjectNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except service.ProjectNotArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, ARCHIVE_BEFORE_DELETING) from None
+    except service.ProjectNameMismatchError:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, NAME_MISMATCH) from None
+    # End the read transaction before the task (eager in tests) locks the row.
+    await db.rollback()
+    await enqueue_deletion(project_id, actor_id=scope.member_id, requested_at=clock.now())
+    return Response(status_code=status.HTTP_202_ACCEPTED)
 
 
 class ProjectInstructions(BaseModel):
