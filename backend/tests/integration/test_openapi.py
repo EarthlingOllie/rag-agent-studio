@@ -117,3 +117,35 @@ def test_openapi_document_is_rendered_deterministically() -> None:
 
     assert rendered == render_openapi()
     assert rendered.endswith("}\n")
+
+
+def test_the_agentconfig_json_schema_types_the_draft_editor() -> None:
+    """The Studio's Draft form is typed from this schema (via the generated client)."""
+    schemas = json.loads(render_openapi())["components"]["schemas"]
+
+    saved = schemas["AgentConfig-Output"]
+    assert saved["required"] == ["behaviour", "retrieval", "experience", "guardrails"]
+    assert saved["additionalProperties"] is False
+    behaviour = schemas["Behaviour-Output"]["properties"]
+    assert behaviour["temperature"] == {
+        "default": 0.7,
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Temperature",
+        "type": "number",
+    }
+    assert behaviour["model"]["anyOf"] == [
+        {"$ref": "#/components/schemas/ModelChoice"},
+        {"type": "null"},
+    ]
+    assert schemas["Retrieval-Output"]["properties"]["reranker"]["anyOf"][0] == {
+        "$ref": "#/components/schemas/ModelChoice"
+    }
+    assert schemas["Experience-Output"]["properties"]["starter_questions"]["maxItems"] == 6
+    assert schemas["Guardrails-Output"]["properties"]["input_mode"] == {
+        "$ref": "#/components/schemas/InputMode",
+        "default": "block",
+    }
+    assert schemas["InputMode"]["enum"] == ["block", "warn", "log"]
+    # The request body is the same model, with every field optional.
+    assert schemas["AgentConfig-Input"].get("required") is None

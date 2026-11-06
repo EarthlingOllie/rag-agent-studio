@@ -12,6 +12,7 @@ from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.agents import api as agents_api
+from app.agents.validation import agent_references
 from app.api import health
 from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
@@ -127,6 +128,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     # Consumers of Provider Credentials register their "who references me" sources here.
     app.state.credential_references = ReferenceRegistry()
     app.state.credential_references.register(default_model_references)
+    app.state.credential_references.register(agent_references)
     app.state.credential_references.register(project_embedding_references)
     for router in ROUTERS:
         app.include_router(router)

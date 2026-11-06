@@ -1,7 +1,8 @@
 """Playground Conversations: starting one, reading it back, and answering a question with
 the Agent runtime, saving the question and the answer as Messages.
 
-A question is answered by the Organisation's Default Model through the model gateway, from
+A question is answered by the Draft's Model override, or else the Organisation's Default Model,
+through the model gateway, from
 Chunks the retrieval module finds in the Agent's Project. The question is saved before the
 answer streams; the answer, with its tokens, latency and cost, once the stream ends.
 """
@@ -20,7 +21,8 @@ from app.agents.config import AgentConfig, Retrieval
 from app.agents.service import get_agent
 from app.conversations.models import DRAFT, Conversation, Message, MessageRole
 from app.core.clock import Clock
-from app.default_model.service import CurrentDefault, read_default
+from app.credentials.models import ProviderCredential
+from app.default_model.service import read_default
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.pricing.service import credential_pricing, price_table
@@ -38,7 +40,36 @@ class ConversationNotFoundError(Exception):
 
 
 class NoDefaultModelError(Exception):
-    """The Organisation has no Default Model to answer with."""
+    """The Draft has no Model override and the Organisation has no Default Model."""
+
+
+@dataclass(frozen=True)
+class ChatModelChoice:
+    """The credential and chat model that answer."""
+
+    credential: ProviderCredential
+    model: str
+
+
+async def _chat_model(
+    session: AsyncSession, scope: OrganisationScope, config: AgentConfig
+) -> ChatModelChoice:
+    override = config.behaviour.model
+    if override is not None:
+        # Saving the Draft checked the credential offers the model and made it a Credential
+        # reference, so it can't have been deleted since.
+        found = await session.scalars(
+            select(ProviderCredential).where(
+                ProviderCredential.id == override.credential_id,
+                ProviderCredential.organisation_id == scope.organisation_id,
+            )
+        )
+        credential = found.one()
+        return ChatModelChoice(credential, override.model)
+    default = await read_default(session, scope.organisation_id)
+    if default is None:
+        raise NoDefaultModelError
+    return ChatModelChoice(default.credential, default.model)
 
 
 async def start_conversation(
@@ -105,7 +136,7 @@ class PreparedTurn:
     config: AgentConfig
     turns: list[Turn]
     question: str
-    default: CurrentDefault
+    chat: ChatModelChoice
 
 
 async def prepare_turn(
@@ -124,9 +155,7 @@ async def prepare_turn(
     conversation, messages = await get_conversation(
         session, scope, project_id, agent_id, conversation_id
     )
-    default = await read_default(session, scope.organisation_id)
-    if default is None:
-        raise NoDefaultModelError
+    chat = await _chat_model(session, scope, found.draft)
     session.add(
         Message(
             organisation_id=scope.organisation_id,
@@ -144,7 +173,7 @@ async def prepare_turn(
         config=found.draft,
         turns=_turns(messages),
         question=question,
-        default=default,
+        chat=chat,
     )
 
 
@@ -171,8 +200,8 @@ async def answer(
     """Streams the answer's tokens, then saves the answer and ends with ``Answered``."""
     started = time.perf_counter()
     first_token_ms: int | None = None
-    default = prepared.default
-    model = gateway.chat_model(default.credential, default.model)
+    chosen = prepared.chat
+    model = gateway.chat_model(chosen.credential, chosen.model)
     async with sessionmaker() as session:
 
         async def retrieve_in_project(query: str, settings: Retrieval) -> RetrievalResult:
@@ -194,20 +223,20 @@ async def answer(
             latency_ms = _elapsed_ms(started)
             now = clock.now()
             usage = TokenUsage(event.input_tokens, event.output_tokens)
-            pricing = await credential_pricing(session, default.credential)
+            pricing = await credential_pricing(session, chosen.credential)
             message = Message(
                 organisation_id=prepared.organisation_id,
                 conversation_id=prepared.conversation_id,
                 role=MessageRole.ASSISTANT,
                 content=event.answer,
                 config_source=DRAFT,
-                model_provider=default.credential.provider,
-                model_name=default.model,
+                model_provider=chosen.credential.provider,
+                model_name=chosen.model,
                 input_tokens=event.input_tokens,
                 output_tokens=event.output_tokens,
                 first_token_ms=first_token_ms if first_token_ms is not None else latency_ms,
                 latency_ms=latency_ms,
-                cost_usd=cost(pricing, default.model, usage, now, await price_table(session)),
+                cost_usd=cost(pricing, chosen.model, usage, now, await price_table(session)),
             )
             session.add(message)
             conversation = await session.get_one(Conversation, prepared.conversation_id)

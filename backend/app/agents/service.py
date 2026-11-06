@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import audit
 from app.agents.config import AgentConfig
 from app.agents.models import Agent, AgentDraft
+from app.agents.validation import check_draft
 from app.projects.service import active_project, get_project
 from app.tenancy.repository import OrganisationScope
 
@@ -54,7 +55,7 @@ async def create_agent(
         AgentDraft(
             agent_id=agent.id,
             organisation_id=scope.organisation_id,
-            config=AgentConfig().model_dump(),
+            config=AgentConfig().model_dump(mode="json"),
             updated_at=now,
         )
     )
@@ -104,11 +105,13 @@ async def save_draft(
     *,
     now: datetime,
 ) -> AgentWithDraft:
-    """Replaces the Agent's Draft with ``config``."""
-    await active_project(session, scope, project_id)
+    """Replaces the Agent's Draft with ``config``, once ``check_draft`` finds no problem (it
+    raises ``InvalidDraftError``). The credentials it names become Credential references."""
+    project = await active_project(session, scope, project_id)
     found = await get_agent(session, scope, project_id, agent_id)
+    await check_draft(session, scope, project, config)
     draft = await session.get_one(AgentDraft, found.agent.id, with_for_update=True)
-    draft.config = config.model_dump()
+    draft.config = config.model_dump(mode="json")
     draft.updated_at = now
     await session.commit()
     return AgentWithDraft(found.agent, config, now)
