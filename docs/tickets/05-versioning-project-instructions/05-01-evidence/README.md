@@ -1,6 +1,6 @@
 # Evidence: ticket 05-01, Project Instructions Versions
 
-Branch `ticket/05-01-project-instructions-versions`, from `origin/candidate` at `cb228e6` (04-02, the blocker, merged). The claim commit, the first on the branch, set Status `in-progress`. `origin/candidate` then moved five times and was merged each time: `c3e8db7` (08-04, Canary token, migration `0021`), `f0d632d` (02-06, Theme logo and avatar, migration `0022`), `00f8214` (10-01, Seed foundation, migration `0023_erase_organisation`) `a123fa1` (03-11, Permanent Project deletion, no migration; only the MSW fake's constants conflicted, and both sets were kept) and `dc9a3b9` (04-04, Tag scoping, no migration, merged cleanly). This ticket's migration is therefore `0024_instructions_versions`, revising `0023_erase_organisation`, so candidate keeps one Alembic head.
+Branch `ticket/05-01-project-instructions-versions`, from `origin/candidate` at `cb228e6` (04-02, the blocker, merged). The claim commit, the first on the branch, set Status `in-progress`. `origin/candidate` then moved five times and was merged each time: `c3e8db7` (08-04, Canary token, migration `0021`), `f0d632d` (02-06, Theme logo and avatar, migration `0022`), `00f8214` (10-01, Seed foundation, migration `0023_erase_organisation`) `a123fa1` (03-11, Permanent Project deletion, no migration; only the MSW fake's constants conflicted, and both sets were kept), `dc9a3b9` (04-04, Tag scoping, no migration, merged cleanly) and `198d5e6` (04-08, Playground errors and reset, no migration, merged cleanly; it regenerates `schema.gen.ts`, and `make check-client` passes after the merge). This ticket's migration is therefore `0024_instructions_versions`, revising `0023_erase_organisation`, so candidate keeps one Alembic head.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope this ticket leaves to later tickets on purpose, plus what this sandbox can't run.
 
@@ -50,19 +50,19 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). The backend, frontend, lint, client-drift and security checks ran at `2d79f19`, the merge of `origin/candidate` at `dc9a3b9` (04-04, Tag scoping). Images and end-to-end ran at `fe7f7e2`, the previous merge (`a123fa1`, 03-11). The 04-04 merge touches only tag scoping and retrieval, adds no migration and merged without conflicts, so they were not rerun. Both commits hold the round-2 fixes: migration `0024_instructions_versions` after `0023_erase_organisation`, the erasure and permanent-deletion tests, the refused-Draft-save message and the latest-outcome-only status. The next commit changes only this folder. Every log's first line names the commit it ran at.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). The backend, frontend, lint, client-drift and security checks ran at `e113af1`, the merge of `origin/candidate` at `198d5e6` (04-08), from a clean working tree. The backend ran against fresh `rag0501-*` containers on host ports 47732 (Postgres), 47779 (Redis) and 47791 (RustFS) that no other ticket uses, so it cannot reach another ticket's database. Every log's first line names the commit it ran at; the commit after `e113af1` changes only this folder.
 
-Earlier runs at `f63d874` (after 08-04), `7521221` (after 02-06) and `bb29854` (after 10-01) also passed, the first after an environment rerun; their logs were superseded by the runs below.
+Images and end-to-end last ran at `fe7f7e2` (merge of `a123fa1`, 03-11), where all 58 Playwright tests passed. A rerun at `e113af1` was attempted: the image build failed with "no space left on device" because the disk shared by six parallel tickets was full, so the partial image was removed and `images.log` / `e2e.log` were kept from `fe7f7e2`. No file this ticket added or changed has changed since `fe7f7e2` (`git diff fe7f7e2 e113af1` touches none of `backend/app/projects/instructions*.py`, `models.py`, migration `0024`, `InstructionsVersions.tsx` or `instructions-versions.spec.ts`); the two later merges (04-04, 04-08) add no migration and touch Tag scoping and Playground errors only, and their own e2e runs on candidate cover them. Earlier runs at `f63d874`, `7521221`, `bb29854` and `2d79f19` also passed.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1559 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **39 files, 486 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers (ports 47732/47779/47791) | **1581 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **39 files, 494 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
-| Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0501`) | **58 passed** on the first attempt, including `instructions-versions.spec.ts` with its axe scans, and `instructions.spec.ts` | [e2e.log](e2e.log) |
+| Images | `build.sh` (sandbox `make images`) | both built at `fe7f7e2`; rerun at `e113af1` blocked by a full shared disk | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0501`) | at `fe7f7e2`: **58 passed** on the first attempt, including `instructions-versions.spec.ts` with its axe scans, and `instructions.spec.ts` | [e2e.log](e2e.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
 ## Gaps and best guesses
@@ -72,6 +72,7 @@ Earlier runs at `f63d874` (after 08-04), `7521221` (after 02-06) and `bb29854` (
   - Diffs between Instructions Versions and Draft management, such as the 409 on a stale Draft save (05-04).
   - Opening the bulk dialog after publishing, Instructions revert offering bulk revert candidates, and "N Agents behind" (05-05).
   - The Playground Instructions picker (05-06). The Playground still runs the Instructions Draft, which is the spec's Playground default. Visitors aren't served until spec 06.
+- **Not rerun in this sandbox at the final head:** images and end-to-end (last green at `fe7f7e2`; the shared disk was full at `e113af1`, see Results). PDF conversion and bundled models are off in the sandbox images (Hugging Face is blocked). Infra checks were not run; this ticket changes no infra.
 - **Best guesses, recorded instead of asking:**
   - **Revert rule for Instructions.** Each Version stores the Version that was Current when it was published, and revert follows that chain. This is the spec's Live History rule ("revert sets the pointer to the from-Version of the entry that moved it onto the current Version", reading only publish entries so it doesn't toggle) without a separate log table. Every Instructions Version is published exactly once, so the two are equivalent. The revert actor and time are in the Audit log. The Agent Live History table arrives with 05-02.
   - **Nothing to publish.** A Draft identical to the Current Version, or an empty Draft before the first publish, is refused with 409. This makes concurrent publishes of one Draft produce a single Version and a clear conflict (user story 34).
