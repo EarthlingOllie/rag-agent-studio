@@ -1,8 +1,8 @@
 """The Theme's logo and default Agent avatar.
 
-Revision ID: 0018_theme_images
-Revises: 0017_message_retrievals
-Create Date: 2026-11-05
+Revision ID: 0021_theme_images
+Revises: 0020_chunk_guardrail_flags
+Create Date: 2026-11-06
 """
 
 from collections.abc import Sequence
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0018_theme_images"
-down_revision: str | None = "0017_message_retrievals"
+revision: str = "0021_theme_images"
+down_revision: str | None = "0020_chunk_guardrail_flags"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
