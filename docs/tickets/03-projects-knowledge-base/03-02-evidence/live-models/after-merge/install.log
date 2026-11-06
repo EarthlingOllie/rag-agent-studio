@@ -1,0 +1,31 @@
+$ make install @ eef1e76
+cd backend && uv sync --frozen
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Uninstalled 20 packages in 940ms
+ - accelerate==1.15.0
+ - colorlog==6.12.0
+ - docling-ibm-models==4.0.4
+ - docling-parse==7.24.2
+ - jinja2==3.1.6
+ - mpmath==1.3.0
+ - networkx==3.7
+ - omegaconf==2.4.0
+ - opencv-python-headless==5.0.0.93
+ - psutil==7.2.2
+ - pyclipper==1.4.0
+ - pypdfium2==5.14.0
+ - rapidocr==3.10.0
+ - rtree==1.4.1
+ - scipy==1.18.1
+ - setuptools==84.2.1
+ - shapely==2.2.0
+ - sympy==1.14.0
+ - torch==2.15.0+cpu
+ - torchvision==0.29.2+cpu
+cd frontend && pnpm install --frozen-lockfile
+Scope: all 4 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 880ms using pnpm v10.28.0
+exit 0
