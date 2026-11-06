@@ -7,7 +7,7 @@
 **Blocked by:**
 - [05-02: Publish Agent to Live Version](02-publish-agent-live-version.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Revert follows the Live History, verified by a table-driven test of action sequences including publish → revert → revert
 - [ ] Revert is refused when there's nothing to revert to
