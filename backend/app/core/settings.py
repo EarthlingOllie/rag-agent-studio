@@ -127,6 +127,9 @@ class Settings(BaseSettings):
     ingestion_max_attempts: int = Field(default=4, ge=1)
     ingestion_retry_base_seconds: float = Field(default=10.0, gt=0)
     ingestion_retry_max_seconds: float = Field(default=300.0, gt=0)
+    # How many Chunks a re-embed job embeds and writes at a time; each batch shows as progress.
+    # Provider failures during a re-embed are retried like ingestion's.
+    re_embed_batch_size: int = Field(default=64, gt=0)
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.

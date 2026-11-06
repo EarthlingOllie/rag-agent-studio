@@ -1,0 +1,40 @@
+$ make e2e COMPOSE=docker compose -p rag0310 -f docker-compose.yml -f docs/tickets/03-projects-knowledge-base/03-10-evidence/compose.sandbox.yml @ d018357
+docker compose -p rag0310 -f docker-compose.yml -f docs/tickets/03-projects-knowledge-base/03-10-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0310_default Creating 
+ Network rag0310_default Creating 
+ Volume rag0310_postgres-data Creating 
+ Volume rag0310_postgres-data Creating 
+ Volume rag0310_rustfs-data Creating 
+ Volume rag0310_rustfs-data Creating 
+ Volume rag0310_postgres-data Created 
+ Volume rag0310_postgres-data Created 
+ Volume rag0310_rustfs-data Created 
+ Volume rag0310_rustfs-data Created 
+ Network rag0310_default Created 
+ Network rag0310_default Created 
+ Container rag0310-rustfs-1 Creating 
+ Container rag0310-redis-1 Creating 
+ Container rag0310-postgres-1 Creating 
+ Container rag0310-mailpit-1 Creating 
+ Container rag0310-mailpit-1 Created 
+ Container rag0310-rustfs-1 Created 
+ Container rag0310-postgres-1 Created 
+ Container rag0310-redis-1 Created 
+ Container rag0310-beat-1 Creating 
+ Container rag0310-worker-1 Creating 
+ Container rag0310-api-1 Creating 
+ Container rag0310-beat-1 Created 
+ Container rag0310-worker-1 Created 
+ Container rag0310-api-1 Created 
+ Container rag0310-studio-1 Creating 
+ Container rag0310-studio-1 Created 
+ Container rag0310-rustfs-1 Starting 
+ Container rag0310-postgres-1 Starting 
+ Container rag0310-redis-1 Starting 
+ Container rag0310-mailpit-1 Starting 
+ Container rag0310-rustfs-1 Started 
+ Container rag0310-postgres-1 Started 
+ Container rag0310-redis-1 Started 
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint rag0310-mailpit-1 (ed97a88275130477d81dd3da64567dc18c1dea70225d9a8935185fa2bcd4b7d5): failed to bind host port 0.0.0.0:44226/tcp: address already in use
+make: *** [Makefile:117: e2e] Error 1
+exit 2
