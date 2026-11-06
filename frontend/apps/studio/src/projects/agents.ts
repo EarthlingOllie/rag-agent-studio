@@ -22,12 +22,26 @@ export type Citation = {
 /** The `done` event that ends a streamed Playground answer. */
 export type AnswerDone = {
   message_id: string;
+  /** The Project Instructions the answer ran with: the Draft, or a Version. */
+  instructions_source: "draft" | "version";
+  instructions_version_id: string | null;
+  instructions_version_number: number | null;
   input_tokens: number;
   output_tokens: number;
   first_token_ms: number;
   latency_ms: number;
   chunks: { chunk_id: string; score: number; rank: number }[];
 };
+
+/** "Draft" or "v2": the Project Instructions an answer ran with. */
+export function instructionsUsed(used: {
+  instructions_source: string | null;
+  instructions_version_number: number | null;
+}): string {
+  return used.instructions_source === "version"
+    ? `v${String(used.instructions_version_number)}`
+    : "Draft";
+}
 
 /** Why the model provider failed, from a Playground stream's `error` event. */
 export type ProviderErrorCode =
@@ -59,10 +73,11 @@ function failed(response: Response, error: unknown): ProjectRequestError {
 export function agentFailure(error: Error | null): string | undefined {
   if (error === null) return undefined;
   if (error instanceof ProviderError) return error.message;
+  // A 409, or a 422 with one reason (an Instructions Version not in the Project), says why.
   if (
     error instanceof ProjectRequestError &&
     error.detail &&
-    error.status === 409
+    (error.status === 409 || error.status === 422)
   )
     return error.detail;
   if (error instanceof ProjectRequestError && error.status === 422)
@@ -329,13 +344,19 @@ function parseEvent(block: string): StreamEvent {
 export async function askPlayground(
   path: AgentPath & { conversation_id: string },
   question: string,
+  /** The Instructions Version to answer with; null for the Instructions Draft. */
+  instructionsVersionId: string | null,
   onToken: (text: string) => void,
   onCitation: (citation: Citation) => void,
   onReplace: (text: string) => void,
 ): Promise<AnswerDone> {
   const { data, error, response } = await api.POST(
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages",
-    { params: { path }, body: { content: question }, parseAs: "stream" },
+    {
+      params: { path },
+      body: { content: question, instructions_version_id: instructionsVersionId },
+      parseAs: "stream",
+    },
   );
   if (!response.ok) throw failed(response, error);
   const reader = (data as ReadableStream<Uint8Array>).getReader();

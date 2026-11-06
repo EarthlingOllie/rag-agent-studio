@@ -45,7 +45,7 @@ class NoCurrentVersionError(Exception):
 
 
 class InstructionsVersionNotFoundError(Exception):
-    """No Version with that ID in the Project."""
+    """No Instructions Version with that ID in the Project."""
 
 
 class NothingToRevertError(Exception):
@@ -93,6 +93,34 @@ async def _view(session: AsyncSession, version: InstructionsVersion) -> VersionV
         return VersionView(version, None)
     name = await session.scalar(select(Member.name).where(Member.id == version.author_id))
     return VersionView(version, Author(version.author_id, name or ""))
+
+
+async def project_version(
+    session: AsyncSession, project: Project, version_id: uuid.UUID
+) -> InstructionsVersion:
+    """One of the Project's Instructions Versions, Current or not."""
+    version = await session.scalar(
+        select(InstructionsVersion).where(
+            InstructionsVersion.id == version_id, InstructionsVersion.project_id == project.id
+        )
+    )
+    if version is None:
+        raise InstructionsVersionNotFoundError
+    return version
+
+
+async def version_numbers(
+    session: AsyncSession, version_ids: set[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """The number of each of these Instructions Versions."""
+    if not version_ids:
+        return {}
+    rows = await session.execute(
+        select(InstructionsVersion.id, InstructionsVersion.number).where(
+            InstructionsVersion.id.in_(version_ids)
+        )
+    )
+    return {version_id: number for version_id, number in rows}
 
 
 async def history(

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { type Trace, useTrace } from "./agents";
+import { type Trace, instructionsUsed, useTrace } from "./agents";
 import { BUTTON } from "./ProjectsPage";
 
 type TraceChunk = Trace["chunks"][number];
@@ -53,6 +53,7 @@ function TraceBody({ trace }: { trace: Trace }) {
     // An answer always has its tokens and latency; a fallback reply names no model, and the
     // cost is unknown when the model has no price.
     ["Model", model(trace)],
+    ["Instructions", instructionsUsed(trace)],
     [
       "Tokens",
       `${String(trace.input_tokens)} input · ${String(trace.output_tokens)} output`,

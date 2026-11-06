@@ -2,8 +2,8 @@
 concurrency token a Draft change carries, so a save made on a Draft someone has since changed
 is refused instead of overwriting their edits.
 
-Revision ID: 0027_draft_revisions
-Revises: 0026_agent_versions
+Revision ID: 0028_draft_revisions
+Revises: 0027_playground_instructions
 Create Date: 2026-11-06
 """
 
@@ -12,8 +12,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0027_draft_revisions"
-down_revision: str | None = "0026_agent_versions"
+revision: str = "0028_draft_revisions"
+down_revision: str | None = "0027_playground_instructions"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
