@@ -3384,6 +3384,26 @@
         "title": "RotateCredentialRequest",
         "type": "object"
       },
+      "ScopedAgentOut": {
+        "description": "An Agent whose Draft is scoped to the Tag.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ScopedAgentOut",
+        "type": "object"
+      },
       "SendMessageRequest": {
         "properties": {
           "content": {
@@ -3690,6 +3710,13 @@
       },
       "TagOut": {
         "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/ScopedAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3713,6 +3740,7 @@
           "id",
           "name",
           "document_count",
+          "agents",
           "created_at"
         ],
         "title": "TagOut",
@@ -4129,7 +4157,8 @@
               {
                 "enum": [
                   "below_min_score",
-                  "outside_top_k"
+                  "outside_top_k",
+                  "outside_tags"
                 ],
                 "type": "string"
               },
@@ -10460,7 +10489,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}": {
       "delete": {
-        "description": "Deletes a Tag and takes it off every Document. The Documents stay.",
+        "description": "Deletes a Tag and takes it off every Document, and out of every Agent Draft scoped to it\n(the Tag's ``agents``). The Documents and Agents stay.",
         "operationId": "deleteTag",
         "parameters": [
           {

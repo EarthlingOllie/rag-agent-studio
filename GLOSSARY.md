@@ -342,7 +342,11 @@ What an Agent replies, in its own words, when retrieval finds nothing relevant. 
 _Avoid_: Default answer, "I don't know" message
 
 **Excluded Chunk**:
-A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, or outside the Top-k. It feeds the Trace.
+A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, outside the Top-k, or outside the Agent's Tags (Tag scoping). It feeds the Trace.
+
+**Tag scoping**:
+Limiting an Agent to the Documents carrying at least one of the Tags its AgentConfig names, so several Agents can share one Project but see different material. Both searches of Hybrid search are limited before fusion; no Tags searches every Document. The Tags must be the Agent's Project's own. The best Top-k Chunks it left out are shown in the Trace as Excluded Chunks. Deleting a Tag takes it out of the Drafts scoped to it, and the Studio first warns which Agents those are, since an Agent left with no Tags searches every Document.
+_Avoid_: Tag filter, document permissions, ACL
 
 **Markdown editor**:
 The Studio's editor for prompt fields (an Agent's system prompt, Project Instructions). It shows markdown formatted but stores markdown: text is kept exactly until it is edited, and its Markdown view edits the stored text itself.

@@ -25,6 +25,7 @@ export type TracePath = {
 const EXCLUDED: Record<NonNullable<TraceChunk["excluded_reason"]>, string> = {
   below_min_score: "Excluded: below the minimum score",
   outside_top_k: "Excluded: outside top-k",
+  outside_tags: "Excluded: outside the Agent's Tags",
 };
 
 function outcome(chunk: TraceChunk): string {

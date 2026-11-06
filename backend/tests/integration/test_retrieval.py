@@ -17,7 +17,7 @@ from app.documents.models import Chunk
 from app.projects.models import Project
 from app.retrieval.service import EmbeddingModelUnavailableError, RetrievalResult, retrieve
 from tests.conftest import SignedUpMember, TenantFactory
-from tests.documents import create_project, upload
+from tests.documents import create_project, documents, project_path, upload
 from tests.knowledge_base import (
     EXPENSES,
     FILES,
@@ -217,3 +217,80 @@ async def test_a_project_whose_embedding_model_has_no_embedder_cant_be_searched(
 
     with pytest.raises(EmbeddingModelUnavailableError):
         await search(app, project_id, LEAVE)
+
+
+async def _tag_documents(
+    member: SignedUpMember, project_id: str, tags: dict[str, list[str]]
+) -> dict[str, str]:
+    """Creates each Tag and applies it to the named Documents; returns the Tag IDs by name."""
+    by_name = {d["name"]: d["id"] for d in await documents(member, project_id)}
+    tag_ids: dict[str, str] = {}
+    applied: dict[str, list[str]] = {}
+    for tag, filenames in tags.items():
+        created = await member.client.post(
+            f"{project_path(member, project_id)}/tags", json={"name": tag}
+        )
+        assert created.status_code == 201, created.text
+        tag_ids[tag] = created.json()["id"]
+        for filename in filenames:
+            applied.setdefault(by_name[filename], []).append(tag_ids[tag])
+    for document_id, ids in applied.items():
+        response = await member.client.put(
+            f"{project_path(member, project_id)}/documents/{document_id}/tags",
+            json={"tag_ids": ids},
+        )
+        assert response.status_code == 200, response.text
+    return tag_ids
+
+
+async def test_tag_scoping_searches_only_documents_with_one_of_the_tags(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+    tags = await _tag_documents(
+        owner,
+        project_id,
+        {"HR": ["leave.txt", "expenses.txt"], "Policies": ["rules.txt", "leave.txt"], "Sales": []},
+    )
+
+    hr = await search(app, project_id, PRODUCT_QUESTION, top_k=20, tag_ids=[tags["HR"]])
+    hr_or_policies = await search(
+        app, project_id, LEAVE, top_k=20, tag_ids=[tags["HR"], tags["Policies"]]
+    )
+    sales = await search(app, project_id, LEAVE, tag_ids=[tags["Sales"]])
+    unscoped = await search(app, project_id, PRODUCT_QUESTION, top_k=20)
+
+    # The product Chunk is the best keyword match, but its Document isn't tagged HR: semantic
+    # and keyword search both look only at the HR Documents.
+    assert sorted(texts(hr)) == sorted([LEAVE, EXPENSES])
+    assert [c.rank for c in hr.candidates] == [1, 2]
+    # Several Tags: a Document with any one of them is searched, once.
+    assert texts(hr_or_policies)[0] == LEAVE
+    assert sorted(texts(hr_or_policies)) == sorted([LEAVE, EXPENSES, RULES])
+    # A Tag no Document carries finds nothing; no Tags searches every Document.
+    assert sales.candidates == []
+    assert sorted(texts(unscoped)) == sorted(FILES.values())
+
+
+async def test_chunks_outside_the_tags_are_reported_as_excluded(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+    tags = await _tag_documents(owner, project_id, {"HR": ["leave.txt", "expenses.txt"]})
+
+    result = await search(app, project_id, PRODUCT_QUESTION, top_k=2, tag_ids=[tags["HR"]])
+    narrow = await search(app, project_id, PRODUCT, top_k=1, tag_ids=[tags["HR"]])
+
+    # Retrieval also looks outside the Tags so the Trace can show what scoping left out: the
+    # best ``top_k`` such Chunks, best first, never given to the model.
+    outside = [e for e in result.excluded if e.reason == "outside_tags"]
+    assert len(outside) == 2
+    assert outside[0].text == PRODUCT
+    assert outside[0].document_name == "product.txt"
+    assert outside[0].relevance == pytest.approx(3 / 6)
+    assert [e.score for e in outside] == sorted((e.score for e in outside), reverse=True)
+    assert {e.text for e in outside}.isdisjoint(texts(result))
+    assert {e.document_name for e in outside}.isdisjoint({"leave.txt", "expenses.txt"})
+    (best_outside,) = [e for e in narrow.excluded if e.reason == "outside_tags"]
+    assert best_outside.text == PRODUCT
+    assert best_outside.score == pytest.approx(1.0)

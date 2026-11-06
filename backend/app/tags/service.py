@@ -7,7 +7,7 @@ changed. A Tag or Document ID from another Project is treated as not found.
 
 import uuid
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -39,9 +39,41 @@ class UnknownDocumentsError(Exception):
 
 
 @dataclass(frozen=True)
+class ScopedAgent:
+    """An Agent whose Draft is scoped to a Tag."""
+
+    id: uuid.UUID
+    name: str
+
+
+@dataclass(frozen=True)
 class TagSummary:
     tag: Tag
     document_count: int
+    # The Agents whose Draft is scoped to the Tag, by name: deleting the Tag widens what they
+    # search, so the Studio warns about them.
+    agents: list[ScopedAgent] = field(default_factory=list)
+
+
+async def _scoped_agents(
+    session: AsyncSession, project: Project, tag_id: uuid.UUID | None = None
+) -> dict[str, list[ScopedAgent]]:
+    """The Project's Agents scoped to each Tag (to ``tag_id`` alone, when given), keyed by the
+    Tag ID as the Draft stores it."""
+    tag_ids = AgentDraft.config["retrieval"]["tag_ids"]
+    query = (
+        select(Agent.id, Agent.name, tag_ids)
+        .join(AgentDraft, AgentDraft.agent_id == Agent.id)
+        .where(Agent.project_id == project.id, func.jsonb_array_length(tag_ids) > 0)
+        .order_by(func.lower(Agent.name), Agent.created_at)
+    )
+    if tag_id is not None:
+        query = query.where(tag_ids.contains([str(tag_id)]))
+    scoped: dict[str, list[ScopedAgent]] = {}
+    for agent_id, name, ids in await session.execute(query):
+        for scoped_id in ids:
+            scoped.setdefault(scoped_id, []).append(ScopedAgent(agent_id, name))
+    return scoped
 
 
 async def list_tags(
@@ -57,14 +89,18 @@ async def list_tags(
         .where(Tag.project_id == project.id)
         .order_by(func.lower(Tag.name), Tag.created_at)
     )
-    return [TagSummary(tag, document_count) for tag, document_count in rows]
+    scoped = await _scoped_agents(session, project)
+    return [
+        TagSummary(tag, document_count, scoped.get(str(tag.id), [])) for tag, document_count in rows
+    ]
 
 
-async def _summary(session: AsyncSession, tag: Tag) -> TagSummary:
+async def _summary(session: AsyncSession, project: Project, tag: Tag) -> TagSummary:
     count = await session.scalar(
         select(func.count()).select_from(DocumentTag).where(DocumentTag.tag_id == tag.id)
     )
-    return TagSummary(tag, count or 0)
+    scoped = await _scoped_agents(session, project, tag.id)
+    return TagSummary(tag, count or 0, scoped.get(str(tag.id), []))
 
 
 async def _commit_unique(session: AsyncSession) -> None:
@@ -107,7 +143,7 @@ async def rename_tag(
     tag = await _tag(session, project, tag_id)
     tag.name = name
     await _commit_unique(session)
-    return await _summary(session, tag)
+    return await _summary(session, project, tag)
 
 
 async def delete_tag(
