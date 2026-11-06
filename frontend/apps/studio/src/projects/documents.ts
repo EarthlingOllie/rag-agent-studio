@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "../api";
 import { ProjectRequestError } from "./projects";
@@ -23,6 +23,7 @@ export const FINAL_STATUSES: readonly DocumentStatus[] = ["ready", "failed"];
 
 const documentsKey = (organisationId: string, projectId: string) =>
   ["documents", organisationId, projectId] as const;
+const limitsKey = (organisationId: string, projectId: string) => [...documentsKey(organisationId, projectId), "limits"] as const;
 
 function failed(response: Response, error: unknown): ProjectRequestError {
   const detail = (error as { detail?: unknown }).detail;
@@ -113,10 +114,18 @@ export function useDocuments(
         queryKey: [...documentsKey(organisationId, projectId), "list"],
       });
   }, [swapped, queryClient, organisationId, projectId]);
+  // Failed Documents don't count towards the quota: when one fails, or a retried one leaves
+  // Failed, read the upload limits again.
+  const failedCount = (documents ?? []).filter((document) => document.status === "failed").length;
+  const lastFailedCount = useRef(failedCount);
+  useEffect(() => {
+    if (lastFailedCount.current === failedCount) return;
+    lastFailedCount.current = failedCount;
+    void queryClient.invalidateQueries({ queryKey: limitsKey(organisationId, projectId) });
+  }, [failedCount, queryClient, organisationId, projectId]);
   return { isError: list.isError, data: documents };
 }
 
-const limitsKey = (organisationId: string, projectId: string) => [...documentsKey(organisationId, projectId), "limits"] as const;
 
 /** What an upload must satisfy: accepted types, the size limit, and room in the Document quota. */
 export function useUploadLimits(organisationId: string, projectId: string) {

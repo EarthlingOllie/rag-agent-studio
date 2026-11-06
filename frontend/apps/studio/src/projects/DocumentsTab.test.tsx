@@ -844,3 +844,18 @@ test("a new edition still uploads when the upload limits can't be loaded, and th
     expect.objectContaining({ filename: "handbook-2027.md", replacing_document_id: aDocument().id }),
   ]);
 });
+
+test("a Document that fails stops counting towards the quota without a reload", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ failing: ["broken.pdf"] });
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+
+  await userEvent.upload(screen.getByLabelText("Choose files to upload"), new File(["not a pdf"], "broken.pdf", { type: "application/pdf" }));
+
+  expect(await screen.findByText(/1 of 500 Documents/)).toBeInTheDocument();
+  const row = rowOf(await documentsTable(), "broken.pdf");
+  expect(await row.findByText("Unsupported content", {}, { timeout: 8000 })).toBeInTheDocument();
+  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+}, 15000);

@@ -42,7 +42,9 @@ export function aDocument(overrides: Partial<ProjectDocument> = {}): ProjectDocu
 const NEXT: Partial<Record<ProjectDocument["status"], ProjectDocument["status"]>> = { queued: "processing", processing: "ready" };
 
 /** One poll's progress: the Document moves a step on, and so does a new edition, which replaces it once Ready. */
-function advance(document: ProjectDocument): ProjectDocument {
+function advance(document: ProjectDocument, failing: string[]): ProjectDocument {
+  if (document.status === "processing" && failing.includes(document.name))
+    return { ...document, status: "failed", error_category: "unsupported_content", error_message: "This file isn't a valid PDF file. Check the file, then upload it again." };
   const status = NEXT[document.status];
   if (status) return { ...document, status, chunk_count: status === "ready" ? 4 : 0 };
   const { replacement } = document;
@@ -68,11 +70,14 @@ export function anUploadLimits(overrides: Partial<UploadLimits> = {}): UploadLim
 }
 
 /**
+ * Documents named in `failing` fail as unsupported content when processed.
  * Retrying a Failed Document puts it back to Queued (or its Failed new edition), and the polls
  * then move it on to Ready. The upload limits count the Documents that aren't Failed, against
  * `limits.document_quota`.
  */
-export function fakeDocumentsApi(options: { documents?: ProjectDocument[]; tags?: Tag[]; limits?: Partial<UploadLimits> } = {}) {
+export function fakeDocumentsApi(
+  options: { documents?: ProjectDocument[]; tags?: Tag[]; limits?: Partial<UploadLimits>; failing?: string[] } = {},
+) {
   let documents = [...(options.documents ?? [])];
   let tags = [...(options.tags ?? [])];
   const stored = new Map<string, string>();
@@ -98,7 +103,7 @@ export function fakeDocumentsApi(options: { documents?: ProjectDocument[]; tags?
     }),
     ...fakeTagRoutes(),
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/statuses", () => {
-      documents = documents.map(advance);
+      documents = documents.map((document) => advance(document, options.failing ?? []));
       requests.push({ route: "statuses" });
       return HttpResponse.json(
         documents.map(({ id, status, error_message, error_category, attempt_count, chunk_count, replacement }) => ({
