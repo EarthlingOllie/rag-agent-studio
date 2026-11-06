@@ -8994,7 +8994,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, `message`). */
+            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, and a `message` for Visitors that names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;

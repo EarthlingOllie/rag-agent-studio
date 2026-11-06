@@ -53,6 +53,8 @@ function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationI
   const save = useSaveAllowedOrigins(path);
   const [edited, setEdited] = useState<string | null>(null);
   const text = edited ?? (origins.data ?? []).join("\n");
+  // Until the saved list is here, saving would replace it with whatever the box holds.
+  const loaded = origins.isSuccess;
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,6 +84,7 @@ function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationI
         aria-describedby="allowed-origins-hint"
         rows={3}
         className={INPUT}
+        disabled={!loaded}
         value={text}
         onChange={(event) => {
           save.reset();
@@ -90,7 +93,7 @@ function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationI
       />
       <FormError message={save.error?.message} />
       <div className="flex items-center gap-3">
-        <button type="submit" className={BUTTON} disabled={save.isPending}>
+        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
           Save Allowed Origins
         </button>
         <p role="status" className="text-sm text-slate-700">

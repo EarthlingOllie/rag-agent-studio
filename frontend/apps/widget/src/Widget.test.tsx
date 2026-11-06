@@ -141,6 +141,62 @@ test("a network failure is shown as a generic error", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Please try again.");
 });
 
+function shell(token: string): Response {
+  const data = JSON.stringify({ agent: "agt_hr", name: "HR helper", bootstrap_token: token });
+  return new HttpResponse(
+    `<!doctype html><div id="root"></div><script id="widget-boot" type="application/json">${data}</script>`,
+    { headers: { "Content-Type": "text/html" } },
+  );
+}
+
+test("a Visitor who waits past the bootstrap token's 15 minutes still gets an answer", async () => {
+  const requests = fakeWidgetApi();
+  const expired = { detail: "This chat has expired. Reload the page to start a new one." };
+  server.use(
+    http.post(conversations, async ({ request }) => {
+      const body = (await request.json()) as { bootstrap_token: string };
+      requests.push({ route: "start", body });
+      return body.bootstrap_token === "wb1.fresh"
+        ? HttpResponse.json({ conversation_token: "wc1.fresh" }, { status: 201 })
+        : HttpResponse.json(expired, { status: 401 });
+    }),
+    http.get("*/widget/a/agt_hr", () => {
+      requests.push({ route: "shell", body: null });
+      return shell("wb1.fresh");
+    }),
+  );
+  render(<Widget boot={boot} />);
+
+  await ask("How much leave?");
+
+  expect(await screen.findByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(requests).toEqual([
+    { route: "start", body: { bootstrap_token: boot.bootstrap_token } },
+    { route: "shell", body: null },
+    { route: "start", body: { bootstrap_token: "wb1.fresh" } },
+    { route: "message", body: { content: "How much leave?" }, authorization: "Bearer wc1.fresh" },
+  ]);
+});
+
+test.each([
+  ["the shell refuses", () => new HttpResponse("gone", { status: 404 })],
+  ["the shell has no boot data", () => new HttpResponse("<p>Unavailable</p>", { headers: { "Content-Type": "text/html" } })],
+  ["the fresh token is refused too", () => shell("wb1.also-stale")],
+])("when %s after an expired bootstrap token, the Visitor is told to reload", async (_, answer) => {
+  server.use(
+    http.post(conversations, () =>
+      HttpResponse.json({ detail: "This chat has expired. Reload the page to start a new one." }, { status: 401 }),
+    ),
+    http.get("*/widget/a/agt_hr", answer),
+  );
+  render(<Widget boot={boot} />);
+
+  await ask("Hello");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("This chat has expired. Reload the page to start a new one.");
+});
+
 test("an Agent that is no longer available says so when the chat starts", async () => {
   server.use(
     http.post(conversations, () => HttpResponse.json({ detail: "This assistant is no longer available." }, { status: 404 })),

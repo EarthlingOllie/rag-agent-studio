@@ -175,7 +175,8 @@ def _sse(event: str, data: dict[str, Any]) -> str:
                 "Server-Sent Events: `token` events (`text`), then `citation` events "
                 "(`label`, `document_name`) and one `done` event (`message_id`); or, when the "
                 "answer leaks the Canary token, a `replace` event (`text`) then `done`; or, "
-                "when the model provider fails, one `error` event (`code`, `message`)."
+                "when the model provider fails, one `error` event (`code`, and a `message` for "
+                "Visitors that names no model or credential)."
             ),
         },
         **_errors((401, INVALID_TOKEN), (404, NO_LONGER_AVAILABLE), (503, TEMPORARILY_UNAVAILABLE)),
@@ -220,7 +221,9 @@ async def send_message(
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
             elif isinstance(event, ErrorEvent):
-                yield _sse("error", {"code": event.kind, "message": event.message})
+                # The event's message is written for Editors (it may name the model or say to
+                # rotate the Provider Credential); Visitors get the generic one.
+                yield _sse("error", {"code": event.kind, "message": TEMPORARILY_UNAVAILABLE})
             elif isinstance(event, CitationEvent):
                 yield _sse(
                     "citation",

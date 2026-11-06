@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
@@ -92,6 +92,9 @@ test("an invalid Allowed Origin is explained", async () => {
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
   const field = within(embed).getByLabelText("Allowed Origins");
+  await waitFor(() => {
+    expect(field).toBeEnabled();
+  });
 
   await user.type(field, "www.example.com");
   await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
@@ -102,18 +105,61 @@ test("an invalid Allowed Origin is explained", async () => {
   expect(field).toHaveValue("www.example.com");
 });
 
-test("other failures to save or load the Allowed Origins are reported", async () => {
+const originsPath = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins";
+
+test("a failure to save the Allowed Origins is reported", async () => {
   const user = userEvent.setup();
-  setUp();
-  const path = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins";
+  setUp({ allowedOrigins: ["https://www.example.com"] });
+  server.use(http.put(originsPath, () => HttpResponse.json({ detail: "Boom" }, { status: 500 })));
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  await within(embed).findByDisplayValue("https://www.example.com");
+
+  await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
+
+  expect(await within(embed).findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+});
+
+test("while the Allowed Origins load, they cannot be saved over", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ allowedOrigins: ["https://www.example.com"] });
+  let puts = 0;
   server.use(
-    http.get(path, () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
-    http.put(path, () => HttpResponse.json({ detail: "Boom" }, { status: 500 })),
+    http.get(originsPath, () => new Promise<Response>(() => undefined)),
+    http.put(originsPath, () => {
+      puts += 1;
+      return HttpResponse.json({ origins: [] });
+    }),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const save = within(embed).getByRole("button", { name: "Save Allowed Origins" });
+
+  expect(within(embed).getByLabelText("Allowed Origins")).toBeDisabled();
+  expect(save).toBeDisabled();
+  await user.click(save);
+  expect(puts).toBe(0);
+  expect(requests.filter((r) => r.route === "allowed-origins")).toEqual([]);
+});
+
+test("when the Allowed Origins can't be loaded, they cannot be saved over", async () => {
+  const user = userEvent.setup();
+  setUp({ allowedOrigins: ["https://www.example.com"] });
+  let puts = 0;
+  server.use(
+    http.get(originsPath, () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
+    http.put(originsPath, () => {
+      puts += 1;
+      return HttpResponse.json({ origins: [] });
+    }),
   );
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
 
   expect(await within(embed).findByText("The Allowed Origins could not be loaded.")).toBeInTheDocument();
-  await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
-  expect(await within(embed).findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+  const save = within(embed).getByRole("button", { name: "Save Allowed Origins" });
+  expect(within(embed).getByLabelText("Allowed Origins")).toBeDisabled();
+  expect(save).toBeDisabled();
+  await user.click(save);
+  expect(puts).toBe(0);
 });

@@ -346,6 +346,20 @@ async def test_tampered_expired_and_other_agents_bootstrap_tokens_are_refused(
     assert (await exchange(visitor, agent["public_id"], bootstrap)).status_code == 401
 
 
+async def test_a_visitor_who_waits_past_the_bootstrap_token_gets_a_fresh_one_from_the_shell(
+    owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await live_agent(owner)
+    stale = boot(await visitor.get(f"/widget/a/{agent['public_id']}"))["bootstrap_token"]
+
+    clock.advance(timedelta(minutes=40))
+    assert (await exchange(visitor, agent["public_id"], stale)).status_code == 401
+    fresh = boot(await visitor.get(f"/widget/a/{agent['public_id']}"))["bootstrap_token"]
+
+    assert fresh != stale
+    assert (await exchange(visitor, agent["public_id"], fresh)).status_code == 201
+
+
 async def test_no_conversation_starts_once_the_agent_is_no_longer_available(
     owner: SignedUpMember, visitor: httpx.AsyncClient
 ) -> None:
@@ -475,7 +489,18 @@ async def test_a_provider_failure_ends_the_stream_with_an_error_event(
 
     response = await send(visitor, created["public_id"], token, "How much leave?")
 
-    assert parse_sse(response.text) == [("error", {"code": "invalid_key", "message": INVALID_KEY})]
+    # The Editor-facing text (rotate the Provider Credential, model names) is not for Visitors.
+    assert parse_sse(response.text) == [
+        (
+            "error",
+            {
+                "code": "invalid_key",
+                "message": "This assistant is temporarily unavailable. Please try again later.",
+            },
+        )
+    ]
+    assert INVALID_KEY not in response.text
+    assert "gpt-4.1-mini" not in response.text
 
 
 async def leaks(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:

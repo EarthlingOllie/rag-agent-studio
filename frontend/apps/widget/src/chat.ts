@@ -35,10 +35,31 @@ function post(url: string, body: unknown, token?: string): Promise<Response> {
   return fetch(new URL(url, window.location.origin), { method: "POST", headers, body: JSON.stringify(body) });
 }
 
-/** Starts the Visitor's Conversation; returns its Conversation token. */
+function exchange(boot: Boot, bootstrapToken: string): Promise<Response> {
+  const body: Schemas["StartConversationRequest"] = { bootstrap_token: bootstrapToken };
+  return post(`${base(boot)}/conversations`, body);
+}
+
+/** A new bootstrap token from a fresh copy of the shell, or null when there is none. */
+async function freshBootstrapToken(boot: Boot): Promise<string | null> {
+  const response = await fetch(new URL(`/widget/a/${encodeURIComponent(boot.agent)}`, window.location.origin));
+  if (!response.ok) return null;
+  const page = new DOMParser().parseFromString(await response.text(), "text/html");
+  const data = page.getElementById("widget-boot")?.textContent;
+  return data ? (JSON.parse(data) as Boot).bootstrap_token : null;
+}
+
+/**
+ * Starts the Visitor's Conversation; returns its Conversation token. The shell's bootstrap
+ * token lasts 15 minutes, so a Visitor who waits longer before asking gets a fresh one from
+ * the shell and the exchange is tried once more.
+ */
 export async function startConversation(boot: Boot): Promise<string> {
-  const body: Schemas["StartConversationRequest"] = { bootstrap_token: boot.bootstrap_token };
-  const response = await post(`${base(boot)}/conversations`, body);
+  let response = await exchange(boot, boot.bootstrap_token);
+  if (response.status === 401) {
+    const fresh = await freshBootstrapToken(boot);
+    if (fresh) response = await exchange(boot, fresh);
+  }
   if (!response.ok) throw await refused(response);
   return ((await response.json()) as Schemas["ConversationTokenOut"]).conversation_token;
 }
