@@ -6,6 +6,8 @@ import { server } from "./server";
 export type Project = Schemas["ProjectOut"];
 
 export const PROJECT_ARCHIVED = "This Project is archived. An Owner can restore it.";
+export const ARCHIVE_BEFORE_DELETING = "Only an archived Project can be deleted. Archive it first.";
+export const NAME_MISMATCH = "Type the Project's name exactly to delete it.";
 
 export const hrProject: Project = {
   id: "7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01",
@@ -49,7 +51,7 @@ export const oldProject: Project = {
 const ARCHIVED_AT = "2026-11-05T09:00:00Z";
 
 /**
- * A stateful stand-in for the Projects API: creating, editing, archiving and restoring change
+ * A stateful stand-in for the Projects API: creating, editing, archiving, restoring and deleting change
  * what it lists, and it refuses what the real API refuses. Records the requests it receives.
  */
 export function fakeProjectsApi(options: { projects?: Project[]; instructions?: Record<string, string> } = {}) {
@@ -130,6 +132,17 @@ export function fakeProjectsApi(options: { projects?: Project[]; instructions?: 
       const projectId = params.projectId as string;
       requests.push({ route: "restore", projectId });
       return replace({ ...(find(projectId) as Project), archived_at: null });
+    }),
+    http.delete("*/api/organisations/:organisationId/projects/:projectId", async ({ params, request }) => {
+      const projectId = params.projectId as string;
+      const body = (await request.json()) as Schemas["DeleteProjectRequest"];
+      requests.push({ route: "delete", projectId, body });
+      const project = find(projectId);
+      if (!project) return notFound();
+      if (project.archived_at === null) return HttpResponse.json({ detail: ARCHIVE_BEFORE_DELETING }, { status: 409 });
+      if (body.confirm_name !== project.name) return HttpResponse.json({ detail: NAME_MISMATCH }, { status: 400 });
+      projects = projects.filter((candidate) => candidate.id !== projectId);
+      return new HttpResponse(null, { status: 202 });
     }),
   );
   return { requests };
