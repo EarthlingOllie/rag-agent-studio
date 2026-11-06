@@ -47,6 +47,15 @@ async function newEditor(owner: Page, browser: Browser): Promise<Page> {
   return page;
 }
 
+/** Real 1x1 PNGs, one red and one teal, as an Owner's image files. */
+const RED_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPYKSMDAAKDAPKqyfh0AAAAAElFTkSuQmCC", "base64");
+const TEAL_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPgL8sDAAGLAPQ8xSAqAAAAAElFTkSuQmCC", "base64");
+
+/** Whether the browser loaded and decoded the image, so its URL really served it. */
+async function loaded(image: Locator): Promise<boolean> {
+  return image.evaluate((element) => (element as HTMLImageElement).complete && (element as HTMLImageElement).naturalWidth > 0);
+}
+
 test.describe("Theme editor", () => {
   test("an Owner changes the primary colour, sees the preview update and the contrast warning, and saves", async ({
     signedInPage: page,
@@ -101,6 +110,72 @@ test.describe("Theme editor", () => {
     const theme = (await (await editor.request.get(path)).json()) as Record<string, unknown>;
     delete theme.updated_at;
     const refused = await editor.request.put(path, { data: { ...theme, radius: 0 } });
+    expect(refused.status()).toBe(403);
+  });
+
+  test("an Owner uploads, replaces and removes the logo and avatar, and the preview shows them", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    await openTheme(page);
+    const images = page.getByRole("region", { name: "Logo and avatar" });
+    await expect(images.getByText("No logo yet.")).toBeVisible();
+
+    // Presign, PUT straight to the object store (RustFS through the Studio's proxy), confirm.
+    await images.getByLabel("Upload logo").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: RED_PNG });
+    await expect(images.getByText("Logo saved. The widget uses it now.")).toBeVisible();
+    await images.getByLabel("Upload avatar").setInputFiles({ name: "avatar.png", mimeType: "image/png", buffer: TEAL_PNG });
+    await expect(images.getByText("Avatar saved. The widget uses it now.")).toBeVisible();
+
+    const logo = preview(page).getByRole("img", { name: "Logo" });
+    const avatar = preview(page).getByRole("img", { name: "Assistant's avatar" });
+    await expect.poll(() => loaded(logo)).toBe(true);
+    await expect.poll(() => loaded(avatar)).toBe(true);
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // Replacing serves the new file under a new URL; it survives a reload.
+    const firstUrl = await logo.getAttribute("src");
+    await images.getByLabel("Replace logo").setInputFiles({ name: "logo-2.png", mimeType: "image/png", buffer: TEAL_PNG });
+    await expect.poll(() => logo.getAttribute("src")).not.toBe(firstUrl);
+    await page.reload();
+    await expect.poll(() => loaded(preview(page).getByRole("img", { name: "Logo" }))).toBe(true);
+    const served = await page.request.get((await preview(page).getByRole("img", { name: "Logo" }).getAttribute("src")) ?? "");
+    expect(Buffer.from(await served.body()).equals(TEAL_PNG)).toBe(true);
+
+    // A file that isn't an allowed image type is refused with its reason.
+    await page
+      .getByRole("region", { name: "Logo and avatar" })
+      .getByLabel("Replace logo")
+      .setInputFiles({ name: "logo.svg", mimeType: "image/svg+xml", buffer: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>") });
+    await expect(page.getByRole("region", { name: "Logo and avatar" }).getByRole("alert")).toHaveText("Upload a PNG, JPEG or WebP image.");
+
+    await page.getByRole("region", { name: "Logo and avatar" }).getByRole("button", { name: "Remove avatar" }).click();
+    await expect(page.getByRole("region", { name: "Logo and avatar" }).getByText("No avatar yet.")).toBeVisible();
+    await expect(preview(page).getByRole("img", { name: "Assistant's avatar" })).toHaveCount(0);
+
+    // Each change is an Audit Event.
+    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    const rows = page.getByRole("table", { name: "Audit Events" }).getByRole("row").filter({ hasText: "theme.updated" });
+    await expect(rows).toHaveCount(4);
+    await expect(rows.first()).toContainText('"avatar":null');
+  });
+
+  test("an Editor sees the Theme's images but can't upload or remove them", async ({ signedInPage: owner, browser }) => {
+    await openTheme(owner);
+    await owner.getByLabel("Upload logo").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: RED_PNG });
+    await expect(owner.getByText("Logo saved. The widget uses it now.")).toBeVisible();
+    const editor = await newEditor(owner, browser);
+
+    await openTheme(editor);
+
+    const images = editor.getByRole("region", { name: "Logo and avatar" });
+    await expect.poll(() => loaded(images.getByRole("img", { name: "Current logo" }))).toBe(true);
+    await expect.poll(() => loaded(preview(editor).getByRole("img", { name: "Logo" }))).toBe(true);
+    await expect(images.getByLabel("Replace logo")).toBeDisabled();
+    await expect(images.getByRole("button", { name: "Remove logo" })).toHaveCount(0);
+    expect((await new AxeBuilder({ page: editor }).withTags(AXE_TAGS).analyze()).violations).toEqual([]);
+    const path = `/api/organisations/${await organisationId(owner)}/theme/images/avatar/uploads`;
+    const refused = await editor.request.post(path, { data: { filename: "a.png", size_bytes: 10 } });
     expect(refused.status()).toBe(403);
   });
 });

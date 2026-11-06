@@ -1443,11 +1443,62 @@ export interface paths {
         get: operations["getTheme"];
         /**
          * Save Theme
-         * @description Replaces the Theme. It applies at once. Colours that fail contrast are saved: the
-         *     Studio warns about them but never blocks.
+         * @description Replaces the Theme's settings; its images stay. It applies at once. Colours that fail
+         *     contrast are saved: the Studio warns about them but never blocks.
          */
         put: operations["saveTheme"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/theme/images/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Image
+         * @description The Theme's logo or avatar itself. Any Member can fetch it.
+         */
+        get: operations["getThemeImage"];
+        /**
+         * Confirm Image Upload
+         * @description Checks the uploaded image and makes it the Theme's logo or avatar, replacing the one it
+         *     had. It applies at once and is recorded as ``theme.updated``.
+         */
+        put: operations["confirmThemeImageUpload"];
+        post?: never;
+        /**
+         * Remove Image
+         * @description Removes the Theme's logo or avatar and deletes its file. Removing one there is none of
+         *     changes nothing.
+         */
+        delete: operations["removeThemeImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/theme/images/{kind}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Image Upload
+         * @description Checks the image type (PNG, JPEG or WebP) and size, then answers with a presigned URL to
+         *     PUT the image to.
+         */
+        post: operations["startThemeImageUpload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1788,6 +1839,14 @@ export interface components {
             password: string;
             /** Token */
             token: string;
+        };
+        /** ConfirmImageUploadRequest */
+        ConfirmImageUploadRequest: {
+            /**
+             * Upload Id
+             * Format: uuid
+             */
+            upload_id: string;
         };
         /** ConfirmUploadRequest */
         ConfirmUploadRequest: {
@@ -2871,6 +2930,35 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** StartImageUploadRequest */
+        StartImageUploadRequest: {
+            /** Filename */
+            filename: string;
+            /** Size Bytes */
+            size_bytes: number;
+        };
+        /** StartImageUploadResponse */
+        StartImageUploadResponse: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Method
+             * @default PUT
+             */
+            method: string;
+            /**
+             * Upload Id
+             * Format: uuid
+             */
+            upload_id: string;
+            /** Url */
+            url: string;
+        };
         /** StartUploadRequest */
         StartUploadRequest: {
             /** Filename */
@@ -2958,16 +3046,37 @@ export interface components {
             surface: components["schemas"]["ColourToken"];
         };
         /**
+         * ThemeImageKind
+         * @enum {string}
+         */
+        ThemeImageKind: "logo" | "avatar";
+        /** ThemeImageOut */
+        ThemeImageOut: {
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /** Url */
+            url: string;
+        };
+        /**
          * ThemeMode
          * @enum {string}
          */
         ThemeMode: "light" | "dark" | "auto";
         /** ThemeOut */
         ThemeOut: {
+            avatar: components["schemas"]["ThemeImageOut"] | null;
             colours: components["schemas"]["ThemeColours"];
             font: components["schemas"]["Font"];
             launcher_position: components["schemas"]["LauncherPosition"];
             launcher_type: components["schemas"]["LauncherType"];
+            logo: components["schemas"]["ThemeImageOut"] | null;
             mode: components["schemas"]["ThemeMode"];
             /**
              * Radius
@@ -7315,6 +7424,234 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getThemeImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["schemas"]["ThemeImageKind"];
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirmThemeImageUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["schemas"]["ThemeImageKind"];
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmImageUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The image hasn't reached storage yet. Upload it, then save. / This upload wasn't found or has expired. Start the upload again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The stored file isn't an image of the declared type, or is too large. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeThemeImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["schemas"]["ThemeImageKind"];
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startThemeImageUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["schemas"]["ThemeImageKind"];
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartImageUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartImageUploadResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The image is larger than the Theme image limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Upload a PNG, JPEG or WebP image. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

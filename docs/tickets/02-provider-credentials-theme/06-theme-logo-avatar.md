@@ -8,10 +8,10 @@
 - [02-05: Theme editor](05-theme-editor.md)
 - [03-02: Upload a Document to Ready](../03-projects-knowledge-base/02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Logo and avatar are uploaded through presigned uploads via the object-store port, restricted by image type and size
-- [ ] Images show in the Theme preview
-- [ ] Images can be replaced and removed, and changes are audited
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Logo and avatar are uploaded through presigned uploads via the object-store port, restricted by image type and size
+- [x] Images show in the Theme preview
+- [x] Images can be replaced and removed, and changes are audited
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
