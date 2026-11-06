@@ -1,15 +1,16 @@
 $ make -o images image-scan IMAGE_TAG=0206
-# 2026-11-06T05:48:06Z in a fresh clone at ec276a1
+# 2026-11-06T06:48:45Z in a fresh clone at e4142db
 trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/api:0206
-2026-11-06T05:48:07Z	INFO	[vuln] Vulnerability scanning is enabled
-2026-11-06T05:48:07Z	INFO	[secret] Secret scanning is enabled
-2026-11-06T05:48:07Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
-2026-11-06T05:48:07Z	INFO	[secret] Please see https://trivy.dev/docs/v0.69/guide/scanner/secret#recommendation for faster secret detection
-2026-11-06T05:48:14Z	INFO	Detected OS	family="debian" version="13.7"
-2026-11-06T05:48:14Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
-2026-11-06T05:48:14Z	INFO	Number of language-specific files	num=1
-2026-11-06T05:48:14Z	INFO	[python-pkg] Detecting vulnerabilities...
-2026-11-06T05:48:14Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
+2026-11-06T06:48:45Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T06:48:45Z	INFO	[secret] Secret scanning is enabled
+2026-11-06T06:48:45Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
+2026-11-06T06:48:45Z	INFO	[secret] Please see https://trivy.dev/docs/v0.69/guide/scanner/secret#recommendation for faster secret detection
+2026-11-06T06:50:17Z	INFO	[python] Licenses acquired from one or more METADATA files may be subject to additional terms. Use `--debug` flag to see all affected packages.
+2026-11-06T06:50:17Z	INFO	Detected OS	family="debian" version="13.7"
+2026-11-06T06:50:17Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
+2026-11-06T06:50:17Z	INFO	Number of language-specific files	num=1
+2026-11-06T06:50:17Z	INFO	[python-pkg] Detecting vulnerabilities...
+2026-11-06T06:50:17Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
 
 Report Summary
 
