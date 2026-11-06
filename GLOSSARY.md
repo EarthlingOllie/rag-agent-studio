@@ -263,7 +263,7 @@ What the injection classifier records on a Chunk it flags: a label (such as `pro
 _Avoid_: Warning, alert, violation
 
 **Project Instructions**:
-Text injected into every Agent in a Project. Versioned the same way as Agents.
+Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents; each Project has one Draft of them.
 _Avoid_: Project context, global prompt, shared context
 
 ## Agents and versioning
@@ -327,6 +327,10 @@ _Avoid_: Default answer, "I don't know" message
 
 **Excluded Chunk**:
 A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, or outside the Top-k. It feeds the Trace.
+
+**Markdown editor**:
+The Studio's editor for prompt fields (an Agent's system prompt, Project Instructions). It shows markdown formatted but stores markdown: text is kept exactly until it is edited, and its Markdown view edits the stored text itself.
+_Avoid_: Rich text editor, WYSIWYG field, HTML
 
 **Spotlighting**:
 Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.

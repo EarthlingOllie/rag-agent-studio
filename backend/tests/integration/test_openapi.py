@@ -83,6 +83,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "/api/organisations/{organisation_id}/projects/{project_id}/restore",
             "post",
         ),
+        "getProjectInstructions": (f"{_PROJECT}/instructions", "get"),
+        "saveProjectInstructions": (f"{_PROJECT}/instructions", "put"),
         "startDocumentUpload": (f"{_PROJECT}/uploads", "post"),
         "confirmDocumentUpload": (f"{_PROJECT}/documents", "post"),
         "listDocuments": (f"{_PROJECT}/documents", "get"),

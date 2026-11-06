@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* The shared UI package lives outside the app; its classes are generated too. */
+@source "../../../packages/ui/src";
 
 /* Rendered markdown (the Document viewer). Tailwind's reset removes element styles, so the
    elements Docling's markdown uses get theirs back here. */
