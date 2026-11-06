@@ -6,6 +6,28 @@ import { server } from "./server";
 export type Project = Schemas["ProjectOut"];
 
 export const PROJECT_ARCHIVED = "This Project is archived. An Owner can restore it.";
+export const NOTHING_TO_PUBLISH = "The Draft is the same as the Current Version, so there's nothing to publish.";
+export const NOTHING_TO_REVERT = "There's no earlier Version to revert to.";
+
+type InstructionsHistory = Schemas["InstructionsHistoryOut"];
+type InstructionsVersion = Schemas["InstructionsVersionOut"];
+
+const PUBLISHED_AT = "2026-11-06T10:15:00Z";
+const AUTHOR = { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" };
+
+/** An Instructions Version, published by Ada unless the overrides say otherwise. */
+export function instructionsVersion(number: number, overrides: Partial<InstructionsVersion> = {}): InstructionsVersion {
+  return {
+    id: `5e0c7a10-0000-4000-8000-${String(number).padStart(12, "0")}`,
+    number,
+    markdown: `Rules ${String(number)}`,
+    note: `Note ${String(number)}`,
+    author: AUTHOR,
+    created_at: "2026-11-01T09:00:00Z",
+    previous_version_id: null,
+    ...overrides,
+  };
+}
 
 export const hrProject: Project = {
   id: "7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01",
@@ -52,9 +74,14 @@ const ARCHIVED_AT = "2026-11-05T09:00:00Z";
  * A stateful stand-in for the Projects API: creating, editing, archiving and restoring change
  * what it lists, and it refuses what the real API refuses. Records the requests it receives.
  */
-export function fakeProjectsApi(options: { projects?: Project[]; instructions?: Record<string, string> } = {}) {
+export function fakeProjectsApi(
+  options: { projects?: Project[]; instructions?: Record<string, string>; versions?: Record<string, InstructionsHistory> } = {},
+) {
   let projects = [...(options.projects ?? [hrProject, salesProject, oldProject])];
   const instructions: Record<string, string> = { ...options.instructions };
+  const versions: Record<string, InstructionsHistory> = { ...options.versions };
+  const historyOf = (id: string): InstructionsHistory => versions[id] ?? { current_version_id: null, versions: [] };
+  const currentOf = (history: InstructionsHistory) => history.versions.find((version) => version.id === history.current_version_id);
   const requests: { route: string; projectId?: string; body?: unknown }[] = [];
   const find = (id: string) => projects.find((project) => project.id === id);
   const notFound = () => HttpResponse.json({ detail: "Not found" }, { status: 404 });
@@ -125,6 +152,40 @@ export function fakeProjectsApi(options: { projects?: Project[]; instructions?: 
       if (body.markdown.length > 20_000) return HttpResponse.json({ detail: [{ msg: "too long" }] }, { status: 422 });
       instructions[projectId] = body.markdown;
       return HttpResponse.json({ markdown: body.markdown });
+    }),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/instructions/versions", ({ params }) => {
+      const projectId = params.projectId as string;
+      return find(projectId) ? HttpResponse.json(historyOf(projectId)) : notFound();
+    }),
+    http.post("*/api/organisations/:organisationId/projects/:projectId/instructions/versions", async ({ params, request }) => {
+      const projectId = params.projectId as string;
+      const body = (await request.json()) as Schemas["PublishInstructionsRequest"];
+      requests.push({ route: "publish", projectId, body });
+      if ((find(projectId) as Project).archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
+      const note = body.note.trim();
+      if (!note || note.length > 500) return HttpResponse.json({ detail: [{ msg: "bad note" }] }, { status: 422 });
+      const history = historyOf(projectId);
+      const current = currentOf(history);
+      const markdown = instructions[projectId] ?? "";
+      if (markdown === (current?.markdown ?? "")) return HttpResponse.json({ detail: NOTHING_TO_PUBLISH }, { status: 409 });
+      const version = instructionsVersion(history.versions.length + 1, {
+        markdown,
+        note,
+        created_at: PUBLISHED_AT,
+        previous_version_id: current?.id ?? null,
+      });
+      versions[projectId] = { current_version_id: version.id, versions: [version, ...history.versions] };
+      return HttpResponse.json(version, { status: 201 });
+    }),
+    http.post("*/api/organisations/:organisationId/projects/:projectId/instructions/revert", ({ params }) => {
+      const projectId = params.projectId as string;
+      requests.push({ route: "revert", projectId });
+      if ((find(projectId) as Project).archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
+      const history = historyOf(projectId);
+      const target = history.versions.find((version) => version.id === currentOf(history)?.previous_version_id);
+      if (!target) return HttpResponse.json({ detail: NOTHING_TO_REVERT }, { status: 409 });
+      versions[projectId] = { ...history, current_version_id: target.id };
+      return HttpResponse.json(target);
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/restore", ({ params }) => {
       const projectId = params.projectId as string;

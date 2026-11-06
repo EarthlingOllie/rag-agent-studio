@@ -263,7 +263,7 @@ What the injection classifier records on a Chunk it flags: a label (such as `pro
 _Avoid_: Warning, alert, violation
 
 **Project Instructions**:
-Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents; each Project has one Draft of them.
+Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents: each Project has one Draft of them, numbered Instructions Versions published from it with a note, and a Current Version.
 _Avoid_: Project context, global prompt, shared context
 
 ## Agents and versioning
@@ -347,15 +347,19 @@ _Avoid_: Reference, footnote, source link
 One Chunk retrieval found for an Agent Message, saved with its score, relevance, rank (when it was given to the model), whether it was cited and, for an Excluded Chunk, the reason. The Trace's list of Chunks.
 
 **Version**:
-An immutable, numbered snapshot of a Draft, created by publishing it. An Agent's Version pins exactly one Project Instructions Version.
+An immutable, numbered snapshot of a Draft, created by publishing it with a note. Numbers start at 1 for each Agent and each Project's Instructions. An Agent's Version pins exactly one Project Instructions Version.
 _Avoid_: Revision, release
+
+**Instructions Version**:
+A Version of a Project's Instructions: its number, the markdown, the note, who published it and when. A Project's first one may come from the Instructions it had before Versions existed, and has no author.
+_Avoid_: Instructions revision
 
 **Live Version**:
 The Agent Version currently served to Visitors. Only Agents have one.
 _Avoid_: Active, production
 
 **Current Version**:
-The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones.
+The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones. Publishing the Instructions makes the new Version Current; reverting them moves Current back to the Version that was Current when the present one was published, so reverting again keeps walking back rather than toggling.
 _Avoid_: Live (for Project Instructions), latest
 
 **Live History**:
@@ -364,6 +368,10 @@ _Avoid_: Changelog, deployments
 
 **Publish**:
 To freeze a Draft into a new Version and make it the Live Version for an Agent, or the Current Version for Project Instructions.
+
+**Revert**:
+To move the Live Version (Agents) or the Current Version (Project Instructions) back one step in its history. It never edits a Version or the Draft.
+_Avoid_: Rollback, undo
 
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.

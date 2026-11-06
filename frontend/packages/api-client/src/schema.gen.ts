@@ -1291,6 +1291,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revert Instructions
+         * @description Moves the Current Version back to the Version that was Current before it, and returns
+         *     it. The Draft is unchanged. Records ``project.instructions_reverted``.
+         */
+        post: operations["revertProjectInstructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Versions
+         * @description The Project Instructions Versions, newest first, and which is the Current Version.
+         */
+        get: operations["listProjectInstructionsVersions"];
+        put?: never;
+        /**
+         * Publish Instructions
+         * @description Publishes the Instructions Draft with a note as the next Version, which becomes the
+         *     Current Version. Records ``project.instructions_published``.
+         */
+        post: operations["publishProjectInstructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
         parameters: {
             query?: never;
@@ -2308,6 +2354,35 @@ export interface components {
          * @enum {string}
          */
         InputMode: "block" | "warn" | "log";
+        /** InstructionsHistoryOut */
+        InstructionsHistoryOut: {
+            /** Current Version Id */
+            current_version_id: string | null;
+            /** Versions */
+            versions: components["schemas"]["InstructionsVersionOut"][];
+        };
+        /** InstructionsVersionOut */
+        InstructionsVersionOut: {
+            author: components["schemas"]["VersionAuthor"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Markdown */
+            markdown: string;
+            /** Note */
+            note: string;
+            /** Number */
+            number: number;
+            /** Previous Version Id */
+            previous_version_id: string | null;
+        };
         /** InviteLookupRequest */
         InviteLookupRequest: {
             /** Token */
@@ -2686,6 +2761,11 @@ export interface components {
             id: components["schemas"]["Provider"];
             /** Name */
             name: string;
+        };
+        /** PublishInstructionsRequest */
+        PublishInstructionsRequest: {
+            /** Note */
+            note: string;
         };
         /** RecoveryCodesResponse */
         RecoveryCodesResponse: {
@@ -3106,6 +3186,16 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VersionAuthor */
+        VersionAuthor: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /** WorkerHealthResponse */
         WorkerHealthResponse: {
@@ -6681,6 +6771,151 @@ export interface operations {
                 };
             };
             /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revertProjectInstructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsVersionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: There's no earlier Version to revert to. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listProjectInstructionsVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsHistoryOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publishProjectInstructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishInstructionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsVersionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: The Draft is the same as the Current Version, so there's nothing to publish. */
             409: {
                 headers: {
                     [name: string]: unknown;

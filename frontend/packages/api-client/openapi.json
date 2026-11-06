@@ -2031,6 +2031,94 @@
         "title": "InputMode",
         "type": "string"
       },
+      "InstructionsHistoryOut": {
+        "properties": {
+          "current_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version Id"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/InstructionsVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current_version_id",
+          "versions"
+        ],
+        "title": "InstructionsHistoryOut",
+        "type": "object"
+      },
+      "InstructionsVersionOut": {
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "previous_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Version Id"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "markdown",
+          "note",
+          "author",
+          "created_at",
+          "previous_version_id"
+        ],
+        "title": "InstructionsVersionOut",
+        "type": "object"
+      },
       "InviteLookupRequest": {
         "properties": {
           "token": {
@@ -3007,6 +3095,21 @@
           "capabilities"
         ],
         "title": "ProviderOut",
+        "type": "object"
+      },
+      "PublishInstructionsRequest": {
+        "properties": {
+          "note": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "PublishInstructionsRequest",
         "type": "object"
       },
       "RecoveryCodesResponse": {
@@ -4156,6 +4259,25 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VersionAuthor": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "VersionAuthor",
         "type": "object"
       },
       "WorkerHealthResponse": {
@@ -9503,6 +9625,226 @@
         "summary": "Save Project Instructions",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/revert": {
+      "post": {
+        "description": "Moves the Current Version back to the Version that was Current before it, and returns\nit. The Draft is unchanged. Records ``project.instructions_reverted``.",
+        "operationId": "revertProjectInstructions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: There's no earlier Version to revert to."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revert Instructions",
+        "tags": [
+          "project-instructions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions": {
+      "get": {
+        "description": "The Project Instructions Versions, newest first, and which is the Current Version.",
+        "operationId": "listProjectInstructionsVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Versions",
+        "tags": [
+          "project-instructions"
+        ]
+      },
+      "post": {
+        "description": "Publishes the Instructions Draft with a note as the next Version, which becomes the\nCurrent Version. Records ``project.instructions_published``.",
+        "operationId": "publishProjectInstructions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishInstructionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: The Draft is the same as the Current Version, so there's nothing to publish."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Publish Instructions",
+        "tags": [
+          "project-instructions"
         ]
       }
     },

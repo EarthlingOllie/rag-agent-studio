@@ -4,6 +4,7 @@ import { type SubmitEvent, useRef } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { instructionsFailure, useInstructions, useSaveInstructions } from "./instructions";
+import { InstructionsVersions, PublishInstructionsForm } from "./InstructionsVersions";
 import { useProject } from "./projects";
 import { BUTTON, useOrganisationRole } from "./ProjectsPage";
 
@@ -28,33 +29,38 @@ function InstructionsForm({
   }
 
   return (
-    <form aria-label="Project Instructions" onSubmit={onSubmit} className="space-y-3">
-      <FormError message={instructionsFailure(save.error)} />
-      <MarkdownEditor
-        label="Project Instructions"
-        defaultValue={markdown}
-        maxLength={20000}
-        disabled={archived}
-        onChange={(changed) => {
-          current.current = changed;
-          save.reset();
-        }}
-      />
-      {archived ? (
-        <p className="text-sm text-slate-700">This Project is archived. Restore the Project to edit its Instructions.</p>
-      ) : (
-        <div className="flex items-center gap-3">
-          <button type="submit" disabled={save.isPending} className={BUTTON}>
-            {save.isPending ? "Saving…" : "Save Instructions"}
-          </button>
-          {save.isSuccess && (
-            <span role="status" className="text-sm text-slate-700">
-              Instructions saved
-            </span>
-          )}
-        </div>
+    <>
+      <form aria-label="Project Instructions" onSubmit={onSubmit} className="space-y-3">
+        <FormError message={instructionsFailure(save.error)} />
+        <MarkdownEditor
+          label="Project Instructions"
+          defaultValue={markdown}
+          maxLength={20000}
+          disabled={archived}
+          onChange={(changed) => {
+            current.current = changed;
+            save.reset();
+          }}
+        />
+        {archived ? (
+          <p className="text-sm text-slate-700">This Project is archived. Restore the Project to edit its Instructions.</p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={save.isPending} className={BUTTON}>
+              {save.isPending ? "Saving…" : "Save Instructions"}
+            </button>
+            {save.isSuccess && (
+              <span role="status" className="text-sm text-slate-700">
+                Instructions saved
+              </span>
+            )}
+          </div>
+        )}
+      </form>
+      {!archived && (
+        <PublishInstructionsForm organisationId={organisationId} projectId={projectId} markdown={() => current.current} />
       )}
-    </form>
+    </>
   );
 }
 
@@ -90,6 +96,10 @@ export function InstructionsTab() {
         Project Instructions are the shared rules every Agent in this Project follows. They come before each Agent's system prompt.
       </p>
       {body}
+      <h3 className="pt-4 text-base font-semibold">Versions</h3>
+      {project.data && (
+        <InstructionsVersions organisationId={organisationId} projectId={projectId} archived={project.data.archived_at !== null} />
+      )}
     </section>
   );
 }

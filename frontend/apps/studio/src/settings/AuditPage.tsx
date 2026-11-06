@@ -7,7 +7,7 @@ type AuditEvent = AuditEventPage["items"][number];
 const INPUT = "rounded border border-slate-400 bg-white px-2 py-1 text-sm";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
-function formatTime(iso: string): string {
+export function formatTime(iso: string): string {
   return `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 }
 
