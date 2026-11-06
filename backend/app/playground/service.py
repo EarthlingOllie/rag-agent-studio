@@ -1,9 +1,11 @@
 """Playground Conversations: starting one, reading it back, and answering a question with
 the Agent runtime, saving the question and the answer as Messages.
 
-In the Playground a question is answered by the Draft with the Project Instructions Draft, and
-the answer records the Draft marker. ``save_question`` and ``answer`` are shared with serving
-the Live Version (``app.agents.serving``), whose answers record the Agent Version instead.
+In the Playground a question is answered by the Draft, following the Project Instructions Draft
+or the Instructions Version the Editor chose (the Instructions picker), and the answer records the
+Draft marker and which Instructions it ran with. ``save_question`` and ``answer`` are shared with
+serving the Live Version (``app.agents.serving``), whose answers record the Agent Version instead
+(its pinned Instructions are derivable from it).
 
 A question is answered by the configuration's Model override, or else the Organisation's
 Default Model, through the model gateway, from Chunks the retrieval module finds in the Agent's
@@ -28,6 +30,7 @@ from app.conversations.models import (
     DRAFT,
     VERSION,
     Conversation,
+    InstructionsSource,
     Message,
     MessageRetrieval,
     MessageRole,
@@ -41,7 +44,8 @@ from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
-from app.projects.models import Project
+from app.projects.instructions import project_version
+from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
@@ -164,9 +168,18 @@ class PreparedTurn:
     turns: list[Turn]
     question: str
     chat: ChosenModel
+    # In the Playground, the Instructions Version the answer follows (None: the Draft).
+    instructions_version_id: uuid.UUID | None = None
+    instructions_version_number: int | None = None
     reranker: ChosenModel | None = None
     # The Agent Version answering; None for the Draft.
     agent_version_id: uuid.UUID | None = None
+
+    @property
+    def instructions_source(self) -> InstructionsSource:
+        if self.instructions_version_id is None:
+            return InstructionsSource.DRAFT
+        return InstructionsSource.VERSION
 
 
 async def prepare_turn(
@@ -177,10 +190,19 @@ async def prepare_turn(
     conversation_id: uuid.UUID,
     question: str,
     *,
+    instructions_version_id: uuid.UUID | None = None,
     now: datetime,
 ) -> PreparedTurn:
-    """Checks the question can be answered by the Draft, then saves it."""
+    """Checks the question can be answered by the Draft, then saves it. With no
+    ``instructions_version_id`` the answer follows the Project Instructions Draft; otherwise that
+    Version of the Project's Instructions (``InstructionsVersionNotFoundError`` if the Project
+    has no such Version)."""
     project = await active_project(session, scope, project_id)
+    version = (
+        None
+        if instructions_version_id is None
+        else await project_version(session, project, instructions_version_id)
+    )
     found = await active_agent(session, scope, project_id, agent_id)
     conversation, messages = await get_conversation(
         session, scope, project_id, agent_id, conversation_id
@@ -191,9 +213,10 @@ async def prepare_turn(
         conversation,
         messages,
         found.draft,
-        project.instructions,
+        project.instructions if version is None else version.markdown,
         question,
         agent_version_id=None,
+        instructions_version=version,
         now=now,
     )
 
@@ -208,6 +231,7 @@ async def save_question(
     question: str,
     *,
     agent_version_id: uuid.UUID | None,
+    instructions_version: InstructionsVersion | None = None,
     now: datetime,
 ) -> PreparedTurn:
     """Checks ``config`` has a chat model, then saves the question in the Conversation."""
@@ -238,6 +262,10 @@ async def save_question(
         turns=_turns(messages),
         question=question,
         chat=chat,
+        instructions_version_id=None if instructions_version is None else instructions_version.id,
+        instructions_version_number=(
+            None if instructions_version is None else instructions_version.number
+        ),
         reranker=reranker,
         agent_version_id=agent_version_id,
     )
@@ -387,6 +415,12 @@ async def answer(
                 content=event.answer,
                 config_source=DRAFT if prepared.agent_version_id is None else VERSION,
                 agent_version_id=prepared.agent_version_id,
+                # An Agent Version's answer records no Instructions: its pinned Instructions
+                # are named by the Version.
+                instructions_source=(
+                    prepared.instructions_source if prepared.agent_version_id is None else None
+                ),
+                instructions_version_id=prepared.instructions_version_id,
                 # A fallback reply asked no model, so it names none.
                 model_provider=None if event.fallback else chosen.credential.provider,
                 model_name=None if event.fallback else chosen.model,
