@@ -6,6 +6,8 @@ reads the Theme with each image's URL and fetches the image from it. Images can 
 and removed, and every change is a ``theme.updated`` Audit Event.
 """
 
+import asyncio
+import contextlib
 import hashlib
 from datetime import timedelta
 from typing import Any
@@ -210,6 +212,36 @@ async def test_an_upload_is_confirmed_only_once_after_the_file_arrives(
     }
 
 
+async def test_two_confirmations_of_one_upload_at_once_keep_the_image(
+    app: FastAPI, owner: SignedUpMember, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ticket = await images.uploaded_ticket(owner, "logo", png())
+    # Both confirmations reach the store before either finishes, the way two requests at once
+    # can: each waits (briefly) for the other at the store's read.
+    store = app.state.ingestion.object_store
+    assert isinstance(store, InMemoryObjectStore)
+    read = store.get
+    arrived = asyncio.Barrier(2)
+
+    async def get_together(key: str) -> bytes:
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(arrived.wait(), timeout=1)
+        return await read(key)
+
+    monkeypatch.setattr(store, "get", get_together)
+
+    first, second = await asyncio.gather(
+        images.confirm(owner, "logo", ticket["upload_id"]),
+        images.confirm(owner, "logo", ticket["upload_id"]),
+    )
+
+    assert sorted([first.status_code, second.status_code]) == [200, 409]
+    logo = (await theme_of(owner))["logo"]
+    fetched = await owner.client.get(logo["url"])
+    assert (fetched.status_code, fetched.content) == (200, png())
+    assert [data for data, _ in stored_objects(app).values()] == [png()]
+
+
 async def test_an_upload_is_confirmed_only_as_the_image_it_was_started_for(
     owner: SignedUpMember,
 ) -> None:
@@ -229,6 +261,17 @@ async def test_an_unknown_image_kind_is_refused(owner: SignedUpMember) -> None:
 
 async def test_an_image_that_was_never_uploaded_is_not_found(owner: SignedUpMember) -> None:
     response = await owner.client.get(images.images_path(owner, "logo"))
+
+    assert (response.status_code, response.json()) == (404, {"detail": "Not found"})
+
+
+async def test_an_image_whose_file_is_missing_from_storage_is_not_found(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    theme = await images.upload(owner, "logo", png())
+    stored_objects(app).clear()
+
+    response = await owner.client.get(theme["logo"]["url"])
 
     assert (response.status_code, response.json()) == (404, {"detail": "Not found"})
 

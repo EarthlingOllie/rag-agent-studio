@@ -3,10 +3,10 @@
 1. ``start_upload`` checks the image type (by extension) and the declared size, and answers
    with a presigned PUT URL. The pending upload is remembered in Redis until the URL expires.
 2. The browser PUTs the image straight to the object store.
-3. ``confirm_upload`` reads the stored bytes and checks them again, because a presigned PUT
-   accepts whatever is sent: the size, and that the bytes really are the declared type. A file
-   that fails is deleted. Otherwise the image becomes the Theme's, and the one it replaces is
-   deleted from the store.
+3. ``confirm_upload`` claims the pending upload (only one confirmation can), reads the stored
+   bytes and checks them again, because a presigned PUT accepts whatever is sent: the size,
+   and that the bytes really are the declared type. A file that fails is deleted. Otherwise
+   the image becomes the Theme's, and the one it replaces is deleted from the store.
 
 Only PNG, JPEG and WebP are accepted. SVG is not: it can carry script.
 """
@@ -132,7 +132,14 @@ async def confirm_upload(
 ) -> SavedTheme:
     """Makes the uploaded image the Theme's, replacing (and deleting) the one it had."""
     key = _pending_key(scope, kind, upload_id)
-    raw = await redis.get(key)
+    # Claim the upload: read and remove it in one step, so two confirmations of it at once
+    # can't both use it (the second would take the first's image as the one it replaces, and
+    # delete the file both point to).
+    async with redis.pipeline(transaction=True) as claim:
+        claim.get(key)
+        claim.pttl(key)
+        claim.delete(key)
+        raw, ttl_ms, _ = await claim.execute()
     if raw is None:
         raise UploadNotFoundError
     pending = json.loads(raw)
@@ -141,9 +148,11 @@ async def confirm_upload(
     try:
         data = await store.get(object_key)
     except ObjectNotFoundError:
+        # Not uploaded yet: give the claim back, for a confirmation once the file arrives.
+        if ttl_ms > 0:
+            await redis.set(key, raw, px=ttl_ms, nx=True)
         raise ImageNotUploadedError from None
     if len(data) > max_bytes or not _is_type(data, content_type):
-        await redis.delete(key)
         await store.delete(object_key)
         if len(data) > max_bytes:
             raise ImageTooLargeError
@@ -156,8 +165,7 @@ async def confirm_upload(
         uploaded_at=now,
     )
     change = await service.set_image(session, scope, kind, image, now=now)
-    await redis.delete(key)
-    if change.replaced is not None:
+    if change.replaced is not None and change.replaced.object_key != object_key:
         await store.delete(change.replaced.object_key)
     return change.theme
 
@@ -188,4 +196,8 @@ async def read_image(
     image = (await service.read_theme(session, scope)).images[kind]
     if image is None:
         raise ImageNotFoundError
-    return ImageFile(await store.get(image.object_key), image.content_type)
+    try:
+        data = await store.get(image.object_key)
+    except ObjectNotFoundError:
+        raise ImageNotFoundError from None
+    return ImageFile(data, image.content_type)
