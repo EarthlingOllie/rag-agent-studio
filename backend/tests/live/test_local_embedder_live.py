@@ -39,15 +39,20 @@ async def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimensio
 
 
 async def test_a_query_is_nearest_the_passage_that_answers_it() -> None:
+    # multilingual-e5-small is small: a paraphrase with no shared words ("How much holiday do I
+    # get?") scores the expenses passage slightly higher (0.805 against 0.796, the same as the
+    # model's own transformers implementation gives). So each query shares the topic's words.
     embedder = LocalEmbedder()
     leave, expenses = await embedder.embed_passages(
         ["Everyone gets 25 days of annual leave.", "Claim expenses within 30 days."]
     )
 
-    query = await embedder.embed_query("How much holiday do I get?")
+    leave_query = await embedder.embed_query("How many days of annual leave do I get?")
+    expenses_query = await embedder.embed_query("How long do I have to claim expenses?")
 
-    assert len(query) == 384
-    assert _cosine(query, leave) > _cosine(query, expenses)
+    assert len(leave_query) == 384
+    assert _cosine(leave_query, leave) > _cosine(leave_query, expenses)
+    assert _cosine(expenses_query, expenses) > _cosine(expenses_query, leave)
 
 
 def test_the_chunker_counts_tokens_with_the_models_own_tokenizer() -> None:

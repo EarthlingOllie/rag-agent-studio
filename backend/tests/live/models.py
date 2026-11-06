@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from huggingface_hub import HfApi, hf_hub_url, snapshot_download
+from huggingface_hub import hf_hub_url, snapshot_download
 
 # Docling's default PDF layout model, and the local Embedding Model with its tokenizer.
 DOCLING_LAYOUT = "docling-project/docling-layout-heron"
@@ -32,32 +32,33 @@ def _on_disk(repo_id: str) -> bool:
     return True
 
 
-WEIGHT_SUFFIXES = (".safetensors", ".onnx", ".bin", ".pt")
+# The weight files each model's code loads. A repo can hold several exports of the same
+# weights (multilingual-e5-small has PyTorch, safetensors, OpenVINO and four ONNX files, about
+# 2.3 GB); only the one the code reads is checked, and the code downloads it on first use.
+WEIGHT_FILES = {
+    DOCLING_LAYOUT: ("model.safetensors",),
+    LOCAL_EMBEDDING_MODEL: ("onnx/model.onnx",),
+}
 
 
 def _unreachable(repo_id: str) -> str | None:
-    """Why the model can't be downloaded, or None once it is.
+    """Why the model can't be downloaded, or None when it can.
 
     Hugging Face serves weight files from a CDN, not huggingface.co, so a network can reach
-    the one but not the other. The first byte of each weight file is fetched with a short
-    timeout first: a blocked CDN then skips in seconds, where ``snapshot_download`` would retry
-    for a long time. Only then is the model downloaded.
+    the one but not the other. The first byte of each weight file the code loads is fetched
+    with a short timeout: a blocked CDN then skips in seconds, where a download would retry
+    for a long time. The code under test then downloads what it needs.
     """
     try:
-        files = HfApi().list_repo_files(repo_id)
-        for name in files:
-            if name.endswith(WEIGHT_SUFFIXES):
-                httpx.get(
-                    hf_hub_url(repo_id, name),
-                    headers={"Range": "bytes=0-0"},
-                    timeout=10,
-                    follow_redirects=True,
-                ).raise_for_status()
-        snapshot_download(repo_id)
+        for name in WEIGHT_FILES[repo_id]:
+            httpx.get(
+                hf_hub_url(repo_id, name),
+                headers={"Range": "bytes=0-0"},
+                timeout=10,
+                follow_redirects=True,
+            ).raise_for_status()
     except httpx.HTTPError as error:
         return f"{error.request.url.host}: {type(error).__name__}: {str(error)[:300]}"
-    except Exception as error:  # any failure means "can't be had here"
-        return f"https://huggingface.co/{repo_id}: {type(error).__name__}: {str(error)[:300]}"
     return None
 
 

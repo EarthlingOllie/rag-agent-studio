@@ -61,31 +61,46 @@ def write_pptx(path: Path) -> None:
     deck.save(str(path))
 
 
-def _pdf_text(lines: list[str]) -> bytes:
-    commands = ["BT", "/F1 12 Tf", "72 770 Td", "16 TL"]
-    for line in lines:
+# How each kind of line is set in the PDF: font resource, size, and the space above it. The
+# title and section headings are bold and larger, as in a real handbook, so Docling's layout
+# model finds them; body paragraphs are 11-point Helvetica.
+PDF_STYLES = {"title": ("F2", 20, 0), "heading": ("F2", 14, 30), "body": ("F1", 11, 18)}
+
+
+def _pdf_text(lines: list[tuple[str, str]]) -> bytes:
+    commands = ["BT"]
+    y = 770
+    for index, (style, line) in enumerate(lines):
+        font, size, space_above = PDF_STYLES[style]
+        y -= space_above if index else 0
         escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-        commands.append(f"({escaped}) Tj T*")
+        commands.append(f"/{font} {size} Tf 1 0 0 1 72 {y} Tm ({escaped}) Tj")
     commands.append("ET")
     return "\n".join(commands).encode("latin-1")
+
+
+def _section(index: int) -> list[tuple[str, str]]:
+    heading, paragraphs = SECTIONS[index]
+    return [("heading", heading), *(("body", paragraph) for paragraph in paragraphs)]
 
 
 def write_pdf(path: Path) -> None:
     """A two-page, text-only PDF, written by hand so no PDF library is needed."""
     pages = [
-        [TITLE, "", SECTIONS[0][0], *SECTIONS[0][1]],
-        [SECTIONS[1][0], *SECTIONS[1][1], "", SECTIONS[2][0], *SECTIONS[2][1]],
+        [("title", TITLE), *_section(0)],
+        [*_section(1), *_section(2)],
     ]
     objects: list[bytes] = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>",
+        b"<< /Type /Pages /Kids [5 0 R 7 0 R] /Count 2 >>",
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
     ]
     for index, lines in enumerate(pages):
-        content_number = 5 + 2 * index
+        content_number = 6 + 2 * index
         objects.append(
             f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 "
-            f"0 R >> >> /Contents {content_number} 0 R >>".encode()
+            f"0 R /F2 4 0 R >> >> /Contents {content_number} 0 R >>".encode()
         )
         stream = _pdf_text(lines)
         objects.append(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")

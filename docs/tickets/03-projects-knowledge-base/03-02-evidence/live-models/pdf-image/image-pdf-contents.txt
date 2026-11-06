@@ -1,0 +1,18 @@
+$ trivy image -q --list-all-pkgs --format json --input $SCRATCH/rag0302-api-pdf.oci | summary per target (shows the pdf group's packages were in the scanned image)
+$SCRATCH/rag0302-api-pdf.oci (debian 13.7) debian packages: 87 vulnerabilities: 186
+Python python-pkg packages: 183 vulnerabilities: 0
+    docling-ibm-models 4.0.4
+    fastembed 0.9.1
+    onnxruntime 1.31.1
+    rtree 1.4.1
+    torch 2.15.0+cpu
+    transformers 5.22.1
+$ ls of the model directories in the image (layer listing from the OCI blobs)
+opt/models/docling/docling-project--docling-layout-heron-onnx/
+opt/models/docling/docling-project--docling-layout-heron/
+opt/models/docling/docling-project--docling-models/
+opt/models/fastembed/.locks/
+opt/models/fastembed/CACHEDIR.TAG
+opt/models/fastembed/models--intfloat--multilingual-e5-small/
+opt/models/huggingface/.agent_harnesses.json
+opt/models/huggingface/hub/

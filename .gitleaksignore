@@ -23,3 +23,7 @@ e1b3c4bbfb767d84788aa8660d4c568276eb9463:docs/tickets/03-projects-knowledge-base
 # Ticket 03-09 (Provider Embedding Models, PR #30 on candidate): VOYAGE_CREDENTIAL is a made-up
 # Provider Credential id (a UUID) that trips generic-api-key. Not a secret.
 a7613be7aa3c5531bfb5fba811bfdc789cc8eeb9:frontend/apps/studio/src/projects/EmbeddingModel.test.tsx:generic-api-key:17
+# Ticket 03-02 gap closure (branch ticket/03-02-live-docling-models): `docker history` of the PDF image
+# listed the python:3.13-slim base image's `ENV GPG_KEY=` (CPython's public release-signing key
+# fingerprint), which the generic rule matches. It is public, not a secret; the line was then edited out.
+082333e8224056dae3aeff0825d5541ed5332ff8:docs/tickets/03-projects-knowledge-base/03-02-evidence/live-models/image-pdf-history.txt:generic-api-key:26

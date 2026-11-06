@@ -1,0 +1,402 @@
+$ make test-live @ f2b43f9 (git status --porcelain: 0 changed files)
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Installed 20 packages in 151ms
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302live/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests/live/test_docling_live.py ...s                                     [ 57%]
+tests/live/test_local_embedder_live.py FF.                               [100%]
+
+=================================== FAILURES ===================================
+___ test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension ____
+
+    async def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension() -> None:
+        embedder = LocalEmbedder()
+    
+>       first, second, unrelated = await embedder.embed_passages(
+            [
+                "Everyone gets 25 days of annual leave.",
+                "Staff have 25 days of holiday a year.",
+                "Claim expenses within 30 days.",
+            ]
+        )
+
+tests/live/test_local_embedder_live.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/embeddings/local.py:66: in embed_passages
+    return await asyncio.to_thread(self._passages, texts)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/asyncio/threads.py:26: in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/embeddings/local.py:57: in _passages
+    return [vector.tolist() for vector in self._embedding.passage_embed(prefixed)]
+                                          ^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/functools.py:1025: in __get__
+    val = self.func(instance)
+          ^^^^^^^^^^^^^^^^^^^
+app/embeddings/local.py:48: in _embedding
+    return TextEmbedding(model_name=LOCAL_MODEL.tokenizer, cache_dir=self._cache_dir)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/fastembed/text/text_embedding.py:135: in __init__
+    self.model = EMBEDDING_MODEL_TYPE(
+.venv/lib/python3.13/site-packages/fastembed/text/custom_text_embedding.py:43: in __init__
+    super().__init__(
+.venv/lib/python3.13/site-packages/fastembed/text/onnx_embedding.py:274: in __init__
+    self._model_dir = self.download_model(
+.venv/lib/python3.13/site-packages/fastembed/common/model_management.py:703: in download_model
+    cls.download_files_from_huggingface(
+.venv/lib/python3.13/site-packages/fastembed/common/model_management.py:421: in download_files_from_huggingface
+    result = snapshot_download(
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_http.py:266: in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/_snapshot_download.py:532: in snapshot_download
+    hf_thread_map(
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/tqdm.py:441: in hf_thread_map
+    results[future_to_index[future]] = future.result()
+                                       ^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/concurrent/futures/_base.py:453: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/concurrent/futures/_base.py:402: in __get_result
+    raise self._exception
+/usr/local/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/_snapshot_download.py:512: in _inner_hf_hub_download
+    hf_hub_download(  # type: ignore
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_http.py:266: in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:1047: in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:1285: in _hf_hub_download_to_cache_dir
+    _download_to_tmp_and_move(
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:2016: in _download_to_tmp_and_move
+    xet_get(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+incomplete_path = PosixPath('/tmp/fastembed_cache/models--intfloat--multilingual-e5-small/blobs/0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39.46bc3930.incomplete')
+xet_file_data = XetFileData(file_hash='1c8f7c8fd9b7c56a43be9844713bdd468b7a17ed5170311ce768adfc6e2d41ea', refresh_route='https://huggingface.co/api/models/intfloat/multilingual-e5-small/xet-read-token/614241f622f53c4eeff9890bdc4f31cfecc418b3')
+headers = {'user-agent': 'unknown/None; hf_hub/1.33.0; python/3.13.18; torch/2.15.0+cpu; agent/claude-code'}
+expected_size = 17082730, displayed_filename = 'tokenizer.json'
+tqdm_class = <class 'huggingface_hub._snapshot_download.snapshot_download.<locals>._AggregatedTqdm'>
+_tqdm_bar = None
+
+    def xet_get(
+        *,
+        incomplete_path: Path,
+        xet_file_data: XetFileData,
+        headers: dict[str, str],
+        expected_size: int | None = None,
+        displayed_filename: str | None = None,
+        tqdm_class: type[base_tqdm] | None = None,
+        _tqdm_bar: base_tqdm | None = None,
+    ) -> None:
+        """
+        Download a file using Xet storage service.
+    
+        Args:
+            incomplete_path (`Path`):
+                The path to the file to download.
+            xet_file_data (`XetFileData`):
+                The file metadata needed to make the request to the xet storage service.
+            headers (`dict[str, str]`):
+                The headers to send to the xet storage service.
+            expected_size (`int`, *optional*):
+                The expected size of the file to download. If set, the download will raise an error if the size of the
+                received content is different from the expected one.
+            displayed_filename (`str`, *optional*):
+                The filename of the file that is being downloaded. Value is used only to display a nice progress bar. If
+                not set, the filename is guessed from the URL or the `Content-Disposition` header.
+    
+        **How it works:**
+            The file download system uses Xet storage, which is a content-addressable storage system that breaks files into chunks
+            for efficient storage and transfer.
+    
+            ``session.new_file_download_group()`` manages downloading files by:
+            - Registering download tasks (each with its unique content hash) and starting download immediately in the background
+            - Connecting to a storage server (CAS server) that knows how files are chunked
+            - Using authentication to ensure secure access
+            - Providing progress updates during download
+    
+            Authentication works transparently: the download group is seeded with a short-lived xet
+            access token (fetched once per repo revision and cached across files) and accepts a
+            ``token_refresh_url`` that is used to refresh it as needed.
+    
+            The download process works like this:
+            1. Download tasks run in parallel:
+                1.1. Prepare to write the file to disk or to a stream (e.g. truncate file, set up cache)
+                1.2. Ask the server "how is this file split into chunks?" using the file's unique hash
+                    The server responds with:
+                    - Which chunks make up the complete file
+                    - Where each chunk can be downloaded from
+                1.3. For each needed chunk:
+                    - Checks if we already have it in our local cache
+                    - If not, download it from cloud storage (S3)
+                    - Save it to cache for future use
+                    - Assemble the chunks in order to recreate the original file
+    
+        """
+        try:
+            from hf_xet import XetFileInfo  # type: ignore[no-redef]
+        except ImportError:
+            raise ValueError(
+                "To use optimized download using Xet storage, you need to install the hf_xet package. "
+                'Try `pip install "huggingface_hub[hf_xet]"` or `pip install hf_xet`.'
+            )
+    
+        if not displayed_filename:
+            displayed_filename = incomplete_path.name
+    
+        # Truncate filename if too long to display
+        if len(displayed_filename) > 40:
+            displayed_filename = f"{displayed_filename[:40]}(…)"
+    
+        from .utils._xet import abort_xet_session, get_xet_session, refresh_xet_connection_info, xet_headers_without_auth
+        from .utils._xet_progress_reporting import XetDownloadProgressReporter
+    
+        xet_headers = xet_headers_without_auth(headers)
+    
+        # Fetched once per repo revision and cached; otherwise each download group would request its own
+        # token, i.e. one Hub API call per file (rate-limited on large snapshot downloads, see #4722).
+        connection_info = refresh_xet_connection_info(file_data=xet_file_data, headers=headers)
+    
+        session = get_xet_session()
+    
+        with XetDownloadProgressReporter(
+            reconstruction_desc=f"{displayed_filename}: reconstructing file",
+            transfer_desc=f"{displayed_filename}: downloading bytes",
+            total=expected_size,
+            log_level=logger.getEffectiveLevel(),
+            name="huggingface_hub.xet_get",
+            tqdm_class=tqdm_class,
+            external_reconstruction_bar=_tqdm_bar,
+        ) as progress:
+            try:
+>               with session.new_file_download_group(
+                    endpoint=connection_info.endpoint,
+                    token=connection_info.access_token,
+                    token_expiry_unix_secs=connection_info.expiration_unix_epoch,
+                    token_refresh_url=xet_file_data.refresh_route,
+                    token_refresh_headers=headers,
+                    custom_headers=xet_headers,
+                    progress_callback=progress.update_progress,
+                ) as group:
+E               RuntimeError: Task error: File reconstruction error: CAS Client Error: Request middleware error: error sending request for url (https://cas-server.xethub.hf.co/v2/reconstructions/1c8f7c8fd9b7c56a43be9844713bdd468b7a17ed5170311ce768adfc6e2d41ea)
+
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:589: RuntimeError
+----------------------------- Captured stderr call -----------------------------
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 5 files:  60%|██████    | 3/5 [02:55<01:57, 58.57s/it]
+------------------------------ Captured log call -------------------------------
+WARNING  huggingface_hub.utils._http:_http.py:993 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+_____________ test_a_query_is_nearest_the_passage_that_answers_it ______________
+
+    async def test_a_query_is_nearest_the_passage_that_answers_it() -> None:
+        # multilingual-e5-small is small: a paraphrase with no shared words ("How much holiday do I
+        # get?") scores the expenses passage slightly higher (0.805 against 0.796, the same as the
+        # model's own transformers implementation gives). So each query shares the topic's words.
+        embedder = LocalEmbedder()
+>       leave, expenses = await embedder.embed_passages(
+            ["Everyone gets 25 days of annual leave.", "Claim expenses within 30 days."]
+        )
+
+tests/live/test_local_embedder_live.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/embeddings/local.py:66: in embed_passages
+    return await asyncio.to_thread(self._passages, texts)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/asyncio/threads.py:26: in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/embeddings/local.py:57: in _passages
+    return [vector.tolist() for vector in self._embedding.passage_embed(prefixed)]
+                                          ^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/functools.py:1025: in __get__
+    val = self.func(instance)
+          ^^^^^^^^^^^^^^^^^^^
+app/embeddings/local.py:48: in _embedding
+    return TextEmbedding(model_name=LOCAL_MODEL.tokenizer, cache_dir=self._cache_dir)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/fastembed/text/text_embedding.py:135: in __init__
+    self.model = EMBEDDING_MODEL_TYPE(
+.venv/lib/python3.13/site-packages/fastembed/text/custom_text_embedding.py:43: in __init__
+    super().__init__(
+.venv/lib/python3.13/site-packages/fastembed/text/onnx_embedding.py:274: in __init__
+    self._model_dir = self.download_model(
+.venv/lib/python3.13/site-packages/fastembed/common/model_management.py:703: in download_model
+    cls.download_files_from_huggingface(
+.venv/lib/python3.13/site-packages/fastembed/common/model_management.py:421: in download_files_from_huggingface
+    result = snapshot_download(
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_http.py:266: in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/_snapshot_download.py:532: in snapshot_download
+    hf_thread_map(
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/tqdm.py:441: in hf_thread_map
+    results[future_to_index[future]] = future.result()
+                                       ^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/concurrent/futures/_base.py:453: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/concurrent/futures/_base.py:402: in __get_result
+    raise self._exception
+/usr/local/lib/python3.13/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/_snapshot_download.py:512: in _inner_hf_hub_download
+    hf_hub_download(  # type: ignore
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_validators.py:89: in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/utils/_http.py:266: in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:1047: in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:1285: in _hf_hub_download_to_cache_dir
+    _download_to_tmp_and_move(
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:2016: in _download_to_tmp_and_move
+    xet_get(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+incomplete_path = PosixPath('/tmp/fastembed_cache/models--intfloat--multilingual-e5-small/blobs/ca456c06b3a9505ddfd9131408916dd79290368331e7d76bb621f1cba6bc8665.22448320.incomplete')
+xet_file_data = XetFileData(file_hash='cdcc2007f06ae8bf8fa4fab3a9f30853db998fa26d9d22da75bcd7e7f294c6ea', refresh_route='https://huggingface.co/api/models/intfloat/multilingual-e5-small/xet-read-token/614241f622f53c4eeff9890bdc4f31cfecc418b3')
+headers = {'user-agent': 'unknown/None; hf_hub/1.33.0; python/3.13.18; torch/2.15.0+cpu; agent/claude-code'}
+expected_size = 470268510, displayed_filename = 'onnx/model.onnx'
+tqdm_class = <class 'huggingface_hub._snapshot_download.snapshot_download.<locals>._AggregatedTqdm'>
+_tqdm_bar = None
+
+    def xet_get(
+        *,
+        incomplete_path: Path,
+        xet_file_data: XetFileData,
+        headers: dict[str, str],
+        expected_size: int | None = None,
+        displayed_filename: str | None = None,
+        tqdm_class: type[base_tqdm] | None = None,
+        _tqdm_bar: base_tqdm | None = None,
+    ) -> None:
+        """
+        Download a file using Xet storage service.
+    
+        Args:
+            incomplete_path (`Path`):
+                The path to the file to download.
+            xet_file_data (`XetFileData`):
+                The file metadata needed to make the request to the xet storage service.
+            headers (`dict[str, str]`):
+                The headers to send to the xet storage service.
+            expected_size (`int`, *optional*):
+                The expected size of the file to download. If set, the download will raise an error if the size of the
+                received content is different from the expected one.
+            displayed_filename (`str`, *optional*):
+                The filename of the file that is being downloaded. Value is used only to display a nice progress bar. If
+                not set, the filename is guessed from the URL or the `Content-Disposition` header.
+    
+        **How it works:**
+            The file download system uses Xet storage, which is a content-addressable storage system that breaks files into chunks
+            for efficient storage and transfer.
+    
+            ``session.new_file_download_group()`` manages downloading files by:
+            - Registering download tasks (each with its unique content hash) and starting download immediately in the background
+            - Connecting to a storage server (CAS server) that knows how files are chunked
+            - Using authentication to ensure secure access
+            - Providing progress updates during download
+    
+            Authentication works transparently: the download group is seeded with a short-lived xet
+            access token (fetched once per repo revision and cached across files) and accepts a
+            ``token_refresh_url`` that is used to refresh it as needed.
+    
+            The download process works like this:
+            1. Download tasks run in parallel:
+                1.1. Prepare to write the file to disk or to a stream (e.g. truncate file, set up cache)
+                1.2. Ask the server "how is this file split into chunks?" using the file's unique hash
+                    The server responds with:
+                    - Which chunks make up the complete file
+                    - Where each chunk can be downloaded from
+                1.3. For each needed chunk:
+                    - Checks if we already have it in our local cache
+                    - If not, download it from cloud storage (S3)
+                    - Save it to cache for future use
+                    - Assemble the chunks in order to recreate the original file
+    
+        """
+        try:
+            from hf_xet import XetFileInfo  # type: ignore[no-redef]
+        except ImportError:
+            raise ValueError(
+                "To use optimized download using Xet storage, you need to install the hf_xet package. "
+                'Try `pip install "huggingface_hub[hf_xet]"` or `pip install hf_xet`.'
+            )
+    
+        if not displayed_filename:
+            displayed_filename = incomplete_path.name
+    
+        # Truncate filename if too long to display
+        if len(displayed_filename) > 40:
+            displayed_filename = f"{displayed_filename[:40]}(…)"
+    
+        from .utils._xet import abort_xet_session, get_xet_session, refresh_xet_connection_info, xet_headers_without_auth
+        from .utils._xet_progress_reporting import XetDownloadProgressReporter
+    
+        xet_headers = xet_headers_without_auth(headers)
+    
+        # Fetched once per repo revision and cached; otherwise each download group would request its own
+        # token, i.e. one Hub API call per file (rate-limited on large snapshot downloads, see #4722).
+        connection_info = refresh_xet_connection_info(file_data=xet_file_data, headers=headers)
+    
+        session = get_xet_session()
+    
+        with XetDownloadProgressReporter(
+            reconstruction_desc=f"{displayed_filename}: reconstructing file",
+            transfer_desc=f"{displayed_filename}: downloading bytes",
+            total=expected_size,
+            log_level=logger.getEffectiveLevel(),
+            name="huggingface_hub.xet_get",
+            tqdm_class=tqdm_class,
+            external_reconstruction_bar=_tqdm_bar,
+        ) as progress:
+            try:
+>               with session.new_file_download_group(
+                    endpoint=connection_info.endpoint,
+                    token=connection_info.access_token,
+                    token_expiry_unix_secs=connection_info.expiration_unix_epoch,
+                    token_refresh_url=xet_file_data.refresh_route,
+                    token_refresh_headers=headers,
+                    custom_headers=xet_headers,
+                    progress_callback=progress.update_progress,
+                ) as group:
+E               RuntimeError: Task error: File reconstruction error: CAS Client Error: Request middleware error: error sending request for url (https://cas-server.xethub.hf.co/v2/reconstructions/cdcc2007f06ae8bf8fa4fab3a9f30853db998fa26d9d22da75bcd7e7f294c6ea)
+
+.venv/lib/python3.13/site-packages/huggingface_hub/file_download.py:589: RuntimeError
+----------------------------- Captured stderr call -----------------------------
+Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  60%|██████    | 3/5 [04:17<02:51, 85.79s/it]
+=========================== short test summary info ============================
+SKIPPED [1] tests/live/models.py:73: RapidOCR's models are not on disk and can't be downloaded (https://www.modelscope.cn/models/RapidAI/RapidOCR: ProxyError: 403 Forbidden). Run the live suite where www.modelscope.cn is reachable, or in the worker image.
+============== 2 failed, 4 passed, 1 skipped in 453.82s (0:07:33) ==============
+make: *** [Makefile:34: test-live] Error 1
+exit 2
