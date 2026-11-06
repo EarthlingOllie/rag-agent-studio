@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-03: Hybrid retrieval and fallback](03-hybrid-retrieval-fallback.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] AgentConfig holds an optional reranker (a rerank-capable credential and model)
 - [ ] Candidates are reranked before the threshold and top-k are applied (tested with a fake reranker)
