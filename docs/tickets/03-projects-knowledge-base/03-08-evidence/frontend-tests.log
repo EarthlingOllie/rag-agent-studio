@@ -1,4 +1,5 @@
-commit 21327ae9380ec38c77849a89e2635b6bbf1842d1
+commit 544a4d00d08dc6a79e83ee09125acbbe9fc87610
++ make test-frontend
 cd frontend && pnpm test
 
 > rag-agent-studio-frontend@ test $SCRATCH/wt-03-08/frontend
@@ -9,23 +10,23 @@ cd frontend && pnpm test
       Coverage enabled with v8
 
 
- Test Files  32 passed (32)
-      Tests  342 passed (342)
-   Start at  23:35:06
-   Duration  157.71s (tests 63%, environment 21%, setup 8%, import 5%, worker 2%, transform 1%)
+ Test Files  35 passed (35)
+      Tests  371 passed (371)
+   Start at  02:12:27
+   Duration  183.58s (tests 64%, environment 18%, setup 7%, import 7%, transform 2%, worker 2%)
 
-    Isolate  32 workers spawned · ~3.30s startup each (spawn + environment, per file)
-             at least ~31.87s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  35 workers spawned · ~3.15s startup each (spawn + environment, per file)
+             at least ~33.58s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
-50 files fully covered.
+55 files fully covered.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 1797/1797 )
-Branches     : 100% ( 1031/1031 )
-Functions    : 100% ( 684/684 )
-Lines        : 100% ( 1579/1579 )
+Statements   : 100% ( 2042/2042 )
+Branches     : 100% ( 1180/1180 )
+Functions    : 100% ( 789/789 )
+Lines        : 100% ( 1798/1798 )
 ================================================================================
 exit 0
