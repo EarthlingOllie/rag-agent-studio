@@ -1,0 +1,54 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0306/backend/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0306/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 267 items / 225 deselected / 42 selected
+
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [  2%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [  4%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [  7%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [  9%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 11%]
+tests/integration/test_tenant_isolation.py::test_another_tenants_resources_are_not_found[POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [ 14%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 16%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 19%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 21%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 23%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 26%]
+tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [ 28%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 30%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 33%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 35%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 38%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 40%]
+tests/integration/test_tenant_isolation.py::test_editors_reach_routes_open_to_every_member[POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [ 42%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 45%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 47%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 50%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 52%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 54%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[own-POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [ 57%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 59%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 61%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 64%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 66%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 69%]
+tests/integration/test_tenant_isolation.py::test_a_member_of_two_organisations_cannot_reach_a_third[other-POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [ 71%]
+tests/integration/test_tenant_isolation.py::test_one_organisations_resources_are_not_found_through_the_members_other_organisation[GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 73%]
+tests/integration/test_tenant_isolation.py::test_one_organisations_resources_are_not_found_through_the_members_other_organisation[POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 76%]
+tests/integration/test_tenant_isolation.py::test_one_organisations_resources_are_not_found_through_the_members_other_organisation[PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 78%]
+tests/integration/test_tenant_isolation.py::test_one_organisations_resources_are_not_found_through_the_members_other_organisation[DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 80%]
+tests/integration/test_tenant_isolation.py::test_one_organisations_resources_are_not_found_through_the_members_other_organisation[PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 83%]
+tests/integration/test_tenant_isolation.py::test_one_organisations_resources_are_not_found_through_the_members_other_organisation[POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [ 85%]
+tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[GET /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 88%]
+tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[POST /api/organisations/{organisation_id}/projects/{project_id}/tags] PASSED [ 90%]
+tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[PATCH /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 92%]
+tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[DELETE /api/organisations/{organisation_id}/projects/{project_id}/tags/{tag_id}] PASSED [ 95%]
+tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[PUT /api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/tags] PASSED [ 97%]
+tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[POST /api/organisations/{organisation_id}/projects/{project_id}/documents/tags] PASSED [100%]
+
+===================== 42 passed, 225 deselected in 43.42s ======================
+exit=0

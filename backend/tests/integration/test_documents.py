@@ -136,6 +136,7 @@ async def test_the_status_endpoint_reports_each_documents_status(
             "error_category": "conversion",
             "attempt_count": 1,
             "chunk_count": 0,
+            "replacement": None,
         },
         {
             "id": first["id"],
@@ -144,6 +145,7 @@ async def test_the_status_endpoint_reports_each_documents_status(
             "error_category": None,
             "attempt_count": 1,
             "chunk_count": 1,
+            "replacement": None,
         },
     ]
 

@@ -11,11 +11,13 @@ export const workerHealthy: Schemas["WorkerHealthResponse"] = { status: "ok", re
 
 export const notSignedIn: Schemas["ErrorResponse"] = { detail: "Not signed in" };
 
-/** Default handlers describe a healthy stack, a visitor who is not signed in, and no Projects or Documents. */
+/** Default handlers describe a healthy stack, a visitor who is not signed in, and no Projects, Documents, Tags or Agents. */
 export const server = setupServer(
   http.get("*/api/health", () => HttpResponse.json(healthy)),
   http.get("*/api/organisations/:organisationId/projects", () => HttpResponse.json([])),
   http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () => HttpResponse.json([])),
+  http.get("*/api/organisations/:organisationId/projects/:projectId/tags", () => HttpResponse.json([])),
+  http.get("*/api/organisations/:organisationId/projects/:projectId/agents", () => HttpResponse.json([])),
   http.get("*/api/health/worker", () => HttpResponse.json(workerHealthy)),
   http.get("*/api/auth/me", () => HttpResponse.json(notSignedIn, { status: 401 })),
 );

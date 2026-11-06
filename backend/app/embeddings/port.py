@@ -28,3 +28,7 @@ class Embedder(Protocol):
         """One vector per text, in order, each ``model.dimension`` long. Raises
         ``EmbeddingProviderError`` when the provider fails."""
         ...
+
+    def embed_query(self, text: str) -> list[float]:
+        """The vector a search for ``text`` compares Chunk vectors against."""
+        ...

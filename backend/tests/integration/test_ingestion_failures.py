@@ -4,7 +4,9 @@ categorised ingestion failures, automatic retries of transient ones, and retryin
 Failures come from configuring the fakes (converter, embedder, object store) to raise; every
 outcome is observed through the API, as an Editor would see it."""
 
+import asyncio
 import io
+import threading
 import zipfile
 from typing import Any
 
@@ -13,6 +15,7 @@ import pytest
 from fastapi import FastAPI
 
 from app.documents.converter import UnsupportedContentError
+from app.embeddings.fake import HashEmbedder
 from app.embeddings.port import EmbeddingProviderError
 from tests.conftest import MemberFactory, SignedUpMember
 from tests.documents import (
@@ -21,9 +24,11 @@ from tests.documents import (
     documents,
     project_path,
     put_to_memory_store,
+    replace,
     start_upload,
     upload,
 )
+from tests.integration.test_document_editions import GatedConverter
 
 HANDBOOK = b"# Handbook\n\nEveryone gets 25 days of annual leave a year."
 LOCAL_MODEL = "multilingual-e5-small"
@@ -422,3 +427,177 @@ async def test_retry_and_limit_routes_of_unknown_things_are_not_found(
     ]
 
     assert {(a.status_code, a.json()["detail"]) for a in answers} == {(404, "Not found")}
+
+
+# --- New editions -------------------------------------------------------------------------------
+
+BUSY = "This Document is still being processed. Try again once it is Ready or Failed."
+CONVERSION_FAILED = "This file couldn't be converted. Retry it, or upload a fixed copy."
+
+
+async def test_a_failed_new_edition_is_categorised_and_an_editor_retries_it(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    assert (
+        await replace(app, owner, project_id, original["id"], "new.md", b"# New\n\nRules.")
+    ).status_code == 202
+    app.state.ingestion.converter.failure = None
+
+    failed = await only_document(owner, project_id)
+    assert (failed["status"], failed["edition"]) == ("ready", 1)
+    assert failed["replacement"] == {
+        "edition": 2,
+        "name": "new.md",
+        "status": "failed",
+        "error_message": CONVERSION_FAILED,
+        "error_category": "conversion",
+    }
+
+    response = await retry(owner, project_id, original["id"])
+
+    assert response.status_code == 200, response.text
+    assert response.json()["replacement"]["status"] == "queued"
+    retried = await only_document(owner, project_id)
+    assert (retried["status"], retried["edition"], retried["name"]) == ("ready", 2, "new.md")
+    assert retried["replacement"] is None
+
+
+async def test_a_new_edition_is_retried_automatically_after_a_provider_error(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    app.state.ingestion.embedders[LOCAL_MODEL].failures = [EmbeddingProviderError("timeout")]
+
+    await replace(app, owner, project_id, original["id"], "new.md", b"# New\n\nRules.")
+
+    replaced = await only_document(owner, project_id)
+    assert (replaced["edition"], replaced["status"], replaced["attempt_count"]) == (2, "ready", 2)
+
+
+async def test_a_new_edition_is_not_refused_by_a_full_quota(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    assert (await set_quota(owner, project_id, 1)).status_code == 200
+
+    new_document = await start_upload(owner, project_id, "other.md", 10)
+    replaced = await replace(app, owner, project_id, original["id"], "new.md", b"# New\n\nRules.")
+
+    assert new_document.status_code == 409
+    assert replaced.status_code == 202, replaced.text
+    assert (await only_document(owner, project_id))["edition"] == 2
+
+
+async def test_a_new_edition_larger_than_it_claimed_is_refused(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    original = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    started = (await start_upload(owner, project_id, "new.md", 10, replacing=original["id"])).json()
+    oversized = b"x" * (50 * 1024 * 1024 + 1)
+    await put_to_memory_store(app, started["url"], oversized, started["content_type"])
+
+    response = await owner.client.post(
+        f"{project_path(owner, project_id)}/documents/{original['id']}/editions",
+        json={"upload_id": started["upload_id"]},
+    )
+
+    assert (response.status_code, response.json()["detail"]) == (
+        413,
+        "This file is larger than the 50 MB upload limit.",
+    )
+    listed = await only_document(owner, project_id)
+    assert (listed["edition"], listed["replacement"]) == (1, None)
+
+
+async def test_a_failed_document_is_not_retried_while_its_new_edition_is_processing(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    failed = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    gate = GatedConverter()
+    app.state.ingestion.converter = gate
+    replacing = asyncio.create_task(
+        replace(app, owner, project_id, failed["id"], "new.md", b"# New\n\nRules.")
+    )
+    await gate.wait_until_started()
+
+    busy = await retry(owner, project_id, failed["id"])
+    gate.release.set()
+    await replacing
+
+    assert (busy.status_code, busy.json()["detail"]) == (409, BUSY)
+    replaced = await only_document(owner, project_id)
+    assert (replaced["status"], replaced["edition"]) == ("ready", 2)
+
+
+async def test_a_failed_document_whose_content_was_uploaded_again_is_not_retried(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    failed = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    app.state.ingestion.converter.failure = None
+    again = await upload(app, owner, project_id, "handbook again.md", HANDBOOK)
+
+    response = await retry(owner, project_id, failed["id"])
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "This file is already in the Project as handbook again.md.",
+        "document_id": again["id"],
+        "document_name": "handbook again.md",
+    }
+
+
+class GatedFailingEmbedder(HashEmbedder):
+    """Fails like an unavailable provider, once the test releases it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        self.started.set()
+        assert self.release.wait(timeout=10)
+        raise EmbeddingProviderError("down")
+
+
+@pytest.mark.parametrize("edition", ["first", "new"])
+async def test_a_document_deleted_while_waiting_for_a_provider_is_not_retried(
+    app: FastAPI, owner: SignedUpMember, edition: str
+) -> None:
+    project_id = await create_project(owner)
+    document_id = None
+    if edition == "new":
+        document_id = (await upload(app, owner, project_id, "handbook.md", HANDBOOK))["id"]
+    embedder = GatedFailingEmbedder()
+    app.state.ingestion.embedders[LOCAL_MODEL] = embedder
+    if document_id is None:
+        started = (await start_upload(owner, project_id, "new.md", 10)).json()
+        await put_to_memory_store(app, started["url"], b"# New\n\nRules.", "text/markdown")
+        running = asyncio.create_task(confirm(owner, project_id, started["upload_id"]))
+    else:
+        running = asyncio.create_task(
+            replace(app, owner, project_id, document_id, "new.md", b"# New\n\nRules.")
+        )
+    assert await asyncio.to_thread(embedder.started.wait, 10)
+    (listed,) = await documents(owner, project_id)
+
+    deleted = await owner.client.delete(
+        f"{project_path(owner, project_id)}/documents/{listed['id']}"
+    )
+    embedder.release.set()
+    await running
+
+    assert deleted.status_code == 204
+    assert await documents(owner, project_id) == []
+    # Nothing the run stored is left behind.
+    assert app.state.ingestion.object_store.objects == {}
