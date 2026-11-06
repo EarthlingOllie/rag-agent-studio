@@ -6,11 +6,13 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, StringConstraints
 
 from app.agents import service
 from app.agents.config import AgentConfig
 from app.agents.models import NAME_MAX
+from app.agents.validation import InvalidDraftError
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.projects.api import PROJECT_ARCHIVED
@@ -120,11 +122,15 @@ async def save_agent_draft(
     db: Db,
     clock: ClockDep,
 ) -> AgentOut:
-    """Replaces the Agent's Draft with a valid AgentConfig."""
+    """Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each
+    credential must offer the chosen model for its setting's capability and each Tag must be
+    the Project's; every problem is reported in one 422, located like a validation error."""
     try:
         found = await service.save_draft(db, scope, project_id, agent_id, body, now=clock.now())
     except (ProjectNotFoundError, service.AgentNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
         raise archived() from None
+    except InvalidDraftError as error:
+        raise RequestValidationError([p.as_error() for p in error.problems]) from None
     return _out(found)

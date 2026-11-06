@@ -258,6 +258,26 @@ _Avoid_: Embed key, slug
 **Top-k**:
 How many of the best-scoring Chunks an Agent is given with each question.
 
+**Model override**:
+An Agent's own chat model: a chat-capable Provider Credential and one of its chat models, set in the Draft's Behaviour. Without one the Agent uses the Default Model. It is a Credential reference, as are an Agent's Reranker and Guardrail LLM classifier.
+_Avoid_: Agent model, custom model
+
+**Remembered turns**:
+How many earlier question-and-answer pairs of a Conversation the model is given with each new question.
+_Avoid_: History length, memory, context window
+
+**Starter question**:
+A suggested question the widget offers a Visitor before the first message. An Agent has up to six.
+_Avoid_: Suggested prompt, quick reply
+
+**UI text override**:
+An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button. Empty keeps the built-in text.
+_Avoid_: Translation, label override
+
+**Autosave**:
+Saving the Draft by itself once the Editor pauses, with an indicator of whether every change is saved. A setting the API refuses is marked with the reason and not saved.
+_Avoid_: Auto-publish
+
 **Hybrid search**:
 Retrieval that runs semantic (vector) search and keyword (full-text) search over a Project's Chunks and fuses their rankings with weighted reciprocal rank fusion, so exact terms such as product codes are found as well as similar meanings.
 _Avoid_: Vector search (for the whole), combined search
