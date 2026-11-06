@@ -100,6 +100,10 @@ _Avoid_: Backup code
 An append-only record of who changed what in an Organisation, and when, with the values before and after the change. Secret-like values are never stored. Only Owners can see Audit Events.
 _Avoid_: Activity, history, log
 
+**Demo Organisation**:
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+_Avoid_: Sample org, test tenant, sandbox
+
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
 _Avoid_: Disable, soft delete
@@ -157,6 +161,10 @@ _Avoid_: Dependency, usage, link
 **Default Model**:
 The chat model an Organisation's Agents use unless an Agent overrides it: one chat-capable Provider Credential and one of its chat models, chosen by an Owner. It is a Credential reference, so its credential can't be deleted while it is chosen.
 _Avoid_: Global model, org model
+
+**Demo model**:
+The demo provider's only chat model. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+_Avoid_: Fake model (that is the test double), mock, stub model
 
 **Model gateway**:
 The single factory every model call goes through: it turns a Provider Credential and a model name into a chat model, an embedder or a reranker, refusing a model the credential doesn't offer for that Capability. Tests and `docker compose` swap in fake adapters here and nowhere else.

@@ -32,6 +32,7 @@ from pydantic_ai.usage import RequestUsage
 from app.credentials.bedrock_verifier import AssumedRoleSessions, AwsKeys, ClientFactory
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
+from app.gateway.demo import demo_chat_model
 from app.gateway.gateway import UnsupportedCredentialError
 from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
 
@@ -226,6 +227,8 @@ class LiveModelAdapters:
             )
         if provider is Provider.OPENAI:
             return OpenAIChatModel(model, provider=self._openai(secret))
+        if provider is Provider.DEMO:
+            return demo_chat_model(model)
         raise _unsupported(provider)
 
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel:

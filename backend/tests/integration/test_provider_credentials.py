@@ -558,7 +558,7 @@ async def test_the_capability_registry_lists_providers_capabilities_and_models(
 
     assert response.status_code == 200
     providers = {p["id"]: p for p in response.json()}
-    assert list(providers) == ["anthropic", "openai", "bedrock", "voyage"]
+    assert list(providers) == ["anthropic", "openai", "bedrock", "voyage", "demo"]
     summary = {
         provider_id: (
             provider["auth_kinds"],
@@ -571,6 +571,7 @@ async def test_the_capability_registry_lists_providers_capabilities_and_models(
         "openai": (["api_key"], ["chat", "embeddings"]),
         "bedrock": (["aws_role", "aws_access_keys"], ["chat", "embeddings", "rerank"]),
         "voyage": (["api_key"], ["embeddings", "rerank"]),
+        "demo": (["api_key"], ["chat"]),
     }
     openai = providers["openai"]
     assert openai["name"] == "OpenAI"

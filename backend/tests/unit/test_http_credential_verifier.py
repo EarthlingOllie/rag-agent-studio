@@ -119,6 +119,15 @@ async def test_bedrock_is_not_checked_with_an_api_key() -> None:
         await _verifier(200, {}, []).check(Provider.BEDROCK, KEY)
 
 
+async def test_the_demo_provider_passes_without_calling_anyone() -> None:
+    def fail(request: httpx.Request) -> httpx.Response:
+        pytest.fail("The demo provider has nobody to call")
+
+    verifier = HttpCredentialVerifier(httpx.AsyncClient(transport=httpx.MockTransport(fail)))
+
+    assert await verifier.check(Provider.DEMO, "demo-no-key-needed") == CheckResult()
+
+
 def _settings(**values: str) -> Settings:
     base = {
         "database_url": "postgresql+asyncpg://u:p@localhost/db",

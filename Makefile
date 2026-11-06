@@ -6,7 +6,8 @@ COMPOSE ?= docker compose
 API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
-	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval
+	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval \
+	seed seed-reset
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -57,6 +58,20 @@ check-client: gen-client ## Fail if the committed API client differs from a fres
 migrate: ## Apply database migrations to the running stack
 	$(COMPOSE) exec api alembic upgrade head
 
+# The seed runs the API in a one-off container beside the running stack (`make dev`), with the
+# repo's seed folder mounted at /seed. Files go to RustFS by its internal address. Set
+# SEED_CREDENTIAL_PROVIDER (anthropic or openai) and SEED_CREDENTIAL_API_KEY (and optionally
+# SEED_CREDENTIAL_MODEL) to answer with a real model instead of the demo one.
+SEED_RUN = $(COMPOSE) run --rm --no-deps -v "$(CURDIR)/seed:/seed:ro" \
+	-e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 \
+	-e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api
+
+seed: ## Create the demo Organisation in the running stack and print its sign-in details (idempotent)
+	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed"
+
+seed-reset: ## Erase the demo Organisation (only that one) and seed it again
+	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed --reset"
+
 TF_ROOTS := $(sort $(dir $(wildcard infra/bootstrap/main.tf infra/modules/*/main.tf infra/envs/*/main.tf)))
 IMAGE_TAG ?= local
 TRIVY_SEVERITY ?= HIGH,CRITICAL
@@ -98,8 +113,9 @@ image-scan: images ## Trivy scan of the built images; fails on any fixable HIGH 
 e2e-install: ## Install the Playwright browser the end-to-end suite uses
 	cd frontend && pnpm exec playwright install --with-deps chromium
 
-e2e: ## Start the stack, wait for health checks and run the Playwright suite against it
+e2e: ## Start the stack, wait for health checks, seed the demo and run the Playwright suite against it
 	$(COMPOSE) up -d --build --wait
+	$(MAKE) seed
 	cd frontend && pnpm e2e
 
 eval: ## Guardrail attack evaluation suite (placeholder until ticket 08-07)
