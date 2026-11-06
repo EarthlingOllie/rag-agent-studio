@@ -1,12 +1,15 @@
 # Evidence: ticket 04-05, Reranker
 
-Branch `ticket/04-05-reranker`, from `origin/candidate` at `f0d632d` (04-03, the only blocker, merged). The claim commit `0cdd6b8`, the first on the branch, set Status `in-progress`. `origin/candidate` was merged in three times as it moved:
+Branch `ticket/04-05-reranker`, from `origin/candidate` at `f0d632d` (04-03, the only blocker, merged). The claim commit `0cdd6b8`, the first on the branch, set Status `in-progress`. `origin/candidate` was merged in four times as it moved:
 
 - `00f8214` (10-01) at `609c87b`, with no conflicts.
 - `a123fa1` (03-11) and `dc9a3b9` (04-04 Tag scoping) at `3f5ad31` and `e8607ef`. 04-04 conflicted in `retrieval/service.py` and `test_retrieval.py`: both features kept. Tag scoping limits the two searches before fusion, and the reranker then reranks only the in-scope Chunks. `outside_tags` exclusions are never reranked and carry no rerank score. New test: `test_the_reranker_sees_only_the_chunks_inside_the_tags`.
-- `198d5e6` (04-08 Playground errors) at `7c56674`. It conflicted in `playground/service.py`. The reranker is built after the chat model, and a gateway failure building it (say `UnsupportedCredentialError`) ends the turn with a typed `model_unavailable` error naming the rerank model. New test: `test_playground_errors.py::test_a_reranker_the_gateway_cant_build_is_unavailable`. A reranker that raises one of 04-08's `PROVIDER_ERRORS` while it ranks is caught by 04-08's `run_turn` handler.
+- `198d5e6` (04-08 Playground errors) at `7c56674`. It conflicted in `playground/service.py`. The reranker is built after the chat model, and a gateway failure building it (say `UnsupportedCredentialError`) ends the turn with a typed `model_unavailable` error naming the rerank model. New test: `test_playground_errors.py::test_a_reranker_the_gateway_cant_build_is_unavailable`.
+- `f3bd85f` (03-10 Re-embed) at `8a7df8e`, with no conflicts.
 
-Every check below was rerun on the final merged tree `7c56674`.
+A reranker that raises one of 04-08's `PROVIDER_ERRORS` while it ranks is caught by 04-08's `run_turn` handler.
+
+Every check below was rerun on the final merged tree `8a7df8e`.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to other tickets and best guesses recorded instead of asking.
 
@@ -45,22 +48,22 @@ Each test was written failing first. The retrieval tests failed on the missing `
 | 1 | AgentConfig holds an optional reranker (a rerank-capable credential and model) | `Retrieval.reranker: ModelChoice \| None` in `backend/app/agents/config.py`, checked against the `rerank` capability by `check_draft` (`CREDENTIAL_USES` in `app/agents/validation.py`). Both come from 04-07 and are used unchanged.<br>**API tests** (`test_agent_config.py`):<br>• the full Draft round-trips `{"credential_id": voyage, "model": "rerank-2.5-lite"}`;<br>• a non-rerank credential gives "This credential can't be used for rerank.";<br>• an unoffered model gives "Voyage AI doesn't offer rerank-1 for rerank.".<br>**This ticket:** `test_the_drafts_reranker_chooses_the_chunks_the_model_is_given` saves a Draft with a Voyage `rerank-2.5` reranker (200).<br>**E2E:** `reranker.spec.ts` picks "Search Voyage (Voyage AI)" and `rerank-2.5` in the editor's Reranker group, and the Draft autosaves (200, "All changes saved", axe clean). |
 | 2 | Candidates are reranked before the threshold and top-k are applied (tested with a fake reranker) | **Code:** `_rerank` and `retrieve` in `app/retrieval/service.py`.<br>**Retrieval tests** (`test_retrieval.py`, fake `WordOverlapReranker`):<br>• `test_the_reranker_reorders_the_candidates_before_top_k_is_applied`: semantic-only, `top_k=1`. Without the reranker PRODUCT is excluded `outside_top_k`. With it, PRODUCT is the one candidate, with `rerank_score` = relevance = 2/5 and an unchanged fused score. The other 5 are `outside_top_k` with rerank score 0.<br>• `test_the_minimum_score_is_applied_to_the_reranked_candidates`: `min_score=0.3`. Without the reranker there are no candidates (the fallback would fire). With it, PRODUCT passes and the rest are `below_min_score` (relevance 0). At `min_score=0.5` nothing passes.<br>• `test_the_candidates_are_ordered_by_the_rerankers_scores`: keyword search doesn't rank PARKING first; reranked, PARKING (2/4) leads and three Chunks at 1/4 follow, ranks 1–4.<br>• `test_the_reranker_isnt_asked_when_nothing_is_found`<br>**API test** (`test_playground.py::test_the_drafts_reranker_chooses_the_chunks_the_model_is_given`): the gateway builds `voyage:rerank-2.5` with the credential's own secret. The model is given only `[C1] product.txt`, which differs from the Chunk chosen before the reranker was set. The `done` event and Trace show relevance 0.4, and the excluded Chunks are `outside_top_k` with relevance 0.<br>**E2E:** with top-k 1, the Trace's Retrieved Chunks table shows C1 `product.txt` with relevance `0.400` and `leave.txt` left out with `0.000`. |
 | 3 | The reranker credential is registered as a reference | `agent_references` (`app/agents/validation.py`, 04-07) covers `retrieval.reranker`.<br>**API test:** `test_agent_config.py::test_credentials_an_agent_uses_cant_be_deleted` gives 409 with `{"kind":"agent","id":…,"name":"HR helper (reranker)"}`.<br>**E2E (this ticket):** `reranker.spec.ts` sets the reranker in the editor. Deleting the Voyage credential then gives 409 with exactly `[{kind: "agent", id: agentId, name: "Support helper (reranker)"}]`. |
-| 4 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | See the seams above.<br>• Backend gate (`fail_under = 100`, branch on): **100%**, 7203 statements, 824 branches, 0 missed ([backend-tests.log](backend-tests.log)).<br>• Frontend Vitest gate: 100% ("No files with missing coverage") ([frontend-tests.log](frontend-tests.log)). No Studio source changed. |
+| 4 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | See the seams above.<br>• Backend gate (`fail_under = 100`, branch on): **100%**, 7501 statements, 862 branches, 0 missed ([backend-tests.log](backend-tests.log)).<br>• Frontend Vitest gate: 100% ("No files with missing coverage") ([frontend-tests.log](frontend-tests.log)). No Studio source changed. |
 | 5 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | `GLOSSARY.md`: **Reranker** (an Agent's Reranker, where it acts, a Credential reference) and **Relevance** (the Reranker's score when there is one) are updated. No new term was needed. No ADR changed: ADR-0001 (hybrid search with RRF) still holds, the reranker is an optional step after fusion as the spec lays out, and the call goes through the model gateway. |
 
 ## Results
 
-All runs are local and sequential, on the merged tree `7c56674`, on a machine shared with five other tickets (load average 13–35). GitHub Actions is down; the user authorised merging on local results.
+All runs are local and sequential, on the merged tree `8a7df8e`, on a machine shared with five other tickets (load average 13–35). GitHub Actions is down; the user authorised merging on local results.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against `rag0405-pg` (pgvector 0.8.1-pg16), `rag0405-redis` and `rag0405-rustfs` | **1536 passed**, 7 deselected (live); coverage **100%** lines and branches (7203 statements, 824 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **38 files, 479 tests passed**; 100% ("No files with missing coverage") | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against `rag0405-pg` (pgvector 0.8.1-pg16), `rag0405-redis` and `rag0405-rustfs` | **1569 passed**, 7 deselected (live); coverage **100%** lines and branches (7501 statements, 862 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **38 files, 481 tests passed**; 100% ("No files with missing coverage") | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." (no API schema change) | [client-drift.log](client-drift.log) |
 | Security | gitleaks over this branch's commits; `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
-| Images | `build.sh` (sandbox `make images`) at `7c56674` | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0405`, ports 47xxx), on images from `7c56674` | **60 passed**, exit 0, including `reranker.spec.ts` | [e2e.log](e2e.log) |
+| Images | `build.sh` (sandbox `make images`) at `8a7df8e` | both built | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0405`, ports 47xxx), on images from `8a7df8e` | **61 passed**, exit 0, including `reranker.spec.ts` | [e2e.log](e2e.log) |
 | Infra | not run | this branch changes nothing under `infra/` | |
 
 **Earlier end-to-end runs** (kept for honesty; none failed for a reason in this ticket's code):
@@ -71,7 +74,8 @@ All runs are local and sequential, on the merged tree `7c56674`, on a machine sh
 - On the merged tree:
   - [e2e-merged-portclash.log](e2e-merged-portclash.log): the stack failed to start because host port 47300 was briefly taken.
   - [e2e-merged-attempt1.log](e2e-merged-attempt1.log): 55 passed. `members.spec.ts` and `projects.spec.ts` timed out on 5 s toasts under load. Both passed in the next run (57 of 57 at `609c87b`).
-- After the later candidate merges: 58 of 58 passed at `3f5ad31` and 59 of 59 at `e8607ef`. At `7c56674` the first image build and stack start failed with "no space left on device" on the shared disk (other tickets' images). The images and e2e were rerun once space was free. That run ([e2e-7c56674-attempt1.log](e2e-7c56674-attempt1.log)) had 59 passed and 1 failed: `projects.spec.ts` timed out on a 5 s toast under load average 17–18, the same flake as before. The next run, [e2e.log](e2e.log), passed 60 of 60. One Vitest run at `e8607ef` also hit ENOSPC after all 471 tests passed; it passed on rerun.
+- After the later candidate merges: 58 of 58 passed at `3f5ad31` and 59 of 59 at `e8607ef`. At `7c56674` the first image build and stack start failed with "no space left on device" on the shared disk (other tickets' images). The images and e2e were rerun once space was free. That run ([e2e-7c56674-attempt1.log](e2e-7c56674-attempt1.log)) had 59 passed and 1 failed: `projects.spec.ts` timed out on a 5 s toast under load average 17–18, the same flake as before. The next run passed 60 of 60. One Vitest run at `e8607ef` also hit ENOSPC after all 471 tests passed; it passed on rerun.
+- At `8a7df8e` (after merging 03-10): two stack starts failed because host port 47300 was briefly taken ([e2e-8a7df8e-portclash1.log](e2e-8a7df8e-portclash1.log), [e2e-8a7df8e-portclash2.log](e2e-8a7df8e-portclash2.log)). The next run, [e2e.log](e2e.log), passed 61 of 61.
 
 ## Gaps and best guesses
 
