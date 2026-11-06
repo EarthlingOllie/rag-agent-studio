@@ -12,6 +12,9 @@ list of immutable, numbered Versions, and a Current Version pointer on the Proje
   a revert returns to v1, skipping the reverted v2. With nothing before the Current Version,
   revert is refused. The Draft is never touched by a revert.
 
+**Diff** compares two sides, each the Draft, the Current Version or any Version of the
+Project, as a line diff of their markdown.
+
 Publish and revert are recorded as Audit Events. Every operation goes through
 ``active_project``, so another Organisation's Project is "not found" and an archived one is
 read-only.
@@ -20,6 +23,7 @@ read-only.
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,10 +33,19 @@ from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project, get_project
 from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
+from app.versioning.diff import Line, diff_text
 
 
 class NothingToPublishError(Exception):
     """The Draft is the same as the Current Version (or empty, before the first publish)."""
+
+
+class NoCurrentVersionError(Exception):
+    """The Instructions have never been published."""
+
+
+class InstructionsVersionNotFoundError(Exception):
+    """No Version with that ID in the Project."""
 
 
 class NothingToRevertError(Exception):
@@ -174,3 +187,52 @@ async def _move(
         occurred_at=now,
     )
     await session.commit()
+
+
+# A side of a diff: the Draft, the Current Version, or a Version by ID.
+Side = Literal["draft", "current"] | uuid.UUID
+
+
+@dataclass(frozen=True)
+class DiffSide:
+    # None for the Draft.
+    version: InstructionsVersion | None
+    markdown: str
+
+
+@dataclass(frozen=True)
+class InstructionsDiff:
+    source: DiffSide
+    target: DiffSide
+    lines: list[Line]
+
+
+async def _side(session: AsyncSession, project: Project, side: Side) -> DiffSide:
+    if side == "draft":
+        return DiffSide(None, project.instructions)
+    if side == "current":
+        if project.current_instructions_version_id is None:
+            raise NoCurrentVersionError
+        side = project.current_instructions_version_id
+    version = await session.scalar(
+        select(InstructionsVersion).where(
+            InstructionsVersion.id == side, InstructionsVersion.project_id == project.id
+        )
+    )
+    if version is None:
+        raise InstructionsVersionNotFoundError
+    return DiffSide(version, version.markdown)
+
+
+async def diff(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    source: Side,
+    target: Side,
+) -> InstructionsDiff:
+    """The line diff from ``source`` to ``target``. Archived Projects can be compared."""
+    project = await get_project(session, scope, project_id)
+    before = await _side(session, project, source)
+    after = await _side(session, project, target)
+    return InstructionsDiff(before, after, diff_text(before.markdown, after.markdown))

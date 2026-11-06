@@ -345,6 +345,16 @@ async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) ->
     return params | {"version_id": published.json()["id"]}, None
 
 
+async def _a_live_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    return params, None
+
+
+async def _a_version_to_start_from(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    return params, {"version_id": params["version_id"]}
+
+
 async def _an_archived_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _an_agent(owner, add_member)
     archived = await owner.client.post(
@@ -409,6 +419,9 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _a_project),
     ScopedRoute(
+        "GET", PROJECTS + "/{project_id}/instructions/diff?from=draft&to=draft", EDITOR, _a_project
+    ),
+    ScopedRoute(
         "POST", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _instructions_to_publish
     ),
     ScopedRoute(
@@ -470,6 +483,9 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _AGENT + "/versions", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/diff?from=draft&to=draft", EDITOR, _an_agent),
+    ScopedRoute("POST", _AGENT + "/draft/discard", EDITOR, _a_live_agent),
+    ScopedRoute("POST", _AGENT + "/draft/from-version", EDITOR, _a_version_to_start_from),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),

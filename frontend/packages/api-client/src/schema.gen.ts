@@ -937,6 +937,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diff Agent
+         * @description What changes from one side to the other: a structural diff of every AgentConfig setting,
+         *     with a line diff for markdown, and between two Versions the change of pinned Project
+         *     Instructions. ``from=live&to=draft`` shows the Draft's unpublished changes.
+         */
+        get: operations["diffAgent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft": {
         parameters: {
             query?: never;
@@ -950,10 +972,55 @@ export interface paths {
          * @description Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each
          *     credential must offer the chosen model for its setting's capability and each Tag must be
          *     the Project's; every problem is reported in one 422, located like a validation error. An
-         *     archived Agent's Draft can't be changed.
+         *     archived Agent's Draft can't be changed. With ``base_revision``, a Draft someone has changed
+         *     since is refused with 409 and the latest Draft.
          */
         put: operations["saveAgentDraft"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Agent Draft
+         * @description Discards the Draft's unpublished changes: the Live Version's configuration goes back in
+         *     the Draft. Refused with 409 while the Agent has never been published. Records
+         *     ``agent.draft_discarded``.
+         */
+        post: operations["discardAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/from-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Agent Draft From Version
+         * @description Starts the Draft from one of the Agent's Versions: its configuration replaces the Draft,
+         *     and nothing is published. Its settings are checked like a save (422), since a credential an
+         *     older Version names may have been deleted. Records ``agent.draft_started_from_version``.
+         */
+        post: operations["startAgentDraftFromVersion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1415,9 +1482,31 @@ export interface paths {
         /**
          * Save Project Instructions
          * @description Replaces the Project Instructions; records ``project.instructions_updated`` when they
-         *     change. An archived Project is refused.
+         *     change. An archived Project is refused. With ``base_revision``, a Draft someone has changed
+         *     since is refused with 409 and the latest Draft.
          */
         put: operations["saveProjectInstructions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diff Instructions
+         * @description The line diff of the Project Instructions from one side to the other.
+         *     ``from=current&to=draft`` shows what publishing the Draft would change.
+         */
+        get: operations["diffProjectInstructions"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1743,6 +1832,14 @@ export interface components {
             guardrails: components["schemas"]["Guardrails-Output"];
             retrieval: components["schemas"]["Retrieval-Output"];
         };
+        /** AgentDiffOut */
+        AgentDiffOut: {
+            /** Changes */
+            changes: components["schemas"]["FieldChangeOut"][];
+            from: components["schemas"]["DiffSideOut"];
+            instructions: components["schemas"]["InstructionsChangeOut"] | null;
+            to: components["schemas"]["DiffSideOut"];
+        };
         /** AgentOut */
         AgentOut: {
             /** Archived At */
@@ -1753,11 +1850,15 @@ export interface components {
              */
             created_at: string;
             draft: components["schemas"]["AgentConfig-Output"];
+            /** Draft Revision */
+            draft_revision: number;
             /**
              * Draft Updated At
              * Format: date-time
              */
             draft_updated_at: string;
+            /** Has Unpublished Changes */
+            has_unpublished_changes: boolean;
             /**
              * Id
              * Format: uuid
@@ -2278,6 +2379,25 @@ export interface components {
             /** Confirm Name */
             confirm_name: string;
         };
+        /** DiffLineOut */
+        DiffLineOut: {
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "equal" | "delete" | "insert";
+            /** Text */
+            text: string;
+        };
+        /** DiffSideOut */
+        DiffSideOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft" | "version";
+            version: components["schemas"]["VersionNumberOut"] | null;
+        };
         /** DisableRequest */
         DisableRequest: {
             /** Code */
@@ -2398,6 +2518,12 @@ export interface components {
             /** Tag Ids */
             tag_ids: string[];
         };
+        /** DraftConflictOut */
+        DraftConflictOut: {
+            /** Detail */
+            detail: string;
+            latest?: components["schemas"]["AgentOut"] | null;
+        };
         /**
          * EmbeddingModelChoiceOut
          * @description An Embedding Model the Organisation can choose, and the credential it is called
@@ -2510,6 +2636,19 @@ export interface components {
          * @enum {string}
          */
         FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        /** FieldChangeOut */
+        FieldChangeOut: {
+            /** Added */
+            added: components["schemas"]["JsonValue"][] | null;
+            after: components["schemas"]["JsonValue"];
+            before: components["schemas"]["JsonValue"];
+            /** Lines */
+            lines: components["schemas"]["DiffLineOut"][] | null;
+            /** Path */
+            path: string;
+            /** Removed */
+            removed: components["schemas"]["JsonValue"][] | null;
+        };
         /**
          * Font
          * @enum {string}
@@ -2625,12 +2764,51 @@ export interface components {
          * @enum {string}
          */
         InputMode: "block" | "warn" | "log";
+        /** InstructionsChangeOut */
+        InstructionsChangeOut: {
+            after: components["schemas"]["VersionNumberOut"] | null;
+            before: components["schemas"]["VersionNumberOut"] | null;
+            /** Lines */
+            lines: components["schemas"]["DiffLineOut"][];
+        };
+        /** InstructionsConflictOut */
+        InstructionsConflictOut: {
+            /** Detail */
+            detail: string;
+            latest?: components["schemas"]["ProjectInstructionsOut"] | null;
+        };
+        /** InstructionsDiffOut */
+        InstructionsDiffOut: {
+            from: components["schemas"]["InstructionsDiffSideOut"];
+            /** Lines */
+            lines: components["schemas"]["DiffLineOut"][];
+            to: components["schemas"]["InstructionsDiffSideOut"];
+        };
+        /** InstructionsDiffSideOut */
+        InstructionsDiffSideOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft" | "version";
+            version: components["schemas"]["InstructionsVersionNumberOut"] | null;
+        };
         /** InstructionsHistoryOut */
         InstructionsHistoryOut: {
             /** Current Version Id */
             current_version_id: string | null;
             /** Versions */
             versions: components["schemas"]["InstructionsVersionOut"][];
+        };
+        /** InstructionsVersionNumberOut */
+        InstructionsVersionNumberOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
         };
         /** InstructionsVersionOut */
         InstructionsVersionOut: {
@@ -2729,6 +2907,7 @@ export interface components {
             /** Link */
             link: string;
         };
+        JsonValue: unknown;
         /**
          * LauncherPosition
          * @enum {string}
@@ -3026,6 +3205,13 @@ export interface components {
             /** Markdown */
             markdown: string;
         };
+        /** ProjectInstructionsOut */
+        ProjectInstructionsOut: {
+            /** Markdown */
+            markdown: string;
+            /** Revision */
+            revision: number;
+        };
         /** ProjectOut */
         ProjectOut: {
             /** Agent Count */
@@ -3280,6 +3466,14 @@ export interface components {
             organisation_name: string;
             /** Password */
             password: string;
+        };
+        /** StartDraftRequest */
+        StartDraftRequest: {
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
         };
         /** StartImageUploadRequest */
         StartImageUploadRequest: {
@@ -6363,9 +6557,68 @@ export interface operations {
             };
         };
     };
+    diffAgent: {
+        parameters: {
+            query: {
+                /** @description The Draft (draft), the Live Version (live), or a Version's ID. */
+                from: ("draft" | "live") | string;
+                /** @description The Draft (draft), the Live Version (live), or a Version's ID. */
+                to: ("draft" | "live") | string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDiffOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Agent has never been published, so it has no Live Version. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     saveAgentDraft: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced. */
+                base_revision?: number | null;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -6398,13 +6651,125 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            /** @description Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["DraftConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discardAgentDraft: {
+        parameters: {
+            query?: {
+                /** @description The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced. */
+                base_revision?: number | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startAgentDraftFromVersion: {
+        parameters: {
+            query?: {
+                /** @description The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced. */
+                base_revision?: number | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftConflictOut"];
                 };
             };
             /** @description Validation Error */
@@ -7621,7 +7986,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectInstructions"];
+                    "application/json": components["schemas"]["ProjectInstructionsOut"];
                 };
             };
             /** @description Not found */
@@ -7646,7 +8011,10 @@ export interface operations {
     };
     saveProjectInstructions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The Draft revision the save was made on. When the Draft has moved on since, the save is refused with 409 and the latest Draft. Left out, it is replaced. */
+                base_revision?: number | null;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -7666,7 +8034,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectInstructions"];
+                    "application/json": components["schemas"]["ProjectInstructionsOut"];
                 };
             };
             /** @description Not found */
@@ -7678,7 +8046,62 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. */
+            /** @description Someone else saved these Instructions after you opened them. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    diffProjectInstructions: {
+        parameters: {
+            query: {
+                /** @description The Draft (draft), the Current Version (current), or a Version's ID. */
+                from: ("draft" | "current") | string;
+                /** @description The Draft (draft), the Current Version (current), or a Version's ID. */
+                to: ("draft" | "current") | string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsDiffOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Instructions have never been published, so there's no Current Version. */
             409: {
                 headers: {
                     [name: string]: unknown;

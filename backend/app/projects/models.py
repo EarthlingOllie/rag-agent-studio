@@ -48,6 +48,9 @@ class Project(IdMixin, Base):
     # The Project Instructions Draft: the one editable markdown, stored exactly as written.
     # Publishing it makes a new ``InstructionsVersion``.
     instructions: Mapped[str] = mapped_column(Text, default="", server_default="")
+    # 1, 2, 3…: moves on whenever the Draft's text changes. A save may name the revision it was
+    # made on, and is refused when the Draft has moved on since (optimistic concurrency).
+    instructions_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     # The Current Version: the Instructions Version new Agent Versions pin by default. None
     # until the Instructions are first published.
     current_instructions_version_id: Mapped[uuid.UUID | None] = mapped_column(

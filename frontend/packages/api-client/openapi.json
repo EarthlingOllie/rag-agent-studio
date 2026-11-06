@@ -60,6 +60,41 @@
         "title": "AgentConfig",
         "type": "object"
       },
+      "AgentDiffOut": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "from": {
+            "$ref": "#/components/schemas/DiffSideOut"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstructionsChangeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to": {
+            "$ref": "#/components/schemas/DiffSideOut"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "changes",
+          "instructions"
+        ],
+        "title": "AgentDiffOut",
+        "type": "object"
+      },
       "AgentOut": {
         "properties": {
           "archived_at": {
@@ -82,10 +117,18 @@
           "draft": {
             "$ref": "#/components/schemas/AgentConfig-Output"
           },
+          "draft_revision": {
+            "title": "Draft Revision",
+            "type": "integer"
+          },
           "draft_updated_at": {
             "format": "date-time",
             "title": "Draft Updated At",
             "type": "string"
+          },
+          "has_unpublished_changes": {
+            "title": "Has Unpublished Changes",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -125,7 +168,9 @@
           "archived_at",
           "draft",
           "draft_updated_at",
-          "live_version"
+          "draft_revision",
+          "live_version",
+          "has_unpublished_changes"
         ],
         "title": "AgentOut",
         "type": "object"
@@ -1366,6 +1411,57 @@
         "title": "DeleteProjectRequest",
         "type": "object"
       },
+      "DiffLineOut": {
+        "properties": {
+          "op": {
+            "enum": [
+              "equal",
+              "delete",
+              "insert"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "text"
+        ],
+        "title": "DiffLineOut",
+        "type": "object"
+      },
+      "DiffSideOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "draft",
+              "version"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "version"
+        ],
+        "title": "DiffSideOut",
+        "type": "object"
+      },
       "DisableRequest": {
         "properties": {
           "code": {
@@ -1718,6 +1814,29 @@
         "title": "DocumentTagsRequest",
         "type": "object"
       },
+      "DraftConflictOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "DraftConflictOut",
+        "type": "object"
+      },
       "EmbeddingModelChoiceOut": {
         "description": "An Embedding Model the Organisation can choose, and the credential it is called\nthrough (none for the built-in local model).",
         "properties": {
@@ -2015,6 +2134,72 @@
         "title": "FailureCategory",
         "type": "string"
       },
+      "FieldChangeOut": {
+        "properties": {
+          "added": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "after": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "before": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DiffLineOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed"
+          }
+        },
+        "required": [
+          "path",
+          "before",
+          "after",
+          "added",
+          "removed",
+          "lines"
+        ],
+        "title": "FieldChangeOut",
+        "type": "object"
+      },
       "Font": {
         "enum": [
           "Inter",
@@ -2259,6 +2444,119 @@
         "title": "InputMode",
         "type": "string"
       },
+      "InstructionsChangeOut": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "before",
+          "after",
+          "lines"
+        ],
+        "title": "InstructionsChangeOut",
+        "type": "object"
+      },
+      "InstructionsConflictOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectInstructionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "InstructionsConflictOut",
+        "type": "object"
+      },
+      "InstructionsDiffOut": {
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/InstructionsDiffSideOut"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "to": {
+            "$ref": "#/components/schemas/InstructionsDiffSideOut"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "lines"
+        ],
+        "title": "InstructionsDiffOut",
+        "type": "object"
+      },
+      "InstructionsDiffSideOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "draft",
+              "version"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstructionsVersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "version"
+        ],
+        "title": "InstructionsDiffSideOut",
+        "type": "object"
+      },
       "InstructionsHistoryOut": {
         "properties": {
           "current_version_id": {
@@ -2286,6 +2584,25 @@
           "versions"
         ],
         "title": "InstructionsHistoryOut",
+        "type": "object"
+      },
+      "InstructionsVersionNumberOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "title": "InstructionsVersionNumberOut",
         "type": "object"
       },
       "InstructionsVersionOut": {
@@ -2519,6 +2836,7 @@
         "title": "IssuedInviteOut",
         "type": "object"
       },
+      "JsonValue": {},
       "LauncherPosition": {
         "enum": [
           "bottom-right",
@@ -3308,6 +3626,24 @@
         "title": "ProjectInstructions",
         "type": "object"
       },
+      "ProjectInstructionsOut": {
+        "properties": {
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "markdown",
+          "revision"
+        ],
+        "title": "ProjectInstructionsOut",
+        "type": "object"
+      },
       "ProjectOut": {
         "properties": {
           "agent_count": {
@@ -3954,6 +4290,20 @@
           "organisation_name"
         ],
         "title": "SignUpRequest",
+        "type": "object"
+      },
+      "StartDraftRequest": {
+        "properties": {
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "title": "StartDraftRequest",
         "type": "object"
       },
       "StartImageUploadRequest": {
@@ -8746,9 +9096,139 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff": {
+      "get": {
+        "description": "What changes from one side to the other: a structural diff of every AgentConfig setting,\nwith a line diff for markdown, and between two Versions the change of pinned Project\nInstructions. ``from=live&to=draft`` shows the Draft's unpublished changes.",
+        "operationId": "diffAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "live"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "live"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDiffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Agent has never been published, so it has no Live Version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Diff Agent",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft": {
       "put": {
-        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error. An\narchived Agent's Draft can't be changed.",
+        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error. An\narchived Agent's Draft can't be changed. With ``base_revision``, a Draft someone has changed\nsince is refused with 409 and the latest Draft.",
         "operationId": "saveAgentDraft",
         "parameters": [
           {
@@ -8779,6 +9259,24 @@
               "format": "uuid",
               "title": "Organisation Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+              "title": "Base Revision"
             }
           }
         ],
@@ -8817,11 +9315,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/DraftConflictOut"
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+            "description": "Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
           },
           "422": {
             "content": {
@@ -8837,6 +9335,220 @@
         "summary": "Save Agent Draft",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/discard": {
+      "post": {
+        "description": "Discards the Draft's unpublished changes: the Live Version's configuration goes back in\nthe Draft. Refused with 409 while the Agent has never been published. Records\n``agent.draft_discarded``.",
+        "operationId": "discardAgentDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+              "title": "Base Revision"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftConflictOut"
+                }
+              }
+            },
+            "description": "Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discard Agent Draft",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/from-version": {
+      "post": {
+        "description": "Starts the Draft from one of the Agent's Versions: its configuration replaces the Draft,\nand nothing is published. Its settings are checked like a save (422), since a credential an\nolder Version names may have been deleted. Records ``agent.draft_started_from_version``.",
+        "operationId": "startAgentDraftFromVersion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+              "title": "Base Revision"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftConflictOut"
+                }
+              }
+            },
+            "description": "Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Agent Draft From Version",
+        "tags": [
+          "agent-versions"
         ]
       }
     },
@@ -10929,7 +11641,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectInstructions"
+                  "$ref": "#/components/schemas/ProjectInstructionsOut"
                 }
               }
             },
@@ -10962,7 +11674,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the Project Instructions; records ``project.instructions_updated`` when they\nchange. An archived Project is refused.",
+        "description": "Replaces the Project Instructions; records ``project.instructions_updated`` when they\nchange. An archived Project is refused. With ``base_revision``, a Draft someone has changed\nsince is refused with 409 and the latest Draft.",
         "operationId": "saveProjectInstructions",
         "parameters": [
           {
@@ -10984,6 +11696,24 @@
               "title": "Organisation Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The Draft revision the save was made on. When the Draft has moved on since, the save is refused with 409 and the latest Draft. Left out, it is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the save was made on. When the Draft has moved on since, the save is refused with 409 and the latest Draft. Left out, it is replaced.",
+              "title": "Base Revision"
+            }
           }
         ],
         "requestBody": {
@@ -11001,7 +11731,127 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectInstructions"
+                  "$ref": "#/components/schemas/ProjectInstructionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsConflictOut"
+                }
+              }
+            },
+            "description": "Someone else saved these Instructions after you opened them. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Project Instructions",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/diff": {
+      "get": {
+        "description": "The line diff of the Project Instructions from one side to the other.\n``from=current&to=draft`` shows what publishing the Draft would change.",
+        "operationId": "diffProjectInstructions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "current"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "current"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsDiffOut"
                 }
               }
             },
@@ -11025,7 +11875,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it."
+            "description": "The Instructions have never been published, so there's no Current Version."
           },
           "422": {
             "content": {
@@ -11038,9 +11888,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Save Project Instructions",
+        "summary": "Diff Instructions",
         "tags": [
-          "projects"
+          "project-instructions"
         ]
       }
     },

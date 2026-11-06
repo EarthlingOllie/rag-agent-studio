@@ -13,6 +13,7 @@ import {
   useDeleteAgent,
 } from "./agents";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
+import { AgentVersions, DiscardDraft } from "./AgentVersions";
 import { DraftEditor } from "./DraftEditor";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 import { TraceDrawer } from "./TraceDrawer";
@@ -479,6 +480,12 @@ export function AgentPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   const { projectId, agentId } = useAgentParams();
   const agent = useAgent(organisationId, projectId, agentId);
+  // Moves on whenever the Draft is replaced (discarded, started from a Version, or someone
+  // else's loaded), so the editor starts again from the new Draft.
+  const [generation, setGeneration] = useState(0);
+  const replaced = useCallback(() => {
+    setGeneration((current) => current + 1);
+  }, []);
 
   let body;
   if (agent.isPending) {
@@ -505,6 +512,7 @@ export function AgentPage() {
             <ArchiveAgent agent={agent.data} organisationId={organisationId} />
           )}
         </div>
+        {!archived && <DiscardDraft agent={agent.data} organisationId={organisationId} onReplaced={replaced} />}
         {!archived && (
           <PublishAgent
             key={`publish-${agent.data.id}`}
@@ -521,9 +529,10 @@ export function AgentPage() {
         )}
         <div className="grid gap-8 lg:grid-cols-2">
           <DraftEditor
-            key={`${agent.data.id}-${String(archived)}`}
+            key={`${agent.data.id}-${String(archived)}-${String(generation)}`}
             agent={agent.data}
             organisationId={organisationId}
+            onReplaced={replaced}
           />
           {!archived && (
             <Playground
@@ -533,6 +542,7 @@ export function AgentPage() {
             />
           )}
         </div>
+        <AgentVersions agent={agent.data} organisationId={organisationId} onReplaced={replaced} />
       </>
     );
   }

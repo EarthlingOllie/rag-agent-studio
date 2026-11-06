@@ -63,6 +63,9 @@ class AgentDraft(Base):
     # An ``AgentConfig`` as JSON; read it through ``AgentConfig.model_validate``.
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # 1, 2, 3…: moves on with every change of the Draft. A change names the revision it was
+    # made on, and is refused when the Draft has moved on since (optimistic concurrency).
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
 class AgentVersion(IdMixin, Base):

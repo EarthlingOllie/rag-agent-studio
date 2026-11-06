@@ -295,6 +295,25 @@ _Avoid_: Bot, chatbot, assistant
 **Draft**:
 The single editable, unpublished configuration of an Agent or of Project Instructions.
 
+**Draft revision**:
+A counter on a Draft that moves on with every change to it. A change names the Draft revision it was made on, and if someone has changed the Draft since, the change is refused (a stale Draft) with their latest Draft. The Editor then loads their Draft or saves theirs over it on purpose, so nobody silently overwrites a colleague's edits. It is a concurrency token, not a Version.
+_Avoid_: Draft version, ETag
+
+**Unpublished changes**:
+An Agent's Draft that differs from its Live Version's AgentConfig. The Studio badges the Agent with "Unpublished changes". An Agent that has never been published has none: it is "Not live".
+_Avoid_: Dirty, pending changes
+
+**Discard the Draft**:
+To put the Live Version's AgentConfig back in an Agent's Draft, losing its Unpublished changes. Nothing is published. An Agent that is not live has nothing to discard to.
+
+**Start a Draft from a Version**:
+To replace an Agent's Draft with the AgentConfig of any of its Versions, to build on an earlier configuration without reverting. Nothing is published, and the Live Version is unchanged. The Version's settings are checked like a save, since a credential it names may have been deleted since.
+_Avoid_: Restore, check out
+
+**Diff**:
+What changes from one side to another. For an Agent, each side is the Draft or a Version (the Live Version or any other), and the diff lists every AgentConfig setting that differs by its path (such as Retrieval › Top k), with the items added and removed for lists (Tags, starter questions), a line diff for markdown (the system prompt), and, between two Versions, the change of pinned Instructions Version with a line diff of their text. For Project Instructions, each side is the Draft or an Instructions Version, compared line by line. The publish form shows the Draft-to-Live diff.
+_Avoid_: Changeset, delta
+
 **AgentConfig**:
 Everything in an Agent's Draft or Version that shapes how it answers: its Behaviour (system prompt and model settings), Retrieval (top-k and search settings), Experience and Guardrails settings. Operational Settings and the Theme are not part of it.
 _Avoid_: Agent settings, agent options

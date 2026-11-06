@@ -2,20 +2,36 @@ import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { formatTime } from "../settings/AuditPage";
+import { TextDiff } from "./AgentDiff";
 import {
+  type DraftInstructions,
+  type InstructionsDiff,
   type InstructionsVersion,
+  useInstructions,
+  useInstructionsDiff,
   useInstructionsVersions,
   useIsLatestInstructionsChange,
   usePublishInstructions,
   useRevertInstructions,
+  StaleInstructionsError,
   versionFailure,
 } from "./instructions";
 import { BUTTON, INPUT } from "./ProjectsPage";
 
 type Target = { organisationId: string; projectId: string };
 
-/** Publishes the Draft as written in the editor (`markdown()`), with a note, as the next Version. */
-export function PublishInstructionsForm({ organisationId, projectId, markdown }: Target & { markdown: () => string }) {
+/**
+ * Publishes the Draft as written in the editor (`markdown()`, made on revision `baseRevision()`),
+ * with a note, as the next Version. A Draft someone else changed since is not published:
+ * `onStale` gets their Draft.
+ */
+export function PublishInstructionsForm({
+  organisationId,
+  projectId,
+  markdown,
+  baseRevision,
+  onStale,
+}: Target & { markdown: () => string; baseRevision: () => number; onStale: (latest: DraftInstructions) => void }) {
   const publish = usePublishInstructions(organisationId, projectId);
   const latest = useIsLatestInstructionsChange(organisationId, projectId, publish.submittedAt);
 
@@ -24,10 +40,13 @@ export function PublishInstructionsForm({ organisationId, projectId, markdown }:
     const form = event.currentTarget;
     const note = new FormData(form).get("note") as string;
     publish.mutate(
-      { markdown: markdown(), note },
+      { markdown: markdown(), note, baseRevision: baseRevision() },
       {
         onSuccess: () => {
           form.reset();
+        },
+        onError: (error) => {
+          if (error instanceof StaleInstructionsError) onStale(error.latest);
         },
       },
     );
@@ -35,7 +54,7 @@ export function PublishInstructionsForm({ organisationId, projectId, markdown }:
 
   return (
     <form aria-label="Publish Instructions" onSubmit={onSubmit} className="space-y-2 rounded border border-slate-300 p-3">
-      <FormError message={latest ? versionFailure(publish.error) : undefined} />
+      <FormError message={latest && !(publish.error instanceof StaleInstructionsError) ? versionFailure(publish.error) : undefined} />
       <label className="block">
         Note
         <input name="note" required maxLength={500} className={INPUT} />
@@ -73,6 +92,61 @@ function VersionItem({ version, current }: { version: InstructionsVersion; curre
         <pre className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm">{version.markdown || "(empty)"}</pre>
       </details>
     </li>
+  );
+}
+
+/** Compares any two Instructions Versions, or one with the saved Draft, line by line. */
+function CompareInstructions({ organisationId, projectId, versions, currentId }: Target & { versions: InstructionsVersion[]; currentId: string | null }) {
+  const draft = useInstructions(organisationId, projectId);
+  // By default, what publishing the saved Draft would change.
+  const [from, setFrom] = useState(currentId ?? "draft");
+  const [to, setTo] = useState("draft");
+  const diff = useInstructionsDiff(organisationId, projectId, { from, to, draft: draft.data?.revision });
+  const name = (side: InstructionsDiff["from"]) => (side.version ? `v${String(side.version.number)}` : "the Draft");
+  const picker = (id: string, label: string, value: string, onChange: (side: string) => void) => (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium">
+        {label}
+      </label>
+      <select
+        id={id}
+        className={INPUT}
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+      >
+        <option value="draft">Draft (saved)</option>
+        {versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            v{version.number}
+            {version.id === currentId ? " (Current)" : ""}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+  let body;
+  if (diff.isPending) body = <p className="text-sm text-slate-700">Comparing…</p>;
+  else if (diff.isError) body = <p className="text-sm text-slate-700">The comparison could not be loaded. Try again shortly.</p>;
+  else if (diff.data.lines.every((line) => line.op === "equal"))
+    body = (
+      <p className="text-sm text-slate-700">
+        No differences: {name(diff.data.from)} and {name(diff.data.to)} are the same.
+      </p>
+    );
+  else body = <TextDiff lines={diff.data.lines} label={`Changes from ${name(diff.data.from)} to ${name(diff.data.to)}`} />;
+  return (
+    <section aria-labelledby="compare-instructions-heading" className="space-y-2">
+      <h3 id="compare-instructions-heading" className="font-semibold">
+        Compare
+      </h3>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {picker("compare-instructions-from", "From", from, setFrom)}
+        {picker("compare-instructions-to", "To", to, setTo)}
+      </div>
+      {body}
+    </section>
   );
 }
 
@@ -157,6 +231,7 @@ export function InstructionsVersions({ organisationId, projectId, archived }: Ta
           ))}
         </ol>
       )}
+      {list.length > 0 && <CompareInstructions organisationId={organisationId} projectId={projectId} versions={list} currentId={currentId} />}
     </div>
   );
 }

@@ -132,8 +132,42 @@ export const hrHelper: Agent = {
     },
   },
   draft_updated_at: "2026-11-05T09:00:00Z",
+  draft_revision: 1,
   live_version: null,
+  has_unpublished_changes: false,
 };
+
+type AgentVersion = Schemas["AgentVersionOut"];
+type AgentDiff = Schemas["AgentDiffOut"];
+
+export const STALE_DRAFT =
+  "Someone else saved this Draft after you opened it. Load their changes, or save yours over them.";
+
+/** An Agent Version of `hrHelper`; IDs end in the number. */
+export function agentVersion(
+  number: number,
+  overrides: Partial<AgentVersion> = {},
+): AgentVersion {
+  return {
+    id: `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`,
+    number,
+    note: `Release ${String(number)}`,
+    author: { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" },
+    created_at: "2026-11-06T11:00:00Z",
+    config: defaultDraft,
+    instructions_version: null,
+    ...overrides,
+  };
+}
+
+/** A diff with no changes between two sides, as `GET …/diff` answers for identical settings. */
+export function emptyDiff(from: string, to: string): AgentDiff {
+  const side = (id: string): AgentDiff["from"] =>
+    id === "draft"
+      ? { kind: "draft", version: null }
+      : { kind: "version", version: { id, number: Number(id.slice(-12)) } };
+  return { from: side(from), to: side(to), changes: [], instructions: null };
+}
 
 /** An archived Agent of the same Project. */
 export const oldHelper: Agent = {
@@ -311,9 +345,42 @@ export function fakeAgentsApi(
     publish?: (
       body: Schemas["PublishAgentRequest"],
     ) => Response | undefined | Promise<Response | undefined>;
+    /** Each Agent's Versions, newest first. */
+    versions?: Record<string, AgentVersion[]>;
+    /** Decides each diff's response; by default no changes. `from` and `to` are as sent. */
+    diff?: (from: string, to: string) => AgentDiff | Response | Promise<Response>;
+    /** Decides each discard or start-from-Version response instead of accepting it. */
+    replaceDraft?: () => Response | undefined;
   } = {},
 ) {
   let agents = [...(options.agents ?? [])];
+  const versions: Record<string, AgentVersion[]> = { ...options.versions };
+  const find = (agentId: unknown) =>
+    agents.find((candidate) => candidate.id === agentId) as Agent;
+  /** The Agent with `draft` as its Draft at its next revision. */
+  const withDraft = (agent: Agent, draft: Draft): Agent => {
+    const live = (versions[agent.id] ?? []).find(
+      (version) => version.id === agent.live_version?.id,
+    );
+    const changed: Agent = {
+      ...agent,
+      draft,
+      draft_revision: agent.draft_revision + 1,
+      has_unpublished_changes:
+        live !== undefined && JSON.stringify(live.config) !== JSON.stringify(draft),
+    };
+    agents = agents.map((candidate) =>
+      candidate.id === agent.id ? changed : candidate,
+    );
+    return changed;
+  };
+  /** The 409 for a Draft change made on a revision the Draft has moved on from. */
+  const stale = (request: Request, agent: Agent) => {
+    const base = new URL(request.url).searchParams.get("base_revision");
+    return base !== null && Number(base) !== agent.draft_revision
+      ? HttpResponse.json({ detail: STALE_DRAFT, latest: agent }, { status: 409 })
+      : undefined;
+  };
   const requests: { route: string; body?: unknown }[] = [];
   const answer =
     options.answer ?? (() => streamedAnswer(["Twenty-five ", "days."]));
@@ -347,12 +414,66 @@ export function fakeAgentsApi(
               }
             : (options.currentInstructions ?? null),
         };
+        versions[agent.id] = [version, ...(versions[agent.id] ?? [])];
         agents = agents.map((candidate) =>
           candidate.id === agent.id
-            ? { ...agent, live_version: { id: version.id, number } }
+            ? {
+                ...agent,
+                live_version: { id: version.id, number },
+                has_unpublished_changes: false,
+              }
             : candidate,
         );
         return HttpResponse.json(version, { status: 201 });
+      },
+    ),
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/versions",
+      ({ params }) => {
+        const agent = find(params.agentId);
+        return HttpResponse.json({
+          live_version_id: agent.live_version?.id ?? null,
+          versions: versions[agent.id] ?? [],
+        });
+      },
+    ),
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/diff",
+      async ({ request, params }) => {
+        const query = new URL(request.url).searchParams;
+        const from = query.get("from") as string;
+        const to = query.get("to") as string;
+        requests.push({ route: "diff", body: { from, to } });
+        const live = find(params.agentId).live_version?.id as string;
+        const side = (id: string) => (id === "live" ? live : id);
+        const answered = await (options.diff?.(from, to) ??
+          emptyDiff(side(from), side(to)));
+        return answered instanceof Response
+          ? answered
+          : HttpResponse.json(answered);
+      },
+    ),
+    http.post(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/draft/:action",
+      async ({ request, params }) => {
+        const action = params.action as string;
+        const base = new URL(request.url).searchParams.get("base_revision");
+        const body =
+          action === "from-version"
+            ? ((await request.json()) as { version_id: string })
+            : undefined;
+        requests.push({
+          route: action,
+          body: { ...body, base_revision: Number(base) },
+        });
+        const agent = find(params.agentId);
+        const refused = options.replaceDraft?.() ?? stale(request, agent);
+        if (refused) return refused;
+        const id = body?.version_id ?? agent.live_version?.id;
+        const version = (versions[agent.id] ?? []).find(
+          (candidate) => candidate.id === id,
+        ) as AgentVersion;
+        return HttpResponse.json(withDraft(agent, version.config));
       },
     ),
     http.get(
@@ -443,16 +564,8 @@ export function fakeAgentsApi(
         requests.push({ route: "draft", body });
         const refused = await options.saveDraft?.(body);
         if (refused) return refused;
-        const agent = {
-          ...(agents.find(
-            (candidate) => candidate.id === params.agentId,
-          ) as Agent),
-          draft: body,
-        };
-        agents = agents.map((candidate) =>
-          candidate.id === agent.id ? agent : candidate,
-        );
-        return HttpResponse.json(agent);
+        const agent = find(params.agentId);
+        return stale(request, agent) ?? HttpResponse.json(withDraft(agent, body));
       },
     ),
     http.get("*/api/organisations/:organisationId/credentials", () =>
@@ -533,5 +646,10 @@ export function fakeAgentsApi(
       },
     ),
   );
-  return { requests };
+  return {
+    requests,
+    /** A colleague saves `draft` as the Agent's Draft, moving it to its next revision. */
+    colleagueSaves: (agentId: string, draft: Draft) =>
+      withDraft(find(agentId), draft),
+  };
 }
