@@ -127,7 +127,7 @@ test("an Owner deletes an archived Agent permanently after typing its name", asy
 
   expect(await screen.findByText("Old helper was deleted permanently.")).toBeInTheDocument();
   expect(requests).toEqual([{ route: "delete", body: { confirm_name: "Old helper" } }]);
-  const active = screen.getByRole("list", { name: "Agents" });
+  const active = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
   expect(within(active).getAllByRole("link").map((link) => link.textContent)).toEqual(["HR helper"]);
 });
 
