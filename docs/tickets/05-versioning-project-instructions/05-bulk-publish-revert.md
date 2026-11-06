@@ -7,7 +7,7 @@
 **Blocked by:**
 - [05-03: Revert via Live History](03-revert-live-history.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Bulk publish uses Live config plus the chosen Instructions Version, never the Draft, and skips Agents that have never been published
 - [ ] Each Agent is processed in its own transaction, with a result per Agent
