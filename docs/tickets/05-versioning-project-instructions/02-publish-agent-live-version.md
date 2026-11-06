@@ -8,7 +8,7 @@
 - [05-01: Project Instructions Versions](01-project-instructions-versions.md)
 - [04-07: Full AgentConfig editor](../04-agents-retrieval-playground/07-full-agentconfig-editor.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Publishing creates an immutable Version (config snapshot plus pinned Instructions Version, Current by default, optionally chosen) and sets the Live Version under a lock
 - [ ] The database refuses updates to Versions
