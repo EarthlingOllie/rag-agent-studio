@@ -189,8 +189,8 @@ async def test_the_project_instructions_reach_the_model_before_the_system_prompt
 
     response = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
 
-    parts = json.loads(parse_sse(response.text)[0][1]["text"])
-    assert [part[2] for part in parts[:3]] == [PREAMBLE, instructions, "Be brief."]
+    parts = json.loads(answer_text(response))
+    assert [part[2] for part in parts[:3]] == [preamble("{canary}"), instructions, "Be brief."]
 
 
 async def test_an_unanswered_question_is_not_remembered(
