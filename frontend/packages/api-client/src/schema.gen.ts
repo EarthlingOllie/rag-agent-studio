@@ -875,7 +875,7 @@ export interface paths {
         };
         /**
          * List Agents
-         * @description The Project's Agents, oldest first.
+         * @description The Project's active Agents, oldest first, or with ``archived=true`` its archived ones.
          */
         get: operations["listAgents"];
         put?: never;
@@ -897,10 +897,40 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Agent */
+        /**
+         * Get Agent
+         * @description The Agent, archived or not.
+         */
         get: operations["getAgent"];
         put?: never;
         post?: never;
+        /**
+         * Delete Agent
+         * @description Permanently deletes an archived Agent (Owners only), once ``confirm_name`` is its name.
+         *     Its Draft, Conversations and their Messages and Traces go with it, and ``agent.deleted``
+         *     is recorded. This can't be undone.
+         */
+        delete: operations["deleteAgent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive Agent
+         * @description Archives the Agent: it leaves the Agents list and starts no new Playground Conversation,
+         *     but keeps its Draft and Conversations. Records ``agent.archived``.
+         */
+        post: operations["archiveAgent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -919,7 +949,8 @@ export interface paths {
          * Save Agent Draft
          * @description Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each
          *     credential must offer the chosen model for its setting's capability and each Tag must be
-         *     the Project's; every problem is reported in one 422, located like a validation error.
+         *     the Project's; every problem is reported in one 422, located like a validation error. An
+         *     archived Agent's Draft can't be changed.
          */
         put: operations["saveAgentDraft"];
         post?: never;
@@ -940,7 +971,8 @@ export interface paths {
         put?: never;
         /**
          * Start Conversation
-         * @description Starts an empty Playground Conversation with the Agent's Draft.
+         * @description Starts an empty Playground Conversation with the Agent's Draft. An archived Agent starts
+         *     none.
          */
         post: operations["startPlaygroundConversation"];
         delete?: never;
@@ -980,7 +1012,8 @@ export interface paths {
         put?: never;
         /**
          * Send Message
-         * @description Asks the Agent's Draft a question; the answer streams back as Server-Sent Events.
+         * @description Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An
+         *     archived Agent answers no more questions; its Conversations can still be read.
          */
         post: operations["sendPlaygroundMessage"];
         delete?: never;
@@ -1003,6 +1036,26 @@ export interface paths {
         get: operations["getPlaygroundTrace"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Agent
+         * @description Restores an archived Agent to the Agents list (Owners only). Records ``agent.restored``.
+         */
+        post: operations["restoreAgent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2064,6 +2117,11 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** DeleteAgentRequest */
+        DeleteAgentRequest: {
+            /** Confirm Name */
+            confirm_name: string;
         };
         /** DeleteProjectRequest */
         DeleteProjectRequest: {
@@ -5728,7 +5786,10 @@ export interface operations {
     };
     listAgents: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description List archived Agents instead. */
+                archived?: boolean;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -5863,6 +5924,128 @@ export interface operations {
             };
         };
     };
+    deleteAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Type the Agent's name exactly to delete it. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Only an archived Agent can be deleted. Archive it first. Or: This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archiveAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     saveAgentDraft: {
         parameters: {
             query?: never;
@@ -5898,7 +6081,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. */
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5949,7 +6132,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. */
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6048,7 +6231,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The Project is archived, or no Default Model. */
+            /** @description The Project or Agent is archived, or there is no Default Model. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6094,6 +6277,66 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restoreAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Agent isn't archived. Or: This Project is archived. An Owner can restore it. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

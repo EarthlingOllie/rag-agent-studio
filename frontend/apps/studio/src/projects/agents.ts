@@ -53,16 +53,24 @@ export function agentFailure(error: Error | null): string | undefined {
 
 const agentsKey = (organisationId: string, projectId: string) =>
   ["agents", organisationId, projectId] as const;
+const listsKey = (organisationId: string, projectId: string) =>
+  [...agentsKey(organisationId, projectId), "list"] as const;
 
-export function useAgents(organisationId: string, projectId: string) {
+/** The Project's active Agents, or its archived ones. */
+export function useAgents(
+  organisationId: string,
+  projectId: string,
+  archived = false,
+) {
   return useQuery({
-    queryKey: agentsKey(organisationId, projectId),
+    queryKey: [...listsKey(organisationId, projectId), { archived }],
     queryFn: async (): Promise<Agent[]> => {
       const { data, error, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents",
         {
           params: {
             path: { organisation_id: organisationId, project_id: projectId },
+            query: { archived },
           },
         },
       );
@@ -106,8 +114,7 @@ function useStoreAgent(organisationId: string, projectId: string) {
       agent,
     );
     await queryClient.invalidateQueries({
-      queryKey: agentsKey(organisationId, projectId),
-      exact: true,
+      queryKey: listsKey(organisationId, projectId),
     });
     await queryClient.invalidateQueries({
       queryKey: ["projects", organisationId],
@@ -160,6 +167,73 @@ export function useSaveDraft(
       return data;
     },
     onSuccess: store,
+  });
+}
+
+/** Archive (any Member) or restore (Owners) an Agent. */
+export function useArchiveOrRestoreAgent(
+  organisationId: string,
+  projectId: string,
+  action: "archive" | "restore",
+) {
+  const store = useStoreAgent(organisationId, projectId);
+  return useMutation({
+    mutationFn: async (agentId: string): Promise<Agent> => {
+      const path =
+        action === "archive"
+          ? ("/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/archive" as const)
+          : ("/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/restore" as const);
+      const { data, error, response } = await api.POST(path, {
+        params: {
+          path: {
+            organisation_id: organisationId,
+            project_id: projectId,
+            agent_id: agentId,
+          },
+        },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: store,
+  });
+}
+
+/** Permanently delete an archived Agent (Owners), confirmed by its name typed exactly. */
+export function useDeleteAgent(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (confirmName: string): Promise<void> => {
+      const { error, response } = await api.DELETE(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+          body: { confirm_name: confirmName },
+        },
+      );
+      if (!response.ok) throw failed(response, error);
+    },
+    onSuccess: async () => {
+      queryClient.removeQueries({
+        queryKey: [...agentsKey(organisationId, projectId), agentId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: listsKey(organisationId, projectId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["projects", organisationId],
+      });
+    },
   });
 }
 

@@ -1251,6 +1251,19 @@
         "title": "DefaultModelOut",
         "type": "object"
       },
+      "DeleteAgentRequest": {
+        "properties": {
+          "confirm_name": {
+            "title": "Confirm Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirm_name"
+        ],
+        "title": "DeleteAgentRequest",
+        "type": "object"
+      },
       "DeleteProjectRequest": {
         "properties": {
           "confirm_name": {
@@ -7753,7 +7766,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents": {
       "get": {
-        "description": "The Project's Agents, oldest first.",
+        "description": "The Project's active Agents, oldest first, or with ``archived=true`` its archived ones.",
         "operationId": "listAgents",
         "parameters": [
           {
@@ -7774,6 +7787,18 @@
               "format": "uuid",
               "title": "Organisation Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "List archived Agents instead.",
+            "in": "query",
+            "name": "archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "List archived Agents instead.",
+              "title": "Archived",
+              "type": "boolean"
             }
           }
         ],
@@ -7902,7 +7927,113 @@
       }
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}": {
+      "delete": {
+        "description": "Permanently deletes an archived Agent (Owners only), once ``confirm_name`` is its name.\nIts Draft, Conversations and their Messages and Traces go with it, and ``agent.deleted``\nis recorded. This can't be undone.",
+        "operationId": "deleteAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Type the Agent's name exactly to delete it."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only an archived Agent can be deleted. Archive it first. Or: This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Agent",
+        "tags": [
+          "agents"
+        ]
+      },
       "get": {
+        "description": "The Agent, archived or not.",
         "operationId": "getAgent",
         "parameters": [
           {
@@ -7974,9 +8105,93 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/archive": {
+      "post": {
+        "description": "Archives the Agent: it leaves the Agents list and starts no new Playground Conversation,\nbut keeps its Draft and Conversations. Records ``agent.archived``.",
+        "operationId": "archiveAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Agent",
+        "tags": [
+          "agents"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft": {
       "put": {
-        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error.",
+        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error. An\narchived Agent's Draft can't be changed.",
         "operationId": "saveAgentDraft",
         "parameters": [
           {
@@ -8049,7 +8264,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it."
+            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
           },
           "422": {
             "content": {
@@ -8070,7 +8285,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations": {
       "post": {
-        "description": "Starts an empty Playground Conversation with the Agent's Draft.",
+        "description": "Starts an empty Playground Conversation with the Agent's Draft. An archived Agent starts\nnone.",
         "operationId": "startPlaygroundConversation",
         "parameters": [
           {
@@ -8133,7 +8348,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it."
+            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
           },
           "422": {
             "content": {
@@ -8238,7 +8453,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "Asks the Agent's Draft a question; the answer streams back as Server-Sent Events.",
+        "description": "Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An\narchived Agent answers no more questions; its Conversations can still be read.",
         "operationId": "sendPlaygroundMessage",
         "parameters": [
           {
@@ -8321,7 +8536,7 @@
                 }
               }
             },
-            "description": "The Project is archived, or no Default Model."
+            "description": "The Project or Agent is archived, or there is no Default Model."
           },
           "422": {
             "content": {
@@ -8431,6 +8646,100 @@
         "summary": "Get Trace",
         "tags": [
           "playground"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/restore": {
+      "post": {
+        "description": "Restores an archived Agent to the Agents list (Owners only). Records ``agent.restored``.",
+        "operationId": "restoreAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Agent isn't archived. Or: This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Agent",
+        "tags": [
+          "agents"
         ]
       }
     },

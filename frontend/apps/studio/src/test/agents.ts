@@ -132,6 +132,15 @@ export const hrHelper: Agent = {
   draft_updated_at: "2026-11-05T09:00:00Z",
 };
 
+/** An archived Agent of the same Project. */
+export const oldHelper: Agent = {
+  ...hrHelper,
+  id: "a9e00000-0000-4000-8000-000000000003",
+  public_id: "agt_zyxwvutsrqponmlkjihgfedc",
+  name: "Old helper",
+  archived_at: "2026-11-06T08:00:00Z",
+};
+
 export const CONVERSATION_ID = "c0000000-0000-4000-8000-000000000001";
 
 const done = {
@@ -264,6 +273,7 @@ export function fakeAgentsApi(
     agents?: Agent[];
     answer?: (question: string) => Response;
     startStatus?: number;
+    startDetail?: string;
     trace?: () => Response;
     /** Decides each Draft save's response instead of accepting it. */
     saveDraft?: (
@@ -271,6 +281,8 @@ export function fakeAgentsApi(
     ) => Response | undefined | Promise<Response | undefined>;
     credentials?: Credential[];
     tags?: Tag[];
+    /** Refuses `archive` or `restore` with a 409 carrying this detail. */
+    refuse?: Record<string, string>;
   } = {},
 ) {
   let agents = [...(options.agents ?? [])];
@@ -280,7 +292,55 @@ export function fakeAgentsApi(
   server.use(
     http.get(
       "*/api/organisations/:organisationId/projects/:projectId/agents",
-      () => HttpResponse.json(agents),
+      ({ request }) => {
+        const archived =
+          new URL(request.url).searchParams.get("archived") === "true";
+        return HttpResponse.json(
+          agents.filter(
+            (agent) => (agent.archived_at !== null) === archived,
+          ),
+        );
+      },
+    ),
+    http.post(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/:action",
+      ({ params }) => {
+        const action = params.action as string;
+        requests.push({ route: action });
+        const agent = agents.find(
+          (candidate) => candidate.id === params.agentId,
+        ) as Agent;
+        if (options.refuse?.[action])
+          return HttpResponse.json(
+            { detail: options.refuse[action] },
+            { status: 409 },
+          );
+        const changed: Agent = {
+          ...agent,
+          archived_at: action === "archive" ? "2026-11-06T09:00:00Z" : null,
+        };
+        agents = agents.map((candidate) =>
+          candidate.id === changed.id ? changed : candidate,
+        );
+        return HttpResponse.json(changed);
+      },
+    ),
+    http.delete(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId",
+      async ({ request, params }) => {
+        const body = (await request.json()) as Schemas["DeleteAgentRequest"];
+        requests.push({ route: "delete", body });
+        const agent = agents.find(
+          (candidate) => candidate.id === params.agentId,
+        ) as Agent;
+        if (body.confirm_name !== agent.name)
+          return HttpResponse.json(
+            { detail: "Type the Agent's name exactly to delete it." },
+            { status: 400 },
+          );
+        agents = agents.filter((candidate) => candidate.id !== agent.id);
+        return new HttpResponse(null, { status: 204 });
+      },
     ),
     http.post(
       "*/api/organisations/:organisationId/projects/:projectId/agents",
@@ -355,7 +415,11 @@ export function fakeAgentsApi(
         requests.push({ route: "start" });
         if (options.startStatus)
           return HttpResponse.json(
-            { detail: "This Project is archived. An Owner can restore it." },
+            {
+              detail:
+                options.startDetail ??
+                "This Project is archived. An Owner can restore it.",
+            },
             { status: options.startStatus },
           );
         return HttpResponse.json(

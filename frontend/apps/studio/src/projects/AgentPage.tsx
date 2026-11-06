@@ -1,4 +1,4 @@
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useCallback, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
@@ -9,6 +9,8 @@ import {
   askPlayground,
   startConversation,
   useAgent,
+  useArchiveOrRestoreAgent,
+  useDeleteAgent,
 } from "./agents";
 import { DraftEditor } from "./DraftEditor";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
@@ -230,9 +232,213 @@ function Playground({
   );
 }
 
-/** One Agent: its Draft beside the Playground. */
+function ArchiveAgent({
+  agent,
+  organisationId,
+}: {
+  agent: Agent;
+  organisationId: string;
+}) {
+  const archive = useArchiveOrRestoreAgent(
+    organisationId,
+    agent.project_id,
+    "archive",
+  );
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <div className="space-y-2">
+      <FormError message={agentFailure(archive.error)} />
+      {confirming ? (
+        <div className="space-y-2">
+          <p className="text-sm text-slate-700">
+            {agent.name} will be hidden from the Agents list and the Playground
+            will be off. Its Draft and Conversations are kept. An Owner can
+            restore it.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className={BUTTON}
+              disabled={archive.isPending}
+              onClick={() => {
+                archive.mutate(agent.id, {
+                  onSettled: () => {
+                    setConfirming(false);
+                  },
+                });
+              }}
+            >
+              Yes, archive {agent.name}
+            </button>
+            <button
+              type="button"
+              className={BUTTON}
+              onClick={() => {
+                setConfirming(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            archive.reset();
+            setConfirming(true);
+          }}
+        >
+          Archive Agent
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Owners only, on an archived Agent: deletion is confirmed by typing the Agent's name exactly. */
+function DeleteAgentPermanently({
+  agent,
+  organisationId,
+}: {
+  agent: Agent;
+  organisationId: string;
+}) {
+  const remove = useDeleteAgent(organisationId, agent.project_id, agent.id);
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState("");
+  const title = `Delete ${agent.name} permanently`;
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        className={BUTTON}
+        onClick={() => {
+          remove.reset();
+          setTyped("");
+          setConfirming(true);
+        }}
+      >
+        Delete permanently
+      </button>
+    );
+  }
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    remove.mutate(typed, {
+      onSuccess: () => {
+        void navigate({
+          to: "/organisations/$organisationId/projects/$projectId/agents",
+          params: { organisationId, projectId: agent.project_id },
+          search: { deleted: agent.name },
+        });
+      },
+    });
+  }
+
+  return (
+    <form
+      aria-label={title}
+      onSubmit={onSubmit}
+      className="space-y-2 rounded border border-red-300 bg-white p-3 text-slate-900"
+    >
+      <p>
+        Deleting {agent.name} removes its Draft and Conversations for good.
+        This can&apos;t be undone.
+      </p>
+      <FormError message={agentFailure(remove.error)} />
+      <div>
+        <label
+          htmlFor="delete-agent-name"
+          className="block text-sm font-medium"
+        >
+          Type {agent.name} to confirm
+        </label>
+        <input
+          id="delete-agent-name"
+          autoComplete="off"
+          className={INPUT}
+          value={typed}
+          onChange={(event) => {
+            setTyped(event.target.value);
+          }}
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          className="rounded border border-red-800 bg-red-700 px-3 py-1 text-sm text-white hover:bg-red-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-600"
+          disabled={typed !== agent.name || remove.isPending}
+        >
+          {title}
+        </button>
+        <button
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            setConfirming(false);
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ArchivedAgentNotice({
+  agent,
+  organisationId,
+  isOwner,
+}: {
+  agent: Agent;
+  organisationId: string;
+  isOwner: boolean;
+}) {
+  const restore = useArchiveOrRestoreAgent(
+    organisationId,
+    agent.project_id,
+    "restore",
+  );
+  return (
+    <div
+      role="status"
+      aria-label="Archived"
+      className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+    >
+      <p>
+        This Agent is archived. It is hidden from the Agents list and the
+        Playground is off.{" "}
+        {isOwner ? "Restore it to use it again." : "Only Owners can restore it."}
+      </p>
+      <FormError message={agentFailure(restore.error)} />
+      {isOwner && (
+        <button
+          type="button"
+          className={BUTTON}
+          disabled={restore.isPending}
+          onClick={() => {
+            restore.mutate(agent.id);
+          }}
+        >
+          Restore {agent.name}
+        </button>
+      )}
+      {isOwner && (
+        <DeleteAgentPermanently agent={agent} organisationId={organisationId} />
+      )}
+    </div>
+  );
+}
+
+/** One Agent: its Draft beside the Playground, and Archive; an archived Agent's Draft is read
+ * only, without the Playground, and Owners can restore or permanently delete it. */
 export function AgentPage() {
-  const { organisationId } = useOrganisationRole();
+  const { organisationId, isOwner } = useOrganisationRole();
   const { projectId, agentId } = useAgentParams();
   const agent = useAgent(organisationId, projectId, agentId);
 
@@ -242,20 +448,35 @@ export function AgentPage() {
   } else if (agent.isError) {
     body = <p role="alert">The Agent could not be found.</p>;
   } else {
+    const archived = agent.data.archived_at !== null;
     body = (
       <>
-        <h2 className="text-xl font-semibold">{agent.data.name}</h2>
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-xl font-semibold">{agent.data.name}</h2>
+          {!archived && (
+            <ArchiveAgent agent={agent.data} organisationId={organisationId} />
+          )}
+        </div>
+        {archived && (
+          <ArchivedAgentNotice
+            agent={agent.data}
+            organisationId={organisationId}
+            isOwner={isOwner}
+          />
+        )}
         <div className="grid gap-8 lg:grid-cols-2">
           <DraftEditor
-            key={agent.data.id}
+            key={`${agent.data.id}-${String(archived)}`}
             agent={agent.data}
             organisationId={organisationId}
           />
-          <Playground
-            key={`playground-${agent.data.id}`}
-            agent={agent.data}
-            organisationId={organisationId}
-          />
+          {!archived && (
+            <Playground
+              key={`playground-${agent.data.id}`}
+              agent={agent.data}
+              organisationId={organisationId}
+            />
+          )}
         </div>
       </>
     );
