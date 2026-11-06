@@ -395,6 +395,14 @@ The place in the Studio where Members chat with a Draft. Its Conversations are e
 **Playground Conversation**:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
 
+**Playground reset**:
+Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was.
+_Avoid_: Clear, restart, new chat
+
+**Provider error**:
+A model provider's failure while answering, reported at the end of the answer's stream as one of four kinds, each with a readable message: invalid key, rate limited (including an exhausted quota), model unavailable, or another provider error. No answer is saved, so the question is not among the remembered turns.
+_Avoid_: Model error, API error, crash
+
 **Embed Snippet**:
 The code an Organisation pastes into its site to show an Agent.
 _Avoid_: Embed link, widget code

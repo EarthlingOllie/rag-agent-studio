@@ -135,6 +135,8 @@ export const hrHelper: Agent = {
 };
 
 export const CONVERSATION_ID = "c0000000-0000-4000-8000-000000000001";
+/** The Conversation a reset starts: each later start gets the next ID. */
+export const RESET_CONVERSATION_ID = "c0000000-0000-4000-8000-000000000002";
 
 const done = {
   message_id: "e0000000-0000-4000-8000-000000000001",
@@ -244,6 +246,8 @@ export function streamedAnswer(
     end?: boolean;
     citations?: (typeof leaveCitation)[];
     replace?: string;
+    /** Ends the stream with a provider `error` event instead of `done`. */
+    error?: { code: string; message: string };
   } = {},
 ) {
   const body =
@@ -254,7 +258,8 @@ export function streamedAnswer(
     (options.citations ?? [])
       .map((citation) => sse("citation", citation))
       .join("") +
-    (options.end === false ? "" : sse("done", done));
+    (options.error ? sse("error", options.error) : "") +
+    (options.end === false || options.error ? "" : sse("done", done));
   const encoder = new TextEncoder();
   const pieces = [body.slice(0, 7), body.slice(7, 40), body.slice(40)];
   return new HttpResponse(
@@ -275,8 +280,10 @@ export function streamedAnswer(
 export function fakeAgentsApi(
   options: {
     agents?: Agent[];
-    answer?: (question: string) => Response;
+    answer?: (question: string) => Response | Promise<Response>;
     startStatus?: number;
+    /** Decides the status of each start after the first (a reset) instead of 201. */
+    restartStatus?: number;
     trace?: () => Response;
     /** Decides each Draft save's response instead of accepting it. */
     saveDraft?: (
@@ -365,7 +372,15 @@ export function fakeAgentsApi(
     http.post(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/playground/conversations",
       ({ params }) => {
+        const starts = requests.filter(
+          (request) => request.route === "start",
+        ).length;
         requests.push({ route: "start" });
+        if (starts > 0 && options.restartStatus)
+          return HttpResponse.json(
+            { detail: "This Agent is archived." },
+            { status: options.restartStatus },
+          );
         if (options.startStatus)
           return HttpResponse.json(
             { detail: "This Project is archived. An Owner can restore it." },
@@ -373,7 +388,7 @@ export function fakeAgentsApi(
           );
         return HttpResponse.json(
           {
-            id: CONVERSATION_ID,
+            id: `c0000000-0000-4000-8000-00000000000${String(starts + 1)}`,
             agent_id: params.agentId as string,
             is_playground: true,
             created_at: "2026-11-05T09:00:00Z",
