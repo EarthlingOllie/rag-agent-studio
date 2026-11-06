@@ -316,3 +316,32 @@ test("an archived Project's Tags are shown but can't be changed", async () => {
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   expect(tagsOf("Leave policy.pdf")).toEqual(["HR"]);
 });
+
+test("a name typed while the last Tag is still being added is kept", async () => {
+  start();
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.post(TAGS, async ({ request }) => {
+      await held;
+      const { name } = (await request.json()) as { name: string };
+      return HttpResponse.json(aTag({ id: "7a900000-0000-4000-8000-000000000009", name }), { status: 201 });
+    }),
+  );
+  const panel = await tagsPanel();
+  await panel.findByText("Policy");
+  const input = panel.getByLabelText("New Tag");
+
+  await userEvent.type(input, "benefits");
+  await userEvent.click(panel.getByRole("button", { name: "Add Tag" }));
+  await userEvent.clear(input);
+  await userEvent.type(input, "onboarding");
+  release();
+
+  await waitFor(() => {
+    expect(panel.getByRole("button", { name: "Add Tag" })).toBeEnabled();
+  });
+  expect(input).toHaveValue("onboarding");
+});
