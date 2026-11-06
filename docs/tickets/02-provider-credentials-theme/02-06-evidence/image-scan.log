@@ -1,15 +1,15 @@
 $ make -o images image-scan IMAGE_TAG=0206
-# 2026-11-06T03:34:32Z in a fresh clone at f3336cf
+# 2026-11-06T04:15:09Z in a fresh clone at 7a26a6d
 trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/api:0206
-2026-11-06T03:34:32Z	INFO	[vuln] Vulnerability scanning is enabled
-2026-11-06T03:34:32Z	INFO	[secret] Secret scanning is enabled
-2026-11-06T03:34:32Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
-2026-11-06T03:34:32Z	INFO	[secret] Please see https://trivy.dev/docs/v0.69/guide/scanner/secret#recommendation for faster secret detection
-2026-11-06T03:34:32Z	INFO	Detected OS	family="debian" version="13.7"
-2026-11-06T03:34:32Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
-2026-11-06T03:34:32Z	INFO	Number of language-specific files	num=1
-2026-11-06T03:34:32Z	INFO	[python-pkg] Detecting vulnerabilities...
-2026-11-06T03:34:32Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
+2026-11-06T04:15:10Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T04:15:10Z	INFO	[secret] Secret scanning is enabled
+2026-11-06T04:15:10Z	INFO	[secret] If your scanning is slow, please try '--scanners vuln' to disable secret scanning
+2026-11-06T04:15:10Z	INFO	[secret] Please see https://trivy.dev/docs/v0.69/guide/scanner/secret#recommendation for faster secret detection
+2026-11-06T04:15:17Z	INFO	Detected OS	family="debian" version="13.7"
+2026-11-06T04:15:17Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
+2026-11-06T04:15:17Z	INFO	Number of language-specific files	num=1
+2026-11-06T04:15:17Z	INFO	[python-pkg] Detecting vulnerabilities...
+2026-11-06T04:15:17Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
 
 Report Summary
 

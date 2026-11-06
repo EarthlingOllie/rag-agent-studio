@@ -10,7 +10,7 @@ services:
   rustfs:
     ports: !override ["49206:9000", "49207:9001"]
   mailpit:
-    ports: !override ["41206:1025", "48206:8025"]
+    ports: !override ["41206:1025", "48216:8025"]
   api:
     image: rag-agent-studio/api:0206
     build: !reset null
