@@ -90,9 +90,11 @@ async def test_an_editor_asks_the_draft_and_the_answer_streams_back(
         ("token", {"text": "25 days "}),
         ("token", {"text": "[C1]."}),
     ]
-    (kind, done), *_ = events[3:]
+    # The answer cites [C1], then the stream ends.
+    assert events[3][0] == "citation"
+    (kind, done), *_ = events[4:]
     assert kind == "done"
-    assert len(events) == 4
+    assert len(events) == 5
     # The Organisation's Default Model, through the gateway.
     assert built == ["openai:gpt-4.1-mini"]
     # The answer was grounded in the Project's one Chunk.
@@ -277,7 +279,7 @@ async def test_a_relevant_chunk_above_the_minimum_score_reaches_the_model(
 
     response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
 
-    (_, token), (_, done) = parse_sse(response.text)
+    (_, token), *_, (_, done) = parse_sse(response.text)
     question = json.loads(token["text"])[-1][2]
     # Found by keyword search alone, it is the one Chunk given to the model.
     assert f"[C1] product.txt\n{PRODUCT}" in question
