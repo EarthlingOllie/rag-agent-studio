@@ -8,6 +8,16 @@ import { ProjectRequestError } from "./projects";
 export type Agent = Schemas["AgentOut"];
 export type AgentDraft = Schemas["AgentConfig-Output"];
 export type Conversation = Schemas["ConversationOut"];
+export type Trace = Schemas["TraceOut"];
+
+/** A `citation` event: the answer cites the Chunk the model was given labelled `label`. */
+export type Citation = {
+  label: string;
+  chunk_id: string;
+  document_id: string;
+  document_name: string;
+  rank: number;
+};
 
 /** The `done` event that ends a streamed Playground answer. */
 export type AnswerDone = {
@@ -128,13 +138,15 @@ function parseEvent(block: string): StreamEvent {
 }
 
 /**
- * Asks the Agent's Draft a question. `onToken` receives the answer as it streams in; the
- * returned promise resolves with the `done` event once the answer is complete and saved.
+ * Asks the Agent's Draft a question. `onToken` receives the answer as it streams in, and
+ * `onCitation` each Chunk it cites; the returned promise resolves with the `done` event once
+ * the answer is complete and saved.
  */
 export async function askPlayground(
   path: AgentPath & { conversation_id: string },
   question: string,
   onToken: (text: string) => void,
+  onCitation: (citation: Citation) => void,
 ): Promise<AnswerDone> {
   const { data, error, response } = await api.POST(
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages",
@@ -154,8 +166,27 @@ export async function askPlayground(
       buffered = buffered.slice(end + 2);
       end = buffered.indexOf("\n\n");
       if (event.event === "token") onToken((event.data as { text: string }).text);
+      if (event.event === "citation") onCitation(event.data as Citation);
       if (event.event === "done") return event.data as AnswerDone;
     }
   }
   throw new Error("The answer ended before it was complete.");
+}
+
+type MessagePath = AgentPath & { conversation_id: string; message_id: string };
+
+/** The Trace of one answer, loaded when its drawer opens. */
+export function useTrace(path: MessagePath) {
+  return useQuery({
+    queryKey: ["trace", path.organisation_id, path.message_id],
+    queryFn: async (): Promise<Trace> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages/{message_id}/trace",
+        { params: { path } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    retry: false,
+  });
 }

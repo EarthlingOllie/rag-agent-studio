@@ -410,6 +410,16 @@ async def test_the_fake_chat_model_answers_without_calling_anyone() -> None:
     assert model.model_name == "gpt-4.1"
 
 
+async def test_the_fake_chat_model_cites_the_first_chunk_it_is_given() -> None:
+    gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
+    model = gateway.chat_model(credential(Provider.OPENAI, OPENAI_KEY), "gpt-4.1")
+
+    async with Agent(model).run_stream("<<<RETRIEVED_CHUNKS>>>\n[C1] a.md\nText") as result:
+        streamed = await result.get_output()
+
+    assert streamed == "Fake reply from openai:gpt-4.1. [C1]"
+
+
 async def test_a_test_injects_its_own_chat_model_at_the_gateway() -> None:
     seen: list[tuple[Provider, str, str]] = []
 
