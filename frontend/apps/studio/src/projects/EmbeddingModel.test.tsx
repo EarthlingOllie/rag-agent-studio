@@ -319,3 +319,25 @@ test("the choices show their loading and error states", async () => {
   expect(await within(setting).findByText("Loading the Embedding Models…")).toBeInTheDocument();
   expect(await within(setting).findByText("The Embedding Models could not be loaded. Try again shortly.")).toBeInTheDocument();
 });
+
+test("if the re-embed state can't be read, the section shows the Project's model", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  let reads = 0;
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/embedding-model", () => {
+      reads += 1;
+      return HttpResponse.json({ detail: "Boom" }, { status: 500 });
+    }),
+  );
+  renderStudio(projectPage(hrProject.id));
+
+  const setting = await screen.findByRole("region", { name: "Embedding Model" });
+
+  await waitFor(() => {
+    expect(reads).toBeGreaterThan(0);
+  });
+  expect(setting).toHaveTextContent("Documents are embedded with multilingual-e5-small.");
+  expect(within(setting).queryByRole("status")).not.toBeInTheDocument();
+  expect(within(setting).queryByRole("alert")).not.toBeInTheDocument();
+});
