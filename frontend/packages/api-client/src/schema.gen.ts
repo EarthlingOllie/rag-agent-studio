@@ -1727,6 +1727,7 @@ export interface components {
         ChunkOut: {
             /** Embedding Model Id */
             embedding_model_id: string;
+            flag: components["schemas"]["GuardrailFlagOut"] | null;
             /** Heading Path */
             heading_path: string[];
             /**
@@ -2024,6 +2025,8 @@ export interface components {
             error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
+            /** Flagged Chunk Count */
+            flagged_chunk_count: number;
             /**
              * Id
              * Format: uuid
@@ -2065,6 +2068,8 @@ export interface components {
             error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
+            /** Flagged Chunk Count */
+            flagged_chunk_count: number;
             /**
              * Id
              * Format: uuid
@@ -2100,6 +2105,8 @@ export interface components {
             error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
+            /** Flagged Chunk Count */
+            flagged_chunk_count: number;
             /**
              * Id
              * Format: uuid
@@ -2223,6 +2230,18 @@ export interface components {
         FontOut: {
             category: components["schemas"]["FontCategory"];
             family: components["schemas"]["Font"];
+        };
+        /**
+         * GuardrailFlagOut
+         * @description Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.
+         */
+        GuardrailFlagOut: {
+            /** Label */
+            label: string;
+            /** Reason */
+            reason: string;
+            /** Score */
+            score: number;
         };
         /**
          * Guardrails

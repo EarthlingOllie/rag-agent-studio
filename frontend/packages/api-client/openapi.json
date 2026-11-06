@@ -572,6 +572,16 @@
             "title": "Embedding Model Id",
             "type": "string"
           },
+          "flag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuardrailFlagOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "heading_path": {
             "items": {
               "type": "string"
@@ -622,7 +632,8 @@
           "heading_path",
           "page_start",
           "page_end",
-          "embedding_model_id"
+          "embedding_model_id",
+          "flag"
         ],
         "title": "ChunkOut",
         "type": "object"
@@ -1291,6 +1302,10 @@
             ],
             "title": "Error Message"
           },
+          "flagged_chunk_count": {
+            "title": "Flagged Chunk Count",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1357,6 +1372,7 @@
           "attempt_count",
           "edition",
           "chunk_count",
+          "flagged_chunk_count",
           "tags",
           "created_at",
           "updated_at",
@@ -1409,6 +1425,10 @@
               }
             ],
             "title": "Error Message"
+          },
+          "flagged_chunk_count": {
+            "title": "Flagged Chunk Count",
+            "type": "integer"
           },
           "id": {
             "format": "uuid",
@@ -1465,6 +1485,7 @@
           "attempt_count",
           "edition",
           "chunk_count",
+          "flagged_chunk_count",
           "tags",
           "created_at",
           "updated_at",
@@ -1514,6 +1535,10 @@
             ],
             "title": "Error Message"
           },
+          "flagged_chunk_count": {
+            "title": "Flagged Chunk Count",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1540,6 +1565,7 @@
           "error_category",
           "attempt_count",
           "chunk_count",
+          "flagged_chunk_count",
           "replacement"
         ],
         "title": "DocumentStatusOut",
@@ -1838,6 +1864,30 @@
           "category"
         ],
         "title": "FontOut",
+        "type": "object"
+      },
+      "GuardrailFlagOut": {
+        "description": "Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "score",
+          "reason"
+        ],
+        "title": "GuardrailFlagOut",
         "type": "object"
       },
       "Guardrails-Input": {

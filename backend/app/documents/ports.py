@@ -1,5 +1,6 @@
 """The adapters ingestion runs through: object store, document converter, the local embedder,
-and the model gateway that provider Embedding Models are called through.
+the model gateway that provider Embedding Models are called through, and the injection
+classifier the ingestion Guardrail scan uses.
 
 The API builds them at startup and installs them here; the worker does the same at its start.
 Tasks read them with ``current_ports``. In tests the tasks run eagerly in the API's process,
@@ -18,6 +19,9 @@ from app.embeddings.fake import HashEmbedder
 from app.embeddings.port import Embedder
 from app.gateway.adapters import build_model_gateway
 from app.gateway.gateway import ModelGateway
+from app.guardrails.classifier import InjectionClassifier
+from app.guardrails.fake import RuleDrivenClassifier
+from app.guardrails.heuristic import HeuristicClassifier
 from app.storage.factory import build_object_store
 from app.storage.port import ObjectStore
 
@@ -31,6 +35,8 @@ class IngestionPorts:
     # Builds the model gateway on an HTTP client. Each ingestion run opens its own client, on
     # its own event loop, and closes it when done.
     open_gateway: Callable[[httpx2.AsyncClient], ModelGateway]
+    # Flags Chunks that look like instructions aimed at an AI.
+    classifier: InjectionClassifier
 
 
 def _local_embedder(settings: Settings) -> Embedder:
@@ -46,11 +52,15 @@ def build_ports(settings: Settings, envelope: EnvelopeEncryption) -> IngestionPo
         FakeConverter() if settings.document_converter == "fake" else DoclingConverter()
     )
     embedder = _local_embedder(settings)
+    classifier: InjectionClassifier = (
+        RuleDrivenClassifier() if settings.injection_classifier == "fake" else HeuristicClassifier()
+    )
     return IngestionPorts(
         object_store=build_object_store(settings),
         converter=converter,
         embedders={embedder.model.id: embedder},
         open_gateway=lambda client: build_model_gateway(settings, envelope, client),
+        classifier=classifier,
     )
 
 

@@ -45,6 +45,9 @@ x-backend: &backend
     # them. EMBEDDER=fake in .env uses the deterministic embedder instead (no model download).
     DOCUMENT_CONVERTER: ${DOCUMENT_CONVERTER:-docling}
     EMBEDDER: ${EMBEDDER:-local}
+    # The ingestion scan flags Chunks that look like instructions to an AI with the heuristic
+    # classifier (spec 08 adds the ONNX one).
+    INJECTION_CLASSIFIER: ${INJECTION_CLASSIFIER:-heuristic}
   depends_on:
     postgres:
       condition: service_healthy

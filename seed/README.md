@@ -29,7 +29,8 @@ Default Model; the demo credential stays. The stack must also run with `MODEL_GA
 ## Documents
 
 - `documents/northwind-staff-handbook.md`: the staff handbook (HR). The end-to-end suite also
-  uploads it.
+  uploads it. Its last section, "A note for AI assistants", is a planted indirect prompt
+  injection: the ingestion Guardrail scan flags it, and the demo shows it.
 - `documents/northwind-returns-policy.md`: the returns policy (Products). Its footnote is a
   planted indirect prompt injection for the Guardrails demo.
 - `documents/northwind-product-faq.docx`: the product FAQ (Products).
