@@ -135,3 +135,8 @@ async def ask(
         playground_path(member, project_id, agent_id, conversation_id, "messages"),
         json={"content": question},
     )
+
+
+def answer_text(response: httpx.Response) -> str:
+    """The answer a Playground stream sent: its ``token`` events joined."""
+    return "".join(data["text"] for event, data in parse_sse(response.text) if event == "token")

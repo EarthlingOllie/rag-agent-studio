@@ -1889,6 +1889,41 @@
         "title": "GuardrailFlagOut",
         "type": "object"
       },
+      "GuardrailOutcomeOut": {
+        "description": "What one Guardrail layer decided about the answer, and what it did.",
+        "properties": {
+          "action": {
+            "enum": [
+              "replaced",
+              "flagged"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "layer": {
+            "const": "canary",
+            "title": "Layer",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "verdict": {
+            "const": "leak",
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer",
+          "verdict",
+          "action",
+          "reason"
+        ],
+        "title": "GuardrailOutcomeOut",
+        "type": "object"
+      },
       "Guardrails-Input": {
         "additionalProperties": false,
         "description": "Stored and versioned with the Agent; enforced from spec 08.",
@@ -3730,6 +3765,13 @@
             ],
             "title": "First Token Ms"
           },
+          "guardrail_outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/GuardrailOutcomeOut"
+            },
+            "title": "Guardrail Outcomes",
+            "type": "array"
+          },
           "input_tokens": {
             "anyOf": [
               {
@@ -3802,7 +3844,8 @@
           "first_token_ms",
           "latency_ms",
           "fallback",
-          "chunks"
+          "chunks",
+          "guardrail_outcomes"
         ],
         "title": "TraceOut",
         "type": "object"
@@ -8019,7 +8062,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events: `token` events, then one `done` event."
+            "description": "Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`."
           },
           "404": {
             "content": {

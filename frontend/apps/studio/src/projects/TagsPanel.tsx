@@ -9,7 +9,13 @@ function documentCount(count: number): string {
   return count === 1 ? "1 Document" : `${String(count)} Documents`;
 }
 
-function NewTag({ organisationId, projectId }: { organisationId: string; projectId: string }) {
+function NewTag({
+  organisationId,
+  projectId,
+}: {
+  organisationId: string;
+  projectId: string;
+}) {
   const [name, setName] = useState("");
   const [blank, setBlank] = useState(false);
   const create = useTagChange(organisationId, projectId);
@@ -57,7 +63,17 @@ function NewTag({ organisationId, projectId }: { organisationId: string; project
   );
 }
 
-function TagRow({ tag, organisationId, projectId, editable }: { tag: Tag; organisationId: string; projectId: string; editable: boolean }) {
+function TagRow({
+  tag,
+  organisationId,
+  projectId,
+  editable,
+}: {
+  tag: Tag;
+  organisationId: string;
+  projectId: string;
+  editable: boolean;
+}) {
   const [mode, setMode] = useState<"view" | "rename" | "delete">("view");
   const [name, setName] = useState(tag.name);
   const change = useTagChange(organisationId, projectId);
@@ -115,7 +131,9 @@ function TagRow({ tag, organisationId, projectId, editable }: { tag: Tag; organi
       <span data-testid="tag-name" className="font-medium">
         {tag.name}
       </span>
-      <span className="text-slate-700">{documentCount(tag.document_count)}</span>
+      <span className="text-slate-700">
+        {documentCount(tag.document_count)}
+      </span>
       {editable && mode === "view" && (
         <>
           <button
@@ -144,7 +162,8 @@ function TagRow({ tag, organisationId, projectId, editable }: { tag: Tag; organi
       {mode === "delete" && (
         <span className="flex flex-wrap items-center gap-2">
           <span>
-            Delete {tag.name}? It is taken off {documentCount(tag.document_count)}. The Documents stay.
+            Delete {tag.name}? It is taken off{" "}
+            {documentCount(tag.document_count)}. The Documents stay.
           </span>
           <button
             type="button"
@@ -176,7 +195,15 @@ function TagRow({ tag, organisationId, projectId, editable }: { tag: Tag; organi
 }
 
 /** The Project's Tags: create, rename and delete them. Read-only while the Project is archived. */
-export function TagsPanel({ organisationId, projectId, editable }: { organisationId: string; projectId: string; editable: boolean }) {
+export function TagsPanel({
+  organisationId,
+  projectId,
+  editable,
+}: {
+  organisationId: string;
+  projectId: string;
+  editable: boolean;
+}) {
   const tags = useTags(organisationId, projectId);
 
   let list;
@@ -185,24 +212,39 @@ export function TagsPanel({ organisationId, projectId, editable }: { organisatio
   } else if (tags.data === undefined) {
     list = <p role="status">Loading Tags…</p>;
   } else if (tags.data.length === 0) {
-    list = <p className="text-sm text-slate-700">No Tags yet. Tags organise Documents by topic or audience.</p>;
+    list = (
+      <p className="text-sm text-slate-700">
+        No Tags yet. Tags organise Documents by topic or audience.
+      </p>
+    );
   } else {
     list = (
       <ul className="space-y-1">
         {tags.data.map((tag) => (
-          <TagRow key={tag.id} tag={tag} organisationId={organisationId} projectId={projectId} editable={editable} />
+          <TagRow
+            key={tag.id}
+            tag={tag}
+            organisationId={organisationId}
+            projectId={projectId}
+            editable={editable}
+          />
         ))}
       </ul>
     );
   }
 
   return (
-    <section aria-labelledby="tags-heading" className="space-y-2 rounded border border-slate-200 p-4">
+    <section
+      aria-labelledby="tags-heading"
+      className="space-y-2 rounded border border-slate-200 p-4"
+    >
       <h3 id="tags-heading" className="font-semibold">
         Tags
       </h3>
       {list}
-      {editable && <NewTag organisationId={organisationId} projectId={projectId} />}
+      {editable && (
+        <NewTag organisationId={organisationId} projectId={projectId} />
+      )}
     </section>
   );
 }
