@@ -147,8 +147,33 @@ export const CONVERSATION_ID = "c0000000-0000-4000-8000-000000000001";
 /** The Conversation a reset starts: each later start gets the next ID. */
 export const RESET_CONVERSATION_ID = "c0000000-0000-4000-8000-000000000002";
 
+/** What a `done` event says an answer ran with: the Instructions Draft, or a Version. */
+export type InstructionsUsed = {
+  instructions_source: "draft" | "version";
+  instructions_version_id: string | null;
+  instructions_version_number: number | null;
+};
+
+export const ranWithDraft: InstructionsUsed = {
+  instructions_source: "draft",
+  instructions_version_id: null,
+  instructions_version_number: null,
+};
+
+/** What an answer asked with this Version ID ran with. The fake Versions' IDs end in their
+ * number (see `instructionsVersion` in ./projects). */
+function ranWith(versionId: string | null | undefined): InstructionsUsed {
+  if (!versionId) return ranWithDraft;
+  return {
+    instructions_source: "version",
+    instructions_version_id: versionId,
+    instructions_version_number: Number(versionId.slice(-12)),
+  };
+}
+
 const done = {
   message_id: "e0000000-0000-4000-8000-000000000001",
+  ...ranWithDraft,
   input_tokens: 120,
   output_tokens: 6,
   first_token_ms: 40,
@@ -176,6 +201,7 @@ export const leaveCitation = {
 export const hrTrace: Schemas["TraceOut"] = {
   message_id: done.message_id,
   config_source: "draft",
+  ...ranWithDraft,
   model_provider: "openai",
   model_name: "gpt-4.1-mini",
   input_tokens: 120,
@@ -257,6 +283,8 @@ export function streamedAnswer(
     replace?: string;
     /** Ends the stream with a provider `error` event instead of `done`. */
     error?: { code: string; message: string };
+    /** What the `done` event says the answer ran with; the Instructions Draft by default. */
+    instructions?: InstructionsUsed;
   } = {},
 ) {
   const body =
@@ -268,7 +296,9 @@ export function streamedAnswer(
       .map((citation) => sse("citation", citation))
       .join("") +
     (options.error ? sse("error", options.error) : "") +
-    (options.end === false || options.error ? "" : sse("done", done));
+    (options.end === false || options.error
+      ? ""
+      : sse("done", { ...done, ...options.instructions }));
   const encoder = new TextEncoder();
   const pieces = [body.slice(0, 7), body.slice(7, 40), body.slice(40)];
   return new HttpResponse(
@@ -289,7 +319,10 @@ export function streamedAnswer(
 export function fakeAgentsApi(
   options: {
     agents?: Agent[];
-    answer?: (question: string) => Response | Promise<Response>;
+    answer?: (
+      question: string,
+      instructionsVersionId: string | null,
+    ) => Response | Promise<Response>;
     startStatus?: number;
     startDetail?: string;
     /** Decides the status of each start after the first (a reset) instead of 201. */
@@ -307,8 +340,13 @@ export function fakeAgentsApi(
 ) {
   let agents = [...(options.agents ?? [])];
   const requests: { route: string; body?: unknown }[] = [];
+  // By default the answer runs with the Instructions it was asked with.
   const answer =
-    options.answer ?? (() => streamedAnswer(["Twenty-five ", "days."]));
+    options.answer ??
+    ((_question: string, instructionsVersionId: string | null) =>
+      streamedAnswer(["Twenty-five ", "days."], {
+        instructions: ranWith(instructionsVersionId),
+      }));
   server.use(
     http.get(
       "*/api/organisations/:organisationId/projects/:projectId/agents",
@@ -466,12 +504,13 @@ export function fakeAgentsApi(
     http.post(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/playground/conversations/:conversationId/messages",
       async ({ request, params }) => {
-        const body = (await request.json()) as { content: string };
+        const body =
+          (await request.json()) as Schemas["SendMessageRequest"];
         requests.push({
           route: "ask",
           body: { ...body, conversationId: params.conversationId },
         });
-        return answer(body.content);
+        return answer(body.content, body.instructions_version_id ?? null);
       },
     ),
     http.get(

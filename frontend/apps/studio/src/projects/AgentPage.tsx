@@ -7,12 +7,14 @@ import {
   type Citation,
   agentFailure,
   askPlayground,
+  instructionsUsed,
   startConversation,
   useAgent,
   useArchiveOrRestoreAgent,
   useDeleteAgent,
 } from "./agents";
 import { DraftEditor } from "./DraftEditor";
+import { useInstructionsVersions } from "./instructions";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 import { TraceDrawer } from "./TraceDrawer";
 
@@ -26,6 +28,8 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   usage?: string;
+  // Which Project Instructions the answer ran with, once it is saved.
+  instructions?: string;
   citations?: Citation[];
   // Set once the answer is saved, so its Trace can be opened.
   messageId?: string;
@@ -66,6 +70,59 @@ function Sources({
   );
 }
 
+/** Chooses the Project Instructions the Playground answers with: the Instructions Draft (the
+ * default) or any Instructions Version, so either can be tried before it is published. */
+function InstructionsPicker({
+  organisationId,
+  projectId,
+  value,
+  onChange,
+}: {
+  organisationId: string;
+  projectId: string;
+  value: string;
+  onChange: (versionId: string) => void;
+}) {
+  const history = useInstructionsVersions(organisationId, projectId);
+  let hint =
+    "Answers follow the Instructions Draft unless you choose a Version.";
+  if (history.isError)
+    hint =
+      "The Instructions Versions could not be loaded, so answers follow the Instructions Draft.";
+  else if (history.data?.versions.length === 0)
+    hint =
+      "No Instructions Versions are published yet, so answers follow the Instructions Draft.";
+  return (
+    <div className="space-y-1">
+      <label
+        htmlFor="playground-instructions"
+        className="block text-sm font-medium"
+      >
+        Instructions
+      </label>
+      <select
+        id="playground-instructions"
+        aria-describedby="playground-instructions-hint"
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+        className={INPUT}
+      >
+        <option value="">Instructions Draft</option>
+        {history.data?.versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            {`v${String(version.number)}${version.id === history.data.current_version_id ? " (Current)" : ""} · ${version.note}`}
+          </option>
+        ))}
+      </select>
+      <p id="playground-instructions-hint" className="text-xs text-slate-700">
+        {hint}
+      </p>
+    </div>
+  );
+}
+
 /** Chat with the Agent's Draft. The answer streams in token by token. */
 function Playground({
   agent,
@@ -79,6 +136,8 @@ function Playground({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [question, setQuestion] = useState("");
+  // The Instructions Version questions are asked with; "" for the Instructions Draft.
+  const [instructionsVersionId, setInstructionsVersionId] = useState("");
   const [tracing, setTracing] = useState<string | null>(null);
   // Set when a reset has started a new Conversation, until the next question.
   const [wasReset, setWasReset] = useState(false);
@@ -113,6 +172,7 @@ function Playground({
       const done = await askPlayground(
         { ...path, conversation_id: conversation },
         question,
+        instructionsVersionId || null,
         (text) => {
           appendToAnswer((answer) => ({
             ...answer,
@@ -133,6 +193,7 @@ function Playground({
       appendToAnswer((answer) => ({
         ...answer,
         messageId: done.message_id,
+        instructions: `Instructions: ${instructionsUsed(done)}`,
         usage: `${String(done.input_tokens)} input and ${String(done.output_tokens)} output tokens · ${String(done.latency_ms)} ms`,
       }));
     } catch (failure) {
@@ -179,6 +240,12 @@ function Playground({
         Chat with this Draft. Playground Conversations are recorded but kept out
         of metrics.
       </p>
+      <InstructionsPicker
+        organisationId={organisationId}
+        projectId={agent.project_id}
+        value={instructionsVersionId}
+        onChange={setInstructionsVersionId}
+      />
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -215,6 +282,9 @@ function Playground({
             )}
             {message.usage && (
               <p className="mt-1 text-xs text-slate-700">{message.usage}</p>
+            )}
+            {message.instructions && (
+              <p className="text-xs text-slate-700">{message.instructions}</p>
             )}
             {message.messageId && (
               <button

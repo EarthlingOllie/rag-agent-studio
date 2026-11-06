@@ -400,6 +400,13 @@ _Avoid_: Rollback, undo
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.
 
+**Instructions picker**:
+The Playground's choice of which Project Instructions the Agent's Draft answers with: the Instructions Draft (the default) or any Instructions Version, Current or not. It lets Editors test new Instructions with an Agent before publishing either. Each answer records its choice: the Instructions Version, or the Draft marker.
+_Avoid_: Instructions selector, Instructions override
+
+**Draft marker**:
+What a Playground answer records in place of a Version when it ran with a Draft: `draft` for the Agent's configuration, and `draft` for the Project Instructions when the Instructions picker was left on the Instructions Draft.
+
 **Playground Conversation**:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
 
@@ -445,14 +452,14 @@ One Visitor's thread of Messages with an Agent.
 _Avoid_: Session, chat, thread
 
 **Message**:
-One turn in a Conversation, from either the Visitor or the Agent.
+One turn in a Conversation, from either the Visitor or the Agent. An Agent Message in the Playground records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Message Feedback**:
 A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Message.
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes and Version. Shown in the Playground's Trace drawer.
+The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, Version, and the Project Instructions it ran with. Shown in the Playground's Trace drawer.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:

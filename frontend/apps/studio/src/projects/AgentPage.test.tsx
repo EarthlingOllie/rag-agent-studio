@@ -58,8 +58,8 @@ test("a question is answered in the Playground as the answer streams in", async 
   expect(await within(messages).findAllByRole("listitem", { name: "HR helper" })).toHaveLength(2);
   expect(requests.filter((request) => request.route !== "draft")).toEqual([
     { route: "start" },
-    { route: "ask", body: { content: "How much leave?", conversationId: CONVERSATION_ID } },
-    { route: "ask", body: { content: "And sick leave?", conversationId: CONVERSATION_ID } },
+    { route: "ask", body: { content: "How much leave?", instructions_version_id: null, conversationId: CONVERSATION_ID } },
+    { route: "ask", body: { content: "And sick leave?", instructions_version_id: null, conversationId: CONVERSATION_ID } },
   ]);
 });
 
@@ -315,9 +315,9 @@ test("resetting the Playground starts a new Conversation", async () => {
   expect(screen.queryByText("Started a new conversation.")).not.toBeInTheDocument();
   expect(requests.filter((request) => request.route === "start" || request.route === "ask")).toEqual([
     { route: "start" },
-    { route: "ask", body: { content: "How much leave?", conversationId: CONVERSATION_ID } },
+    { route: "ask", body: { content: "How much leave?", instructions_version_id: null, conversationId: CONVERSATION_ID } },
     { route: "start" },
-    { route: "ask", body: { content: "And sick leave?", conversationId: RESET_CONVERSATION_ID } },
+    { route: "ask", body: { content: "And sick leave?", instructions_version_id: null, conversationId: RESET_CONVERSATION_ID } },
   ]);
 });
 
