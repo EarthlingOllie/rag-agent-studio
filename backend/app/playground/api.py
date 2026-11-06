@@ -24,8 +24,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, PlainSerializer, StringConstraints
 
-from app.agents.api import ARCHIVED_RESPONSE, NOT_FOUND_RESPONSE, archived, not_found
-from app.agents.service import AgentNotFoundError
+from app.agents.api import (
+    AGENT_ARCHIVED_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    agent_archived,
+    archived,
+    not_found,
+)
+from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.conversations.models import Conversation, Message
 from app.core.clock import Clock, get_clock
@@ -162,12 +168,13 @@ def _out(conversation: Conversation, messages: list[Message]) -> ConversationOut
     "/conversations",
     status_code=status.HTTP_201_CREATED,
     operation_id="startPlaygroundConversation",
-    responses={**NOT_FOUND_RESPONSE, **ARCHIVED_RESPONSE},
+    responses={**NOT_FOUND_RESPONSE, **AGENT_ARCHIVED_RESPONSE},
 )
 async def start_conversation(
     project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
 ) -> ConversationOut:
-    """Starts an empty Playground Conversation with the Agent's Draft."""
+    """Starts an empty Playground Conversation with the Agent's Draft. An archived Agent starts
+    none."""
     try:
         conversation = await service.start_conversation(
             db, scope, project_id, agent_id, now=clock.now()
@@ -176,6 +183,8 @@ async def start_conversation(
         raise not_found() from None
     except ProjectArchivedError:
         raise archived() from None
+    except AgentArchivedError:
+        raise agent_archived() from None
     return _out(conversation, [])
 
 
@@ -267,7 +276,10 @@ _STREAM: dict[int | str, dict[str, Any]] = {
             "`rate_limited`, `model_unavailable` or `provider_error`; `message`)."
         ),
     },
-    409: {"model": ErrorResponse, "description": "The Project is archived, or no Default Model."},
+    409: {
+        "model": ErrorResponse,
+        "description": "The Project or Agent is archived, or there is no Default Model.",
+    },
 }
 
 
@@ -287,7 +299,8 @@ async def send_message(
     db: Db,
     clock: ClockDep,
 ) -> StreamingResponse:
-    """Asks the Agent's Draft a question; the answer streams back as Server-Sent Events."""
+    """Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An
+    archived Agent answers no more questions; its Conversations can still be read."""
     try:
         prepared = await service.prepare_turn(
             db, scope, project_id, agent_id, conversation_id, body.content, now=clock.now()
@@ -296,6 +309,8 @@ async def send_message(
         raise not_found() from None
     except ProjectArchivedError:
         raise archived() from None
+    except AgentArchivedError:
+        raise agent_archived() from None
     except service.NoDefaultModelError:
         raise HTTPException(status.HTTP_409_CONFLICT, NO_DEFAULT_MODEL) from None
     ingestion: IngestionPorts = request.app.state.ingestion

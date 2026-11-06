@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, Retrieval
-from app.agents.service import get_agent
+from app.agents.service import active_agent, get_agent
 from app.conversations.models import DRAFT, Conversation, Message, MessageRetrieval, MessageRole
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
@@ -87,7 +87,7 @@ async def start_conversation(
     now: datetime,
 ) -> Conversation:
     await active_project(session, scope, project_id)
-    found = await get_agent(session, scope, project_id, agent_id)
+    found = await active_agent(session, scope, project_id, agent_id)
     conversation = Conversation(
         organisation_id=scope.organisation_id,
         agent_id=found.agent.id,
@@ -157,7 +157,7 @@ async def prepare_turn(
 ) -> PreparedTurn:
     """Checks the question can be answered, then saves it."""
     project = await active_project(session, scope, project_id)
-    found = await get_agent(session, scope, project_id, agent_id)
+    found = await active_agent(session, scope, project_id, agent_id)
     conversation, messages = await get_conversation(
         session, scope, project_id, agent_id, conversation_id
     )
