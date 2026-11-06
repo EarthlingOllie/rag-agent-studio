@@ -78,6 +78,8 @@ function Playground({
   const [error, setError] = useState<Error | null>(null);
   const [question, setQuestion] = useState("");
   const [tracing, setTracing] = useState<string | null>(null);
+  // Set when a reset has started a new Conversation, until the next question.
+  const [wasReset, setWasReset] = useState(false);
   const closeTrace = useCallback(() => {
     setTracing(null);
   }, []);
@@ -96,6 +98,7 @@ function Playground({
 
   async function ask(question: string) {
     setError(null);
+    setWasReset(false);
     setPending(true);
     setMessages((current) => [
       ...current,
@@ -131,7 +134,26 @@ function Playground({
         usage: `${String(done.input_tokens)} input and ${String(done.output_tokens)} output tokens · ${String(done.latency_ms)} ms`,
       }));
     } catch (failure) {
+      // Drop the answer, and whatever of it streamed before the failure.
       setMessages((current) => current.slice(0, -1));
+      setError(failure as Error);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  /** Starts a new Playground Conversation; the next question is asked in it. */
+  async function reset() {
+    setError(null);
+    setWasReset(false);
+    setPending(true);
+    try {
+      const conversation = await startConversation(path);
+      setConversationId(conversation.id);
+      setMessages([]);
+      setTracing(null);
+      setWasReset(true);
+    } catch (failure) {
       setError(failure as Error);
     } finally {
       setPending(false);
@@ -155,6 +177,21 @@ function Playground({
         Chat with this Draft. Playground Conversations are recorded but kept out
         of metrics.
       </p>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            void reset();
+          }}
+          className="text-sm text-slate-900 underline disabled:opacity-50"
+        >
+          Reset conversation
+        </button>
+        <p role="status" className="text-sm text-slate-700">
+          {wasReset ? "Started a new conversation." : ""}
+        </p>
+      </div>
       <ol
         aria-label="Playground messages"
         aria-live="polite"

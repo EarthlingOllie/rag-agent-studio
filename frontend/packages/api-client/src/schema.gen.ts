@@ -5949,7 +5949,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`. */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;
