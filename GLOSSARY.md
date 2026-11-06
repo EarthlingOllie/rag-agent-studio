@@ -187,7 +187,11 @@ What a model call cost in US dollars: its token counts times the prices in effec
 _Avoid_: Spend, charge, bill
 
 **Embedding Model**:
-The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage or OpenAI; Bedrock once the model gateway can call it) through an embedding-capable Provider Credential, which then becomes a Credential reference. Until re-embedding exists it can only change while the Project has no Documents.
+The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage, OpenAI or Bedrock) through an embedding-capable Provider Credential, which then becomes a Credential reference. It can change at any time: a Project without Documents switches at once, and one with Documents goes through a Re-embed. The model retrieval uses is the **active** one; the one a running Re-embed moves to is the **pending** one.
+
+**Re-embed**:
+The background job that moves a Project's Knowledge Base to a new Embedding Model. It writes the pending model's vector for every Chunk next to the active model's, with visible progress, while the active model keeps serving; then, in one step, the pending model becomes active and the old vectors are deleted. Uploads during a Re-embed are embedded with both models. A failed Re-embed leaves the active model unchanged and shows why; choosing again while one runs cancels it.
+_Avoid_: Migration, re-index, rebuild
 
 **Embedding Model registry**:
 The list, kept in code, of every Embedding Model a Project can use, with its provider, vector dimension, tokenizer, token limit and the Capability its credential needs.

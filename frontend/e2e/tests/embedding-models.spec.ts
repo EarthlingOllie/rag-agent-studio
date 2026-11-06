@@ -48,13 +48,12 @@ test.describe("Embedding Models", () => {
     await choose.getByRole("button", { name: "Use this model" }).click();
     await expect(setting).toContainText("Documents are embedded with voyage-3.5.");
 
-    // The worker embeds the upload with the chosen model; then the model is fixed.
+    // The worker embeds the upload with the chosen model; changing it now would re-embed.
     await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.reload();
-    await expect(setting).toContainText("It can't be changed while the Project has Documents.");
-    await expect(setting.getByRole("button")).toHaveCount(0);
+    await expect(setting).toContainText("Changing it re-embeds every Document in the background");
 
     // The retrieval probe finds the handbook's Chunks by their Voyage vectors.
     const [, organisationId, projectId] = /organisations\/([^/]+)\/projects\/([^/]+)/.exec(page.url()) ?? [];
@@ -73,5 +72,66 @@ test.describe("Embedding Models", () => {
     await page.getByRole("button", { name: "Delete: Search embeddings" }).click();
     await page.getByRole("button", { name: "Yes, delete Search embeddings" }).click();
     await expect(page.getByText("Voyage handbook (Embedding Model voyage-3.5)")).toBeVisible();
+  });
+
+  test("changing the model of a Project with Documents re-embeds it in the background and switches over", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    await page.goto("/");
+    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    const add = page.getByRole("region", { name: "Add a credential" });
+    await add.getByLabel("Provider").selectOption("Voyage AI");
+    await add.getByLabel("Name").fill("Re-embed target");
+    await add.getByLabel("API key").fill(EMBEDDINGS_KEY);
+    await add.getByRole("button", { name: "Check and save" }).click();
+    await expect(page.getByText("Re-embed target was checked and saved.")).toBeVisible();
+
+    // A Project on the built-in model, with the handbook Ready.
+    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    const form = page.getByRole("form", { name: "New Project" });
+    await form.getByLabel("Name").fill("Re-embedded handbook");
+    await form.getByRole("button", { name: "Create Project" }).click();
+    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
+    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
+    const [, organisationId, projectId] = /organisations\/([^/]+)\/projects\/([^/]+)/.exec(page.url()) ?? [];
+    const project = `/api/organisations/${organisationId ?? ""}/projects/${projectId ?? ""}`;
+    const probe = async () => {
+      const response = await page.request.post(`${project}/retrieval-probe`, { data: { query: "annual leave", top_k: 3 } });
+      expect(response.status()).toBe(200);
+      return (await response.json()) as Probe;
+    };
+    expect((await probe()).embedding_model_id).toBe("multilingual-e5-small");
+
+    await page.reload();
+    const setting = page.getByRole("region", { name: "Embedding Model" });
+    await expect(setting).toContainText("Changing it re-embeds every Document in the background");
+    await setting.getByRole("button", { name: "Change Embedding Model" }).click();
+    const choose = setting.getByRole("form", { name: "Choose the Embedding Model" });
+    await choose.getByLabel("Embedding Model").selectOption("voyage-3.5 (Re-embed target)");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    await choose.getByRole("button", { name: "Use this model" }).click();
+
+    // The worker re-embeds every Chunk, then switches; the Studio polls until it has.
+    await expect(setting).toContainText("Documents are embedded with voyage-3.5.", { timeout: 60_000 });
+    await expect(setting.getByRole("status")).toHaveCount(0);
+    const state = await page.request.get(`${project}/embedding-model`);
+    const reEmbed = ((await state.json()) as { re_embed: { status: string; embedded_chunks: number; total_chunks: number } }).re_embed;
+    expect(reEmbed.status).toBe("completed");
+    expect(reEmbed.embedded_chunks).toBe(reEmbed.total_chunks);
+    expect(reEmbed.total_chunks).toBeGreaterThan(1);
+    const answer = await probe();
+    expect([answer.embedding_model_id, answer.dimension]).toEqual(["voyage-3.5", 1024]);
+    expect(answer.chunks.map((chunk) => chunk.document_name)).toEqual(Array(3).fill("northwind-staff-handbook.md"));
+    // The Documents table counts each Chunk once.
+    await expect(row).toBeVisible();
+
+    // The change is in the Audit log.
+    const events = await page.request.get(`/api/organisations/${organisationId ?? ""}/audit-events`, {
+      params: { action: "project.re_embed_started" },
+    });
+    expect(((await events.json()) as { total: number }).total).toBe(1);
   });
 });

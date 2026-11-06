@@ -44,10 +44,6 @@ from tests.integration.test_provider_credentials import (
 )
 
 LOCAL = "multilingual-e5-small"
-PROJECT_HAS_DOCUMENTS = (
-    "The Embedding Model can't be changed while the Project has Documents. "
-    "Delete its Documents first."
-)
 
 
 def embedding_models_path(organisation_id: str) -> str:
@@ -394,21 +390,8 @@ async def test_an_unknown_projects_model_cannot_be_changed(owner: SignedUpMember
     assert (response.status_code, response.json()) == (404, {"detail": "Not found"})
 
 
-# Changing the model is refused while the Project has Documents
-
-
-async def test_the_model_cannot_change_while_the_project_has_documents(
-    app: FastAPI, owner: SignedUpMember
-) -> None:
-    voyage = await added(owner, provider="voyage", api_key=VOYAGE_KEY)
-    project_id = await create_project(owner)
-    await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
-
-    response = await choose(owner, project_id, "voyage-3.5", voyage["id"])
-
-    assert (response.status_code, response.json()) == (409, {"detail": PROJECT_HAS_DOCUMENTS})
-    assert (await project(owner, project_id))["embedding_model_id"] == LOCAL
-    assert await audit_events(owner, "project.embedding_model_changed") == []
+# With Documents, a change re-embeds them (``test_re_embedding.py``); the current model again
+# changes nothing.
 
 
 async def test_choosing_the_current_model_again_is_allowed_with_documents(
@@ -644,8 +627,8 @@ async def test_the_probe_skips_chunks_of_other_embedding_models(
     project_id = await create_project(owner)
     document = await upload(app, owner, project_id, "a.md", b"Everyone gets 25 days.")
     (chunk,) = await chunks(owner, project_id, document["id"])
-    # Only re-embedding (ticket 03-10) writes a second model's vectors; until then a copy of the
-    # Chunk under another model is written directly.
+    # As a re-embed does while it runs, a copy of the Chunk under another model (written
+    # directly here).
     async with app.state.sessionmaker() as session, session.begin():
         await session.execute(
             text(

@@ -19,19 +19,27 @@ class ChunkDraft:
     embedding_text: str
 
 
+def embedding_text(heading_path: list[str], text: str) -> str:
+    """What gets embedded for a Chunk: its headings, outermost first, then its text, one per
+    line. Re-embedding rebuilds it from the stored Chunk, so a Chunk embeds the same way under
+    every Embedding Model."""
+    return "\n".join([*heading_path, text])
+
+
 def chunk_document(document: DoclingDocument, tokenizer: BaseTokenizer) -> list[ChunkDraft]:
     chunker = HybridChunker(tokenizer=tokenizer)
     drafts = []
     for chunk in chunker.chunk(document):
         meta = DocChunk.model_validate(chunk).meta
         pages = sorted({prov.page_no for item in meta.doc_items for prov in item.prov})
+        headings = list(meta.headings or [])
         drafts.append(
             ChunkDraft(
                 text=chunk.text,
-                heading_path=list(meta.headings or []),
+                heading_path=headings,
                 page_start=pages[0] if pages else None,
                 page_end=pages[-1] if pages else None,
-                embedding_text=chunker.contextualize(chunk),
+                embedding_text=embedding_text(headings, chunk.text),
             )
         )
     return drafts
