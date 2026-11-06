@@ -5,6 +5,7 @@ import { formatTime } from "../settings/AuditPage";
 import {
   type InstructionsVersion,
   useInstructionsVersions,
+  useIsLatestInstructionsChange,
   usePublishInstructions,
   useRevertInstructions,
   versionFailure,
@@ -16,6 +17,7 @@ type Target = { organisationId: string; projectId: string };
 /** Publishes the Draft as written in the editor (`markdown()`), with a note, as the next Version. */
 export function PublishInstructionsForm({ organisationId, projectId, markdown }: Target & { markdown: () => string }) {
   const publish = usePublishInstructions(organisationId, projectId);
+  const latest = useIsLatestInstructionsChange(organisationId, projectId, publish.submittedAt);
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,7 +35,7 @@ export function PublishInstructionsForm({ organisationId, projectId, markdown }:
 
   return (
     <form aria-label="Publish Instructions" onSubmit={onSubmit} className="space-y-2 rounded border border-slate-300 p-3">
-      <FormError message={versionFailure(publish.error)} />
+      <FormError message={latest ? versionFailure(publish.error) : undefined} />
       <label className="block">
         Note
         <input name="note" required maxLength={500} className={INPUT} />
@@ -45,7 +47,7 @@ export function PublishInstructionsForm({ organisationId, projectId, markdown }:
         <button type="submit" disabled={publish.isPending} className={BUTTON}>
           {publish.isPending ? "Publishing…" : "Publish Instructions"}
         </button>
-        {publish.isSuccess && (
+        {publish.isSuccess && latest && (
           <span role="status" className="text-sm text-slate-700">
             Published v{publish.data.number}
           </span>
@@ -78,6 +80,7 @@ function VersionItem({ version, current }: { version: InstructionsVersion; curre
 export function InstructionsVersions({ organisationId, projectId, archived }: Target & { archived: boolean }) {
   const versions = useInstructionsVersions(organisationId, projectId);
   const revert = useRevertInstructions(organisationId, projectId);
+  const latest = useIsLatestInstructionsChange(organisationId, projectId, revert.submittedAt);
   const [confirming, setConfirming] = useState(false);
 
   if (versions.isError) return <p role="alert">The Versions could not be loaded. Try again shortly.</p>;
@@ -140,8 +143,8 @@ export function InstructionsVersions({ organisationId, projectId, archived }: Ta
           ? `Current Version: v${String(current.number)}.`
           : "Not published yet. Publish the Draft to make v1, the Current Version."}
       </p>
-      <FormError message={versionFailure(revert.error)} />
-      {revert.isSuccess && (
+      <FormError message={latest ? versionFailure(revert.error) : undefined} />
+      {revert.isSuccess && latest && (
         <p role="status" className="text-sm text-slate-700">
           Reverted to v{revert.data.number}
         </p>

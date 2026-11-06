@@ -159,6 +159,26 @@ test("a Draft the API refuses to save is not published", async () => {
   expect(requests.filter((request) => request.route === "publish")).toEqual([]);
 });
 
+test("a Draft the API refuses as too long says the save failed, not the note", async () => {
+  const { requests } = setUp();
+  server.use(
+    http.put("*/api/organisations/:organisationId/projects/:projectId/instructions", () =>
+      HttpResponse.json({ detail: [{ msg: "too long" }] }, { status: 422 }),
+    ),
+  );
+  renderStudio(instructionsTab(hrProject.id));
+  const form = await screen.findByRole("form", { name: "Publish Instructions" }, { timeout: 5000 });
+
+  await userEvent.type(within(form).getByRole("textbox", { name: "Note" }), "Longer");
+  await userEvent.click(within(form).getByRole("button", { name: "Publish Instructions" }));
+
+  expect(await within(form).findByRole("alert")).toHaveTextContent(
+    "The Draft could not be saved, so nothing was published. Instructions can be up to 20,000 characters.",
+  );
+  expect(within(form).queryByText("Add a note of up to 500 characters.")).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "publish")).toEqual([]);
+});
+
 test("a publish shows its progress", async () => {
   setUp();
   server.use(
@@ -237,4 +257,31 @@ test("Versions that can't be loaded say so", async () => {
   renderStudio(instructionsTab(hrProject.id));
 
   expect(await screen.findByText("The Versions could not be loaded. Try again shortly.", {}, { timeout: 5000 })).toBeInTheDocument();
+});
+
+test("only the latest publish or revert shows its outcome", async () => {
+  setUp();
+  renderStudio(instructionsTab(hrProject.id));
+  await versionList();
+
+  await userEvent.click(screen.getByRole("button", { name: "Revert to v1" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, revert to v1" }));
+  expect(await screen.findByText("Reverted to v1")).toBeInTheDocument();
+
+  const source = await openMarkdownView();
+  await userEvent.clear(source);
+  await userEvent.type(source, "Be curt.");
+  const form = screen.getByRole("form", { name: "Publish Instructions" });
+  await userEvent.type(within(form).getByRole("textbox", { name: "Note" }), "Shorter answers");
+  await userEvent.click(within(form).getByRole("button", { name: "Publish Instructions" }));
+
+  expect(await within(form).findByText("Published v3")).toBeInTheDocument();
+  expect(screen.queryByText("Reverted to v1")).not.toBeInTheDocument();
+
+  // v3 was published on top of v1, so reverting goes back to v1.
+  await screen.findByText("Current Version: v3.");
+  await userEvent.click(screen.getByRole("button", { name: "Revert to v1" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, revert to v1" }));
+  expect(await screen.findByText("Reverted to v1")).toBeInTheDocument();
+  expect(screen.queryByText("Published v3")).not.toBeInTheDocument();
 });

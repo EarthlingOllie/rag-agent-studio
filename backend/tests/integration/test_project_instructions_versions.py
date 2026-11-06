@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
+from app.tenancy.erasure import erase_organisation
 from tests.conftest import BACKEND_ROOT, MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path
 from tests.integration.test_provider_credentials import audit_events
@@ -356,6 +357,33 @@ async def test_the_database_refuses_to_change_a_version(
     assert (await history(owner, project_id))["versions"] == [version]
 
 
+async def test_erasing_the_organisation_removes_its_published_versions(
+    app: FastAPI, owner: SignedUpMember, member_factory: MemberFactory
+) -> None:
+    """Projects point at Versions, Versions at earlier Versions and their authors, and no
+    Version can be updated; erasing the Organisation (``make seed-reset``) still succeeds."""
+    editor = await member_factory(owner, "editor")
+    project_id = await create_project(owner)
+    await published(owner, project_id, "Be kind.", "First rules")
+    await published(editor, project_id, "Be kind.\n\nNever quote salaries.", "Salaries")
+    assert (await revert(owner, project_id)).status_code == 200
+    await published(owner, project_id, "Be brief.", "Shorter")
+
+    async with app.state.sessionmaker() as session:
+        await erase_organisation(
+            session, app.state.ingestion.object_store, uuid.UUID(owner.organisation_id)
+        )
+
+    async with app.state.sessionmaker() as session:
+        remaining = await session.scalar(
+            text("SELECT count(*) FROM project_instructions_versions WHERE organisation_id = :id"),
+            {"id": owner.organisation_id},
+        )
+    assert remaining == 0
+    # The Editor's own Organisation, and their account, are untouched.
+    assert (await editor.client.get("/api/auth/me")).status_code == 200
+
+
 async def test_concurrent_publishes_of_one_draft_make_one_version_and_a_clear_conflict(
     owner: SignedUpMember, member_factory: MemberFactory
 ) -> None:
@@ -406,7 +434,7 @@ async def test_the_migration_turns_existing_instructions_into_the_draft_and_v1(
     await save_draft(owner, with_rules, "Be kind.")
     without_rules = await create_project(owner, "Without rules")
     # Back to spec 04's schema, where the Instructions were one field; then migrate forward.
-    await asyncio.to_thread(_migrate, "downgrade", "0022_theme_images")
+    await asyncio.to_thread(_migrate, "downgrade", "0023_erase_organisation")
     try:
         await asyncio.to_thread(_migrate, "upgrade", "head")
     finally:

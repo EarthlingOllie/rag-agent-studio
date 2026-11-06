@@ -1,5 +1,5 @@
 import type { Schemas } from "@studio/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
 import { ProjectRequestError } from "./projects";
@@ -11,15 +11,24 @@ function failed(response: Response, error: unknown): ProjectRequestError {
 
 /** What to tell the Editor about Instructions the API refused. */
 export function instructionsFailure(error: Error | null): string | undefined {
-  if (error === null) return undefined;
+  return error === null ? undefined : draftRefusal(error);
+}
+
+function draftRefusal(error: Error): string {
   if (error instanceof ProjectRequestError && error.status === 409 && error.detail) return error.detail;
   if (error instanceof ProjectRequestError && error.status === 422) return "Instructions can be up to 20,000 characters.";
   return "Something went wrong. Try again.";
 }
 
+/** A publish whose first step, saving the Draft, was refused; nothing was published. */
+export class DraftNotSavedError extends ProjectRequestError {}
+
 /** What to tell the Editor about a publish or revert the API refused. */
 export function versionFailure(error: Error | null): string | undefined {
   if (error === null) return undefined;
+  if (error instanceof DraftNotSavedError) {
+    return `The Draft could not be saved, so nothing was published. ${draftRefusal(error)}`;
+  }
   if (error instanceof ProjectRequestError && error.status === 422) return "Add a note of up to 500 characters.";
   return instructionsFailure(error);
 }
@@ -62,6 +71,18 @@ export function useSaveInstructions(organisationId: string, projectId: string) {
 
 const versionsKey = (organisationId: string, projectId: string) => ["instructions-versions", organisationId, projectId] as const;
 
+/** Publishes and reverts share this key prefix, so the Studio can tell which happened last. */
+const changeKey = (organisationId: string, projectId: string) => ["instructions-change", organisationId, projectId] as const;
+
+/** Whether the publish or revert submitted at `submittedAt` is the latest one for the Project, so only its outcome shows. */
+export function useIsLatestInstructionsChange(organisationId: string, projectId: string, submittedAt: number): boolean {
+  const submitted = useMutationState({
+    filters: { mutationKey: changeKey(organisationId, projectId) },
+    select: (mutation) => mutation.state.submittedAt,
+  });
+  return submittedAt === Math.max(0, ...submitted);
+}
+
 /** The Instructions Versions, newest first, and which one is Current. */
 export function useInstructionsVersions(organisationId: string, projectId: string) {
   return useQuery({
@@ -81,12 +102,16 @@ export function usePublishInstructions(organisationId: string, projectId: string
   const queryClient = useQueryClient();
   const path = { organisation_id: organisationId, project_id: projectId };
   return useMutation({
+    mutationKey: [...changeKey(organisationId, projectId), "publish"],
     mutationFn: async ({ markdown, note }: { markdown: string; note: string }): Promise<InstructionsVersion> => {
       const saved = await api.PUT("/api/organisations/{organisation_id}/projects/{project_id}/instructions", {
         params: { path },
         body: { markdown },
       });
-      if (!saved.data) throw failed(saved.response, saved.error);
+      if (!saved.data) {
+        const refused = failed(saved.response, saved.error);
+        throw new DraftNotSavedError(refused.status, refused.detail);
+      }
       queryClient.setQueryData(instructionsKey(organisationId, projectId), saved.data.markdown);
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions", {
         params: { path },
@@ -103,6 +128,7 @@ export function usePublishInstructions(organisationId: string, projectId: string
 export function useRevertInstructions(organisationId: string, projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...changeKey(organisationId, projectId), "revert"],
     mutationFn: async (): Promise<InstructionsVersion> => {
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/instructions/revert", {
         params: { path: { organisation_id: organisationId, project_id: projectId } },
