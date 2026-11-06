@@ -12,6 +12,7 @@ from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.agents import api as agents_api
+from app.agents import versions_api as agent_versions_api
 from app.agents.validation import agent_references
 from app.api import health
 from app.audit import api as audit_api
@@ -69,6 +70,7 @@ ROUTERS: Sequence[APIRouter] = (
     documents_api.router,
     tags_api.router,
     agents_api.router,
+    agent_versions_api.router,
     playground_api.router,
 )
 

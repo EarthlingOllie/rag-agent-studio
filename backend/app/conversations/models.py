@@ -35,8 +35,10 @@ class MessageRole(enum.StrEnum):
     ASSISTANT = "assistant"
 
 
-# Which configuration answered: the Draft (Playground); spec 05 adds Version references.
+# Which configuration answered: the Draft (Playground), or an Agent Version, which the Message
+# then names in ``agent_version_id``.
 DRAFT = "draft"
+VERSION = "version"
 
 
 class Conversation(IdMixin, Base):
@@ -69,6 +71,8 @@ class Message(IdMixin, Base):
     content: Mapped[str] = mapped_column(Text)
     # Set on assistant Messages only.
     config_source: Mapped[str | None] = mapped_column(String(40))
+    # The Agent Version that answered; None for a Draft answer (and for questions).
+    agent_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agent_versions.id"))
     model_provider: Mapped[str | None] = mapped_column(String(40))
     model_name: Mapped[str | None] = mapped_column(String(200))
     input_tokens: Mapped[int | None] = mapped_column(Integer)

@@ -5,7 +5,17 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Identity,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,10 +42,15 @@ class Agent(IdMixin, Base):
     public_id: Mapped[str] = mapped_column(String(64), unique=True, default=new_public_id)
     name: Mapped[str] = mapped_column(String(NAME_MAX))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Live Version: what Visitors are served. None until the Agent is first published, so
+    # the Agent is not live.
+    live_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("agent_versions.id", name="fk_agents_live_version", use_alter=True)
+    )
 
 
 class AgentDraft(Base):
-    """The Agent's one editable configuration. Versions arrive in spec 05."""
+    """The Agent's one editable configuration. Publishing it makes an ``AgentVersion``."""
 
     __tablename__ = "agent_drafts"
 
@@ -48,3 +63,56 @@ class AgentDraft(Base):
     # An ``AgentConfig`` as JSON; read it through ``AgentConfig.model_validate``.
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentVersion(IdMixin, Base):
+    """An immutable, numbered snapshot of an Agent's Draft, pinning the Project Instructions
+    Version it runs with. Migration ``0026_agent_versions`` adds a trigger that refuses every
+    UPDATE; rows go only with their Agent."""
+
+    __tablename__ = "agent_versions"
+    __table_args__ = (UniqueConstraint("agent_id", "number"),)
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(Agent.id, ondelete="CASCADE"))
+    # 1, 2, 3… per Agent, allocated under the Agent's row lock.
+    number: Mapped[int] = mapped_column(Integer)
+    # The Draft's ``AgentConfig`` as JSON when it was published.
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # The Project Instructions Version it runs with; None when the Project had no Instructions
+    # Version, so it runs with no Project Instructions.
+    instructions_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "project_instructions_versions.id", name="fk_agent_versions_instructions_version"
+        )
+    )
+    note: Mapped[str] = mapped_column(Text)
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("members.id"))
+
+
+class LiveHistoryEntry(IdMixin, Base):
+    """One change of an Agent's Live Version: append-only, like the Versions (the same
+    migration's trigger refuses every UPDATE)."""
+
+    __tablename__ = "agent_live_history"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Agent.id, ondelete="CASCADE"), index=True
+    )
+    # Orders an Agent's entries as they were written (under the Agent's row lock), even when
+    # two share a timestamp.
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(), unique=True)
+    # The Live Version before; None for the first publish.
+    from_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(AgentVersion.id))
+    to_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(AgentVersion.id))
+    # publish, revert, bulk_publish or bulk_revert.
+    action: Mapped[str] = mapped_column(String(20))
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("members.id"))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Set when a bulk action made the change (05-05).
+    bulk_operation_id: Mapped[uuid.UUID | None]

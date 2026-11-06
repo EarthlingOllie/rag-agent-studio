@@ -331,6 +331,20 @@ async def _an_agent_draft(owner: SignedUpMember, add_member: MemberFactory) -> P
     return params, {"retrieval": {"top_k": 3}}
 
 
+async def _an_agent_to_publish(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"note": "First release"}
+
+
+async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _an_agent_to_publish(owner, add_member)
+    published = await owner.client.post(
+        _AGENT.format(organisation_id=owner.organisation_id, **params) + "/versions", json=body
+    )
+    assert published.status_code == 201, published.text
+    return params | {"version_id": published.json()["id"]}, None
+
+
 async def _an_archived_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _an_agent(owner, add_member)
     archived = await owner.client.post(
@@ -452,6 +466,10 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _AGENT + "/archive", EDITOR, _an_agent),
     ScopedRoute("POST", _AGENT + "/restore", OWNER, _an_archived_agent),
     ScopedRoute("DELETE", _AGENT, OWNER, _an_archived_agent_to_delete),
+    ScopedRoute("POST", _AGENT + "/versions", EDITOR, _an_agent_to_publish),
+    ScopedRoute("GET", _AGENT + "/versions", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
+    ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),

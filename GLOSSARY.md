@@ -371,7 +371,7 @@ _Avoid_: Reference, footnote, source link
 One Chunk retrieval found for an Agent Message, saved with its score, relevance, rank (when it was given to the model), whether it was cited and, for an Excluded Chunk, the reason. The Trace's list of Chunks.
 
 **Version**:
-An immutable, numbered snapshot of a Draft, created by publishing it with a note. Numbers start at 1 for each Agent and each Project's Instructions. An Agent's Version pins exactly one Project Instructions Version.
+An immutable, numbered snapshot of a Draft, created by publishing it with a note. Numbers start at 1 for each Agent and each Project's Instructions, and concurrent publishes get consecutive, unique numbers. An Agent's Version (an Agent Version) holds the AgentConfig and pins one Project Instructions Version: the Current Version unless the Editor chooses another, or none while the Project has never published its Instructions, in which case it runs with no Project Instructions.
 _Avoid_: Revision, release
 
 **Instructions Version**:
@@ -379,7 +379,7 @@ A Version of a Project's Instructions: its number, the markdown, the note, who p
 _Avoid_: Instructions revision
 
 **Live Version**:
-The Agent Version currently served to Visitors. Only Agents have one.
+The Agent Version currently served to Visitors, with the Instructions Version it pins. Only Agents have one. An Agent that has never been published has none and is shown as "Not live": it serves no Visitor.
 _Avoid_: Active, production
 
 **Current Version**:
@@ -387,7 +387,7 @@ The Project Instructions Version that newly published Agent Versions pin by defa
 _Avoid_: Live (for Project Instructions), latest
 
 **Live History**:
-The ordered record of an Agent's Live Version changes. Reverting steps back one entry.
+The ordered, append-only record of an Agent's Live Version changes. Each entry has the from-Version (none for the first publish), the to-Version, the action (publish, revert, bulk publish or bulk revert), who and when, and the bulk operation that made it, if any. Reverting steps back one entry.
 _Avoid_: Changelog, deployments
 
 **Publish**:
@@ -445,7 +445,7 @@ One Visitor's thread of Messages with an Agent.
 _Avoid_: Session, chat, thread
 
 **Message**:
-One turn in a Conversation, from either the Visitor or the Agent.
+One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution).
 
 **Message Feedback**:
 A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Message.
