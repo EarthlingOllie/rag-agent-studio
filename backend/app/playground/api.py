@@ -79,12 +79,14 @@ class MessageOut(BaseModel):
     role: str
     content: str
     created_at: datetime
-    # The rest are set on the Agent's answers only.
+    # The rest are set on the Agent's answers only. ``config_source`` is ``draft`` for a
+    # Draft answer, or ``version`` with the answering ``agent_version_id``.
     config_source: str | None
     # The Project Instructions the answer ran with: the Draft, or a Version (its ID and number).
     instructions_source: InstructionsSourceOut | None
     instructions_version_id: uuid.UUID | None
     instructions_version_number: int | None
+    agent_version_id: uuid.UUID | None
     model_provider: str | None
     model_name: str | None
     input_tokens: int | None
@@ -136,6 +138,7 @@ class TraceOut(BaseModel):
     instructions_source: InstructionsSourceOut | None
     instructions_version_id: uuid.UUID | None
     instructions_version_number: int | None
+    agent_version_id: uuid.UUID | None
     model_provider: str | None
     model_name: str | None
     input_tokens: int | None
@@ -187,6 +190,7 @@ def _out(
                 created_at=m.created_at,
                 config_source=m.config_source,
                 **_instructions(m, numbers),
+                agent_version_id=m.agent_version_id,
                 model_provider=m.model_provider,
                 model_name=m.model_name,
                 input_tokens=m.input_tokens,
@@ -271,6 +275,7 @@ async def get_trace(
         message_id=message.id,
         config_source=message.config_source,
         **_instructions(message, await _numbers(db, [message])),
+        agent_version_id=message.agent_version_id,
         model_provider=message.model_provider,
         model_name=message.model_name,
         input_tokens=message.input_tokens,

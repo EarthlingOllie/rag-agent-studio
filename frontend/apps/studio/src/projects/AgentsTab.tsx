@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { type SubmitEvent, useState } from "react";
 
 import { FormError, formValues } from "../auth/AuthLayout";
+import { LiveStatus } from "./AgentPublish";
 import { agentFailure, useAgents, useCreateAgent } from "./agents";
 import { useProject } from "./projects";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
@@ -97,11 +98,14 @@ function AgentList({
           >
             {agent.name}
           </Link>
-          {agent.archived_at && (
-            <span className="text-sm text-slate-700">
-              Archived {agent.archived_at.slice(0, 10)}
-            </span>
-          )}
+          <span className="flex items-center gap-3">
+            <LiveStatus agent={agent} />
+            {agent.archived_at && (
+              <span className="text-sm text-slate-700">
+                Archived {agent.archived_at.slice(0, 10)}
+              </span>
+            )}
+          </span>
         </li>
       ))}
     </ul>

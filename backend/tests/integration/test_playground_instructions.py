@@ -271,8 +271,9 @@ async def test_answers_saved_before_the_picker_are_marked_as_run_with_the_draft(
     conversation = await start_conversation(member, project_id, agent_id)
     response = await ask_with(member, project_id, agent_id, conversation["id"], "Hi?", {})
     assert response.status_code == 200, response.text
-    # Back to 05-01's schema, where answers didn't record their Instructions; then forward.
-    await asyncio.to_thread(_migrate, "downgrade", "0025_instructions_versions")
+    # Back to the schema before the picker, where answers didn't record their Instructions;
+    # then forward.
+    await asyncio.to_thread(_migrate, "downgrade", "0026_agent_versions")
     try:
         await asyncio.to_thread(_migrate, "upgrade", "head")
     finally:

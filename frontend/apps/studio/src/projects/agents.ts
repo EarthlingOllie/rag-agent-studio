@@ -377,3 +377,49 @@ export function useTrace(path: MessagePath) {
     retry: false,
   });
 }
+
+export type AgentVersion = Schemas["AgentVersionOut"];
+
+/** What to tell the Editor about a publish the API refused. */
+export function publishFailure(error: Error | null): string | undefined {
+  if (error instanceof ProjectRequestError && error.status === 422)
+    return "Add a note of up to 500 characters.";
+  return agentFailure(error);
+}
+
+/**
+ * Publishes the Agent's saved Draft with a note as its next Version, pinning the chosen
+ * Instructions Version (the Project's Current Version when none is chosen), and makes it Live.
+ */
+export function usePublishAgent(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      body: Schemas["PublishAgentRequest"],
+    ): Promise<AgentVersion> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+          body,
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: agentsKey(organisationId, projectId),
+      }),
+  });
+}

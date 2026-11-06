@@ -132,6 +132,7 @@ export const hrHelper: Agent = {
     },
   },
   draft_updated_at: "2026-11-05T09:00:00Z",
+  live_version: null,
 };
 
 /** An archived Agent of the same Project. */
@@ -201,6 +202,7 @@ export const leaveCitation = {
 export const hrTrace: Schemas["TraceOut"] = {
   message_id: done.message_id,
   config_source: "draft",
+  agent_version_id: null,
   ...ranWithDraft,
   model_provider: "openai",
   model_name: "gpt-4.1-mini",
@@ -336,6 +338,12 @@ export function fakeAgentsApi(
     tags?: Tag[];
     /** Refuses `archive` or `restore` with a 409 carrying this detail. */
     refuse?: Record<string, string>;
+    /** The Project's Current Instructions Version, which a publish pins by default. */
+    currentInstructions?: { id: string; number: number } | null;
+    /** Decides each publish's response instead of accepting it. */
+    publish?: (
+      body: Schemas["PublishAgentRequest"],
+    ) => Response | undefined | Promise<Response | undefined>;
   } = {},
 ) {
   let agents = [...(options.agents ?? [])];
@@ -347,7 +355,44 @@ export function fakeAgentsApi(
       streamedAnswer(["Twenty-five ", "days."], {
         instructions: ranWith(instructionsVersionId),
       }));
+  const published: Record<string, number> = {};
   server.use(
+    http.post(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/versions",
+      async ({ request, params }) => {
+        const body = (await request.json()) as Schemas["PublishAgentRequest"];
+        requests.push({ route: "publish", body });
+        const refused = await options.publish?.(body);
+        if (refused) return refused;
+        const agent = agents.find(
+          (candidate) => candidate.id === params.agentId,
+        ) as Agent;
+        const number =
+          (published[agent.id] ?? agent.live_version?.number ?? 0) + 1;
+        published[agent.id] = number;
+        const version: Schemas["AgentVersionOut"] = {
+          id: `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`,
+          number,
+          note: body.note.trim(),
+          author: { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" },
+          created_at: "2026-11-06T11:00:00Z",
+          config: agent.draft,
+          // Instructions Version IDs end in their number (see `instructionsVersion`).
+          instructions_version: body.instructions_version_id
+            ? {
+                id: body.instructions_version_id,
+                number: Number(body.instructions_version_id.slice(-12)),
+              }
+            : (options.currentInstructions ?? null),
+        };
+        agents = agents.map((candidate) =>
+          candidate.id === agent.id
+            ? { ...agent, live_version: { id: version.id, number } }
+            : candidate,
+        );
+        return HttpResponse.json(version, { status: 201 });
+      },
+    ),
     http.get(
       "*/api/organisations/:organisationId/projects/:projectId/agents",
       ({ request }) => {

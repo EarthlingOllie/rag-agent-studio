@@ -10,11 +10,11 @@ message beside its field.
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import or_, select
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.config import AgentConfig, ModelChoice
-from app.agents.models import Agent, AgentDraft
+from app.agents.models import Agent, AgentDraft, AgentVersion
 from app.credentials.models import ProviderCredential
 from app.credentials.references import CredentialReference
 from app.credentials.registry import Capability
@@ -115,27 +115,34 @@ async def check_draft(
 async def agent_references(
     session: AsyncSession, scope: OrganisationScope, credential_id: uuid.UUID
 ) -> list[CredentialReference]:
-    """The "who references me" source: each Agent Draft setting that uses the credential."""
-    rows = await session.execute(
-        select(Agent, AgentDraft.config)
-        .join(AgentDraft, AgentDraft.agent_id == Agent.id)
-        .where(
-            Agent.organisation_id == scope.organisation_id,
-            or_(
-                *(
-                    AgentDraft.config[(*use.loc, "credential_id")].astext == str(credential_id)
-                    for use in CREDENTIAL_USES
-                )
-            ),
-        )
-    )
+    """The "who references me" source: each setting that uses the credential in an Agent's
+    Draft, or in its Live Version, which Visitors are served."""
     found: list[CredentialReference] = []
-    for agent, stored in rows:
-        config = AgentConfig.model_validate(stored)
-        for use in CREDENTIAL_USES:
-            choice = _choice(config, use)
-            if choice is not None and choice.credential_id == credential_id:
-                found.append(
-                    CredentialReference("agent", str(agent.id), f"{agent.name} ({use.label})")
-                )
+    sources: list[tuple[type[AgentDraft] | type[AgentVersion], ColumnElement[bool], str]] = [
+        (AgentDraft, AgentDraft.agent_id == Agent.id, ""),
+        (AgentVersion, AgentVersion.id == Agent.live_version_id, " Live Version"),
+    ]
+    for model, join_on, suffix in sources:
+        config_column = model.config
+        rows = await session.execute(
+            select(Agent, config_column)
+            .join(model, join_on)
+            .where(
+                Agent.organisation_id == scope.organisation_id,
+                or_(
+                    *(
+                        config_column[(*use.loc, "credential_id")].astext == str(credential_id)
+                        for use in CREDENTIAL_USES
+                    )
+                ),
+            )
+        )
+        for agent, stored in rows:
+            config = AgentConfig.model_validate(stored)
+            found.extend(
+                CredentialReference("agent", str(agent.id), f"{agent.name}{suffix} ({use.label})")
+                for use in CREDENTIAL_USES
+                if (choice := _choice(config, use)) is not None
+                and choice.credential_id == credential_id
+            )
     return found

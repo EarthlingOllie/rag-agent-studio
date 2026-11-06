@@ -8,14 +8,14 @@
 - [05-01: Project Instructions Versions](01-project-instructions-versions.md)
 - [04-07: Full AgentConfig editor](../04-agents-retrieval-playground/07-full-agentconfig-editor.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Publishing creates an immutable Version (config snapshot plus pinned Instructions Version, Current by default, optionally chosen) and sets the Live Version under a lock
-- [ ] The database refuses updates to Versions
-- [ ] Live History entries are written
-- [ ] Messages record their Agent Version, or a Draft marker in the Playground
-- [ ] An Agent without a Version is shown as not live
-- [ ] Concurrent publishes produce consecutive, unique numbers
-- [ ] Publishing is recorded as an Audit Event
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Publishing creates an immutable Version (config snapshot plus pinned Instructions Version, Current by default, optionally chosen) and sets the Live Version under a lock
+- [x] The database refuses updates to Versions
+- [x] Live History entries are written
+- [x] Messages record their Agent Version, or a Draft marker in the Playground
+- [x] An Agent without a Version is shown as not live
+- [x] Concurrent publishes produce consecutive, unique numbers
+- [x] Publishing is recorded as an Audit Event
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

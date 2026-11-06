@@ -13,6 +13,7 @@ import {
   useArchiveOrRestoreAgent,
   useDeleteAgent,
 } from "./agents";
+import { LiveStatus, PublishAgent } from "./AgentPublish";
 import { DraftEditor } from "./DraftEditor";
 import { useInstructionsVersions } from "./instructions";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
@@ -559,11 +560,28 @@ export function AgentPage() {
     body = (
       <>
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-xl font-semibold">{agent.data.name}</h2>
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold">{agent.data.name}</h2>
+              <LiveStatus agent={agent.data} />
+            </div>
+            {!agent.data.live_version && (
+              <p className="text-sm text-slate-700">
+                Visitors can&apos;t use it until you publish it.
+              </p>
+            )}
+          </div>
           {!archived && (
             <ArchiveAgent agent={agent.data} organisationId={organisationId} />
           )}
         </div>
+        {!archived && (
+          <PublishAgent
+            key={`publish-${agent.data.id}`}
+            agent={agent.data}
+            organisationId={organisationId}
+          />
+        )}
         {archived && (
           <ArchivedAgentNotice
             agent={agent.data}

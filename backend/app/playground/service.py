@@ -1,12 +1,17 @@
 """Playground Conversations: starting one, reading it back, and answering a question with
 the Agent runtime, saving the question and the answer as Messages.
 
-A question is answered by the Draft's Model override, or else the Organisation's Default Model,
-through the model gateway, following the Project Instructions Draft or the Instructions Version
-the Editor chose (the Instructions picker), from Chunks the retrieval module finds in the
-Agent's Project (reranked by the Draft's Reranker, when it has one, also built through the
+In the Playground a question is answered by the Draft, following the Project Instructions Draft
+or the Instructions Version the Editor chose (the Instructions picker), and the answer records the
+Draft marker and which Instructions it ran with. ``save_question`` and ``answer`` are shared with
+serving the Live Version (``app.agents.serving``), whose answers record the Agent Version instead
+(its pinned Instructions are derivable from it).
+
+A question is answered by the configuration's Model override, or else the Organisation's
+Default Model, through the model gateway, from Chunks the retrieval module finds in the Agent's
+Project (reranked by the configuration's Reranker, when it has one, also built through the
 gateway). The question is saved before the answer streams; the answer, with its tokens, latency
-and cost, once the stream ends. The answer records which Instructions it ran with.
+and cost, once the stream ends.
 """
 
 import itertools
@@ -23,6 +28,7 @@ from app.agents.config import AgentConfig, ModelChoice, Retrieval
 from app.agents.service import active_agent, get_agent
 from app.conversations.models import (
     DRAFT,
+    VERSION,
     Conversation,
     InstructionsSource,
     Message,
@@ -39,7 +45,7 @@ from app.gateway.ports import Reranker
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
 from app.projects.instructions import project_version
-from app.projects.models import Project
+from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
@@ -69,7 +75,7 @@ class ChosenModel:
 
 
 async def _chosen(
-    session: AsyncSession, scope: OrganisationScope, choice: ModelChoice
+    session: AsyncSession, organisation_id: uuid.UUID, choice: ModelChoice
 ) -> ChosenModel:
     """The credential a Draft setting names, with its model. Saving the Draft checked the
     credential offers the model and made it a Credential reference, so it can't have been
@@ -77,19 +83,19 @@ async def _chosen(
     found = await session.scalars(
         select(ProviderCredential).where(
             ProviderCredential.id == choice.credential_id,
-            ProviderCredential.organisation_id == scope.organisation_id,
+            ProviderCredential.organisation_id == organisation_id,
         )
     )
     return ChosenModel(found.one(), choice.model)
 
 
 async def _chat_model(
-    session: AsyncSession, scope: OrganisationScope, config: AgentConfig
+    session: AsyncSession, organisation_id: uuid.UUID, config: AgentConfig
 ) -> ChosenModel:
     override = config.behaviour.model
     if override is not None:
-        return await _chosen(session, scope, override)
-    default = await read_default(session, scope.organisation_id)
+        return await _chosen(session, organisation_id, override)
+    default = await read_default(session, organisation_id)
     if default is None:
         raise NoDefaultModelError
     return ChosenModel(default.credential, default.model)
@@ -151,20 +157,23 @@ def _turns(messages: list[Message]) -> list[Turn]:
 
 @dataclass(frozen=True)
 class PreparedTurn:
-    """A question saved and ready to answer."""
+    """A question saved and ready to answer, with the configuration and Project Instructions
+    that answer it: the Draft's in the Playground, or an Agent Version's when it is served."""
 
     organisation_id: uuid.UUID
     conversation_id: uuid.UUID
     project: Project
     config: AgentConfig
+    instructions: str
     turns: list[Turn]
     question: str
     chat: ChosenModel
-    # The Project Instructions the answer follows, and the Version they are (None: the Draft).
-    instructions: str
+    # In the Playground, the Instructions Version the answer follows (None: the Draft).
     instructions_version_id: uuid.UUID | None = None
     instructions_version_number: int | None = None
     reranker: ChosenModel | None = None
+    # The Agent Version answering; None for the Draft.
+    agent_version_id: uuid.UUID | None = None
 
     @property
     def instructions_source(self) -> InstructionsSource:
@@ -184,9 +193,10 @@ async def prepare_turn(
     instructions_version_id: uuid.UUID | None = None,
     now: datetime,
 ) -> PreparedTurn:
-    """Checks the question can be answered, then saves it. With no ``instructions_version_id``
-    the answer follows the Project Instructions Draft; otherwise that Version of the Project's
-    Instructions (``InstructionsVersionNotFoundError`` if the Project has no such Version)."""
+    """Checks the question can be answered by the Draft, then saves it. With no
+    ``instructions_version_id`` the answer follows the Project Instructions Draft; otherwise that
+    Version of the Project's Instructions (``InstructionsVersionNotFoundError`` if the Project
+    has no such Version)."""
     project = await active_project(session, scope, project_id)
     version = (
         None
@@ -197,12 +207,45 @@ async def prepare_turn(
     conversation, messages = await get_conversation(
         session, scope, project_id, agent_id, conversation_id
     )
-    chat = await _chat_model(session, scope, found.draft)
-    reranker_choice = found.draft.retrieval.reranker
-    reranker = None if reranker_choice is None else await _chosen(session, scope, reranker_choice)
+    return await save_question(
+        session,
+        project,
+        conversation,
+        messages,
+        found.draft,
+        project.instructions if version is None else version.markdown,
+        question,
+        agent_version_id=None,
+        instructions_version=version,
+        now=now,
+    )
+
+
+async def save_question(
+    session: AsyncSession,
+    project: Project,
+    conversation: Conversation,
+    messages: list[Message],
+    config: AgentConfig,
+    instructions: str,
+    question: str,
+    *,
+    agent_version_id: uuid.UUID | None,
+    instructions_version: InstructionsVersion | None = None,
+    now: datetime,
+) -> PreparedTurn:
+    """Checks ``config`` has a chat model, then saves the question in the Conversation."""
+    organisation_id = conversation.organisation_id
+    chat = await _chat_model(session, organisation_id, config)
+    reranker_choice = config.retrieval.reranker
+    reranker = (
+        None
+        if reranker_choice is None
+        else await _chosen(session, organisation_id, reranker_choice)
+    )
     session.add(
         Message(
-            organisation_id=scope.organisation_id,
+            organisation_id=organisation_id,
             conversation_id=conversation.id,
             role=MessageRole.USER,
             content=question,
@@ -211,17 +254,20 @@ async def prepare_turn(
     conversation.last_activity_at = now
     await session.commit()
     return PreparedTurn(
-        organisation_id=scope.organisation_id,
+        organisation_id=organisation_id,
         conversation_id=conversation.id,
         project=project,
-        config=found.draft,
+        config=config,
+        instructions=instructions,
         turns=_turns(messages),
         question=question,
         chat=chat,
-        instructions=project.instructions if version is None else version.markdown,
-        instructions_version_id=None if version is None else version.id,
-        instructions_version_number=None if version is None else version.number,
+        instructions_version_id=None if instructions_version is None else instructions_version.id,
+        instructions_version_number=(
+            None if instructions_version is None else instructions_version.number
+        ),
         reranker=reranker,
+        agent_version_id=agent_version_id,
     )
 
 
@@ -367,8 +413,13 @@ async def answer(
                 conversation_id=prepared.conversation_id,
                 role=MessageRole.ASSISTANT,
                 content=event.answer,
-                config_source=DRAFT,
-                instructions_source=prepared.instructions_source,
+                config_source=DRAFT if prepared.agent_version_id is None else VERSION,
+                agent_version_id=prepared.agent_version_id,
+                # An Agent Version's answer records no Instructions: its pinned Instructions
+                # are named by the Version.
+                instructions_source=(
+                    prepared.instructions_source if prepared.agent_version_id is None else None
+                ),
                 instructions_version_id=prepared.instructions_version_id,
                 # A fallback reply asked no model, so it names none.
                 model_provider=None if event.fallback else chosen.credential.provider,

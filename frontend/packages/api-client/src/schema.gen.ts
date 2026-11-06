@@ -960,6 +960,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/live-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Agent Live History
+         * @description Every change of the Agent's Live Version, newest first: from which Version to which,
+         *     by what action, who and when.
+         */
+        get: operations["listAgentLiveHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations": {
         parameters: {
             query?: never;
@@ -1057,6 +1078,52 @@ export interface paths {
          * @description Restores an archived Agent to the Agents list (Owners only). Records ``agent.restored``.
          */
         post: operations["restoreAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Agent Versions
+         * @description The Agent's Versions, newest first, and which is the Live Version.
+         */
+        get: operations["listAgentVersions"];
+        put?: never;
+        /**
+         * Publish Agent
+         * @description Publishes the Agent's Draft with a note as its next Version, pinning the chosen Project
+         *     Instructions Version (the Current Version by default), and makes it the Live Version.
+         *     Records ``agent.published`` and a Live History entry.
+         */
+        post: operations["publishAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions/{version_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Agent Version
+         * @description One of the Agent's Versions.
+         */
+        get: operations["getAgentVersion"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1697,6 +1764,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            live_version: components["schemas"]["LiveVersionOut"] | null;
             /** Name */
             name: string;
             /**
@@ -1706,6 +1774,33 @@ export interface components {
             project_id: string;
             /** Public Id */
             public_id: string;
+        };
+        /** AgentVersionOut */
+        AgentVersionOut: {
+            author: components["schemas"]["PersonOut"];
+            config: components["schemas"]["AgentConfig-Output"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            instructions_version: components["schemas"]["VersionNumberOut"] | null;
+            /** Note */
+            note: string;
+            /** Number */
+            number: number;
+        };
+        /** AgentVersionsOut */
+        AgentVersionsOut: {
+            /** Live Version Id */
+            live_version_id: string | null;
+            /** Versions */
+            versions: components["schemas"]["AgentVersionOut"][];
         };
         /** AuditActorOut */
         AuditActorOut: {
@@ -2645,6 +2740,31 @@ export interface components {
          * @enum {string}
          */
         LauncherType: "bubble" | "inline";
+        /** LiveHistoryEntryOut */
+        LiveHistoryEntryOut: {
+            /** Action */
+            action: string;
+            actor: components["schemas"]["PersonOut"];
+            /** Bulk Operation Id */
+            bulk_operation_id: string | null;
+            from_version: components["schemas"]["VersionNumberOut"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            to_version: components["schemas"]["VersionNumberOut"];
+        };
+        /** LiveVersionOut */
+        LiveVersionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+        };
         /** MemberOut */
         MemberOut: {
             /** Email */
@@ -2681,6 +2801,8 @@ export interface components {
         };
         /** MessageOut */
         MessageOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
             /** Config Source */
             config_source: string | null;
             /** Content */
@@ -2838,6 +2960,16 @@ export interface components {
             /** Email */
             email: string;
         };
+        /** PersonOut */
+        PersonOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
         /** PricesOut */
         PricesOut: {
             /** Cached Input */
@@ -2944,6 +3076,13 @@ export interface components {
             id: components["schemas"]["Provider"];
             /** Name */
             name: string;
+        };
+        /** PublishAgentRequest */
+        PublishAgentRequest: {
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
+            /** Note */
+            note: string;
         };
         /** PublishInstructionsRequest */
         PublishInstructionsRequest: {
@@ -3346,6 +3485,8 @@ export interface components {
          *     Chunk retrieval found, given to the model (cited or not) or left out with the reason.
          */
         TraceOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
             /** Chunks */
             chunks: components["schemas"]["TracedChunkOut"][];
             /** Config Source */
@@ -3490,6 +3631,16 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** VersionNumberOut */
+        VersionNumberOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
         };
         /** WorkerHealthResponse */
         WorkerHealthResponse: {
@@ -6282,6 +6433,48 @@ export interface operations {
             };
         };
     };
+    listAgentLiveHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveHistoryEntryOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     startPlaygroundConversation: {
         parameters: {
             query?: never;
@@ -6516,6 +6709,146 @@ export interface operations {
             };
             /** @description This Agent isn't archived. Or: This Project is archived. An Owner can restore it. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listAgentVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersionsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publishAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description That Instructions Version isn't one of this Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAgentVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                version_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -110,7 +110,7 @@ test("when the Versions can't be loaded the Playground still answers with the In
   );
   renderStudio(agentPage);
 
-  expect(await screen.findByText(/The Instructions Versions could not be loaded/, {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByText(/The Instructions Versions could not be loaded, so answers follow the Instructions Draft/, {}, { timeout: 5000 })).toBeInTheDocument();
   const select = await picker();
   expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual(["Instructions Draft"]);
   const answer = await ask("How much leave?");
