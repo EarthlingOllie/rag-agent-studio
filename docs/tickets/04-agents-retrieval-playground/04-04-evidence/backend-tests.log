@@ -1,4 +1,4 @@
-$ make test-backend (TEST_* -> rag0404-pg/redis/rustfs) @ 1520cb1
+$ make test-backend (TEST_* -> rag0404-pg/redis/rustfs) @ 45b838a
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -8,70 +8,74 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 1396 items / 7 deselected / 1389 selected
+collected 1514 items / 7 deselected / 1507 selected
 
 tests/integration/test_agent_config.py ................................. [  2%]
-..........                                                               [  3%]
+..........                                                               [  2%]
 tests/integration/test_agents.py .....................                   [  4%]
 tests/integration/test_audit_events.py ...................               [  5%]
 tests/integration/test_bedrock_credentials.py .......................... [  7%]
 ............                                                             [  8%]
 tests/integration/test_canary.py ....                                    [  8%]
-tests/integration/test_chunk_storage.py ..........                       [  9%]
-tests/integration/test_citations_trace.py ........                       [ 10%]
-tests/integration/test_default_model.py ....................             [ 11%]
-tests/integration/test_document_editions.py ................             [ 12%]
-tests/integration/test_document_viewer.py .....                          [ 13%]
-tests/integration/test_documents.py .....................                [ 14%]
-tests/integration/test_embedding_models.py ............................. [ 16%]
-..........                                                               [ 17%]
-tests/integration/test_health.py ...                                     [ 17%]
-tests/integration/test_ingestion_failures.py ........................... [ 19%]
-.........                                                                [ 20%]
-tests/integration/test_ingestion_scan.py .....                           [ 20%]
-tests/integration/test_invites.py ..............................         [ 22%]
-tests/integration/test_logging.py .......                                [ 23%]
-tests/integration/test_mailer.py ........                                [ 23%]
-tests/integration/test_members.py ...............                        [ 25%]
-tests/integration/test_mfa.py .....................................      [ 27%]
-tests/integration/test_migrations.py ..                                  [ 27%]
-tests/integration/test_no_secret_in_responses.py ....                    [ 28%]
-tests/integration/test_object_store.py ........                          [ 28%]
-tests/integration/test_ocr.py ............                               [ 29%]
-tests/integration/test_openapi.py ...                                    [ 29%]
-tests/integration/test_organisation_switcher.py .......                  [ 30%]
-tests/integration/test_password_audit_events.py ..                       [ 30%]
-tests/integration/test_password_reset.py ...........                     [ 31%]
-tests/integration/test_playground.py ..............                      [ 32%]
-tests/integration/test_prices.py ...................................     [ 34%]
-tests/integration/test_profile.py .......                                [ 35%]
-tests/integration/test_project_instructions.py .........                 [ 35%]
-tests/integration/test_projects.py ....................                  [ 37%]
-tests/integration/test_provider_credentials.py ......................... [ 39%]
-...........                                                              [ 39%]
-tests/integration/test_require_mfa.py .................................. [ 42%]
-...........................................                              [ 45%]
-tests/integration/test_retrieval.py ............                         [ 46%]
-tests/integration/test_retrieval_probe_index.py ..                       [ 46%]
+tests/integration/test_chunk_storage.py ..........                       [  8%]
+tests/integration/test_citations_trace.py ........                       [  9%]
+tests/integration/test_default_model.py ....................             [ 10%]
+tests/integration/test_document_editions.py ................             [ 11%]
+tests/integration/test_document_viewer.py .....                          [ 12%]
+tests/integration/test_documents.py .....................                [ 13%]
+tests/integration/test_embedding_models.py ............................. [ 15%]
+..........                                                               [ 16%]
+tests/integration/test_health.py ...                                     [ 16%]
+tests/integration/test_ingestion_failures.py ........................... [ 18%]
+.........                                                                [ 18%]
+tests/integration/test_ingestion_scan.py .....                           [ 19%]
+tests/integration/test_invites.py ..............................         [ 21%]
+tests/integration/test_logging.py .......                                [ 21%]
+tests/integration/test_mailer.py ........                                [ 22%]
+tests/integration/test_members.py ...............                        [ 23%]
+tests/integration/test_mfa.py .....................................      [ 25%]
+tests/integration/test_migrations.py ..                                  [ 25%]
+tests/integration/test_no_secret_in_responses.py ....                    [ 25%]
+tests/integration/test_object_store.py ..............                    [ 26%]
+tests/integration/test_ocr.py ............                               [ 27%]
+tests/integration/test_openapi.py ...                                    [ 27%]
+tests/integration/test_organisation_switcher.py .......                  [ 28%]
+tests/integration/test_password_audit_events.py ..                       [ 28%]
+tests/integration/test_password_reset.py ...........                     [ 29%]
+tests/integration/test_playground.py ..............                      [ 30%]
+tests/integration/test_prices.py ...................................     [ 32%]
+tests/integration/test_profile.py .......                                [ 32%]
+tests/integration/test_project_deletion.py ..............                [ 33%]
+tests/integration/test_project_instructions.py .........                 [ 34%]
+tests/integration/test_projects.py ....................                  [ 35%]
+tests/integration/test_provider_credentials.py ......................... [ 37%]
+...........                                                              [ 38%]
+tests/integration/test_require_mfa.py .................................. [ 40%]
+................................................                         [ 43%]
+tests/integration/test_retrieval.py ............                         [ 44%]
+tests/integration/test_retrieval_probe_index.py ..                       [ 44%]
+tests/integration/test_seed.py ..........................                [ 46%]
 tests/integration/test_settings.py ....                                  [ 46%]
 tests/integration/test_sign_in_and_out.py ........                       [ 47%]
-tests/integration/test_sign_in_throttling.py ...........                 [ 48%]
-tests/integration/test_sign_up.py ............                           [ 49%]
-tests/integration/test_tag_scoping.py ..                                 [ 49%]
-tests/integration/test_tags.py .............                             [ 50%]
+tests/integration/test_sign_in_throttling.py ...........                 [ 47%]
+tests/integration/test_sign_up.py ............                           [ 48%]
+tests/integration/test_tag_scoping.py ..                                 [ 48%]
+tests/integration/test_tags.py .............                             [ 49%]
 tests/integration/test_telemetry.py ........                             [ 50%]
 tests/integration/test_tenant_isolation.py ............................. [ 52%]
-........................................................................ [ 57%]
-........................................................................ [ 63%]
-........................................................................ [ 68%]
-........................................................................ [ 73%]
-........................................................................ [ 78%]
-.......................                                                  [ 80%]
-tests/integration/test_theme.py .....................                    [ 81%]
-tests/integration/test_worker_entrypoint.py ....                         [ 82%]
-tests/integration/test_worker_health.py ....                             [ 82%]
-tests/unit/test_bedrock_embedder.py ................                     [ 83%]
-tests/unit/test_bedrock_verifier.py ...............................      [ 85%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+........................................................................ [ 66%]
+........................................................................ [ 71%]
+........................................................................ [ 75%]
+..................................................                       [ 79%]
+tests/integration/test_theme.py ......................                   [ 80%]
+tests/integration/test_theme_images.py ................................. [ 82%]
+                                                                         [ 82%]
+tests/integration/test_worker_entrypoint.py ....                         [ 83%]
+tests/integration/test_worker_health.py ....                             [ 83%]
+tests/unit/test_bedrock_embedder.py ................                     [ 84%]
+tests/unit/test_bedrock_verifier.py ...............................      [ 86%]
 tests/unit/test_canary.py .............................................. [ 89%]
 .............                                                            [ 90%]
 tests/unit/test_chunking.py ......                                       [ 90%]
@@ -81,10 +85,10 @@ tests/unit/test_embedding_registry.py ..........                         [ 92%]
 tests/unit/test_envelope_encryption.py .................                 [ 93%]
 tests/unit/test_heuristic_injection_classifier.py .................      [ 94%]
 tests/unit/test_http_credential_verifier.py ............................ [ 96%]
-.                                                                        [ 96%]
-tests/unit/test_ingestion_ports.py ....                                  [ 97%]
+..                                                                       [ 96%]
+tests/unit/test_ingestion_ports.py ....                                  [ 96%]
 tests/unit/test_kms_key_wrapper.py ........                              [ 97%]
-tests/unit/test_model_gateway.py ............................            [ 99%]
+tests/unit/test_model_gateway.py .................................       [ 99%]
 tests/unit/test_prompt_assembly.py ....                                  [ 99%]
 tests/unit/test_retry_backoff.py .                                       [100%]
 
@@ -124,16 +128,16 @@ app/core/clock.py                        11      0      0      0   100%
 app/core/db.py                           16      0      0      0   100%
 app/core/deps.py                          7      0      0      0   100%
 app/core/logs.py                         59      0     18      0   100%
-app/core/settings.py                     83      0      4      0   100%
+app/core/settings.py                     84      0      4      0   100%
 app/core/telemetry.py                    73      0     10      0   100%
 app/credentials/__init__.py               0      0      0      0   100%
 app/credentials/adapters.py              24      0      2      0   100%
 app/credentials/api.py                  202      0      6      0   100%
 app/credentials/bedrock_verifier.py      91      0     10      0   100%
-app/credentials/http_verifier.py         32      0     14      0   100%
+app/credentials/http_verifier.py         34      0     16      0   100%
 app/credentials/models.py                28      0      0      0   100%
 app/credentials/references.py            23      0      2      0   100%
-app/credentials/registry.py              34      0      2      0   100%
+app/credentials/registry.py              35      0      2      0   100%
 app/credentials/service.py              206      0     26      0   100%
 app/credentials/verifier.py              51      0      8      0   100%
 app/crypto/__init__.py                    0      0      0      0   100%
@@ -162,9 +166,10 @@ app/embeddings/provider.py               51      0      8      0   100%
 app/embeddings/registry.py               23      0      0      0   100%
 app/gateway/__init__.py                   2      0      0      0   100%
 app/gateway/adapters.py                  18      0      2      0   100%
-app/gateway/fakes.py                     80      0      6      0   100%
+app/gateway/demo.py                      26      0      4      0   100%
+app/gateway/fakes.py                     83      0      8      0   100%
 app/gateway/gateway.py                   46      0     10      0   100%
-app/gateway/live.py                     132      0     18      0   100%
+app/gateway/live.py                     135      0     20      0   100%
 app/gateway/ports.py                     20      0      0      0   100%
 app/guardrails/__init__.py                0      0      0      0   100%
 app/guardrails/canary.py                 57      0     20      0   100%
@@ -191,11 +196,12 @@ app/pricing/service.py                   58      0      6      0   100%
 app/pricing/sync.py                      13      0      4      0   100%
 app/pricing/table.py                     82      0     16      0   100%
 app/projects/__init__.py                  0      0      0      0   100%
-app/projects/api.py                     101      0      0      0   100%
+app/projects/api.py                     119      0      0      0   100%
 app/projects/embedding.py                72      0     18      0   100%
 app/projects/embedding_api.py            92      0      0      0   100%
 app/projects/models.py                   21      0      0      0   100%
-app/projects/service.py                  90      0     16      0   100%
+app/projects/service.py                 108      0     22      0   100%
+app/projects/tasks.py                    22      0      2      0   100%
 app/retrieval/__init__.py                 0      0      0      0   100%
 app/retrieval/probe.py                   18      0      0      0   100%
 app/retrieval/service.py                136      0     28      0   100%
@@ -203,12 +209,16 @@ app/runtime/__init__.py                   0      0      0      0   100%
 app/runtime/citations.py                 19      0      4      0   100%
 app/runtime/prompt.py                    32      0      4      0   100%
 app/runtime/runtime.py                  105      0     22      0   100%
+app/seed/__init__.py                      0      0      0      0   100%
+app/seed/__main__.py                     26      0      0      0   100%
+app/seed/content.py                      33      0      0      0   100%
+app/seed/runner.py                      174      0     50      0   100%
 app/serve.py                              0      0      0      0   100%
 app/storage/__init__.py                   2      0      0      0   100%
 app/storage/factory.py                   11      0      2      0   100%
-app/storage/memory.py                    24      0      2      0   100%
-app/storage/port.py                      12      0      0      0   100%
-app/storage/s3.py                        41      0      4      0   100%
+app/storage/memory.py                    32      0      4      0   100%
+app/storage/port.py                      14      0      0      0   100%
+app/storage/s3.py                        57      0     10      0   100%
 app/tags/__init__.py                      0      0      0      0   100%
 app/tags/api.py                         108      0      0      0   100%
 app/tags/models.py                       19      0      0      0   100%
@@ -216,6 +226,7 @@ app/tags/service.py                     121      0     20      0   100%
 app/tenancy/__init__.py                   0      0      0      0   100%
 app/tenancy/active.py                    18      0      2      0   100%
 app/tenancy/api.py                       34      0      0      0   100%
+app/tenancy/erasure.py                   26      0      4      0   100%
 app/tenancy/invites.py                  117      0      8      0   100%
 app/tenancy/invites_api.py              137      0      2      0   100%
 app/tenancy/members.py                   52      0     10      0   100%
@@ -226,18 +237,19 @@ app/tenancy/policy.py                    30      0      6      0   100%
 app/tenancy/repository.py                36      0      2      0   100%
 app/tenancy/switcher_api.py              17      0      2      0   100%
 app/theme/__init__.py                     0      0      0      0   100%
-app/theme/api.py                         31      0      0      0   100%
+app/theme/api.py                        112      0      2      0   100%
 app/theme/fonts.py                       32      0      4      0   100%
-app/theme/models.py                      17      0      0      0   100%
+app/theme/images.py                     100      0     20      0   100%
+app/theme/models.py                      19      0      0      0   100%
 app/theme/schema.py                      37      0      0      0   100%
-app/theme/service.py                     57      0     12      0   100%
+app/theme/service.py                    112      0     16      0   100%
 app/worker/__init__.py                    0      0      0      0   100%
 app/worker/celery_app.py                  8      0      0      0   100%
 app/worker/main.py                       17      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                  6493      0    692      0   100%
+TOTAL                                  7110      0    798      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=============== 1389 passed, 7 deselected in 2151.50s (0:35:51) ================
+=============== 1507 passed, 7 deselected in 2257.79s (0:37:37) ================
 exit 0

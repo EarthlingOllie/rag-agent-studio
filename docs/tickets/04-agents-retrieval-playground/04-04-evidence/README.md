@@ -42,18 +42,20 @@ The [shared test seams](../../../specs/README.md#shared-test-seams), as spec 04'
 
 ## Results
 
-All from a fresh `git clone` of the branch at `1520cb1` (the code commit; this evidence commit only adds docs and the ticket Status), run one at a time by [`run-checks.sh`](run-checks.sh) on 2026-11-06. Backend tests used throwaway `rag0404-pg/redis/rustfs` containers; e2e used the compose stack (`-p rag0404`) with the images [`build.sh`](build.sh) built and [`compose.sandbox.yml`](compose.sandbox.yml) / [`e2e.env`](e2e.env).
+Rerun after merging `origin/candidate` at `a123fa1` (03-11 Permanent Project deletion, after 10-01 Seed foundation and 02-06 Theme images; clean merges, no conflicts). All from a fresh `git clone` of the branch at `45b838a` (the merge commit; later commits only touch this evidence folder), run one at a time by [`run-checks.sh`](run-checks.sh) on 2026-11-06. Backend tests used throwaway `rag0404-pg/redis/rustfs` containers; e2e used the compose stack (`-p rag0404`) with the images [`build.sh`](build.sh) built and [`compose.sandbox.yml`](compose.sandbox.yml) / [`e2e.env`](e2e.env). The first run of the code commit `1520cb1` (before the merges) was also all green: 1389 backend tests at 100%, 53 e2e.
 
 | Check | Command | Exit | Summary | Log |
 |---|---|---|---|---|
 | Install | `make install` | 0 | backend + frontend dependencies installed from lockfiles | [install.log](install.log) |
-| Lint + typecheck | `make lint` | 0 | ruff: all checks passed; ruff format: 249 files formatted; mypy: no issues in 249 files; eslint `--max-warnings=0` clean; `tsc` clean | [lint.log](lint.log) |
-| Frontend tests, 100% gate | `make test-frontend` | 0 | 37 files, 452 tests passed; Statements 2253/2253, Branches 1343/1343, Functions 875/875, Lines 1990/1990 (100%) | [frontend-tests.log](frontend-tests.log) |
+| Lint + typecheck | `make lint` | 0 | ruff: all checks passed; ruff format: 264 files formatted; mypy: no issues in 264 files; eslint `--max-warnings=0` clean; `tsc` clean | [lint.log](lint.log) |
+| Frontend tests, 100% gate | `make test-frontend` | 0 | 38 files, 471 tests passed; Statements 2329/2329, Branches 1391/1391, Functions 896/896, Lines 2062/2062 (100%) | [frontend-tests.log](frontend-tests.log) |
 | API client drift | `make check-client` | 0 | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Security | `gitleaks git origin/candidate..HEAD`; `make audit` | 0, 0 | no leaks in 2 commits; pip-audit and pnpm audit: no known vulnerabilities | [security.log](security.log) |
-| Backend tests + coverage | `make test-backend` | 0 | 1389 passed, 7 deselected (live) in 35m51s; line+branch coverage 100.00% (6493 statements, 692 branches, 0 missed); includes `test_retrieval.py` (12), `test_tag_scoping.py` (2), `test_agent_config.py` (33) | [backend-tests.log](backend-tests.log) |
+| Security | `gitleaks git origin/candidate..HEAD`; `make audit` | 0, 0 | no leaks in 3 commits; pip-audit and pnpm audit: no known vulnerabilities | [security.log](security.log) |
+| Backend tests + coverage | `make test-backend` | 0 | 1507 passed, 7 deselected (live) in 37m38s; line+branch coverage 100.00% (7110 statements, 798 branches, 0 missed); includes `test_retrieval.py` (12), `test_tag_scoping.py` (2), `test_agent_config.py` (33) | [backend-tests.log](backend-tests.log) |
 | Images | `build.sh` | 0 | api and studio images built | [images.log](images.log) |
-| E2E (full suite, incl. `tag-scoping.spec.ts`) | `CI=1 make e2e` | 0 | 53 passed (4.6m); `tag-scoping.spec.ts:18` "an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it" passed (24.0s) | [e2e.log](e2e.log) |
+| E2E (full suite, incl. `tag-scoping.spec.ts`) | `CI=1 make e2e` | 0 | 58 passed (4.2m); `tag-scoping.spec.ts:18` passed (16.7s) | [e2e.log](e2e.log) |
+
+Flakes seen on the way, under a load average of 18-30 on the shared 4-CPU machine, none in this ticket's code and none in the final run: an e2e run at `1613b29` failed `members.spec.ts` and `mfa.spec.ts` on 30 s timeouts (3 more flaky); a backend run at `218a6c9` passed all tests but missed `app/api/health.py` 118-119 (99.96%), because the worker-health failed-task test reached its deadline before the worker replied. Both passed on rerun.
 
 ## Gaps and best guesses
 
