@@ -24,6 +24,10 @@ _Avoid_: Font list, web fonts
 Whether the widget uses the Colour Tokens' light values, their dark values, or follows the Visitor's preference (automatic).
 _Avoid_: Colour scheme setting, dark mode toggle
 
+**Appearance**:
+Whether the Studio itself shows light, dark, or follows the system setting. A Member's choice for their browser, set from the top bar; it never affects the widget, which follows its Theme Mode.
+_Avoid_: Theme, Theme Mode, dark mode
+
 **Launcher**:
 How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat, or an inline container that shows it in place.
 _Avoid_: Chat button, trigger
