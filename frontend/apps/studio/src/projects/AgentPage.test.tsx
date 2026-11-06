@@ -21,7 +21,7 @@ test("the Agent page shows the Draft beside the Playground", async () => {
   renderStudio(agentPage);
 
   expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByLabelText("System prompt")).toHaveValue("Answer from the handbook.");
+  expect(await screen.findByRole("textbox", { name: "System prompt" })).toHaveTextContent("Answer from the handbook.");
   expect(screen.getByLabelText("Chunks per answer (top-k)")).toHaveValue(5);
   expect(screen.getByRole("heading", { level: 2, name: "Playground" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "All Agents" })).toHaveAttribute(

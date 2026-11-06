@@ -572,6 +572,16 @@
             "title": "Embedding Model Id",
             "type": "string"
           },
+          "flag": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuardrailFlagOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "heading_path": {
             "items": {
               "type": "string"
@@ -622,7 +632,8 @@
           "heading_path",
           "page_start",
           "page_end",
-          "embedding_model_id"
+          "embedding_model_id",
+          "flag"
         ],
         "title": "ChunkOut",
         "type": "object"
@@ -1262,6 +1273,10 @@
       },
       "DocumentDetailOut": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
           "chunk_count": {
             "title": "Chunk Count",
             "type": "integer"
@@ -1279,6 +1294,16 @@
             "title": "Edition",
             "type": "integer"
           },
+          "error_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "error_message": {
             "anyOf": [
               {
@@ -1289,6 +1314,10 @@
               }
             ],
             "title": "Error Message"
+          },
+          "flagged_chunk_count": {
+            "title": "Flagged Chunk Count",
+            "type": "integer"
           },
           "id": {
             "format": "uuid",
@@ -1352,8 +1381,11 @@
           "content_hash",
           "status",
           "error_message",
+          "error_category",
+          "attempt_count",
           "edition",
           "chunk_count",
+          "flagged_chunk_count",
           "tags",
           "created_at",
           "updated_at",
@@ -1365,6 +1397,10 @@
       },
       "DocumentOut": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
           "chunk_count": {
             "title": "Chunk Count",
             "type": "integer"
@@ -1382,6 +1418,16 @@
             "title": "Edition",
             "type": "integer"
           },
+          "error_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "error_message": {
             "anyOf": [
               {
@@ -1392,6 +1438,10 @@
               }
             ],
             "title": "Error Message"
+          },
+          "flagged_chunk_count": {
+            "title": "Flagged Chunk Count",
+            "type": "integer"
           },
           "id": {
             "format": "uuid",
@@ -1444,8 +1494,11 @@
           "content_hash",
           "status",
           "error_message",
+          "error_category",
+          "attempt_count",
           "edition",
           "chunk_count",
+          "flagged_chunk_count",
           "tags",
           "created_at",
           "updated_at",
@@ -1466,9 +1519,23 @@
       },
       "DocumentStatusOut": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
           "chunk_count": {
             "title": "Chunk Count",
             "type": "integer"
+          },
+          "error_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "error_message": {
             "anyOf": [
@@ -1480,6 +1547,10 @@
               }
             ],
             "title": "Error Message"
+          },
+          "flagged_chunk_count": {
+            "title": "Flagged Chunk Count",
+            "type": "integer"
           },
           "id": {
             "format": "uuid",
@@ -1504,7 +1575,10 @@
           "id",
           "status",
           "error_message",
+          "error_category",
+          "attempt_count",
           "chunk_count",
+          "flagged_chunk_count",
           "replacement"
         ],
         "title": "DocumentStatusOut",
@@ -1751,6 +1825,17 @@
         "title": "FailMode",
         "type": "string"
       },
+      "FailureCategory": {
+        "description": "Why a Document failed, so an Editor knows whether to fix the file or retry it.",
+        "enum": [
+          "unsupported_content",
+          "conversion",
+          "provider",
+          "quota"
+        ],
+        "title": "FailureCategory",
+        "type": "string"
+      },
       "Font": {
         "enum": [
           "Inter",
@@ -1792,6 +1877,30 @@
           "category"
         ],
         "title": "FontOut",
+        "type": "object"
+      },
+      "GuardrailFlagOut": {
+        "description": "Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "score",
+          "reason"
+        ],
+        "title": "GuardrailFlagOut",
         "type": "object"
       },
       "Guardrails-Input": {
@@ -2780,6 +2889,21 @@
         "title": "ProbeRequest",
         "type": "object"
       },
+      "ProjectInstructions": {
+        "description": "The Project Instructions: markdown every Agent in the Project follows, kept exactly.",
+        "properties": {
+          "markdown": {
+            "maxLength": 20000,
+            "title": "Markdown",
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "title": "ProjectInstructions",
+        "type": "object"
+      },
       "ProjectOut": {
         "properties": {
           "agent_count": {
@@ -2933,6 +3057,16 @@
             "title": "Edition",
             "type": "integer"
           },
+          "error_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FailureCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "error_message": {
             "anyOf": [
               {
@@ -2956,7 +3090,8 @@
           "edition",
           "name",
           "status",
-          "error_message"
+          "error_message",
+          "error_category"
         ],
         "title": "ReplacementOut",
         "type": "object"
@@ -3166,6 +3301,21 @@
         "title": "SetDefaultModelRequest",
         "type": "object"
       },
+      "SetDocumentQuotaRequest": {
+        "properties": {
+          "document_quota": {
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Document Quota",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_quota"
+        ],
+        "title": "SetDocumentQuotaRequest",
+        "type": "object"
+      },
       "SetEmbeddingModelRequest": {
         "properties": {
           "credential_id": {
@@ -3309,6 +3459,18 @@
             "minLength": 1,
             "title": "Filename",
             "type": "string"
+          },
+          "replacing_document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacing Document Id"
           },
           "size_bytes": {
             "minimum": 0.0,
@@ -4052,6 +4214,37 @@
           "detail"
         ],
         "title": "UploadConflictResponse",
+        "type": "object"
+      },
+      "UploadLimitsOut": {
+        "properties": {
+          "accepted_extensions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Accepted Extensions",
+            "type": "array"
+          },
+          "document_quota": {
+            "title": "Document Quota",
+            "type": "integer"
+          },
+          "documents_counted": {
+            "title": "Documents Counted",
+            "type": "integer"
+          },
+          "max_upload_bytes": {
+            "title": "Max Upload Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted_extensions",
+          "max_upload_bytes",
+          "document_quota",
+          "documents_counted"
+        ],
+        "title": "UploadLimitsOut",
         "type": "object"
       },
       "ValidationError": {
@@ -8162,6 +8355,90 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/document-quota": {
+      "put": {
+        "description": "Sets how many Documents the Project may hold, not counting Failed ones (Owners only).\nDocuments it already holds are kept when the quota is lowered.",
+        "operationId": "setDocumentQuota",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDocumentQuotaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadLimitsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Document Quota",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents": {
       "get": {
         "description": "The Project's Documents, newest first, optionally searched by name and filtered by\nstatus and Tag.",
@@ -8355,7 +8632,17 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it)."
+            "description": "This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). / This Project has reached its Document quota."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The file is larger than the upload limit."
           },
           "422": {
             "content": {
@@ -8909,6 +9196,16 @@
             },
             "description": "This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). / This Document is still being processed. Try again once it is Ready or Failed."
           },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The file is larger than the upload limit."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -8928,7 +9225,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
       "post": {
-        "description": "Processes a Ready or Failed Document again, with the Project's current settings (such as\nOCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving\nuntil the new ones replace them.",
+        "description": "Processes a Document again from its stored file: it goes back to Queued. When the\nDocument's newer edition is what failed, that edition is retried instead; a Ready Document\nis processed again with the Project's current settings (such as OCR), its Chunks serving\nuntil the new ones replace them.",
         "operationId": "retryDocument",
         "parameters": [
           {
@@ -8987,11 +9284,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/UploadConflictResponse"
                 }
               }
             },
-            "description": "This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it."
+            "description": "This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. / The file is a duplicate of a Document in the Project (``document_id`` names it)."
           },
           "422": {
             "content": {
@@ -9189,6 +9486,152 @@
         "summary": "Set Project Embedding Model",
         "tags": [
           "embedding-models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions": {
+      "get": {
+        "description": "The Project Instructions, archived Project or not.",
+        "operationId": "getProjectInstructions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectInstructions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Instructions",
+        "tags": [
+          "projects"
+        ]
+      },
+      "put": {
+        "description": "Replaces the Project Instructions; records ``project.instructions_updated`` when they\nchange. An archived Project is refused.",
+        "operationId": "saveProjectInstructions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectInstructions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectInstructions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Project Instructions",
+        "tags": [
+          "projects"
         ]
       }
     },
@@ -9691,7 +10134,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/uploads": {
       "post": {
-        "description": "Checks the file type and size, then answers with a presigned URL to PUT the file to.",
+        "description": "Checks the file type and size, and that the Project's Document quota has room, then\nanswers with a presigned URL to PUT the file to.",
         "operationId": "startDocumentUpload",
         "parameters": [
           {
@@ -9754,7 +10197,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it."
+            "description": "This Project has reached its Document quota."
           },
           "413": {
             "content": {
@@ -9788,6 +10231,70 @@
           }
         },
         "summary": "Start Upload",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/uploads/limits": {
+      "get": {
+        "description": "What an upload must satisfy: its type, its size, and room in the Document quota. The\nStudio checks files against these before uploading them.",
+        "operationId": "getUploadLimits",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadLimitsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Upload Limits",
         "tags": [
           "documents"
         ]

@@ -211,13 +211,21 @@ _Avoid_: Indexing, processing pipeline, import
 A per-Project setting, off by default. When it is on, ingestion also reads text in images, so scanned PDFs become readable. It makes ingestion slower, so it is only turned on for Projects that need it. A change applies to Documents processed afterwards; retrying a Document reprocesses it with the new setting.
 _Avoid_: Text recognition, scan mode
 
-**Retry**:
-Sending a Ready or Failed Document's current edition through ingestion again, with its Project's current settings. Its Chunks keep serving until the new ones replace them. Not while the Document, or a new edition of it, is still being processed.
-_Avoid_: Reprocess, re-ingest, re-run
-
 **Content hash**:
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
+
+**Failure category**:
+What kind of failure set a Document to Failed, shown with its readable message: unsupported content (the file isn't what its type says, or has no readable text), conversion error (the converter couldn't convert it, or processing went wrong), provider error (the Embedding Model's provider kept failing after the automatic retries) or quota (the Project's Document quota had no room for it).
+_Avoid_: Error code, error type, failure reason
+
+**Retry**:
+Sending a Document through ingestion again from its stored file, with its Project's current settings, without uploading it again: a Failed Document, or its Failed new edition, or else a Ready Document's current edition (whose Chunks keep serving until the new ones replace them). Not while the Document, or a new edition of it, is still being processed. An Editor retries by hand; a transient failure (a provider error) is retried automatically, after an exponential backoff, up to a fixed number of attempts.
+_Avoid_: Reprocess, re-ingest, re-run
+
+**Document quota**:
+The most Documents a Project may hold, not counting Failed ones. Uploads beyond it are refused with a clear message, and a Document processed when the Project is already full fails with the quota category. A new Edition doesn't add a Document, so the quota never refuses one. Every Project starts at 500; an Owner can change it.
+_Avoid_: Document limit, storage limit, cap
 
 **Document viewer**:
 The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
@@ -246,8 +254,20 @@ _Avoid_: Category, folder, label
 A retrievable passage of a Document.
 _Avoid_: Segment, passage, node
 
+**Ingestion scan**:
+The Guardrail check ingestion runs on every Chunk: the injection classifier looks for instructions aimed at an AI (an indirect prompt injection hidden in a Document). A Chunk it flags keeps a Guardrail flag; nothing is blocked, and a flagged Chunk is still retrievable.
+_Avoid_: Document scan, content filter, malware scan
+
+**Injection classifier**:
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07), the rule-driven fake in tests, and later the local ONNX model and the LLM classifier (spec 08).
+_Avoid_: Detector, filter, moderation model
+
+**Guardrail flag**:
+What the injection classifier records on a Chunk it flags: a label (such as `prompt_injection`), a score from 0 to 1, and a reason an Editor can read. The Document viewer shows it on the Chunk, and the Document list counts a Document's flagged Chunks.
+_Avoid_: Warning, alert, violation
+
 **Project Instructions**:
-Text injected into every Agent in a Project. Versioned the same way as Agents.
+Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents; each Project has one Draft of them.
 _Avoid_: Project context, global prompt, shared context
 
 ## Agents and versioning
@@ -311,6 +331,10 @@ _Avoid_: Default answer, "I don't know" message
 
 **Excluded Chunk**:
 A Chunk retrieval found but didn't give the model, with its reason: below the Minimum Score, or outside the Top-k. It feeds the Trace.
+
+**Markdown editor**:
+The Studio's editor for prompt fields (an Agent's system prompt, Project Instructions). It shows markdown formatted but stores markdown: text is kept exactly until it is edited, and its Markdown view edits the stored text itself.
+_Avoid_: Rich text editor, WYSIWYG field, HTML
 
 **Spotlighting**:
 Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.

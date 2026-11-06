@@ -53,7 +53,7 @@ async def test_an_editor_turns_ocr_on_and_off(
 
 
 # A "scanned" file for the fake converter: its text is in an image, so only OCR reads it.
-SCANNED = b"%SCANNED\n# Leave policy\n\nEveryone gets 25 days of annual leave a year.\n"
+SCANNED = b"%PDF-1.7\n%SCANNED\n# Leave policy\n\nEveryone gets 25 days of annual leave a year.\n"
 
 
 async def chunk_texts(member: SignedUpMember, project_id: str, document_id: str) -> list[str]:
@@ -80,15 +80,21 @@ async def test_with_ocr_off_a_scanned_pdf_has_no_text(app: FastAPI, owner: Signe
 
     document = await upload(app, owner, project_id, "scan.pdf", SCANNED)
 
+    # No text is a failure that says to turn on OCR (ticket 03-04's categories).
     (listed,) = await documents(owner, project_id)
-    assert (listed["status"], listed["chunk_count"]) == ("ready", 0)
+    assert (listed["status"], listed["error_category"], listed["chunk_count"]) == (
+        "failed",
+        "unsupported_content",
+        0,
+    )
+    assert "turn on OCR for this Project" in listed["error_message"]
     assert await chunk_texts(owner, project_id, document["id"]) == []
 
 
 async def test_ocr_doesnt_change_files_that_carry_their_own_text(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
-    text = b"# Expenses\n\nClaim expenses within 30 days.\n"
+    text = b"%PDF-1.7\n# Expenses\n\nClaim expenses within 30 days.\n"
     without_ocr = await create_project(owner, "Without OCR")
     with_ocr = await create_project(owner, "With OCR")
     await set_ocr(owner, with_ocr, on=True)
@@ -138,8 +144,11 @@ async def test_retry_with_ocr_turned_off_drops_the_text_ocr_read(
 
     retried = await retry(owner, project_id, document["id"])
 
-    # The Chunks OCR read serve until reprocessing replaces them.
+    # The Chunks OCR read serve until reprocessing replaces them; without OCR the scan has no
+    # text, so the Document fails and they are dropped.
     assert (retried.json()["status"], retried.json()["chunk_count"]) == ("queued", 1)
+    (listed,) = await documents(owner, project_id)
+    assert (listed["status"], listed["chunk_count"]) == ("failed", 0)
     assert await chunk_texts(owner, project_id, document["id"]) == []
 
 

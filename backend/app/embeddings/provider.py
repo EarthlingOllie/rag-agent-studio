@@ -17,9 +17,9 @@ from docling_core.transforms.chunker.tokenizer.base import BaseTokenizer
 from pydantic_ai.embeddings import EmbeddingModel as GatewayEmbeddingModel
 
 from app.credentials.models import ProviderCredential
-from app.embeddings.port import Embedder
+from app.embeddings.port import Embedder, EmbeddingProviderError
 from app.embeddings.registry import EmbeddingModel
-from app.gateway.gateway import ModelGateway
+from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
 
 CHARS_PER_TOKEN = 3
 
@@ -41,6 +41,11 @@ class ApproximateTokenizer(BaseTokenizer):
 
     def get_tokenizer(self) -> Any:
         return self.count_tokens
+
+
+UNUSABLE_ERRORS = (MissingCredentialError, ModelUnavailableError, UnsupportedCredentialError)
+"""Why a Project's provider Embedding Model can't be called at all: setup problems with its
+Provider Credential that retrying won't fix."""
 
 
 class EmbeddingSizeError(Exception):
@@ -71,7 +76,11 @@ class ProviderEmbedder:
         return vectors
 
     async def embed_passages(self, texts: list[str]) -> list[list[float]]:
-        result = await self._client.embed(texts, input_type="document")
+        try:
+            result = await self._client.embed(texts, input_type="document")
+        except Exception as error:
+            # An error answer, a timeout or a dropped connection: ingestion retries it.
+            raise EmbeddingProviderError(str(error)) from error
         return self._checked([list(vector) for vector in result.embeddings])
 
     async def embed_query(self, text: str) -> list[float]:

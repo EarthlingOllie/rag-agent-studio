@@ -22,8 +22,10 @@ function NewTag({ organisationId, projectId }: { organisationId: string; project
     create.mutate(
       { kind: "create", name: trimmed },
       {
+        // Clears the field only if it still holds the name just added: a name typed while
+        // the request was in flight is kept.
         onSuccess: () => {
-          setName("");
+          setName((current) => (current.trim() === trimmed ? "" : current));
         },
       },
     );

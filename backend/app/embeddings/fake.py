@@ -45,10 +45,12 @@ def hash_vector(text: str, dimension: int) -> list[float]:
 
 
 class HashEmbedder:
-    """Stands in for an Embedding Model (the local one unless told otherwise)."""
+    """Stands in for an Embedding Model (the local one unless told otherwise). Put errors in
+    ``failures`` to make the next calls raise them, one per call."""
 
     def __init__(self, model: EmbeddingModel = LOCAL_MODEL) -> None:
         self._model = model
+        self.failures: list[Exception] = []
 
     @property
     def model(self) -> EmbeddingModel:
@@ -58,6 +60,8 @@ class HashEmbedder:
         return WordTokenizer(max_tokens=max_tokens)
 
     async def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        if self.failures:
+            raise self.failures.pop(0)
         prefix = self._model.passage_prefix
         return [hash_vector(prefix + text, self._model.dimension) for text in texts]
 

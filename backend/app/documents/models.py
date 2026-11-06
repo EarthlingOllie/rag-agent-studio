@@ -10,8 +10,10 @@ from typing import Any
 from pgvector.sqlalchemy import HALFVEC, Vector
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     Computed,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -35,6 +37,7 @@ from app.tenancy.models import Organisation
 
 NAME_MAX = 255
 MIME_MAX = 255
+GUARDRAIL_LABEL_MAX = 50
 
 
 class DocumentStatus(enum.StrEnum):
@@ -45,6 +48,19 @@ class DocumentStatus(enum.StrEnum):
 
 
 FINAL_STATUSES = frozenset({DocumentStatus.READY, DocumentStatus.FAILED})
+
+
+class FailureCategory(enum.StrEnum):
+    """Why a Document failed, so an Editor knows whether to fix the file or retry it."""
+
+    # The file isn't what its type says, or has no readable text.
+    UNSUPPORTED_CONTENT = "unsupported_content"
+    # The converter couldn't convert it, or something else went wrong while processing it.
+    CONVERSION = "conversion"
+    # The Embedding Model's provider kept failing, after the automatic retries.
+    PROVIDER = "provider"
+    # The Project already holds as many Documents as its quota allows.
+    QUOTA = "quota"
 
 
 class Document(IdMixin, Base):
@@ -65,6 +81,8 @@ class Document(IdMixin, Base):
     object_key: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default=DocumentStatus.QUEUED)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # A ``FailureCategory``, while the Document is Failed.
+    error_category: Mapped[str | None] = mapped_column(String(30))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     # The converted markdown in the object store, once converted.
     markdown_key: Mapped[str | None] = mapped_column(Text)
@@ -97,6 +115,8 @@ class StagedEdition(Base):
     object_key: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default=DocumentStatus.QUEUED)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # A ``FailureCategory``, while the staged edition is Failed.
+    error_category: Mapped[str | None] = mapped_column(String(30))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -109,6 +129,11 @@ class Chunk(IdMixin, Base):
             "document_id", "edition", "embedding_model_id", "ordinal", name="uq_chunks_position"
         ),
         Index("ix_chunks_search_vector", "search_vector", postgresql_using="gin"),
+        CheckConstraint(
+            "(guardrail_label IS NULL) = (guardrail_score IS NULL)"
+            " AND (guardrail_label IS NULL) = (guardrail_reason IS NULL)",
+            name="guardrail_flag_complete",
+        ),
     )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
@@ -136,6 +161,11 @@ class Chunk(IdMixin, Base):
     search_vector: Mapped[str] = mapped_column(
         TSVECTOR, Computed("to_tsvector('simple'::regconfig, text)", persisted=True)
     )
+    # The ingestion Guardrail scan's flag, when the injection classifier flagged the Chunk as
+    # instructions aimed at an AI: its label, score (0 to 1) and reason. All null otherwise.
+    guardrail_label: Mapped[str | None] = mapped_column(String(GUARDRAIL_LABEL_MAX))
+    guardrail_score: Mapped[float | None] = mapped_column(Float)
+    guardrail_reason: Mapped[str | None] = mapped_column(Text)
 
 
 # pgvector's HNSW indexes ``vector`` up to this many dimensions; larger models index halfvec.

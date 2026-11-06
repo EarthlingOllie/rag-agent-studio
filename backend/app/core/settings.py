@@ -116,8 +116,17 @@ class Settings(BaseSettings):
     # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
     # deterministic hash-based fake (tests, and stacks that can't download the model).
     embedder: Literal["local", "fake"] = "local"
+    # Scans Chunks for instructions aimed at an AI during ingestion: the heuristic baseline, or
+    # the rule-driven fake (tests). Spec 08 adds the local ONNX classifier.
+    injection_classifier: Literal["heuristic", "fake"] = "heuristic"
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
+    # Transient ingestion failures (the Embedding Model's provider failing) are retried
+    # automatically, up to this many attempts in all, waiting longer after each one: the base
+    # delay, doubled per attempt, never more than the maximum.
+    ingestion_max_attempts: int = Field(default=4, ge=1)
+    ingestion_retry_base_seconds: float = Field(default=10.0, gt=0)
+    ingestion_retry_max_seconds: float = Field(default=300.0, gt=0)
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.

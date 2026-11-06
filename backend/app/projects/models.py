@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, false
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
@@ -11,6 +11,11 @@ from app.embeddings.registry import DEFAULT_MODEL_ID
 
 NAME_MAX = 200
 DESCRIPTION_MAX = 2000
+# The same limit as an Agent's system prompt.
+INSTRUCTIONS_MAX = 20_000
+
+# How many Documents (not counting Failed ones) a new Project may hold; an Owner can change it.
+DEFAULT_DOCUMENT_QUOTA = 500
 
 
 class Project(IdMixin, Base):
@@ -25,6 +30,10 @@ class Project(IdMixin, Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Embedding Model the Project's Chunks are embedded with; the local model by default.
     embedding_model_id: Mapped[str] = mapped_column(String(100), default=DEFAULT_MODEL_ID)
+    # The most Documents, not counting Failed ones, the Project may hold.
+    document_quota: Mapped[int] = mapped_column(
+        Integer, default=DEFAULT_DOCUMENT_QUOTA, server_default=str(DEFAULT_DOCUMENT_QUOTA)
+    )
     # Whether ingestion runs OCR, so scanned PDFs become readable. Off by default: OCR is slow,
     # and most Projects' files carry their own text.
     ocr_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
@@ -34,3 +43,6 @@ class Project(IdMixin, Base):
     embedding_credential_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("provider_credentials.id"), index=True
     )
+    # The Project Instructions: one markdown Draft every Agent in the Project follows, stored
+    # exactly as written. Spec 05 adds its Versions.
+    instructions: Mapped[str] = mapped_column(Text, default="", server_default="")

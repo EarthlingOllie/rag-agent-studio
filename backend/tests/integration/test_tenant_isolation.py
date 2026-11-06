@@ -180,6 +180,10 @@ async def _a_project_to_rename(owner: SignedUpMember, add_member: MemberFactory)
     return {"project_id": await _make_project(owner)}, {"name": "Renamed"}
 
 
+async def _instructions_to_save(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"markdown": "# Rules"}
+
+
 async def _an_archived_project(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {"project_id": await _make_project(owner, archived=True)}, None
 
@@ -205,6 +209,19 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     project_id = await _make_project(owner)
     document = await documents.upload(documents.app_of(owner), owner, project_id, "a.md", b"abc")
     return {"project_id": project_id, "document_id": document["id"]}, None
+
+
+async def _a_failed_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    app = documents.app_of(owner)
+    app.state.ingestion.converter.failure = RuntimeError("Docling crashed")
+    document = await documents.upload(app, owner, project_id, "a.md", b"abc")
+    app.state.ingestion.converter.failure = None
+    return {"project_id": project_id, "document_id": document["id"]}, None
+
+
+async def _a_new_quota(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {"project_id": await _make_project(owner)}, {"document_quota": 10}
 
 
 async def _an_embedding_model_choice(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
@@ -326,6 +343,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("PATCH", PROJECTS + "/{project_id}", EDITOR, _a_project_to_rename),
     ScopedRoute("POST", PROJECTS + "/{project_id}/archive", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/restore", OWNER, _an_archived_project),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/instructions", EDITOR, _a_project),
+    ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("POST", PROJECTS + "/{project_id}/uploads", EDITOR, _an_upload_to_start),
     ScopedRoute("POST", PROJECTS + "/{project_id}/documents", EDITOR, _an_uploaded_file),
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents", EDITOR, _a_project),
@@ -336,6 +355,14 @@ PROJECT_SCOPED_ROUTES = [
     ),
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
+    ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/uploads/limits", EDITOR, _a_project),
+    ScopedRoute("PUT", PROJECTS + "/{project_id}/document-quota", OWNER, _a_new_quota),
+    ScopedRoute(
+        "POST",
+        PROJECTS + "/{project_id}/documents/{document_id}/retry",
+        EDITOR,
+        _a_failed_document,
     ),
     ScopedRoute(
         "POST", PROJECTS + "/{project_id}/documents/{document_id}/retry", EDITOR, _a_document

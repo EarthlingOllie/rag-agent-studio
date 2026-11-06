@@ -22,10 +22,15 @@ from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 
 
+class UnsupportedContentError(Exception):
+    """The file's content can't be read: encrypted, damaged, or not what its type says."""
+
+
 class DocumentConverter(Protocol):
     def convert(self, data: bytes, filename: str, *, ocr: bool) -> DoclingDocument:
         """The file's structure (headings, text, pages). ``filename`` gives the format; ``ocr``
-        says whether to read text in images."""
+        says whether to read text in images. Raises ``UnsupportedContentError`` for content it
+        can't read; any other error is a failed conversion."""
         ...
 
 
@@ -66,11 +71,14 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 # A file starting with this line stands for a scanned one: its text is only in images.
 SCANNED_MARKER = "%SCANNED\n"
+# A PDF starts with this; the fake skips that first line, so a test PDF is text after it.
+PDF_HEADER = "%PDF-"
 
 
 class FakeConverter:
     """Reads the file as UTF-8 text: ``#`` lines become headings, other lines paragraphs, and a
-    form feed starts a new page. A file starting with ``SCANNED_MARKER`` stands for a scanned
+    form feed starts a new page. A first line starting ``%PDF-`` (a PDF's header) is skipped.
+    A file starting with ``SCANNED_MARKER`` stands for a scanned
     one: its text is read only with ``ocr`` on, and otherwise its pages are empty, as Docling's
     are. Set ``failure`` to make the next conversions raise it."""
 
@@ -81,7 +89,11 @@ class FakeConverter:
         if self.failure is not None:
             raise self.failure
         document = DoclingDocument(name=PurePath(filename).stem)
-        text = data.decode("utf-8", errors="replace")
+        # Postgres text can't hold NUL, which binary files read as text would bring. A PDF's
+        # header line is not content.
+        text = data.decode("utf-8", errors="replace").replace("\x00", "")
+        if text.startswith(PDF_HEADER):
+            text = text.partition("\n")[2]
         scanned = text.startswith(SCANNED_MARKER)
         pages = text.removeprefix(SCANNED_MARKER).split("\f")
         for page_no, page in enumerate(pages, start=1):

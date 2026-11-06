@@ -47,7 +47,8 @@ test.describe("Agent and Playground", () => {
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     // The Draft saves itself once typing pauses.
     const saved = page.waitForResponse((response) => response.url().endsWith("/draft") && response.request().method() === "PUT");
-    await page.getByLabel("System prompt").fill("You answer Northwind staff questions about HR policy.");
+    // The system prompt is a markdown editor (contenteditable), not a text box.
+    await page.getByRole("textbox", { name: "System prompt" }).fill("You answer Northwind staff questions about HR policy.");
     expect((await saved).status()).toBe(200);
     await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("All changes saved");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
@@ -81,6 +82,8 @@ test.describe("Agent and Playground", () => {
 
     // The reload keeps the Draft.
     await page.reload();
-    await expect(page.getByLabel("System prompt")).toHaveValue("You answer Northwind staff questions about HR policy.", { timeout: 15_000 });
+    await expect(page.getByRole("textbox", { name: "System prompt" })).toHaveText("You answer Northwind staff questions about HR policy.", {
+      timeout: 15_000,
+    });
   });
 });

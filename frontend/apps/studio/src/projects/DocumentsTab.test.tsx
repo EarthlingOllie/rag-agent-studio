@@ -1,3 +1,4 @@
+import type { Schemas } from "@studio/api-client";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
@@ -7,6 +8,7 @@ import {
   aDocument,
   BUSY,
   fakeDocumentsApi,
+  PLANTED_INJECTION,
   STORAGE,
   UNSUPPORTED,
 } from "../test/documents";
@@ -35,6 +37,62 @@ function rowOf(
   const cell = table.getByRole("cell", { name });
   return within(cell.closest("tr") as HTMLElement);
 }
+
+/** The text of the row's cell under the given column header. */
+function cellUnder(
+  table: Awaited<ReturnType<typeof documentsTable>>,
+  name: string,
+  header: string,
+) {
+  const column = table
+    .getAllByRole("columnheader")
+    .findIndex((h) => h.textContent === header);
+  const row = table.getByRole("cell", { name }).closest("tr") as HTMLElement;
+  return within(row).getAllByRole("cell")[column] as HTMLElement;
+}
+
+test("Documents with flagged Chunks show how many, so they stand out", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({
+    documents: [
+      aDocument({ flagged_chunk_count: 2 }),
+      aDocument({
+        id: "d0c00000-0000-4000-8000-000000000002",
+        name: "faq.md",
+      }),
+    ],
+  });
+  renderStudio(documentsTab());
+
+  const table = await documentsTable();
+  const flagged = cellUnder(table, "handbook.pdf", "Flagged");
+  expect(flagged).toHaveTextContent(/^2$/);
+  expect(within(flagged).getByText("2").tagName).toBe("STRONG");
+  expect(cellUnder(table, "handbook.pdf", "Chunks")).toHaveTextContent(/^12$/);
+  const clean = cellUnder(table, "faq.md", "Flagged");
+  expect(clean).toHaveTextContent(/^0$/);
+  expect(clean.querySelector("strong")).toBeNull();
+});
+
+test("a Document's flagged Chunks are counted once it is Ready, without refreshing", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi();
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/No Documents yet/)).toBeInTheDocument();
+
+  await userEvent.upload(
+    screen.getByLabelText("Choose files to upload"),
+    file("notes.md", `# Notes\n\n${PLANTED_INJECTION}.`),
+  );
+
+  const table = await documentsTable();
+  expect(
+    await table.findByText("Ready", {}, { timeout: 4000 }),
+  ).toBeInTheDocument();
+  expect(cellUnder(table, "notes.md", "Flagged")).toHaveTextContent(/^1$/);
+}, 15000);
 
 test("an Editor uploads files and watches each go from Queued to Ready without refreshing", async () => {
   fakeAuthApi({ signedInAs: adaSession });
@@ -103,24 +161,97 @@ test("files dropped on the dropzone are uploaded", async () => {
   ).toBeInTheDocument();
 });
 
-test("a file the API refuses says why, and the others still upload", async () => {
+test("a file of an unsupported type is refused before upload, and the others still upload", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi();
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+
+  await userEvent.upload(await screen.findByLabelText("Choose files to upload"), [file("sheet.xlsx"), file("README"), file("ok.md")], {
+    applyAccept: false,
+  });
+
+  const refused = await screen.findAllByRole("alert");
+  expect(refused.map((alert) => alert.textContent)).toEqual([UNSUPPORTED, UNSUPPORTED]);
+  expect(await (await documentsTable()).findByRole("cell", { name: "ok.md" })).toBeInTheDocument();
+  // The refused files never reached the API.
+  expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([{ filename: "ok.md", size_bytes: 20 }]);
+});
+
+test("a file over the size limit is refused before upload", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ limits: { max_upload_bytes: 2 * 1024 * 1024 } });
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/up to 2.0 MB each/)).toBeInTheDocument();
+
+  await userEvent.upload(screen.getByLabelText("Choose files to upload"), file("huge.md", "x".repeat(2 * 1024 * 1024 + 1)));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("This file is larger than the 2 MB upload limit.");
+  expect(requests.filter((r) => r.route === "start")).toEqual([]);
+});
+
+test("files beyond the Project's Document quota are refused with a clear message", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [aDocument()], limits: { document_quota: 2 } });
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/1 of 2 Documents/)).toBeInTheDocument();
+
+  await userEvent.upload(screen.getByLabelText("Choose files to upload"), [file("fits.md"), file("over.md")]);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "This Project has reached its quota of 2 Documents. Delete a Document, or ask an Owner to raise the quota.",
+  );
+  expect(await (await documentsTable()).findByRole("cell", { name: "fits.md" })).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([{ filename: "fits.md", size_bytes: 20 }]);
+  expect(await screen.findByText(/2 of 2 Documents/)).toBeInTheDocument();
+});
+
+test("a quota of one names a single Document", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument()], limits: { document_quota: 1 } });
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/1 of 1 Documents/)).toBeInTheDocument();
+
+  await userEvent.upload(screen.getByLabelText("Choose files to upload"), file("over.md"));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("This Project has reached its quota of 1 Document. Delete a Document");
+});
+
+test("a file the API refuses at the start says why", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeDocumentsApi();
-  renderStudio(documentsTab());
-
-  await userEvent.upload(
-    await screen.findByLabelText("Choose files to upload"),
-    [file("sheet.xlsx"), file("ok.md")],
-    {
-      applyAccept: false,
-    },
+  const full = "This Project has reached its quota of 3 Documents. Delete a Document, or ask an Owner to raise the quota.";
+  server.use(
+    http.post("*/api/organisations/:organisationId/projects/:projectId/uploads", () => HttpResponse.json({ detail: full }, { status: 409 })),
   );
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+
+  await userEvent.upload(screen.getByLabelText("Choose files to upload"), file("handbook.md"));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(full);
+});
+
+test("uploads still go ahead when the upload limits can't be loaded, and the API checks them", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi();
+  server.use(http.get(`*/api/organisations/:organisationId/projects/:projectId/uploads/limits`, () => new HttpResponse(null, { status: 502 })));
+  renderStudio(documentsTab());
+  const picker = await screen.findByLabelText("Choose files to upload");
+  expect(picker).toHaveAttribute("accept", ".pdf,.docx,.pptx,.html,.htm,.md,.markdown,.txt");
+
+  await userEvent.upload(picker, [file("sheet.xlsx"), file("ok.md")], { applyAccept: false });
 
   expect(await screen.findByRole("alert")).toHaveTextContent(UNSUPPORTED);
-  expect(
-    await (await documentsTable()).findByRole("cell", { name: "ok.md" }),
-  ).toBeInTheDocument();
+  expect(await (await documentsTable()).findByRole("cell", { name: "ok.md" })).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "start")).toHaveLength(2);
+  expect(screen.queryByText(/Documents in this Project's quota/)).not.toBeInTheDocument();
 });
 
 test("each upload shows its progress until it is stored", async () => {
@@ -214,7 +345,7 @@ test("a confirmation the API refuses shows its reason", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(expired);
 });
 
-test("Documents show their status, size and Chunk count, and why one failed", async () => {
+test("Documents show their status, size and Chunk count, and what kind of failure and why", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeDocumentsApi({
@@ -224,8 +355,8 @@ test("Documents show their status, size and Chunk count, and why one failed", as
         id: "d0c00000-0000-4000-8000-000000000002",
         name: "broken.docx",
         status: "failed",
-        error_message:
-          "This Document couldn't be processed. Try uploading it again.",
+        error_category: "unsupported_content",
+        error_message: "This file isn't a valid DOCX file. Check the file, then upload it again.",
         chunk_count: 0,
         size_bytes: 20_480,
       }),
@@ -236,19 +367,93 @@ test("Documents show their status, size and Chunk count, and why one failed", as
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size", "Actions"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size", "Actions"]);
   const ready = rowOf(table, "handbook.pdf");
   expect(ready.getByText("Ready")).toBeInTheDocument();
   expect(ready.getByText("12")).toBeInTheDocument();
   expect(ready.getByText("2.5 MB")).toBeInTheDocument();
   const failed = rowOf(table, "broken.docx");
   expect(failed.getByText("Failed")).toBeInTheDocument();
-  expect(
-    failed.getByText(
-      "This Document couldn't be processed. Try uploading it again.",
-    ),
-  ).toBeInTheDocument();
+  expect(failed.getByText("Unsupported content")).toBeInTheDocument();
+  expect(failed.getByText("This file isn't a valid DOCX file. Check the file, then upload it again.")).toBeInTheDocument();
   expect(failed.getByText("20.0 KB")).toBeInTheDocument();
+  expect(failed.getByRole("button", { name: "Retry broken.docx" })).toBeInTheDocument();
+});
+
+const failedDocument = (category: Schemas["FailureCategory"], message: string) =>
+  aDocument({
+    id: "d0c00000-0000-4000-8000-000000000009",
+    name: "broken.md",
+    status: "failed",
+    error_category: category,
+    error_message: message,
+    chunk_count: 0,
+  });
+
+test.each([
+  ["conversion", "Conversion error"],
+  ["provider", "Provider error"],
+  ["quota", "Quota reached"],
+] as const)("a %s failure is labelled %s", async (category, label) => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [failedDocument(category, "Why it failed.")] });
+  renderStudio(documentsTab());
+
+  const row = rowOf(await documentsTable(), "broken.md");
+  expect(row.getByText(label)).toBeInTheDocument();
+  expect(row.getByText("Why it failed.")).toBeInTheDocument();
+});
+
+test("an Editor retries a failed Document and watches it go back to Ready", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({
+    documents: [failedDocument("conversion", "This file couldn't be converted. Retry it, or upload a fixed copy.")],
+  });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.click(table.getByRole("button", { name: "Retry broken.md" }));
+
+  expect(await table.findByText("Queued")).toBeInTheDocument();
+  expect(table.queryByText("Conversion error")).not.toBeInTheDocument();
+  expect(await table.findByText("Ready", {}, { timeout: 6000 })).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "retry").map((r) => r.body)).toEqual(["d0c00000-0000-4000-8000-000000000009"]);
+}, 10000);
+
+test.each([
+  [409, { detail: "This file is already in the Project as handbook.md." }, "This file is already in the Project as handbook.md."],
+  [502, "Bad gateway", "The retry failed. Try again."],
+  [409, {}, "The retry failed. Try again."],
+])("a retry the API answers with %s says so", async (status, body, message) => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [failedDocument("conversion", "Couldn't convert.")] });
+  server.use(
+    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/retry", () =>
+      typeof body === "string" ? new HttpResponse(body, { status }) : HttpResponse.json(body, { status }),
+    ),
+  );
+  renderStudio(documentsTab());
+
+  await userEvent.click((await documentsTable()).getByRole("button", { name: "Retry broken.md" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(message);
+});
+
+test("a Document waiting for an automatic retry says so while it is Queued", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const retrying = "The Embedding Model's provider didn't respond. Retrying automatically (attempt 2 of 4).";
+  fakeDocumentsApi({ documents: [aDocument({ status: "queued", error_message: retrying, chunk_count: 0, attempt_count: 1 })] });
+  server.use(http.get(`${DOCUMENTS}/statuses`, () => new HttpResponse("Bad gateway", { status: 502 })));
+  renderStudio(documentsTab());
+
+  const row = rowOf(await documentsTable(), "handbook.pdf");
+  expect(row.getByText("Queued")).toBeInTheDocument();
+  expect(row.getByText(retrying)).toHaveClass("text-slate-700");
+  expect(row.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
 });
 
 test("the Document list says when it can't be loaded", async () => {
@@ -335,7 +540,7 @@ test("an Editor uploads a new edition, and the old one shows as Ready until the 
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size", "Actions"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size", "Actions"]);
 
   await userEvent.upload(
     table.getByLabelText("New edition of handbook.pdf"),
@@ -423,22 +628,24 @@ test("a second new edition shows as soon as it is uploaded, after the first has 
   ).toBeInTheDocument();
 }, 20000);
 
+const CONVERT_FAILED =
+  "This file couldn't be converted. Retry it, or upload a fixed copy.";
+
+const withFailedEdition = () =>
+  aDocument({
+    replacement: {
+      edition: 2,
+      name: "broken.md",
+      status: "failed",
+      error_category: "conversion",
+      error_message: CONVERT_FAILED,
+    },
+  });
+
 test("a failed new edition says why, and the Document keeps its current edition", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
-  fakeDocumentsApi({
-    documents: [
-      aDocument({
-        replacement: {
-          edition: 2,
-          name: "broken.md",
-          status: "failed",
-          error_message:
-            "This Document couldn't be processed. Try uploading it again.",
-        },
-      }),
-    ],
-  });
+  fakeDocumentsApi({ documents: [withFailedEdition()] });
   renderStudio(documentsTab());
 
   const row = rowOf(await documentsTable(), "handbook.pdf");
@@ -446,13 +653,87 @@ test("a failed new edition says why, and the Document keeps its current edition"
   expect(
     row.getByText(/New edition 2 \(broken\.md\): Failed/),
   ).toBeInTheDocument();
-  expect(
-    row.getByText(
-      "This Document couldn't be processed. Try uploading it again.",
-    ),
-  ).toBeInTheDocument();
-  // A failed new edition can be replaced by another.
+  expect(row.getByText("Conversion error")).toBeInTheDocument();
+  expect(row.getByText(CONVERT_FAILED)).toBeInTheDocument();
+  // A failed new edition can be replaced by another, or retried.
   expect(row.getByLabelText("New edition of handbook.pdf")).toBeInTheDocument();
+  expect(
+    row.getByRole("button", { name: "Retry handbook.pdf" }),
+  ).toBeInTheDocument();
+});
+
+test("an Editor retries a failed new edition and it replaces the Document", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [withFailedEdition()] });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.click(
+    table.getByRole("button", { name: "Retry handbook.pdf" }),
+  );
+
+  expect(
+    await table.findByText(/New edition 2 \(broken\.md\): Queued/),
+  ).toBeInTheDocument();
+  expect(table.queryByText("Conversion error")).not.toBeInTheDocument();
+  expect(
+    await table.findByRole("cell", { name: "broken.md" }, { timeout: 6000 }),
+  ).toBeInTheDocument();
+  expect(
+    requests.filter((r) => r.route === "retry").map((r) => r.body),
+  ).toEqual([aDocument().id]);
+}, 10000);
+
+test("a new edition of an unsupported type is refused before upload, even in a full Project", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({
+    documents: [aDocument()],
+    limits: { document_quota: 1 },
+  });
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/1 of 1 Documents/)).toBeInTheDocument();
+  const table = await documentsTable();
+
+  await userEvent.upload(
+    table.getByLabelText("New edition of handbook.pdf"),
+    file("sheet.xlsx"),
+    { applyAccept: false },
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(UNSUPPORTED);
+  expect(requests.filter((r) => r.route === "start")).toEqual([]);
+
+  // A new edition doesn't add a Document, so the full quota doesn't refuse it.
+  await userEvent.upload(
+    table.getByLabelText("New edition of handbook.pdf"),
+    file("handbook-2.md"),
+  );
+  expect(
+    await table.findByText(/New edition 2 \(handbook-2\.md\)/),
+  ).toBeInTheDocument();
+  expect(
+    requests.filter((r) => r.route === "start").map((r) => r.body),
+  ).toEqual([
+    {
+      filename: "handbook-2.md",
+      size_bytes: 20,
+      replacing_document_id: aDocument().id,
+    },
+  ]);
+});
+
+test("a failed Document in an archived Project offers no retry", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({
+    documents: [aDocument({ status: "failed", error_category: "conversion" })],
+  });
+  renderStudio(documentsTab(oldProject.id));
+
+  const row = rowOf(await documentsTable(), "handbook.pdf");
+  expect(row.getByText("Conversion error")).toBeInTheDocument();
+  expect(row.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
 });
 
 test("a new edition the API refuses says why", async () => {
@@ -600,12 +881,42 @@ test("an archived Project's Documents can't be replaced or deleted", async () =>
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size"]);
   expect(
     table.queryByRole("button", { name: /Delete/ }),
   ).not.toBeInTheDocument();
 });
 
+test("a new edition still uploads when the upload limits can't be loaded, and the API checks it", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [aDocument()] });
+  server.use(http.get(`*/api/organisations/:organisationId/projects/:projectId/uploads/limits`, () => new HttpResponse(null, { status: 502 })));
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.upload(table.getByLabelText("New edition of handbook.pdf"), file("handbook-2027.md", "# Handbook 2027"));
+
+  expect(await within(screen.getByRole("list", { name: "Uploads" })).findByText("Uploaded")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([
+    expect.objectContaining({ filename: "handbook-2027.md", replacing_document_id: aDocument().id }),
+  ]);
+});
+
+test("a Document that fails stops counting towards the quota without a reload", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ failing: ["broken.pdf"] });
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+
+  await userEvent.upload(screen.getByLabelText("Choose files to upload"), new File(["not a pdf"], "broken.pdf", { type: "application/pdf" }));
+
+  expect(await screen.findByText(/1 of 500 Documents/)).toBeInTheDocument();
+  const row = rowOf(await documentsTable(), "broken.pdf");
+  expect(await row.findByText("Unsupported content", {}, { timeout: 8000 })).toBeInTheDocument();
+  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+}, 15000);
 test("a Ready or Failed Document is retried, and goes through Queued to Ready again", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
@@ -637,7 +948,7 @@ test("a Document still being processed, or with a new edition being processed, h
   const replacing = aDocument({
     id: "d0c00000-0000-4000-8000-000000000003",
     name: "policy.pdf",
-    replacement: { edition: 2, name: "policy.pdf", status: "processing", error_message: null },
+    replacement: { edition: 2, name: "policy.pdf", status: "processing", error_message: null, error_category: null },
   });
   fakeDocumentsApi({ documents: [aDocument({ status: "processing", chunk_count: 0 }), replacing] });
   server.use(http.get(`${DOCUMENTS}/statuses`, () => new HttpResponse("Bad gateway", { status: 502 })));

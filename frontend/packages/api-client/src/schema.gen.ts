@@ -1024,6 +1024,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/document-quota": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Document Quota
+         * @description Sets how many Documents the Project may hold, not counting Failed ones (Owners only).
+         *     Documents it already holds are kept when the quota is lowered.
+         */
+        put: operations["setDocumentQuota"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/documents": {
         parameters: {
             query?: never;
@@ -1191,8 +1212,9 @@ export interface paths {
         put?: never;
         /**
          * Retry Document
-         * @description Processes a Ready or Failed Document again, with the Project's current settings (such as
-         *     OCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving
+         * @description Processes a Document again from its stored file: it goes back to Queued. When the
+         *     Document's newer edition is what failed, that edition is retried instead; a Ready Document
+         *     is processed again with the Project's current settings (such as OCR), its Chunks serving
          *     until the new ones replace them.
          */
         post: operations["retryDocument"];
@@ -1237,6 +1259,31 @@ export interface paths {
          *     ``project.embedding_model_changed``.
          */
         put: operations["setProjectEmbeddingModel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Instructions
+         * @description The Project Instructions, archived Project or not.
+         */
+        get: operations["getProjectInstructions"];
+        /**
+         * Save Project Instructions
+         * @description Replaces the Project Instructions; records ``project.instructions_updated`` when they
+         *     change. An archived Project is refused.
+         */
+        put: operations["saveProjectInstructions"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1345,9 +1392,31 @@ export interface paths {
         put?: never;
         /**
          * Start Upload
-         * @description Checks the file type and size, then answers with a presigned URL to PUT the file to.
+         * @description Checks the file type and size, and that the Project's Document quota has room, then
+         *     answers with a presigned URL to PUT the file to.
          */
         post: operations["startDocumentUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/uploads/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Upload Limits
+         * @description What an upload must satisfy: its type, its size, and room in the Document quota. The
+         *     Studio checks files against these before uploading them.
+         */
+        get: operations["getUploadLimits"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1709,6 +1778,7 @@ export interface components {
         ChunkOut: {
             /** Embedding Model Id */
             embedding_model_id: string;
+            flag: components["schemas"]["GuardrailFlagOut"] | null;
             /** Heading Path */
             heading_path: string[];
             /**
@@ -1998,6 +2068,8 @@ export interface components {
         };
         /** DocumentDetailOut */
         DocumentDetailOut: {
+            /** Attempt Count */
+            attempt_count: number;
             /** Chunk Count */
             chunk_count: number;
             /** Content Hash */
@@ -2009,8 +2081,11 @@ export interface components {
             created_at: string;
             /** Edition */
             edition: number;
+            error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
+            /** Flagged Chunk Count */
+            flagged_chunk_count: number;
             /**
              * Id
              * Format: uuid
@@ -2036,6 +2111,8 @@ export interface components {
         };
         /** DocumentOut */
         DocumentOut: {
+            /** Attempt Count */
+            attempt_count: number;
             /** Chunk Count */
             chunk_count: number;
             /** Content Hash */
@@ -2047,8 +2124,11 @@ export interface components {
             created_at: string;
             /** Edition */
             edition: number;
+            error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
+            /** Flagged Chunk Count */
+            flagged_chunk_count: number;
             /**
              * Id
              * Format: uuid
@@ -2077,10 +2157,15 @@ export interface components {
         DocumentStatus: "queued" | "processing" | "ready" | "failed";
         /** DocumentStatusOut */
         DocumentStatusOut: {
+            /** Attempt Count */
+            attempt_count: number;
             /** Chunk Count */
             chunk_count: number;
+            error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
+            /** Flagged Chunk Count */
+            flagged_chunk_count: number;
             /**
              * Id
              * Format: uuid
@@ -2185,6 +2270,12 @@ export interface components {
          */
         FailMode: "open" | "closed";
         /**
+         * FailureCategory
+         * @description Why a Document failed, so an Editor knows whether to fix the file or retry it.
+         * @enum {string}
+         */
+        FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        /**
          * Font
          * @enum {string}
          */
@@ -2198,6 +2289,18 @@ export interface components {
         FontOut: {
             category: components["schemas"]["FontCategory"];
             family: components["schemas"]["Font"];
+        };
+        /**
+         * GuardrailFlagOut
+         * @description Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.
+         */
+        GuardrailFlagOut: {
+            /** Label */
+            label: string;
+            /** Reason */
+            reason: string;
+            /** Score */
+            score: number;
         };
         /**
          * Guardrails
@@ -2591,6 +2694,14 @@ export interface components {
              */
             top_k: number;
         };
+        /**
+         * ProjectInstructions
+         * @description The Project Instructions: markdown every Agent in the Project follows, kept exactly.
+         */
+        ProjectInstructions: {
+            /** Markdown */
+            markdown: string;
+        };
         /** ProjectOut */
         ProjectOut: {
             /** Agent Count */
@@ -2657,6 +2768,7 @@ export interface components {
         ReplacementOut: {
             /** Edition */
             edition: number;
+            error_category: components["schemas"]["FailureCategory"] | null;
             /** Error Message */
             error_message: string | null;
             /** Name */
@@ -2754,6 +2866,11 @@ export interface components {
             /** Model */
             model: string;
         };
+        /** SetDocumentQuotaRequest */
+        SetDocumentQuotaRequest: {
+            /** Document Quota */
+            document_quota: number;
+        };
         /** SetEmbeddingModelRequest */
         SetEmbeddingModelRequest: {
             /** Credential Id */
@@ -2812,6 +2929,8 @@ export interface components {
         StartUploadRequest: {
             /** Filename */
             filename: string;
+            /** Replacing Document Id */
+            replacing_document_id?: string | null;
             /** Size Bytes */
             size_bytes: number;
         };
@@ -3072,6 +3191,17 @@ export interface components {
             document_id?: string | null;
             /** Document Name */
             document_name?: string | null;
+        };
+        /** UploadLimitsOut */
+        UploadLimitsOut: {
+            /** Accepted Extensions */
+            accepted_extensions: string[];
+            /** Document Quota */
+            document_quota: number;
+            /** Documents Counted */
+            documents_counted: number;
+            /** Max Upload Bytes */
+            max_upload_bytes: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -5926,6 +6056,60 @@ export interface operations {
             };
         };
     };
+    setDocumentQuota: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDocumentQuotaRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadLimitsOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listDocuments: {
         parameters: {
             query?: {
@@ -6008,13 +6192,22 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). */
+            /** @description This Project is archived. An Owner can restore it. / The file hasn't reached storage yet. Upload it, then confirm. / This upload wasn't found or has expired. Start the upload again. / The file is a duplicate of a Document in the Project (``document_id`` names it). / This Project has reached its Document quota. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["UploadConflictResponse"];
+                };
+            };
+            /** @description The file is larger than the upload limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description The uploaded file doesn't match its content hash. Upload it again. */
@@ -6341,6 +6534,15 @@ export interface operations {
                     "application/json": components["schemas"]["UploadConflictResponse"];
                 };
             };
+            /** @description The file is larger than the upload limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description The uploaded file doesn't match its content hash. Upload it again. */
             422: {
                 headers: {
@@ -6383,13 +6585,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. */
+            /** @description This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. / The file is a duplicate of a Document in the Project (``document_id`` names it). */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["UploadConflictResponse"];
                 };
             };
             /** @description Validation Error */
@@ -6508,6 +6710,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProjectInstructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectInstructions"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saveProjectInstructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInstructions"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectInstructions"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -6867,7 +7164,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. */
+            /** @description This Project has reached its Document quota. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6887,6 +7184,47 @@ export interface operations {
             };
             /** @description This file type isn't supported. Upload a PDF, DOCX, PPTX, HTML, Markdown or TXT file. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getUploadLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadLimitsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

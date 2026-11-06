@@ -37,7 +37,7 @@ test("an Editor creates an Agent and lands on its page", async () => {
   await userEvent.click(within(form).getByRole("button", { name: "Create Agent" }));
 
   expect(await screen.findByRole("heading", { level: 2, name: "Helper" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByLabelText("System prompt")).toHaveValue("");
+  expect(screen.getByRole("textbox", { name: "System prompt" })).toHaveTextContent("");
   expect(requests).toEqual([{ route: "create", body: { name: "Helper" } }]);
 });
 

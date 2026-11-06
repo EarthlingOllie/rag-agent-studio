@@ -40,7 +40,7 @@ test("every configuration group is shown with the Draft's settings", async () =>
 
   for (const name of ["Behaviour", "Retrieval", "Experience", "Guardrails"]) expect(group(name)).toBeInTheDocument();
   const behaviour = group("Behaviour");
-  expect(within(behaviour).getByLabelText("System prompt")).toHaveValue("Answer from the handbook.");
+  expect(await within(behaviour).findByRole("textbox", { name: "System prompt" })).toHaveTextContent("Answer from the handbook.");
   expect(within(behaviour).getByLabelText("Credential")).toHaveValue("");
   expect(within(behaviour).getByLabelText("Temperature")).toHaveValue(0.7);
   expect(within(behaviour).getByLabelText("Max output tokens")).toHaveValue(1024);
@@ -97,8 +97,12 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
   await userEvent.type(within(behaviour).getByLabelText("Remembered turns"), "2");
   await userEvent.clear(within(behaviour).getByLabelText(/Fallback text/));
   await userEvent.type(within(behaviour).getByLabelText(/Fallback text/), "Ask HR.");
-  await userEvent.clear(within(behaviour).getByLabelText("System prompt"));
-  await userEvent.type(within(behaviour).getByLabelText("System prompt"), "Be brief.");
+  // The system prompt is a markdown editor: its Markdown view edits the markdown itself.
+  await within(behaviour).findByRole("textbox", { name: "System prompt" });
+  await userEvent.click(within(behaviour).getByRole("button", { name: "Markdown" }));
+  const prompt = within(behaviour).getByRole("textbox", { name: "System prompt (Markdown)" });
+  await userEvent.clear(prompt);
+  await userEvent.type(prompt, "# Role{enter}{enter}Be brief.");
   const experience = group("Experience");
   await userEvent.type(within(experience).getByLabelText("Display name"), "Hana");
   await userEvent.type(within(experience).getByLabelText(/Avatar URL/), "https://cdn.example.com/hana.png");
@@ -117,7 +121,7 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
 
   await saved();
   expect(saves(requests).at(-1)).toEqual({
-    behaviour: { ...defaultDraft.behaviour, system_prompt: "Be brief.", max_output_tokens: 600, remembered_turns: 2, fallback_text: "Ask HR." },
+    behaviour: { ...defaultDraft.behaviour, system_prompt: "# Role\n\nBe brief.", max_output_tokens: 600, remembered_turns: 2, fallback_text: "Ask HR." },
     retrieval: defaultDraft.retrieval,
     experience: {
       display_name: "Hana",

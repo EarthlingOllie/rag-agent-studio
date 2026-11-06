@@ -58,7 +58,10 @@ async def test_a_document_that_failed_to_convert_opens_without_markdown(
     assert response.status_code == 200, response.text
     opened = response.json()
     assert (opened["status"], opened["chunk_count"], opened["markdown"]) == ("failed", 0, None)
-    assert opened["error_message"] == "This Document couldn't be processed. Try uploading it again."
+    assert (opened["error_category"], opened["error_message"]) == (
+        "conversion",
+        "This file couldn't be converted. Retry it, or upload a fixed copy.",
+    )
 
 
 async def test_the_original_file_downloads_through_a_presigned_get(
