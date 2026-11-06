@@ -34,6 +34,8 @@ from app.mail.factory import build_mailer
 from app.playground import api as playground_api
 from app.pricing import api as pricing_api
 from app.projects import api as projects_api
+from app.projects import embedding_api
+from app.projects.embedding import project_embedding_references
 from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
@@ -61,6 +63,7 @@ ROUTERS: Sequence[APIRouter] = (
     theme_api.router,
     theme_api.fonts_router,
     projects_api.router,
+    embedding_api.router,
     documents_api.router,
     tags_api.router,
     agents_api.router,
@@ -92,17 +95,17 @@ def _lifespan(
         app.state.credential_verifier = build_verifier(
             settings, app.state.provider_http, app.state.clock
         )
-        # Ingestion tasks enqueued from here run in the worker; in tests they run eagerly in
-        # this process and use these same adapters.
-        app.state.ingestion = build_ports(settings)
-        install_ports(app.state.ingestion)
-        if settings.object_store_create_bucket:
-            await app.state.ingestion.object_store.prepare()
         # Pydantic AI's provider clients take httpx2 clients; every model call shares this one.
         app.state.model_http = httpx2.AsyncClient(timeout=settings.model_timeout_seconds)
         app.state.model_gateway = build_model_gateway(
             settings, app.state.envelope, app.state.model_http
         )
+        # Ingestion tasks enqueued from here run in the worker; in tests they run eagerly in
+        # this process and use these same adapters.
+        app.state.ingestion = build_ports(settings, app.state.envelope)
+        install_ports(app.state.ingestion)
+        if settings.object_store_create_bucket:
+            await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield
@@ -124,6 +127,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     # Consumers of Provider Credentials register their "who references me" sources here.
     app.state.credential_references = ReferenceRegistry()
     app.state.credential_references.register(default_model_references)
+    app.state.credential_references.register(project_embedding_references)
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.

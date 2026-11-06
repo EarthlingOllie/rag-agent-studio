@@ -15,6 +15,7 @@ from docling_core.types.doc.document import DoclingDocument
 
 from app.documents.chunking import chunk_document
 from app.embeddings.fake import WordTokenizer
+from app.embeddings.provider import ApproximateTokenizer
 
 RECORDED = Path(__file__).parents[1] / "fixtures" / "docling"
 
@@ -74,4 +75,15 @@ def test_no_chunk_is_longer_than_the_tokenizers_limit(max_tokens: int) -> None:
 
     assert len(drafts) > 3  # the long sections were split
     assert max(tokenizer.count_tokens(d.embedding_text) for d in drafts) <= max_tokens
+    assert "25 days of annual leave" in " ".join(d.text for d in drafts)
+
+
+def test_a_provider_models_chunks_stay_inside_its_limit_counted_by_approximation() -> None:
+    tokenizer = ApproximateTokenizer(max_tokens=40)
+
+    drafts = chunk_document(recorded("northwind-handbook.docx"), tokenizer)
+
+    assert len(drafts) > 3  # the long sections were split
+    assert max(tokenizer.count_tokens(d.embedding_text) for d in drafts) <= 40
+    assert tokenizer.count_tokens("Annual leave") == 4  # 12 characters, 3 per token
     assert "25 days of annual leave" in " ".join(d.text for d in drafts)

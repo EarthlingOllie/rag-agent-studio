@@ -138,7 +138,7 @@ async def _semantic(
     session: AsyncSession, project: Project, query: str, embedder: Embedder
 ) -> list[tuple[Chunk, str, float]]:
     dimension = EMBEDDING_MODELS[project.embedding_model_id].dimension
-    vector = embedder.embed_query(query)
+    vector = await embedder.embed_query(query)
     # Cast to the model's dimension so the query can use that model's HNSW index.
     distance = cast(Chunk.embedding, Vector(dimension)).cosine_distance(vector)
     rows = await session.execute(

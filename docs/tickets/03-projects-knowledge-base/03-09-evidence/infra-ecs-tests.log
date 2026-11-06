@@ -1,0 +1,76 @@
+# worktree, infra/modules/ecs and infra/modules/kms; TF_CLI_CONFIG_FILE points at a filesystem mirror holding hashicorp/aws 6.72.0 (the lock file's version) from releases.hashicorp.com
++ terraform -chdir=infra/modules/ecs init -backend=false && validate && test
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... pass
+  run "services_reach_only_their_data_stores_and_https"... pass
+  run "deployments_roll_back_and_beat_never_runs_twice"... pass
+  run "outputs_the_cluster_services_and_the_bedrock_trust_principal"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer"... pass
+  run "rejects_an_unknown_cpu_value"... pass
+  run "accepts_every_fargate_cpu_size"... pass
+  run "accepts_4_vcpu_tasks"... pass
+  run "rejects_a_missing_service_size"... pass
+  run "rejects_two_beats"... pass
+  run "rejects_a_negative_count"... pass
+  run "rejects_the_latest_tag"... pass
+  run "rejects_an_image_from_outside_ecr"... pass
+  run "rejects_a_repository_arn_that_is_not_ecr"... pass
+  run "rejects_keeping_logs_forever"... pass
+  run "rejects_a_logfire_secret_that_is_not_a_secret_arn"... pass
+  run "rejects_a_header_name_with_spaces"... pass
+  run "rejects_fractional_secret_versions"... pass
+  run "rejects_a_single_public_subnet"... pass
+  run "rejects_no_private_subnets"... pass
+  run "rejects_arns_of_the_wrong_kind"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "alb_deletion_protection_is_off_for_the_demo_and_can_be_turned_on"... pass
+  run "the_demo_alb_can_be_destroyed_in_one_run"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 43 passed, 0 failed.
+exit 0
++ terraform -chdir=infra/modules/kms init -backend=false && validate && test
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "every_key_rotates_yearly"... pass
+  run "key_policy_trusts_only_this_account"... pass
+  run "outputs_name_each_key_from_the_prefix"... pass
+  run "outputs_each_key_arn"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rotation_period_is_configurable"... pass
+  run "rejects_a_rotation_period_aws_does_not_allow"... pass
+  run "rejects_a_rotation_period_over_the_aws_maximum"... pass
+  run "rejects_a_deletion_window_under_seven_days"... pass
+  run "rejects_a_deletion_window_over_thirty_days"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 12 passed, 0 failed.
+exit 0
++ terraform fmt -check -recursive infra
+exit 0
