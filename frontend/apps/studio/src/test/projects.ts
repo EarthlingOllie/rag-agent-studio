@@ -16,6 +16,7 @@ export const hrProject: Project = {
   document_count: 12,
   agent_count: 2,
   embedding_model_id: "multilingual-e5-small",
+  ocr_enabled: false,
   embedding_credential_id: null,
 };
 
@@ -28,6 +29,7 @@ export const salesProject: Project = {
   document_count: 0,
   agent_count: 0,
   embedding_model_id: "multilingual-e5-small",
+  ocr_enabled: false,
   embedding_credential_id: null,
 };
 
@@ -40,6 +42,7 @@ export const oldProject: Project = {
   document_count: 3,
   agent_count: 1,
   embedding_model_id: "multilingual-e5-small",
+  ocr_enabled: false,
   embedding_credential_id: null,
 };
 
@@ -79,7 +82,8 @@ export function fakeProjectsApi(options: { projects?: Project[] } = {}) {
         document_count: 0,
         agent_count: 0,
         embedding_model_id: "multilingual-e5-small",
-  embedding_credential_id: null,
+        ocr_enabled: false,
+        embedding_credential_id: null,
       };
       projects.push(created);
       return HttpResponse.json(created, { status: 201 });
@@ -94,7 +98,12 @@ export function fakeProjectsApi(options: { projects?: Project[] } = {}) {
       requests.push({ route: "update", projectId, body });
       const project = find(projectId) as Project;
       if (project.archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
-      return replace({ ...project, name: body.name ?? project.name, description: body.description ?? project.description });
+      return replace({
+        ...project,
+        name: body.name ?? project.name,
+        description: body.description ?? project.description,
+        ocr_enabled: body.ocr_enabled ?? project.ocr_enabled,
+      });
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/archive", ({ params }) => {
       const projectId = params.projectId as string;

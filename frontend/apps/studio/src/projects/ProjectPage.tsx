@@ -167,6 +167,7 @@ const TABS = [
   { label: "Agents", to: `${PROJECT}/agents` },
   { label: "Conversations", to: `${PROJECT}/conversations` },
   { label: "Analytics", to: `${PROJECT}/analytics` },
+  { label: "Settings", to: `${PROJECT}/settings` },
 ] as const;
 
 /** One Project: its name and description, Archive and restore, and a tab per area of the Project. */

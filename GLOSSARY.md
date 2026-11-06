@@ -203,6 +203,14 @@ _Avoid_: State, phase, job status
 Turning an uploaded Document into Chunks: convert it with Docling, store the markdown, chunk it with the Embedding Model's tokenizer, embed the Chunks and write them in one transaction.
 _Avoid_: Indexing, processing pipeline, import
 
+**OCR**:
+A per-Project setting, off by default. When it is on, ingestion also reads text in images, so scanned PDFs become readable. It makes ingestion slower, so it is only turned on for Projects that need it. A change applies to Documents processed afterwards; retrying a Document reprocesses it with the new setting.
+_Avoid_: Text recognition, scan mode
+
+**Retry**:
+Sending a Ready or Failed Document's current edition through ingestion again, with its Project's current settings. Its Chunks keep serving until the new ones replace them. Not while the Document, or a new edition of it, is still being processed.
+_Avoid_: Reprocess, re-ingest, re-run
+
 **Content hash**:
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
