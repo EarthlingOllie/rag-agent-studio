@@ -1,6 +1,6 @@
 # Evidence: ticket 04-07, Full AgentConfig editor
 
-Branch `ticket/04-07-full-agentconfig-editor`, from `origin/candidate` at `c1e455f` (04-01, the only blocker, merged). `origin/candidate` at `a35cef1` (03-05 and 04-03) was merged in at `0944bfc`, and at `9e5a8bb` (03-03) at `b315f12`. Every check below was rerun on the merged tree. The claim commit `2ed4132`, the first on the branch, set Status `in-progress`.
+Branch `ticket/04-07-full-agentconfig-editor`, from `origin/candidate` at `c1e455f` (04-01, the only blocker, merged). `origin/candidate` at `a35cef1` (03-05 and 04-03) was merged in at `0944bfc`, at `9e5a8bb` (03-03) at `b315f12`, and at `55e017e` (03-09) at `61be96d`. Every check below was rerun on the merged tree. The claim commit `2ed4132`, the first on the branch, set Status `in-progress`.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to later tickets on purpose, plus best guesses recorded instead of asking.
 
@@ -63,19 +63,18 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local and sequential, from the committed tree (GitHub Actions is down; the user authorised merging on local results).
+All runs are local and sequential, from the merged tree `61be96d` (origin/candidate `55e017e`, 03-09, merged in; the only conflict was `app/main.py`, where both credential-reference sources are now registered). GitHub Actions is down; the user authorised merging on local results.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against the `rag0407-pg` (pgvector), `rag0407-redis` and `rag0407-rustfs` containers | **1074 passed**, 5 deselected (live); coverage **100%** lines and branches (5423 statements, 522 branches) | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **33 files, 356 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0407-pg` (pgvector), `rag0407-redis` and `rag0407-rustfs` containers | **1167 passed**, 1 failed, 6 deselected (live); coverage **100%** lines and branches (5785 statements, 560 branches). The one failure, `test_logging.py::test_the_api_server_writes_only_json_lines`, was `Connection refused` on the API subprocess's free port while six suites shared the machine (load average above 12). It is untouched by this ticket and passed 3 of 3 reruns of `test_logging.py`. | [backend-tests.log](backend-tests.log), [backend-logging-rerun.log](backend-logging-rerun.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **34 files, 361 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | `make audit` (pip-audit, pnpm audit); gitleaks over this branch's commits not on candidate | no known vulnerabilities, no leaks | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0407`), on images built from the merged tree | **47 passed** in one run, including `agent-config.spec.ts`, `playground.spec.ts` and the merged `document-editions.spec.ts` | [e2e.log](e2e.log) |
-
-All logs are from the merged tree (`b315f12`, the commit before the one adding them). After the merge one Studio fixture was put back to this branch's version: 04-03's "Ask HR, please." fallback text in the HR helper fixture belonged to its `DraftForm` tests, which `DraftEditor` replaces.
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0407`), on images built from the merged tree | First run: 47 passed, 1 failed (`tags.spec.ts`, a Tag not visible within 5 s, load average above 20). Two full reruns on the same stack: **48 passed** each, including `agent-config.spec.ts`, `playground.spec.ts` and 03-09's Embedding Model spec. | [e2e.log](e2e.log), [e2e-rerun.log](e2e-rerun.log) |
+| Infra | not run | this branch changes nothing under `infra/` | |
 
 ## Gaps and best guesses
 
@@ -100,5 +99,6 @@ All logs are from the merged tree (`b315f12`, the commit before the one adding t
   - **Unpublished changes:** "changes not yet published" (user story 22) needs Versions, which arrive in spec 05. Until then the indicator shows the save state.
 - **Sandbox limits:**
   - Images were built with `WITH_PDF=false BUNDLE_MODELS=false` and the egress proxy CA (`build.sh`), as earlier tickets did.
-  - E2E ran against a compose project on moved ports (`compose.sandbox.yml`).
+  - E2E ran against a compose project on moved ports (`compose.sandbox.yml`, now 41xxx: another ticket's stack held 46879).
+  - Two transient failures under shared-machine load (one backend server-spawn test, one e2e Tag check) passed on rerun; see Results.
   - No real provider was called: the fake verifier and the fake gateway were used throughout.
