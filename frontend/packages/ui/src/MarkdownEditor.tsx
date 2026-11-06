@@ -261,6 +261,7 @@ export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength,
           aria-label={`${label} (Markdown)`}
           rows={10}
           maxLength={maxLength}
+          disabled={disabled}
           value={source}
           onChange={(event) => {
             setSource(event.target.value);

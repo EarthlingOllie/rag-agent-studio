@@ -201,6 +201,21 @@ test("an editor follows its disabled prop after it is created", async () => {
   expect(screen.getByRole("button", { name: "Bold" })).toBeEnabled();
 });
 
+test("the Markdown view follows its disabled prop after it is opened", async () => {
+  const { rerender } = render(<MarkdownEditor label="Prompt" defaultValue="Rules" />);
+  await screen.findByRole("textbox", { name: "Prompt" });
+  const source = await openMarkdownView("Prompt");
+  expect(source).toBeEnabled();
+
+  // Archived while the Markdown view is open: the text can't be changed there either.
+  rerender(<MarkdownEditor label="Prompt" defaultValue="Rules" disabled />);
+  expect(screen.getByRole("textbox", { name: "Prompt (Markdown)" })).toBeDisabled();
+
+  // Restored: it can be edited again.
+  rerender(<MarkdownEditor label="Prompt" defaultValue="Rules" />);
+  expect(screen.getByRole("textbox", { name: "Prompt (Markdown)" })).toBeEnabled();
+});
+
 test("the Markdown view opens on the stored text, not the editor's rewrite of it", async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
