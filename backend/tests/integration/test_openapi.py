@@ -95,6 +95,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getDocument": (f"{_PROJECT}/documents/{{document_id}}", "get"),
         "downloadDocument": (f"{_PROJECT}/documents/{{document_id}}/download", "get"),
         "listChunks": (f"{_PROJECT}/documents/{{document_id}}/chunks", "get"),
+        "retryDocument": (f"{_PROJECT}/documents/{{document_id}}/retry", "post"),
         "listEmbeddingModels": ("/api/organisations/{organisation_id}/embedding-models", "get"),
         "setProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "put"),
         "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
