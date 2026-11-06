@@ -125,6 +125,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "restoreAgent": (f"{_AGENT}/restore", "post"),
         "deleteAgent": (f"{_AGENT}", "delete"),
         "publishAgent": (f"{_AGENT}/versions", "post"),
+        "revertAgent": (f"{_AGENT}/revert", "post"),
         "listAgentVersions": (f"{_AGENT}/versions", "get"),
         "getAgentVersion": (f"{_AGENT}/versions/{{version_id}}", "get"),
         "listAgentLiveHistory": (f"{_AGENT}/live-history", "get"),

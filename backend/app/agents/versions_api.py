@@ -1,5 +1,6 @@
-"""Agent Version routes: publishing the Draft as the Live Version, the Version list, one
-Version, and the Live History. Editors and Owners may use them; every publish is audited.
+"""Agent Version routes: publishing the Draft as the Live Version, reverting the Live Version,
+the Version list, one Version, and the Live History. Editors and Owners may use them; every
+publish and revert is audited.
 
 Versions are immutable, so there is no route that changes or deletes one."""
 
@@ -43,6 +44,11 @@ router = APIRouter(
 
 UNKNOWN_INSTRUCTIONS_VERSION = "That Instructions Version isn't one of this Project's."
 NOT_LIVE = "This Agent has never been published, so it has no Live Version."
+NOTHING_TO_REVERT = "There's no earlier Live Version to revert to."
+REVERT_TARGET_INVALID = (
+    "The Version that was Live before uses a Provider Credential or model that is no longer "
+    "available, so it can't be made Live again. Publish a fixed Version instead."
+)
 
 
 def _errors(*codes: tuple[int, str]) -> dict[int | str, dict[str, Any]]:
@@ -162,6 +168,40 @@ async def publish_agent(
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, UNKNOWN_INSTRUCTIONS_VERSION
         ) from None
+    return _out(view)
+
+
+@router.post(
+    "/revert",
+    operation_id="revertAgent",
+    responses=_errors(
+        (404, NOT_FOUND),
+        (
+            409,
+            f"{NOTHING_TO_REVERT} Or: {REVERT_TARGET_INVALID} Or: {PROJECT_ARCHIVED} "
+            f"Or: {AGENT_ARCHIVED}",
+        ),
+    ),
+)
+async def revert_agent(
+    project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
+) -> AgentVersionOut:
+    """Moves the Live Version back one step in the Live History, to the Version that was Live
+    before the current one was published, restoring its configuration and pinned Instructions.
+    Returns that Version. The Draft is unchanged. Records ``agent.reverted`` and a Live History
+    entry."""
+    try:
+        view = await versions.revert(db, scope, project_id, agent_id, now=clock.now())
+    except (ProjectNotFoundError, service.AgentNotFoundError):
+        raise not_found() from None
+    except ProjectArchivedError:
+        raise archived() from None
+    except service.AgentArchivedError:
+        raise agent_archived() from None
+    except versions.NothingToRevertError:
+        raise HTTPException(status.HTTP_409_CONFLICT, NOTHING_TO_REVERT) from None
+    except versions.RevertTargetInvalidError:
+        raise HTTPException(status.HTTP_409_CONFLICT, REVERT_TARGET_INVALID) from None
     return _out(view)
 
 
