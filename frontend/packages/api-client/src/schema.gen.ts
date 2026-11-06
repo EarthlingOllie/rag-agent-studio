@@ -1033,8 +1033,9 @@ export interface paths {
         put?: never;
         /**
          * Send Message
-         * @description Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An
-         *     archived Agent answers no more questions; its Conversations can still be read.
+         * @description Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions
+         *     Version; the answer streams back as Server-Sent Events. An archived Agent answers no more
+         *     questions; its Conversations can still be read.
          */
         post: operations["sendPlaygroundMessage"];
         delete?: never;
@@ -2822,6 +2823,12 @@ export interface components {
             id: string;
             /** Input Tokens */
             input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
             /** Latency Ms */
             latency_ms: number | null;
             /** Model Name */
@@ -3229,6 +3236,8 @@ export interface components {
         SendMessageRequest: {
             /** Content */
             content: string;
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
         };
         /** SessionResponse */
         SessionResponse: {
@@ -3492,6 +3501,12 @@ export interface components {
             guardrail_outcomes: components["schemas"]["GuardrailOutcomeOut"][];
             /** Input Tokens */
             input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
             /** Latency Ms */
             latency_ms: number | null;
             /**
@@ -6599,14 +6614,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description The question is empty or too long, or the Instructions Version isn't one of the Project's. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
