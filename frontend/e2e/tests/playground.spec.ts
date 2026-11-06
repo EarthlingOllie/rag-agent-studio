@@ -45,13 +45,15 @@ test.describe("Agent and Playground", () => {
     await newAgent.getByLabel("Name").fill("HR helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    // The Draft saves itself once typing pauses.
+    const saved = page.waitForResponse((response) => response.url().endsWith("/draft") && response.request().method() === "PUT");
     await page.getByLabel("System prompt").fill("You answer Northwind staff questions about HR policy.");
-    await page.getByRole("button", { name: "Save Draft" }).click();
-    await expect(page.getByText("Draft saved")).toBeVisible({ timeout: 15_000 });
+    expect((await saved).status()).toBe(200);
+    await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("All changes saved");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // Ask the Draft; the fake model's answer streams back and is saved with its usage.
-    await page.getByLabel("Question").fill("How many days of annual leave do I get?");
+    await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
     await page.getByRole("button", { name: "Send" }).click();
     const messages = page.getByRole("list", { name: "Playground messages" });
     await expect(messages.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");

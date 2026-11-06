@@ -34,6 +34,8 @@ ALLOWED = {
     ("MessageOut", "output_tokens"): "the number of output tokens a model call used",
     ("TraceOut", "input_tokens"): "the number of input tokens the traced answer used",
     ("TraceOut", "output_tokens"): "the number of output tokens the traced answer used",
+    # Spec 04: an Agent's limit on how long an answer may be; a count, not an access token.
+    ("Behaviour-Output", "max_output_tokens"): "the most tokens an Agent's answer may use",
 }
 
 

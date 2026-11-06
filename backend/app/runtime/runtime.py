@@ -1,10 +1,11 @@
 """``run_turn``: one turn of a Conversation, as an async stream of events.
 
 It knows nothing about HTTP, the Playground or the widget: callers give it the Conversation's
-remembered turns, the AgentConfig, the Instructions text, the Visitor input, the chat model
-(from the model gateway) and a ``retrieve`` function bound to the Project. When retrieval finds
-no Chunk at or above the minimum score, the turn is the Agent's fallback text and the model
-isn't asked. The Pydantic AI agent it builds registers no tools (ADR-0007).
+turns (it keeps the last ``remembered_turns`` of them), the AgentConfig, the Instructions text,
+the Visitor input, the chat model (from the model gateway) and a ``retrieve`` function bound to
+the Project. When retrieval finds no Chunk at or above the minimum score, the turn is the Agent's
+fallback text and the model isn't asked. The Pydantic AI agent it builds registers no tools
+(ADR-0007).
 
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
 the answer cites (``app.runtime.citations``), then one ``DoneEvent``. A model that supports
@@ -19,6 +20,7 @@ from dataclasses import dataclass, field
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage
 
 from app.agents.config import AgentConfig, Retrieval
@@ -70,9 +72,15 @@ class _Streamed:
 
 
 async def _stream_text(
-    model: Model, question: str, messages: list[ModelMessage], streamed: _Streamed
+    model: Model,
+    question: str,
+    messages: list[ModelMessage],
+    settings: ModelSettings,
+    streamed: _Streamed,
 ) -> AsyncIterator[str]:
-    async with Agent(model).run_stream(question, message_history=messages) as result:
+    async with Agent(model).run_stream(
+        question, message_history=messages, model_settings=settings
+    ) as result:
         async for text in result.stream_text(delta=True, debounce_by=None):
             streamed.text += text
             yield text
@@ -81,10 +89,16 @@ async def _stream_text(
 
 
 async def _stream_structured(
-    model: Model, question: str, messages: list[ModelMessage], streamed: _Streamed
+    model: Model,
+    question: str,
+    messages: list[ModelMessage],
+    settings: ModelSettings,
+    streamed: _Streamed,
 ) -> AsyncIterator[str]:
     agent = Agent(model, output_type=NativeOutput(CitedAnswer))
-    async with agent.run_stream(question, message_history=messages) as result:
+    async with agent.run_stream(
+        question, message_history=messages, model_settings=settings
+    ) as result:
         async for partial in result.stream_output(debounce_by=None):
             # A partly streamed JSON string only ever grows, so the new text is its tail.
             delta = partial.answer[len(streamed.text) :]
@@ -104,10 +118,11 @@ async def run_turn(
     model: Model,
     retrieve: Retrieve,
 ) -> AsyncIterator[TurnEvent]:
+    behaviour = config.behaviour
     retrieved = await retrieve(visitor_input, config.retrieval)
     if not retrieved.candidates:
         # Nothing relevant was found: say so in the Agent's words instead of letting it guess.
-        fallback_text = config.behaviour.fallback_text
+        fallback_text = behaviour.fallback_text
         yield TokenEvent(fallback_text)
         yield DoneEvent(
             answer=fallback_text,
@@ -118,12 +133,16 @@ async def run_turn(
             fallback=True,
         )
         return
-    messages = history(instructions, config.behaviour.system_prompt, turns)
+    remembered = list(turns)[-behaviour.remembered_turns :] if behaviour.remembered_turns else []
+    messages = history(instructions, behaviour.system_prompt, remembered)
     question = data_blocks(retrieved.candidates, visitor_input)
+    settings = ModelSettings(
+        temperature=behaviour.temperature, max_tokens=behaviour.max_output_tokens
+    )
     structured = model.profile.get("supports_json_schema_output", False)
     stream = _stream_structured if structured else _stream_text
     streamed = _Streamed()
-    async for text in stream(model, question, messages, streamed):
+    async for text in stream(model, question, messages, settings, streamed):
         yield TokenEvent(text)
     cited = resolve(streamed.labels, retrieved.candidates)
     for chunk in cited:

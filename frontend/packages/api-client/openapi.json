@@ -22,6 +22,12 @@
           "behaviour": {
             "$ref": "#/components/schemas/Behaviour-Input"
           },
+          "experience": {
+            "$ref": "#/components/schemas/Experience-Input"
+          },
+          "guardrails": {
+            "$ref": "#/components/schemas/Guardrails-Input"
+          },
           "retrieval": {
             "$ref": "#/components/schemas/Retrieval-Input"
           }
@@ -35,13 +41,21 @@
           "behaviour": {
             "$ref": "#/components/schemas/Behaviour-Output"
           },
+          "experience": {
+            "$ref": "#/components/schemas/Experience-Output"
+          },
+          "guardrails": {
+            "$ref": "#/components/schemas/Guardrails-Output"
+          },
           "retrieval": {
             "$ref": "#/components/schemas/Retrieval-Output"
           }
         },
         "required": [
           "behaviour",
-          "retrieval"
+          "retrieval",
+          "experience",
+          "guardrails"
         ],
         "title": "AgentConfig",
         "type": "object"
@@ -323,11 +337,42 @@
             "title": "Fallback Text",
             "type": "string"
           },
+          "max_output_tokens": {
+            "default": 1024,
+            "maximum": 8192.0,
+            "minimum": 1.0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remembered_turns": {
+            "default": 5,
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Remembered Turns",
+            "type": "integer"
+          },
           "system_prompt": {
             "default": "",
             "maxLength": 20000,
             "title": "System Prompt",
             "type": "string"
+          },
+          "temperature": {
+            "default": 0.7,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "type": "number"
           }
         },
         "title": "Behaviour",
@@ -343,15 +388,50 @@
             "title": "Fallback Text",
             "type": "string"
           },
+          "max_output_tokens": {
+            "default": 1024,
+            "maximum": 8192.0,
+            "minimum": 1.0,
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remembered_turns": {
+            "default": 5,
+            "maximum": 20.0,
+            "minimum": 0.0,
+            "title": "Remembered Turns",
+            "type": "integer"
+          },
           "system_prompt": {
             "default": "",
             "maxLength": 20000,
             "title": "System Prompt",
             "type": "string"
+          },
+          "temperature": {
+            "default": 0.7,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "type": "number"
           }
         },
         "required": [
           "system_prompt",
+          "model",
+          "temperature",
+          "max_output_tokens",
+          "remembered_turns",
           "fallback_text"
         ],
         "title": "Behaviour",
@@ -1534,6 +1614,129 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "Experience-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "display_name": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "greeting": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Greeting",
+            "type": "string"
+          },
+          "rating_prompt_after": {
+            "default": 3,
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Rating Prompt After",
+            "type": "integer"
+          },
+          "starter_questions": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Starter Questions",
+            "type": "array"
+          },
+          "ui_text": {
+            "$ref": "#/components/schemas/UiText-Input"
+          }
+        },
+        "title": "Experience",
+        "type": "object"
+      },
+      "Experience-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "display_name": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "greeting": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Greeting",
+            "type": "string"
+          },
+          "rating_prompt_after": {
+            "default": 3,
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Rating Prompt After",
+            "type": "integer"
+          },
+          "starter_questions": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Starter Questions",
+            "type": "array"
+          },
+          "ui_text": {
+            "$ref": "#/components/schemas/UiText-Output"
+          }
+        },
+        "required": [
+          "display_name",
+          "avatar_url",
+          "greeting",
+          "starter_questions",
+          "ui_text",
+          "rating_prompt_after"
+        ],
+        "title": "Experience",
+        "type": "object"
+      },
+      "FailMode": {
+        "description": "What happens when the LLM classifier's provider errors: open lets the message through,\nclosed treats it as flagged.",
+        "enum": [
+          "open",
+          "closed"
+        ],
+        "title": "FailMode",
+        "type": "string"
+      },
       "Font": {
         "enum": [
           "Inter",
@@ -1575,6 +1778,78 @@
           "category"
         ],
         "title": "FontOut",
+        "type": "object"
+      },
+      "Guardrails-Input": {
+        "additionalProperties": false,
+        "description": "Stored and versioned with the Agent; enforced from spec 08.",
+        "properties": {
+          "classifier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fail_mode": {
+            "$ref": "#/components/schemas/FailMode",
+            "default": "closed"
+          },
+          "input_mode": {
+            "$ref": "#/components/schemas/InputMode",
+            "default": "block"
+          },
+          "refusal_text": {
+            "default": "Sorry, I can't help with that request.",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Refusal Text",
+            "type": "string"
+          }
+        },
+        "title": "Guardrails",
+        "type": "object"
+      },
+      "Guardrails-Output": {
+        "additionalProperties": false,
+        "description": "Stored and versioned with the Agent; enforced from spec 08.",
+        "properties": {
+          "classifier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fail_mode": {
+            "$ref": "#/components/schemas/FailMode",
+            "default": "closed"
+          },
+          "input_mode": {
+            "$ref": "#/components/schemas/InputMode",
+            "default": "block"
+          },
+          "refusal_text": {
+            "default": "Sorry, I can't help with that request.",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Refusal Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "input_mode",
+          "classifier",
+          "fail_mode",
+          "refusal_text"
+        ],
+        "title": "Guardrails",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1636,6 +1911,16 @@
         ],
         "title": "HealthResponse",
         "type": "object"
+      },
+      "InputMode": {
+        "description": "What the input Guardrail does when it flags a Visitor message (enforced in spec 08).",
+        "enum": [
+          "block",
+          "warn",
+          "log"
+        ],
+        "title": "InputMode",
+        "type": "string"
       },
       "InviteLookupRequest": {
         "properties": {
@@ -2052,6 +2337,29 @@
           "recovery_codes_remaining"
         ],
         "title": "MfaStatusResponse",
+        "type": "object"
+      },
+      "ModelChoice": {
+        "additionalProperties": false,
+        "description": "A Provider Credential and one of its models. Saving checks the credential offers it.",
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_id",
+          "model"
+        ],
+        "title": "ModelChoice",
         "type": "object"
       },
       "ModelOut": {
@@ -2637,6 +2945,11 @@
       "Retrieval-Input": {
         "additionalProperties": false,
         "properties": {
+          "citations": {
+            "default": true,
+            "title": "Citations",
+            "type": "boolean"
+          },
           "hybrid_weight": {
             "default": 0.5,
             "maximum": 1.0,
@@ -2650,6 +2963,25 @@
             "minimum": 0.0,
             "title": "Min Score",
             "type": "number"
+          },
+          "reranker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Tag Ids",
+            "type": "array"
           },
           "top_k": {
             "default": 5,
@@ -2665,6 +2997,11 @@
       "Retrieval-Output": {
         "additionalProperties": false,
         "properties": {
+          "citations": {
+            "default": true,
+            "title": "Citations",
+            "type": "boolean"
+          },
           "hybrid_weight": {
             "default": 0.5,
             "maximum": 1.0,
@@ -2679,6 +3016,25 @@
             "title": "Min Score",
             "type": "number"
           },
+          "reranker": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Tag Ids",
+            "type": "array"
+          },
           "top_k": {
             "default": 5,
             "maximum": 20.0,
@@ -2690,7 +3046,10 @@
         "required": [
           "top_k",
           "hybrid_weight",
-          "min_score"
+          "min_score",
+          "tag_ids",
+          "reranker",
+          "citations"
         ],
         "title": "Retrieval",
         "type": "object"
@@ -3366,6 +3725,105 @@
           "excluded_reason"
         ],
         "title": "TracedChunkOut",
+        "type": "object"
+      },
+      "UiText-Input": {
+        "additionalProperties": false,
+        "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
+        "properties": {
+          "rate_conversation": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Conversation"
+          },
+          "send_button": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send Button"
+          },
+          "unavailable_message": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Message"
+          }
+        },
+        "title": "UiText",
+        "type": "object"
+      },
+      "UiText-Output": {
+        "additionalProperties": false,
+        "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
+        "properties": {
+          "rate_conversation": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Conversation"
+          },
+          "send_button": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Send Button"
+          },
+          "unavailable_message": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Message"
+          }
+        },
+        "required": [
+          "send_button",
+          "rate_conversation",
+          "unavailable_message"
+        ],
+        "title": "UiText",
         "type": "object"
       },
       "UpdateProfileRequest": {
@@ -7027,7 +7485,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft": {
       "put": {
-        "description": "Replaces the Agent's Draft with a valid AgentConfig.",
+        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error.",
         "operationId": "saveAgentDraft",
         "parameters": [
           {
