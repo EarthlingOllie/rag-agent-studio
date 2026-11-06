@@ -38,6 +38,11 @@ class ObjectStore(Protocol):
         """The object's bytes; raises ``ObjectNotFoundError`` if there is none."""
         ...
 
+    async def size(self, key: str) -> int:
+        """The object's size in bytes, without reading it; raises ``ObjectNotFoundError`` if
+        there is none."""
+        ...
+
     async def delete(self, key: str) -> None:
         """Removes the object; removing one that isn't there is not an error."""
         ...

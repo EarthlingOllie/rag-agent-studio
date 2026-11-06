@@ -156,6 +156,45 @@ test("a failed PUT to storage, or an answer without a reason, says to try again"
   });
 });
 
+test("a PUT to storage or a removal that can't reach the server says to try again and frees the controls", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeThemeApi({ theme: { ...defaultTheme, avatar: anImage("avatar") } });
+  server.use(
+    http.put("*/studio-documents/:key", () => HttpResponse.error()),
+    http.delete("*/api/organisations/:organisationId/theme/images/:kind", () => HttpResponse.error()),
+  );
+  renderStudio(themePath);
+  const section = await openImages();
+
+  await userEvent.upload(within(section).getByLabelText("Upload logo"), png());
+  expect(await within(section).findByRole("alert")).toHaveTextContent("The upload failed. Try again.");
+  expect(within(section).getByLabelText("Upload logo")).toBeEnabled();
+
+  await userEvent.click(within(section).getByRole("button", { name: "Remove avatar" }));
+  await vi.waitFor(() => {
+    expect(within(section).getAllByRole("alert").map((alert) => alert.textContent)).toEqual([
+      "The upload failed. Try again.",
+      "The image couldn't be removed. Try again.",
+    ]);
+  });
+  expect(within(section).getByRole("button", { name: "Remove avatar" })).toBeEnabled();
+  expect(within(section).getByRole("img", { name: "Current avatar" })).toBeInTheDocument();
+});
+
+test("a confirmation that can't reach the API says to try again", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeThemeApi();
+  server.use(http.put("*/api/organisations/:organisationId/theme/images/:kind", () => HttpResponse.error()));
+  renderStudio(themePath);
+  const section = await openImages();
+
+  await userEvent.upload(within(section).getByLabelText("Upload logo"), png());
+
+  expect(await within(section).findByRole("alert")).toHaveTextContent("The upload failed. Try again.");
+  expect(within(section).getByLabelText("Upload logo")).toBeEnabled();
+  expect(within(section).getByText("No logo yet.")).toBeInTheDocument();
+});
+
 test("the controls say so while an image is uploading or being removed, and a failed removal says to try again", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeThemeApi({ theme: { ...defaultTheme, logo: anImage("logo") } });

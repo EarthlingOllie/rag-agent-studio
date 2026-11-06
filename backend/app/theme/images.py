@@ -146,13 +146,19 @@ async def confirm_upload(
     object_key: str = pending["object_key"]
     content_type: str = pending["content_type"]
     try:
-        data = await store.get(object_key)
+        # The size first, from the store's metadata: a file far over the limit is never read.
+        size_bytes = await store.size(object_key)
     except ObjectNotFoundError:
         # Not uploaded yet: give the claim back, for a confirmation once the file arrives. The
         # claim read the key and its time left together, so that time is always positive.
         await redis.set(key, raw, px=ttl_ms, nx=True)
         raise ImageNotUploadedError from None
+    if size_bytes > max_bytes:
+        await store.delete(object_key)
+        raise ImageTooLargeError
+    data = await store.get(object_key)
     if len(data) > max_bytes or not _is_type(data, content_type):
+        # Over the limit here only if the file was replaced since its size was read.
         await store.delete(object_key)
         if len(data) > max_bytes:
             raise ImageTooLargeError

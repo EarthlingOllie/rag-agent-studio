@@ -281,6 +281,20 @@ async def test_saving_the_same_theme_records_nothing(owner: SignedUpMember) -> N
     assert unchanged.json()["updated_at"] is None
 
 
+async def test_saving_the_same_saved_theme_again_records_nothing(
+    owner: SignedUpMember, clock: ControllableClock
+) -> None:
+    path = theme_path(owner.organisation_id)
+    first = await owner.client.put(path, json=a_theme(radius=4))
+    clock.advance(60)
+
+    again = await owner.client.put(path, json=a_theme(radius=4))
+
+    assert again.status_code == 200, again.text
+    assert again.json() == first.json()
+    assert len(await theme_events(owner)) == 1
+
+
 async def test_owners_saving_at_once_apply_one_after_the_other(
     tenant_factory: TenantFactory, member_factory: MemberFactory
 ) -> None:

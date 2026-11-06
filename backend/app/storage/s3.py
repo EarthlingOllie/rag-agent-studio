@@ -101,5 +101,16 @@ class S3ObjectStore:
         body: bytes = await asyncio.to_thread(response["Body"].read)
         return body
 
+    async def size(self, key: str) -> int:
+        try:
+            response = await asyncio.to_thread(
+                self._client.head_object, Bucket=self.bucket, Key=key
+            )
+        except ClientError as error:
+            if error.response.get("Error", {}).get("Code") in _MISSING:
+                raise ObjectNotFoundError(key) from None
+            raise
+        return response["ContentLength"]
+
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self._client.delete_object, Bucket=self.bucket, Key=key)

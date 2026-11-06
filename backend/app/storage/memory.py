@@ -37,5 +37,11 @@ class InMemoryObjectStore:
         except KeyError:
             raise ObjectNotFoundError(key) from None
 
+    async def size(self, key: str) -> int:
+        try:
+            return len(self.objects[key][0])
+        except KeyError:
+            raise ObjectNotFoundError(key) from None
+
     async def delete(self, key: str) -> None:
         self.objects.pop(key, None)

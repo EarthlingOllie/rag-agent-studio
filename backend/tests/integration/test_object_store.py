@@ -57,6 +57,18 @@ async def test_an_object_is_stored_read_and_deleted(store: ObjectStore) -> None:
     await store.delete(key)  # deleting what isn't there is fine
 
 
+async def test_an_objects_size_is_read_without_its_bytes(store: ObjectStore) -> None:
+    key = f"tests/{uuid.uuid4()}/logo.png"
+    await store.put(key, b"0123456789", content_type="image/png")
+
+    size = await store.size(key)
+    await store.delete(key)
+
+    assert size == 10
+    with pytest.raises(ObjectNotFoundError):
+        await store.size(key)
+
+
 async def test_a_browser_puts_a_file_to_a_presigned_url() -> None:
     store = rustfs()
     await store.prepare()

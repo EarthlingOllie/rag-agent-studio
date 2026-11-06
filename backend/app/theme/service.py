@@ -176,8 +176,10 @@ async def save_theme(
     current = DEFAULT_THEME if row is None else _settings(row)
     before, after = _changes(current.model_dump(mode="json"), settings.model_dump(mode="json"))
     if not after:
+        # Read the Theme before the rollback releases the lock: it expires the row's attributes.
+        unchanged = _saved(row)
         await session.rollback()
-        return _saved(row)
+        return unchanged
     if row is None:
         row = _new_row(session, scope)
     _write_settings(row, settings)
@@ -207,8 +209,10 @@ async def set_image(
     row = await _locked_row(session, scope)
     previous = None if row is None else _image(row, kind)
     if previous is None and image is None:
+        # Read the Theme before the rollback releases the lock: it expires the row's attributes.
+        unchanged = _saved(row)
         await session.rollback()
-        return ImageChange(_saved(row), None)
+        return ImageChange(unchanged, None)
     if row is None:
         row = _new_row(session, scope)
     setattr(row, kind.value, None if image is None else image.stored())

@@ -41,44 +41,48 @@ export function useThemeImage(organisationId: string, kind: ThemeImageKind) {
 
   async function upload(file: File) {
     setAction({ phase: "uploading" });
+    try {
+      setAction(await uploaded(file));
+    } catch {
+      // The network failed (storage or the API unreachable): nothing was saved.
+      setAction({ phase: "failed", message: UPLOAD_FAILED });
+    }
+  }
+
+  async function uploaded(file: File): Promise<ImageAction> {
     const started = await api.POST("/api/organisations/{organisation_id}/theme/images/{kind}/uploads", {
       params: { path },
       body: { filename: file.name, size_bytes: file.size },
     });
-    if (!started.data) {
-      setAction({ phase: "failed", message: reason(started.error, UPLOAD_FAILED) });
-      return;
-    }
+    if (!started.data) return { phase: "failed", message: reason(started.error, UPLOAD_FAILED) };
     const stored = await fetch(started.data.url, {
       method: "PUT",
       headers: { "Content-Type": started.data.content_type },
       body: file,
     });
-    if (!stored.ok) {
-      setAction({ phase: "failed", message: UPLOAD_FAILED });
-      return;
-    }
+    if (!stored.ok) return { phase: "failed", message: UPLOAD_FAILED };
     const confirmed = await api.PUT("/api/organisations/{organisation_id}/theme/images/{kind}", {
       params: { path },
       body: { upload_id: started.data.upload_id },
     });
-    if (!confirmed.data) {
-      setAction({ phase: "failed", message: reason(confirmed.error, UPLOAD_FAILED) });
-      return;
-    }
+    if (!confirmed.data) return { phase: "failed", message: reason(confirmed.error, UPLOAD_FAILED) };
     applied(confirmed.data);
-    setAction({ phase: "uploaded" });
+    return { phase: "uploaded" };
   }
 
   async function remove() {
     setAction({ phase: "removing" });
-    const { data } = await api.DELETE("/api/organisations/{organisation_id}/theme/images/{kind}", { params: { path } });
-    if (!data) {
+    try {
+      const { data } = await api.DELETE("/api/organisations/{organisation_id}/theme/images/{kind}", { params: { path } });
+      if (!data) {
+        setAction({ phase: "failed", message: REMOVE_FAILED });
+        return;
+      }
+      applied(data);
+      setAction({ phase: "removed" });
+    } catch {
       setAction({ phase: "failed", message: REMOVE_FAILED });
-      return;
     }
-    applied(data);
-    setAction({ phase: "removed" });
   }
 
   return { action, upload, remove };

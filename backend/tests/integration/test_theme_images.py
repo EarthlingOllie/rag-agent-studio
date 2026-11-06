@@ -192,6 +192,25 @@ async def test_a_stored_file_over_the_size_limit_is_refused_and_removed(
     assert (await theme_of(owner))["logo"] is None
 
 
+async def test_a_stored_file_over_the_size_limit_is_refused_without_reading_it(
+    app: FastAPI, owner: SignedUpMember, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started = await images.start(owner, "logo", "logo.png", 10)
+    ticket = started.json()
+    await images.put_file(owner, ticket, png() + bytes(8 * 1024 * 1024))
+    store = app.state.ingestion.object_store
+
+    async def never_read(key: str) -> bytes:
+        raise AssertionError(f"read {key} whole before checking its size")
+
+    monkeypatch.setattr(store, "get", never_read)
+
+    response = await images.confirm(owner, "logo", ticket["upload_id"])
+
+    assert response.status_code == 422
+    assert stored_objects(app) == {}
+
+
 async def test_an_upload_is_confirmed_only_once_after_the_file_arrives(
     owner: SignedUpMember,
 ) -> None:
@@ -319,6 +338,19 @@ async def test_removing_an_image_there_is_none_of_changes_nothing(owner: SignedU
     assert removed.json()["logo"] is None
     assert removed.json()["updated_at"] is None
     assert await theme_events(owner) == []
+
+
+async def test_removing_an_absent_image_from_a_saved_theme_changes_nothing(
+    owner: SignedUpMember, clock: ControllableClock
+) -> None:
+    uploaded = await images.upload(owner, "logo", png())
+    clock.advance(60)
+
+    removed = await owner.client.delete(images.images_path(owner, "avatar"))
+
+    assert removed.status_code == 200, removed.text
+    assert removed.json() == uploaded
+    assert len(await theme_events(owner)) == 1
 
 
 async def test_images_are_kept_when_the_rest_of_the_theme_is_saved(owner: SignedUpMember) -> None:
