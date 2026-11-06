@@ -31,3 +31,9 @@ class Project(IdMixin, Base):
     document_quota: Mapped[int] = mapped_column(
         Integer, default=DEFAULT_DOCUMENT_QUOTA, server_default=str(DEFAULT_DOCUMENT_QUOTA)
     )
+    # The Provider Credential a provider Embedding Model is called through; None for the local
+    # model. Registered as a reference, so the credential can't be deleted while it is in use;
+    # the foreign key backs that up.
+    embedding_credential_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("provider_credentials.id"), index=True
+    )

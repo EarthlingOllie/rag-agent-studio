@@ -1,4 +1,4 @@
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import {
   type ChangeEvent,
   type DragEvent,
@@ -33,7 +33,7 @@ function accept(limits: UploadLimits | undefined): string {
   return (limits?.accepted_extensions ?? ACCEPT).join(",");
 }
 
-const STATUS_LABELS: Record<DocumentStatus, string> = {
+export const STATUS_LABELS: Record<DocumentStatus, string> = {
   queued: "Queued",
   processing: "Processing",
   ready: "Ready",
@@ -541,7 +541,19 @@ function DocumentRows({
                 />
               )}
             </td>
-            <td className="py-2">{document.name}</td>
+            <td className="py-2">
+              <Link
+                to="/organisations/$organisationId/projects/$projectId/documents/$documentId"
+                params={{
+                  organisationId: scope.organisationId,
+                  projectId: scope.projectId,
+                  documentId: document.id,
+                }}
+                className="underline"
+              >
+                {document.name}
+              </Link>
+            </td>
             <td>
               {STATUS_LABELS[document.status]}
               <Failure

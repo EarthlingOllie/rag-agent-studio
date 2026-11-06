@@ -564,7 +564,7 @@ class GatedFailingEmbedder(HashEmbedder):
         self.started = threading.Event()
         self.release = threading.Event()
 
-    def embed_passages(self, texts: list[str]) -> list[list[float]]:
+    async def embed_passages(self, texts: list[str]) -> list[list[float]]:
         self.started.set()
         assert self.release.wait(timeout=10)
         raise EmbeddingProviderError("down")

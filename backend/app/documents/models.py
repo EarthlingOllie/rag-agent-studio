@@ -2,10 +2,12 @@
 query is filtered by an ordinary ``project_id`` (ADR-0001)."""
 
 import enum
+import re
 import uuid
 from datetime import datetime
+from typing import Any
 
-from pgvector.sqlalchemy import Vector
+from pgvector.sqlalchemy import HALFVEC, Vector
 from sqlalchemy import (
     BigInteger,
     Computed,
@@ -22,9 +24,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.db import Base, IdMixin
-from app.embeddings.registry import EMBEDDING_MODELS
+from app.embeddings.registry import EMBEDDING_MODELS, EmbeddingModel
 
 # Referenced as objects, so the worker (which loads no routers) has these tables registered too.
 from app.projects.models import Project
@@ -152,19 +155,35 @@ class Chunk(IdMixin, Base):
     )
 
 
-def _hnsw_index(model_id: str, dimension: int) -> Index:
+# pgvector's HNSW indexes ``vector`` up to this many dimensions; larger models index halfvec.
+HNSW_VECTOR_MAX_DIMENSIONS = 2000
+
+
+def model_slug(model_id: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", model_id.lower())
+
+
+def model_vector(model: EmbeddingModel) -> ColumnElement[Any]:
+    """The Chunk's vector cast to the model's dimension, as its HNSW index expression has it.
+    Ordering by distance from this expression (filtered to the model) uses that index."""
+    kind: Any = Vector if model.dimension <= HNSW_VECTOR_MAX_DIMENSIONS else HALFVEC
+    return cast(Chunk.embedding, kind(model.dimension))
+
+
+def _hnsw_index(model: EmbeddingModel) -> Index:
     """An HNSW index over one Embedding Model's vectors. Vectors of different models differ in
     size, so each model gets its own partial index on the column cast to its dimension."""
-    slug = model_id.replace("-", "_").replace(".", "_")
+    slug = model_slug(model.id)
     label = f"embedding_{slug}"
+    ops = "vector" if model.dimension <= HNSW_VECTOR_MAX_DIMENSIONS else "halfvec"
     return Index(
         f"ix_chunks_embedding_hnsw_{slug}",
-        cast(Chunk.embedding, Vector(dimension)).label(label),
+        model_vector(model).label(label),
         postgresql_using="hnsw",
-        postgresql_ops={label: "vector_cosine_ops"},
-        postgresql_where=Chunk.embedding_model_id == literal(model_id),
+        postgresql_ops={label: f"{ops}_cosine_ops"},
+        postgresql_where=Chunk.embedding_model_id == literal(model.id),
     )
 
 
 for _model in EMBEDDING_MODELS.values():
-    _hnsw_index(_model.id, _model.dimension)
+    _hnsw_index(_model)

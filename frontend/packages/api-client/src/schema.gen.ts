@@ -640,6 +640,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/embedding-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Embedding Models
+         * @description The built-in local model, then the Embedding Models each embedding-capable Provider
+         *     Credential offers, by credential name.
+         */
+        get: operations["listEmbeddingModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/invites": {
         parameters: {
             query?: never;
@@ -1076,7 +1097,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Document
+         * @description One Document, with the markdown it was converted to: the Document viewer's left pane.
+         */
+        get: operations["getDocument"];
         put?: never;
         post?: never;
         /**
@@ -1099,9 +1124,30 @@ export interface paths {
         };
         /**
          * List Chunks
-         * @description The Document's Chunks in order, with heading path and pages.
+         * @description A page of the Document's Chunks in order, with heading path and pages.
          */
         get: operations["listChunks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Document
+         * @description Downloads the original file: a redirect to a presigned GET on the object store, which
+         *     serves it as an attachment under the Document's name. A link to this route is enough.
+         */
+        get: operations["downloadDocument"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1173,6 +1219,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/embedding-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Project Embedding Model
+         * @description Chooses the Project's Embedding Model: the local one, or a provider model with a
+         *     Provider Credential that offers it. Refused while the Project has Documents. Records
+         *     ``project.embedding_model_changed``.
+         */
+        put: operations["setProjectEmbeddingModel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
         parameters: {
             query?: never;
@@ -1188,6 +1256,27 @@ export interface paths {
          *     ``project.restored``.
          */
         post: operations["restoreProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/retrieval-probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probe Retrieval
+         * @description The ``top_k`` Chunks nearest the query by vector, for tests and diagnostics. Searches
+         *     the Chunks of the Project's current Embedding Model only.
+         */
+        post: operations["probeRetrieval"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1568,6 +1657,17 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** ChunkPageOut */
+        ChunkPageOut: {
+            /** Items */
+            items: components["schemas"]["ChunkOut"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
         /** CodeRequest */
         CodeRequest: {
             /** Code */
@@ -1820,6 +1920,47 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** DocumentDetailOut */
+        DocumentDetailOut: {
+            /** Attempt Count */
+            attempt_count: number;
+            /** Chunk Count */
+            chunk_count: number;
+            /** Content Hash */
+            content_hash: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Edition */
+            edition: number;
+            error_category: components["schemas"]["FailureCategory"] | null;
+            /** Error Message */
+            error_message: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Markdown */
+            markdown: string | null;
+            /** Mime Type */
+            mime_type: string;
+            /** Name */
+            name: string;
+            replacement: components["schemas"]["ReplacementOut"] | null;
+            /** Size Bytes */
+            size_bytes: number;
+            status: components["schemas"]["DocumentStatus"];
+            /** Tags */
+            tags: components["schemas"]["TagRef"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** DocumentOut */
         DocumentOut: {
             /** Attempt Count */
@@ -1885,6 +2026,29 @@ export interface components {
         DocumentTagsRequest: {
             /** Tag Ids */
             tag_ids: string[];
+        };
+        /**
+         * EmbeddingModelChoiceOut
+         * @description An Embedding Model the Organisation can choose, and the credential it is called
+         *     through (none for the built-in local model).
+         */
+        EmbeddingModelChoiceOut: {
+            /** Credential Id */
+            credential_id: string | null;
+            /** Credential Name */
+            credential_name: string | null;
+            /** Dimension */
+            dimension: number;
+            /** Model Id */
+            model_id: string;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Token Limit */
+            token_limit: number;
+            /** Tokenizer */
+            tokenizer: string;
         };
         /** EnrolmentResponse */
         EnrolmentResponse: {
@@ -2216,6 +2380,52 @@ export interface components {
             /** Output */
             output: string;
         };
+        /** ProbeChunkOut */
+        ProbeChunkOut: {
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Name */
+            document_name: string;
+            /** Heading Path */
+            heading_path: string[];
+            /** Ordinal */
+            ordinal: number;
+            /** Page End */
+            page_end: number | null;
+            /** Page Start */
+            page_start: number | null;
+            /** Score */
+            score: number;
+            /** Text */
+            text: string;
+        };
+        /** ProbeOut */
+        ProbeOut: {
+            /** Chunks */
+            chunks: components["schemas"]["ProbeChunkOut"][];
+            /** Dimension */
+            dimension: number;
+            /** Embedding Model Id */
+            embedding_model_id: string;
+        };
+        /** ProbeRequest */
+        ProbeRequest: {
+            /** Query */
+            query: string;
+            /**
+             * Top K
+             * @default 5
+             */
+            top_k: number;
+        };
         /** ProjectOut */
         ProjectOut: {
             /** Agent Count */
@@ -2231,6 +2441,8 @@ export interface components {
             description: string;
             /** Document Count */
             document_count: number;
+            /** Embedding Credential Id */
+            embedding_credential_id: string | null;
             /** Embedding Model Id */
             embedding_model_id: string;
             /**
@@ -2364,6 +2576,13 @@ export interface components {
         SetDocumentQuotaRequest: {
             /** Document Quota */
             document_quota: number;
+        };
+        /** SetEmbeddingModelRequest */
+        SetEmbeddingModelRequest: {
+            /** Credential Id */
+            credential_id?: string | null;
+            /** Model Id */
+            model_id: string;
         };
         /** SignInRequest */
         SignInRequest: {
@@ -4268,6 +4487,37 @@ export interface operations {
             };
         };
     };
+    listEmbeddingModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbeddingModelChoiceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listInvites: {
         parameters: {
             query?: never;
@@ -5591,6 +5841,48 @@ export interface operations {
             };
         };
     };
+    getDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetailOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     deleteDocument: {
         parameters: {
             query?: never;
@@ -5642,7 +5934,10 @@ export interface operations {
     };
     listChunks: {
         parameters: {
-            query?: never;
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -5659,8 +5954,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChunkOut"][];
+                    "application/json": components["schemas"]["ChunkPageOut"];
                 };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    downloadDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirects to a short-lived presigned GET of the original file. */
+            307: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Not found */
             404: {
@@ -5852,6 +6187,60 @@ export interface operations {
             };
         };
     };
+    setProjectEmbeddingModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEmbeddingModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: The Embedding Model can't be changed while the Project has Documents. Delete its Documents first. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The model or credential can't be used; the detail says why. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     restoreProject: {
         parameters: {
             query?: never;
@@ -5907,6 +6296,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    probeRetrieval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProbeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProbeOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: The Project's Embedding Model can't be used: <why> */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The Embedding Model's provider couldn't embed the query. Try again shortly. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

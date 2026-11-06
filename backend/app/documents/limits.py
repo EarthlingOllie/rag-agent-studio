@@ -99,6 +99,11 @@ def provider_failed_message(attempts: int) -> str:
     )
 
 
+def provider_setup_message(reason: str) -> str:
+    """The Embedding Model's provider can't be called with the Project's settings."""
+    return f"The Embedding Model's provider can't be used: {reason} Retry once it is fixed."
+
+
 def provider_retrying_message(next_attempt: int, max_attempts: int) -> str:
     return (
         "The Embedding Model's provider didn't respond. Retrying automatically "

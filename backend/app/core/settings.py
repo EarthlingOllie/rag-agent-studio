@@ -105,6 +105,8 @@ class Settings(BaseSettings):
     object_store_secret_access_key: SecretStr | None = None
     # How long a presigned upload URL works.
     upload_url_ttl_seconds: int = Field(default=15 * 60, gt=0)
+    # How long a presigned download URL for a Document's original file works.
+    download_url_ttl_seconds: int = Field(default=5 * 60, gt=0)
     # The largest file a Document can be uploaded from.
     max_upload_bytes: int = Field(default=50 * 1024 * 1024, gt=0)
     # Converts uploaded files to markdown and structure: Docling, or the fake (tests).

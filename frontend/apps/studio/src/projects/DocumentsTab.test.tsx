@@ -828,3 +828,19 @@ test("an archived Project's Documents can't be replaced or deleted", async () =>
     table.queryByRole("button", { name: /Delete/ }),
   ).not.toBeInTheDocument();
 });
+
+test("a new edition still uploads when the upload limits can't be loaded, and the API checks it", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [aDocument()] });
+  server.use(http.get(`*/api/organisations/:organisationId/projects/:projectId/uploads/limits`, () => new HttpResponse(null, { status: 502 })));
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await userEvent.upload(table.getByLabelText("New edition of handbook.pdf"), file("handbook-2027.md", "# Handbook 2027"));
+
+  expect(await within(screen.getByRole("list", { name: "Uploads" })).findByText("Uploaded")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([
+    expect.objectContaining({ filename: "handbook-2027.md", replacing_document_id: aDocument().id }),
+  ]);
+});

@@ -1,7 +1,8 @@
 """Helpers for driving the upload flow through the API, as the Studio does."""
 
+from dataclasses import dataclass
 from typing import Any
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import httpx
 from fastapi import FastAPI
@@ -47,6 +48,30 @@ async def put_to_memory_store(app: FastAPI, url: str, data: bytes, content_type:
     await store.put(unquote(parts.path.removeprefix("/")), data, content_type=content_type)
 
 
+@dataclass(frozen=True)
+class Downloaded:
+    data: bytes
+    content_type: str
+    content_disposition: str
+    expires_in: int
+
+
+async def get_from_memory_store(app: FastAPI, url: str) -> Downloaded:
+    """What the browser's GET of a presigned download URL gets, for the in-memory object store:
+    the object's bytes, with the headers the URL asks the store to answer with."""
+    store = app.state.ingestion.object_store
+    assert isinstance(store, InMemoryObjectStore)
+    parts = urlsplit(url)
+    assert (parts.scheme, parts.netloc) == ("memory", "objects")
+    query = {name: values[0] for name, values in parse_qs(parts.query).items()}
+    return Downloaded(
+        data=await store.get(unquote(parts.path.removeprefix("/"))),
+        content_type=query["response-content-type"],
+        content_disposition=query["response-content-disposition"],
+        expires_in=int(query["expires-in"]),
+    )
+
+
 def app_of(member: SignedUpMember) -> FastAPI:
     """The app a Member's in-process client talks to."""
     transport = member.client._transport
@@ -87,11 +112,15 @@ async def documents(member: SignedUpMember, project_id: str) -> list[dict[str, A
 
 
 async def chunks(member: SignedUpMember, project_id: str, document_id: str) -> list[dict[str, Any]]:
+    """Every Chunk of the Document (the first page, as large as a page can be)."""
     response = await member.client.get(
-        f"{project_path(member, project_id)}/documents/{document_id}/chunks"
+        f"{project_path(member, project_id)}/documents/{document_id}/chunks",
+        params={"limit": 200},
     )
     assert response.status_code == 200, response.text
-    listed: list[dict[str, Any]] = response.json()
+    page = response.json()
+    assert page["total"] == len(page["items"])
+    listed: list[dict[str, Any]] = page["items"]
     return listed
 
 

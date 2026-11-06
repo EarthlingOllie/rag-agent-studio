@@ -6,14 +6,16 @@ capability, opens the credential's sealed secret, and hands both to its adapters
 ``docker compose`` plug in the fake adapters here, and only here.
 """
 
+import json
+
 from pydantic_ai.embeddings import EmbeddingModel
 from pydantic_ai.models import Model
 
 from app.credentials.models import ProviderCredential
-from app.credentials.registry import PROVIDERS, Capability, Provider, models_for
+from app.credentials.registry import PROVIDERS, AuthKind, Capability, Provider, models_for
 from app.credentials.service import open_secret
 from app.crypto.envelope import EnvelopeEncryption
-from app.gateway.ports import ModelAdapters, Reranker
+from app.gateway.ports import BedrockAccount, ModelAdapters, Reranker
 
 
 class ModelUnavailableError(Exception):
@@ -53,9 +55,10 @@ class ModelGateway:
     ) -> tuple[Provider, str]:
         check_offered(credential, capability, model)
         if credential.secret_sealed is None:
-            # A Bedrock IAM-role credential stores no secret; its clients assume the role.
+            # A Bedrock IAM-role credential stores no secret: only its embedder assumes the
+            # role so far (``bedrock_account``).
             raise UnsupportedCredentialError(
-                "Bedrock IAM-role credentials can't make model calls yet."
+                "Bedrock IAM-role credentials can only be used for embeddings so far."
             )
         return Provider(credential.provider), open_secret(self._envelope, credential)
 
@@ -63,7 +66,21 @@ class ModelGateway:
         provider, secret = self._secret(credential, Capability.CHAT, model)
         return self.adapters.chat(provider, secret, model)
 
+    def _bedrock_account(self, credential: ProviderCredential) -> BedrockAccount:
+        region = str(credential.region)
+        if credential.auth_kind == AuthKind.AWS_ROLE:
+            return BedrockAccount(region, credential.role_arn, credential.external_id)
+        keys = json.loads(open_secret(self._envelope, credential))
+        return BedrockAccount(
+            region,
+            access_key_id=keys["access_key_id"],
+            secret_access_key=keys["secret_access_key"],
+        )
+
     def embedder(self, credential: ProviderCredential, model: str) -> EmbeddingModel:
+        if credential.provider == Provider.BEDROCK:
+            check_offered(credential, Capability.EMBEDDINGS, model)
+            return self.adapters.bedrock_embedder(self._bedrock_account(credential), model)
         provider, secret = self._secret(credential, Capability.EMBEDDINGS, model)
         return self.adapters.embedder(provider, secret, model)
 

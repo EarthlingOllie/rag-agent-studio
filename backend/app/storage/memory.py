@@ -1,8 +1,8 @@
 """The in-memory object store: the unit-test fake for the object-store port."""
 
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
-from app.storage.port import ObjectNotFoundError
+from app.storage.port import ObjectNotFoundError, attachment_disposition
 
 
 class InMemoryObjectStore:
@@ -19,6 +19,16 @@ class InMemoryObjectStore:
 
     def presign_put(self, key: str, *, content_type: str, expires_in: int) -> str:
         return f"memory://objects/{quote(key)}"
+
+    def presign_get(self, key: str, *, filename: str, content_type: str, expires_in: int) -> str:
+        query = urlencode(
+            {
+                "response-content-type": content_type,
+                "response-content-disposition": attachment_disposition(filename),
+                "expires-in": expires_in,
+            }
+        )
+        return f"memory://objects/{quote(key)}?{query}"
 
     async def put(self, key: str, data: bytes, *, content_type: str) -> None:
         self.objects[key] = (data, content_type)
