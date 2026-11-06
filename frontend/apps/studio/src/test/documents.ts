@@ -10,7 +10,7 @@ export type Tag = Schemas["TagOut"];
 export const DUPLICATE_TAG = "This Project already has a Tag with that name.";
 
 export function aTag(overrides: Partial<Tag> = {}): Tag {
-  return { id: "7a900000-0000-4000-8000-000000000001", name: "HR", document_count: 0, created_at: "2026-11-05T09:00:00Z", ...overrides };
+  return { id: "7a900000-0000-4000-8000-000000000001", name: "HR", document_count: 0, agents: [], created_at: "2026-11-05T09:00:00Z", ...overrides };
 }
 
 /** Uploads go to the object store's bucket on the Studio's own origin (the dev proxy forwards it). */

@@ -106,12 +106,14 @@ export const hrTag: Tag = {
   id: "d1000000-0000-4000-8000-000000000001",
   name: "HR",
   document_count: 2,
+  agents: [],
   created_at: "2026-11-05T09:00:00Z",
 };
 export const payTag: Tag = {
   id: "d1000000-0000-4000-8000-000000000002",
   name: "Pay",
   document_count: 1,
+  agents: [],
   created_at: "2026-11-05T09:00:00Z",
 };
 
@@ -218,6 +220,17 @@ export const hrTrace: Schemas["TraceOut"] = {
       rank: null,
       cited: false,
       excluded_reason: "outside_top_k",
+    },
+    {
+      chunk_id: "f0000000-0000-4000-8000-000000000005",
+      document_id: "d0000000-0000-4000-8000-000000000005",
+      document_name: "price-list.md",
+      text: "Model SKU-4471 ships with a two-year warranty.",
+      score: 0.15,
+      relevance: 0.6,
+      rank: null,
+      cited: false,
+      excluded_reason: "outside_tags",
     },
   ],
 };

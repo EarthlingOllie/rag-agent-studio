@@ -8,10 +8,10 @@
 - [04-03: Hybrid retrieval and fallback](03-hybrid-retrieval-fallback.md)
 - [03-06: Tags](../03-projects-knowledge-base/06-tags.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] AgentConfig holds Tag IDs, and retrieval filters by them
-- [ ] Unknown Tags, or Tags from another Project, are rejected
-- [ ] Deleting a Tag that Agents reference warns which Agents use it
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] AgentConfig holds Tag IDs, and retrieval filters by them
+- [x] Unknown Tags, or Tags from another Project, are rejected
+- [x] Deleting a Tag that Agents reference warns which Agents use it
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

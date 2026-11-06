@@ -179,6 +179,40 @@ test("an Editor deletes a Tag after confirming, and it leaves every Document", a
   });
 });
 
+test("deleting a Tag that Agents are scoped to warns which Agents use it", async () => {
+  const scopedHr = aTag({
+    ...hr,
+    agents: [
+      { id: "a9e00000-0000-4000-8000-000000000001", name: "HR helper" },
+      { id: "a9e00000-0000-4000-8000-000000000002", name: "Onboarding" },
+    ],
+  });
+  const scopedPolicy = aTag({
+    ...policy,
+    agents: [{ id: "a9e00000-0000-4000-8000-000000000001", name: "HR helper" }],
+  });
+  const { requests } = start({ tags: [scopedHr, scopedPolicy, sales] });
+  const panel = await tagsPanel();
+
+  await userEvent.click(await panel.findByRole("button", { name: "Delete HR" }));
+  const warning = panel.getByRole("alert");
+  expect(warning).toHaveTextContent(
+    "2 Agents are limited to HR: HR helper, Onboarding. Deleting it takes it out of their Drafts; an Agent left with no Tags searches every Document.",
+  );
+  await userEvent.click(panel.getByRole("button", { name: "Keep it" }));
+
+  await userEvent.click(panel.getByRole("button", { name: "Delete Policy" }));
+  expect(panel.getByRole("alert")).toHaveTextContent("1 Agent is limited to Policy: HR helper.");
+  await userEvent.click(panel.getByRole("button", { name: "Keep it" }));
+
+  // A Tag no Agent uses gives no warning.
+  await userEvent.click(panel.getByRole("button", { name: "Delete Sales" }));
+  expect(panel.queryByRole("alert")).not.toBeInTheDocument();
+  await userEvent.click(panel.getByRole("button", { name: "Delete Tag" }));
+  await waitForGone(() => panel.queryByText("Sales"));
+  expect(requests.filter((r) => r.route === "deleteTag").map((r) => r.body)).toEqual([sales.id]);
+});
+
 /** The Tag names a Document's row shows. */
 function tagsOf(name: string) {
   const list = rowOf(name).queryByRole("list", { name: "Tags" });
