@@ -36,6 +36,9 @@ ALLOWED = {
     ("TraceOut", "output_tokens"): "the number of output tokens the traced answer used",
     # Spec 04: an Agent's limit on how long an answer may be; a count, not an access token.
     ("Behaviour-Output", "max_output_tokens"): "the most tokens an Agent's answer may use",
+    # Spec 06: a Visitor's widget is given its own new Conversation token once, in exchange for
+    # the shell's bootstrap token. It is the Visitor's credential, not a Provider Credential.
+    ("ConversationTokenOut", "conversation_token"): "a Visitor's own new Conversation token",
 }
 
 
