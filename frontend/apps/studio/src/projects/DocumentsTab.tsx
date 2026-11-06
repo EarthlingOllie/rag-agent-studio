@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 
+import { FormError } from "../auth/AuthLayout";
 import {
   canReplace,
   type DocumentFilters,
@@ -13,6 +14,7 @@ import {
   type FailureCategory,
   NO_FILTERS,
   type ProjectDocument,
+  retryFailure,
   type Upload,
   type UploadLimits,
   useDeleteDocument,
@@ -21,7 +23,7 @@ import {
   useUploadLimits,
   useUploads,
 } from "./documents";
-import { ProjectRequestError, useProject } from "./projects";
+import { useProject } from "./projects";
 import { useOrganisationRole } from "./ProjectsPage";
 import { type Tag, tagFailure, useTagChange, useTags } from "./tags";
 import { TagsPanel } from "./TagsPanel";
@@ -189,21 +191,21 @@ function ReplacementStatus({ document }: { document: ProjectDocument }) {
   );
 }
 
-/** Whether the Document, or its new edition, failed and can be retried. */
-function canRetry(document: ProjectDocument): boolean {
-  return (
-    document.status === "failed" || document.replacement?.status === "failed"
-  );
+interface Retry {
+  pending: boolean;
+  onRetry: (document: ProjectDocument) => void;
 }
 
 function DocumentActions({
   document,
   limits,
+  retry,
   onReplace,
   onDelete,
 }: {
   document: ProjectDocument;
   limits: UploadLimits | undefined;
+  retry: Retry;
   onReplace: (document: ProjectDocument, file: File) => void;
   onDelete: (document: ProjectDocument) => Promise<void>;
 }) {
@@ -254,6 +256,20 @@ function DocumentActions({
   }
   return (
     <div className="flex flex-wrap items-center gap-3">
+      {canReplace(document) && (
+        // Reprocesses the Document with the Project's current settings, such as OCR.
+        <button
+          type="button"
+          aria-label={`Retry ${document.name}`}
+          disabled={retry.pending}
+          onClick={() => {
+            retry.onRetry(document);
+          }}
+          className="underline disabled:opacity-50"
+        >
+          Retry
+        </button>
+      )}
       {canReplace(document) && (
         <label className="cursor-pointer underline">
           New edition
@@ -473,10 +489,9 @@ function DocumentRows({
   selected,
   onSelect,
   limits,
+  retry,
   onReplace,
   onDelete,
-  onRetry,
-  retrying,
 }: {
   documents: ProjectDocument[];
   scope: TagScope;
@@ -484,10 +499,9 @@ function DocumentRows({
   selected: Set<string>;
   onSelect: (ids: string[], on: boolean) => void;
   limits: UploadLimits | undefined;
+  retry: Retry;
   onReplace: (document: ProjectDocument, file: File) => void;
   onDelete: (document: ProjectDocument) => Promise<void>;
-  onRetry: (documentId: string) => void;
-  retrying: string | undefined;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const allSelected = documents.every((document) => selected.has(document.id));
@@ -562,19 +576,6 @@ function DocumentRows({
                 message={document.error_message}
               />
               <ReplacementStatus document={document} />
-              {editable && canRetry(document) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onRetry(document.id);
-                  }}
-                  disabled={retrying === document.id}
-                  aria-label={`Retry ${document.name}`}
-                  className="mt-1 rounded border border-slate-400 px-2 py-0.5 text-slate-900 disabled:opacity-50"
-                >
-                  Retry
-                </button>
-              )}
             </td>
             <td>
               <TagList document={document} />
@@ -607,6 +608,7 @@ function DocumentRows({
                 <DocumentActions
                   document={document}
                   limits={limits}
+                  retry={retry}
                   onReplace={onReplace}
                   onDelete={onDelete}
                 />
@@ -716,8 +718,8 @@ export function DocumentsTab() {
     projectId,
     limits.data,
   );
-  const retry = useRetryDocument(organisationId, projectId);
   const deleteDocument = useDeleteDocument(organisationId, projectId);
+  const retry = useRetryDocument(organisationId, projectId);
   const archived = project.data?.archived_at != null;
   const editable = project.data !== undefined && !archived;
   const scope = { organisationId, projectId, tags: tags.data ?? [] };
@@ -761,14 +763,16 @@ export function DocumentsTab() {
         selected={new Set(chosen)}
         onSelect={select}
         limits={limits.data}
+        retry={{
+          pending: retry.isPending,
+          onRetry: (document) => {
+            retry.mutate(document.id);
+          },
+        }}
         onReplace={replace}
         onDelete={async (document) => {
           await deleteDocument.mutateAsync(document.id);
         }}
-        onRetry={(documentId) => {
-          retry.mutate(documentId);
-        }}
-        retrying={retry.isPending ? retry.variables : undefined}
       />
     );
   }
@@ -783,15 +787,6 @@ export function DocumentsTab() {
           {limits.data.documents_counted} of {limits.data.document_quota}{" "}
           Documents in this Project&apos;s quota. Failed Documents don&apos;t
           count.
-        </p>
-      )}
-      {retry.isError && (
-        <p role="alert" className="text-red-700">
-          {retry.error instanceof ProjectRequestError &&
-          retry.error.status === 409 &&
-          retry.error.detail
-            ? retry.error.detail
-            : "The Document couldn't be retried. Try again."}
         </p>
       )}
       {!archived && <Dropzone onFiles={upload} limits={limits.data} />}
@@ -817,6 +812,7 @@ export function DocumentsTab() {
           }}
         />
       )}
+      <FormError message={retryFailure(retry.error)} />
       {list}
     </section>
   );

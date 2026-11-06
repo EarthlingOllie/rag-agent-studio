@@ -854,7 +854,8 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Renames the Project or edits its description. An archived Project is refused.
+         * @description Renames the Project, edits its description or turns OCR on or off. An archived Project
+         *     is refused.
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -1191,8 +1192,10 @@ export interface paths {
         put?: never;
         /**
          * Retry Document
-         * @description Processes a Failed Document again, from its stored file: it goes back to Queued. When
-         *     the Document's newer edition is what failed, that edition is retried instead.
+         * @description Processes a Document again from its stored file: it goes back to Queued. When the
+         *     Document's newer edition is what failed, that edition is retried instead; a Ready Document
+         *     is processed again with the Project's current settings (such as OCR), its Chunks serving
+         *     until the new ones replace them.
          */
         post: operations["retryDocument"];
         delete?: never;
@@ -2594,6 +2597,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Ocr Enabled */
+            ocr_enabled: boolean;
         };
         /**
          * Provider
@@ -2935,6 +2940,8 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+            /** Ocr Enabled */
+            ocr_enabled?: boolean | null;
         };
         /** UploadConflictResponse */
         UploadConflictResponse: {
@@ -6277,7 +6284,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6294,7 +6301,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Only a Failed Document can be retried. / This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. / The file is a duplicate of a Document in the Project (``document_id`` names it). */
+            /** @description This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. / The file is a duplicate of a Document in the Project (``document_id`` names it). */
             409: {
                 headers: {
                     [name: string]: unknown;

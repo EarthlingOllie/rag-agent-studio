@@ -2,7 +2,7 @@
 
 1. Set Processing, if the Project's Document quota still has room for it.
 2. Fetch the original, check its content matches its type, and convert it through the
-   document-converter port.
+   document-converter port, with OCR only if the Project's flag is on.
 3. Store the converted markdown.
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
 5. Embed the Chunks through the embedder port, in batches: the local model, or the Project's
@@ -26,6 +26,7 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -86,7 +87,9 @@ class _Job:
     mime_type: str
     object_key: str
     staged: bool
+    # The Project's settings, read when the edition is claimed.
     embedding_model_id: str
+    ocr: bool
     credential: ProviderCredential | None
     """The Provider Credential the Project's Embedding Model is called through; ``None`` for
     the local model."""
@@ -137,6 +140,7 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
         object_key=claimed.object_key,
         staged=claimed is not document,
         embedding_model_id=project.embedding_model_id,
+        ocr=project.ocr_enabled,
         credential=credential,
     )
     await session.commit()
@@ -164,7 +168,9 @@ async def _process(
             FailureCategory.UNSUPPORTED_CONTENT, limits.wrong_type_message(job.mime_type)
         )
     try:
-        converted = await asyncio.to_thread(ports.converter.convert, original, job.name)
+        converted = await asyncio.to_thread(
+            partial(ports.converter.convert, ocr=job.ocr), original, job.name
+        )
     except UnsupportedContentError:
         raise IngestionFailedError(
             FailureCategory.UNSUPPORTED_CONTENT, limits.UNREADABLE_CONTENT
@@ -314,13 +320,17 @@ async def _settle(
 ) -> bool:
     """Sets the job's edition (the Document, or its staged edition) to the status, with the
     message and category. A failed staged edition leaves the Document as it was, so its current
-    edition keeps serving. ``False`` if the Document was deleted meanwhile."""
+    edition keeps serving; a failed Document loses any Chunks it had. ``False`` if the Document
+    was deleted meanwhile."""
     async with sessionmaker() as session, session.begin():
         document = await session.get(Document, job.document_id, with_for_update=True)
         if document is not None:
             settled: Document | StagedEdition = document
             if job.staged:
                 settled = await session.get_one(StagedEdition, document.id, with_for_update=True)
+            elif status == DocumentStatus.FAILED:
+                # A Document reprocessed from Ready that fails no longer serves its old Chunks.
+                await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
             settled.status = status
             settled.error_message = message
             settled.error_category = category

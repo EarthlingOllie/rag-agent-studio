@@ -328,6 +328,9 @@ PROJECT_SCOPED_ROUTES = [
         _a_failed_document,
     ),
     ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/documents/{document_id}/retry", EDITOR, _a_document
+    ),
+    ScopedRoute(
         "PUT", PROJECTS + "/{project_id}/embedding-model", EDITOR, _an_embedding_model_choice
     ),
     ScopedRoute("POST", PROJECTS + "/{project_id}/retrieval-probe", EDITOR, _a_probe),

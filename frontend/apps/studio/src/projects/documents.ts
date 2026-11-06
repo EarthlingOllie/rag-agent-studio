@@ -24,6 +24,8 @@ export const FINAL_STATUSES: readonly DocumentStatus[] = ["ready", "failed"];
 const documentsKey = (organisationId: string, projectId: string) =>
   ["documents", organisationId, projectId] as const;
 const limitsKey = (organisationId: string, projectId: string) => [...documentsKey(organisationId, projectId), "limits"] as const;
+const statusesKey = (organisationId: string, projectId: string) =>
+  [...documentsKey(organisationId, projectId), "statuses"] as const;
 
 function failed(response: Response, error: unknown): ProjectRequestError {
   const detail = (error as { detail?: unknown }).detail;
@@ -75,7 +77,7 @@ export function useDocuments(
   });
   const inProgress = (list.data ?? []).some((document) => !isSettled(document));
   const statuses = useQuery({
-    queryKey: [...documentsKey(organisationId, projectId), "statuses"],
+    queryKey: statusesKey(organisationId, projectId),
     queryFn: async () => {
       const { data, error, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/documents/statuses",
@@ -138,22 +140,6 @@ export function useUploadLimits(organisationId: string, projectId: string) {
       if (!data) throw failed(response, error);
       return data;
     },
-  });
-}
-
-/** Puts a Failed Document back to Queued; the list then polls it to Ready or Failed again. */
-export function useRetryDocument(organisationId: string, projectId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (documentId: string) => {
-      const { data, error, response } = await api.POST(
-        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry",
-        { params: { path: { organisation_id: organisationId, project_id: projectId, document_id: documentId } } },
-      );
-      if (!data) throw failed(response, error);
-      return data;
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId) }),
   });
 }
 
@@ -427,6 +413,40 @@ export function useUploads(organisationId: string, projectId: string, limits: Up
   }
 
   return { uploads, upload, replace };
+}
+
+const RETRY_FAILED = "The retry failed. Try again.";
+
+/**
+ * Sends a Ready or Failed Document through ingestion again, with the Project's current settings
+ * (such as OCR). The list then shows it Queued and polls its status until it is final again.
+ */
+export function useRetryDocument(organisationId: string, projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (documentId: string): Promise<ProjectDocument> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry",
+        { params: { path: { organisation_id: organisationId, project_id: projectId, document_id: documentId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: async () => {
+      // The last polled statuses would otherwise show the Document's old, final status.
+      queryClient.removeQueries({
+        queryKey: statusesKey(organisationId, projectId),
+      });
+      await queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId) });
+    },
+  });
+}
+
+/** What to tell the Member about a failed retry: the API's reason, or a retry hint. */
+export function retryFailure(error: Error | null): string | undefined {
+  if (error === null) return undefined;
+  // Every failed retry is a ProjectRequestError (see `failed`).
+  return (error as ProjectRequestError).detail ?? RETRY_FAILED;
 }
 
 export type DocumentDetail = Schemas["DocumentDetailOut"];

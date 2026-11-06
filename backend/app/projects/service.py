@@ -150,13 +150,17 @@ async def update_project(
     *,
     name: str | None,
     description: str | None,
+    ocr_enabled: bool | None = None,
 ) -> Project:
-    """Renames the Project and/or replaces its description. Archived Projects are refused."""
+    """Renames the Project, replaces its description and/or turns OCR on or off. Archived
+    Projects are refused."""
     project = await active_project(session, scope, project_id, lock=True)
     if name is not None:
         project.name = name
     if description is not None:
         project.description = description
+    if ocr_enabled is not None:
+        project.ocr_enabled = ocr_enabled
     await session.commit()
     return project
 

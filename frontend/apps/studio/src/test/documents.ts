@@ -54,10 +54,13 @@ function advance(document: ProjectDocument, failing: string[]): ProjectDocument 
   return { ...document, name: replacement.name, edition: replacement.edition, chunk_count: 6, replacement: null };
 }
 
+export const BUSY = "This Document is still being processed. Try again once it is Ready or Failed.";
+
 /**
  * A stateful stand-in for the Documents API and the object store. Starting an upload refuses
  * what the API refuses; the PUT goes to a fake storage host; confirming adds a Queued Document.
- * Each poll of the status endpoint moves every unfinished Document one step on, to Ready.
+ * Retrying a Ready or Failed Document sets it back to Queued. Each poll of the status endpoint
+ * moves every unfinished Document one step on, to Ready.
  */
 export function anUploadLimits(overrides: Partial<UploadLimits> = {}): UploadLimits {
   return {
@@ -71,7 +74,7 @@ export function anUploadLimits(overrides: Partial<UploadLimits> = {}): UploadLim
 
 /**
  * Documents named in `failing` fail as unsupported content when processed.
- * Retrying a Failed Document puts it back to Queued (or its Failed new edition), and the polls
+ * Retrying a Document puts it back to Queued (or its Failed new edition), and the polls
  * then move it on to Ready. The upload limits count the Documents that aren't Failed, against
  * `limits.document_quota`.
  */
@@ -122,17 +125,6 @@ export function fakeDocumentsApi(
         anUploadLimits({ documents_counted: documents.filter((d) => d.status !== "failed").length, ...options.limits }),
       ),
     ),
-    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/retry", ({ params }) => {
-      requests.push({ route: "retry", body: params.documentId });
-      const retried = documents.find((d) => d.id === params.documentId);
-      const again = { status: "queued" as const, error_message: null, error_category: null };
-      let queued: ProjectDocument;
-      if (retried?.status === "failed") queued = { ...retried, ...again };
-      else if (retried?.replacement?.status === "failed") queued = { ...retried, replacement: { ...retried.replacement, ...again } };
-      else return HttpResponse.json({ detail: "Only a Failed Document can be retried." }, { status: 409 });
-      documents = documents.map((d) => (d.id === queued.id ? queued : d));
-      return HttpResponse.json(queued);
-    }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/uploads", async ({ request }) => {
       const body = (await request.json()) as Schemas["StartUploadRequest"];
       requests.push({ route: "start", body });
@@ -195,6 +187,22 @@ export function fakeDocumentsApi(
       requests.push({ route: "delete", body: params.documentId });
       documents = documents.filter((document) => document.id !== params.documentId);
       return new HttpResponse(null, { status: 204 });
+    }),
+    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/retry", ({ params }) => {
+      const documentId = params.documentId as string;
+      requests.push({ route: "retry", body: documentId });
+      const document = documents.find((candidate) => candidate.id === documentId) as ProjectDocument;
+      const settled = (status: ProjectDocument["status"]) => ["ready", "failed"].includes(status);
+      if (!settled(document.status) || (document.replacement && !settled(document.replacement.status)))
+        return HttpResponse.json({ detail: BUSY }, { status: 409 });
+      // What failed is retried: the Document, or else its failed new edition; a Ready one is reprocessed.
+      const again = { status: "queued" as const, error_message: null, error_category: null };
+      const queued: ProjectDocument =
+        document.status !== "failed" && document.replacement
+          ? { ...document, replacement: { ...document.replacement, ...again } }
+          : { ...document, ...again };
+      documents = documents.map((candidate) => (candidate.id === documentId ? queued : candidate));
+      return HttpResponse.json(queued, { status: 202 });
     }),
   );
 

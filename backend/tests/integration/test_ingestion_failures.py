@@ -162,7 +162,7 @@ async def test_a_retried_document_that_no_longer_fits_fails_on_quota(
 
     response = await retry(owner, project_id, failed["id"])
 
-    assert response.status_code == 200, response.text
+    assert response.status_code == 202, response.text
     retried = next(d for d in await documents(owner, project_id) if d["id"] == failed["id"])
     assert failure_of(retried) == (
         "failed",
@@ -252,7 +252,8 @@ async def test_a_file_with_no_readable_text_fails_as_unsupported(
     assert failure_of(await only_document(owner, project_id)) == (
         "failed",
         "unsupported_content",
-        "No readable text was found in this file. Check that it isn't empty or a scanned image.",
+        "No readable text was found in this file. Check that it isn't empty. If it is a scanned "
+        "PDF, turn on OCR for this Project, then retry it.",
     )
 
 
@@ -376,23 +377,25 @@ async def test_an_editor_retries_a_failed_document_until_it_is_ready(
 
     response = await retry(editor, project_id, failed["id"])
 
-    assert response.status_code == 200, response.text
+    assert response.status_code == 202, response.text
     assert failure_of(response.json()) == ("queued", None, None)
     document = await only_document(editor, project_id)
     assert failure_of(document) == ("ready", None, None)
     assert (document["chunk_count"], document["attempt_count"]) == (1, 2)
 
 
-async def test_only_a_failed_document_can_be_retried(app: FastAPI, owner: SignedUpMember) -> None:
+async def test_a_ready_document_in_a_full_project_can_be_processed_again(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
     project_id = await create_project(owner)
     ready = await upload(app, owner, project_id, "handbook.md", HANDBOOK)
+    assert (await set_quota(owner, project_id, 1)).status_code == 200
 
     response = await retry(owner, project_id, ready["id"])
 
-    assert (response.status_code, response.json()["detail"]) == (
-        409,
-        "Only a Failed Document can be retried.",
-    )
+    # The quota counts the other Documents, so a full Project's own Document still fits.
+    assert response.status_code == 202, response.text
+    assert failure_of(await only_document(owner, project_id)) == ("ready", None, None)
 
 
 async def test_a_document_in_an_archived_project_is_not_retried(
@@ -458,7 +461,7 @@ async def test_a_failed_new_edition_is_categorised_and_an_editor_retries_it(
 
     response = await retry(owner, project_id, original["id"])
 
-    assert response.status_code == 200, response.text
+    assert response.status_code == 202, response.text
     assert response.json()["replacement"]["status"] == "queued"
     retried = await only_document(owner, project_id)
     assert (retried["status"], retried["edition"], retried["name"]) == ("ready", 2, "new.md")

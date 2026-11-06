@@ -44,7 +44,6 @@ UNSUPPORTED_TYPE = (
 UPLOAD_NOT_FOUND = "This upload wasn't found or has expired. Start the upload again."
 FILE_NOT_UPLOADED = "The file hasn't reached storage yet. Upload it, then confirm."
 HASH_MISMATCH = "The uploaded file doesn't match its content hash. Upload it again."
-NOT_FAILED = "Only a Failed Document can be retried."
 QUOTA_REACHED = "This Project has reached its Document quota."
 QUOTA_MAX = 100_000
 DOCUMENT_BUSY = "This Document is still being processed. Try again once it is Ready or Failed."
@@ -680,29 +679,30 @@ async def replace_document(
 
 @router.post(
     "/documents/{document_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
     operation_id="retryDocument",
     response_model=DocumentOut,
     responses={
         **_errors(_NOT_FOUND),
         409: {
             "model": UploadConflictResponse,
-            "description": (f"{NOT_FAILED} / {DOCUMENT_BUSY} / {PROJECT_ARCHIVED} / {_DUPLICATE}"),
+            "description": f"{DOCUMENT_BUSY} / {PROJECT_ARCHIVED} / {_DUPLICATE}",
         },
     },
 )
 async def retry_document(
     project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
 ) -> DocumentOut | JSONResponse:
-    """Processes a Failed Document again, from its stored file: it goes back to Queued. When
-    the Document's newer edition is what failed, that edition is retried instead."""
+    """Processes a Document again from its stored file: it goes back to Queued. When the
+    Document's newer edition is what failed, that edition is retried instead; a Ready Document
+    is processed again with the Project's current settings (such as OCR), its Chunks serving
+    until the new ones replace them."""
     try:
         document, staged = await service.retry_document(db, scope, project_id, document_id)
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    except service.DocumentNotFailedError:
-        raise HTTPException(status.HTTP_409_CONFLICT, NOT_FAILED) from None
     except service.DocumentBusyError:
         raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_BUSY) from None
     except service.DuplicateDocumentError as duplicate:

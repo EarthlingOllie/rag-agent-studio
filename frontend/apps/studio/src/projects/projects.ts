@@ -5,6 +5,8 @@ import { api } from "../api";
 
 export type Project = Schemas["ProjectOut"];
 export type ProjectDetails = Schemas["CreateProjectRequest"];
+/** The fields a change sets; the others are left as they are. */
+export type ProjectChanges = Schemas["UpdateProjectRequest"];
 
 /** A failed Projects request; `status` is the HTTP status and `detail` the API's message, if any. */
 export class ProjectRequestError extends Error {
@@ -90,7 +92,7 @@ export function useCreateProject(organisationId: string) {
 export function useUpdateProject(organisationId: string, projectId: string) {
   const store = useStoreProject(organisationId);
   return useMutation({
-    mutationFn: async (details: ProjectDetails): Promise<Project> => {
+    mutationFn: async (details: ProjectChanges): Promise<Project> => {
       const { data, error, response } = await api.PATCH("/api/organisations/{organisation_id}/projects/{project_id}", {
         params: { path: { organisation_id: organisationId, project_id: projectId } },
         body: details,

@@ -8,6 +8,9 @@
    computes its SHA-256 content hash (checking it against the one the browser sent, if any),
    creates the Document as Queued, and enqueues ingestion.
 
+``retry`` sends a Ready or Failed Document through ingestion again, with the Project's current
+settings (its OCR flag, for one).
+
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
 through ``active_project``, so an archived Project takes none. A Failed Document (or a Failed
 newer edition of one) can be retried, which queues it for ingestion again.
@@ -69,10 +72,6 @@ class QuotaReachedError(Exception):
     def __init__(self, quota: int) -> None:
         super().__init__(quota)
         self.quota = quota
-
-
-class DocumentNotFailedError(Exception):
-    """Only a Failed Document, or a Document whose newer edition failed, can be retried."""
 
 
 class DocumentBusyError(Exception):
@@ -298,11 +297,13 @@ async def set_document_quota(
 async def retry_document(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
 ) -> tuple[Document, StagedEdition | None]:
-    """Puts a Failed Document back to Queued, or, when the Document is Ready and its newer
-    edition is what failed, that edition; the caller enqueues ingestion after this commits.
-    Refused when its content has since been uploaded again (a Failed edition is not a
-    Duplicate, so that is allowed), and while a newer edition is being processed. Returns the
-    Document and its staged edition, if any."""
+    """Puts what failed back to Queued, for the caller to enqueue ingestion once this commits:
+    a Failed Document, or, when the Document is Ready and its newer edition is what failed,
+    that edition. With nothing Failed, a Ready Document is processed again with the Project's
+    current settings (such as OCR); its Chunks keep serving until the new ones replace them.
+    Refused while the Document or a newer edition is still being processed, and when a Failed
+    file's content has since been uploaded again (a Failed edition is not a Duplicate, so that
+    is allowed). Returns the Document and its staged edition, if any."""
     project = await projects.active_project(session, scope, project_id, lock=True)
     document = await session.scalar(
         select(Document)
@@ -312,22 +313,21 @@ async def retry_document(
     if document is None:
         raise DocumentNotFoundError
     staged = await session.get(StagedEdition, document.id, with_for_update=True)
-    if staged is not None and staged.status not in FINAL_STATUSES:
+    if document.status not in FINAL_STATUSES or (
+        staged is not None and staged.status not in FINAL_STATUSES
+    ):
         raise DocumentBusyError
-    failed: Document | StagedEdition
-    if document.status == DocumentStatus.FAILED:
-        failed = document
-    elif staged is not None and staged.status == DocumentStatus.FAILED:
-        failed = staged
-    else:
-        raise DocumentNotFailedError
-    duplicate = await _document_with_hash(session, project.id, failed.content_hash)
-    if duplicate is not None and duplicate.id != document.id:
-        raise DuplicateDocumentError(duplicate)
-    failed.status = DocumentStatus.QUEUED
-    failed.error_message = None
-    failed.error_category = None
-    failed.updated_at = func.now()
+    retried: Document | StagedEdition = document
+    if staged is not None and document.status != DocumentStatus.FAILED:
+        retried = staged
+    if retried.status == DocumentStatus.FAILED:
+        duplicate = await _document_with_hash(session, project.id, retried.content_hash)
+        if duplicate is not None and duplicate.id != document.id:
+            raise DuplicateDocumentError(duplicate)
+    retried.status = DocumentStatus.QUEUED
+    retried.error_message = None
+    retried.error_category = None
+    retried.updated_at = func.now()
     await session.commit()
     await session.refresh(document)
     if staged is not None:

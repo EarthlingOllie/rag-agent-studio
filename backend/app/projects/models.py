@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
@@ -31,6 +31,9 @@ class Project(IdMixin, Base):
     document_quota: Mapped[int] = mapped_column(
         Integer, default=DEFAULT_DOCUMENT_QUOTA, server_default=str(DEFAULT_DOCUMENT_QUOTA)
     )
+    # Whether ingestion runs OCR, so scanned PDFs become readable. Off by default: OCR is slow,
+    # and most Projects' files carry their own text.
+    ocr_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # The Provider Credential a provider Embedding Model is called through; None for the local
     # model. Registered as a reference, so the credential can't be deleted while it is in use;
     # the foreign key backs that up.

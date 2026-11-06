@@ -2880,6 +2880,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "ocr_enabled": {
+            "title": "Ocr Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2891,6 +2895,7 @@
           "document_count",
           "agent_count",
           "embedding_model_id",
+          "ocr_enabled",
           "embedding_credential_id"
         ],
         "title": "ProjectOut",
@@ -3754,6 +3759,17 @@
               }
             ],
             "title": "Name"
+          },
+          "ocr_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Enabled"
           }
         },
         "title": "UpdateProjectRequest",
@@ -7095,7 +7111,7 @@
         ]
       },
       "patch": {
-        "description": "Renames the Project or edits its description. An archived Project is refused.",
+        "description": "Renames the Project, edits its description or turns OCR on or off. An archived Project\nis refused.",
         "operationId": "updateProject",
         "parameters": [
           {
@@ -8710,7 +8726,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
       "post": {
-        "description": "Processes a Failed Document again, from its stored file: it goes back to Queued. When\nthe Document's newer edition is what failed, that edition is retried instead.",
+        "description": "Processes a Document again from its stored file: it goes back to Queued. When the\nDocument's newer edition is what failed, that edition is retried instead; a Ready Document\nis processed again with the Project's current settings (such as OCR), its Chunks serving\nuntil the new ones replace them.",
         "operationId": "retryDocument",
         "parameters": [
           {
@@ -8745,7 +8761,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8773,7 +8789,7 @@
                 }
               }
             },
-            "description": "Only a Failed Document can be retried. / This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. / The file is a duplicate of a Document in the Project (``document_id`` names it)."
+            "description": "This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. / The file is a duplicate of a Document in the Project (``document_id`` names it)."
           },
           "422": {
             "content": {

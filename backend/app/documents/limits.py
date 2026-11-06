@@ -82,7 +82,10 @@ def wrong_type_message(mime_type: str) -> str:
     )
 
 
-NO_TEXT = "No readable text was found in this file. Check that it isn't empty or a scanned image."
+NO_TEXT = (
+    "No readable text was found in this file. Check that it isn't empty. If it is a scanned "
+    "PDF, turn on OCR for this Project, then retry it."
+)
 UNREADABLE_CONTENT = (
     "This file's content can't be read. Check that it isn't password-protected or damaged, "
     "then upload it again."
