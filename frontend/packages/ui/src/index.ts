@@ -1,4 +1,5 @@
 export { contrastRatio, type ContrastWarning, contrastWarnings, relativeLuminance } from "./contrast";
+export { MarkdownEditor, type MarkdownEditorProps } from "./MarkdownEditor";
 export { AccentLink, ChatWindow, Composer, Launcher, MessageBubble, MutedText, ThemeScope } from "./primitives";
 export {
   type ColourScheme,

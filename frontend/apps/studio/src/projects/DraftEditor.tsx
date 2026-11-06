@@ -1,3 +1,4 @@
+import { MarkdownEditor } from "@studio/ui";
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
@@ -468,6 +469,7 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
     change({ ...draft, guardrails: { ...guardrails, ...update } });
   };
   const at = (field: string) => errorsFor(errors, field);
+  const systemPromptErrorId = useId();
   const [questions, setQuestions] = useState(experience.starter_questions.join("\n"));
 
   return (
@@ -487,15 +489,18 @@ export function DraftEditor({ agent, organisationId }: { agent: Agent; organisat
       </div>
 
       <Group legend="Behaviour">
-        <TextField
-          label="System prompt"
-          rows={8}
-          errors={at("behaviour.system_prompt")}
-          value={behaviour.system_prompt}
-          onChange={(system_prompt) => {
-            setBehaviour({ system_prompt });
-          }}
-        />
+        <div>
+          {/* Written and stored as markdown (ticket 04-02). */}
+          <MarkdownEditor
+            label="System prompt"
+            maxLength={20000}
+            defaultValue={behaviour.system_prompt}
+            onChange={(system_prompt) => {
+              setBehaviour({ system_prompt });
+            }}
+          />
+          <Errors id={systemPromptErrorId} messages={at("behaviour.system_prompt")} />
+        </div>
         <ModelChoiceField
           legend="Model override"
           noneLabel="None: use the Default Model"
