@@ -18,6 +18,8 @@ from sqlalchemy.exc import DBAPIError
 from app.tenancy.erasure import erase_organisation
 from tests.conftest import BACKEND_ROOT, MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path
+from tests.integration.test_project_deletion import delete_permanently
+from tests.integration.test_projects import archive
 from tests.integration.test_provider_credentials import audit_events
 
 NOTHING_TO_PUBLISH = "The Draft is the same as the Current Version, so there's nothing to publish."
@@ -382,6 +384,28 @@ async def test_erasing_the_organisation_removes_its_published_versions(
     assert remaining == 0
     # The Editor's own Organisation, and their account, are untouched.
     assert (await editor.client.get("/api/auth/me")).status_code == 200
+
+
+async def test_permanently_deleting_the_project_removes_its_published_versions(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    """03-11's deletion cascade deletes a Project whose Current Version points at a chain of
+    Versions; the cascade deletes them and never updates one."""
+    project_id = await create_project(owner, "With versions")
+    await published(owner, project_id, "Be kind.", "First rules")
+    await published(owner, project_id, "Be brief.", "Shorter")
+    assert (await revert(owner, project_id)).status_code == 200
+    assert (await archive(owner, project_id)).status_code == 200
+
+    response = await delete_permanently(owner, project_id, "With versions")
+
+    assert response.status_code == 202, response.text
+    async with app.state.sessionmaker() as session:
+        remaining = await session.scalar(
+            text("SELECT count(*) FROM project_instructions_versions WHERE project_id = :id"),
+            {"id": project_id},
+        )
+    assert remaining == 0
 
 
 async def test_concurrent_publishes_of_one_draft_make_one_version_and_a_clear_conflict(

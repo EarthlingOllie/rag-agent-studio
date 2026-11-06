@@ -12,6 +12,7 @@ from app.storage.port import ObjectNotFoundError, attachment_disposition
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
+    from mypy_boto3_s3.type_defs import ObjectIdentifierTypeDef
 
 _MISSING = {"404", "NoSuchKey", "NoSuchBucket", "NotFound"}
 
@@ -114,3 +115,20 @@ class S3ObjectStore:
 
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self._client.delete_object, Bucket=self.bucket, Key=key)
+
+    async def delete_prefix(self, prefix: str) -> None:
+        """Lists the keys a page (up to 1,000) at a time and deletes each page in one request."""
+        await asyncio.to_thread(self._delete_prefix, prefix)
+
+    def _delete_prefix(self, prefix: str) -> None:
+        pages = self._client.get_paginator("list_objects_v2").paginate(
+            Bucket=self.bucket, Prefix=prefix
+        )
+        for page in pages:
+            keys: list[ObjectIdentifierTypeDef] = [
+                {"Key": item["Key"]} for item in page.get("Contents", [])
+            ]
+            if keys:
+                self._client.delete_objects(
+                    Bucket=self.bucket, Delete={"Objects": keys, "Quiet": True}
+                )

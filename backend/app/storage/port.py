@@ -46,3 +46,7 @@ class ObjectStore(Protocol):
     async def delete(self, key: str) -> None:
         """Removes the object; removing one that isn't there is not an error."""
         ...
+
+    async def delete_prefix(self, prefix: str) -> None:
+        """Removes every object whose key starts with ``prefix``; there may be none."""
+        ...

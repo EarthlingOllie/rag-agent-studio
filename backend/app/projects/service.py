@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
@@ -33,7 +33,11 @@ class ProjectArchivedError(Exception):
 
 
 class ProjectNotArchivedError(Exception):
-    """Only an archived Project can be restored."""
+    """Only an archived Project can be restored or permanently deleted."""
+
+
+class ProjectNameMismatchError(Exception):
+    """The name typed to confirm a permanent deletion isn't the Project's name."""
 
 
 @dataclass(frozen=True)
@@ -232,3 +236,55 @@ async def save_instructions(
         project.instructions = markdown
     await session.commit()
     return project
+
+
+def storage_prefix(organisation_id: uuid.UUID, project_id: uuid.UUID) -> str:
+    """Where every object stored for the Project lives: its Documents' originals, converted
+    markdown and staged editions, and uploads never confirmed."""
+    return f"organisations/{organisation_id}/projects/{project_id}/"
+
+
+async def check_deletion(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, confirm_name: str
+) -> None:
+    """Refuses a permanent deletion unless the Project is archived and ``confirm_name`` is its
+    name, exactly. Owners only; the route checks the role."""
+    project = await get_project(session, scope, project_id)
+    if project.archived_at is None:
+        raise ProjectNotArchivedError
+    if confirm_name != project.name:
+        raise ProjectNameMismatchError
+
+
+async def delete_project(
+    session: AsyncSession, project_id: uuid.UUID, *, actor_id: uuid.UUID, requested_at: datetime
+) -> str | None:
+    """The deletion cascade's database step: deletes the Project and, through the foreign keys'
+    ``ON DELETE CASCADE``, everything in it (Documents and their staged editions, Chunks, Tags,
+    Agents, their Conversations and Messages), and records ``project.deleted``, in one
+    transaction. Returns the storage prefix whose objects the caller deletes next.
+
+    Does nothing, returning None, if the Project is gone already or was restored after the
+    deletion was asked for: only an archived Project is ever deleted."""
+    project = await session.scalar(
+        select(Project).where(Project.id == project_id).with_for_update()
+    )
+    if project is None or project.archived_at is None:
+        return None
+    (summary,) = await _summaries(session, [project])
+    await audit.record(
+        session,
+        organisation_id=project.organisation_id,
+        actor_id=actor_id,
+        action="project.deleted",
+        target=audit.AuditTarget("project", project.id),
+        before={
+            **_audit_fields(project),
+            "document_count": summary.document_count,
+            "agent_count": summary.agent_count,
+        },
+        occurred_at=requested_at,
+    )
+    await session.execute(delete(Project).where(Project.id == project.id))
+    await session.commit()
+    return storage_prefix(project.organisation_id, project.id)

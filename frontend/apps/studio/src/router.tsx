@@ -89,7 +89,14 @@ const organisationRoute = createRoute({
   path: "/organisations/$organisationId",
   component: OrganisationShell,
 });
-const projectsRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/projects", component: ProjectsPage });
+const projectsRoute = createRoute({
+  getParentRoute: () => organisationRoute,
+  path: "/projects",
+  // After a permanent deletion the page says which Project is being deleted, as `?deleted=`.
+  validateSearch: (search: Record<string, unknown>): { deleted?: string } =>
+    typeof search.deleted === "string" ? { deleted: search.deleted } : {},
+  component: ProjectsPage,
+});
 const projectRoute = createRoute({
   getParentRoute: () => organisationRoute,
   path: "/projects/$projectId",

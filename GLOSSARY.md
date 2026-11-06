@@ -112,6 +112,10 @@ _Avoid_: Disable, soft delete
 To bring an archived Project back to the Projects list so it serves again. Only Owners can restore.
 _Avoid_: Unarchive, undelete
 
+**Permanent deletion**:
+Removing an archived Project for good: its Documents, Chunks, stored files, Tags, Agents and Conversations. Only an Owner can do it, only once the Project is archived, and only after typing the Project's name exactly. It runs as a background cascade and can't be undone; the Audit Event records who deleted the Project and what it held.
+_Avoid_: Purge, hard delete
+
 ## Models
 
 **Provider Credential**:

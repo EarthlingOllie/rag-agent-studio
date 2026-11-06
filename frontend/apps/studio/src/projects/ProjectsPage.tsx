@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
 import { FormError, formValues } from "../auth/AuthLayout";
@@ -258,6 +258,7 @@ function ArchivedProjects({
 export function ProjectsPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   const [showArchived, setShowArchived] = useState(false);
+  const { deleted } = useSearch({ from: "/signed-in/organisations/$organisationId/projects" });
   return (
     <section aria-labelledby="page-heading" className="space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -274,6 +275,11 @@ export function ProjectsPage() {
           {showArchived ? "Show active Projects" : "Show archived Projects"}
         </button>
       </div>
+      {deleted && (
+        <p role="status" className="text-sm text-green-900">
+          {deleted} is being deleted permanently.
+        </p>
+      )}
       {showArchived ? (
         <ArchivedProjects organisationId={organisationId} isOwner={isOwner} />
       ) : (
