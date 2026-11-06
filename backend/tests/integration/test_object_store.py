@@ -139,6 +139,8 @@ async def test_storage_errors_other_than_a_missing_object_are_raised() -> None:
         await store.prepare()
     with pytest.raises(ClientError):
         await store.get("anything")
+    with pytest.raises(ClientError):
+        await store.size("anything")
 
 
 @pytest.fixture
