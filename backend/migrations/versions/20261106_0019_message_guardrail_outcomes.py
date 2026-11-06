@@ -1,7 +1,7 @@
 """Guardrail outcomes on Messages: what each Guardrail layer decided about an answer.
 
-Revision ID: 0018_message_guardrail_outcomes
-Revises: 0017_message_retrievals
+Revision ID: 0019_message_guardrail_outcomes
+Revises: 0018_document_failures
 Create Date: 2026-11-06
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0018_message_guardrail_outcomes"
-down_revision: str | None = "0017_message_retrievals"
+revision: str = "0019_message_guardrail_outcomes"
+down_revision: str | None = "0018_document_failures"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
