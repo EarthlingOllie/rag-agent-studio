@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-09: Provider Embedding Models](09-provider-embedding-models.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Changing the model with Documents present sets the new model as pending and starts a re-embed job
 - [ ] Progress is visible; the old vectors serve until an atomic switch, after which they're deleted
