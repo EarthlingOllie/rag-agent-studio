@@ -2,6 +2,7 @@ import type { Schemas } from "@studio/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { draftFailed } from "./draft";
 import { ProjectRequestError } from "./projects";
 
 export type Agent = Schemas["AgentOut"];
@@ -94,7 +95,7 @@ export function useSaveDraft(organisationId: string, projectId: string, agentId:
           body: draft,
         },
       );
-      if (!data) throw failed(response, error);
+      if (!data) throw draftFailed(response, error);
       return data;
     },
     onSuccess: store,

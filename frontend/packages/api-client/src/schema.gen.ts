@@ -910,7 +910,9 @@ export interface paths {
         get?: never;
         /**
          * Save Agent Draft
-         * @description Replaces the Agent's Draft with a valid AgentConfig.
+         * @description Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each
+         *     credential must offer the chosen model for its setting's capability and each Tag must be
+         *     the Project's; every problem is reported in one 422, located like a validation error.
          */
         put: operations["saveAgentDraft"];
         post?: never;
@@ -1437,11 +1439,15 @@ export interface components {
         /** AgentConfig */
         "AgentConfig-Input": {
             behaviour?: components["schemas"]["Behaviour-Input"];
+            experience?: components["schemas"]["Experience-Input"];
+            guardrails?: components["schemas"]["Guardrails-Input"];
             retrieval?: components["schemas"]["Retrieval-Input"];
         };
         /** AgentConfig */
         "AgentConfig-Output": {
             behaviour: components["schemas"]["Behaviour-Output"];
+            experience: components["schemas"]["Experience-Output"];
+            guardrails: components["schemas"]["Guardrails-Output"];
             retrieval: components["schemas"]["Retrieval-Output"];
         };
         /** AgentOut */
@@ -1563,10 +1569,26 @@ export interface components {
              */
             fallback_text: string;
             /**
+             * Max Output Tokens
+             * @default 1024
+             */
+            max_output_tokens: number;
+            model?: components["schemas"]["ModelChoice"] | null;
+            /**
+             * Remembered Turns
+             * @default 5
+             */
+            remembered_turns: number;
+            /**
              * System Prompt
              * @default
              */
             system_prompt: string;
+            /**
+             * Temperature
+             * @default 0.7
+             */
+            temperature: number;
         };
         /** Behaviour */
         "Behaviour-Output": {
@@ -1576,10 +1598,26 @@ export interface components {
              */
             fallback_text: string;
             /**
+             * Max Output Tokens
+             * @default 1024
+             */
+            max_output_tokens: number;
+            model: components["schemas"]["ModelChoice"] | null;
+            /**
+             * Remembered Turns
+             * @default 5
+             */
+            remembered_turns: number;
+            /**
              * System Prompt
              * @default
              */
             system_prompt: string;
+            /**
+             * Temperature
+             * @default 0.7
+             */
+            temperature: number;
         };
         /** BulkTagRequest */
         BulkTagRequest: {
@@ -2050,6 +2088,59 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** Experience */
+        "Experience-Input": {
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
+            /**
+             * Greeting
+             * @default
+             */
+            greeting: string;
+            /**
+             * Rating Prompt After
+             * @default 3
+             */
+            rating_prompt_after: number;
+            /** Starter Questions */
+            starter_questions?: string[];
+            ui_text?: components["schemas"]["UiText-Input"];
+        };
+        /** Experience */
+        "Experience-Output": {
+            /** Avatar Url */
+            avatar_url: string | null;
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
+            /**
+             * Greeting
+             * @default
+             */
+            greeting: string;
+            /**
+             * Rating Prompt After
+             * @default 3
+             */
+            rating_prompt_after: number;
+            /** Starter Questions */
+            starter_questions: string[];
+            ui_text: components["schemas"]["UiText-Output"];
+        };
+        /**
+         * FailMode
+         * @description What happens when the LLM classifier's provider errors: open lets the message through,
+         *     closed treats it as flagged.
+         * @enum {string}
+         */
+        FailMode: "open" | "closed";
         /**
          * Font
          * @enum {string}
@@ -2064,6 +2155,38 @@ export interface components {
         FontOut: {
             category: components["schemas"]["FontCategory"];
             family: components["schemas"]["Font"];
+        };
+        /**
+         * Guardrails
+         * @description Stored and versioned with the Agent; enforced from spec 08.
+         */
+        "Guardrails-Input": {
+            classifier?: components["schemas"]["ModelChoice"] | null;
+            /** @default closed */
+            fail_mode: components["schemas"]["FailMode"];
+            /** @default block */
+            input_mode: components["schemas"]["InputMode"];
+            /**
+             * Refusal Text
+             * @default Sorry, I can't help with that request.
+             */
+            refusal_text: string;
+        };
+        /**
+         * Guardrails
+         * @description Stored and versioned with the Agent; enforced from spec 08.
+         */
+        "Guardrails-Output": {
+            classifier: components["schemas"]["ModelChoice"] | null;
+            /** @default closed */
+            fail_mode: components["schemas"]["FailMode"];
+            /** @default block */
+            input_mode: components["schemas"]["InputMode"];
+            /**
+             * Refusal Text
+             * @default Sorry, I can't help with that request.
+             */
+            refusal_text: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2092,6 +2215,12 @@ export interface components {
              */
             status: "ok" | "error";
         };
+        /**
+         * InputMode
+         * @description What the input Guardrail does when it flags a Visitor message (enforced in spec 08).
+         * @enum {string}
+         */
+        InputMode: "block" | "warn" | "log";
         /** InviteLookupRequest */
         InviteLookupRequest: {
             /** Token */
@@ -2264,6 +2393,19 @@ export interface components {
             enabled: boolean;
             /** Recovery Codes Remaining */
             recovery_codes_remaining: number;
+        };
+        /**
+         * ModelChoice
+         * @description A Provider Credential and one of its models. Saving checks the credential offers it.
+         */
+        ModelChoice: {
+            /**
+             * Credential Id
+             * Format: uuid
+             */
+            credential_id: string;
+            /** Model */
+            model: string;
         };
         /** ModelOut */
         ModelOut: {
@@ -2479,6 +2621,11 @@ export interface components {
         /** Retrieval */
         "Retrieval-Input": {
             /**
+             * Citations
+             * @default true
+             */
+            citations: boolean;
+            /**
              * Hybrid Weight
              * @default 0.5
              */
@@ -2488,6 +2635,9 @@ export interface components {
              * @default 0
              */
             min_score: number;
+            reranker?: components["schemas"]["ModelChoice"] | null;
+            /** Tag Ids */
+            tag_ids?: string[];
             /**
              * Top K
              * @default 5
@@ -2497,6 +2647,11 @@ export interface components {
         /** Retrieval */
         "Retrieval-Output": {
             /**
+             * Citations
+             * @default true
+             */
+            citations: boolean;
+            /**
              * Hybrid Weight
              * @default 0.5
              */
@@ -2506,6 +2661,9 @@ export interface components {
              * @default 0
              */
             min_score: number;
+            reranker: components["schemas"]["ModelChoice"] | null;
+            /** Tag Ids */
+            tag_ids: string[];
             /**
              * Top K
              * @default 5
@@ -2760,6 +2918,30 @@ export interface components {
              * @description Seconds until sign-in can be tried again
              */
             retry_after_seconds: number;
+        };
+        /**
+         * UiText
+         * @description Overrides of the widget's built-in text. None keeps the built-in text.
+         */
+        "UiText-Input": {
+            /** Rate Conversation */
+            rate_conversation?: string | null;
+            /** Send Button */
+            send_button?: string | null;
+            /** Unavailable Message */
+            unavailable_message?: string | null;
+        };
+        /**
+         * UiText
+         * @description Overrides of the widget's built-in text. None keeps the built-in text.
+         */
+        "UiText-Output": {
+            /** Rate Conversation */
+            rate_conversation: string | null;
+            /** Send Button */
+            send_button: string | null;
+            /** Unavailable Message */
+            unavailable_message: string | null;
         };
         /** UpdateProfileRequest */
         UpdateProfileRequest: {

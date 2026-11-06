@@ -6,15 +6,12 @@ import uuid
 
 import pytest
 
-from tests.agents import agents_path, create_agent, save_draft
+from tests.agents import FULL_DEFAULT_DRAFT, agents_path, create_agent, save_draft
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path
 from tests.integration.test_provider_credentials import audit_events
 
-DEFAULT_DRAFT: dict[str, dict[str, object]] = {
-    "behaviour": {"system_prompt": "", "fallback_text": "Sorry, I don't know the answer to that."},
-    "retrieval": {"top_k": 5, "hybrid_weight": 0.5, "min_score": 0.0},
-}
+DEFAULT_DRAFT = FULL_DEFAULT_DRAFT
 
 
 async def test_an_editor_creates_an_agent_with_a_public_id_and_a_default_draft(
@@ -62,11 +59,18 @@ async def test_the_draft_is_saved_and_read_back_exactly(owner: SignedUpMember) -
     project_id = await create_project(owner)
     agent = await create_agent(owner, project_id)
     draft = {
+        **DEFAULT_DRAFT,
         "behaviour": {
+            **DEFAULT_DRAFT["behaviour"],
             "system_prompt": "# Role\n\nAnswer **briefly**.\n\n- Cite the handbook\n",
             "fallback_text": "I don't know; ask HR.",
         },
-        "retrieval": {"top_k": 3, "hybrid_weight": 0.7, "min_score": 0.25},
+        "retrieval": {
+            **DEFAULT_DRAFT["retrieval"],
+            "top_k": 3,
+            "hybrid_weight": 0.7,
+            "min_score": 0.25,
+        },
     }
 
     saved = await save_draft(owner, project_id, agent["id"], draft)
@@ -91,6 +95,7 @@ async def test_the_draft_is_saved_and_read_back_exactly(owner: SignedUpMember) -
         {"behaviour": {"fallback_text": "x" * 2_001}},
         {"behaviour": {"system_prompt": "x" * 20_001}},
         {"behaviour": {"system_prompt": "Hi", "temperature": 2}},
+        {"behaviour": {"system_prompt": "Hi", "creativity": 1}},
         {"unknown_group": {}},
     ],
 )
@@ -112,7 +117,7 @@ async def test_a_partial_draft_takes_defaults_for_the_rest(owner: SignedUpMember
     saved = await save_draft(owner, project_id, agent["id"], {"retrieval": {"top_k": 8}})
 
     assert saved.json()["draft"] == {
-        "behaviour": DEFAULT_DRAFT["behaviour"],
+        **DEFAULT_DRAFT,
         "retrieval": {**DEFAULT_DRAFT["retrieval"], "top_k": 8},
     }
 
