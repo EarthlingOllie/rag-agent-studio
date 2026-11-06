@@ -27,6 +27,7 @@ from pydantic_ai.models.function import AgentInfo
 from app.credentials.registry import Provider
 from app.gateway.fakes import FakeModelAdapters
 from app.gateway.gateway import UnsupportedCredentialError
+from app.gateway.ports import Reranker
 from tests.agents import (
     StreamFunction,
     answer_text,
@@ -39,6 +40,7 @@ from tests.agents import (
 )
 from tests.conftest import SignedUpMember
 from tests.integration.test_playground import ready_agent, settings_seen
+from tests.integration.test_provider_credentials import VOYAGE_KEY, added
 
 INVALID_KEY = (
     "The provider rejected the API key. An Owner can check or rotate the Provider Credential "
@@ -315,3 +317,26 @@ async def test_remembered_turns_are_capped_at_twenty(app: FastAPI, owner: Signed
     most = await save_draft(member, project_id, agent_id, {"behaviour": {"remembered_turns": 20}})
 
     assert (refused.status_code, most.status_code) == (422, 200)
+
+
+async def test_a_reranker_the_gateway_cant_build_is_unavailable(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    def cant_build(provider: Provider, secret: str, model: str) -> Reranker:
+        raise UnsupportedCredentialError("No client for this provider's rerank models.")
+
+    adapters: FakeModelAdapters = app.state.model_gateway.adapters
+    adapters.reranker = cant_build  # type: ignore[method-assign]
+    member, project_id, agent_id = await ready_agent(app, owner)
+    voyage = await added(owner, provider="voyage", api_key=VOYAGE_KEY)
+    reranker = {"credential_id": voyage["id"], "model": "rerank-2.5"}
+    saved = await save_draft(owner, project_id, agent_id, {"retrieval": {"reranker": reranker}})
+    assert saved.status_code == 200, saved.text
+    conversation = await start_conversation(member, project_id, agent_id)
+
+    response = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
+
+    # The Draft's reranker can't be built: the turn ends naming the rerank model, unanswered.
+    assert parse_sse(response.text) == [
+        ("error", {"code": "model_unavailable", "message": unavailable("rerank-2.5")})
+    ]
