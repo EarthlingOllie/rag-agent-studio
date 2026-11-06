@@ -1,8 +1,8 @@
 """Message retrievals: each Chunk retrieval found for an answer, for the Trace, and whether
 the answer was the fallback text.
 
-Revision ID: 0015_message_retrievals
-Revises: 0014_staged_editions
+Revision ID: 0016_message_retrievals
+Revises: 0015_provider_embedding_models
 Create Date: 2026-11-05
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0015_message_retrievals"
-down_revision: str | None = "0014_staged_editions"
+revision: str = "0016_message_retrievals"
+down_revision: str | None = "0015_provider_embedding_models"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
