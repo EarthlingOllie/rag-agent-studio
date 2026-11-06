@@ -3,6 +3,7 @@ import { type SubmitEvent, useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { formatTime } from "../settings/AuditPage";
 import {
+  type InstructionsReverted,
   type InstructionsVersion,
   useInstructionsVersions,
   useIsLatestInstructionsChange,
@@ -15,7 +16,12 @@ import { BUTTON, INPUT } from "./ProjectsPage";
 type Target = { organisationId: string; projectId: string };
 
 /** Publishes the Draft as written in the editor (`markdown()`), with a note, as the next Version. */
-export function PublishInstructionsForm({ organisationId, projectId, markdown }: Target & { markdown: () => string }) {
+export function PublishInstructionsForm({
+  organisationId,
+  projectId,
+  markdown,
+  onPublished,
+}: Target & { markdown: () => string; onPublished: (version: InstructionsVersion) => void }) {
   const publish = usePublishInstructions(organisationId, projectId);
   const latest = useIsLatestInstructionsChange(organisationId, projectId, publish.submittedAt);
 
@@ -26,8 +32,9 @@ export function PublishInstructionsForm({ organisationId, projectId, markdown }:
     publish.mutate(
       { markdown: markdown(), note },
       {
-        onSuccess: () => {
+        onSuccess: (version) => {
           form.reset();
+          onPublished(version);
         },
       },
     );
@@ -77,7 +84,12 @@ function VersionItem({ version, current }: { version: InstructionsVersion; curre
 }
 
 /** The Version history, the Current Version and reverting it. Read-only while the Project is archived. */
-export function InstructionsVersions({ organisationId, projectId, archived }: Target & { archived: boolean }) {
+export function InstructionsVersions({
+  organisationId,
+  projectId,
+  archived,
+  onReverted,
+}: Target & { archived: boolean; onReverted: (reverted: InstructionsReverted) => void }) {
   const versions = useInstructionsVersions(organisationId, projectId);
   const revert = useRevertInstructions(organisationId, projectId);
   const latest = useIsLatestInstructionsChange(organisationId, projectId, revert.submittedAt);
@@ -102,6 +114,7 @@ export function InstructionsVersions({ organisationId, projectId, archived }: Ta
           type="button"
           onClick={() => {
             revert.mutate(undefined, {
+              onSuccess: onReverted,
               onSettled: () => {
                 setConfirming(false);
               },

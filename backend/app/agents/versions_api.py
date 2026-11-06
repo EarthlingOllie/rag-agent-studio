@@ -32,11 +32,8 @@ router = APIRouter(
 )
 
 UNKNOWN_INSTRUCTIONS_VERSION = "That Instructions Version isn't one of this Project's."
-NOTHING_TO_REVERT = "There's no earlier Live Version to revert to."
-REVERT_TARGET_INVALID = (
-    "The Version that was Live before uses a Provider Credential or model that is no longer "
-    "available, so it can't be made Live again. Publish a fixed Version instead."
-)
+NOTHING_TO_REVERT = versions.NOTHING_TO_REVERT
+REVERT_TARGET_INVALID = versions.REVERT_TARGET_INVALID
 
 
 def _errors(*codes: tuple[int, str]) -> dict[int | str, dict[str, Any]]:

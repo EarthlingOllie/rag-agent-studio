@@ -526,6 +526,178 @@
         "title": "Behaviour",
         "type": "object"
       },
+      "BulkOutcomeOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "instructions_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "live_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "succeeded",
+              "skipped",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "status",
+          "reason",
+          "live_version",
+          "instructions_version"
+        ],
+        "title": "BulkOutcomeOut",
+        "type": "object"
+      },
+      "BulkPublishRequest": {
+        "properties": {
+          "agent_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Agent Ids",
+            "type": "array"
+          },
+          "instructions_version_id": {
+            "format": "uuid",
+            "title": "Instructions Version Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "agent_ids",
+          "instructions_version_id"
+        ],
+        "title": "BulkPublishRequest",
+        "type": "object"
+      },
+      "BulkResultOut": {
+        "properties": {
+          "bulk_operation_id": {
+            "format": "uuid",
+            "title": "Bulk Operation Id",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkOutcomeOut"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "bulk_operation_id",
+          "results"
+        ],
+        "title": "BulkResultOut",
+        "type": "object"
+      },
+      "BulkRevertCandidateOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "live_version": {
+            "$ref": "#/components/schemas/VersionNumberOut"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "live_version"
+        ],
+        "title": "BulkRevertCandidateOut",
+        "type": "object"
+      },
+      "BulkRevertRequest": {
+        "properties": {
+          "agent_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Agent Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_ids"
+        ],
+        "title": "BulkRevertRequest",
+        "type": "object"
+      },
       "BulkTagRequest": {
         "properties": {
           "add": {
@@ -2288,6 +2460,109 @@
         "title": "InstructionsHistoryOut",
         "type": "object"
       },
+      "InstructionsRevertOut": {
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulk_revert_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/BulkRevertCandidateOut"
+            },
+            "title": "Bulk Revert Candidates",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "previous_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Version Id"
+          },
+          "reverted_from": {
+            "$ref": "#/components/schemas/VersionNumberOut"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "markdown",
+          "note",
+          "author",
+          "created_at",
+          "previous_version_id",
+          "reverted_from",
+          "bulk_revert_candidates"
+        ],
+        "title": "InstructionsRevertOut",
+        "type": "object"
+      },
+      "InstructionsRolloutOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "behind": {
+            "title": "Behind",
+            "type": "integer"
+          },
+          "current_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "current_version",
+          "behind",
+          "agents"
+        ],
+        "title": "InstructionsRolloutOut",
+        "type": "object"
+      },
       "InstructionsVersionOut": {
         "properties": {
           "author": {
@@ -3796,6 +4071,57 @@
         ],
         "title": "Role",
         "type": "string"
+      },
+      "RolloutAgentOut": {
+        "properties": {
+          "behind": {
+            "title": "Behind",
+            "type": "boolean"
+          },
+          "has_draft_changes": {
+            "title": "Has Draft Changes",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instructions_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "live_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "live_version",
+          "instructions_version",
+          "has_draft_changes",
+          "behind"
+        ],
+        "title": "RolloutAgentOut",
+        "type": "object"
       },
       "RotateCredentialRequest": {
         "properties": {
@@ -8577,6 +8903,174 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-publish": {
+      "post": {
+        "description": "Publishes a new Version of each Agent from its Live configuration (never its Draft)\npinning the chosen Instructions Version, and makes it Live. Each Agent is processed in its\nown transaction; never-published Agents and Agents already on that Version are skipped.\nRecords ``agent.bulk_published`` per Agent and ``project.agents_bulk_published``.",
+        "operationId": "bulkPublishAgents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "That Instructions Version isn't one of this Project's."
+          }
+        },
+        "summary": "Bulk Publish Agents",
+        "tags": [
+          "agent-bulk"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-revert": {
+      "post": {
+        "description": "Moves each Agent's Live Version back one step in its Live History. Each Agent is\nprocessed in its own transaction; Agents with nothing to revert to are skipped. Records\n``agent.bulk_reverted`` per Agent and ``project.agents_bulk_reverted``.",
+        "operationId": "bulkRevertAgents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRevertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Revert Agents",
+        "tags": [
+          "agent-bulk"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}": {
       "delete": {
         "description": "Permanently deletes an archived Agent (Owners only), once ``confirm_name`` is its name.\nIts Draft, Conversations and their Messages and Traces go with it, and ``agent.deleted``\nis recorded. This can't be undone.",
@@ -11217,7 +11711,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/instructions/revert": {
       "post": {
-        "description": "Moves the Current Version back to the Version that was Current before it, and returns\nit. The Draft is unchanged. Records ``project.instructions_reverted``.",
+        "description": "Moves the Current Version back to the Version that was Current before it, and returns\nit with the Agents still pinned to the reverted Version, so they can be bulk-reverted. The\nDraft is unchanged. Records ``project.instructions_reverted``.",
         "operationId": "revertProjectInstructions",
         "parameters": [
           {
@@ -11246,7 +11740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InstructionsVersionOut"
+                  "$ref": "#/components/schemas/InstructionsRevertOut"
                 }
               }
             },
@@ -11286,6 +11780,70 @@
         "summary": "Revert Instructions",
         "tags": [
           "project-instructions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/rollout": {
+      "get": {
+        "description": "Which Instructions Version each active Agent's Live Version pins, whether its Draft has\nunpublished changes, and how many Agents are behind the Current Version.",
+        "operationId": "getInstructionsRollout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsRolloutOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instructions Rollout",
+        "tags": [
+          "agent-bulk"
         ]
       }
     },

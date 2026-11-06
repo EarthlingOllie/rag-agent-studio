@@ -397,6 +397,21 @@ To freeze a Draft into a new Version and make it the Live Version for an Agent, 
 To move the Live Version (Agents) or the Current Version (Project Instructions) back one step in its history. For an Agent this restores both the configuration and the Instructions Version it was pinned to, and is refused when there's nothing to revert to (the Agent is not live, or its Live Version was its first) or the earlier Version's Provider Credential is gone. Reverting never creates, edits or deletes a Version, and it never changes the Draft.
 _Avoid_: Rollback, undo
 
+**Bulk publish**:
+To publish a new Version of several Agents at once, each built from that Agent's **Live** configuration plus a chosen Project Instructions Version, never from its Draft (ADR-0003). Agents that have never been published are skipped (their first Version must be reviewed on their own page), and so are Agents already Live with that Instructions Version. Publishing Project Instructions opens the **rollout dialog**, which offers the new Version to the Project's Agents with every Agent that can take it pre-selected and Agents with unpublished Draft changes badged, since those edits aren't included.
+_Avoid_: Mass deploy, publish all
+
+**Bulk revert**:
+To revert several Agents at once, each one step back in its own Live History. Editors start one from the Agent list (multi-select) or from the offer shown after reverting Project Instructions, which lists the Agents still Live with the reverted Instructions Version.
+_Avoid_: Mass rollback
+
+**Bulk operation**:
+One bulk publish or bulk revert. Each Agent in it is processed in its own transaction, so a failure on one Agent never leaves another half-updated, and the result reports every Agent as succeeded, skipped (with the reason) or failed (with the reason). Its **bulk operation ID** is recorded on each Live History entry and Audit Event it makes.
+
+**Behind**:
+An Agent is behind when it is live but its Live Version doesn't pin the Current Instructions Version. The Project Instructions page shows "N Agents behind" and which Instructions Version each Agent pins, so partial rollouts are visible. An Agent that has never been published is not live, so it is never behind.
+_Avoid_: Outdated, stale
+
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.
 
