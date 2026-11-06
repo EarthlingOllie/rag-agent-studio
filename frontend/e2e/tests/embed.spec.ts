@@ -45,7 +45,7 @@ test.describe("Embed an Agent", () => {
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
 
     // No snippet until the Agent has a Live Version.
-    const embed = page.getByRole("region", { name: "Embed" });
+    const embed = page.getByRole("region", { name: "Embed", exact: true });
     await expect(embed).toContainText("Publish the Agent to get its Embed Snippet.");
     await expect(embed.getByRole("button", { name: "Copy snippet" })).toHaveCount(0);
 
