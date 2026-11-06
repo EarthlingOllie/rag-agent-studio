@@ -1,0 +1,13 @@
+# The demo seed goes through the API, with a demo provider and one erasure exception
+
+`make seed` builds the Demo Organisation by driving the platform's own HTTP API in process (sign up, invite, credentials, Default Model, Theme, Project, Tags, uploads through presigned URLs, Agents), so seeded data is valid by construction and the seed can't drift from what the Studio does. It finds the Demo Organisation through the demo Owner's account (the Organisation that account owns under the demo name) rather than a slug column. It only adds what is missing or changes what differs, so running it again changes nothing.
+
+So the demo needs no API keys, the capability registry gains a **demo provider** with one chat model, the Demo model. It sits behind the model gateway like any provider adapter. The live and fake adapter sets both build it, so it answers the same in `docker compose` and in AWS. Its name, the Studio's label and every answer say it is a demo. It costs nothing in the price table. A real credential can still be seeded from `SEED_CREDENTIAL_*` environment variables and become the Default Model.
+
+`make seed-reset` has to delete the Demo Organisation, but Audit Events are append-only and nothing could delete an Organisation. We added one narrow exception rather than a soft delete or a second "retired" demo Organisation: the audit trigger lets a DELETE through only when the transaction has set `app.erasing_organisation` to that row's Organisation ID (`app.tenancy.erasure`, migration `0018_erase_organisation`). Every other UPDATE, DELETE and TRUNCATE is still refused, and the Studio offers no way to erase an Organisation. The demo accounts are deleted too, so they can sign up again; an account that another Organisation's Audit Events name is retired instead (unusable email and password), so those events keep their actor. Reset refuses to run while a demo account still belongs to another Organisation.
+
+## Considered options
+
+- **Writing tables directly from the seed.** Faster, but it would duplicate validation, audit and ingestion logic and drift from the API.
+- **A `slug` column to find the Demo Organisation.** The spec suggested it, but it needs a schema change that only the seed would read. The demo Owner's fixed email already identifies it.
+- **Reset by retiring the old Demo Organisation** (renaming it and removing its members). It keeps the append-only rule absolute, but it leaves a dead Organisation, with its Documents and files, behind each reset.

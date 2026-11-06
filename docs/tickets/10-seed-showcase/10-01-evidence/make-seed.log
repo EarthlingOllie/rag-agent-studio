@@ -1,0 +1,39 @@
+# Against the e2e stack (project rag1001), after the e2e run's own make seed.
++ counts
+organisations=36 demo_orgs=1 documents=13 audit_events=120 demo_org_id=488f692a-952d-4c13-8c73-235455acdfc6
++ make seed   (second run)
+docker compose -p rag1001 -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-01-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-1001/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag1001-api-run-0cdbd3b03ba5 Creating 
+ Container rag1001-api-run-0cdbd3b03ba5 Created 
+/app/app/main.py:136: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:41173/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
++ counts
+organisations=36 demo_orgs=1 documents=13 audit_events=120 demo_org_id=488f692a-952d-4c13-8c73-235455acdfc6
++ make seed-reset
+docker compose -p rag1001 -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-01-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-1001/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed --reset"
+ Container rag1001-api-run-6603137d9f82 Creating 
+ Container rag1001-api-run-6603137d9f82 Created 
+/app/app/main.py:136: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:41173/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
++ counts
+organisations=36 demo_orgs=1 documents=13 audit_events=120 demo_org_id=a2f36d9e-dcfc-4752-a7f4-b4285fbe9ac1
++ documents of the demo Organisation after the reset (worker ingestion)
+ERROR:  column d.chunk_count does not exist
+LINE 1: select d.name, d.status, d.chunk_count from documents d join...
+                                 ^
+northwind-product-faq.docx|ready
+northwind-returns-policy.md|ready
+northwind-spring-range.pptx|ready
+northwind-staff-handbook.md|ready
