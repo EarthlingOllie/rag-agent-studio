@@ -1,5 +1,5 @@
 $ cd frontend && pnpm build
-# 2026-11-06T01:44:05Z in a fresh clone at 00b5ee1
+# 2026-11-06T03:24:48Z in a fresh clone at f3336cf
 
 > rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0206/frontend
 > pnpm --filter @studio/studio build
@@ -10,17 +10,17 @@ $ cd frontend && pnpm build
 
 vite v8.3.5 building client environment for production...
 transforming...
-✓ 453 modules transformed.
+✓ 456 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                   0.40 kB │ gzip:   0.27 kB
-dist/assets/index-BuCdkXvZ.css   21.68 kB │ gzip:   4.92 kB
-dist/assets/index-CbfvxNrJ.js   652.56 kB │ gzip: 190.74 kB
+dist/assets/index-CkvR_eZi.css   21.85 kB │ gzip:   4.95 kB
+dist/assets/index-CXqcOciD.js   666.45 kB │ gzip: 194.53 kB
 
 [plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 1.31s
+✓ built in 1.20s
 # exit code: 0
