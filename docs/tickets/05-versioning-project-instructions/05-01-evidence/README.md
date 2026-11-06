@@ -50,19 +50,19 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `7521221`, the merge of `origin/candidate` at `f0d632d` (02-06) into the branch. The next commit changes only this folder and the ticket's Status and checkboxes. Every log's first line names the commit it ran at.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `bb29854`, which is on top of the merge of `origin/candidate` at `00f8214` (10-01) and holds the round-2 fixes: migration `0024_instructions_versions` after `0023_erase_organisation`, the erasure test, the refused-Draft-save message and the latest-outcome-only status. The next commit changes only this folder. Every log's first line names the commit it ran at.
 
-Earlier, an identical set of checks ran at `f63d874`, after merging 08-04. Every check passed there except the backend suite: its first run hit a test database left at this branch's pre-renumbering revision, `0021_instructions_versions`, by the earlier development runs on the same container. That was an environment artefact; the rerun on fresh containers passed with 1435 tests and 100% coverage. Those logs were superseded by the runs below after 02-06 merged.
+Earlier runs at `f63d874` (after 08-04) and `7521221` (after 02-06) also passed, the first after an environment rerun; their logs were superseded by the runs below.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1496 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **39 files, 478 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0501-*` Postgres/pgvector, Redis and RustFS containers | **1529 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **39 files, 481 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Images | `build.sh` (sandbox `make images`) | both built | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0501`) | **55 passed**, including `instructions-versions.spec.ts` with its axe scans, and `instructions.spec.ts`. The first attempt at the same commit ([e2e-attempt1.log](e2e-attempt1.log)) ran while the shared machine's load average was 22–29 on 4 CPUs. Four specs unrelated to this ticket timed out at 30 s there (bedrock-credentials, members, mfa, require-mfa); all 51 others passed, including both Instructions specs. The unchanged rerun passed in full. | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0501`) | **57 passed** on the first attempt, including `instructions-versions.spec.ts` with its axe scans, and `instructions.spec.ts` | [e2e.log](e2e.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
 ## Gaps and best guesses
