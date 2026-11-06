@@ -3,7 +3,7 @@
 Only ``make seed-reset`` erases an Organisation (the demo one); the Studio has no way to
 delete Organisations. Tenant tables cascade from ``organisations``. Audit Events are
 append-only, so the transaction first sets ``app.erasing_organisation``, the one exception
-their trigger allows (migration ``0021_erase_organisation``).
+their trigger allows (migration ``0022_erase_organisation``).
 """
 
 import secrets

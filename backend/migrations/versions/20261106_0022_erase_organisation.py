@@ -5,8 +5,8 @@ the trigger now lets a DELETE through when the transaction has set
 ``app.erasing_organisation`` to the row's Organisation ID (``app.tenancy.erasure``). Every
 other UPDATE, DELETE and TRUNCATE is still refused.
 
-Revision ID: 0021_erase_organisation
-Revises: 0020_chunk_guardrail_flags
+Revision ID: 0022_erase_organisation
+Revises: 0021_message_guardrail_outcomes
 Create Date: 2026-11-06
 """
 
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "0021_erase_organisation"
-down_revision: str | None = "0020_chunk_guardrail_flags"
+revision: str = "0022_erase_organisation"
+down_revision: str | None = "0021_message_guardrail_outcomes"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
