@@ -2,6 +2,7 @@
 
 - Anthropic and OpenAI: list models (no tokens spent).
 - Voyage: embed one short string with the smallest model.
+- Demo: nothing to check; it needs no key.
 
 HTTP answers map to typed failures: 401 is an invalid key, 403 or 404 missing model access,
 429 an exhausted quota or rate limit, and anything else (5xx, timeouts, network errors) an
@@ -54,6 +55,8 @@ class HttpCredentialVerifier:
         self._client = client
 
     async def check(self, provider: Provider, api_key: str) -> CheckResult:
+        if provider is Provider.DEMO:
+            return PASSED  # nothing to call: the demo model is built offline
         try:
             response = await self._client.send(_request(provider, api_key))
         except httpx.HTTPError:

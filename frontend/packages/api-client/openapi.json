@@ -972,7 +972,8 @@
             "enum": [
               "anthropic",
               "openai",
-              "voyage"
+              "voyage",
+              "demo"
             ],
             "title": "Provider",
             "type": "string"
@@ -3108,7 +3109,8 @@
           "anthropic",
           "openai",
           "bedrock",
-          "voyage"
+          "voyage",
+          "demo"
         ],
         "title": "Provider",
         "type": "string"
