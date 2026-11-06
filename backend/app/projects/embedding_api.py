@@ -10,9 +10,9 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from app.auth.api import Db, ErrorResponse
 from app.documents.ports import IngestionPorts
-from app.embeddings.provider import MissingCredentialError, resolve_embedder
+from app.embeddings.provider import UNUSABLE_ERRORS, resolve_embedder
 from app.embeddings.registry import embedding_model
-from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
+from app.gateway.gateway import ModelGateway
 from app.projects import embedding, service
 from app.projects.api import PROJECT_ARCHIVED, ClockDep, ProjectOut, respond
 from app.retrieval.probe import probe
@@ -29,9 +29,8 @@ PROJECT_HAS_DOCUMENTS = (
 )
 PROVIDER_FAILED = "The Embedding Model's provider couldn't embed the query. Try again shortly."
 MODEL_UNUSABLE = "The Project's Embedding Model can't be used: {reason}"
-# Setup problems with the Project's model or credential: retrying won't help, so they are a 409
-# with the reason rather than the 502 kept for provider failures that may pass.
-UNUSABLE_ERRORS = (MissingCredentialError, ModelUnavailableError, UnsupportedCredentialError)
+# Setup problems (``UNUSABLE_ERRORS``) are a 409 with the reason rather than the 502 kept for
+# provider failures that may pass.
 PROBE_TOP_K_MAX = 50
 
 

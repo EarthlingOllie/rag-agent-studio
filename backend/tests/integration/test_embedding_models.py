@@ -468,10 +468,15 @@ async def test_a_provider_failure_fails_the_document_with_a_readable_message(
 
     await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
 
+    # Tests run tasks eagerly, so every automatic retry has already happened.
     (listed,) = await documents(owner, project_id)
-    assert listed["status"] == "failed"
+    assert (listed["status"], listed["error_category"], listed["attempt_count"]) == (
+        "failed",
+        "provider",
+        4,
+    )
     assert listed["error_message"] == (
-        "This Document couldn't be processed. Try uploading it again."
+        "The Embedding Model's provider didn't respond after 4 attempts. Retry the Document later."
     )
 
 
@@ -486,7 +491,15 @@ async def test_vectors_of_the_wrong_size_fail_the_document(
     await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
 
     (listed,) = await documents(owner, project_id)
-    assert listed["status"] == "failed"
+    assert (listed["status"], listed["error_category"], listed["attempt_count"]) == (
+        "failed",
+        "provider",
+        1,
+    )
+    assert listed["error_message"] == (
+        "The Embedding Model's provider can't be used: "
+        "voyage-3.5 answered with 2 dimensions, not 1024. Retry once it is fixed."
+    )
 
 
 async def test_bedrock_credentials_offer_titan_and_cohere(owner: SignedUpMember) -> None:
@@ -747,4 +760,24 @@ async def test_probing_a_provider_model_without_its_credential_says_why(
             "detail": "The Project's Embedding Model can't be used: "
             "voyage-3.5 has no Provider Credential. Choose the Embedding Model again."
         },
+    )
+
+
+async def test_a_provider_model_without_its_credential_fails_ingestion_on_the_provider(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await create_project(owner)
+    await _set_embedding(app, project_id, "voyage-3.5", None)
+
+    await upload(app, owner, project_id, "leave.md", b"Everyone gets 25 days.")
+
+    (listed,) = await documents(owner, project_id)
+    assert (listed["status"], listed["error_category"], listed["attempt_count"]) == (
+        "failed",
+        "provider",
+        1,
+    )
+    assert listed["error_message"] == (
+        "The Embedding Model's provider can't be used: voyage-3.5 has no Provider Credential. "
+        "Choose the Embedding Model again. Retry once it is fixed."
     )

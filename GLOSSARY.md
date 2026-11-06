@@ -215,13 +215,21 @@ _Avoid_: Indexing, processing pipeline, import
 A per-Project setting, off by default. When it is on, ingestion also reads text in images, so scanned PDFs become readable. It makes ingestion slower, so it is only turned on for Projects that need it. A change applies to Documents processed afterwards; retrying a Document reprocesses it with the new setting.
 _Avoid_: Text recognition, scan mode
 
-**Retry**:
-Sending a Ready or Failed Document's current edition through ingestion again, with its Project's current settings. Its Chunks keep serving until the new ones replace them. Not while the Document, or a new edition of it, is still being processed.
-_Avoid_: Reprocess, re-ingest, re-run
-
 **Content hash**:
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
+
+**Failure category**:
+What kind of failure set a Document to Failed, shown with its readable message: unsupported content (the file isn't what its type says, or has no readable text), conversion error (the converter couldn't convert it, or processing went wrong), provider error (the Embedding Model's provider kept failing after the automatic retries) or quota (the Project's Document quota had no room for it).
+_Avoid_: Error code, error type, failure reason
+
+**Retry**:
+Sending a Document through ingestion again from its stored file, with its Project's current settings, without uploading it again: a Failed Document, or its Failed new edition, or else a Ready Document's current edition (whose Chunks keep serving until the new ones replace them). Not while the Document, or a new edition of it, is still being processed. An Editor retries by hand; a transient failure (a provider error) is retried automatically, after an exponential backoff, up to a fixed number of attempts.
+_Avoid_: Reprocess, re-ingest, re-run
+
+**Document quota**:
+The most Documents a Project may hold, not counting Failed ones. Uploads beyond it are refused with a clear message, and a Document processed when the Project is already full fails with the quota category. A new Edition doesn't add a Document, so the quota never refuses one. Every Project starts at 500; an Owner can change it.
+_Avoid_: Document limit, storage limit, cap
 
 **Document viewer**:
 The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
