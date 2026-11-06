@@ -12,7 +12,7 @@ API_CLIENT_DIR := frontend/packages/api-client
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
-dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio)
+dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio, widget, demo host page)
 	$(COMPOSE) up --build
 
 down: ## Stop the stack
@@ -33,8 +33,8 @@ test-backend: ## Backend tests against real Postgres and Redis (start them with 
 test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
 	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
 
-test-frontend: ## Studio and API client tests
-	cd frontend && pnpm test
+test-frontend: ## Studio, widget and API client tests, then the embed loader's size budget
+	cd frontend && pnpm test && pnpm check-embed-size
 
 lint: lint-backend lint-frontend ## Lint and type-check backend and frontend
 

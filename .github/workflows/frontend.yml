@@ -35,6 +35,9 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+      - name: Embed loader size budget
+        # The Embed Snippet's loader (embed.js) runs on every host page: 2 KB, 1 KB gzipped at most.
+        run: pnpm check-embed-size
 
   api-client-drift:
     runs-on: ubuntu-latest

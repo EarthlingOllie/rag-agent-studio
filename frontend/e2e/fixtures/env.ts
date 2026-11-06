@@ -6,3 +6,6 @@ export const STACK_TIMEOUT_MS = Number(process.env.E2E_STACK_TIMEOUT_MS ?? 180_0
 
 /** Mailpit's web and API address for the stack under test; the stack's email lands there. */
 export const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://localhost:8025";
+
+/** The demo host page: a separate origin that pastes an Agent's Embed Snippet (`?agent=agt_…`). */
+export const HOST_URL = process.env.E2E_HOST_URL ?? "http://localhost:5175";

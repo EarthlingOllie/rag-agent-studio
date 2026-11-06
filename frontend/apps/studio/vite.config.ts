@@ -12,6 +12,11 @@ export default defineConfig({
       // Uploads PUT to presigned URLs on the Studio's own origin; this forwards them to the
       // object store (RustFS) unchanged, Host header included, so the signature still matches.
       "/studio-documents": { target: process.env.OBJECT_STORE_PROXY_TARGET ?? "http://localhost:9000" },
+      // The embed shares this origin, as behind CloudFront (ADR-0011): the API serves the widget
+      // shell, and the widget app's preview server the loader and the widget bundle.
+      "/widget/a/": { target: process.env.API_PROXY_TARGET ?? "http://localhost:8000", xfwd: true },
+      "/embed.js": { target: process.env.WIDGET_PROXY_TARGET ?? "http://localhost:5174" },
+      "/widget/assets/": { target: process.env.WIDGET_PROXY_TARGET ?? "http://localhost:5174" },
     },
   },
 });

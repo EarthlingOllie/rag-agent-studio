@@ -21,6 +21,7 @@
     "apps/*/src",
     "packages/*/src",
     "apps/*/vite.config.ts",
+    "apps/*/vite.*.config.ts",
     "vitest.config.ts",
     "eslint.config.js",
     "e2e",

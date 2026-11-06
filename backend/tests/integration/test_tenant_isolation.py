@@ -336,6 +336,11 @@ async def _an_agent_to_publish(owner: SignedUpMember, add_member: MemberFactory)
     return params, {"note": "First release"}
 
 
+async def _allowed_origins(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"origins": ["https://www.example.com"]}
+
+
 async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, body = await _an_agent_to_publish(owner, add_member)
     published = await owner.client.post(
@@ -470,6 +475,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _AGENT + "/versions", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/allowed-origins", EDITOR, _an_agent),
+    ScopedRoute("PUT", _AGENT + "/allowed-origins", EDITOR, _allowed_origins),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),

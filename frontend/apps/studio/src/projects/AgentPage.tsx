@@ -12,6 +12,7 @@ import {
   useArchiveOrRestoreAgent,
   useDeleteAgent,
 } from "./agents";
+import { AgentEmbed } from "./AgentEmbed";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
 import { DraftEditor } from "./DraftEditor";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
@@ -508,6 +509,13 @@ export function AgentPage() {
         {!archived && (
           <PublishAgent
             key={`publish-${agent.data.id}`}
+            agent={agent.data}
+            organisationId={organisationId}
+          />
+        )}
+        {!archived && (
+          <AgentEmbed
+            key={`embed-${agent.data.id}`}
             agent={agent.data}
             organisationId={organisationId}
           />

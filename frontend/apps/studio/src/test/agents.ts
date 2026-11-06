@@ -311,6 +311,8 @@ export function fakeAgentsApi(
     publish?: (
       body: Schemas["PublishAgentRequest"],
     ) => Response | undefined | Promise<Response | undefined>;
+    /** The Allowed Origins every Agent starts with. */
+    allowedOrigins?: string[];
   } = {},
 ) {
   let agents = [...(options.agents ?? [])];
@@ -318,7 +320,41 @@ export function fakeAgentsApi(
   const answer =
     options.answer ?? (() => streamedAnswer(["Twenty-five ", "days."]));
   const published: Record<string, number> = {};
+  let allowedOrigins = [...(options.allowedOrigins ?? [])];
   server.use(
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins",
+      () => HttpResponse.json({ origins: allowedOrigins }),
+    ),
+    http.put(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins",
+      async ({ request }) => {
+        const body = (await request.json()) as Schemas["AllowedOriginsIn"];
+        requests.push({ route: "allowed-origins", body });
+        // Like the API: lower-cased, without a trailing slash; a non-origin is a 422.
+        const origins = body.origins.map((origin) =>
+          origin.trim().toLowerCase().replace(/\/$/, ""),
+        );
+        const invalid = origins.findIndex(
+          (origin) => !/^https?:\/\/[a-z0-9.-]+(:[0-9]+)?$/.test(origin),
+        );
+        if (invalid >= 0)
+          return HttpResponse.json(
+            {
+              detail: [
+                {
+                  loc: ["body", "origins", invalid],
+                  msg: `'${String(body.origins[invalid])}' isn't a site address. Use a scheme, host and optional port, such as https://www.example.com or http://localhost:8080.`,
+                  type: "value_error",
+                },
+              ],
+            },
+            { status: 422 },
+          );
+        allowedOrigins = origins;
+        return HttpResponse.json({ origins });
+      },
+    ),
     http.post(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/versions",
       async ({ request, params }) => {

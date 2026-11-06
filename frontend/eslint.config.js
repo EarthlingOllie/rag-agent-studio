@@ -15,7 +15,7 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: { ...reactHooks.configs.recommended.rules },
   },
-  { files: ["eslint.config.js"], ...tseslint.configs.disableTypeChecked },
+  { files: ["eslint.config.js", "**/*.mjs"], ...tseslint.configs.disableTypeChecked },
   // Playwright fixtures call `use()`, which is not React's hook.
   { files: ["e2e/**"], rules: { "react-hooks/rules-of-hooks": "off" } },
 );

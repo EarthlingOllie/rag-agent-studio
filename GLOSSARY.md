@@ -412,8 +412,19 @@ A model provider's failure while answering, reported at the end of the answer's 
 _Avoid_: Model error, API error, crash
 
 **Embed Snippet**:
-The code an Organisation pastes into its site to show an Agent.
+The code an Organisation pastes into its site to show an Agent: one `<script>` tag that loads the platform's small loader with the Agent's Public ID. The loader injects an iframe for the Agent's Widget shell. The Studio shows it, with a copy button, only once the Agent has a Live Version.
 _Avoid_: Embed link, widget code
+
+**Widget shell**:
+The HTML page the Embed Snippet's iframe loads, served by the API for each request. Its `frame-ancestors` policy lets only the Agent's Allowed Origins show it, and it hands the widget a Bootstrap token. An archived, unknown or not-live Agent gets the "no longer available" shell instead.
+_Avoid_: Widget page, iframe HTML
+
+**Bootstrap token**:
+A short-lived (15 minutes), signed token the Widget shell gives the widget, bound to the Agent. The widget exchanges it for a Conversation token, which starts the Visitor's Conversation.
+
+**Conversation token**:
+The signed, opaque token that is a Visitor's only credential: bound to one Visitor Conversation and its Agent, and expiring 24 hours after the Conversation's last activity (each message slides the window on). Only its hash is stored. Each answer it gets comes from the Agent's Live Version at that moment.
+_Avoid_: Session, visitor token
 
 **Operational Settings**:
 An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits and Token Budget.
@@ -422,7 +433,7 @@ An Agent's settings that take effect immediately and are not part of any Version
 The maximum tokens an Agent may consume per day before it stops answering Visitors.
 
 **Allowed Origins**:
-The sites permitted to display an Agent through its Embed Snippet.
+The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Changes apply to the next page load, without publishing.
 
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.

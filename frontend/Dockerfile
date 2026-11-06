@@ -1,4 +1,5 @@
-# Local development image for the Studio (Vite dev server with the /api proxy).
+# Local development image for the Studio (Vite dev server with the /api proxy), the widget
+# (`vite preview` of its build) and the demo host page.
 
 # Install stage: pnpm (through corepack) installs the locked workspace dependencies.
 FROM node:22-slim AS install
@@ -13,6 +14,8 @@ COPY packages/ui/package.json packages/ui/
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+# The widget app and the Embed Snippet's loader, served by the `widget` service's `vite preview`.
+RUN pnpm --filter @studio/widget build
 
 # Runtime stage: Node and the installed workspace only. npm, corepack and the pnpm release it
 # caches are not needed to run Vite, and the Trivy gate (security.yml) rejects their known CVEs.
