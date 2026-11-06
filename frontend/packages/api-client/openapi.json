@@ -1680,6 +1680,69 @@
         "title": "EmbeddingModelChoiceOut",
         "type": "object"
       },
+      "EmbeddingModelStateOut": {
+        "description": "The Project's active Embedding Model, the pending one while a re-embed runs, and the\nlatest re-embed job (running or ended), if there has been one.",
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Id"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "pending_credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Credential Id"
+          },
+          "pending_model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Model Id"
+          },
+          "re_embed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReEmbedOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "model_id",
+          "credential_id",
+          "pending_model_id",
+          "pending_credential_id",
+          "re_embed"
+        ],
+        "title": "EmbeddingModelStateOut",
+        "type": "object"
+      },
       "EnrolmentResponse": {
         "properties": {
           "otpauth_uri": {
@@ -3072,6 +3135,99 @@
         ],
         "title": "ProviderOut",
         "type": "object"
+      },
+      "ReEmbedOut": {
+        "description": "A re-embed job: the Knowledge Base moving from one Embedding Model to another.",
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Id"
+          },
+          "embedded_chunks": {
+            "title": "Embedded Chunks",
+            "type": "integer"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "from_model_id": {
+            "title": "From Model Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReEmbedStatus"
+          },
+          "total_chunks": {
+            "title": "Total Chunks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "from_model_id",
+          "model_id",
+          "credential_id",
+          "embedded_chunks",
+          "total_chunks",
+          "error_message",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "ReEmbedOut",
+        "type": "object"
+      },
+      "ReEmbedStatus": {
+        "enum": [
+          "running",
+          "completed",
+          "failed",
+          "cancelled"
+        ],
+        "title": "ReEmbedStatus",
+        "type": "string"
       },
       "RecoveryCodesResponse": {
         "properties": {
@@ -9588,8 +9744,70 @@
       }
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/embedding-model": {
+      "get": {
+        "description": "The Project's Embedding Model, archived or not: the active one, the pending one while a\nre-embed runs, and the latest re-embed with its progress (or why it failed).",
+        "operationId": "getProjectEmbeddingModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmbeddingModelStateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Embedding Model",
+        "tags": [
+          "embedding-models"
+        ]
+      },
       "put": {
-        "description": "Chooses the Project's Embedding Model: the local one, or a provider model with a\nProvider Credential that offers it. Refused while the Project has Documents. Records\n``project.embedding_model_changed``.",
+        "description": "Chooses the Project's Embedding Model: the local one, or a provider model with a\nProvider Credential that offers it. A Project without Documents switches at once\n(``project.embedding_model_changed``). One with Documents gets it as its pending model and\na background re-embed (``project.re_embed_started``); its active model keeps serving until\nthe job switches over. Choosing again while a re-embed runs cancels it\n(``project.re_embed_cancelled``). Follow the re-embed with ``getProjectEmbeddingModel``.",
         "operationId": "setProjectEmbeddingModel",
         "parameters": [
           {
@@ -9652,7 +9870,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it. Or: The Embedding Model can't be changed while the Project has Documents. Delete its Documents first."
+            "description": "This Project is archived. An Owner can restore it."
           },
           "422": {
             "content": {

@@ -6,10 +6,15 @@
 3. Store the converted markdown.
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
 5. Embed the Chunks through the embedder port, in batches: the local model, or the Project's
-   provider model through the model gateway with its Provider Credential.
+   provider model through the model gateway with its Provider Credential. While a re-embed
+   runs, they are embedded with the pending model too, so nothing is missing after the switch
+   (if that fails, the re-embed job embeds them instead).
 6. Scan the Chunks through the injection-classifier port (the ingestion Guardrail scan): each
    Chunk the classifier flags as instructions aimed at an AI keeps its label, score and reason.
-7. Write the Chunks and set Ready, in one transaction.
+7. Write the Chunks and set Ready, in one transaction: a row per Chunk for each of the
+   Project's current models (active, and pending while a re-embed runs). If the active model
+   changed while the edition was processed, to one it wasn't embedded with, the edition goes
+   back to Queued and is processed again.
 
 A replacement goes through the same steps as the Document's staged edition: its Chunks are
 written under the new edition number, and in the same transaction the staged edition is swapped
@@ -44,6 +49,7 @@ from app.embeddings.registry import embedding_model
 from app.gateway.gateway import ModelGateway
 from app.guardrails.classifier import InjectionFlag
 from app.projects.models import Project
+from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
 from app.storage.port import ObjectNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -95,6 +101,9 @@ class _Job:
     credential: ProviderCredential | None
     """The Provider Credential the Project's Embedding Model is called through; ``None`` for
     the local model."""
+    # The pending Embedding Model while a re-embed runs, and its credential.
+    pending_model_id: str | None = None
+    pending_credential: ProviderCredential | None = None
 
 
 async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
@@ -132,6 +141,16 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
             await session.commit()
             return None
     claimed.status = DocumentStatus.PROCESSING
+    pending = (
+        await session.execute(
+            select(ReEmbedJob, ProviderCredential)
+            .outerjoin(ProviderCredential, ProviderCredential.id == ReEmbedJob.credential_id)
+            .where(
+                ReEmbedJob.project_id == project.id,
+                ReEmbedJob.status == ReEmbedStatus.RUNNING,
+            )
+        )
+    ).one_or_none()
     job = _Job(
         document_id=document.id,
         organisation_id=document.organisation_id,
@@ -144,6 +163,8 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
         embedding_model_id=project.embedding_model_id,
         ocr=project.ocr_enabled,
         credential=credential,
+        pending_model_id=None if pending is None else pending[0].model_id,
+        pending_credential=None if pending is None else pending[1],
     )
     await session.commit()
     return job
@@ -159,8 +180,9 @@ async def _embed(embedder: Embedder, drafts: list[ChunkDraft]) -> list[list[floa
 
 async def _process(
     ports: IngestionPorts, gateway: ModelGateway, job: _Job, *, chunk_max_tokens: int
-) -> tuple[list[ChunkDraft], list[list[float]], list[InjectionFlag | None]]:
-    """Steps 2 to 6. Raises ``IngestionFailedError`` for a failure that isn't transient."""
+) -> tuple[list[ChunkDraft], dict[str, list[list[float]]], list[InjectionFlag | None]]:
+    """Steps 2 to 6. Raises ``IngestionFailedError`` for a failure that isn't transient. The
+    vectors are by Embedding Model: the active one's, and the pending one's when made."""
     try:
         original = await ports.object_store.get(job.object_key)
     except ObjectNotFoundError:
@@ -204,7 +226,36 @@ async def _process(
             FailureCategory.PROVIDER, limits.provider_setup_message(str(error))
         ) from None
     flags = await asyncio.to_thread(ports.classifier.classify, [draft.text for draft in drafts])
-    return drafts, vectors, flags
+    by_model = {job.embedding_model_id: vectors}
+    if job.pending_model_id is not None:
+        pending = await _embed_pending(ports, gateway, job, job.pending_model_id, drafts)
+        if pending is not None:
+            by_model[job.pending_model_id] = pending
+    return drafts, by_model, flags
+
+
+async def _embed_pending(
+    ports: IngestionPorts,
+    gateway: ModelGateway,
+    job: _Job,
+    model_id: str,
+    drafts: list[ChunkDraft],
+) -> list[list[float]] | None:
+    """The Chunks' vectors of the pending model while a re-embed runs. ``None`` if they can't be
+    made: the Document is Ready with its active vectors either way, and the re-embed job embeds
+    whatever is missing before it switches (or fails, if the provider keeps failing)."""
+    try:
+        embedder = resolve_embedder(
+            embedding_model(model_id), job.pending_credential, ports.embedders, gateway
+        )
+        return await _embed(embedder, drafts)
+    except Exception:
+        logger.warning(
+            "Embedding with the pending model failed; the re-embed job will retry it",
+            exc_info=True,
+            extra={"document_id": str(job.document_id)},
+        )
+        return None
 
 
 async def ingest(
@@ -224,7 +275,7 @@ async def ingest(
     if job is None:
         return None
     try:
-        drafts, vectors, flags = await _process(
+        drafts, by_model, flags = await _process(
             ports, gateway, job, chunk_max_tokens=chunk_max_tokens
         )
     except IngestionFailedError as failure:
@@ -253,9 +304,13 @@ async def ingest(
             sessionmaker, job, delete_objects, FailureCategory.CONVERSION, limits.PROCESSING_FAILED
         )
         return None
+    stale = False
     async with sessionmaker() as session, session.begin():
         document = await session.get(Document, job.document_id, with_for_update=True)
         if document is not None:
+            models = await _current_models(session, job.project_id)
+            stale = models[0] not in by_model
+        if document is not None and not stale:
             # Leftovers of an interrupted run of this edition; no reader asks for them.
             await session.execute(
                 delete(Chunk).where(Chunk.document_id == document.id, Chunk.edition == job.edition)
@@ -272,13 +327,15 @@ async def ingest(
                     page_start=draft.page_start,
                     page_end=draft.page_end,
                     embedding=vector,
-                    embedding_model_id=job.embedding_model_id,
+                    embedding_model_id=model_id,
                     guardrail_label=flag.label if flag else None,
                     guardrail_score=flag.score if flag else None,
                     guardrail_reason=flag.reason if flag else None,
                 )
+                for model_id in models
+                if model_id in by_model
                 for ordinal, (draft, vector, flag) in enumerate(
-                    zip(drafts, vectors, flags, strict=True)
+                    zip(drafts, by_model[model_id], flags, strict=True)
                 )
             )
             replaced = await _swap(session, document) if job.staged else []
@@ -290,9 +347,25 @@ async def ingest(
     if document is None:
         # Deleted while it was being processed: nothing refers to what was just stored.
         await delete_objects(stored_keys(job.object_key))
+    elif stale:
+        # The Project switched to a model this run didn't embed with: process it again.
+        await _requeue(sessionmaker, job, delete_objects, limits.MODEL_CHANGED)
+        return 0.0
     elif replaced:
         await delete_objects(replaced)
     return None
+
+
+async def _current_models(session: AsyncSession, project_id: uuid.UUID) -> list[str]:
+    """The Project's active Embedding Model, then its pending one while a re-embed runs. The
+    Project is share-locked, so a re-embed can't switch over until the Chunks are written."""
+    project = await session.get_one(Project, project_id, with_for_update={"read": True})
+    pending = await session.scalar(
+        select(ReEmbedJob.model_id).where(
+            ReEmbedJob.project_id == project_id, ReEmbedJob.status == ReEmbedStatus.RUNNING
+        )
+    )
+    return [project.embedding_model_id] + ([] if pending is None else [pending])
 
 
 def stored_keys(object_key: str) -> list[str]:
