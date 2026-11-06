@@ -3,15 +3,24 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
-import { fakeProjectsApi, hrProject, oldProject, PROJECT_ARCHIVED } from "../test/projects";
+import {
+  fakeProjectsApi,
+  hrProject,
+  oldProject,
+  PROJECT_ARCHIVED,
+} from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
-const settingsPage = (projectId: string) => `/organisations/${organisationId}/projects/${projectId}/settings`;
+const settingsPage = (projectId: string) =>
+  `/organisations/${organisationId}/projects/${projectId}/settings`;
 const editorSession: Session = {
   ...adaSession,
-  organisations: adaSession.organisations.map((organisation) => ({ ...organisation, role: "editor" as const })),
+  organisations: adaSession.organisations.map((organisation) => ({
+    ...organisation,
+    role: "editor" as const,
+  })),
 };
 const OCR = "Read scanned PDFs with OCR";
 
@@ -22,11 +31,22 @@ test("the Settings tab shows OCR off by default, and why it is off", async () =>
 
   await screen.findByRole("heading", { level: 1, name: "HR handbook" });
 
-  await userEvent.click(within(screen.getByRole("navigation", { name: "Project" })).getByRole("link", { name: "Settings" }));
+  await userEvent.click(
+    within(screen.getByRole("navigation", { name: "Project" })).getByRole(
+      "link",
+      { name: "Settings" },
+    ),
+  );
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Settings" })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { level: 2, name: "Settings" }),
+  ).toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: OCR })).not.toBeChecked();
-  expect(screen.getByText(/OCR reads text in images, such as scanned pages\. It makes processing slower/)).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      /OCR reads text in images, such as scanned pages\. It makes processing slower/,
+    ),
+  ).toBeInTheDocument();
 });
 
 test("an Editor turns OCR on, then off again", async () => {
@@ -53,10 +73,13 @@ test("the toggle is disabled while saving, and a refused change says why and kee
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   server.use(
-    http.patch("*/api/organisations/:organisationId/projects/:projectId", async () => {
-      await delay(200);
-      return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
-    }),
+    http.patch(
+      "*/api/organisations/:organisationId/projects/:projectId",
+      async () => {
+        await delay(200);
+        return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
+      },
+    ),
   );
   renderStudio(settingsPage(hrProject.id));
 

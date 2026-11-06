@@ -2,13 +2,22 @@ import { Link, useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useCallback, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { type Agent, type Citation, agentFailure, askPlayground, startConversation, useAgent } from "./agents";
+import {
+  type Agent,
+  type Citation,
+  agentFailure,
+  askPlayground,
+  startConversation,
+  useAgent,
+} from "./agents";
 import { DraftEditor } from "./DraftEditor";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 import { TraceDrawer } from "./TraceDrawer";
 
 function useAgentParams() {
-  return useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId" });
+  return useParams({
+    from: "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId",
+  });
 }
 
 type ChatMessage = {
@@ -21,11 +30,23 @@ type ChatMessage = {
 };
 
 /** Where a citation chip leads: the cited Chunk in the Document viewer. */
-function chunkHref(organisationId: string, projectId: string, citation: Citation): string {
+function chunkHref(
+  organisationId: string,
+  projectId: string,
+  citation: Citation,
+): string {
   return `/organisations/${organisationId}/projects/${projectId}/documents/${citation.document_id}#chunk-${citation.chunk_id}`;
 }
 
-function Sources({ citations, organisationId, projectId }: { citations: Citation[]; organisationId: string; projectId: string }) {
+function Sources({
+  citations,
+  organisationId,
+  projectId,
+}: {
+  citations: Citation[];
+  organisationId: string;
+  projectId: string;
+}) {
   return (
     <ul aria-label="Sources" className="mt-2 flex flex-wrap gap-2">
       {citations.map((citation) => (
@@ -34,7 +55,8 @@ function Sources({ citations, organisationId, projectId }: { citations: Citation
             href={chunkHref(organisationId, projectId, citation)}
             className="inline-flex gap-1 rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-900 underline-offset-2 hover:underline"
           >
-            <span className="font-semibold">{citation.label}</span> <span>{citation.document_name}</span>
+            <span className="font-semibold">{citation.label}</span>{" "}
+            <span>{citation.document_name}</span>
           </a>
         </li>
       ))}
@@ -43,7 +65,13 @@ function Sources({ citations, organisationId, projectId }: { citations: Citation
 }
 
 /** Chat with the Agent's Draft. The answer streams in token by token. */
-function Playground({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+function Playground({
+  agent,
+  organisationId,
+}: {
+  agent: Agent;
+  organisationId: string;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -53,16 +81,27 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
   const closeTrace = useCallback(() => {
     setTracing(null);
   }, []);
-  const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
+  const path = {
+    organisation_id: organisationId,
+    project_id: agent.project_id,
+    agent_id: agent.id,
+  };
 
   function appendToAnswer(update: (answer: ChatMessage) => ChatMessage) {
-    setMessages((current) => [...current.slice(0, -1), update(current[current.length - 1] as ChatMessage)]);
+    setMessages((current) => [
+      ...current.slice(0, -1),
+      update(current[current.length - 1] as ChatMessage),
+    ]);
   }
 
   async function ask(question: string) {
     setError(null);
     setPending(true);
-    setMessages((current) => [...current, { role: "user", content: question }, { role: "assistant", content: "" }]);
+    setMessages((current) => [
+      ...current,
+      { role: "user", content: question },
+      { role: "assistant", content: "" },
+    ]);
     try {
       const conversation = conversationId ?? (await startConversation(path)).id;
       setConversationId(conversation);
@@ -70,10 +109,20 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
         { ...path, conversation_id: conversation },
         question,
         (text) => {
-          appendToAnswer((answer) => ({ ...answer, content: answer.content + text }));
+          appendToAnswer((answer) => ({
+            ...answer,
+            content: answer.content + text,
+          }));
         },
         (citation) => {
-          appendToAnswer((answer) => ({ ...answer, citations: [...(answer.citations ?? []), citation] }));
+          appendToAnswer((answer) => ({
+            ...answer,
+            citations: [...(answer.citations ?? []), citation],
+          }));
+        },
+        (text) => {
+          // The answer leaked the Canary token: what streamed is replaced by the fallback text.
+          appendToAnswer((answer) => ({ ...answer, content: text }));
         },
       );
       appendToAnswer((answer) => ({
@@ -102,8 +151,15 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
       <h2 id="playground-heading" className="text-lg font-semibold">
         Playground
       </h2>
-      <p className="text-sm text-slate-700">Chat with this Draft. Playground Conversations are recorded but kept out of metrics.</p>
-      <ol aria-label="Playground messages" aria-live="polite" className="space-y-2">
+      <p className="text-sm text-slate-700">
+        Chat with this Draft. Playground Conversations are recorded but kept out
+        of metrics.
+      </p>
+      <ol
+        aria-label="Playground messages"
+        aria-live="polite"
+        className="space-y-2"
+      >
         {messages.map((message, index) => (
           <li
             key={index}
@@ -111,8 +167,16 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
             className={`rounded px-3 py-2 text-sm ${message.role === "user" ? "bg-slate-100" : "border border-slate-200 bg-white"}`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
-            {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}
-            {message.usage && <p className="mt-1 text-xs text-slate-700">{message.usage}</p>}
+            {message.citations && (
+              <Sources
+                citations={message.citations}
+                organisationId={organisationId}
+                projectId={agent.project_id}
+              />
+            )}
+            {message.usage && (
+              <p className="mt-1 text-xs text-slate-700">{message.usage}</p>
+            )}
             {message.messageId && (
               <button
                 type="button"
@@ -129,7 +193,11 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
         ))}
       </ol>
       <FormError message={agentFailure(error)} />
-      <form aria-label="Ask the Draft" onSubmit={onSubmit} className="space-y-2">
+      <form
+        aria-label="Ask the Draft"
+        onSubmit={onSubmit}
+        className="space-y-2"
+      >
         <label htmlFor="question" className="block text-sm font-medium">
           Question
         </label>
@@ -149,7 +217,14 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
         </button>
       </form>
       {tracing && conversationId && (
-        <TraceDrawer path={{ ...path, conversation_id: conversationId, message_id: tracing }} onClose={closeTrace} />
+        <TraceDrawer
+          path={{
+            ...path,
+            conversation_id: conversationId,
+            message_id: tracing,
+          }}
+          onClose={closeTrace}
+        />
       )}
     </section>
   );
@@ -171,8 +246,16 @@ export function AgentPage() {
       <>
         <h2 className="text-xl font-semibold">{agent.data.name}</h2>
         <div className="grid gap-8 lg:grid-cols-2">
-          <DraftEditor key={agent.data.id} agent={agent.data} organisationId={organisationId} />
-          <Playground key={`playground-${agent.data.id}`} agent={agent.data} organisationId={organisationId} />
+          <DraftEditor
+            key={agent.data.id}
+            agent={agent.data}
+            organisationId={organisationId}
+          />
+          <Playground
+            key={`playground-${agent.data.id}`}
+            agent={agent.data}
+            organisationId={organisationId}
+          />
         </div>
       </>
     );

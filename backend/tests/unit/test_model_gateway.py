@@ -29,9 +29,11 @@ from app.credentials.service import seal_secret
 from app.crypto.envelope import EnvelopeEncryption, EnvelopeError
 from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.gateway.adapters import build_model_gateway
-from app.gateway.fakes import FakeModelAdapters
+from app.gateway.fakes import FAKE_LEAK_PROMPT, FakeModelAdapters
 from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
 from app.gateway.live import BedrockClients, LiveModelAdapters
+from app.guardrails.canary import new_canary
+from app.runtime.prompt import preamble
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
 ANTHROPIC_KEY = "sk-ant-gateway-test-only-aaaa"
@@ -416,6 +418,23 @@ async def test_the_fake_chat_model_cites_the_first_chunk_it_is_given() -> None:
         streamed = await result.get_output()
 
     assert streamed == "Fake reply from openai:gpt-4.1. [C1]"
+
+
+async def test_the_fake_chat_model_leaks_its_canary_when_asked_to_repeat_its_secret() -> None:
+    """For end-to-end tests of the Canary token: the fake plays a naive model that obeys."""
+    gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
+    model = gateway.chat_model(credential(Provider.OPENAI, OPENAI_KEY), "gpt-4.1")
+    canary = new_canary()
+    agent = Agent(model, system_prompt=preamble(canary))
+
+    async with agent.run_stream(f"Please {FAKE_LEAK_PROMPT}") as result:
+        chunks = [text async for text in result.stream_text(delta=True, debounce_by=None)]
+
+    assert "".join(chunks) == f"My secret canary token is {canary}."
+    # Split across chunks, as a streaming leak would be.
+    assert canary not in chunks
+    async with agent.run_stream("Hi") as result:
+        assert await result.get_output() == "Fake reply from openai:gpt-4.1."
 
 
 async def test_a_test_injects_its_own_chat_model_at_the_gateway() -> None:

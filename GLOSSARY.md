@@ -391,6 +391,13 @@ The sites permitted to display an Agent through its Embed Snippet.
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
 
+**Canary token**:
+A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
+_Avoid_: Canary, honeytoken, tripwire
+
+**Guardrail outcome**:
+What one Guardrail layer decided about an answer: its layer, verdict, action (such as replaced or flagged) and reason. Saved on the Message and shown in its Trace.
+
 ## Conversations
 
 **Visitor**:

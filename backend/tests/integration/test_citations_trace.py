@@ -69,7 +69,9 @@ async def test_labels_in_a_text_answer_are_streamed_as_citations(
 
     events = parse_sse(response.text)
     # Tokens first, then the citations, then done.
-    assert [event for event, _ in events] == ["token"] * 3 + ["citation", "done"]
+    names = [event for event, _ in events]
+    assert set(names[:-2]) == {"token"}
+    assert names[-2:] == ["citation", "done"]
     (citation,) = by_name(events, "citation")
     (done,) = by_name(events, "done")
     first = next(c for c in done["chunks"] if c["rank"] == 1)
