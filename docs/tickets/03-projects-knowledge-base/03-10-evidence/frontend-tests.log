@@ -1,31 +1,31 @@
-$ make test-frontend @ 2842818
+$ make test-frontend @ edd6906
 cd frontend && pnpm test
 
-> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310/frontend
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310r2/frontend
 > vitest run --coverage
 
 
- RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310/frontend
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310r2/frontend
       Coverage enabled with v8
 
 
- Test Files  37 passed (37)
-      Tests  451 passed (451)
-   Start at  09:05:21
-   Duration  234.98s (tests 66%, environment 16%, import 8%, setup 6%, transform 3%, worker 1%)
+ Test Files  38 passed (38)
+      Tests  468 passed (468)
+   Start at  10:07:38
+   Duration  199.26s (tests 67%, environment 16%, import 7%, setup 6%, transform 3%, worker 1%)
 
-    Isolate  37 workers spawned · ~3.38s startup each (spawn + environment, per file)
-             at least ~38.28s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  38 workers spawned · ~2.73s startup each (spawn + environment, per file)
+             at least ~31.82s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
-59 files fully covered.
+61 files fully covered.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 2256/2256 )
-Branches     : 100% ( 1345/1345 )
-Functions    : 100% ( 875/875 )
-Lines        : 100% ( 1983/1983 )
+Statements   : 100% ( 2314/2314 )
+Branches     : 100% ( 1384/1384 )
+Functions    : 100% ( 889/889 )
+Lines        : 100% ( 2048/2048 )
 ================================================================================
 exit 0
