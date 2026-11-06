@@ -17,13 +17,27 @@ function pageLabel({ page_start: start, page_end: end }: Chunk): string | null {
   return end === null || end === start ? `Page ${String(start)}` : `Pages ${String(start)}–${String(end)}`;
 }
 
+/** How the Studio names the injection classifier's labels; any other label shows as given. */
+const FLAG_LABELS: Record<string, string> = { prompt_injection: "Prompt injection" };
+
+/** Why the ingestion Guardrail scan flagged the Chunk as instructions aimed at an AI. */
+function FlagNote({ flag }: { flag: NonNullable<Chunk["flag"]> }) {
+  return (
+    <p role="note" aria-label="Guardrail flag" className="rounded bg-amber-50 p-2 text-amber-900">
+      <strong>Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
+    </p>
+  );
+}
+
 function ChunkItem({ chunk }: { chunk: Chunk }) {
   const pages = pageLabel(chunk);
+  const border = chunk.flag ? "border-amber-500" : "border-slate-200";
   return (
-    <li className="space-y-1 rounded border border-slate-200 p-3 text-sm">
+    <li className={`space-y-1 rounded border p-3 text-sm ${border}`}>
       <p className="text-xs font-medium text-slate-700">Chunk {chunk.ordinal + 1}</p>
       {chunk.heading_path.length > 0 && <p className="font-medium text-slate-900">{chunk.heading_path.join(" › ")}</p>}
       {pages && <p className="text-xs text-slate-700">{pages}</p>}
+      {chunk.flag && <FlagNote flag={chunk.flag} />}
       <p className="whitespace-pre-wrap text-slate-900">{chunk.text}</p>
     </li>
   );
@@ -100,6 +114,12 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
           {STATUS_LABELS[document.status]}
           {document.error_message && `: ${document.error_message}`}
         </p>
+        {document.flagged_chunk_count > 0 && (
+          <p className="text-sm font-medium text-amber-900">
+            {document.flagged_chunk_count} {document.flagged_chunk_count === 1 ? "Chunk" : "Chunks"} flagged as possible
+            instructions to an AI.
+          </p>
+        )}
       </div>
       <a href={download} download={document.name} className={BUTTON}>
         Download original
@@ -110,7 +130,8 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
 
 /**
  * The Document viewer: Docling's converted markdown beside the Document's Chunks, each with its
- * heading path and pages, so an Editor sees exactly what an Agent can retrieve.
+ * heading path and pages, so an Editor sees exactly what an Agent can retrieve. Chunks the
+ * ingestion Guardrail scan flagged say why.
  */
 export function DocumentViewer() {
   const { organisationId, projectId, documentId } = useParams({

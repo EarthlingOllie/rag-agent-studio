@@ -250,6 +250,18 @@ _Avoid_: Category, folder, label
 A retrievable passage of a Document.
 _Avoid_: Segment, passage, node
 
+**Ingestion scan**:
+The Guardrail check ingestion runs on every Chunk: the injection classifier looks for instructions aimed at an AI (an indirect prompt injection hidden in a Document). A Chunk it flags keeps a Guardrail flag; nothing is blocked, and a flagged Chunk is still retrievable.
+_Avoid_: Document scan, content filter, malware scan
+
+**Injection classifier**:
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07), the rule-driven fake in tests, and later the local ONNX model and the LLM classifier (spec 08).
+_Avoid_: Detector, filter, moderation model
+
+**Guardrail flag**:
+What the injection classifier records on a Chunk it flags: a label (such as `prompt_injection`), a score from 0 to 1, and a reason an Editor can read. The Document viewer shows it on the Chunk, and the Document list counts a Document's flagged Chunks.
+_Avoid_: Warning, alert, violation
+
 **Project Instructions**:
 Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents; each Project has one Draft of them.
 _Avoid_: Project context, global prompt, shared context

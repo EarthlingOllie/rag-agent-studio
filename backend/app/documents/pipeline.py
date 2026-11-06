@@ -7,7 +7,9 @@
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
 5. Embed the Chunks through the embedder port, in batches: the local model, or the Project's
    provider model through the model gateway with its Provider Credential.
-6. Write the Chunks and set Ready, in one transaction.
+6. Scan the Chunks through the injection-classifier port (the ingestion Guardrail scan): each
+   Chunk the classifier flags as instructions aimed at an AI keeps its label, score and reason.
+7. Write the Chunks and set Ready, in one transaction.
 
 A replacement goes through the same steps as the Document's staged edition: its Chunks are
 written under the new edition number, and in the same transaction the staged edition is swapped
@@ -17,8 +19,7 @@ replacement doesn't add a Document, so the quota doesn't apply to it.
 
 A failure sets Failed with a ``FailureCategory`` and a readable message. A transient failure
 (the Embedding Model's provider failing) instead puts the edition back to Queued and asks the
-task to run again after a backoff, until the last attempt. The ingestion Guardrail scan joins
-between steps 5 and 6 in ticket 03-07.
+task to run again after a backoff, until the last attempt.
 """
 
 import asyncio
@@ -41,6 +42,7 @@ from app.embeddings.port import Embedder, EmbeddingProviderError
 from app.embeddings.provider import UNUSABLE_ERRORS, EmbeddingSizeError, resolve_embedder
 from app.embeddings.registry import embedding_model
 from app.gateway.gateway import ModelGateway
+from app.guardrails.classifier import InjectionFlag
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError
 
@@ -157,8 +159,8 @@ async def _embed(embedder: Embedder, drafts: list[ChunkDraft]) -> list[list[floa
 
 async def _process(
     ports: IngestionPorts, gateway: ModelGateway, job: _Job, *, chunk_max_tokens: int
-) -> tuple[list[ChunkDraft], list[list[float]]]:
-    """Steps 2 to 5. Raises ``IngestionFailedError`` for a failure that isn't transient."""
+) -> tuple[list[ChunkDraft], list[list[float]], list[InjectionFlag | None]]:
+    """Steps 2 to 6. Raises ``IngestionFailedError`` for a failure that isn't transient."""
     try:
         original = await ports.object_store.get(job.object_key)
     except ObjectNotFoundError:
@@ -201,7 +203,8 @@ async def _process(
         raise IngestionFailedError(
             FailureCategory.PROVIDER, limits.provider_setup_message(str(error))
         ) from None
-    return drafts, vectors
+    flags = await asyncio.to_thread(ports.classifier.classify, [draft.text for draft in drafts])
+    return drafts, vectors, flags
 
 
 async def ingest(
@@ -221,7 +224,9 @@ async def ingest(
     if job is None:
         return None
     try:
-        drafts, vectors = await _process(ports, gateway, job, chunk_max_tokens=chunk_max_tokens)
+        drafts, vectors, flags = await _process(
+            ports, gateway, job, chunk_max_tokens=chunk_max_tokens
+        )
     except IngestionFailedError as failure:
         await _fail(sessionmaker, job, delete_objects, failure.category, failure.message)
         return None
@@ -268,8 +273,13 @@ async def ingest(
                     page_end=draft.page_end,
                     embedding=vector,
                     embedding_model_id=job.embedding_model_id,
+                    guardrail_label=flag.label if flag else None,
+                    guardrail_score=flag.score if flag else None,
+                    guardrail_reason=flag.reason if flag else None,
                 )
-                for ordinal, (draft, vector) in enumerate(zip(drafts, vectors, strict=True))
+                for ordinal, (draft, vector, flag) in enumerate(
+                    zip(drafts, vectors, flags, strict=True)
+                )
             )
             replaced = await _swap(session, document) if job.staged else []
             document.status = DocumentStatus.READY

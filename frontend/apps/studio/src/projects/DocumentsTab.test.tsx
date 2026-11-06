@@ -8,6 +8,7 @@ import {
   aDocument,
   BUSY,
   fakeDocumentsApi,
+  PLANTED_INJECTION,
   STORAGE,
   UNSUPPORTED,
 } from "../test/documents";
@@ -36,6 +37,62 @@ function rowOf(
   const cell = table.getByRole("cell", { name });
   return within(cell.closest("tr") as HTMLElement);
 }
+
+/** The text of the row's cell under the given column header. */
+function cellUnder(
+  table: Awaited<ReturnType<typeof documentsTable>>,
+  name: string,
+  header: string,
+) {
+  const column = table
+    .getAllByRole("columnheader")
+    .findIndex((h) => h.textContent === header);
+  const row = table.getByRole("cell", { name }).closest("tr") as HTMLElement;
+  return within(row).getAllByRole("cell")[column] as HTMLElement;
+}
+
+test("Documents with flagged Chunks show how many, so they stand out", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({
+    documents: [
+      aDocument({ flagged_chunk_count: 2 }),
+      aDocument({
+        id: "d0c00000-0000-4000-8000-000000000002",
+        name: "faq.md",
+      }),
+    ],
+  });
+  renderStudio(documentsTab());
+
+  const table = await documentsTable();
+  const flagged = cellUnder(table, "handbook.pdf", "Flagged");
+  expect(flagged).toHaveTextContent(/^2$/);
+  expect(within(flagged).getByText("2").tagName).toBe("STRONG");
+  expect(cellUnder(table, "handbook.pdf", "Chunks")).toHaveTextContent(/^12$/);
+  const clean = cellUnder(table, "faq.md", "Flagged");
+  expect(clean).toHaveTextContent(/^0$/);
+  expect(clean.querySelector("strong")).toBeNull();
+});
+
+test("a Document's flagged Chunks are counted once it is Ready, without refreshing", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi();
+  renderStudio(documentsTab());
+  expect(await screen.findByText(/No Documents yet/)).toBeInTheDocument();
+
+  await userEvent.upload(
+    screen.getByLabelText("Choose files to upload"),
+    file("notes.md", `# Notes\n\n${PLANTED_INJECTION}.`),
+  );
+
+  const table = await documentsTable();
+  expect(
+    await table.findByText("Ready", {}, { timeout: 4000 }),
+  ).toBeInTheDocument();
+  expect(cellUnder(table, "notes.md", "Flagged")).toHaveTextContent(/^1$/);
+}, 15000);
 
 test("an Editor uploads files and watches each go from Queued to Ready without refreshing", async () => {
   fakeAuthApi({ signedInAs: adaSession });
@@ -310,7 +367,7 @@ test("Documents show their status, size and Chunk count, and what kind of failur
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size", "Actions"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size", "Actions"]);
   const ready = rowOf(table, "handbook.pdf");
   expect(ready.getByText("Ready")).toBeInTheDocument();
   expect(ready.getByText("12")).toBeInTheDocument();
@@ -483,7 +540,7 @@ test("an Editor uploads a new edition, and the old one shows as Ready until the 
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size", "Actions"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size", "Actions"]);
 
   await userEvent.upload(
     table.getByLabelText("New edition of handbook.pdf"),
@@ -824,7 +881,7 @@ test("an archived Project's Documents can't be replaced or deleted", async () =>
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Size"]);
+  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size"]);
   expect(
     table.queryByRole("button", { name: /Delete/ }),
   ).not.toBeInTheDocument();

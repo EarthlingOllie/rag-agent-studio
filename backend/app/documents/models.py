@@ -10,8 +10,10 @@ from typing import Any
 from pgvector.sqlalchemy import HALFVEC, Vector
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     Computed,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -35,6 +37,7 @@ from app.tenancy.models import Organisation
 
 NAME_MAX = 255
 MIME_MAX = 255
+GUARDRAIL_LABEL_MAX = 50
 
 
 class DocumentStatus(enum.StrEnum):
@@ -126,6 +129,11 @@ class Chunk(IdMixin, Base):
             "document_id", "edition", "embedding_model_id", "ordinal", name="uq_chunks_position"
         ),
         Index("ix_chunks_search_vector", "search_vector", postgresql_using="gin"),
+        CheckConstraint(
+            "(guardrail_label IS NULL) = (guardrail_score IS NULL)"
+            " AND (guardrail_label IS NULL) = (guardrail_reason IS NULL)",
+            name="guardrail_flag_complete",
+        ),
     )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
@@ -153,6 +161,11 @@ class Chunk(IdMixin, Base):
     search_vector: Mapped[str] = mapped_column(
         TSVECTOR, Computed("to_tsvector('simple'::regconfig, text)", persisted=True)
     )
+    # The ingestion Guardrail scan's flag, when the injection classifier flagged the Chunk as
+    # instructions aimed at an AI: its label, score (0 to 1) and reason. All null otherwise.
+    guardrail_label: Mapped[str | None] = mapped_column(String(GUARDRAIL_LABEL_MAX))
+    guardrail_score: Mapped[float | None] = mapped_column(Float)
+    guardrail_reason: Mapped[str | None] = mapped_column(Text)
 
 
 # pgvector's HNSW indexes ``vector`` up to this many dimensions; larger models index halfvec.

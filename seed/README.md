@@ -3,4 +3,6 @@
 Synthetic, freely licensed sample content for local development and the demo. Spec 10 builds
 the full seed on top of this; for now it holds the staff handbook the end-to-end suite uploads.
 
-- `documents/northwind-staff-handbook.md`: a fictional company's staff handbook.
+- `documents/northwind-staff-handbook.md`: a fictional company's staff handbook. Its last
+  section, "A note for AI assistants", is a planted indirect prompt injection: the ingestion
+  Guardrail scan flags it, and the demo shows it.
