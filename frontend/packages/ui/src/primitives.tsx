@@ -36,8 +36,25 @@ export function ThemeScope({
   );
 }
 
-/** The chat panel: a header with the Agent's name, the Messages, and the Composer. */
-export function ChatWindow({ agentName, children, composer }: { agentName: string; children: ReactNode; composer: ReactNode }) {
+const HEADER_IMAGE = { width: 28, height: 28, flex: "none" } as const;
+
+/**
+ * The chat panel: a header with the Agent's avatar (or initial), name and the Theme's logo,
+ * then the Messages and the Composer.
+ */
+export function ChatWindow({
+  agentName,
+  children,
+  composer,
+  logoUrl,
+  avatarUrl,
+}: {
+  agentName: string;
+  children: ReactNode;
+  composer: ReactNode;
+  logoUrl?: string | undefined;
+  avatarUrl?: string | undefined;
+}) {
   return (
     <section
       aria-label={`Chat with ${agentName}`}
@@ -64,22 +81,27 @@ export function ChatWindow({ agentName, children, composer }: { agentName: strin
           fontWeight: 600,
         }}
       >
-        <span
-          aria-hidden="true"
-          style={{
-            display: "inline-flex",
-            width: 28,
-            height: 28,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "50%",
-            border: "2px solid var(--theme-on-primary)",
-            fontSize: 13,
-          }}
-        >
-          {agentName.slice(0, 1)}
-        </span>
-        <h3 style={{ margin: 0, fontSize: 15 }}>{agentName}</h3>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={`${agentName}'s avatar`} style={{ ...HEADER_IMAGE, borderRadius: "50%", objectFit: "cover" }} />
+        ) : (
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-flex",
+              width: 28,
+              height: 28,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              border: "2px solid var(--theme-on-primary)",
+              fontSize: 13,
+            }}
+          >
+            {agentName.slice(0, 1)}
+          </span>
+        )}
+        <h3 style={{ margin: 0, fontSize: 15, flex: 1 }}>{agentName}</h3>
+        {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, maxWidth: 96, objectFit: "contain" }} />}
       </header>
       <ol style={{ listStyle: "none", margin: 0, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>{children}</ol>
       {composer}

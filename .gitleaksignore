@@ -20,3 +20,6 @@ aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/unit/test_http_credential
 # docker-compose.yml's development-only local key wrapper key ("local-dev-only-key-not-a-secret!"
 # in base64), which compose already commits as its default. Not a real secret.
 e1b3c4bbfb767d84788aa8660d4c568276eb9463:docs/tickets/03-projects-knowledge-base/03-02-evidence/hoststack.env:generic-api-key:6
+# Ticket 03-09 (Provider Embedding Models, PR #30 on candidate): VOYAGE_CREDENTIAL is a made-up
+# Provider Credential id (a UUID) that trips generic-api-key. Not a secret.
+a7613be7aa3c5531bfb5fba811bfdc789cc8eeb9:frontend/apps/studio/src/projects/EmbeddingModel.test.tsx:generic-api-key:17
