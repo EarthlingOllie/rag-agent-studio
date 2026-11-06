@@ -145,7 +145,7 @@ async def set_embedding_model(
     project = await active_project(session, scope, project_id, lock=True)
     model = await _validated(session, scope, model_id, credential_id)
     choice = (model.id, credential_id)
-    running = await re_embedding.running_job(session, project.id, lock=True)
+    running = await re_embedding.running_job(session, project.id)
     if running is not None and (running.model_id, running.credential_id) == choice:
         return EmbeddingChange(project)
     active = (project.embedding_model_id, project.embedding_credential_id)

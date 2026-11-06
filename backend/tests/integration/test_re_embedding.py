@@ -631,9 +631,7 @@ async def test_choosing_a_third_model_replaces_the_running_re_embed(
     assert await model_rows(app, project_id) == {OPENAI: 1}
 
 
-async def test_a_job_cancelled_before_its_retry_stops(
-    app: FastAPI, owner: SignedUpMember
-) -> None:
+async def test_a_job_cancelled_before_its_retry_stops(app: FastAPI, owner: SignedUpMember) -> None:
     voyage = await credential(owner)
     project_id, _ = await knowledge_base(app, owner, LEAVE)
     script = scripted(app, "hold-fail")
@@ -767,8 +765,6 @@ async def test_any_member_reads_the_state_even_of_an_archived_project(
 
 
 async def test_an_unknown_projects_state_is_not_found(owner: SignedUpMember) -> None:
-    response = await owner.client.get(
-        state_path(owner, "00000000-0000-0000-0000-000000000000")
-    )
+    response = await owner.client.get(state_path(owner, "00000000-0000-0000-0000-000000000000"))
 
     assert (response.status_code, response.json()) == (404, {"detail": "Not found"})

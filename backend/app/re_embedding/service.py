@@ -25,16 +25,14 @@ FAILED = "project.re_embed_failed"
 CANCELLED = "project.re_embed_cancelled"
 
 
-async def running_job(
-    session: AsyncSession, project_id: uuid.UUID, *, lock: bool = False
-) -> ReEmbedJob | None:
-    """The Project's running job, if it has one: its pending Embedding Model."""
-    query = select(ReEmbedJob).where(
-        ReEmbedJob.project_id == project_id, ReEmbedJob.status == ReEmbedStatus.RUNNING
+async def running_job(session: AsyncSession, project_id: uuid.UUID) -> ReEmbedJob | None:
+    """The Project's running job, if it has one (its pending Embedding Model), locked so the
+    job can't end or write while the caller changes the choice."""
+    return await session.scalar(
+        select(ReEmbedJob)
+        .where(ReEmbedJob.project_id == project_id, ReEmbedJob.status == ReEmbedStatus.RUNNING)
+        .with_for_update()
     )
-    if lock:
-        query = query.with_for_update()
-    return await session.scalar(query)
 
 
 async def latest_job(session: AsyncSession, project_id: uuid.UUID) -> ReEmbedJob | None:
