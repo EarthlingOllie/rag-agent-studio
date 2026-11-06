@@ -1,0 +1,142 @@
+$ make e2e COMPOSE=docker compose -p rag0307 -f docker-compose.yml -f docs/tickets/03-projects-knowledge-base/03-07-evidence/compose.sandbox.yml @ e839e64
+docker compose -p rag0307 -f docker-compose.yml -f docs/tickets/03-projects-knowledge-base/03-07-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0307_default Creating 
+ Network rag0307_default Creating 
+ Volume rag0307_postgres-data Creating 
+ Volume rag0307_postgres-data Creating 
+ Volume rag0307_rustfs-data Creating 
+ Volume rag0307_rustfs-data Creating 
+ Volume rag0307_postgres-data Created 
+ Volume rag0307_postgres-data Created 
+ Volume rag0307_rustfs-data Created 
+ Volume rag0307_rustfs-data Created 
+ Network rag0307_default Created 
+ Network rag0307_default Created 
+ Container rag0307-rustfs-1 Creating 
+ Container rag0307-mailpit-1 Creating 
+ Container rag0307-postgres-1 Creating 
+ Container rag0307-redis-1 Creating 
+ Container rag0307-mailpit-1 Created 
+ Container rag0307-rustfs-1 Created 
+ Container rag0307-redis-1 Created 
+ Container rag0307-postgres-1 Created 
+ Container rag0307-worker-1 Creating 
+ Container rag0307-api-1 Creating 
+ Container rag0307-beat-1 Creating 
+ Container rag0307-beat-1 Created 
+ Container rag0307-api-1 Created 
+ Container rag0307-studio-1 Creating 
+ Container rag0307-worker-1 Created 
+ Container rag0307-studio-1 Created 
+ Container rag0307-mailpit-1 Starting 
+ Container rag0307-rustfs-1 Starting 
+ Container rag0307-redis-1 Starting 
+ Container rag0307-postgres-1 Starting 
+ Container rag0307-mailpit-1 Started 
+ Container rag0307-rustfs-1 Started 
+ Container rag0307-redis-1 Started 
+ Container rag0307-postgres-1 Started 
+ Container rag0307-rustfs-1 Waiting 
+ Container rag0307-postgres-1 Waiting 
+ Container rag0307-redis-1 Waiting 
+ Container rag0307-redis-1 Waiting 
+ Container rag0307-rustfs-1 Waiting 
+ Container rag0307-postgres-1 Waiting 
+ Container rag0307-postgres-1 Waiting 
+ Container rag0307-redis-1 Waiting 
+ Container rag0307-rustfs-1 Waiting 
+ Container rag0307-redis-1 Healthy 
+ Container rag0307-redis-1 Healthy 
+ Container rag0307-rustfs-1 Healthy 
+ Container rag0307-rustfs-1 Healthy 
+ Container rag0307-redis-1 Healthy 
+ Container rag0307-rustfs-1 Healthy 
+ Container rag0307-postgres-1 Healthy 
+ Container rag0307-postgres-1 Healthy 
+ Container rag0307-worker-1 Starting 
+ Container rag0307-api-1 Starting 
+ Container rag0307-postgres-1 Healthy 
+ Container rag0307-beat-1 Starting 
+ Container rag0307-worker-1 Started 
+ Container rag0307-api-1 Started 
+ Container rag0307-api-1 Waiting 
+ Container rag0307-beat-1 Started 
+ Container rag0307-api-1 Healthy 
+ Container rag0307-studio-1 Starting 
+ Container rag0307-studio-1 Started 
+ Container rag0307-postgres-1 Waiting 
+ Container rag0307-redis-1 Waiting 
+ Container rag0307-api-1 Waiting 
+ Container rag0307-mailpit-1 Waiting 
+ Container rag0307-worker-1 Waiting 
+ Container rag0307-beat-1 Waiting 
+ Container rag0307-studio-1 Waiting 
+ Container rag0307-rustfs-1 Waiting 
+ Container rag0307-worker-1 Healthy 
+ Container rag0307-rustfs-1 Healthy 
+ Container rag0307-postgres-1 Healthy 
+ Container rag0307-beat-1 Healthy 
+ Container rag0307-mailpit-1 Healthy 
+ Container rag0307-redis-1 Healthy 
+ Container rag0307-api-1 Healthy 
+ Container rag0307-studio-1 Healthy 
+cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0307/frontend
+> playwright test
+
+
+Running 49 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (576ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (550ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (272ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (2.4s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (317ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.8s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (177ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (230ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (208ms)
+  ✓  12 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (8.2s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (5.5s)
+  ✓  14 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (4.7s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (4.6s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (3.2s)
+  ✓  11 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (29.2s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.9s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (5.2s)
+  ✓  20 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (7.2s)
+  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (15.2s)
+  ✓  21 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (8.2s)
+  ✓  22 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (10.4s)
+  ✓  23 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (6.6s)
+  ✓  24 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (9.4s)
+  ✓  25 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (7.6s)
+  ✓  27 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook (6.8s)
+  ✓  26 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (12.6s)
+  ✓  29 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (7.8s)
+  ✓  28 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (13.1s)
+  ✓  31 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (9.3s)
+  ✓  30 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (15.5s)
+  ✓  32 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (8.7s)
+  ✓  33 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (6.0s)
+  ✓  35 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (6.2s)
+  ✓  34 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (11.9s)
+  ✓  36 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (6.7s)
+  ✓  38 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.5s)
+  ✓  39 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (2.0s)
+  ✓  40 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (3.3s)
+  ✓  37 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (12.8s)
+  ✓  41 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (8.3s)
+  ✓  42 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (9.2s)
+  ✓  44 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (10.1s)
+  ✓  45 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.6s)
+  ✓  43 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (14.4s)
+  ✓  46 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.4s)
+  ✓  48 [studio] › e2e/tests/theme.spec.ts:51:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (6.8s)
+  ✓  47 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (12.5s)
+  ✓  49 [studio] › e2e/tests/theme.spec.ts:90:3 › Theme editor › an Editor views the Theme and its preview but can't change it (5.3s)
+
+  49 passed (2.9m)
+exit 0
