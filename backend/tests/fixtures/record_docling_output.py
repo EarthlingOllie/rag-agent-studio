@@ -5,9 +5,7 @@ each sample with the production Docling adapter and writes the DoclingDocument a
 ``tests/fixtures/docling/``. Tests load those files, so they don't run Docling to chunk.
 
 The PDF needs Docling's layout model from Hugging Face and the ``pdf`` dependency group:
-``uv run --group pdf python -m tests.fixtures.record_docling_output``. Where Hugging Face isn't
-reachable, ``build_pdf_docling_fixture.py`` hand-builds the PDF file instead; recording here
-replaces it with real output.
+``uv run --group pdf python -m tests.fixtures.record_docling_output``.
 """
 
 import json
