@@ -105,15 +105,15 @@ The Organisation `make seed` builds for showing the product: Northwind Traders, 
 _Avoid_: Sample org, test tenant, sandbox
 
 **Archive**:
-To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. Permanent deletion is a separate action.
+To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. An archived Agent leaves the Agents list, its Draft can't be changed and the Playground starts no Conversation with it. Any Member can archive. Permanent deletion is a separate action.
 _Avoid_: Disable, soft delete
 
 **Restore**:
-To bring an archived Project back to the Projects list so it serves again. Only Owners can restore.
+To bring an archived Agent or Project back to its list so it serves again. Only Owners can restore.
 _Avoid_: Unarchive, undelete
 
 **Permanent deletion**:
-Removing an archived Project for good: its Documents, Chunks, stored files, Tags, Agents and Conversations. Only an Owner can do it, only once the Project is archived, and only after typing the Project's name exactly. It runs as a background cascade and can't be undone; the Audit Event records who deleted the Project and what it held.
+Removing an archived Agent or Project for good. An Agent takes its Draft, Conversations and their Messages with it, which releases its Credential references; a Project takes its Documents, Chunks, stored files, Tags, Agents and Conversations, in a background cascade. Only an Owner can do it, only once the Agent or Project is archived, and only after typing its name exactly. It can't be undone; the Audit Event records who deleted it and what it held.
 _Avoid_: Purge, hard delete
 
 ## Models
@@ -171,7 +171,7 @@ The single factory every model call goes through: it turns a Provider Credential
 _Avoid_: Model client factory, provider router, LLM proxy
 
 **Reranker**:
-A model that reorders retrieved passages by relevance to a query, built by the Model gateway from a credential with the rerank Capability.
+A model that reorders retrieved passages by relevance to a query, built by the Model gateway from a credential with the rerank Capability. An Agent's optional Reranker (a rerank-capable credential and one of its rerank models, set in the Draft's Retrieval) scores every Chunk retrieval found before the Minimum Score and Top-k are applied; Chunks are then ordered by its score, which becomes their Relevance. It is a Credential reference.
 _Avoid_: Re-ranker, scorer
 
 **Price table**:
@@ -335,7 +335,7 @@ The share of the fused score an Agent gives semantic search, from 0 (keyword sea
 _Avoid_: Alpha, semantic ratio
 
 **Relevance**:
-How well a Chunk matches a question, from 0 to 1: the better of its semantic score (cosine similarity) and its keyword score (the share of the question's terms it contains). The Minimum Score is compared with it; the fused score only orders Chunks.
+How well a Chunk matches a question, from 0 to 1: the better of its semantic score (cosine similarity) and its keyword score (the share of the question's terms it contains), or, when the Agent has a Reranker, the Reranker's score. The Minimum Score is compared with it; the fused score only orders Chunks, and only when there is no Reranker.
 
 **Minimum Score**:
 The Relevance a Chunk needs to be given to an Agent's model. When no Chunk reaches it, the Agent replies with its Fallback Text.

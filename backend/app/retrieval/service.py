@@ -15,9 +15,13 @@ Hybrid search (ADR-0001):
    found it of ``weight / (RRF_K + rank)``, with the hybrid weighting giving semantic search's
    weight and keyword search the rest. It is scaled by ``RRF_K + 1`` so that 1 means first in
    every search; candidates are ranked by it.
-4. The minimum score: a Chunk's relevance is its best semantic or keyword score (at least 0).
-   Chunks below the minimum are excluded (``below_min_score``), then the best ``top_k`` are the
-   candidates and the rest are excluded (``outside_top_k``).
+4. The optional reranker (built by the model gateway from the Agent's rerank-capable
+   credential) scores every Chunk found against the query. Candidates are then ranked by that
+   score, and it becomes each Chunk's relevance: a rerank model's judgement replaces the
+   cosine and keyword scores. Nothing found means nothing to rerank, so it isn't asked.
+5. The minimum score: a Chunk's relevance is its rerank score, or else its best semantic or
+   keyword score (at least 0). Chunks below the minimum are excluded (``below_min_score``),
+   then the best ``top_k`` are the candidates and the rest are excluded (``outside_top_k``).
 
 Tag scoping: when the settings name Tags, both searches are limited to Documents carrying at
 least one of them, before fusion, so out-of-scope Chunks never take a place in the pool or the
@@ -25,11 +29,10 @@ ranking. So that the Trace can show what scoping left out, the same two searches
 over the Project's other Documents (those with none of the Tags, untagged ones included) and
 fused on their own; the best ``top_k`` of those are excluded (``outside_tags``). An empty list
 of Tags searches every Document. A Tag ID no Document carries (say a Tag deleted after a
-Version was published) simply matches nothing.
+Version was published) simply matches nothing. Out-of-scope Chunks are never sent to the reranker.
 
 The fused score depends only on ranks, so it says nothing about whether anything relevant was
-found; the relevance does, which is why the minimum applies to it. The reranker (ticket 04-05)
-grows inside this one operation.
+found; the relevance does, which is why the minimum applies to it.
 """
 
 import uuid
@@ -55,6 +58,7 @@ from app.agents.config import Retrieval
 from app.documents.models import Chunk, Document, DocumentStatus
 from app.embeddings.port import Embedder
 from app.embeddings.registry import EMBEDDING_MODELS
+from app.gateway.ports import Reranker
 from app.projects.models import Project
 from app.tags.models import DocumentTag
 
@@ -82,13 +86,15 @@ class Candidate:
     document_name: str
     text: str
     heading_path: list[str]
-    # The weighted reciprocal rank fusion score candidates are ranked by.
+    # The weighted reciprocal rank fusion score candidates are ranked by without a reranker.
     score: float
-    # What the minimum score is compared with.
+    # What the minimum score is compared with: the rerank score when there is one.
     relevance: float
     semantic_score: float | None
     keyword_score: float | None
     rank: int
+    # The reranker's score, which ranks candidates when the Agent has a reranker.
+    rerank_score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +108,7 @@ class Excluded:
     score: float
     relevance: float
     reason: ExcludedReason
+    rerank_score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -121,9 +128,12 @@ class _Found:
     fused: float = 0.0
     semantic_score: float | None = None
     keyword_score: float | None = None
+    rerank_score: float | None = None
 
     @property
     def relevance(self) -> float:
+        if self.rerank_score is not None:
+            return self.rerank_score
         return max(self.semantic_score or 0.0, self.keyword_score or 0.0, 0.0)
 
 
@@ -214,6 +224,19 @@ def _any_of(terms: Sequence[str]) -> ColumnElement[str]:
     return query
 
 
+async def _rerank(reranker: Reranker, query: str, ranked: list[_Found]) -> list[_Found]:
+    """``ranked`` in the reranker's order, each with its rerank score. The reranker is given the
+    Chunks in fused order, so it can break its ties by that order; asked without a ``top_k``,
+    it returns every one of them (the ``Reranker`` port's contract)."""
+    reranked = await reranker.rerank(query, [entry.chunk.text for entry in ranked])
+    result: list[_Found] = []
+    for document in reranked:
+        entry = ranked[document.index]
+        entry.rerank_score = document.score
+        result.append(entry)
+    return result
+
+
 class _Searches:
     """Semantic and keyword search for one query, fused with the hybrid weighting. The query is
     embedded and parsed into terms once, however many scopes are searched."""
@@ -265,6 +288,7 @@ def _excluded(entry: _Found, reason: ExcludedReason) -> Excluded:
         score=entry.fused,
         relevance=entry.relevance,
         reason=reason,
+        rerank_score=entry.rerank_score,
     )
 
 
@@ -274,10 +298,13 @@ async def retrieve(
     query: str,
     settings: Retrieval,
     embedders: dict[str, Embedder],
+    *,
+    reranker: Reranker | None = None,
 ) -> RetrievalResult:
     """The Project's Chunks most relevant to ``query``, best first, at most ``top_k``, and the
     Chunks found but left out. With Tag scoping, only Documents with one of the Tags are
-    searched for candidates."""
+    searched for candidates. With a ``reranker``, every candidate Chunk found is reranked before
+    the minimum score and ``top_k`` are applied."""
     embedder = embedders.get(project.embedding_model_id)
     if embedder is None:
         raise EmbeddingModelUnavailableError(project.embedding_model_id)
@@ -286,6 +313,8 @@ async def retrieve(
     scope = _tag_scope(tag_ids, inside=True) if tag_ids else None
     ranked = await searches.ranked(query, scope)
 
+    if reranker is not None and ranked:
+        ranked = await _rerank(reranker, query, ranked)
     candidates: list[Candidate] = []
     excluded: list[Excluded] = []
     for entry in ranked:
@@ -309,6 +338,7 @@ async def retrieve(
                 semantic_score=entry.semantic_score,
                 keyword_score=entry.keyword_score,
                 rank=len(candidates) + 1,
+                rerank_score=entry.rerank_score,
             )
         )
     if tag_ids:
