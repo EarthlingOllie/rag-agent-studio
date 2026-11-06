@@ -148,9 +148,9 @@ async def confirm_upload(
     try:
         data = await store.get(object_key)
     except ObjectNotFoundError:
-        # Not uploaded yet: give the claim back, for a confirmation once the file arrives.
-        if ttl_ms > 0:
-            await redis.set(key, raw, px=ttl_ms, nx=True)
+        # Not uploaded yet: give the claim back, for a confirmation once the file arrives. The
+        # claim read the key and its time left together, so that time is always positive.
+        await redis.set(key, raw, px=ttl_ms, nx=True)
         raise ImageNotUploadedError from None
     if len(data) > max_bytes or not _is_type(data, content_type):
         await store.delete(object_key)
