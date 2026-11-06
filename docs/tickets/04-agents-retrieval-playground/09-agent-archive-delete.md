@@ -7,7 +7,7 @@
 **Blocked by:**
 - [04-01: Agent and Playground tracer](01-agent-playground-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Archive and restore work, and archived Agents are excluded from lists and the Playground
 - [ ] Owners can permanently delete after typing the name, which cascades
