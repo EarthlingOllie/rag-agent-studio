@@ -1,4 +1,4 @@
-$ make test-frontend (vitest with coverage, then the embed loader size budget) @ 22805b9
+$ make test-frontend (vitest with coverage, then the embed loader size budget) @ 2568f5d
 cd frontend && pnpm test && pnpm check-embed-size
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0601/frontend
@@ -9,24 +9,24 @@ cd frontend && pnpm test && pnpm check-embed-size
       Coverage enabled with v8
 
 
- Test Files  46 passed (46)
-      Tests  551 passed (551)
-   Start at  22:04:18
-   Duration  119.51s (tests 68%, environment 16%, import 7%, setup 6%, transform 2%, worker 1%)
+ Test Files  47 passed (47)
+      Tests  562 passed (562)
+   Start at  22:44:58
+   Duration  165.45s (tests 68%, environment 16%, import 7%, setup 6%, transform 2%, worker 1%)
 
-    Isolate  46 workers spawned · ~1.38s startup each (spawn + environment, per file)
-             at least ~19.76s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  47 workers spawned · ~1.86s startup each (spawn + environment, per file)
+             at least ~27.33s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
-71 files fully covered.
+72 files fully covered.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 2677/2677 )
-Branches     : 100% ( 1614/1614 )
-Functions    : 100% ( 1009/1009 )
-Lines        : 100% ( 2380/2380 )
+Statements   : 100% ( 2723/2723 )
+Branches     : 100% ( 1645/1645 )
+Functions    : 100% ( 1025/1025 )
+Lines        : 100% ( 2424/2424 )
 ================================================================================
 
 > rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0601/frontend
@@ -43,7 +43,7 @@ rendering chunks...
 computing gzip size...
 dist/widget/assets/widget.js  223.09 kB │ gzip: 70.11 kB
 
-✓ built in 130ms
+✓ built in 421ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -51,7 +51,7 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  0.41 kB │ gzip: 0.31 kB
 
-✓ built in 27ms
+✓ built in 21ms
 
 > @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0601/frontend/apps/widget
 > node scripts/check-size.mjs
