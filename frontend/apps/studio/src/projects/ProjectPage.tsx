@@ -1,10 +1,18 @@
-import { Link, Outlet, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { EmbeddingModelSetting } from "./EmbeddingModel";
-import { type Project, ProjectRequestError, projectFailure, useArchiveOrRestore, useProject, useUpdateProject } from "./projects";
-import { BUTTON, ProjectFields, projectDetails, useOrganisationRole } from "./ProjectsPage";
+import {
+  type Project,
+  ProjectRequestError,
+  projectFailure,
+  useArchiveOrRestore,
+  useDeleteProject,
+  useProject,
+  useUpdateProject,
+} from "./projects";
+import { BUTTON, INPUT, ProjectFields, projectDetails, useOrganisationRole } from "./ProjectsPage";
 
 const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
 
@@ -91,6 +99,81 @@ function ArchiveProject({ project, organisationId }: { project: Project; organis
   );
 }
 
+/** Owners only, on an archived Project: deletion is confirmed by typing the Project's name exactly. */
+function DeletePermanently({ project, organisationId }: { project: Project; organisationId: string }) {
+  const remove = useDeleteProject(organisationId, project.id);
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [typed, setTyped] = useState("");
+  const title = `Delete ${project.name} permanently`;
+
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        className={BUTTON}
+        onClick={() => {
+          remove.reset();
+          setTyped("");
+          setConfirming(true);
+        }}
+      >
+        Delete permanently
+      </button>
+    );
+  }
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    remove.mutate(typed, {
+      onSuccess: () => {
+        void navigate({ to: "/organisations/$organisationId/projects", params: { organisationId }, search: { deleted: project.name } });
+      },
+    });
+  }
+
+  return (
+    <form aria-label={title} onSubmit={onSubmit} className="space-y-2 rounded border border-red-300 bg-white p-3 text-slate-900">
+      <p>
+        Deleting {project.name} removes its Documents, stored files, Agents and Conversations for good. This can&apos;t be undone.
+      </p>
+      <FormError message={projectFailure(remove.error)} />
+      <div>
+        <label htmlFor="delete-project-name" className="block text-sm font-medium">
+          Type {project.name} to confirm
+        </label>
+        <input
+          id="delete-project-name"
+          autoComplete="off"
+          className={INPUT}
+          value={typed}
+          onChange={(event) => {
+            setTyped(event.target.value);
+          }}
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          className="rounded border border-red-800 bg-red-700 px-3 py-1 text-sm text-white hover:bg-red-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-600"
+          disabled={typed !== project.name || remove.isPending}
+        >
+          {title}
+        </button>
+        <button
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            setConfirming(false);
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ArchivedNotice({ project, organisationId, isOwner }: { project: Project; organisationId: string; isOwner: boolean }) {
   const restore = useArchiveOrRestore(organisationId, "restore");
   return (
@@ -112,6 +195,7 @@ function ArchivedNotice({ project, organisationId, isOwner }: { project: Project
           Restore {project.name}
         </button>
       )}
+      {isOwner && <DeletePermanently project={project} organisationId={organisationId} />}
     </div>
   );
 }

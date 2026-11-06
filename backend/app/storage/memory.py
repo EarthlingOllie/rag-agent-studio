@@ -49,3 +49,7 @@ class InMemoryObjectStore:
 
     async def delete(self, key: str) -> None:
         self.objects.pop(key, None)
+
+    async def delete_prefix(self, prefix: str) -> None:
+        for key in [key for key in self.objects if key.startswith(prefix)]:
+            del self.objects[key]
