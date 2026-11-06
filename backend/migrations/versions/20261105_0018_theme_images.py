@@ -1,7 +1,7 @@
 """The Theme's logo and default Agent avatar.
 
-Revision ID: 0017_theme_images
-Revises: 0016_project_ocr
+Revision ID: 0018_theme_images
+Revises: 0017_message_retrievals
 Create Date: 2026-11-05
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0017_theme_images"
-down_revision: str | None = "0016_project_ocr"
+revision: str = "0018_theme_images"
+down_revision: str | None = "0017_message_retrievals"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
