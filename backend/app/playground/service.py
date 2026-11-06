@@ -32,7 +32,7 @@ from app.projects.models import Project
 from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
 from app.runtime.prompt import Turn
-from app.runtime.runtime import CitationEvent, DoneEvent, TokenEvent, run_turn
+from app.runtime.runtime import CitationEvent, DoneEvent, ReplaceEvent, TokenEvent, run_turn
 from app.tenancy.repository import OrganisationScope
 
 
@@ -271,9 +271,10 @@ async def answer(
     gateway: ModelGateway,
     embedders: dict[str, Embedder],
     clock: Clock,
-) -> AsyncIterator[TokenEvent | CitationEvent | Answered]:
-    """Streams the answer's tokens and citations, then saves the answer, with what retrieval
-    found for it, and ends with ``Answered``."""
+) -> AsyncIterator[TokenEvent | ReplaceEvent | CitationEvent | Answered]:
+    """Streams the answer's tokens and citations (or the replacement of an answer that leaked
+    the Canary token), then saves the answer, with what retrieval found for it and the
+    Guardrail outcomes, and ends with ``Answered``."""
     started = time.perf_counter()
     first_token_ms: int | None = None
     chosen = prepared.chat
@@ -296,7 +297,7 @@ async def answer(
                     first_token_ms = _elapsed_ms(started)
                 yield event
                 continue
-            if isinstance(event, CitationEvent):
+            if isinstance(event, CitationEvent | ReplaceEvent):
                 yield event
                 continue
             latency_ms = _elapsed_ms(started)
@@ -318,6 +319,7 @@ async def answer(
                 latency_ms=latency_ms,
                 cost_usd=cost(pricing, chosen.model, usage, now, await price_table(session)),
                 fallback=event.fallback,
+                guardrail_outcomes=[o.as_dict() for o in event.guardrail_outcomes],
             )
             session.add(message)
             await session.flush()

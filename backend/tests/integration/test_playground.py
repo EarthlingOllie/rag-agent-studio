@@ -5,6 +5,7 @@ is a Pydantic AI ``FunctionModel``. The answer is observed as the Studio sees it
 Events stream, then the saved Conversation read back through the API."""
 
 import json
+import re
 import uuid
 from collections.abc import AsyncIterator
 from decimal import Decimal
@@ -16,8 +17,9 @@ from pydantic_ai.models.function import AgentInfo
 
 from app.agents.config import DEFAULT_FALLBACK_TEXT
 from app.conversations.models import Message
-from app.runtime.prompt import PREAMBLE
+from app.runtime.prompt import preamble
 from tests.agents import (
+    answer_text,
     answer_with,
     ask,
     create_agent,
@@ -41,16 +43,29 @@ from tests.knowledge_base import (
 LEAVE = "Everyone gets 25 days of annual leave a year."
 
 
+ANSWER = "Everyone gets twenty-five days of annual leave a year, see [C1]."
+
+
 async def three_tokens(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
-    for token in ["You get ", "25 days ", "[C1]."]:
+    for token in ["Everyone gets twenty-five days ", "of annual leave a year, ", "see [C1]."]:
         yield token
+
+
+def without_canary(text: str) -> str:
+    """The text with the request's Canary token written as ``{canary}``: an echo that repeated
+    the token itself would have its answer replaced."""
+    return re.sub(r"\b[0-9a-f]{20}\b", "{canary}", text)
 
 
 async def echo(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
     """Answers with every part the model was given, as JSON: (message kind, part kind, text)."""
     yield json.dumps(
         [
-            [type(message).__name__, part.part_kind, str(getattr(part, "content", ""))]
+            [
+                type(message).__name__,
+                part.part_kind,
+                without_canary(str(getattr(part, "content", ""))),
+            ]
             for message in messages
             for part in message.parts
         ]
@@ -85,16 +100,14 @@ async def test_an_editor_asks_the_draft_and_the_answer_streams_back(
     assert response.status_code == 200, response.text
     assert response.headers["content-type"].startswith("text/event-stream")
     events = parse_sse(response.text)
-    assert events[:3] == [
-        ("token", {"text": "You get "}),
-        ("token", {"text": "25 days "}),
-        ("token", {"text": "[C1]."}),
-    ]
+    *tokens, (cited, _), (kind, done) = events
+    # The answer streams in pieces (the canary filter holds back only its last few characters).
+    assert len(tokens) > 1
+    assert {event for event, _ in tokens} == {"token"}
+    assert "".join(data["text"] for _, data in tokens) == ANSWER
     # The answer cites [C1], then the stream ends.
-    assert events[3][0] == "citation"
-    (kind, done), *_ = events[4:]
+    assert cited == "citation"
     assert kind == "done"
-    assert len(events) == 5
     # The Organisation's Default Model, through the gateway.
     assert built == ["openai:gpt-4.1-mini"]
     # The answer was grounded in the Project's one Chunk.
@@ -110,7 +123,7 @@ async def test_an_editor_asks_the_draft_and_the_answer_streams_back(
     assert question["model_name"] is None
     assert question["input_tokens"] is None
     assert answer["id"] == done["message_id"]
-    assert (answer["role"], answer["content"]) == ("assistant", "You get 25 days [C1].")
+    assert (answer["role"], answer["content"]) == ("assistant", ANSWER)
     assert answer["config_source"] == "draft"
     assert (answer["model_provider"], answer["model_name"]) == ("openai", "gpt-4.1-mini")
     assert (answer["input_tokens"], answer["output_tokens"]) == (
@@ -118,7 +131,7 @@ async def test_an_editor_asks_the_draft_and_the_answer_streams_back(
         done["output_tokens"],
     )
     assert answer["input_tokens"] > 0
-    assert answer["output_tokens"] == 6
+    assert answer["output_tokens"] == 13  # FunctionModel counts the answer's words
     assert 0 <= answer["first_token_ms"] <= answer["latency_ms"]
     assert (answer["first_token_ms"], answer["latency_ms"]) == (
         done["first_token_ms"],
@@ -139,11 +152,11 @@ async def test_the_model_receives_the_draft_the_chunks_and_the_history_in_order(
     assert saved.status_code == 200
     conversation = await start_conversation(member, project_id, agent_id)
     first = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
-    first_answer = parse_sse(first.text)[0][1]["text"]
+    first_answer = answer_text(first)
 
     second = await ask(member, project_id, agent_id, conversation["id"], LEAVE)
 
-    parts = json.loads(parse_sse(second.text)[0][1]["text"])
+    parts = json.loads(answer_text(second))
     assert [part[:2] for part in parts] == [
         ["ModelRequest", "system-prompt"],
         ["ModelRequest", "system-prompt"],
@@ -151,7 +164,7 @@ async def test_the_model_receives_the_draft_the_chunks_and_the_history_in_order(
         ["ModelResponse", "text"],
         ["ModelRequest", "user-prompt"],
     ]
-    assert parts[0][2] == PREAMBLE
+    assert parts[0][2] == preamble("{canary}")
     assert parts[1][2] == "Be brief."
     assert parts[2][2] == "How much leave?"
     assert parts[3][2] == first_answer
@@ -183,7 +196,7 @@ async def test_an_unanswered_question_is_not_remembered(
 
     response = await ask(member, project_id, agent_id, conversation["id"], "Second")
 
-    parts = json.loads(parse_sse(response.text)[0][1]["text"])
+    parts = json.loads(answer_text(response))
     assert "Lost question" not in [part[2] for part in parts]
     assert "First" in [part[2] for part in parts]
 
@@ -279,8 +292,8 @@ async def test_a_relevant_chunk_above_the_minimum_score_reaches_the_model(
 
     response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
 
-    (_, token), *_, (_, done) = parse_sse(response.text)
-    question = json.loads(token["text"])[-1][2]
+    *_, (_, done) = parse_sse(response.text)
+    question = json.loads(answer_text(response))[-1][2]
     # Found by keyword search alone, it is the one Chunk given to the model.
     assert f"[C1] product.txt\n{PRODUCT}" in question
     assert "[C2]" not in question
@@ -369,7 +382,7 @@ async def test_the_draft_chooses_the_model_and_its_settings(
 
     response = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
 
-    seen = json.loads(parse_sse(response.text)[0][1]["text"])
+    seen = json.loads(answer_text(response))
     assert seen["settings"] == {"temperature": 0.1, "max_tokens": 300}
     # The Model override, not the Default Model (GPT-4.1 mini).
     assert built == ["anthropic:claude-haiku-4-5"]
@@ -408,7 +421,7 @@ async def test_only_the_remembered_turns_reach_the_model(
 
     response = await ask(member, project_id, agent_id, conversation["id"], "Four?")
 
-    assert json.loads(parse_sse(response.text)[0][1]["text"])["remembered"] == ["Two?", "Three?"]
+    assert json.loads(answer_text(response))["remembered"] == ["Two?", "Three?"]
     await save_draft(member, project_id, agent_id, {"behaviour": {"remembered_turns": 0}})
     forgetful = await ask(member, project_id, agent_id, conversation["id"], "Five?")
-    assert json.loads(parse_sse(forgetful.text)[0][1]["text"])["remembered"] == []
+    assert json.loads(answer_text(forgetful))["remembered"] == []

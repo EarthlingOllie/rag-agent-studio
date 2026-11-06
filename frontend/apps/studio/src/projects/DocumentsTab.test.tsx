@@ -613,22 +613,43 @@ test("a Ready or Failed Document is retried, and goes through Queued to Ready ag
     id: "d0c00000-0000-4000-8000-000000000002",
     name: "scan.pdf",
     status: "failed",
-    error_message: "This Document couldn't be processed. Try uploading it again.",
+    error_message:
+      "This Document couldn't be processed. Try uploading it again.",
     chunk_count: 0,
   });
-  const { requests } = fakeDocumentsApi({ documents: [aDocument(), failedScan] });
+  const { requests } = fakeDocumentsApi({
+    documents: [aDocument(), failedScan],
+  });
   renderStudio(documentsTab());
   const table = await documentsTable();
-  expect(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" })).toBeInTheDocument();
+  expect(
+    rowOf(table, "handbook.pdf").getByRole("button", {
+      name: "Retry handbook.pdf",
+    }),
+  ).toBeInTheDocument();
 
-  await userEvent.click(rowOf(table, "scan.pdf").getByRole("button", { name: "Retry scan.pdf" }));
+  await userEvent.click(
+    rowOf(table, "scan.pdf").getByRole("button", { name: "Retry scan.pdf" }),
+  );
 
-  expect(await rowOf(table, "scan.pdf").findByText("Queued")).toBeInTheDocument();
-  expect(rowOf(table, "scan.pdf").queryByText(/couldn't be processed/)).not.toBeInTheDocument();
-  expect(rowOf(table, "scan.pdf").queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
-  expect(await rowOf(table, "scan.pdf").findByText("Ready", {}, { timeout: 6000 })).toBeInTheDocument();
-  expect(rowOf(table, "scan.pdf").getByRole("cell", { name: "4" })).toBeInTheDocument();
-  expect(requests.filter((r) => r.route === "retry")).toEqual([{ route: "retry", body: failedScan.id }]);
+  expect(
+    await rowOf(table, "scan.pdf").findByText("Queued"),
+  ).toBeInTheDocument();
+  expect(
+    rowOf(table, "scan.pdf").queryByText(/couldn't be processed/),
+  ).not.toBeInTheDocument();
+  expect(
+    rowOf(table, "scan.pdf").queryByRole("button", { name: /Retry/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    await rowOf(table, "scan.pdf").findByText("Ready", {}, { timeout: 6000 }),
+  ).toBeInTheDocument();
+  expect(
+    rowOf(table, "scan.pdf").getByRole("cell", { name: "4" }),
+  ).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "retry")).toEqual([
+    { route: "retry", body: failedScan.id },
+  ]);
 }, 15000);
 
 test("a Document still being processed, or with a new edition being processed, has no Retry", async () => {
@@ -637,15 +658,33 @@ test("a Document still being processed, or with a new edition being processed, h
   const replacing = aDocument({
     id: "d0c00000-0000-4000-8000-000000000003",
     name: "policy.pdf",
-    replacement: { edition: 2, name: "policy.pdf", status: "processing", error_message: null },
+    replacement: {
+      edition: 2,
+      name: "policy.pdf",
+      status: "processing",
+      error_message: null,
+    },
   });
-  fakeDocumentsApi({ documents: [aDocument({ status: "processing", chunk_count: 0 }), replacing] });
-  server.use(http.get(`${DOCUMENTS}/statuses`, () => new HttpResponse("Bad gateway", { status: 502 })));
+  fakeDocumentsApi({
+    documents: [aDocument({ status: "processing", chunk_count: 0 }), replacing],
+  });
+  server.use(
+    http.get(
+      `${DOCUMENTS}/statuses`,
+      () => new HttpResponse("Bad gateway", { status: 502 }),
+    ),
+  );
   renderStudio(documentsTab());
   const table = await documentsTable();
-  expect(rowOf(table, "handbook.pdf").getByText("Processing")).toBeInTheDocument();
-  expect(rowOf(table, "policy.pdf").getByText(/New edition 2/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(
+    rowOf(table, "handbook.pdf").getByText("Processing"),
+  ).toBeInTheDocument();
+  expect(
+    rowOf(table, "policy.pdf").getByText(/New edition 2/),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /Retry/ }),
+  ).not.toBeInTheDocument();
 });
 
 test("an archived Project's Documents have no Retry", async () => {
@@ -655,7 +694,9 @@ test("an archived Project's Documents have no Retry", async () => {
   renderStudio(documentsTab(oldProject.id));
 
   expect((await documentsTable()).getByText("Ready")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /Retry/ }),
+  ).not.toBeInTheDocument();
 });
 
 test("a refused retry shows the API's reason", async () => {
@@ -671,9 +712,17 @@ test("a refused retry shows the API's reason", async () => {
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" }));
+  await userEvent.click(
+    rowOf(table, "handbook.pdf").getByRole("button", {
+      name: "Retry handbook.pdf",
+    }),
+  );
 
-  expect(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" })).toBeDisabled();
+  expect(
+    rowOf(table, "handbook.pdf").getByRole("button", {
+      name: "Retry handbook.pdf",
+    }),
+  ).toBeDisabled();
   expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
   expect(rowOf(table, "handbook.pdf").getByText("Ready")).toBeInTheDocument();
 });
@@ -682,11 +731,22 @@ test("a retry that fails without a reason asks to try again", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeDocumentsApi({ documents: [aDocument()] });
-  server.use(http.post(`${DOCUMENTS}/:documentId/retry`, () => new HttpResponse("Bad gateway", { status: 502 })));
+  server.use(
+    http.post(
+      `${DOCUMENTS}/:documentId/retry`,
+      () => new HttpResponse("Bad gateway", { status: 502 }),
+    ),
+  );
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" }));
+  await userEvent.click(
+    rowOf(table, "handbook.pdf").getByRole("button", {
+      name: "Retry handbook.pdf",
+    }),
+  );
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("The retry failed. Try again.");
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "The retry failed. Try again.",
+  );
 });
