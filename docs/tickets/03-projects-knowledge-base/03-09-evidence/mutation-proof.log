@@ -1,0 +1,14 @@
+$ python3 docs/tickets/03-projects-knowledge-base/03-09-evidence/mutate.py @ 2ea4913 (worktree)
+CAUGHT: the model can change while the Project has Documents (backend/app/projects/embedding.py) -> pytest -k 'test_the_model_cannot_change_while_the_project_has_documents' exit 1
+CAUGHT: a Project's credential isn't reported as a reference (backend/app/projects/embedding.py) -> pytest -k 'test_a_credential_a_project_embeds_with_cannot_be_deleted' exit 1
+CAUGHT: the local model accepts a credential (backend/app/projects/embedding.py) -> pytest -k 'test_an_impossible_choice_is_refused' exit 1
+CAUGHT: a choice of the current model is audited again (backend/app/projects/embedding.py) -> pytest -k 'test_choosing_a_model_is_an_audit_event or test_choosing_the_current_model_again_is_allowed_with_documents' exit 1
+CAUGHT: ingestion ignores the Project's provider model (backend/app/documents/pipeline.py) -> pytest -k 'test_an_editor_chooses_a_provider_model_and_documents_embed_with_it' exit 1
+CAUGHT: provider vectors of the wrong size are accepted (backend/app/embeddings/provider.py) -> pytest -k 'test_vectors_of_the_wrong_size_fail_the_document' exit 1
+CAUGHT: the probe searches every Embedding Model's Chunks (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_skips_chunks_of_other_embedding_models' exit 1
+CAUGHT: the probe searches every Project (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_only_searches_its_own_project' exit 1
+CAUGHT: the probe returns the farthest Chunks first (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_returns_the_top_k_chunks_nearest_the_query' exit 1
+CAUGHT: the probe ignores top_k (backend/app/retrieval/probe.py) -> pytest -k 'test_the_probe_returns_five_chunks_by_default' exit 1
+10/10 mutations caught
+unmodified code: tests/integration/test_embedding_models.py exit 0
+EXIT 0

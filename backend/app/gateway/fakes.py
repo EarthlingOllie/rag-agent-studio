@@ -16,9 +16,9 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.credentials.registry import Provider
-from app.gateway.ports import RankedDocument, Reranker
+from app.embeddings.registry import embedding_model
+from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
 
-FAKE_DIMENSIONS = 16
 ChatBuilder = Callable[[Provider, str, str], Model]
 
 
@@ -52,19 +52,26 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
     )
 
 
-def _hash_vector(text: str) -> list[float]:
-    digest = hashlib.sha256(text.encode()).digest()
-    raw = [byte - 127.5 for byte in digest[:FAKE_DIMENSIONS]]
-    norm = math.sqrt(sum(x * x for x in raw))
-    return [x / norm for x in raw]
+def _hash_vector(text: str, dimensions: int) -> list[float]:
+    raw: list[float] = []
+    counter = 0
+    while len(raw) < dimensions:
+        raw.extend(byte - 127.5 for byte in hashlib.sha256(f"{counter}:{text}".encode()).digest())
+        counter += 1
+    vector = raw[:dimensions]
+    norm = math.sqrt(sum(x * x for x in vector))
+    return [x / norm for x in vector]
 
 
 class HashEmbeddingModel(EmbeddingModel):
-    """The same text always gives the same unit vector; different texts differ."""
+    """The same text always gives the same unit vector, whether it is embedded as a document or
+    a query; different texts differ. Vectors have the model's registered dimension, so they
+    can be stored and searched like the real model's."""
 
     def __init__(self, model: str) -> None:
         super().__init__()
         self._model = model
+        self._dimensions = embedding_model(model).dimension
 
     @property
     def model_name(self) -> str:
@@ -83,7 +90,7 @@ class HashEmbeddingModel(EmbeddingModel):
     ) -> EmbeddingResult:
         texts, _ = self.prepare_embed(inputs, settings)
         return EmbeddingResult(
-            [_hash_vector(text) for text in texts],
+            [_hash_vector(text, self._dimensions) for text in texts],
             inputs=texts,
             input_type=input_type,
             model_name=self._model,
@@ -122,6 +129,9 @@ class FakeModelAdapters:
         return self._chat(provider, secret, model)
 
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel:
+        return HashEmbeddingModel(model)
+
+    def bedrock_embedder(self, account: BedrockAccount, model: str) -> EmbeddingModel:
         return HashEmbeddingModel(model)
 
     def reranker(self, provider: Provider, secret: str, model: str) -> Reranker:

@@ -17,10 +17,14 @@ def _model_available() -> None:
     require_models(LOCAL_EMBEDDING_MODEL)
 
 
-def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension() -> None:
+def _cosine(a: list[float], b: list[float]) -> float:
+    return sum(x * y for x, y in zip(a, b, strict=True))
+
+
+async def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension() -> None:
     embedder = LocalEmbedder()
 
-    first, second, unrelated = embedder.embed_passages(
+    first, second, unrelated = await embedder.embed_passages(
         [
             "Everyone gets 25 days of annual leave.",
             "Staff have 25 days of holiday a year.",
@@ -31,10 +35,19 @@ def test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension() ->
     assert len(first) == 384
     assert math.isclose(math.sqrt(sum(v * v for v in first)), 1.0, rel_tol=1e-4)
 
-    def cosine(a: list[float], b: list[float]) -> float:
-        return sum(x * y for x, y in zip(a, b, strict=True))
+    assert _cosine(first, second) > _cosine(first, unrelated)
 
-    assert cosine(first, second) > cosine(first, unrelated)
+
+async def test_a_query_is_nearest_the_passage_that_answers_it() -> None:
+    embedder = LocalEmbedder()
+    leave, expenses = await embedder.embed_passages(
+        ["Everyone gets 25 days of annual leave.", "Claim expenses within 30 days."]
+    )
+
+    query = await embedder.embed_query("How much holiday do I get?")
+
+    assert len(query) == 384
+    assert _cosine(query, leave) > _cosine(query, expenses)
 
 
 def test_the_chunker_counts_tokens_with_the_models_own_tokenizer() -> None:

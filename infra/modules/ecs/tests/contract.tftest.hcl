@@ -248,7 +248,7 @@ run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_wit
   }
 }
 
-run "the_worker_reads_documents_and_never_touches_credentials" {
+run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key" {
   command = plan
 
   assert {
@@ -273,9 +273,15 @@ run "the_worker_reads_documents_and_never_touches_credentials" {
           Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
           Resource = "arn:aws:kms:eu-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
         },
+        {
+          Sid      = "OpenProviderCredentialEnvelopes"
+          Effect   = "Allow"
+          Action   = ["kms:Decrypt"]
+          Resource = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
+        },
       ]
     }
-    error_message = "The worker may use Document objects only: no credentials key and no role assumption."
+    error_message = "The worker may use Document objects and only decrypt with the credentials key (to embed with a Project's provider Embedding Model): no encrypt and no role assumption."
   }
 }
 
@@ -465,12 +471,13 @@ run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values" {
 
   assert {
     condition = (
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
+      contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
       contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "DOCUMENTS_BUCKET") &&
       !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "DOCUMENTS_BUCKET") &&
       !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "DATABASE_HOST")
     )
-    error_message = "Only the API learns the credentials key, and Beat learns nothing about the database or Documents."
+    error_message = "The API and worker learn the credentials key, and Beat learns nothing about the database or Documents."
   }
 
   assert {
