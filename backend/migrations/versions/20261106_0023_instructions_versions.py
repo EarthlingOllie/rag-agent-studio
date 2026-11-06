@@ -4,8 +4,8 @@ The existing ``projects.instructions`` field becomes the Draft. A Project whose 
 weren't empty gets a v1 holding them, which becomes its Current Version, so what Agents follow
 doesn't change.
 
-Revision ID: 0022_instructions_versions
-Revises: 0021_message_guardrail_outcomes
+Revision ID: 0023_instructions_versions
+Revises: 0022_theme_images
 Create Date: 2026-11-06
 """
 
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0022_instructions_versions"
-down_revision: str | None = "0021_message_guardrail_outcomes"
+revision: str = "0023_instructions_versions"
+down_revision: str | None = "0022_theme_images"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
