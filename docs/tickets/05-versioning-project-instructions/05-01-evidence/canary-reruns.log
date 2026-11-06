@@ -1,0 +1,6 @@
+$ uv run pytest --no-cov -q tests/integration/test_canary.py::test_a_canary_leaked_across_chunks_is_cut_off_and_replaced_with_the_fallback  (x5) @ eef0819
+1 passed in 1.60s
+1 passed in 1.44s
+1 passed in 1.56s
+1 passed in 1.49s
+1 passed in 1.63s

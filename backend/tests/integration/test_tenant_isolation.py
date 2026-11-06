@@ -184,6 +184,27 @@ async def _instructions_to_save(owner: SignedUpMember, add_member: MemberFactory
     return {"project_id": await _make_project(owner)}, {"markdown": "# Rules"}
 
 
+async def _instructions_to_publish(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    saved = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/projects/{project_id}/instructions",
+        json={"markdown": "# Rules"},
+    )
+    assert saved.status_code == 200, saved.text
+    return {"project_id": project_id}, {"note": "First rules"}
+
+
+async def _instructions_to_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    path = f"/api/organisations/{owner.organisation_id}/projects/{project_id}/instructions"
+    for markdown in ("# Rules", "# Newer rules"):
+        saved = await owner.client.put(path, json={"markdown": markdown})
+        assert saved.status_code == 200, saved.text
+        published = await owner.client.post(f"{path}/versions", json={"note": markdown})
+        assert published.status_code == 201, published.text
+    return {"project_id": project_id}, None
+
+
 async def _an_archived_project(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {"project_id": await _make_project(owner, archived=True)}, None
 
@@ -372,6 +393,13 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("DELETE", PROJECTS + "/{project_id}", OWNER, _an_archived_project_to_delete),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions", EDITOR, _a_project),
     ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _a_project),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _instructions_to_publish
+    ),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/instructions/revert", EDITOR, _instructions_to_revert
+    ),
     ScopedRoute("POST", PROJECTS + "/{project_id}/uploads", EDITOR, _an_upload_to_start),
     ScopedRoute("POST", PROJECTS + "/{project_id}/documents", EDITOR, _an_uploaded_file),
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents", EDITOR, _a_project),
