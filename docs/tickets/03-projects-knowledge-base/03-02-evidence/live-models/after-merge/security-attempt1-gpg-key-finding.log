@@ -1,0 +1,17 @@
+$ gitleaks git --redact --no-banner --log-opts=origin/candidate..HEAD . @ eef1e76
+[90m2:57PM[0m [32mINF[0m [1m4 commits scanned.[0m
+[90m2:57PM[0m [32mINF[0m [1mscanned ~2563125 bytes (2.56 MB) in 625ms[0m
+[90m2:57PM[0m [33mWRN[0m [1mleaks found: 1[0m
+exit 1
+$ make audit
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit 0
+$ pip-audit on the pdf group too: uv export --frozen --no-emit-project --group pdf | pip-audit
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+ERROR:pip_audit._cli:torch: Dependency not found on PyPI and could not be audited: torch (2.15.0+cpu)
+exit 1

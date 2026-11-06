@@ -1,0 +1,12 @@
+# Layered on compose.sandbox.yml for the bundled-model run: the stack runs the images build-pdf.sh
+# built with the Dockerfile defaults (the `pdf` group, Docling's models and the local Embedding Model
+# baked in). EMBEDDER is left unset, so compose's default (`local`) embeds with the bundled model.
+services:
+  api:
+    image: rag-agent-studio/api:pdf
+  worker:
+    image: rag-agent-studio/api:pdf
+  beat:
+    image: rag-agent-studio/api:pdf
+  studio:
+    image: rag-agent-studio/studio:pdf

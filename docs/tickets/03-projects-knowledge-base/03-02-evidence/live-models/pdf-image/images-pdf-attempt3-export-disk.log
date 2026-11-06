@@ -1,0 +1,125 @@
+$ docs/tickets/03-projects-knowledge-base/03-02-evidence/build-pdf.sh <worktree> pdf @ 210ec94; free before: 9753M
++ docker build -t rag-agent-studio/api:pdf backend (Dockerfile defaults: WITH_PDF=true BUNDLE_MODELS=true; BUNDLE_OCR_MODELS=false; sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 3.59kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#7 CACHED
+
+#8 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 ...
+
+#9 [internal] load build context
+#9 transferring context: 1.08MB 0.1s done
+#9 DONE 0.1s
+
+#10 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#10 CACHED
+
+#11 [build 4/6] WORKDIR /app
+#11 CACHED
+
+#12 [build 5/6] COPY pyproject.toml uv.lock ./
+#12 CACHED
+
+#13 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "true" = "true" ] && echo --group pdf)
+#13 CACHED
+
+#8 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#8 0.132 Ign:1 http://deb.debian.org/debian trixie InRelease
+#8 0.132 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 0.132 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 1.134 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 1.135 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 1.135 Ign:1 http://deb.debian.org/debian trixie InRelease
+#8 3.138 Ign:1 http://deb.debian.org/debian trixie InRelease
+#8 3.138 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 3.138 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 7.139 Err:3 http://deb.debian.org/debian-security trixie-security InRelease
+#8 7.139   Could not resolve 'deb.debian.org'
+#8 7.139 Err:2 http://deb.debian.org/debian trixie-updates InRelease
+#8 7.139   Could not resolve 'deb.debian.org'
+#8 7.143 Err:1 http://deb.debian.org/debian trixie InRelease
+#8 7.143   Could not resolve 'deb.debian.org'
+#8 7.149 Reading package lists...
+#8 7.168 W: Failed to fetch http://deb.debian.org/debian/dists/trixie/InRelease  Could not resolve 'deb.debian.org'
+#8 7.168 W: Failed to fetch http://deb.debian.org/debian/dists/trixie-updates/InRelease  Could not resolve 'deb.debian.org'
+#8 7.168 W: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Could not resolve 'deb.debian.org'
+#8 7.168 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#8 7.184 Reading package lists...
+#8 7.193 Building dependency tree...
+#8 7.195 Reading state information...
+#8 7.196 Calculating upgrade...
+#8 7.205 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#8 DONE 7.2s
+
+#14 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#14 1.529 Found existing installation: pip 26.2.2
+#14 1.564 Uninstalling pip-26.2.2:
+#14 1.833   Successfully uninstalled pip-26.2.2
+#14 1.869 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 DONE 1.9s
+
+#15 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
+#15 DONE 12.0s
+
+#16 [stage-1  6/11] WORKDIR /app
+#16 DONE 0.4s
+
+#17 [stage-1  7/11] COPY alembic.ini ./
+#17 DONE 0.0s
+
+#18 [stage-1  8/11] COPY app ./app
+#18 DONE 0.0s
+
+#19 [stage-1  9/11] COPY migrations ./migrations
+#19 DONE 0.0s
+
+#20 [stage-1 10/11] RUN mkdir -p /opt/models/docling     && if [ "true" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && if [ "true" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='false' == 'true')";         fi;     fi
+#20 5.039 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 5.213 Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  5.76it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  3.77it/s]Fetching 5 files:  80%|████████  | 4/5 [00:01<00:00,  3.58it/s]Fetching 5 files: 100%|██████████| 5/5 [00:19<00:00,  5.89s/it]Fetching 5 files: 100%|██████████| 5/5 [00:19<00:00,  3.90s/it]
+#20 37.90 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 DONE 51.1s
+
+#21 [stage-1 11/11] RUN useradd --system --uid 10001 studio
+#21 0.090 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.1s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 87.6s done
+#22 exporting manifest sha256:16a19d0e67ba8fe1c8bdbb0ef8581c4d437ee373ec7c7ce4caa34a03a44ad427 done
+#22 exporting config sha256:8f1ecdba0780d0b22f3517d849c42a5cbad56147bb87bfc43f995e41c7e03e67 0.0s done
+#22 exporting attestation manifest sha256:a00c1e4d0b061b6f89364ebfab06febf8abafb28ec0f025aa368a3ef6edee6ee done
+#22 exporting manifest list sha256:5f911a881a747b5f3f4bcfdfd204acbf865000a2d90eced28aba295dba77cf28 0.0s done
+#22 naming to docker.io/rag-agent-studio/api:pdf 0.0s done
+#22 unpacking to docker.io/rag-agent-studio/api:pdf
+#22 unpacking to docker.io/rag-agent-studio/api:pdf 29.8s done
+#22 CANCELED
+ERROR: failed to build: failed to solve: Canceled: context canceled
+exit 130
+free after: 1811M
+free after builder prune (dangling cache): 11060M
+rag-agent-studio/api:pdf 5f911a881a74 1.62GB

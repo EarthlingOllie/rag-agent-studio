@@ -1,0 +1,23 @@
+$ trivy fs --scanners vuln --include-dev-deps --list-all-pkgs --format table --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL backend/uv.lock  (--include-dev-deps: trivy counts dependency groups, the pdf group included, as dev) @ ceb3d41
+2026-11-06T13:21:07Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T13:21:07Z	INFO	Number of language-specific files	num=1
+2026-11-06T13:21:07Z	INFO	[uv] Detecting vulnerabilities...
+
+Report Summary
+
+┌─────────┬──────┬─────────────────┐
+│ Target  │ Type │ Vulnerabilities │
+├─────────┼──────┼─────────────────┤
+│ uv.lock │  uv  │        0        │
+└─────────┴──────┴─────────────────┘
+Legend:
+- '-': Not scanned
+- '0': Clean (no security findings detected)
+
+exit 0
+
+$ same, every severity, fixed or not, as JSON package/vulnerability counts
+packages scanned: 200
+torch/docling/rtree in scan: ['docling-slim 2.147.0', 'fastembed 0.9.1', 'rapidocr 3.10.0', 'rtree 1.4.1', 'torch 2.15.0', 'torch 2.15.0+cpu', 'torchvision 0.29.2', 'torchvision 0.29.2+cpu']
+vulnerabilities: []
+exit 0

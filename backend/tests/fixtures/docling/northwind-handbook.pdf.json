@@ -21,9 +21,6 @@
    },
    {
     "$ref": "#/texts/6"
-   },
-   {
-    "$ref": "#/texts/7"
    }
   ],
   "content_layer": "body",
@@ -42,6 +39,11 @@
  "groups": [],
  "key_value_items": [],
  "name": "northwind-handbook",
+ "origin": {
+  "binary_hash": 5088834500169501879,
+  "filename": "northwind-handbook.pdf",
+  "mimetype": "application/pdf"
+ },
  "pages": {
   "1": {
    "page_no": 1,
@@ -65,7 +67,8 @@
   {
    "children": [],
    "content_layer": "body",
-   "label": "title",
+   "label": "section_header",
+   "level": 1,
    "orig": "Northwind staff handbook",
    "parent": {
     "$ref": "#/body"
@@ -73,11 +76,11 @@
    "prov": [
     {
      "bbox": {
-      "b": 767.0,
+      "b": 765.86,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 216.0,
-      "t": 779.0
+      "r": 319.7800000000001,
+      "t": 784.36
      },
      "charspan": [
       0,
@@ -101,11 +104,11 @@
    "prov": [
     {
      "bbox": {
-      "b": 735.0,
+      "b": 737.102,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 144.0,
-      "t": 747.0
+      "r": 158.36599999999999,
+      "t": 750.052
      },
      "charspan": [
       0,
@@ -121,55 +124,28 @@
    "children": [],
    "content_layer": "body",
    "label": "text",
-   "orig": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays.",
+   "orig": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays. Book leave in the HR portal at least two weeks ahead. Your manager approves it.",
    "parent": {
     "$ref": "#/body"
    },
    "prov": [
     {
      "bbox": {
-      "b": 719.0,
+      "b": 701.723,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 600.0,
-      "t": 731.0
+      "r": 505.47699999999975,
+      "t": 729.898
      },
      "charspan": [
       0,
-      88
+      168
      ],
      "page_no": 1
     }
    ],
    "self_ref": "#/texts/2",
-   "text": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays."
-  },
-  {
-   "children": [],
-   "content_layer": "body",
-   "label": "text",
-   "orig": "Book leave in the HR portal at least two weeks ahead. Your manager approves it.",
-   "parent": {
-    "$ref": "#/body"
-   },
-   "prov": [
-    {
-     "bbox": {
-      "b": 703.0,
-      "coord_origin": "BOTTOMLEFT",
-      "l": 72.0,
-      "r": 546.0,
-      "t": 715.0
-     },
-     "charspan": [
-      0,
-      79
-     ],
-     "page_no": 1
-    }
-   ],
-   "self_ref": "#/texts/3",
-   "text": "Book leave in the HR portal at least two weeks ahead. Your manager approves it."
+   "text": "Everyone at Northwind Traders gets 25 days of annual leave a year, plus public holidays. Book leave in the HR portal at least two weeks ahead. Your manager approves it."
   },
   {
    "children": [],
@@ -183,11 +159,11 @@
    "prov": [
     {
      "bbox": {
-      "b": 767.0,
+      "b": 767.102,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 120.0,
-      "t": 779.0
+      "r": 137.366,
+      "t": 780.052
      },
      "charspan": [
       0,
@@ -196,7 +172,7 @@
      "page_no": 2
     }
    ],
-   "self_ref": "#/texts/4",
+   "self_ref": "#/texts/3",
    "text": "Expenses"
   },
   {
@@ -210,11 +186,11 @@
    "prov": [
     {
      "bbox": {
-      "b": 751.0,
+      "b": 749.723,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 594.0,
-      "t": 763.0
+      "r": 495.6759999999998,
+      "t": 759.898
      },
      "charspan": [
       0,
@@ -223,7 +199,7 @@
      "page_no": 2
     }
    ],
-   "self_ref": "#/texts/5",
+   "self_ref": "#/texts/4",
    "text": "Claim expenses within 30 days with a receipt. Travel is booked through the travel desk."
   },
   {
@@ -238,11 +214,11 @@
    "prov": [
     {
      "bbox": {
-      "b": 719.0,
+      "b": 719.102,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 174.0,
-      "t": 731.0
+      "r": 204.23,
+      "t": 732.052
      },
      "charspan": [
       0,
@@ -251,7 +227,7 @@
      "page_no": 2
     }
    ],
-   "self_ref": "#/texts/6",
+   "self_ref": "#/texts/5",
    "text": "Working from home"
   },
   {
@@ -265,11 +241,11 @@
    "prov": [
     {
      "bbox": {
-      "b": 703.0,
+      "b": 701.723,
       "coord_origin": "BOTTOMLEFT",
       "l": 72.0,
-      "r": 540.0,
-      "t": 715.0
+      "r": 471.84999999999985,
+      "t": 711.898
      },
      "charspan": [
       0,
@@ -278,7 +254,7 @@
      "page_no": 2
     }
    ],
-   "self_ref": "#/texts/7",
+   "self_ref": "#/texts/6",
    "text": "You can work from home up to three days a week. Agree the days with your team."
   }
  ],
