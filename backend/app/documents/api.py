@@ -387,9 +387,7 @@ async def retry_document(
         raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_BUSY) from None
     document = summary.document
     tags = await tags_of(db, [document.id])
-    queued = _document_out(
-        document, summary.chunks, tags.get(document.id, []), summary.replacement
-    )
+    queued = _document_out(document, summary.chunks, tags.get(document.id, []), summary.replacement)
     await enqueue_ingestion(document.id)
     return queued
 
