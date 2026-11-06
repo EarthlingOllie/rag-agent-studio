@@ -6,6 +6,7 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@studio/api-client": "workspace:*",
+    "@tiptap/extension-paragraph": "3.32.0",
     "@tiptap/markdown": "3.32.0",
     "@tiptap/pm": "3.32.0",
     "@tiptap/react": "3.32.0",

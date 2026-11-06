@@ -4,12 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { MarkdownEditor } from "./MarkdownEditor";
 
 /**
- * Markdown the editor writes back exactly as it was given: load it into the rich editor, open the
- * Markdown view (the editor's own serialisation of what it holds) and the text is unchanged.
+ * Markdown the editor writes back exactly as it was given: load it into the rich editor, make an
+ * edit and undo it by hand, and the markdown the editor writes is the text it was given.
  */
 const ROUND_TRIPS: [string, string][] = [
   ["headings", "# Role\n\n## Tone\n\n###### Small print"],
   ["paragraphs and soft breaks", "First paragraph.\n\nSecond paragraph,\nsame paragraph."],
+  ["a soft break in the paragraph being edited", "First line,\nsame paragraph."],
   ["a hard break", "Line one  \nline two"],
   ["a bulleted list", "- Cite the handbook\n- Be brief\n- Say when you don't know"],
   ["a numbered list", "1. Greet\n2. Answer\n3. Offer help"],
@@ -28,10 +29,9 @@ const ROUND_TRIPS: [string, string][] = [
   ["text that only looks like a table or a task", "| a | b |\n|---|---|\n\n- [ ] not a task"],
   ["a bare URL", "Visit https://example.com/help today."],
   ["a trailing newline", "# Rules\n\nBe kind.\n"],
-  ["nothing at all", ""],
 ];
 
-/** Markdown with more than one spelling; the editor writes the canonical one shown. */
+/** Markdown with more than one spelling; once edited, the editor writes the canonical one shown. */
 const NORMALISED: [string, string, string][] = [
   ["star bullets become dashes", "* one\n* two", "- one\n- two"],
   ["underscore emphasis becomes stars", "__bold__ and _italic_", "**bold** and *italic*"],
@@ -47,18 +47,39 @@ async function openMarkdownView(label: string) {
   return screen.getByRole("textbox", { name: `${label} (Markdown)` });
 }
 
-test.each(ROUND_TRIPS)("%s round-trip exactly", async (_name, markdown) => {
-  render(<MarkdownEditor label="System prompt" defaultValue={markdown} />);
-  await screen.findByRole("textbox", { name: "System prompt" });
+/** The markdown the rich editor writes for what it holds: type a character, then delete it. */
+async function writtenByTheRichEditor(label: string, onChange: ReturnType<typeof vi.fn>) {
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("textbox", { name: label }));
+  await user.keyboard("x{Backspace}");
+  return onChange.mock.lastCall?.[0] as string;
+}
 
-  expect(await openMarkdownView("System prompt")).toHaveValue(markdown);
+test.each(ROUND_TRIPS)("%s round-trip exactly", async (_name, markdown) => {
+  const onChange = vi.fn();
+  render(<MarkdownEditor label="System prompt" defaultValue={markdown} onChange={onChange} />);
+
+  expect(await writtenByTheRichEditor("System prompt", onChange)).toBe(markdown);
 });
 
 test.each(NORMALISED)("%s", async (_name, markdown, canonical) => {
-  render(<MarkdownEditor label="Prompt" defaultValue={markdown} />);
-  await screen.findByRole("textbox", { name: "Prompt" });
+  const onChange = vi.fn();
+  render(<MarkdownEditor label="Prompt" defaultValue={markdown} onChange={onChange} />);
 
-  expect(await openMarkdownView("Prompt")).toHaveValue(canonical);
+  expect(await writtenByTheRichEditor("Prompt", onChange)).toBe(canonical);
+});
+
+test("an empty editor stores nothing until something is typed", async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  const { container } = render(<MarkdownEditor label="Prompt" name="prompt" defaultValue="" onChange={onChange} />);
+  const editor = await screen.findByRole("textbox", { name: "Prompt" });
+  expect(container.querySelector("input[name=prompt]")).toHaveValue("");
+
+  await user.click(editor);
+  await user.keyboard("Hi");
+
+  expect(onChange).toHaveBeenLastCalledWith("Hi");
 });
 
 test("the rich editor shows the markdown formatted", async () => {
@@ -162,4 +183,56 @@ test("a disabled editor can't be changed", async () => {
   expect(editor).toHaveAttribute("contenteditable", "false");
   expect(screen.getByRole("button", { name: "Bold" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Markdown" })).toBeDisabled();
+});
+
+test("an editor follows its disabled prop after it is created", async () => {
+  const { rerender } = render(<MarkdownEditor label="Prompt" defaultValue="Rules" />);
+  const editor = await screen.findByRole("textbox", { name: "Prompt" });
+  expect(editor).toHaveAttribute("contenteditable", "true");
+
+  // Archived while open: nothing can be typed any more.
+  rerender(<MarkdownEditor label="Prompt" defaultValue="Rules" disabled />);
+  expect(editor).toHaveAttribute("contenteditable", "false");
+  expect(screen.getByRole("button", { name: "Bold" })).toBeDisabled();
+
+  // Restored: it can be edited again.
+  rerender(<MarkdownEditor label="Prompt" defaultValue="Rules" />);
+  expect(editor).toHaveAttribute("contenteditable", "true");
+  expect(screen.getByRole("button", { name: "Bold" })).toBeEnabled();
+});
+
+test("the Markdown view opens on the stored text, not the editor's rewrite of it", async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<MarkdownEditor label="Prompt" defaultValue={"* a\n* __b__"} onChange={onChange} />);
+  await screen.findByRole("textbox", { name: "Prompt" });
+
+  const source = await openMarkdownView("Prompt");
+  expect(source).toHaveValue("* a\n* __b__");
+  await user.type(source, "c");
+
+  expect(onChange).toHaveBeenLastCalledWith("* a\n* __b__c");
+});
+
+test("the character count shows how far the markdown is from the limit", async () => {
+  const user = userEvent.setup();
+  render(<MarkdownEditor label="Prompt" defaultValue="Rules" maxLength={8} />);
+  const editor = await screen.findByRole("textbox", { name: "Prompt" });
+
+  expect(screen.getByText("5 / 8 characters")).toBeInTheDocument();
+  expect(editor).not.toHaveAttribute("aria-invalid");
+
+  await user.click(editor);
+  await user.keyboard("more ");
+  // The formatted view can't refuse keystrokes, so it says the text is too long instead.
+  expect(screen.getByText("10 / 8 characters: 2 too many")).toBeInTheDocument();
+  expect(editor).toHaveAttribute("aria-invalid", "true");
+  expect(editor).toHaveAccessibleDescription("10 / 8 characters: 2 too many");
+});
+
+test("no character count without a limit", async () => {
+  render(<MarkdownEditor label="Prompt" defaultValue="Rules" />);
+  await screen.findByRole("textbox", { name: "Prompt" });
+
+  expect(screen.queryByText(/characters/)).not.toBeInTheDocument();
 });

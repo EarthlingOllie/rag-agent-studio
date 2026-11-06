@@ -1,8 +1,9 @@
+import Paragraph from "@tiptap/extension-paragraph";
 import { Markdown } from "@tiptap/markdown";
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Marked, type marked as defaultMarked } from "marked";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 /**
  * The markdown dialect the editor reads and writes: CommonMark without raw HTML or bare-URL
@@ -57,6 +58,12 @@ const FORMATTED = [
   "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:font-mono [&_pre]:rounded [&_pre]:bg-slate-100 [&_pre]:p-2",
   "[&_a]:text-blue-800 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3",
 ].join(" ");
+
+const ATTRIBUTES = {
+  role: "textbox",
+  "aria-multiline": "true",
+  class: `${FORMATTED} min-h-32 rounded border border-slate-300 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-500 aria-invalid:border-red-700`,
+};
 
 const TOOL =
   "rounded px-2 py-1 text-sm text-slate-800 hover:bg-slate-100 disabled:opacity-50 aria-pressed:bg-slate-200 aria-pressed:font-semibold";
@@ -157,6 +164,7 @@ export type MarkdownEditorProps = {
  */
 export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength, disabled = false }: MarkdownEditorProps) {
   const labelId = useId();
+  const countId = useId();
   const [value, setValue] = useState(defaultValue);
   const [source, setSource] = useState<string | null>(null);
   const trailing = useRef(trailingWhitespace(defaultValue));
@@ -171,7 +179,10 @@ export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength,
     extensions: [
       // No trailing empty paragraph, no underline or strikethrough (not in the dialect), and
       // links are only made from markdown, never from typed URLs.
-      StarterKit.configure({ trailingNode: false, underline: false, strike: false, link: { autolink: false, openOnClick: false } }),
+      StarterKit.configure({ paragraph: false, trailingNode: false, underline: false, strike: false, link: { autolink: false, openOnClick: false } }),
+      // A soft break is a newline in a paragraph's text. Typing in that paragraph makes ProseMirror
+      // read it back from the page, which would turn the newline into a hard break; "pre" keeps it.
+      Paragraph.extend({ whitespace: "pre" }),
       // TipTap types the option as the global `marked`; an instance is what it actually uses.
       Markdown.configure({ marked: marked as unknown as typeof defaultMarked }),
     ],
@@ -179,12 +190,7 @@ export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength,
     contentType: "markdown",
     editable: !disabled,
     editorProps: {
-      attributes: {
-        role: "textbox",
-        "aria-multiline": "true",
-        "aria-labelledby": labelId,
-        class: `${FORMATTED} min-h-32 rounded border border-slate-300 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-500`,
-      },
+      attributes: { ...ATTRIBUTES, "aria-labelledby": labelId },
     },
     onCreate: ({ editor: created }) => {
       writeTextExactly(created, marked);
@@ -194,9 +200,34 @@ export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength,
     },
   });
 
+  // A Project archived or restored while its editor is open locks or unlocks it in place.
+  useEffect(() => {
+    editor.setEditable(!disabled, false);
+  }, [editor, disabled]);
+
+  // The Markdown view can refuse keystrokes past the limit; the formatted view can only say so.
+  const over = maxLength === undefined ? 0 : value.length - maxLength;
+  const count =
+    maxLength === undefined
+      ? undefined
+      : `${String(value.length)} / ${String(maxLength)} characters${over > 0 ? `: ${String(over)} too many` : ""}`;
+  useEffect(() => {
+    editor.setOptions({
+      editorProps: {
+        attributes: {
+          ...ATTRIBUTES,
+          "aria-labelledby": labelId,
+          ...(count === undefined ? {} : { "aria-describedby": countId }),
+          ...(over > 0 ? { "aria-invalid": "true" } : {}),
+        },
+      },
+    });
+  }, [editor, labelId, countId, count, over]);
+
   function toggleSource() {
     if (source === null) {
-      setSource(editor.getMarkdown() + trailing.current);
+      // The stored text, exactly: not the editor's rewrite of text nobody has edited yet.
+      setSource(value);
       return;
     }
     trailing.current = trailingWhitespace(source);
@@ -237,6 +268,11 @@ export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength,
           }}
           className="block w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
         />
+      )}
+      {count !== undefined && (
+        <p id={countId} className={`text-xs ${over > 0 ? "font-semibold text-red-800" : "text-slate-700"}`}>
+          {count}
+        </p>
       )}
       {name !== undefined && <input type="hidden" name={name} value={value} />}
     </div>
