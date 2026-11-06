@@ -7,10 +7,10 @@
 **Blocked by:**
 - [04-01: Agent and Playground tracer](01-agent-playground-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Provider errors become typed error events with readable messages
-- [ ] Reset starts a new Playground Conversation
-- [ ] Truncation to the configured number of remembered turns is verified
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Provider errors become typed error events with readable messages
+- [x] Reset starts a new Playground Conversation
+- [x] Truncation to the configured number of remembered turns is verified
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

@@ -1257,12 +1257,20 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Project Embedding Model
+         * @description The Project's Embedding Model, archived or not: the active one, the pending one while a
+         *     re-embed runs, and the latest re-embed with its progress (or why it failed).
+         */
+        get: operations["getProjectEmbeddingModel"];
         /**
          * Set Project Embedding Model
          * @description Chooses the Project's Embedding Model: the local one, or a provider model with a
-         *     Provider Credential that offers it. Refused while the Project has Documents. Records
-         *     ``project.embedding_model_changed``.
+         *     Provider Credential that offers it. A Project without Documents switches at once
+         *     (``project.embedding_model_changed``). One with Documents gets it as its pending model and
+         *     a background re-embed (``project.re_embed_started``); its active model keeps serving until
+         *     the job switches over. Choosing again while a re-embed runs cancels it
+         *     (``project.re_embed_cancelled``). Follow the re-embed with ``getProjectEmbeddingModel``.
          */
         put: operations["setProjectEmbeddingModel"];
         post?: never;
@@ -2214,6 +2222,22 @@ export interface components {
             /** Tokenizer */
             tokenizer: string;
         };
+        /**
+         * EmbeddingModelStateOut
+         * @description The Project's active Embedding Model, the pending one while a re-embed runs, and the
+         *     latest re-embed job (running or ended), if there has been one.
+         */
+        EmbeddingModelStateOut: {
+            /** Credential Id */
+            credential_id: string | null;
+            /** Model Id */
+            model_id: string;
+            /** Pending Credential Id */
+            pending_credential_id: string | null;
+            /** Pending Model Id */
+            pending_model_id: string | null;
+            re_embed: components["schemas"]["ReEmbedOut"] | null;
+        };
         /** EnrolmentResponse */
         EnrolmentResponse: {
             /** Otpauth Uri */
@@ -2781,6 +2805,42 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * ReEmbedOut
+         * @description A re-embed job: the Knowledge Base moving from one Embedding Model to another.
+         */
+        ReEmbedOut: {
+            /** Credential Id */
+            credential_id: string | null;
+            /** Embedded Chunks */
+            embedded_chunks: number;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** From Model Id */
+            from_model_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Model Id */
+            model_id: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            status: components["schemas"]["ReEmbedStatus"];
+            /** Total Chunks */
+            total_chunks: number;
+        };
+        /**
+         * ReEmbedStatus
+         * @enum {string}
+         */
+        ReEmbedStatus: "running" | "completed" | "failed" | "cancelled";
         /** RecoveryCodesResponse */
         RecoveryCodesResponse: {
             /** Recovery Codes */
@@ -6046,7 +6106,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`. */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6782,6 +6842,47 @@ export interface operations {
             };
         };
     };
+    getProjectEmbeddingModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbeddingModelStateOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     setProjectEmbeddingModel: {
         parameters: {
             query?: never;
@@ -6816,7 +6917,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. Or: The Embedding Model can't be changed while the Project has Documents. Delete its Documents first. */
+            /** @description This Project is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;

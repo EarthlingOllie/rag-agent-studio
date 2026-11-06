@@ -187,7 +187,11 @@ What a model call cost in US dollars: its token counts times the prices in effec
 _Avoid_: Spend, charge, bill
 
 **Embedding Model**:
-The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage or OpenAI; Bedrock once the model gateway can call it) through an embedding-capable Provider Credential, which then becomes a Credential reference. Until re-embedding exists it can only change while the Project has no Documents.
+The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage, OpenAI or Bedrock) through an embedding-capable Provider Credential, which then becomes a Credential reference. It can change at any time: a Project without Documents switches at once, and one with Documents goes through a Re-embed. The model retrieval uses is the **active** one; the one a running Re-embed moves to is the **pending** one.
+
+**Re-embed**:
+The background job that moves a Project's Knowledge Base to a new Embedding Model. It writes the pending model's vector for every Chunk next to the active model's, with visible progress, while the active model keeps serving; then, in one step, the pending model becomes active and the old vectors are deleted. Uploads during a Re-embed are embedded with both models. A failed Re-embed leaves the active model unchanged and shows why; choosing again while one runs cancels it.
+_Avoid_: Migration, re-index, rebuild
 
 **Embedding Model registry**:
 The list, kept in code, of every Embedding Model a Project can use, with its provider, vector dimension, tokenizer, token limit and the Capability its credential needs.
@@ -390,6 +394,14 @@ The place in the Studio where Members chat with a Draft. Its Conversations are e
 
 **Playground Conversation**:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
+
+**Playground reset**:
+Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was.
+_Avoid_: Clear, restart, new chat
+
+**Provider error**:
+A model provider's failure while answering, reported at the end of the answer's stream as one of four kinds, each with a readable message: invalid key, rate limited (including an exhausted quota), model unavailable, or another provider error. No answer is saved, so the question is not among the remembered turns.
+_Avoid_: Model error, API error, crash
 
 **Embed Snippet**:
 The code an Organisation pastes into its site to show an Agent.

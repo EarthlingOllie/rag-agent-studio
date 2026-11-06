@@ -7,12 +7,12 @@
 **Blocked by:**
 - [03-09: Provider Embedding Models](09-provider-embedding-models.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Changing the model with Documents present sets the new model as pending and starts a re-embed job
-- [ ] Progress is visible; the old vectors serve until an atomic switch, after which they're deleted
-- [ ] A failed job leaves the active model unchanged, with the error shown
-- [ ] Documents uploaded during the job are embedded with both models
-- [ ] Model changes are recorded as Audit Events
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Changing the model with Documents present sets the new model as pending and starts a re-embed job
+- [x] Progress is visible; the old vectors serve until an atomic switch, after which they're deleted
+- [x] A failed job leaves the active model unchanged, with the error shown
+- [x] Documents uploaded during the job are embedded with both models
+- [x] Model changes are recorded as Audit Events
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

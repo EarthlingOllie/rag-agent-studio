@@ -31,6 +31,7 @@ from app.pricing.table import TokenUsage, cost
 from app.projects.models import Project
 from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
+from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import Turn
 from app.runtime.runtime import CitationEvent, DoneEvent, ReplaceEvent, TokenEvent, run_turn
 from app.tenancy.repository import OrganisationScope
@@ -271,14 +272,19 @@ async def answer(
     gateway: ModelGateway,
     embedders: dict[str, Embedder],
     clock: Clock,
-) -> AsyncIterator[TokenEvent | ReplaceEvent | CitationEvent | Answered]:
+) -> AsyncIterator[TokenEvent | ReplaceEvent | CitationEvent | ErrorEvent | Answered]:
     """Streams the answer's tokens and citations (or the replacement of an answer that leaked
     the Canary token), then saves the answer, with what retrieval found for it and the
-    Guardrail outcomes, and ends with ``Answered``."""
+    Guardrail outcomes, and ends with ``Answered``. If the provider fails, it ends with an
+    ``ErrorEvent`` instead and saves no answer, so the question is not remembered."""
     started = time.perf_counter()
     first_token_ms: int | None = None
     chosen = prepared.chat
-    model = gateway.chat_model(chosen.credential, chosen.model)
+    try:
+        model = gateway.chat_model(chosen.credential, chosen.model)
+    except PROVIDER_ERRORS as error:
+        yield provider_error(error, chosen.model)
+        return
     async with sessionmaker() as session:
 
         async def retrieve_in_project(query: str, settings: Retrieval) -> RetrievalResult:
@@ -297,7 +303,7 @@ async def answer(
                     first_token_ms = _elapsed_ms(started)
                 yield event
                 continue
-            if isinstance(event, CitationEvent | ReplaceEvent):
+            if isinstance(event, CitationEvent | ReplaceEvent | ErrorEvent):
                 yield event
                 continue
             latency_ms = _elapsed_ms(started)
