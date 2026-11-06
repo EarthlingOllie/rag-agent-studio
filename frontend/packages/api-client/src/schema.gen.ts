@@ -1793,7 +1793,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "anthropic" | "openai" | "voyage";
+            provider: "anthropic" | "openai" | "voyage" | "demo";
         };
         /** CreateInviteRequest */
         CreateInviteRequest: {
@@ -2545,7 +2545,7 @@ export interface components {
          * Provider
          * @enum {string}
          */
-        Provider: "anthropic" | "openai" | "bedrock" | "voyage";
+        Provider: "anthropic" | "openai" | "bedrock" | "voyage" | "demo";
         /** ProviderOut */
         ProviderOut: {
             /** Auth Kinds */

@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { legalVoyage, marketingOpenAi } from "../test/credentials";
-import { chatModels, claudeDefault, embeddingsOnlyOpenAi, fakeModelsApi, legalClaude } from "../test/models";
+import { chatModels, claudeDefault, demoCredential, demoDefault, embeddingsOnlyOpenAi, fakeModelsApi, legalClaude } from "../test/models";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -85,6 +85,18 @@ test("the current Default Model is shown and chosen in the picker", async () => 
   expect(form.getByRole("combobox", { name: "Credential" })).toHaveDisplayValue("Legal Claude (Anthropic)");
   await form.findByRole("option", { name: "Claude Haiku 4.5" });
   expect(form.getByRole("combobox", { name: "Model" })).toHaveDisplayValue("Claude Haiku 4.5");
+});
+
+test("the seeded demo model is labelled as a demo, not a real model", async () => {
+  fakeModelsApi({ defaultModel: demoDefault, credentials: [demoCredential, legalClaude] });
+  openAs();
+
+  expect(await screen.findByText("Demo model, using Northwind demo model (Demo: canned answers, not a real model)")).toBeInTheDocument();
+  const form = await picker();
+  expect(optionNames(form.getByRole("combobox", { name: "Credential" }))).toEqual([
+    "Legal Claude (Anthropic)",
+    "Northwind demo model (Demo: canned answers, not a real model)",
+  ]);
 });
 
 test("Editors see the Default Model but cannot change it", async () => {
