@@ -1,6 +1,6 @@
 # Evidence: ticket 05-04, Diffs and Draft management
 
-Branch `ticket/05-04-diffs-draft-management`, from `origin/candidate` at `0e5ef28` (05-02, Publish Agent to Live Version, merged). The claim commit `d3e0d7c`, the first on the branch, set Status `in-progress`. The feature is `3957302`, with follow-ups `7f42f67` (tenant isolation listing) and `5877c4d` (Instructions revision after a publish; e2e waits). `origin/candidate` then moved to `be524a3` (05-06, Playground Instructions picker), merged in `1401464`. 05-06's migration took `0027`, so this ticket's migration is `0028_draft_revisions`, revising `0027_playground_instructions`, and candidate keeps one Alembic head.
+Branch `ticket/05-04-diffs-draft-management`, from `origin/candidate` at `0e5ef28` (05-02, Publish Agent to Live Version, merged). The claim commit `d3e0d7c`, the first on the branch, set Status `in-progress`. The feature is `3957302`, with follow-ups `7f42f67` (tenant isolation listing) and `5877c4d` (Instructions revision after a publish; e2e waits). `origin/candidate` then moved to `be524a3` (05-06, Playground Instructions picker), merged in `1401464`. 05-06's migration took `0027`, so this ticket's migration is `0028_draft_revisions`, revising `0027_playground_instructions`, and candidate keeps one Alembic head. `origin/candidate` then moved to `d522c93` (05-03, Revert via Live History), merged in `f98ff6c`: both sides kept, and the Draft diff's Instructions loader was renamed `_pinned_text`, clear of 05-03's `_pinned`.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to later tickets, best guesses, and what this sandbox can't run.
 
@@ -57,7 +57,7 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `1401464` (`1401464`, the merge of candidate `be524a3`, before only this README and the ticket file were written), with no uncommitted code changes. Each log's first line names the commit it ran at.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `f98ff6c` (the merge of candidate `d522c93`, 05-03; only these logs and this README were written after it), with no uncommitted code changes. Each log's first line names the commit it ran at.
 - The backend ran against this ticket's own `rag0504-svc-*` containers (Postgres :48732, Redis :48779, RustFS :48791), with the `studio_test` database recreated first.
 - The e2e stack ran as compose project `rag0504-e2e`, on host ports 45310–45825.
 
@@ -66,10 +66,10 @@ All runs are local, one suite at a time (GitHub Actions is down; the user author
 | Install | `make install` (uv sync --frozen, pnpm install --frozen-lockfile) | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Backend tests + coverage gate | `make test-backend` against the `rag0504-svc-*` Postgres/pgvector, Redis and RustFS containers; the OpenTelemetry span lines are filtered out of the log | **1801 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **44 files, 556 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against the `rag0504-svc-*` Postgres/pgvector, Redis and RustFS containers; the OpenTelemetry span lines are filtered out of the log | **1827 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **45 files, 567 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Images | `build.sh` (sandbox `make images`) | both images built (`rag-agent-studio/api:0504`, `rag-agent-studio/studio:0504`), exit 0 | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0504-e2e`) | **66 passed** on the first attempt (3.7 min), including `agent-drafts.spec.ts` with its axe scans | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0504-e2e`) | **67 passed** (6.4 min), including `agent-drafts.spec.ts` with its axe scans. Earlier attempts at the same commit: [e2e-attempt1.log](e2e-attempt1.log) 66 passed, 1 failed (`projects.spec.ts` "an Editor creates and archives a Project…", a 30 s click timeout in a spec this ticket doesn't touch, while other tickets' stacks shared the 4 CPUs); [e2e-attempt2.log](e2e-attempt2.log) never started (host port 45810 held by a leftover proxy); a container restart then ended the run. The rerun after a clean `down -v` passed | [e2e.log](e2e.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 

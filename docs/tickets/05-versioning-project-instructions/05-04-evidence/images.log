@@ -1,4 +1,4 @@
-$ docs/tickets/05-versioning-project-instructions/05-04-evidence/build.sh $PWD 0504 @ 1401464
+$ docs/tickets/05-versioning-project-instructions/05-04-evidence/build.sh $PWD 0504 @ f98ff6c
 + docker build -t rag-agent-studio/api:0504 backend (WITH_PDF=false BUNDLE_MODELS=false, sandbox CA)
 #0 building with "default" instance using docker driver
 
@@ -19,48 +19,77 @@ $ docs/tickets/05-versioning-project-instructions/05-04-evidence/build.sh $PWD 0
 
 #5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
 #5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
-#5 DONE 0.0s
+#5 CACHED
 
 #6 [context sandboxca] load from client
-#6 transferring sandboxca: 36B done
+#6 transferring sandboxca: 186.71kB 0.0s done
 #6 DONE 0.0s
 
 #7 [internal] load build context
-#7 transferring context: 2.39MB 0.1s done
+#7 transferring context: 2.41MB 0.1s done
 #7 DONE 0.1s
 
-#8 [build 4/6] WORKDIR /app
+#8 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
 #8 CACHED
 
-#9 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#9 [build 4/6] WORKDIR /app
 #9 CACHED
 
-#10 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#10 [build 5/6] COPY pyproject.toml uv.lock ./
 #10 CACHED
 
 #11 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
 #11 CACHED
 
-#12 [stage-1  5/10] WORKDIR /app
+#12 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
 #12 CACHED
 
-#13 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
-#13 CACHED
+#13 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#13 0.142 Ign:1 http://deb.debian.org/debian trixie InRelease
+#13 0.143 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 0.144 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 1.146 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 1.146 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 1.147 Ign:1 http://deb.debian.org/debian trixie InRelease
+#13 3.148 Ign:1 http://deb.debian.org/debian trixie InRelease
+#13 3.148 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 3.148 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 7.150 Err:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 7.150   Could not resolve 'deb.debian.org'
+#13 7.150 Err:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 7.150   Could not resolve 'deb.debian.org'
+#13 7.151 Err:1 http://deb.debian.org/debian trixie InRelease
+#13 7.151   Could not resolve 'deb.debian.org'
+#13 7.157 Reading package lists...
+#13 7.166 W: Failed to fetch http://deb.debian.org/debian/dists/trixie/InRelease  Could not resolve 'deb.debian.org'
+#13 7.166 W: Failed to fetch http://deb.debian.org/debian/dists/trixie-updates/InRelease  Could not resolve 'deb.debian.org'
+#13 7.166 W: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Could not resolve 'deb.debian.org'
+#13 7.166 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#13 7.175 Reading package lists...
+#13 7.183 Building dependency tree...
+#13 7.184 Reading state information...
+#13 7.186 Calculating upgrade...
+#13 7.192 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#13 DONE 7.2s
 
-#14 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
-#14 CACHED
+#14 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#14 1.404 Found existing installation: pip 26.2.2
+#14 1.438 Uninstalling pip-26.2.2:
+#14 1.532   Successfully uninstalled pip-26.2.2
+#14 1.550 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 DONE 1.6s
 
-#15 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
-#15 CACHED
+#15 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
+#15 DONE 5.9s
 
-#16 [build 5/6] COPY pyproject.toml uv.lock ./
-#16 CACHED
+#16 [stage-1  5/10] WORKDIR /app
+#16 DONE 0.2s
 
 #17 [stage-1  6/10] COPY alembic.ini ./
-#17 CACHED
+#17 DONE 0.0s
 
 #18 [stage-1  7/10] COPY app ./app
-#18 DONE 0.1s
+#18 DONE 0.0s
 
 #19 [stage-1  8/10] COPY migrations ./migrations
 #19 DONE 0.0s
@@ -69,19 +98,21 @@ $ docs/tickets/05-versioning-project-instructions/05-04-evidence/build.sh $PWD 0
 #20 DONE 0.1s
 
 #21 [stage-1 10/10] RUN useradd --system --uid 10001 studio
-#21 0.110 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 0.072 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
 #21 DONE 0.1s
 
 #22 exporting to image
 #22 exporting layers
-#22 exporting layers 0.2s done
-#22 exporting manifest sha256:6e97f5410145fcb601874547635e0b750dd52eb0cd515c35b88426afc9840344 done
-#22 exporting config sha256:d0633ba5b7adc9b3b98c49c196e2bcae33488cb0d764f71c76073ef5b1243ff3 done
-#22 exporting attestation manifest sha256:90fb1951f85deebc60f5e956c81eb112374fad6059d7a2fbfaff9a525f993034 done
-#22 exporting manifest list sha256:b3323cf9d833e5b7f3d60ddd3e984ffe5c466db8aa8d6966fa7eb1193d29d69b done
+#22 exporting layers 24.3s done
+#22 exporting manifest sha256:b24a0c1e2a20e502ad8cb2555327d4d0c42358242d6e37080e41f0f068184ef0
+#22 exporting manifest sha256:b24a0c1e2a20e502ad8cb2555327d4d0c42358242d6e37080e41f0f068184ef0 done
+#22 exporting config sha256:2e27edaa3f81587795a2e124479d597a3fbd6dafda37d483543d5db418f6fa6d 0.0s done
+#22 exporting attestation manifest sha256:a8b10ec64eb15f591f3a1bf1e641a3fdd436e6e5809bb91e43ba5540a1a44576 done
+#22 exporting manifest list sha256:b9fad502407bd3ac6c2af85981ed94c3c7923d39f52a1ce75e967df90473244c done
 #22 naming to docker.io/rag-agent-studio/api:0504 done
-#22 unpacking to docker.io/rag-agent-studio/api:0504 0.1s done
-#22 DONE 0.3s
+#22 unpacking to docker.io/rag-agent-studio/api:0504
+#22 unpacking to docker.io/rag-agent-studio/api:0504 6.3s done
+#22 DONE 30.8s
 + docker build -t rag-agent-studio/studio:0504 frontend (sandbox CA)
 #0 building with "default" instance using docker driver
 
@@ -102,64 +133,89 @@ $ docs/tickets/05-versioning-project-instructions/05-04-evidence/build.sh $PWD 0
 
 #5 [install  1/10] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
 #5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
-#5 DONE 0.0s
+#5 CACHED
 
-#6 [context sandboxca] load from client
-#6 transferring sandboxca: 36B done
-#6 DONE 0.0s
+#6 [internal] load build context
+#6 transferring context: 2.00MB 0.0s done
+#6 DONE 0.1s
 
-#7 [internal] load build context
-#7 transferring context: 1.96MB 0.0s done
+#7 [context sandboxca] load from client
+#7 transferring sandboxca: 186.71kB 0.0s done
 #7 DONE 0.0s
 
-#8 [install  4/10] WORKDIR /app
+#8 [install  6/10] COPY apps/studio/package.json apps/studio/
 #8 CACHED
 
-#9 [install  6/10] COPY apps/studio/package.json apps/studio/
+#9 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
 #9 CACHED
 
-#10 [install  8/10] COPY packages/ui/package.json packages/ui/
+#10 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 #10 CACHED
 
-#11 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#11 [install  3/10] RUN corepack enable
 #11 CACHED
 
-#12 [install  3/10] RUN corepack enable
+#12 [install  7/10] COPY packages/api-client/package.json packages/api-client/
 #12 CACHED
 
-#13 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#13 [install  4/10] WORKDIR /app
 #13 CACHED
 
-#14 [install  7/10] COPY packages/api-client/package.json packages/api-client/
+#14 [install  8/10] COPY packages/ui/package.json packages/ui/
 #14 CACHED
 
 #15 [install  9/10] RUN pnpm install --frozen-lockfile
 #15 CACHED
 
 #16 [install 10/10] COPY . .
-#16 DONE 0.0s
+#16 DONE 0.9s
 
 #17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
-#17 CACHED
+#17 0.983 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#17 0.983 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 0.983 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 1.983 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#17 1.983 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 1.983 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 3.983 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#17 3.983 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 3.983 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 7.985 Err:1 http://deb.debian.org/debian bookworm InRelease
+#17 7.985   Could not resolve 'deb.debian.org'
+#17 7.985 Err:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 7.985   Could not resolve 'deb.debian.org'
+#17 7.985 Err:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 7.985   Could not resolve 'deb.debian.org'
+#17 7.990 Reading package lists...
+#17 8.001 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Could not resolve 'deb.debian.org'
+#17 8.001 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm-updates/InRelease  Could not resolve 'deb.debian.org'
+#17 8.001 W: Failed to fetch http://deb.debian.org/debian-security/dists/bookworm-security/InRelease  Could not resolve 'deb.debian.org'
+#17 8.001 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#17 8.008 Reading package lists...
+#17 8.015 Building dependency tree...
+#17 8.016 Reading state information...
+#17 8.018 Calculating upgrade...
+#17 8.021 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#17 DONE 8.0s
 
 #18 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
-#18 CACHED
+#18 DONE 0.2s
 
 #19 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
-#19 DONE 1.9s
+#19 DONE 1.7s
 
 #20 [stage-1 5/5] WORKDIR /app/apps/studio
 #20 DONE 0.2s
 
 #21 exporting to image
 #21 exporting layers
-#21 exporting layers 10.2s done
-#21 exporting manifest sha256:2f323e40d0281cb8a9c4975cef0ca25e61c84518e86458db425ae940265d3e81 done
-#21 exporting config sha256:6428c3b93c1b8611d611cd4812c9b07bac42a958042cf3b90f586cb9c7655e9a done
-#21 exporting attestation manifest sha256:28f9f3b22d3df0f08e3f340be053fe61634711014c388420a7aed7c5f87b5ada done
-#21 exporting manifest list sha256:5be99428ebb06680e01179a7556949cf11e07dd33113556cacb2e447e61a25de done
+#21 exporting layers 9.3s done
+#21 exporting manifest sha256:265994c895043d2584a168b4146a0c1cd095b49909f488a9092628753b323f2c done
+#21 exporting config sha256:519fd05bc52f5a2502c28be56d56d52c31a9e8207274a4cfde4c946719cee38b done
+#21 exporting attestation manifest sha256:dffa0590d337e7b31d1ad14917866552465e7a9d04afb4d6eec7fe52cdcdad22 done
+#21 exporting manifest list sha256:65df6542f02956ac07ebfab994872e50f3684b4bf9b1691341ba764c8e6594f8 done
 #21 naming to docker.io/rag-agent-studio/studio:0504 done
 #21 unpacking to docker.io/rag-agent-studio/studio:0504
-#21 unpacking to docker.io/rag-agent-studio/studio:0504 3.6s done
-#21 DONE 13.8s
+#21 unpacking to docker.io/rag-agent-studio/studio:0504 2.8s done
+#21 DONE 12.1s
 exit 0
