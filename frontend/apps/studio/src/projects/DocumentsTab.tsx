@@ -11,13 +11,16 @@ import {
   canReplace,
   type DocumentFilters,
   type DocumentStatus,
+  type FailureCategory,
   NO_FILTERS,
   type ProjectDocument,
   retryFailure,
   type Upload,
+  type UploadLimits,
   useDeleteDocument,
   useDocuments,
   useRetryDocument,
+  useUploadLimits,
   useUploads,
 } from "./documents";
 import { useProject } from "./projects";
@@ -25,14 +28,25 @@ import { useOrganisationRole } from "./ProjectsPage";
 import { type Tag, tagFailure, useTagChange, useTags } from "./tags";
 import { TagsPanel } from "./TagsPanel";
 
-/** The file types the API accepts, for the file picker. */
-const ACCEPT = ".pdf,.docx,.pptx,.html,.htm,.md,.markdown,.txt";
+/** The file types the API accepts, for the file picker, until the upload limits have loaded. */
+const ACCEPT = [".pdf", ".docx", ".pptx", ".html", ".htm", ".md", ".markdown", ".txt"];
+
+function accept(limits: UploadLimits | undefined): string {
+  return (limits?.accepted_extensions ?? ACCEPT).join(",");
+}
 
 export const STATUS_LABELS: Record<DocumentStatus, string> = {
   queued: "Queued",
   processing: "Processing",
   ready: "Ready",
   failed: "Failed",
+};
+
+const CATEGORY_LABELS: Record<FailureCategory, string> = {
+  unsupported_content: "Unsupported content",
+  conversion: "Conversion error",
+  provider: "Provider error",
+  quota: "Quota reached",
 };
 
 function formatSize(bytes: number): string {
@@ -82,7 +96,13 @@ function UploadRow({ upload }: { upload: Upload }) {
   );
 }
 
-function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
+function Dropzone({
+  onFiles,
+  limits,
+}: {
+  onFiles: (files: File[]) => void;
+  limits: UploadLimits | undefined;
+}) {
   const [dragging, setDragging] = useState(false);
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -115,15 +135,43 @@ function Dropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
         <input
           type="file"
           multiple
-          accept={ACCEPT}
+          accept={accept(limits)}
           onChange={onChange}
           className="sr-only"
         />
       </label>
       <p className="mt-1 text-sm text-slate-700">
-        or drop them here. PDF, DOCX, PPTX, HTML, Markdown and TXT.
+        or drop them here. PDF, DOCX, PPTX, HTML, Markdown and TXT
+        {limits && `, up to ${formatSize(limits.max_upload_bytes)} each`}.
       </p>
     </div>
+  );
+}
+
+/** Why a Document, or its new edition, failed: the category and the readable message. */
+function Failure({
+  status,
+  category,
+  message,
+}: {
+  status: DocumentStatus;
+  category: FailureCategory | null;
+  message: string | null;
+}) {
+  const failed = status === "failed";
+  return (
+    <>
+      {failed && category && (
+        <span className="block font-medium text-red-700">
+          {CATEGORY_LABELS[category]}
+        </span>
+      )}
+      {message && (
+        <span className={`block ${failed ? "text-red-700" : "text-slate-700"}`}>
+          {message}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -134,9 +182,11 @@ function ReplacementStatus({ document }: { document: ProjectDocument }) {
     <span className="block text-slate-700">
       New edition {replacement.edition} ({replacement.name}):{" "}
       {STATUS_LABELS[replacement.status]}
-      {replacement.error_message && (
-        <span className="block text-red-700">{replacement.error_message}</span>
-      )}
+      <Failure
+        status={replacement.status}
+        category={replacement.error_category}
+        message={replacement.error_message}
+      />
     </span>
   );
 }
@@ -148,11 +198,13 @@ interface Retry {
 
 function DocumentActions({
   document,
+  limits,
   retry,
   onReplace,
   onDelete,
 }: {
   document: ProjectDocument;
+  limits: UploadLimits | undefined;
   retry: Retry;
   onReplace: (document: ProjectDocument, file: File) => void;
   onDelete: (document: ProjectDocument) => Promise<void>;
@@ -224,7 +276,7 @@ function DocumentActions({
           <span className="sr-only"> of {document.name}</span>
           <input
             type="file"
-            accept={ACCEPT}
+            accept={accept(limits)}
             onChange={onChange}
             className="sr-only"
           />
@@ -436,6 +488,7 @@ function DocumentRows({
   editable,
   selected,
   onSelect,
+  limits,
   retry,
   onReplace,
   onDelete,
@@ -445,6 +498,7 @@ function DocumentRows({
   editable: boolean;
   selected: Set<string>;
   onSelect: (ids: string[], on: boolean) => void;
+  limits: UploadLimits | undefined;
   retry: Retry;
   onReplace: (document: ProjectDocument, file: File) => void;
   onDelete: (document: ProjectDocument) => Promise<void>;
@@ -517,11 +571,11 @@ function DocumentRows({
             </td>
             <td>
               {STATUS_LABELS[document.status]}
-              {document.error_message && (
-                <span className="block text-red-700">
-                  {document.error_message}
-                </span>
-              )}
+              <Failure
+                status={document.status}
+                category={document.error_category}
+                message={document.error_message}
+              />
               <ReplacementStatus document={document} />
             </td>
             <td>
@@ -562,6 +616,7 @@ function DocumentRows({
               <td>
                 <DocumentActions
                   document={document}
+                  limits={limits}
                   retry={retry}
                   onReplace={onReplace}
                   onDelete={onDelete}
@@ -666,7 +721,12 @@ export function DocumentsTab() {
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const documents = useDocuments(organisationId, projectId, filters);
   const tags = useTags(organisationId, projectId);
-  const { uploads, upload, replace } = useUploads(organisationId, projectId);
+  const limits = useUploadLimits(organisationId, projectId);
+  const { uploads, upload, replace } = useUploads(
+    organisationId,
+    projectId,
+    limits.data,
+  );
   const deleteDocument = useDeleteDocument(organisationId, projectId);
   const retry = useRetryDocument(organisationId, projectId);
   const archived = project.data?.archived_at != null;
@@ -711,6 +771,7 @@ export function DocumentsTab() {
         editable={editable}
         selected={new Set(chosen)}
         onSelect={select}
+        limits={limits.data}
         retry={{
           pending: retry.isPending,
           onRetry: (document) => {
@@ -730,7 +791,14 @@ export function DocumentsTab() {
       <h2 id="tab-heading" className="text-lg font-semibold">
         Documents
       </h2>
-      {!archived && <Dropzone onFiles={upload} />}
+      {limits.data && (
+        <p className="text-sm text-slate-700">
+          {limits.data.documents_counted} of {limits.data.document_quota}{" "}
+          Documents in this Project&apos;s quota. Failed Documents don&apos;t
+          count.
+        </p>
+      )}
+      {!archived && <Dropzone onFiles={upload} limits={limits.data} />}
       {uploads.length > 0 && (
         <ul aria-label="Uploads" className="space-y-2">
           {uploads.map((item) => (

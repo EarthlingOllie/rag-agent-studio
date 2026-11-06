@@ -1,5 +1,7 @@
-"""Document routes: start an upload (presigned PUT), confirm it, list Documents and their
-statuses (polled by the Studio), read one Document and its Chunks. Any Member may use them."""
+"""Document routes: the upload limits, start an upload (presigned PUT), confirm it, list
+Documents and their statuses (polled by the Studio), read one Document's Chunks, delete a
+Document, replace its edition, and retry a Failed Document. Any Member may use them, except
+setting the Document quota (Owners)."""
 
 import uuid
 from datetime import datetime
@@ -13,13 +15,14 @@ from redis.asyncio import Redis
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings
-from app.documents import service
+from app.documents import limits, service
 from app.documents.models import (
     MIME_MAX,
     NAME_MAX,
     Chunk,
     Document,
     DocumentStatus,
+    FailureCategory,
     StagedEdition,
 )
 from app.documents.ports import IngestionPorts
@@ -31,7 +34,7 @@ from app.tags.api import TagRef, tag_ref
 from app.tags.models import Tag
 from app.tags.service import tags_of
 from app.tenancy.api import ORGANISATION_PREFIX
-from app.tenancy.policy import NOT_FOUND, Scope
+from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope, Scope
 
 router = APIRouter(prefix=ORGANISATION_PREFIX + "/projects/{project_id}", tags=["documents"])
 
@@ -41,6 +44,8 @@ UNSUPPORTED_TYPE = (
 UPLOAD_NOT_FOUND = "This upload wasn't found or has expired. Start the upload again."
 FILE_NOT_UPLOADED = "The file hasn't reached storage yet. Upload it, then confirm."
 HASH_MISMATCH = "The uploaded file doesn't match its content hash. Upload it again."
+QUOTA_REACHED = "This Project has reached its Document quota."
+QUOTA_MAX = 100_000
 DOCUMENT_BUSY = "This Document is still being processed. Try again once it is Ready or Failed."
 
 
@@ -107,6 +112,9 @@ class StartUploadRequest(BaseModel):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX)
     ]
     size_bytes: int = Field(ge=0)
+    # The Document this file will be a newer edition of, if it is one. A new edition doesn't add
+    # a Document, so the Document quota isn't checked for it.
+    replacing_document_id: uuid.UUID | None = None
 
 
 class StartUploadResponse(BaseModel):
@@ -124,6 +132,21 @@ class ConfirmUploadRequest(BaseModel):
     content_hash: Annotated[str, StringConstraints(pattern=r"^[0-9a-fA-F]{64}$")] | None = None
 
 
+class UploadLimitsOut(BaseModel):
+    # File extensions a Document can be uploaded from.
+    accepted_extensions: list[str]
+    # The largest file that can be uploaded, in bytes.
+    max_upload_bytes: int
+    # The most Documents the Project may hold, not counting Failed ones.
+    document_quota: int
+    # The Documents that count towards the quota now.
+    documents_counted: int
+
+
+class SetDocumentQuotaRequest(BaseModel):
+    document_quota: int = Field(ge=1, le=QUOTA_MAX)
+
+
 class ReplacementOut(BaseModel):
     """A newer edition uploaded to replace the Document. While it is Queued or Processing the
     current edition keeps serving; when it is Ready it becomes the Document's edition. A Failed
@@ -133,6 +156,8 @@ class ReplacementOut(BaseModel):
     name: str
     status: DocumentStatus
     error_message: str | None
+    # What kind of failure it was, while Failed.
+    error_category: FailureCategory | None
 
 
 class DocumentOut(BaseModel):
@@ -143,8 +168,12 @@ class DocumentOut(BaseModel):
     # SHA-256 of the uploaded file, hex.
     content_hash: str
     status: DocumentStatus
-    # Why processing failed, when it did.
+    # Why processing failed, when it did; or, while Queued, why it is being retried.
     error_message: str | None
+    # What kind of failure it was, while Failed.
+    error_category: FailureCategory | None
+    # How many times processing has started, automatic retries included.
+    attempt_count: int
     edition: int
     chunk_count: int
     # How many of its Chunks the ingestion Guardrail scan flagged as instructions aimed at an AI.
@@ -165,6 +194,8 @@ class DocumentStatusOut(BaseModel):
     id: uuid.UUID
     status: DocumentStatus
     error_message: str | None
+    error_category: FailureCategory | None
+    attempt_count: int
     chunk_count: int
     flagged_chunk_count: int
     replacement: ReplacementOut | None
@@ -193,6 +224,10 @@ class ChunkOut(BaseModel):
     flag: GuardrailFlagOut | None
 
 
+def _category(failed: Document | StagedEdition) -> FailureCategory | None:
+    return None if failed.error_category is None else FailureCategory(failed.error_category)
+
+
 # The Chunk list's page size: the default, and the most one request may ask for.
 CHUNK_PAGE_DEFAULT = 50
 CHUNK_PAGE_MAX = 200
@@ -214,6 +249,7 @@ def _replacement_out(staged: StagedEdition | None) -> ReplacementOut | None:
         name=staged.name,
         status=DocumentStatus(staged.status),
         error_message=staged.error_message,
+        error_category=_category(staged),
     )
 
 
@@ -231,6 +267,8 @@ def _document_out(
         content_hash=document.content_hash,
         status=DocumentStatus(document.status),
         error_message=document.error_message,
+        error_category=_category(document),
+        attempt_count=document.attempt_count,
         edition=document.edition,
         chunk_count=chunks.total,
         flagged_chunk_count=chunks.flagged,
@@ -262,6 +300,64 @@ def _flag_out(chunk: Chunk) -> GuardrailFlagOut | None:
     return GuardrailFlagOut(label=label, score=score, reason=reason)
 
 
+def _too_large(settings: Settings) -> HTTPException:
+    return HTTPException(
+        status.HTTP_413_CONTENT_TOO_LARGE, limits.size_limit_message(settings.max_upload_bytes)
+    )
+
+
+def _quota_reached(full: service.QuotaReachedError) -> HTTPException:
+    return HTTPException(status.HTTP_409_CONFLICT, limits.quota_refusal_message(full.quota))
+
+
+@router.get("/uploads/limits", operation_id="getUploadLimits", responses=_errors(_NOT_FOUND))
+async def get_upload_limits(
+    project_id: uuid.UUID, scope: Scope, db: Db, settings: SettingsDep
+) -> UploadLimitsOut:
+    """What an upload must satisfy: its type, its size, and room in the Document quota. The
+    Studio checks files against these before uploading them."""
+    try:
+        found = await service.upload_limits(
+            db, scope, project_id, max_bytes=settings.max_upload_bytes
+        )
+    except ProjectNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    return _limits_out(found)
+
+
+def _limits_out(found: service.UploadLimits) -> UploadLimitsOut:
+    return UploadLimitsOut(
+        accepted_extensions=list(limits.SUPPORTED_TYPES),
+        max_upload_bytes=found.max_upload_bytes,
+        document_quota=found.document_quota,
+        documents_counted=found.documents_counted,
+    )
+
+
+@router.put(
+    "/document-quota",
+    operation_id="setDocumentQuota",
+    responses=_errors(_NOT_FOUND, (403, OWNERS_ONLY)),
+)
+async def set_document_quota(
+    project_id: uuid.UUID,
+    body: SetDocumentQuotaRequest,
+    scope: OwnerScope,
+    db: Db,
+    settings: SettingsDep,
+) -> UploadLimitsOut:
+    """Sets how many Documents the Project may hold, not counting Failed ones (Owners only).
+    Documents it already holds are kept when the quota is lowered."""
+    try:
+        await service.set_document_quota(db, scope, project_id, quota=body.document_quota)
+        found = await service.upload_limits(
+            db, scope, project_id, max_bytes=settings.max_upload_bytes
+        )
+    except ProjectNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    return _limits_out(found)
+
+
 @router.post(
     "/uploads",
     status_code=status.HTTP_201_CREATED,
@@ -269,6 +365,7 @@ def _flag_out(chunk: Chunk) -> GuardrailFlagOut | None:
     responses=_errors(
         _NOT_FOUND,
         _ARCHIVED,
+        (409, QUOTA_REACHED),
         (413, "The file is larger than the upload limit."),
         (415, UNSUPPORTED_TYPE),
     ),
@@ -283,7 +380,8 @@ async def start_upload(
     settings: SettingsDep,
     clock: ClockDep,
 ) -> StartUploadResponse:
-    """Checks the file type and size, then answers with a presigned URL to PUT the file to."""
+    """Checks the file type and size, and that the Project's Document quota has room, then
+    answers with a presigned URL to PUT the file to."""
     try:
         pending = await service.start_upload(
             db,
@@ -293,6 +391,7 @@ async def start_upload(
             project_id,
             filename=body.filename,
             size_bytes=body.size_bytes,
+            new_document=body.replacing_document_id is None,
             max_bytes=settings.max_upload_bytes,
             ttl_seconds=settings.upload_url_ttl_seconds,
             now=clock.now(),
@@ -301,14 +400,12 @@ async def start_upload(
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    except service.UnsupportedFileTypeError:
+    except limits.UnsupportedFileTypeError:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, UNSUPPORTED_TYPE) from None
     except service.FileTooLargeError:
-        megabytes = settings.max_upload_bytes // (1024 * 1024)
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            f"This file is larger than the {megabytes} MB upload limit.",
-        ) from None
+        raise _too_large(settings) from None
+    except service.QuotaReachedError as full:
+        raise _quota_reached(full) from None
     return StartUploadResponse(
         upload_id=pending.upload_id,
         url=pending.url,
@@ -323,8 +420,15 @@ async def start_upload(
     operation_id="confirmDocumentUpload",
     response_model=DocumentOut,
     responses={
-        **_errors(_NOT_FOUND, (422, HASH_MISMATCH)),
-        409: _UPLOAD_CONFLICT,
+        **_errors(
+            _NOT_FOUND,
+            (413, "The file is larger than the upload limit."),
+            (422, HASH_MISMATCH),
+        ),
+        409: {
+            **_UPLOAD_CONFLICT,
+            "description": f"{_UPLOAD_CONFLICT['description']} / {QUOTA_REACHED}",
+        },
     },
 )
 async def confirm_upload(
@@ -334,6 +438,7 @@ async def confirm_upload(
     db: Db,
     redis: RedisDep,
     store: StoreDep,
+    settings: SettingsDep,
 ) -> DocumentOut | JSONResponse:
     """Records the uploaded file's content hash, creates the Document as Queued and starts
     ingestion. The Document then moves to Processing and Ready (or Failed). A file whose content
@@ -347,6 +452,7 @@ async def confirm_upload(
             project_id,
             upload_id=body.upload_id,
             content_hash=body.content_hash,
+            max_bytes=settings.max_upload_bytes,
         )
     except ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
@@ -358,36 +464,13 @@ async def confirm_upload(
         raise HTTPException(status.HTTP_409_CONFLICT, FILE_NOT_UPLOADED) from None
     except service.ContentHashMismatchError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
+    except service.FileTooLargeError:
+        raise _too_large(settings) from None
+    except service.QuotaReachedError as full:
+        raise _quota_reached(full) from None
     except service.DuplicateDocumentError as duplicate:
         return _duplicate(duplicate)
     queued = _document_out(document, service.ChunkCounts(), tags=[])
-    await enqueue_ingestion(document.id)
-    return queued
-
-
-@router.post(
-    "/documents/{document_id}/retry",
-    status_code=status.HTTP_202_ACCEPTED,
-    operation_id="retryDocument",
-    responses=_errors(_NOT_FOUND, (409, f"{DOCUMENT_BUSY} / {PROJECT_ARCHIVED}")),
-)
-async def retry_document(
-    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
-) -> DocumentOut:
-    """Processes a Ready or Failed Document again, with the Project's current settings (such as
-    OCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving
-    until the new ones replace them."""
-    try:
-        summary = await service.retry(db, scope, project_id, document_id)
-    except (ProjectNotFoundError, service.DocumentNotFoundError):
-        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
-    except ProjectArchivedError:
-        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    except service.DocumentBusyError:
-        raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_BUSY) from None
-    document = summary.document
-    tags = await tags_of(db, [document.id])
-    queued = _document_out(document, summary.chunks, tags.get(document.id, []), summary.replacement)
     await enqueue_ingestion(document.id)
     return queued
 
@@ -441,6 +524,8 @@ async def list_document_statuses(
             id=s.document.id,
             status=DocumentStatus(s.document.status),
             error_message=s.document.error_message,
+            error_category=_category(s.document),
+            attempt_count=s.document.attempt_count,
             chunk_count=s.chunks.total,
             flagged_chunk_count=s.chunks.flagged,
             replacement=_replacement_out(s.replacement),
@@ -553,7 +638,11 @@ async def delete_document(
     operation_id="replaceDocument",
     response_model=DocumentOut,
     responses={
-        **_errors(_NOT_FOUND, (422, HASH_MISMATCH)),
+        **_errors(
+            _NOT_FOUND,
+            (413, "The file is larger than the upload limit."),
+            (422, HASH_MISMATCH),
+        ),
         409: {
             **_UPLOAD_CONFLICT,
             "description": f"{_UPLOAD_CONFLICT['description']} / {DOCUMENT_BUSY}",
@@ -568,6 +657,7 @@ async def replace_document(
     db: Db,
     redis: RedisDep,
     store: StoreDep,
+    settings: SettingsDep,
 ) -> DocumentOut | JSONResponse:
     """Confirms an uploaded file as the Document's newer edition and starts ingesting it. The
     current edition keeps serving until the new one is Ready; then the new one replaces it in
@@ -582,6 +672,7 @@ async def replace_document(
             document_id,
             upload_id=body.upload_id,
             content_hash=body.content_hash,
+            max_bytes=settings.max_upload_bytes,
         )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
@@ -595,6 +686,8 @@ async def replace_document(
         raise HTTPException(status.HTTP_409_CONFLICT, FILE_NOT_UPLOADED) from None
     except service.ContentHashMismatchError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, HASH_MISMATCH) from None
+    except service.FileTooLargeError:
+        raise _too_large(settings) from None
     except service.DuplicateDocumentError as duplicate:
         return _duplicate(duplicate)
     document = replacement.document
@@ -609,3 +702,41 @@ async def replace_document(
         await enqueue_object_deletion(replacement.discarded)
     await enqueue_ingestion(document.id)
     return accepted
+
+
+@router.post(
+    "/documents/{document_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="retryDocument",
+    response_model=DocumentOut,
+    responses={
+        **_errors(_NOT_FOUND),
+        409: {
+            "model": UploadConflictResponse,
+            "description": f"{DOCUMENT_BUSY} / {PROJECT_ARCHIVED} / {_DUPLICATE}",
+        },
+    },
+)
+async def retry_document(
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
+) -> DocumentOut | JSONResponse:
+    """Processes a Document again from its stored file: it goes back to Queued. When the
+    Document's newer edition is what failed, that edition is retried instead; a Ready Document
+    is processed again with the Project's current settings (such as OCR), its Chunks serving
+    until the new ones replace them."""
+    try:
+        document, staged = await service.retry_document(db, scope, project_id, document_id)
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    except service.DocumentBusyError:
+        raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_BUSY) from None
+    except service.DuplicateDocumentError as duplicate:
+        return _duplicate(duplicate)
+    tags = await tags_of(db, [document.id])
+    queued = _document_out(
+        document, await service.chunk_counts(db, document), tags.get(document.id, []), staged
+    )
+    await enqueue_ingestion(document.id)
+    return queued

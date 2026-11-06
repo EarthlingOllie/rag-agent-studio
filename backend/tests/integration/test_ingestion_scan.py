@@ -83,8 +83,9 @@ async def test_a_failing_scan_fails_the_document(app: FastAPI, owner: SignedUpMe
 
     (listed,) = await documents(owner, project_id)
     assert (listed["id"], listed["status"], listed["chunk_count"]) == (document["id"], "failed", 0)
-    assert listed["error_message"] == (
-        "This Document couldn't be processed. Try uploading it again."
+    assert (listed["error_category"], listed["error_message"]) == (
+        "conversion",
+        "This Document couldn't be processed. Retry it, or upload it again.",
     )
 
 

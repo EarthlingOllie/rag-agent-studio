@@ -1,17 +1,19 @@
 """Uploading Documents: presign, direct upload, confirm. And reading Documents and Chunks.
 
-1. ``start_upload`` checks the file type and size, and answers with a presigned PUT URL. The
-   pending upload is remembered in Redis until the URL expires.
+1. ``start_upload`` checks the file type and size, and that the Project's Document quota has
+   room, and answers with a presigned PUT URL. The pending upload is remembered in Redis until
+   the URL expires.
 2. The browser PUTs the file straight to the object store.
-3. ``confirm_upload`` reads the stored file, computes its SHA-256 content hash (checking it
-   against the one the browser sent, if any), creates the Document as Queued, and enqueues
-   ingestion.
+3. ``confirm_upload`` checks the quota again, reads the stored file, checks its real size,
+   computes its SHA-256 content hash (checking it against the one the browser sent, if any),
+   creates the Document as Queued, and enqueues ingestion.
 
-``retry`` sends a Ready or Failed Document through ingestion again, with the Project's current
-settings (its OCR flag, for one).
+``retry_document`` sends a Ready or Failed Document through ingestion again, with the
+Project's current settings (its OCR flag, for one).
 
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
-through ``active_project``, so an archived Project takes none.
+through ``active_project``, so an archived Project takes none. A Failed Document (or a Failed
+newer edition of one) can be retried, which queues it for ingestion again.
 """
 
 import hashlib
@@ -20,7 +22,6 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import PurePath
 
 from redis.asyncio import Redis
 from sqlalchemy import and_, delete, func, or_, select
@@ -28,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import ScalarSelect
 
 from app import audit
+from app.documents.limits import documents_counted, mime_type_for
 from app.documents.models import (
     FINAL_STATUSES,
     Chunk,
@@ -42,23 +44,7 @@ from app.storage.port import ObjectNotFoundError, ObjectStore
 from app.tags.models import DocumentTag
 from app.tenancy.repository import OrganisationScope
 
-# The file types a Document can be uploaded from, by extension, with the MIME type stored.
-SUPPORTED_TYPES: dict[str, str] = {
-    ".pdf": "application/pdf",
-    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ".html": "text/html",
-    ".htm": "text/html",
-    ".md": "text/markdown",
-    ".markdown": "text/markdown",
-    ".txt": "text/plain",
-}
-
 _PENDING = "document-upload:{}"
-
-
-class UnsupportedFileTypeError(Exception):
-    """The file's extension isn't one a Document can be made from."""
 
 
 class FileTooLargeError(Exception):
@@ -81,6 +67,14 @@ class DocumentNotFoundError(Exception):
     """No Document with that ID in the Project."""
 
 
+class QuotaReachedError(Exception):
+    """The Project already holds as many Documents as its quota allows."""
+
+    def __init__(self, quota: int) -> None:
+        super().__init__(quota)
+        self.quota = quota
+
+
 class DocumentBusyError(Exception):
     """The Document, or a newer edition of it, is still being processed."""
 
@@ -101,13 +95,6 @@ class PendingUpload:
     expires_at: datetime
 
 
-def mime_type_for(filename: str) -> str:
-    try:
-        return SUPPORTED_TYPES[PurePath(filename).suffix.lower()]
-    except KeyError:
-        raise UnsupportedFileTypeError from None
-
-
 async def start_upload(
     session: AsyncSession,
     redis: Redis,
@@ -117,6 +104,7 @@ async def start_upload(
     *,
     filename: str,
     size_bytes: int,
+    new_document: bool = True,
     max_bytes: int,
     ttl_seconds: int,
     now: datetime,
@@ -125,6 +113,9 @@ async def start_upload(
     content_type = mime_type_for(filename)
     if size_bytes > max_bytes:
         raise FileTooLargeError
+    if new_document:
+        # A newer edition of a Document doesn't add one; confirming it checks the Document.
+        await _check_quota(session, project)
     upload_id = uuid.uuid4()
     object_key = f"organisations/{scope.organisation_id}/projects/{project.id}/{upload_id}"
     pending = {"name": filename, "mime_type": content_type, "object_key": object_key}
@@ -161,10 +152,12 @@ async def _receive(
     *,
     upload_id: uuid.UUID,
     content_hash: str | None,
+    max_bytes: int,
 ) -> _Received:
-    """Reads the pending upload's file, checks its content hash, and refuses a duplicate of a
-    Document (or a staged edition) already in the Project. The caller holds the Project's lock,
-    so two confirmations of the same file can't both pass the duplicate check."""
+    """Reads the pending upload's file, checks its real size and its content hash, and refuses
+    a duplicate of a Document (or a staged edition) already in the Project. The caller holds
+    the Project's lock, so two confirmations of the same file can't both pass the duplicate
+    check."""
     key = _PENDING.format(f"{project.id}:{upload_id}")
     raw = await redis.get(key)
     if raw is None:
@@ -174,6 +167,11 @@ async def _receive(
         data = await store.get(pending["object_key"])
     except ObjectNotFoundError:
         raise FileNotUploadedError from None
+    if len(data) > max_bytes:
+        # The presigned URL can't bound the size, so a file larger than it claimed is removed.
+        await redis.delete(key)
+        await store.delete(pending["object_key"])
+        raise FileTooLargeError
     digest = hashlib.sha256(data).hexdigest()
     if content_hash is not None and content_hash.lower() != digest:
         raise ContentHashMismatchError
@@ -230,11 +228,20 @@ async def confirm_upload(
     *,
     upload_id: uuid.UUID,
     content_hash: str | None,
+    max_bytes: int,
 ) -> Document:
-    """Creates the Document as Queued; the caller enqueues ingestion after this commits."""
+    """Creates the Document as Queued; the caller enqueues ingestion after this commits. The
+    Project stays locked until then, so concurrent confirms can't overfill its quota."""
     project = await projects.active_project(session, scope, project_id, lock=True)
+    await _check_quota(session, project)
     received = await _receive(
-        session, redis, store, project, upload_id=upload_id, content_hash=content_hash
+        session,
+        redis,
+        store,
+        project,
+        upload_id=upload_id,
+        content_hash=content_hash,
+        max_bytes=max_bytes,
     )
     document = Document(
         organisation_id=scope.organisation_id,
@@ -253,6 +260,80 @@ async def confirm_upload(
     await redis.delete(received.pending_key)
     await session.refresh(document)
     return document
+
+
+async def _check_quota(session: AsyncSession, project: Project) -> None:
+    if await documents_counted(session, project.id) >= project.document_quota:
+        raise QuotaReachedError(project.document_quota)
+
+
+@dataclass(frozen=True)
+class UploadLimits:
+    max_upload_bytes: int
+    document_quota: int
+    documents_counted: int
+
+
+async def upload_limits(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, max_bytes: int
+) -> UploadLimits:
+    project = await projects.get_project(session, scope, project_id)
+    return UploadLimits(
+        max_upload_bytes=max_bytes,
+        document_quota=project.document_quota,
+        documents_counted=await documents_counted(session, project.id),
+    )
+
+
+async def set_document_quota(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, quota: int
+) -> None:
+    """Sets how many Documents the Project may hold. Lowering it below what the Project holds
+    keeps those Documents; only new uploads, and Documents processed later, are refused."""
+    project = await projects.get_project(session, scope, project_id, lock=True)
+    project.document_quota = quota
+    await session.commit()
+
+
+async def retry_document(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+) -> tuple[Document, StagedEdition | None]:
+    """Puts what failed back to Queued, for the caller to enqueue ingestion once this commits:
+    a Failed Document, or, when the Document is Ready and its newer edition is what failed,
+    that edition. With nothing Failed, a Ready Document is processed again with the Project's
+    current settings (such as OCR); its Chunks keep serving until the new ones replace them.
+    Refused while the Document or a newer edition is still being processed, and when a Failed
+    file's content has since been uploaded again (a Failed edition is not a Duplicate, so that
+    is allowed). Returns the Document and its staged edition, if any."""
+    project = await projects.active_project(session, scope, project_id, lock=True)
+    document = await session.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.project_id == project.id)
+        .with_for_update()
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    staged = await session.get(StagedEdition, document.id, with_for_update=True)
+    if document.status not in FINAL_STATUSES or (
+        staged is not None and staged.status not in FINAL_STATUSES
+    ):
+        raise DocumentBusyError
+    retried: Document | StagedEdition = document
+    if staged is not None and document.status != DocumentStatus.FAILED:
+        retried = staged
+    if retried.status == DocumentStatus.FAILED:
+        duplicate = await _document_with_hash(session, project.id, retried.content_hash)
+        if duplicate is not None and duplicate.id != document.id:
+            raise DuplicateDocumentError(duplicate)
+    retried.status = DocumentStatus.QUEUED
+    retried.error_message = None
+    retried.error_category = None
+    retried.updated_at = func.now()
+    await session.commit()
+    await session.refresh(document)
+    if staged is not None:
+        await session.refresh(staged)
+    return document, staged
 
 
 @dataclass(frozen=True)
@@ -458,6 +539,7 @@ async def replace_document(
     *,
     upload_id: uuid.UUID,
     content_hash: str | None,
+    max_bytes: int,
 ) -> Replacement:
     """Stages the uploaded file as the Document's next edition, Queued; the caller enqueues
     ingestion after this commits. The current edition keeps serving until the staged one is
@@ -477,7 +559,13 @@ async def replace_document(
     ):
         raise DocumentBusyError
     received = await _receive(
-        session, redis, store, project, upload_id=upload_id, content_hash=content_hash
+        session,
+        redis,
+        store,
+        project,
+        upload_id=upload_id,
+        content_hash=content_hash,
+        max_bytes=max_bytes,
     )
     discarded: list[str] = []
     if staged is None:
@@ -495,6 +583,7 @@ async def replace_document(
     staged.object_key = received.object_key
     staged.status = DocumentStatus.QUEUED
     staged.error_message = None
+    staged.error_category = None
     staged.attempt_count = 0
     staged.updated_at = func.now()
     await session.commit()
@@ -508,30 +597,3 @@ async def chunk_counts(session: AsyncSession, document: Document) -> ChunkCounts
     total, flagged = _chunk_counts()
     row = (await session.execute(select(total, flagged).where(Document.id == document.id))).one()
     return ChunkCounts(row[0], row[1])
-
-
-async def retry(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
-) -> DocumentSummary:
-    """Sets a Ready or Failed Document back to Queued, for the caller to enqueue ingestion. Its
-    current Chunks keep serving until the new ones replace them. Refused for an archived
-    Project, and while the Document, or a newer edition of it, is still being processed."""
-    project = await projects.active_project(session, scope, project_id)
-    document = await session.scalar(
-        select(Document)
-        .where(Document.id == document_id, Document.project_id == project.id)
-        .with_for_update()
-    )
-    if document is None:
-        raise DocumentNotFoundError
-    staged = await session.get(StagedEdition, document.id, with_for_update=True)
-    if document.status not in FINAL_STATUSES or (
-        staged is not None and staged.status != DocumentStatus.FAILED
-    ):
-        raise DocumentBusyError
-    document.status = DocumentStatus.QUEUED
-    document.error_message = None
-    document.updated_at = func.now()
-    await session.commit()
-    await session.refresh(document)
-    return DocumentSummary(document, await chunk_counts(session, document), staged)

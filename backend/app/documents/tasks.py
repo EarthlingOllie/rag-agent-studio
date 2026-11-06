@@ -1,4 +1,5 @@
-"""The ingestion Celery task. The API enqueues it when an upload is confirmed."""
+"""The ingestion Celery task. The API enqueues it when an upload is confirmed or a Failed
+Document is retried; the task re-enqueues itself, after a backoff, for transient failures."""
 
 import asyncio
 import uuid
@@ -15,28 +16,38 @@ INGEST_TASK = "documents.ingest"
 DELETE_OBJECTS_TASK = "documents.delete_objects"
 
 
-async def _ingest(document_id: uuid.UUID) -> None:
+async def _ingest(document_id: uuid.UUID, attempt_number: int) -> float | None:
     settings = load_settings()
     engine = create_engine(settings)
     ports = current_ports()
     try:
         async with httpx2.AsyncClient(timeout=settings.model_timeout_seconds) as client:
-            await pipeline.ingest(
+            return await pipeline.ingest(
                 create_sessionmaker(engine),
                 ports,
                 ports.open_gateway(client),
                 document_id,
                 chunk_max_tokens=settings.chunk_max_tokens,
                 delete_objects=enqueue_object_deletion,
+                attempt=pipeline.Attempt(
+                    number=attempt_number,
+                    max_attempts=settings.ingestion_max_attempts,
+                    retry_base_seconds=settings.ingestion_retry_base_seconds,
+                    retry_max_seconds=settings.ingestion_retry_max_seconds,
+                ),
             )
     finally:
         await engine.dispose()
 
 
 @celery_app.task(name=INGEST_TASK)
-def ingest_document(document_id: str) -> None:
-    """Runs ingestion for one Document (Queued to Ready or Failed)."""
-    asyncio.run(_ingest(uuid.UUID(document_id)))
+def ingest_document(document_id: str, attempt: int = 1) -> None:
+    """Runs ingestion for one Document (Queued to Ready or Failed). After a transient failure,
+    the task sends itself again with the next attempt number, delayed by the backoff the
+    pipeline asks for. (In eager mode, in tests, the next attempt runs at once.)"""
+    delay = asyncio.run(_ingest(uuid.UUID(document_id), attempt))
+    if delay is not None:
+        ingest_document.apply_async((document_id,), {"attempt": attempt + 1}, countdown=delay)
 
 
 async def enqueue_ingestion(document_id: uuid.UUID) -> None:

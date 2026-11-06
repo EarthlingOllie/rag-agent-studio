@@ -50,6 +50,19 @@ class DocumentStatus(enum.StrEnum):
 FINAL_STATUSES = frozenset({DocumentStatus.READY, DocumentStatus.FAILED})
 
 
+class FailureCategory(enum.StrEnum):
+    """Why a Document failed, so an Editor knows whether to fix the file or retry it."""
+
+    # The file isn't what its type says, or has no readable text.
+    UNSUPPORTED_CONTENT = "unsupported_content"
+    # The converter couldn't convert it, or something else went wrong while processing it.
+    CONVERSION = "conversion"
+    # The Embedding Model's provider kept failing, after the automatic retries.
+    PROVIDER = "provider"
+    # The Project already holds as many Documents as its quota allows.
+    QUOTA = "quota"
+
+
 class Document(IdMixin, Base):
     __tablename__ = "documents"
 
@@ -68,6 +81,8 @@ class Document(IdMixin, Base):
     object_key: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default=DocumentStatus.QUEUED)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # A ``FailureCategory``, while the Document is Failed.
+    error_category: Mapped[str | None] = mapped_column(String(30))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     # The converted markdown in the object store, once converted.
     markdown_key: Mapped[str | None] = mapped_column(Text)
@@ -100,6 +115,8 @@ class StagedEdition(Base):
     object_key: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default=DocumentStatus.QUEUED)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # A ``FailureCategory``, while the staged edition is Failed.
+    error_category: Mapped[str | None] = mapped_column(String(30))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
