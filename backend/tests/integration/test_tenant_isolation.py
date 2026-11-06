@@ -50,6 +50,8 @@ class ScopedRoute:
     # The lowest role allowed: Editor (any Member) or Owner.
     role: Role
     prepare: Prepare = field(default=_nothing_to_prepare)
+    # Query parameters the route requires.
+    query: dict[str, str] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return f"{self.method} {self.path}"
@@ -419,7 +421,11 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _a_project),
     ScopedRoute(
-        "GET", PROJECTS + "/{project_id}/instructions/diff?from=draft&to=draft", EDITOR, _a_project
+        "GET",
+        PROJECTS + "/{project_id}/instructions/diff",
+        EDITOR,
+        _a_project,
+        {"from": "draft", "to": "draft"},
     ),
     ScopedRoute(
         "POST", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _instructions_to_publish
@@ -483,7 +489,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _AGENT + "/versions", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
-    ScopedRoute("GET", _AGENT + "/diff?from=draft&to=draft", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/diff", EDITOR, _an_agent, {"from": "draft", "to": "draft"}),
     ScopedRoute("POST", _AGENT + "/draft/discard", EDITOR, _a_live_agent),
     ScopedRoute("POST", _AGENT + "/draft/from-version", EDITOR, _a_version_to_start_from),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
@@ -562,7 +568,7 @@ async def _call(
 ) -> httpx.Response:
     params, body = prepared
     path = route.path.format(organisation_id=organisation_id, **params)
-    return await client.request(route.method, path, json=body)
+    return await client.request(route.method, path, params=route.query, json=body)
 
 
 @pytest.mark.parametrize("route", ORGANISATION_SCOPED_ROUTES, ids=str)
