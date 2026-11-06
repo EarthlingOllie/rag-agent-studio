@@ -7,7 +7,7 @@
 **Blocked by:**
 - [05-01: Project Instructions Versions](01-project-instructions-versions.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The picker offers the Instructions Draft (the default) or any Version
 - [ ] Playground Messages record the Instructions Version or a Draft marker
