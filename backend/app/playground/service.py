@@ -2,10 +2,11 @@
 the Agent runtime, saving the question and the answer as Messages.
 
 A question is answered by the Draft's Model override, or else the Organisation's Default Model,
-through the model gateway, from Chunks the retrieval module finds in the Agent's Project
-(reranked by the Draft's Reranker, when it has one, also built through the gateway). The
-question is saved before the answer streams; the answer, with its tokens, latency and cost,
-once the stream ends.
+through the model gateway, following the Project Instructions Draft or the Instructions Version
+the Editor chose (the Instructions picker), from Chunks the retrieval module finds in the
+Agent's Project (reranked by the Draft's Reranker, when it has one, also built through the
+gateway). The question is saved before the answer streams; the answer, with its tokens, latency
+and cost, once the stream ends. The answer records which Instructions it ran with.
 """
 
 import itertools
@@ -20,7 +21,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, ModelChoice, Retrieval
 from app.agents.service import active_agent, get_agent
-from app.conversations.models import DRAFT, Conversation, Message, MessageRetrieval, MessageRole
+from app.conversations.models import (
+    DRAFT,
+    Conversation,
+    InstructionsSource,
+    Message,
+    MessageRetrieval,
+    MessageRole,
+)
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.default_model.service import read_default
@@ -30,6 +38,7 @@ from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
+from app.projects.instructions import project_version
 from app.projects.models import Project
 from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
@@ -151,7 +160,17 @@ class PreparedTurn:
     turns: list[Turn]
     question: str
     chat: ChosenModel
+    # The Project Instructions the answer follows, and the Version they are (None: the Draft).
+    instructions: str
+    instructions_version_id: uuid.UUID | None = None
+    instructions_version_number: int | None = None
     reranker: ChosenModel | None = None
+
+    @property
+    def instructions_source(self) -> InstructionsSource:
+        if self.instructions_version_id is None:
+            return InstructionsSource.DRAFT
+        return InstructionsSource.VERSION
 
 
 async def prepare_turn(
@@ -162,10 +181,18 @@ async def prepare_turn(
     conversation_id: uuid.UUID,
     question: str,
     *,
+    instructions_version_id: uuid.UUID | None = None,
     now: datetime,
 ) -> PreparedTurn:
-    """Checks the question can be answered, then saves it."""
+    """Checks the question can be answered, then saves it. With no ``instructions_version_id``
+    the answer follows the Project Instructions Draft; otherwise that Version of the Project's
+    Instructions (``InstructionsVersionNotFoundError`` if the Project has no such Version)."""
     project = await active_project(session, scope, project_id)
+    version = (
+        None
+        if instructions_version_id is None
+        else await project_version(session, project, instructions_version_id)
+    )
     found = await active_agent(session, scope, project_id, agent_id)
     conversation, messages = await get_conversation(
         session, scope, project_id, agent_id, conversation_id
@@ -191,6 +218,9 @@ async def prepare_turn(
         turns=_turns(messages),
         question=question,
         chat=chat,
+        instructions=project.instructions if version is None else version.markdown,
+        instructions_version_id=None if version is None else version.id,
+        instructions_version_number=None if version is None else version.number,
         reranker=reranker,
     )
 
@@ -315,7 +345,7 @@ async def answer(
         async for event in run_turn(
             prepared.turns,
             prepared.config,
-            prepared.project.instructions,
+            prepared.instructions,
             prepared.question,
             model=model,
             retrieve=retrieve_in_project,
@@ -338,6 +368,8 @@ async def answer(
                 role=MessageRole.ASSISTANT,
                 content=event.answer,
                 config_source=DRAFT,
+                instructions_source=prepared.instructions_source,
+                instructions_version_id=prepared.instructions_version_id,
                 # A fallback reply asked no model, so it names none.
                 model_provider=None if event.fallback else chosen.credential.provider,
                 model_name=None if event.fallback else chosen.model,

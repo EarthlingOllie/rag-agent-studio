@@ -2566,6 +2566,44 @@
             ],
             "title": "Input Tokens"
           },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
           "latency_ms": {
             "anyOf": [
               {
@@ -2621,6 +2659,9 @@
           "content",
           "created_at",
           "config_source",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
           "model_provider",
           "model_name",
           "input_tokens",
@@ -3580,6 +3621,18 @@
             "minLength": 1,
             "title": "Content",
             "type": "string"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
           }
         },
         "required": [
@@ -4227,6 +4280,44 @@
             ],
             "title": "Input Tokens"
           },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
           "latency_ms": {
             "anyOf": [
               {
@@ -4280,6 +4371,9 @@
         "required": [
           "message_id",
           "config_source",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
           "model_provider",
           "model_name",
           "input_tokens",
@@ -8760,7 +8854,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An\narchived Agent answers no more questions; its Conversations can still be read.",
+        "description": "Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions\nVersion; the answer streams back as Server-Sent Events. An archived Agent answers no more\nquestions; its Conversations can still be read.",
         "operationId": "sendPlaygroundMessage",
         "parameters": [
           {
@@ -8846,14 +8940,7 @@
             "description": "The Project or Agent is archived, or there is no Default Model."
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "The question is empty or too long, or the Instructions Version isn't one of the Project's."
           }
         },
         "summary": "Send Message",
