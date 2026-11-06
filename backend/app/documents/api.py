@@ -339,6 +339,35 @@ async def confirm_upload(
     return queued
 
 
+@router.post(
+    "/documents/{document_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="retryDocument",
+    responses=_errors(_NOT_FOUND, (409, f"{DOCUMENT_BUSY} / {PROJECT_ARCHIVED}")),
+)
+async def retry_document(
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
+) -> DocumentOut:
+    """Processes a Ready or Failed Document again, with the Project's current settings (such as
+    OCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving
+    until the new ones replace them."""
+    try:
+        summary = await service.retry(db, scope, project_id, document_id)
+    except (ProjectNotFoundError, service.DocumentNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    except service.DocumentBusyError:
+        raise HTTPException(status.HTTP_409_CONFLICT, DOCUMENT_BUSY) from None
+    document = summary.document
+    tags = await tags_of(db, [document.id])
+    queued = _document_out(
+        document, summary.chunk_count, tags.get(document.id, []), summary.replacement
+    )
+    await enqueue_ingestion(document.id)
+    return queued
+
+
 @router.get("/documents", operation_id="listDocuments", responses=_errors(_NOT_FOUND))
 async def list_documents(
     project_id: uuid.UUID,

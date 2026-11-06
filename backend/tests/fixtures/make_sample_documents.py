@@ -1,4 +1,5 @@
-"""Writes the synthetic sample Documents (DOCX, PPTX, PDF) the Docling fixtures come from.
+"""Writes the synthetic sample Documents (DOCX, PPTX, PDF) the Docling fixtures come from, and
+a scanned PDF (text only in an image) for the OCR live test.
 
 Run from ``backend/``: ``uv run python -m tests.fixtures.make_sample_documents``. The outputs are
 committed; rerun only to change the samples, then rerun ``record_docling_output``.
@@ -8,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from docx import Document as WordDocument
+from PIL import Image, ImageDraw, ImageFont
 from pptx import Presentation
 
 OUT = Path(__file__).parent / "documents"
@@ -103,7 +105,21 @@ def write_pdf(path: Path) -> None:
     path.write_bytes(bytes(output))
 
 
+def write_scanned_pdf(path: Path) -> None:
+    """One A4 page that is only an image of text, as a scanner makes: no text layer, so only
+    OCR can read it."""
+    page = Image.new("L", (1240, 1754), color=255)  # A4 at 150 dpi
+    draw = ImageDraw.Draw(page)
+    draw.text((120, 150), SECTIONS[0][0], fill=0, font=ImageFont.load_default(size=64))
+    body = ImageFont.load_default(size=36)
+    lines = ["Everyone at Northwind Traders gets 25 days", "of annual leave a year."]
+    for number, line in enumerate(lines):
+        draw.text((120, 300 + 60 * number), line, fill=0, font=body)
+    page.save(path, "PDF", resolution=150.0)
+
+
 if __name__ == "__main__":
     write_docx(OUT / "northwind-handbook.docx")
     write_pptx(OUT / "northwind-handbook.pptx")
     write_pdf(OUT / "northwind-handbook.pdf")
+    write_scanned_pdf(OUT / "scanned-leave-policy.pdf")

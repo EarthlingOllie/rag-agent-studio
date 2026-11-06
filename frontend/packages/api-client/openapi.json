@@ -2821,6 +2821,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "ocr_enabled": {
+            "title": "Ocr Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2832,6 +2836,7 @@
           "document_count",
           "agent_count",
           "embedding_model_id",
+          "ocr_enabled",
           "embedding_credential_id"
         ],
         "title": "ProjectOut",
@@ -3657,6 +3662,17 @@
               }
             ],
             "title": "Name"
+          },
+          "ocr_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Enabled"
           }
         },
         "title": "UpdateProjectRequest",
@@ -6967,7 +6983,7 @@
         ]
       },
       "patch": {
-        "description": "Renames the Project or edits its description. An archived Project is refused.",
+        "description": "Renames the Project, edits its description or turns OCR on or off. An archived Project\nis refused.",
         "operationId": "updateProject",
         "parameters": [
           {
@@ -8471,6 +8487,90 @@
           }
         },
         "summary": "Replace Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
+      "post": {
+        "description": "Processes a Ready or Failed Document again, with the Project's current settings (such as\nOCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving\nuntil the new ones replace them.",
+        "operationId": "retryDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Document",
         "tags": [
           "documents"
         ]
