@@ -1,7 +1,7 @@
-$ make secret-scan audit @ e839e64
+$ make secret-scan audit @ 9bee579
 gitleaks git --redact --no-banner .
-[90m2:56AM[0m [32mINF[0m [1m267 commits scanned.[0m
-[90m2:56AM[0m [32mINF[0m [1mscanned ~13462022 bytes (13.46 MB) in 3.47s[0m
-[90m2:56AM[0m [33mWRN[0m [1mleaks found: 1[0m
+[90m4:04AM[0m [32mINF[0m [1m276 commits scanned.[0m
+[90m4:04AM[0m [32mINF[0m [1mscanned ~14138529 bytes (14.14 MB) in 2.48s[0m
+[90m4:04AM[0m [33mWRN[0m [1mleaks found: 1[0m
 make: *** [Makefile:87: secret-scan] Error 1
 exit 2
