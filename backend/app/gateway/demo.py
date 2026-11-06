@@ -59,4 +59,10 @@ async def _stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterato
 
 
 def demo_chat_model(model: str) -> Model:
-    return FunctionModel(_reply, stream_function=_stream, model_name=model)
+    # Plain text, not structured output: the runtime reads the [C1] citation from the text.
+    return FunctionModel(
+        _reply,
+        stream_function=_stream,
+        model_name=model,
+        profile={"supports_json_schema_output": False},
+    )

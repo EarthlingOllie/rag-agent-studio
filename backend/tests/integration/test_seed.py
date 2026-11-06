@@ -236,6 +236,11 @@ async def test_the_demo_model_is_labelled_and_answers_without_any_api_key(
     answer = "".join(data["text"] for kind, data in parse_sse(response.text) if kind == "token")
     assert answer.startswith("Demo model (canned answer, not AI): from northwind-")
     assert "[C1]" in answer
+    (citation,) = [data for kind, data in parse_sse(response.text) if kind == "citation"]
+    assert citation["label"] == "C1"
+    assert answer.startswith(
+        f"Demo model (canned answer, not AI): from {citation['document_name']}"
+    )
 
 
 # Idempotence and reset
@@ -317,6 +322,12 @@ async def test_reset_recreates_only_the_demo_organisation(
     first = await seed(demo_app, ASSETS)
     owner = await signed_in(new_client, content.OWNER)
     seeded = await snapshot(demo_app, owner)
+    # Someone tries the demo first: a Playground Conversation, with its Messages and Trace.
+    project = await demo_project(owner)
+    (agent, *_) = await get(owner, "projects", project["id"], "agents")
+    conversation = await start_conversation(owner, project["id"], agent["id"])
+    asked = await ask(owner, project["id"], agent["id"], conversation["id"], "How much leave?")
+    assert asked.status_code == 200, asked.text
     store = demo_app.state.ingestion.object_store
     assert isinstance(store, InMemoryObjectStore)
     demo_files = {
