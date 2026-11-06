@@ -26,6 +26,7 @@ import { AgentPage } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
 import { AnalyticsTab, ConversationsTab, ProjectLayout } from "./projects/ProjectPage";
 import { DocumentsTab } from "./projects/DocumentsTab";
+import { ProjectSettingsTab } from "./projects/ProjectSettingsTab";
 import { DocumentViewer } from "./projects/DocumentViewer";
 import { InstructionsTab } from "./projects/InstructionsTab";
 import { ProjectsPage } from "./projects/ProjectsPage";
@@ -113,6 +114,7 @@ const conversationsTabRoute = createRoute({
   component: ConversationsTab,
 });
 const analyticsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/analytics", component: AnalyticsTab });
+const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });
 const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
@@ -160,6 +162,7 @@ const routeTree = rootRoute.addChildren([
         agentRoute,
         conversationsTabRoute,
         analyticsTabRoute,
+        projectSettingsTabRoute,
       ]),
       settingsRoute.addChildren([generalSettingsRoute, credentialsSettingsRoute, modelsSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,

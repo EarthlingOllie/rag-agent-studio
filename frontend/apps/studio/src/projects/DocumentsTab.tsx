@@ -6,15 +6,18 @@ import {
   useState,
 } from "react";
 
+import { FormError } from "../auth/AuthLayout";
 import {
   canReplace,
   type DocumentFilters,
   type DocumentStatus,
   NO_FILTERS,
   type ProjectDocument,
+  retryFailure,
   type Upload,
   useDeleteDocument,
   useDocuments,
+  useRetryDocument,
   useUploads,
 } from "./documents";
 import { useProject } from "./projects";
@@ -138,12 +141,19 @@ function ReplacementStatus({ document }: { document: ProjectDocument }) {
   );
 }
 
+interface Retry {
+  pending: boolean;
+  onRetry: (document: ProjectDocument) => void;
+}
+
 function DocumentActions({
   document,
+  retry,
   onReplace,
   onDelete,
 }: {
   document: ProjectDocument;
+  retry: Retry;
   onReplace: (document: ProjectDocument, file: File) => void;
   onDelete: (document: ProjectDocument) => Promise<void>;
 }) {
@@ -194,6 +204,20 @@ function DocumentActions({
   }
   return (
     <div className="flex flex-wrap items-center gap-3">
+      {canReplace(document) && (
+        // Reprocesses the Document with the Project's current settings, such as OCR.
+        <button
+          type="button"
+          aria-label={`Retry ${document.name}`}
+          disabled={retry.pending}
+          onClick={() => {
+            retry.onRetry(document);
+          }}
+          className="underline disabled:opacity-50"
+        >
+          Retry
+        </button>
+      )}
       {canReplace(document) && (
         <label className="cursor-pointer underline">
           New edition
@@ -412,6 +436,7 @@ function DocumentRows({
   editable,
   selected,
   onSelect,
+  retry,
   onReplace,
   onDelete,
 }: {
@@ -420,6 +445,7 @@ function DocumentRows({
   editable: boolean;
   selected: Set<string>;
   onSelect: (ids: string[], on: boolean) => void;
+  retry: Retry;
   onReplace: (document: ProjectDocument, file: File) => void;
   onDelete: (document: ProjectDocument) => Promise<void>;
 }) {
@@ -527,6 +553,7 @@ function DocumentRows({
               <td>
                 <DocumentActions
                   document={document}
+                  retry={retry}
                   onReplace={onReplace}
                   onDelete={onDelete}
                 />
@@ -632,6 +659,7 @@ export function DocumentsTab() {
   const tags = useTags(organisationId, projectId);
   const { uploads, upload, replace } = useUploads(organisationId, projectId);
   const deleteDocument = useDeleteDocument(organisationId, projectId);
+  const retry = useRetryDocument(organisationId, projectId);
   const archived = project.data?.archived_at != null;
   const editable = project.data !== undefined && !archived;
   const scope = { organisationId, projectId, tags: tags.data ?? [] };
@@ -674,6 +702,12 @@ export function DocumentsTab() {
         editable={editable}
         selected={new Set(chosen)}
         onSelect={select}
+        retry={{
+          pending: retry.isPending,
+          onRetry: (document) => {
+            retry.mutate(document.id);
+          },
+        }}
         onReplace={replace}
         onDelete={async (document) => {
           await deleteDocument.mutateAsync(document.id);
@@ -710,6 +744,7 @@ export function DocumentsTab() {
           }}
         />
       )}
+      <FormError message={retryFailure(retry.error)} />
       {list}
     </section>
   );

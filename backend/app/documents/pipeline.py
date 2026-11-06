@@ -1,7 +1,8 @@
 """Ingestion: one Document from Queued to Ready.
 
 1. Set Processing.
-2. Fetch the original and convert it through the document-converter port.
+2. Fetch the original and convert it through the document-converter port, with OCR only if
+   the Project's flag is on.
 3. Store the converted markdown.
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
 5. Embed the Chunks through the embedder port, in batches: the local model, or the Project's
@@ -22,6 +23,7 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -62,7 +64,9 @@ class _Job:
     name: str
     object_key: str
     staged: bool
+    # The Project's settings, read when the edition is claimed.
     embedding_model_id: str
+    ocr: bool
     credential: ProviderCredential | None
     """The Provider Credential the Project's Embedding Model is called through; ``None`` for
     the local model."""
@@ -74,7 +78,7 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
     The job carries the Project's Embedding Model and the credential it is called through."""
     row = (
         await session.execute(
-            select(Document, Project.embedding_model_id, ProviderCredential)
+            select(Document, Project.embedding_model_id, Project.ocr_enabled, ProviderCredential)
             .join(Project, Project.id == Document.project_id)
             .outerjoin(ProviderCredential, ProviderCredential.id == Project.embedding_credential_id)
             .where(Document.id == document_id)
@@ -83,7 +87,7 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
     ).one_or_none()
     if row is None:
         return None
-    document, embedding_model_id, credential = row
+    document, embedding_model_id, ocr, credential = row
     claimed: Document | StagedEdition = document
     if document.status != DocumentStatus.QUEUED:
         staged = await session.get(StagedEdition, document.id, with_for_update=True)
@@ -102,6 +106,7 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
         object_key=claimed.object_key,
         staged=claimed is not document,
         embedding_model_id=embedding_model_id,
+        ocr=ocr,
         credential=credential,
     )
     await session.commit()
@@ -132,7 +137,9 @@ async def ingest(
     model_id, credential = job.embedding_model_id, job.credential
     try:
         original = await ports.object_store.get(job.object_key)
-        converted = await asyncio.to_thread(ports.converter.convert, original, job.name)
+        converted = await asyncio.to_thread(
+            partial(ports.converter.convert, ocr=job.ocr), original, job.name
+        )
         await ports.object_store.put(
             markdown_key(job.object_key),
             converted.export_to_markdown().encode(),

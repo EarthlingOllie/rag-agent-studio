@@ -1,0 +1,23 @@
+commit 544a4d00d08dc6a79e83ee09125acbbe9fc87610
++ make test-live
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Installed 18 packages in 551ms
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: $SCRATCH/wt-03-08/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests/live/test_docling_live.py s..s                                     [ 57%]
+tests/live/test_local_embedder_live.py sss                               [100%]
+
+=========================== short test summary info ============================
+SKIPPED [2] tests/live/models.py:72: Hugging Face model docling-project/docling-layout-heron is not on disk and can't be downloaded (us.aws.cdn.hf.co: ProxyError: 403 Forbidden). Run the live suite where huggingface.co and its CDN are reachable, or in the worker image.
+SKIPPED [1] tests/live/test_local_embedder_live.py:24: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (us.aws.cdn.hf.co: ProxyError: 403 Forbidden). Run the live suite where huggingface.co and its CDN are reachable, or in the worker image.
+SKIPPED [1] tests/live/test_local_embedder_live.py:41: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (us.aws.cdn.hf.co: ProxyError: 403 Forbidden). Run the live suite where huggingface.co and its CDN are reachable, or in the worker image.
+SKIPPED [1] tests/live/test_local_embedder_live.py:53: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (us.aws.cdn.hf.co: ProxyError: 403 Forbidden). Run the live suite where huggingface.co and its CDN are reachable, or in the worker image.
+========================= 2 passed, 5 skipped in 5.34s =========================
+exit 0

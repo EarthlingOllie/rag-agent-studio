@@ -22,7 +22,7 @@ SAMPLES = ["northwind-handbook.docx", "northwind-handbook.pptx", "northwind-hand
 def record() -> None:
     converter = DoclingConverter()
     for name in SAMPLES:
-        document = converter.convert((FIXTURES / "documents" / name).read_bytes(), name)
+        document = converter.convert((FIXTURES / "documents" / name).read_bytes(), name, ocr=False)
         data = document.export_to_dict()
         (FIXTURES / "docling" / f"{name}.json").write_text(
             json.dumps(data, indent=1, sort_keys=True) + "\n"

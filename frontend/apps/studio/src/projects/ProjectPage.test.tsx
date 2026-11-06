@@ -28,6 +28,7 @@ test("a Project page has a tab for each area, with placeholders until each featu
     "Agents",
     "Conversations",
     "Analytics",
+    "Settings",
   ]);
   // Documents is the first tab.
   expect(screen.getByRole("heading", { level: 2, name: "Documents" })).toBeInTheDocument();
