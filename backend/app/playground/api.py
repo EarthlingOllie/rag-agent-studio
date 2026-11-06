@@ -7,7 +7,10 @@ event with the saved Message's ID, its token counts and latency, whether the ans
 Agent's fallback text, the Chunks the model was given and the Chunks retrieval left out (with
 the reason: below the minimum score, or outside top-k). If the answer starts to leak the Canary
 token, the stream is cut: a ``replace`` event (``{"text": …}``) carries the fallback text that
-replaces everything sent so far, then ``done``.
+replaces everything sent so far, then ``done``. If the model's provider fails, the stream ends
+instead with one ``error`` event (``{"code": …, "message": …}``): the code is ``invalid_key``,
+``rate_limited``, ``model_unavailable`` or ``provider_error``, and the message says what to do.
+No answer is saved, and anything streamed before it is not part of one.
 """
 
 import json
@@ -30,6 +33,7 @@ from app.documents.ports import IngestionPorts
 from app.playground import service
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.retrieval.service import ExcludedReason
+from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
@@ -258,7 +262,9 @@ _STREAM: dict[int | str, dict[str, Any]] = {
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
         "description": (
             "Server-Sent Events: `token` events, then `citation` events and one `done` event; "
-            "or, when the answer leaks the Canary token, a `replace` event then `done`."
+            "or, when the answer leaks the Canary token, a `replace` event then `done`; "
+            "or, when the model provider fails, one `error` event (`code`: `invalid_key`, "
+            "`rate_limited`, `model_unavailable` or `provider_error`; `message`)."
         ),
     },
     409: {"model": ErrorResponse, "description": "The Project is archived, or no Default Model."},
@@ -306,6 +312,8 @@ async def send_message(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
+            elif isinstance(event, ErrorEvent):
+                yield _sse("error", {"code": event.kind, "message": event.message})
             elif isinstance(event, CitationEvent):
                 yield _sse(
                     "citation",

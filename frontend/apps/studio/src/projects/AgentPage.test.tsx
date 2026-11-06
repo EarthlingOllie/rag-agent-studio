@@ -2,7 +2,15 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
-import { CONVERSATION_ID, fakeAgentsApi, hrHelper, hrTrace, leaveCitation, streamedAnswer } from "../test/agents";
+import {
+  CONVERSATION_ID,
+  RESET_CONVERSATION_ID,
+  fakeAgentsApi,
+  hrHelper,
+  hrTrace,
+  leaveCitation,
+  streamedAnswer,
+} from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -250,4 +258,111 @@ test("an Agent that doesn't exist says so", async () => {
   renderStudio(agentPage);
 
   expect(await screen.findByText("The Agent could not be found.", {}, { timeout: 5000 })).toBeInTheDocument();
+});
+
+const RATE_LIMITED =
+  "The provider says this key is over its rate limit or quota. Wait a moment and try again, or check the provider account's limits and billing.";
+
+test("a provider failure shows why, and the half-streamed answer is dropped", async () => {
+  setUp({
+    answer: () =>
+      streamedAnswer(["Twenty-five ", "days "], {
+        error: { code: "rate_limited", message: RATE_LIMITED },
+      }),
+  });
+  renderStudio(agentPage);
+  await userEvent.type(await screen.findByLabelText("Question", {}, { timeout: 5000 }), "How much leave?");
+
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(RATE_LIMITED);
+  const messages = screen.getByRole("list", { name: "Playground messages" });
+  expect(within(messages).getByRole("listitem", { name: "You" })).toHaveTextContent("How much leave?");
+  expect(within(messages).queryByRole("listitem", { name: "HR helper" })).not.toBeInTheDocument();
+  // The Editor can ask again once the provider recovers.
+  expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+});
+
+test.each([
+  ["invalid_key", "The provider rejected the API key. An Owner can check or rotate the Provider Credential in Settings, Provider Credentials."],
+  ["model_unavailable", "The model gpt-9 isn't available from the provider right now."],
+  ["provider_error", "The provider couldn't answer just now. Try again in a moment."],
+])("a %s error event shows its message", async (code, message) => {
+  setUp({ answer: () => streamedAnswer([], { error: { code, message } }) });
+  renderStudio(agentPage);
+  await userEvent.type(await screen.findByLabelText("Question", {}, { timeout: 5000 }), "Hello?");
+
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(message);
+});
+
+test("resetting the Playground starts a new Conversation", async () => {
+  const { requests } = await askLeave();
+  await userEvent.click(within(screen.getByRole("list", { name: "Playground messages" })).getByRole("button", { name: "Trace" }));
+  expect(await screen.findByRole("dialog", { name: "Trace" })).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Reset conversation" }));
+
+  expect(await screen.findByText("Started a new conversation.")).toBeInTheDocument();
+  const messages = screen.getByRole("list", { name: "Playground messages" });
+  expect(within(messages).queryAllByRole("listitem")).toHaveLength(0);
+  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+
+  await userEvent.type(screen.getByLabelText("Question"), "And sick leave?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  await within(messages).findByRole("listitem", { name: "HR helper" });
+  expect(screen.queryByText("Started a new conversation.")).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "start" || request.route === "ask")).toEqual([
+    { route: "start" },
+    { route: "ask", body: { content: "How much leave?", conversationId: CONVERSATION_ID } },
+    { route: "start" },
+    { route: "ask", body: { content: "And sick leave?", conversationId: RESET_CONVERSATION_ID } },
+  ]);
+});
+
+test("a reset clears an error shown before it", async () => {
+  setUp({ answer: () => streamedAnswer([], { error: { code: "rate_limited", message: RATE_LIMITED } }) });
+  renderStudio(agentPage);
+  await userEvent.type(await screen.findByLabelText("Question", {}, { timeout: 5000 }), "Hello?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(RATE_LIMITED);
+
+  await userEvent.click(screen.getByRole("button", { name: "Reset conversation" }));
+
+  expect(await screen.findByText("Started a new conversation.")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(within(screen.getByRole("list", { name: "Playground messages" })).queryAllByRole("listitem")).toHaveLength(0);
+});
+
+test("a reset that can't start a new Conversation says why", async () => {
+  await askLeave({ restartStatus: 409 });
+
+  await userEvent.click(screen.getByRole("button", { name: "Reset conversation" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("This Agent is archived.");
+  expect(screen.queryByText("Started a new conversation.")).not.toBeInTheDocument();
+});
+
+test("the Playground can't be reset while an answer streams in", async () => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  setUp({
+    answer: async () => {
+      await held;
+      return streamedAnswer(["Twenty-five days."]);
+    },
+  });
+  renderStudio(agentPage);
+  expect(await screen.findByRole("button", { name: "Reset conversation" }, { timeout: 5000 })).toBeEnabled();
+  await userEvent.type(screen.getByLabelText("Question"), "How much leave?");
+
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(screen.getByRole("button", { name: "Reset conversation" })).toBeDisabled();
+  release();
+  await screen.findByText(/output tokens/);
+  expect(screen.getByRole("button", { name: "Reset conversation" })).toBeEnabled();
 });
