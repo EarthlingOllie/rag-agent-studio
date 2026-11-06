@@ -9,12 +9,12 @@
 - [02-05: Theme editor](../02-provider-credentials-theme/05-theme-editor.md)
 - [04-07: Full AgentConfig editor](../04-agents-retrieval-playground/07-full-agentconfig-editor.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] The seed goes through application services, is idempotent, and `seed-reset` recreates only the demo Organisation
-- [ ] A demo provider adapter is clearly labelled as a demo model
-- [ ] Owner and Editor accounts are created and their sign-in details printed
-- [ ] The Northwind Project has synthetic Documents (one with an injection footnote) with a licence note, plus Tags and a Theme
-- [ ] A real credential can optionally be read from the environment
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The seed goes through application services, is idempotent, and `seed-reset` recreates only the demo Organisation
+- [x] A demo provider adapter is clearly labelled as a demo model
+- [x] Owner and Editor accounts are created and their sign-in details printed
+- [x] The Northwind Project has synthetic Documents (one with an injection footnote) with a licence note, plus Tags and a Theme
+- [x] A real credential can optionally be read from the environment
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
