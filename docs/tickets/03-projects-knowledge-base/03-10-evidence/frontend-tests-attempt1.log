@@ -1,0 +1,39 @@
+$ make test-frontend @ acd5ca4
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310/frontend
+      Coverage enabled with v8
+
+
+ Test Files  37 passed (37)
+      Tests  450 passed (450)
+   Start at  08:48:36
+   Duration  213.24s (tests 61%, environment 19%, import 8%, setup 8%, transform 2%, worker 2%)
+
+    Isolate  37 workers spawned · ~3.50s startup each (spawn + environment, per file)
+             at least ~39.61s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.95 |    99.92 |     100 |     100 |                   
+ ...o/src/projects |   99.89 |    99.83 |     100 |     100 |                   
+  embedding.ts     |   96.77 |    95.45 |     100 |     100 | 52                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.95% ( 2255/2256 )
+Branches     : 99.92% ( 1344/1345 )
+Functions    : 100% ( 875/875 )
+Lines        : 100% ( 1983/1983 )
+================================================================================
+ERROR: Coverage for statements (99.95%) does not meet global threshold (100%)
+ERROR: Coverage for branches (99.92%) does not meet global threshold (100%)
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:36: test-frontend] Error 1
+exit 2
