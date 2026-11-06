@@ -9,6 +9,15 @@ function documentCount(count: number): string {
   return count === 1 ? "1 Document" : `${String(count)} Documents`;
 }
 
+/** Deleting a Tag takes it out of the Drafts scoped to it, which widens what they search. */
+function scopedAgentsWarning(tag: Tag): string | undefined {
+  const count = tag.agents.length;
+  if (count === 0) return undefined;
+  const agents = count === 1 ? "1 Agent is" : `${String(count)} Agents are`;
+  const names = tag.agents.map((agent) => agent.name).join(", ");
+  return `${agents} limited to ${tag.name}: ${names}. Deleting it takes it out of their Drafts; an Agent left with no Tags searches every Document.`;
+}
+
 function NewTag({
   organisationId,
   projectId,
@@ -78,6 +87,7 @@ function TagRow({
   const [name, setName] = useState(tag.name);
   const change = useTagChange(organisationId, projectId);
   const message = tagFailure(change.error);
+  const warning = scopedAgentsWarning(tag);
   const done = {
     onSuccess: () => {
       setMode("view");
@@ -165,6 +175,11 @@ function TagRow({
             Delete {tag.name}? It is taken off{" "}
             {documentCount(tag.document_count)}. The Documents stay.
           </span>
+          {warning && (
+            <span role="alert" className="w-full text-amber-900">
+              {warning}
+            </span>
+          )}
           <button
             type="button"
             className="rounded bg-red-700 px-2 py-1 text-white"

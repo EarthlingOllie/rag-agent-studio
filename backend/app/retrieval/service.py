@@ -23,9 +23,16 @@ Hybrid search (ADR-0001):
    keyword score (at least 0). Chunks below the minimum are excluded (``below_min_score``),
    then the best ``top_k`` are the candidates and the rest are excluded (``outside_top_k``).
 
+Tag scoping: when the settings name Tags, both searches are limited to Documents carrying at
+least one of them, before fusion, so out-of-scope Chunks never take a place in the pool or the
+ranking. So that the Trace can show what scoping left out, the same two searches are also run
+over the Project's other Documents (those with none of the Tags, untagged ones included) and
+fused on their own; the best ``top_k`` of those are excluded (``outside_tags``). An empty list
+of Tags searches every Document. A Tag ID no Document carries (say a Tag deleted after a
+Version was published) simply matches nothing. Out-of-scope Chunks are never sent to the reranker.
+
 The fused score depends only on ranks, so it says nothing about whether anything relevant was
-found; the relevance does, which is why the minimum applies to it. Tag scoping (ticket 04-04)
-grows inside this one operation.
+found; the relevance does, which is why the minimum applies to it.
 """
 
 import uuid
@@ -53,6 +60,7 @@ from app.embeddings.port import Embedder
 from app.embeddings.registry import EMBEDDING_MODELS
 from app.gateway.ports import Reranker
 from app.projects.models import Project
+from app.tags.models import DocumentTag
 
 # How many Chunks each search contributes to the fusion.
 CANDIDATE_POOL = 50
@@ -64,7 +72,7 @@ MAX_QUERY_TERMS = 64
 # Chunks are indexed with the 'simple' text search configuration, so queries are parsed with it.
 _SIMPLE: ColumnElement[str] = literal_column("'simple'::regconfig")
 
-ExcludedReason = Literal["below_min_score", "outside_top_k"]
+ExcludedReason = Literal["below_min_score", "outside_top_k", "outside_tags"]
 
 
 @dataclass(frozen=True)
@@ -129,10 +137,10 @@ class _Found:
         return max(self.semantic_score or 0.0, self.keyword_score or 0.0, 0.0)
 
 
-def _searchable(project: Project) -> Select[Chunk, str]:
+def _searchable(project: Project, scope: ColumnElement[bool] | None) -> Select[Chunk, str]:
     """The Project's Chunks of its active Embedding Model, in each Ready Document's current
-    edition, with their Document's name."""
-    return (
+    edition, with their Document's name; only Documents matching ``scope``, when given."""
+    query = (
         select(Chunk, Document.name)
         .join(Document, Document.id == Chunk.document_id)
         .where(
@@ -143,17 +151,26 @@ def _searchable(project: Project) -> Select[Chunk, str]:
             Document.status == DocumentStatus.READY,
         )
     )
+    return query if scope is None else query.where(scope)
+
+
+def _tag_scope(tag_ids: Sequence[uuid.UUID], *, inside: bool) -> ColumnElement[bool]:
+    """Documents carrying at least one of the Tags, or (``inside=False``) none of them."""
+    tagged = select(DocumentTag.document_id).where(DocumentTag.tag_id.in_(tag_ids))
+    return Document.id.in_(tagged) if inside else Document.id.not_in(tagged)
 
 
 async def _semantic(
-    session: AsyncSession, project: Project, query: str, embedder: Embedder
+    session: AsyncSession,
+    project: Project,
+    vector: list[float],
+    scope: ColumnElement[bool] | None,
 ) -> list[tuple[Chunk, str, float]]:
     dimension = EMBEDDING_MODELS[project.embedding_model_id].dimension
-    vector = await embedder.embed_query(query)
     # Cast to the model's dimension so the query can use that model's HNSW index.
     distance = cast(Chunk.embedding, Vector(dimension)).cosine_distance(vector)
     rows = await session.execute(
-        _searchable(project)
+        _searchable(project, scope)
         .add_columns(distance.label("distance"))
         .order_by(distance, Chunk.id)
         .limit(CANDIDATE_POOL)
@@ -176,7 +193,10 @@ def _matches(term: str) -> ColumnElement[bool]:
 
 
 async def _keyword(
-    session: AsyncSession, project: Project, terms: Sequence[str]
+    session: AsyncSession,
+    project: Project,
+    terms: Sequence[str],
+    scope: ColumnElement[bool] | None,
 ) -> list[tuple[Chunk, str, float]]:
     matched: ColumnElement[float] = sum(
         (cast(case((_matches(term), 1), else_=0), Float) for term in terms),
@@ -184,7 +204,7 @@ async def _keyword(
     )
     share = (matched / len(terms)).label("share")
     rows = await session.execute(
-        _searchable(project)
+        _searchable(project, scope)
         .add_columns(share)
         .where(Chunk.search_vector.bool_op("@@")(_any_of(terms)))
         .order_by(
@@ -217,6 +237,61 @@ async def _rerank(reranker: Reranker, query: str, ranked: list[_Found]) -> list[
     return result
 
 
+class _Searches:
+    """Semantic and keyword search for one query, fused with the hybrid weighting. The query is
+    embedded and parsed into terms once, however many scopes are searched."""
+
+    def __init__(
+        self, session: AsyncSession, project: Project, settings: Retrieval, embedder: Embedder
+    ) -> None:
+        self._session = session
+        self._project = project
+        self._embedder = embedder
+        self._semantic_weight = settings.hybrid_weight
+        self._keyword_weight = 1.0 - settings.hybrid_weight
+        self._vector: list[float] | None = None
+        self._terms: list[str] | None = None
+
+    async def ranked(self, query: str, scope: ColumnElement[bool] | None) -> list[_Found]:
+        """The Chunks either search finds within ``scope``, best fused score first."""
+        found: dict[uuid.UUID, _Found] = {}
+
+        def fuse(rows: list[tuple[Chunk, str, float]], weight: float, semantic: bool) -> None:
+            for rank, (chunk, name, score) in enumerate(rows, start=1):
+                entry = found.setdefault(chunk.id, _Found(chunk, name))
+                entry.fused += weight * (RRF_K + 1) / (RRF_K + rank)
+                if semantic:
+                    entry.semantic_score = score
+                else:
+                    entry.keyword_score = score
+
+        if self._semantic_weight > 0:
+            if self._vector is None:
+                self._vector = await self._embedder.embed_query(query)
+            rows = await _semantic(self._session, self._project, self._vector, scope)
+            fuse(rows, self._semantic_weight, semantic=True)
+        if self._keyword_weight > 0:
+            if self._terms is None:
+                self._terms = await _query_terms(self._session, query)
+            if self._terms:
+                rows = await _keyword(self._session, self._project, self._terms, scope)
+                fuse(rows, self._keyword_weight, semantic=False)
+        return sorted(found.values(), key=lambda f: (-f.fused, -f.relevance, f.chunk.id))
+
+
+def _excluded(entry: _Found, reason: ExcludedReason) -> Excluded:
+    return Excluded(
+        chunk_id=entry.chunk.id,
+        document_id=entry.chunk.document_id,
+        document_name=entry.document_name,
+        text=entry.chunk.text,
+        score=entry.fused,
+        relevance=entry.relevance,
+        reason=reason,
+        rerank_score=entry.rerank_score,
+    )
+
+
 async def retrieve(
     session: AsyncSession,
     project: Project,
@@ -227,32 +302,17 @@ async def retrieve(
     reranker: Reranker | None = None,
 ) -> RetrievalResult:
     """The Project's Chunks most relevant to ``query``, best first, at most ``top_k``, and the
-    Chunks found but left out. With a ``reranker``, every Chunk found is reranked before the
-    minimum score and ``top_k`` are applied."""
+    Chunks found but left out. With Tag scoping, only Documents with one of the Tags are
+    searched for candidates. With a ``reranker``, every candidate Chunk found is reranked before
+    the minimum score and ``top_k`` are applied."""
     embedder = embedders.get(project.embedding_model_id)
     if embedder is None:
         raise EmbeddingModelUnavailableError(project.embedding_model_id)
-    found: dict[uuid.UUID, _Found] = {}
+    searches = _Searches(session, project, settings, embedder)
+    tag_ids = settings.tag_ids
+    scope = _tag_scope(tag_ids, inside=True) if tag_ids else None
+    ranked = await searches.ranked(query, scope)
 
-    def fuse(rows: list[tuple[Chunk, str, float]], weight: float, semantic: bool) -> None:
-        for rank, (chunk, name, score) in enumerate(rows, start=1):
-            entry = found.setdefault(chunk.id, _Found(chunk, name))
-            entry.fused += weight * (RRF_K + 1) / (RRF_K + rank)
-            if semantic:
-                entry.semantic_score = score
-            else:
-                entry.keyword_score = score
-
-    semantic_weight = settings.hybrid_weight
-    keyword_weight = 1.0 - semantic_weight
-    if semantic_weight > 0:
-        fuse(await _semantic(session, project, query, embedder), semantic_weight, semantic=True)
-    if keyword_weight > 0:
-        terms = await _query_terms(session, query)
-        if terms:
-            fuse(await _keyword(session, project, terms), keyword_weight, semantic=False)
-
-    ranked = sorted(found.values(), key=lambda f: (-f.fused, -f.relevance, f.chunk.id))
     if reranker is not None and ranked:
         ranked = await _rerank(reranker, query, ranked)
     candidates: list[Candidate] = []
@@ -264,18 +324,7 @@ async def retrieve(
         elif len(candidates) >= settings.top_k:
             reason = "outside_top_k"
         if reason is not None:
-            excluded.append(
-                Excluded(
-                    chunk_id=entry.chunk.id,
-                    document_id=entry.chunk.document_id,
-                    document_name=entry.document_name,
-                    text=entry.chunk.text,
-                    score=entry.fused,
-                    relevance=entry.relevance,
-                    reason=reason,
-                    rerank_score=entry.rerank_score,
-                )
-            )
+            excluded.append(_excluded(entry, reason))
             continue
         candidates.append(
             Candidate(
@@ -292,4 +341,7 @@ async def retrieve(
                 rerank_score=entry.rerank_score,
             )
         )
+    if tag_ids:
+        outside = await searches.ranked(query, _tag_scope(tag_ids, inside=False))
+        excluded.extend(_excluded(entry, "outside_tags") for entry in outside[: settings.top_k])
     return RetrievalResult(candidates=candidates, excluded=excluded)

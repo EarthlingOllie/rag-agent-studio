@@ -46,11 +46,21 @@ class TagRef(BaseModel):
     name: str
 
 
+class ScopedAgentOut(BaseModel):
+    """An Agent whose Draft is scoped to the Tag."""
+
+    id: uuid.UUID
+    name: str
+
+
 class TagOut(BaseModel):
     id: uuid.UUID
     name: str
     # How many of the Project's Documents carry the Tag.
     document_count: int
+    # The Agents whose Draft is scoped to the Tag, by name. Deleting the Tag takes it out of
+    # their Drafts, so the Studio warns about them first.
+    agents: list[ScopedAgentOut]
     created_at: datetime
 
 
@@ -78,7 +88,11 @@ def tag_ref(tag: Tag) -> TagRef:
 def _out(summary: service.TagSummary) -> TagOut:
     tag = summary.tag
     return TagOut(
-        id=tag.id, name=tag.name, document_count=summary.document_count, created_at=tag.created_at
+        id=tag.id,
+        name=tag.name,
+        document_count=summary.document_count,
+        agents=[ScopedAgentOut(id=a.id, name=a.name) for a in summary.agents],
+        created_at=tag.created_at,
     )
 
 
@@ -138,7 +152,8 @@ async def rename_tag(
     responses=_errors(_NOT_FOUND, _ARCHIVED),
 )
 async def delete_tag(project_id: uuid.UUID, tag_id: uuid.UUID, scope: Scope, db: Db) -> None:
-    """Deletes a Tag and takes it off every Document. The Documents stay."""
+    """Deletes a Tag and takes it off every Document, and out of every Agent Draft scoped to it
+    (the Tag's ``agents``). The Documents and Agents stay."""
     try:
         await service.delete_tag(db, scope, project_id, tag_id)
     except (ProjectNotFoundError, service.TagNotFoundError):
