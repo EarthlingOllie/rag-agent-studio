@@ -1,13 +1,13 @@
 $ bash build.sh <clone> 0206
-# 2026-11-06T06:23:37Z in a fresh clone at e4142db
+# 2026-11-06T06:56:58Z in a fresh clone at 1c5d246
 
-#12 [install  8/10] COPY packages/ui/package.json packages/ui/
+#12 [install  2/10] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
 #12 CACHED
 
-#13 [install  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#13 [install  6/10] COPY apps/studio/package.json apps/studio/
 #13 CACHED
 
-#14 [install  6/10] COPY apps/studio/package.json apps/studio/
+#14 [install  3/10] RUN corepack enable
 #14 CACHED
 
 #15 [install  9/10] RUN pnpm install --frozen-lockfile
@@ -23,21 +23,21 @@ $ bash build.sh <clone> 0206
 #18 CACHED
 
 #19 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
-#19 DONE 2.6s
+#19 DONE 2.3s
 
 #20 [stage-1 5/5] WORKDIR /app/apps/studio
-#20 DONE 0.3s
+#20 DONE 0.2s
 
 #21 exporting to image
 #21 exporting layers
-#21 exporting layers 10.7s done
-#21 exporting manifest sha256:656b720aca15e2f8db8ed049c66b918f4cb32467330383b255f872e73c06397c done
-#21 exporting config sha256:c2f731592d421cca4603cc0190ed5f28cdb6db3908705ba6ace08949b255890c done
-#21 exporting attestation manifest sha256:6367ccee7781759678425e5fdd001c09a18293864ef4c7d03ec5e9d18712188a 0.1s done
-#21 exporting manifest list sha256:886d2bef03bb0b15efab67a1f3a05b94c1135b24529bb9d3ad30d34e8df3870e
-#21 exporting manifest list sha256:886d2bef03bb0b15efab67a1f3a05b94c1135b24529bb9d3ad30d34e8df3870e 0.0s done
+#21 exporting layers 10.2s done
+#21 exporting manifest sha256:28681a8d1b79e65faa6f45e3bfc1445a99284eb70c2250a23e7ce3bea4c1bb15
+#21 exporting manifest sha256:28681a8d1b79e65faa6f45e3bfc1445a99284eb70c2250a23e7ce3bea4c1bb15 0.0s done
+#21 exporting config sha256:35a6e32db810f5dc8f7a418808bca25a6d4bb9acb33b6bdf27eac48968e7eacf done
+#21 exporting attestation manifest sha256:fda7ee80ae3e317cf41d70dd8a07d68146ebd3036f15934f0311a6c9d7fd9641 0.0s done
+#21 exporting manifest list sha256:4ab0e4e725aafb363a5f8ed49ddfb1d6e49efcc633f49e9b7009bdb88196e7c1 0.0s done
 #21 naming to docker.io/rag-agent-studio/studio:0206 done
 #21 unpacking to docker.io/rag-agent-studio/studio:0206
-#21 unpacking to docker.io/rag-agent-studio/studio:0206 4.1s done
-#21 DONE 15.1s
+#21 unpacking to docker.io/rag-agent-studio/studio:0206 4.0s done
+#21 DONE 14.3s
 # exit code: 0

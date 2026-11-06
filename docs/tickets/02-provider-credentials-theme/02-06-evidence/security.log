@@ -1,9 +1,9 @@
 $ make secret-scan && make audit
-# 2026-11-06T06:48:35Z in a fresh clone at e4142db
+# 2026-11-06T07:42:20Z in a fresh clone at 1c5d246
 gitleaks git --redact --no-banner .
-[90m6:48AM[0m [32mINF[0m [1m290 commits scanned.[0m
-[90m6:48AM[0m [32mINF[0m [1mscanned ~14635417 bytes (14.64 MB) in 2.42s[0m
-[90m6:48AM[0m [32mINF[0m [1mno leaks found[0m
+[90m7:42AM[0m [32mINF[0m [1m301 commits scanned.[0m
+[90m7:42AM[0m [32mINF[0m [1mscanned ~16037903 bytes (16.04 MB) in 2.02s[0m
+[90m7:42AM[0m [32mINF[0m [1mno leaks found[0m
 cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
 	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
 No known vulnerabilities found

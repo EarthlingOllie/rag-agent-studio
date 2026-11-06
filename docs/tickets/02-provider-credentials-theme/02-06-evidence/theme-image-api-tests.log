@@ -1,5 +1,5 @@
 $ cd backend && uv run pytest -v --no-cov -p no:logging tests/integration/test_theme_images.py tests/integration/test_object_store.py tests/integration/test_theme.py tests/integration/test_migrations.py 'tests/integration/test_tenant_isolation.py' -k 'theme or Theme or images or declares or rustfs or migration or round'
-# 2026-11-06T06:46:52Z in a fresh clone at e4142db
+# 2026-11-06T07:39:48Z in a fresh clone at 1c5d246
 ============================= test session starts ==============================
 platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0206/backend/.venv/bin/python
 cachedir: .pytest_cache
@@ -130,5 +130,5 @@ tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_
 tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[POST /api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages] PASSED [ 99%]
 tests/integration/test_tenant_isolation.py::test_a_project_is_not_found_through_another_organisation_of_the_same_member[GET /api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages/{message_id}/trace] PASSED [100%]
 
-================ 120 passed, 380 deselected in 90.44s (0:01:30) ================
+=============== 120 passed, 380 deselected in 136.61s (0:02:16) ================
 # exit code: 0
