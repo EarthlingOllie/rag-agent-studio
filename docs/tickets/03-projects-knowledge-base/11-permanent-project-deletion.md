@@ -7,7 +7,7 @@
 **Blocked by:**
 - [03-05: Dedupe, delete and replace edition](05-dedupe-delete-replace.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Only Owners can do it, only for archived Projects, and only after typing the name
 - [ ] A Celery cascade removes Documents, Chunks and stored files, and later Agents and Conversations
