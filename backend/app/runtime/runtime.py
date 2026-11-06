@@ -8,7 +8,9 @@ fallback text and the model isn't asked. The Pydantic AI agent it builds registe
 (ADR-0007).
 
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
-the answer cites (``app.runtime.citations``), then one ``DoneEvent``. A model that supports
+the answer cites (``app.runtime.citations``), then one ``DoneEvent``. If the model's provider
+fails (or the Embedding Model's, retrieving), the turn ends instead with an ``ErrorEvent`` saying
+why (``app.runtime.errors``), whatever was streamed before it. A model that supports
 structured output is asked for a ``CitedAnswer`` through the provider's native JSON schema
 output (not an output tool), and its answer text is streamed as the JSON arrives; any other
 model answers in text, and its citations are the labels written in it.
@@ -36,6 +38,7 @@ from app.guardrails.canary import CanaryFilter, encoded_leak, new_canary
 from app.guardrails.outcomes import GuardrailOutcome
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.citations import CitedAnswer, labels_in, resolve
+from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import Turn, chunk_label, data_blocks, history
 
 logger = logging.getLogger(__name__)
@@ -80,7 +83,7 @@ class DoneEvent:
     guardrail_outcomes: list[GuardrailOutcome] = field(default_factory=list)
 
 
-TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | DoneEvent
+TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | DoneEvent | ErrorEvent
 
 CANARY_REPLACED = "The reply contained the canary token, so it was cut off and replaced."
 CANARY_ENCODED = "The reply contained the canary token, encoded ({encoding})"
@@ -144,6 +147,26 @@ async def run_turn(
     model: Model,
     retrieve: Retrieve,
 ) -> AsyncIterator[TurnEvent]:
+    try:
+        async with aclosing(
+            _turn(turns, config, instructions, visitor_input, model=model, retrieve=retrieve)
+        ) as events:
+            async for event in events:
+                yield event
+    except PROVIDER_ERRORS as error:
+        # The provider failed (retrieving or answering): end the turn with why, and no answer.
+        yield provider_error(error, model.model_name)
+
+
+async def _turn(
+    turns: Sequence[Turn],
+    config: AgentConfig,
+    instructions: str,
+    visitor_input: str,
+    *,
+    model: Model,
+    retrieve: Retrieve,
+) -> AsyncGenerator[TurnEvent]:
     behaviour = config.behaviour
     retrieved = await retrieve(visitor_input, config.retrieval)
     if not retrieved.candidates:
