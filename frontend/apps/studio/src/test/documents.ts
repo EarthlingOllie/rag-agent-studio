@@ -59,10 +59,13 @@ function advance(document: ProjectDocument, content: string): ProjectDocument {
   return { ...document, name: replacement.name, edition: replacement.edition, chunk_count: 6, replacement: null };
 }
 
+export const BUSY = "This Document is still being processed. Try again once it is Ready or Failed.";
+
 /**
  * A stateful stand-in for the Documents API and the object store. Starting an upload refuses
  * what the API refuses; the PUT goes to a fake storage host; confirming adds a Queued Document.
- * Each poll of the status endpoint moves every unfinished Document one step on, to Ready.
+ * Retrying a Ready or Failed Document sets it back to Queued. Each poll of the status endpoint
+ * moves every unfinished Document one step on, to Ready.
  */
 export function fakeDocumentsApi(options: { documents?: ProjectDocument[]; tags?: Tag[] } = {}) {
   let documents = [...(options.documents ?? [])];
@@ -165,6 +168,17 @@ export function fakeDocumentsApi(options: { documents?: ProjectDocument[]; tags?
       requests.push({ route: "delete", body: params.documentId });
       documents = documents.filter((document) => document.id !== params.documentId);
       return new HttpResponse(null, { status: 204 });
+    }),
+    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/retry", ({ params }) => {
+      const documentId = params.documentId as string;
+      requests.push({ route: "retry", body: documentId });
+      const document = documents.find((candidate) => candidate.id === documentId) as ProjectDocument;
+      const settled = (status: ProjectDocument["status"]) => ["ready", "failed"].includes(status);
+      if (!settled(document.status) || (document.replacement && !settled(document.replacement.status)))
+        return HttpResponse.json({ detail: BUSY }, { status: 409 });
+      const queued: ProjectDocument = { ...document, status: "queued", error_message: null };
+      documents = documents.map((candidate) => (candidate.id === documentId ? queued : candidate));
+      return HttpResponse.json(queued, { status: 202 });
     }),
   );
 

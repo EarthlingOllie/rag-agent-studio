@@ -854,7 +854,8 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Renames the Project or edits its description. An archived Project is refused.
+         * @description Renames the Project, edits its description or turns OCR on or off. An archived Project
+         *     is refused.
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -976,6 +977,26 @@ export interface paths {
          * @description Asks the Agent's Draft a question; the answer streams back as Server-Sent Events.
          */
         post: operations["sendPlaygroundMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages/{message_id}/trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trace
+         * @description The Trace of one of the Agent's answers in the Playground Conversation.
+         */
+        get: operations["getPlaygroundTrace"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1153,6 +1174,28 @@ export interface paths {
          *     place, keeping the Document's ID and Tags. Refused while the Document is being processed.
          */
         post: operations["replaceDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Document
+         * @description Processes a Ready or Failed Document again, with the Project's current settings (such as
+         *     OCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving
+         *     until the new ones replace them.
+         */
+        post: operations["retryDocument"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2534,6 +2577,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Ocr Enabled */
+            ocr_enabled: boolean;
         };
         /**
          * Provider
@@ -2830,6 +2875,65 @@ export interface components {
             retry_after_seconds: number;
         };
         /**
+         * TraceOut
+         * @description Why an answer came out as it did: the model, its usage, cost and latency, and every
+         *     Chunk retrieval found, given to the model (cited or not) or left out with the reason.
+         */
+        TraceOut: {
+            /** Chunks */
+            chunks: components["schemas"]["TracedChunkOut"][];
+            /** Config Source */
+            config_source: string | null;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /** Fallback */
+            fallback: boolean;
+            /** First Token Ms */
+            first_token_ms: number | null;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+        };
+        /** TracedChunkOut */
+        TracedChunkOut: {
+            /**
+             * Chunk Id
+             * Format: uuid
+             */
+            chunk_id: string;
+            /** Cited */
+            cited: boolean;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Name */
+            document_name: string | null;
+            /** Excluded Reason */
+            excluded_reason: ("below_min_score" | "outside_top_k") | null;
+            /** Rank */
+            rank: number | null;
+            /** Relevance */
+            relevance: number;
+            /** Score */
+            score: number;
+            /** Text */
+            text: string | null;
+        };
+        /**
          * UiText
          * @description Overrides of the widget's built-in text. None keeps the built-in text.
          */
@@ -2867,6 +2971,8 @@ export interface components {
             description?: string | null;
             /** Name */
             name?: string | null;
+            /** Ocr Enabled */
+            ocr_enabled?: boolean | null;
         };
         /** UploadConflictResponse */
         UploadConflictResponse: {
@@ -5636,6 +5742,50 @@ export interface operations {
             };
         };
     };
+    getPlaygroundTrace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                conversation_id: string;
+                message_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     archiveProject: {
         parameters: {
             query?: never;
@@ -6108,6 +6258,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retryDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

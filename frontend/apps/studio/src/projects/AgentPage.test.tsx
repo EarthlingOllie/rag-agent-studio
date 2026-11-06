@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
-import { CONVERSATION_ID, fakeAgentsApi, hrHelper, streamedAnswer } from "../test/agents";
+import { CONVERSATION_ID, fakeAgentsApi, hrHelper, hrTrace, leaveCitation, streamedAnswer } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -53,6 +53,108 @@ test("a question is answered in the Playground as the answer streams in", async 
     { route: "ask", body: { content: "How much leave?", conversationId: CONVERSATION_ID } },
     { route: "ask", body: { content: "And sick leave?", conversationId: CONVERSATION_ID } },
   ]);
+});
+
+async function askLeave(options: Parameters<typeof fakeAgentsApi>[0] = {}) {
+  const api = setUp({
+    answer: () => streamedAnswer(["Twenty-five days ", "[C1]."], { citations: [leaveCitation] }),
+    ...options,
+  });
+  renderStudio(agentPage);
+  await userEvent.type(await screen.findByLabelText("Question", {}, { timeout: 5000 }), "How much leave?");
+  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  const messages = screen.getByRole("list", { name: "Playground messages" });
+  const answer = await within(messages).findByRole("listitem", { name: "HR helper" });
+  await within(answer).findByText(/output tokens/);
+  return { ...api, answer };
+}
+
+test("an answer's citations are chips linking to the cited Chunk in the Document viewer", async () => {
+  const { answer } = await askLeave();
+
+  const sources = within(answer).getByRole("list", { name: "Sources" });
+  const chip = within(sources).getByRole("link", { name: "C1 leave-policy.md" });
+  expect(chip).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/projects/${hrProject.id}/documents/${leaveCitation.document_id}#chunk-${leaveCitation.chunk_id}`,
+  );
+});
+
+test("an answer without citations shows no sources", async () => {
+  const { answer } = await askLeave({ answer: () => streamedAnswer(["I don't know."]) });
+
+  expect(within(answer).queryByRole("list", { name: "Sources" })).not.toBeInTheDocument();
+});
+
+test("the Trace drawer shows the model, usage, cost, latency and every Chunk retrieved", async () => {
+  const { answer, requests } = await askLeave();
+
+  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  expect(await within(drawer).findByText("openai · gpt-4.1-mini")).toBeInTheDocument();
+  expect(within(drawer).getByText("120 input · 6 output")).toBeInTheDocument();
+  expect(within(drawer).getByText("$0.0000576")).toBeInTheDocument();
+  expect(within(drawer).getByText("40 ms to the first token · 85 ms in all")).toBeInTheDocument();
+  const rows = within(within(drawer).getByRole("table", { name: "Retrieved Chunks" })).getAllByRole("row");
+  expect(rows.map((row) => Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent))).toEqual([
+    ["Chunk", "Document", "Excerpt", "Score", "Relevance", "Outcome"],
+    ["C1", "leave-policy.md", "Everyone gets 25 days of annual leave a year.", "0.920", "0.810", "Cited"],
+    ["C2", "expenses.md", "Claim expenses within 30 days.", "0.510", "0.400", "Given, not cited"],
+    ["—", "parking.md", "Visitors park in the north car park.", "0.300", "0.100", "Excluded: below the minimum score"],
+    ["—", "Deleted Document", "—", "0.200", "0.500", "Excluded: outside top-k"],
+  ]);
+  expect(requests.at(-1)).toEqual({ route: "trace", body: { conversationId: CONVERSATION_ID, messageId: hrTrace.message_id } });
+
+  await userEvent.click(within(drawer).getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+});
+
+test("the Trace of a fallback reply says no Chunk was relevant enough, and Escape closes it", async () => {
+  await askLeave({
+    trace: () =>
+      HttpResponse.json({
+        ...hrTrace,
+        // What the API gave for a zero cost before it sent plain decimals.
+        cost_usd: "0E-9",
+        model_provider: null,
+        model_name: null,
+        input_tokens: 0,
+        output_tokens: 0,
+        fallback: true,
+        chunks: hrTrace.chunks.slice(2),
+      }),
+  });
+
+  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  expect(await within(drawer).findByText(/No Chunk reached the minimum score/)).toBeInTheDocument();
+  expect(within(drawer).getByText("None (fallback)")).toBeInTheDocument();
+  expect(within(drawer).getByText("$0")).toBeInTheDocument();
+  // Other keys leave it open.
+  await userEvent.keyboard("a");
+  expect(screen.getByRole("dialog", { name: "Trace" })).toBeInTheDocument();
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+});
+
+test("the Trace of an answer whose model has no known price shows the cost as unknown", async () => {
+  await askLeave({ trace: () => HttpResponse.json({ ...hrTrace, cost_usd: null }) });
+
+  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  expect(await within(drawer).findByText("Unknown")).toBeInTheDocument();
+});
+
+test("a Trace that can't be loaded says so", async () => {
+  await askLeave({ trace: () => HttpResponse.json({ detail: "Not found" }, { status: 404 }) });
+
+  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  expect(await within(drawer).findByRole("alert")).toHaveTextContent("The Trace could not be loaded.");
 });
 
 test("a blank question isn't sent", async () => {

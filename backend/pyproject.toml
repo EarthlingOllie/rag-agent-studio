@@ -39,10 +39,11 @@ torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
 
 [dependency-groups]
-# PDF conversion: Docling's PDF backend and its layout models (PyTorch, CPU build). Heavy, so it
-# is its own group: the worker image installs it; tests and the API don't need it.
+# PDF conversion: Docling's PDF backend, its layout models (PyTorch, CPU build) and RapidOCR
+# (ONNX) for Projects with OCR on. Heavy, so it is its own group: the worker image installs it;
+# tests and the API don't need it.
 pdf = [
-    "docling-slim[format-pdf,models-local]>=2.147.0",
+    "docling-slim[feat-ocr-rapidocr-onnx,format-pdf,models-local]>=2.147.0",
     "torch>=2.2.2",
     "torchvision>=0.17",
 ]

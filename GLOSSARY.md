@@ -203,6 +203,14 @@ _Avoid_: State, phase, job status
 Turning an uploaded Document into Chunks: convert it with Docling, store the markdown, chunk it with the Embedding Model's tokenizer, embed the Chunks and write them in one transaction.
 _Avoid_: Indexing, processing pipeline, import
 
+**OCR**:
+A per-Project setting, off by default. When it is on, ingestion also reads text in images, so scanned PDFs become readable. It makes ingestion slower, so it is only turned on for Projects that need it. A change applies to Documents processed afterwards; retrying a Document reprocesses it with the new setting.
+_Avoid_: Text recognition, scan mode
+
+**Retry**:
+Sending a Ready or Failed Document's current edition through ingestion again, with its Project's current settings. Its Chunks keep serving until the new ones replace them. Not while the Document, or a new edition of it, is still being processed.
+_Avoid_: Reprocess, re-ingest, re-run
+
 **Content hash**:
 The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirmed.
 _Avoid_: Checksum, fingerprint, etag
@@ -316,6 +324,16 @@ A Chunk retrieval found but didn't give the model, with its reason: below the Mi
 Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.
 _Avoid_: Sandboxing, quoting
 
+**Chunk label**:
+The name a retrieved Chunk is given to the model with, by its rank: [C1], [C2] and so on. The model cites Chunks by their labels.
+
+**Citation**:
+A Chunk an Agent's answer cites. Where the model supports structured output it lists the Chunk labels it used beside the answer; otherwise the labels written in the answer are parsed. Each resolves back to its Chunk, and the Studio shows it as a chip linking to that Chunk in the Document viewer.
+_Avoid_: Reference, footnote, source link
+
+**Message retrieval**:
+One Chunk retrieval found for an Agent Message, saved with its score, relevance, rank (when it was given to the model), whether it was cited and, for an Excluded Chunk, the reason. The Trace's list of Chunks.
+
 **Version**:
 An immutable, numbered snapshot of a Draft, created by publishing it. An Agent's Version pins exactly one Project Instructions Version.
 _Avoid_: Revision, release
@@ -375,7 +393,7 @@ A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Mes
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the retrieved Chunks, Guardrail outcomes, model, Version and token use.
+The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes and Version. Shown in the Playground's Trace drawer.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:

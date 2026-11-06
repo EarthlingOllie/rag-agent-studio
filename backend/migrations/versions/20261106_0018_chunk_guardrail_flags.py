@@ -1,8 +1,8 @@
 """Chunk Guardrail flags: the injection classifier's label, score and reason, set on Chunks the
 ingestion scan flags.
 
-Revision ID: 0016_chunk_guardrail_flags
-Revises: 0015_provider_embedding_models
+Revision ID: 0018_chunk_guardrail_flags
+Revises: 0017_message_retrievals
 Create Date: 2026-11-06
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0016_chunk_guardrail_flags"
-down_revision: str | None = "0015_provider_embedding_models"
+revision: str = "0018_chunk_guardrail_flags"
+down_revision: str | None = "0017_message_retrievals"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

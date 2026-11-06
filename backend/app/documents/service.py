@@ -7,6 +7,9 @@
    against the one the browser sent, if any), creates the Document as Queued, and enqueues
    ingestion.
 
+``retry`` sends a Ready or Failed Document through ingestion again, with the Project's current
+settings (its OCR flag, for one).
+
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
 through ``active_project``, so an archived Project takes none.
 """
@@ -505,3 +508,30 @@ async def chunk_counts(session: AsyncSession, document: Document) -> ChunkCounts
     total, flagged = _chunk_counts()
     row = (await session.execute(select(total, flagged).where(Document.id == document.id))).one()
     return ChunkCounts(row[0], row[1])
+
+
+async def retry(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+) -> DocumentSummary:
+    """Sets a Ready or Failed Document back to Queued, for the caller to enqueue ingestion. Its
+    current Chunks keep serving until the new ones replace them. Refused for an archived
+    Project, and while the Document, or a newer edition of it, is still being processed."""
+    project = await projects.active_project(session, scope, project_id)
+    document = await session.scalar(
+        select(Document)
+        .where(Document.id == document_id, Document.project_id == project.id)
+        .with_for_update()
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    staged = await session.get(StagedEdition, document.id, with_for_update=True)
+    if document.status not in FINAL_STATUSES or (
+        staged is not None and staged.status != DocumentStatus.FAILED
+    ):
+        raise DocumentBusyError
+    document.status = DocumentStatus.QUEUED
+    document.error_message = None
+    document.updated_at = func.now()
+    await session.commit()
+    await session.refresh(document)
+    return DocumentSummary(document, await chunk_counts(session, document), staged)

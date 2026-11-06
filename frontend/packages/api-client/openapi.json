@@ -2871,6 +2871,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "ocr_enabled": {
+            "title": "Ocr Enabled",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2882,6 +2886,7 @@
           "document_count",
           "agent_count",
           "embedding_model_id",
+          "ocr_enabled",
           "embedding_credential_id"
         ],
         "title": "ProjectOut",
@@ -3566,6 +3571,217 @@
         "title": "ThrottledResponse",
         "type": "object"
       },
+      "TraceOut": {
+        "description": "Why an answer came out as it did: the model, its usage, cost and latency, and every\nChunk retrieval found, given to the model (cited or not) or left out with the reason.",
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/TracedChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "config_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Source"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "first_token_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token Ms"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Provider"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          }
+        },
+        "required": [
+          "message_id",
+          "config_source",
+          "model_provider",
+          "model_name",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "first_token_ms",
+          "latency_ms",
+          "fallback",
+          "chunks"
+        ],
+        "title": "TraceOut",
+        "type": "object"
+      },
+      "TracedChunkOut": {
+        "properties": {
+          "chunk_id": {
+            "format": "uuid",
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "cited": {
+            "title": "Cited",
+            "type": "boolean"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "excluded_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "below_min_score",
+                  "outside_top_k"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excluded Reason"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "relevance": {
+            "title": "Relevance",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "document_name",
+          "text",
+          "score",
+          "relevance",
+          "rank",
+          "cited",
+          "excluded_reason"
+        ],
+        "title": "TracedChunkOut",
+        "type": "object"
+      },
       "UiText-Input": {
         "additionalProperties": false,
         "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
@@ -3707,6 +3923,17 @@
               }
             ],
             "title": "Name"
+          },
+          "ocr_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Enabled"
           }
         },
         "title": "UpdateProjectRequest",
@@ -7017,7 +7244,7 @@
         ]
       },
       "patch": {
-        "description": "Renames the Project or edits its description. An archived Project is refused.",
+        "description": "Renames the Project, edits its description or turns OCR on or off. An archived Project\nis refused.",
         "operationId": "updateProject",
         "parameters": [
           {
@@ -7683,6 +7910,100 @@
           }
         },
         "summary": "Send Message",
+        "tags": [
+          "playground"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages/{message_id}/trace": {
+      "get": {
+        "description": "The Trace of one of the Agent's answers in the Playground Conversation.",
+        "operationId": "getPlaygroundTrace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trace",
         "tags": [
           "playground"
         ]
@@ -8521,6 +8842,90 @@
           }
         },
         "summary": "Replace Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
+      "post": {
+        "description": "Processes a Ready or Failed Document again, with the Project's current settings (such as\nOCR). It is Queued, then moves to Processing and Ready (or Failed); its Chunks keep serving\nuntil the new ones replace them.",
+        "operationId": "retryDocument",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Document is still being processed. Try again once it is Ready or Failed. / This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Document",
         "tags": [
           "documents"
         ]
