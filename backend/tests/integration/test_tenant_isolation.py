@@ -341,6 +341,16 @@ async def _allowed_origins(owner: SignedUpMember, add_member: MemberFactory) -> 
     return params, {"origins": ["https://www.example.com"]}
 
 
+async def _an_agent_to_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _an_agent_to_publish(owner, add_member)
+    for _ in range(2):
+        published = await owner.client.post(
+            _AGENT.format(organisation_id=owner.organisation_id, **params) + "/versions", json=body
+        )
+        assert published.status_code == 201, published.text
+    return params, None
+
+
 async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, body = await _an_agent_to_publish(owner, add_member)
     published = await owner.client.post(
@@ -473,6 +483,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("DELETE", _AGENT, OWNER, _an_archived_agent_to_delete),
     ScopedRoute("POST", _AGENT + "/versions", EDITOR, _an_agent_to_publish),
     ScopedRoute("GET", _AGENT + "/versions", EDITOR, _an_agent),
+    ScopedRoute("POST", _AGENT + "/revert", EDITOR, _an_agent_to_revert),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/allowed-origins", EDITOR, _an_agent),

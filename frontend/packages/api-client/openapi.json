@@ -9697,6 +9697,90 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/revert": {
+      "post": {
+        "description": "Moves the Live Version back one step in the Live History, to the Version that was Live\nbefore the current one was published, restoring its configuration and pinned Instructions.\nReturns that Version. The Draft is unchanged. Records ``agent.reverted`` and a Live History\nentry.",
+        "operationId": "revertAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There's no earlier Live Version to revert to. Or: The Version that was Live before uses a Provider Credential or model that is no longer available, so it can't be made Live again. Publish a fixed Version instead. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revert Agent",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions": {
       "get": {
         "description": "The Agent's Versions, newest first, and which is the Live Version.",

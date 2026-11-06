@@ -1109,6 +1109,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revert Agent
+         * @description Moves the Live Version back one step in the Live History, to the Version that was Live
+         *     before the current one was published, restoring its configuration and pinned Instructions.
+         *     Returns that Version. The Draft is unchanged. Records ``agent.reverted`` and a Live History
+         *     entry.
+         */
+        post: operations["revertAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions": {
         parameters: {
             query?: never;
@@ -6888,6 +6911,57 @@ export interface operations {
                 };
             };
             /** @description This Agent isn't archived. Or: This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revertAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There's no earlier Live Version to revert to. Or: The Version that was Live before uses a Provider Credential or model that is no longer available, so it can't be made Live again. Publish a fixed Version instead. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;
