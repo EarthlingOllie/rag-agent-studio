@@ -1,9 +1,9 @@
-$ gitleaks git --redact --no-banner --log-opts=origin/candidate..HEAD . @ d25783e
-[90m5:48AM[0m [32mINF[0m [1m5 commits scanned.[0m
-[90m5:48AM[0m [32mINF[0m [1mscanned ~137213 bytes (137.21 KB) in 228ms[0m
-[90m5:48AM[0m [32mINF[0m [1mno leaks found[0m
+$ gitleaks git --redact --no-banner --log-opts=origin/candidate..HEAD . @ 8fa1cf4
+[90m6:18AM[0m [32mINF[0m [1m6 commits scanned.[0m
+[90m6:18AM[0m [32mINF[0m [1mscanned ~162934 bytes (162.93 KB) in 199ms[0m
+[90m6:18AM[0m [32mINF[0m [1mno leaks found[0m
 exit 0
-$ make audit @ d25783e
+$ make audit @ 8fa1cf4
 cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
 	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
