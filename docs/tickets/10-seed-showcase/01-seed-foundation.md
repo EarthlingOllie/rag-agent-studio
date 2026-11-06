@@ -9,7 +9,7 @@
 - [02-05: Theme editor](../02-provider-credentials-theme/05-theme-editor.md)
 - [04-07: Full AgentConfig editor](../04-agents-retrieval-playground/07-full-agentconfig-editor.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The seed goes through application services, is idempotent, and `seed-reset` recreates only the demo Organisation
 - [ ] A demo provider adapter is clearly labelled as a demo model
