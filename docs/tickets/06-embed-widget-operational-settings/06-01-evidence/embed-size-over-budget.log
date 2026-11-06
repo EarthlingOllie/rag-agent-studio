@@ -1,0 +1,4 @@
+$ embed loader size budget against a 3 KB file, to show the check failing @ c2790a4
+embed.js: 4053 bytes, 3098 gzipped (budget 2048 and 1024)
+embed.js is over its size budget.
+exit 1
