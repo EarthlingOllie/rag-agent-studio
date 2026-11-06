@@ -1,6 +1,6 @@
 # Evidence: ticket 05-03, Revert via Live History
 
-Branch `ticket/05-03-revert-live-history`, from `origin/candidate` at `0e5ef28` (05-02, Publish Agent to Live Version, merged as #48). The claim commit, the first on the branch, set Status `in-progress`. The feature is `27a1292`. `origin/candidate` had not moved when the checks ran, so no merge was needed. This ticket adds no migration: the `revert` action value and the Live History table came with 05-02.
+Branch `ticket/05-03-revert-live-history`, from `origin/candidate` at `0e5ef28` (05-02, Publish Agent to Live Version, merged as #48). The claim commit, the first on the branch, set Status `in-progress`. The feature is `27a1292`. `origin/candidate` then moved to `be524a3` (05-06, Playground Instructions picker, #49); it was merged in cleanly as `282e0c5` (no conflicts; 05-06's migration 0027 follows 05-02's 0026 and this ticket adds none) and every check was run again on the merge. This ticket adds no migration: the `revert` action value and the Live History table came with 05-02.
 
 **Status: done.** Every criterion is met and evidenced below. The gaps at the end are scope left to later tickets on purpose, plus what this sandbox can't run.
 
@@ -45,17 +45,17 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `27a1292` with no uncommitted code changes; only this folder and the ticket file were being written. Each log's first line names the command and the commit.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `282e0c5` (the merge of `origin/candidate` `be524a3`) with no uncommitted code changes; only this folder and the ticket file were being written. Each log's first line names the command and the commit.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
 | Install | `make install` | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0503-svc` Postgres/pgvector, Redis and RustFS containers (ports 48632/48679/48691); OpenTelemetry span lines filtered out | **1747 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **42 files, 528 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
-| Images | `build.sh` (sandbox `make images`) | both images built (`rag-agent-studio/api:0503`, `rag-agent-studio/studio:0503`), exit 0 | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0503-e2e`, host ports 49310–49825) | **65 passed** on the first attempt (4.5 min), including `agent-revert.spec.ts` with its axe scans | [e2e.log](e2e.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0503-svc` Postgres/pgvector, Redis and RustFS containers (ports 48632/48679/48691); OpenTelemetry span lines filtered out | **1755 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **43 files, 535 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Images | `build.sh` (sandbox `make images`) | both images built (`rag-agent-studio/api:0503`, `rag-agent-studio/studio:0503`), exit 0; removed afterwards | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0503-e2e`, host ports 49310–49825) | **66 passed** on the first attempt (3.8 min), including `agent-revert.spec.ts` with its axe scans | [e2e.log](e2e.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
