@@ -6,6 +6,7 @@ search finds is known: semantic search finds a Chunk by its exact text, keyword 
 shared words."""
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -14,6 +15,8 @@ from sqlalchemy import update
 
 from app.agents.config import Retrieval
 from app.documents.models import Chunk
+from app.gateway.fakes import WordOverlapReranker
+from app.gateway.ports import RankedDocument, Reranker
 from app.projects.models import Project
 from app.retrieval.service import EmbeddingModelUnavailableError, RetrievalResult, retrieve
 from tests.conftest import SignedUpMember, TenantFactory
@@ -32,11 +35,23 @@ from tests.knowledge_base import (
 )
 
 
-async def search(app: FastAPI, project_id: str, query: str, **settings: Any) -> RetrievalResult:
+async def search(
+    app: FastAPI,
+    project_id: str,
+    query: str,
+    *,
+    reranker: Reranker | None = None,
+    **settings: Any,
+) -> RetrievalResult:
     async with app.state.sessionmaker() as session:
         project = await session.get_one(Project, uuid.UUID(project_id))
         return await retrieve(
-            session, project, query, Retrieval(**settings), app.state.ingestion.embedders
+            session,
+            project,
+            query,
+            Retrieval(**settings),
+            app.state.ingestion.embedders,
+            reranker=reranker,
         )
 
 
@@ -219,6 +234,108 @@ async def test_a_project_whose_embedding_model_has_no_embedder_cant_be_searched(
         await search(app, project_id, LEAVE)
 
 
+# The gateway's fake reranker: a passage's relevance is the share of the query's words it has.
+# PRODUCT_QUESTION's words are what, warranty, doe(s), sku and have; PRODUCT has warranty and
+# sku (2 of 5) and no other Chunk has any.
+FAKE_RERANKER = WordOverlapReranker("rerank-2.5")
+
+
+async def test_the_reranker_reorders_the_candidates_before_top_k_is_applied(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+
+    # Semantic search alone can't tell which Chunk the question is about.
+    plain = await search(app, project_id, PRODUCT_QUESTION, hybrid_weight=1, top_k=1)
+    reranked = await search(
+        app, project_id, PRODUCT_QUESTION, hybrid_weight=1, top_k=1, reranker=FAKE_RERANKER
+    )
+
+    assert texts(plain) != [PRODUCT]
+    assert PRODUCT in {e.text for e in plain.excluded}
+    # The reranker lifts PRODUCT to the top, so it is the one candidate top-k keeps.
+    assert texts(reranked) == [PRODUCT]
+    (product,) = reranked.candidates
+    assert product.rank == 1
+    assert product.rerank_score == pytest.approx(2 / 5)
+    # With a reranker, a Chunk's relevance is the reranker's judgement of it.
+    assert product.relevance == pytest.approx(2 / 5)
+    # Its semantic score is still reported, and its fused score is unchanged.
+    assert product.semantic_score is not None
+    plain_product = next(e for e in plain.excluded if e.text == PRODUCT)
+    assert product.score == pytest.approx(plain_product.score)
+    assert len(reranked.excluded) == len(FILES) - 1
+    assert {e.reason for e in reranked.excluded} == {"outside_top_k"}
+    assert {e.rerank_score for e in reranked.excluded} == {0.0}
+    assert {e.rerank_score for e in plain.excluded} == {None}
+    assert plain.candidates[0].rerank_score is None
+
+
+async def test_the_minimum_score_is_applied_to_the_reranked_candidates(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+
+    plain = await search(app, project_id, PRODUCT_QUESTION, hybrid_weight=1, min_score=0.3)
+    reranked = await search(
+        app, project_id, PRODUCT_QUESTION, hybrid_weight=1, min_score=0.3, reranker=FAKE_RERANKER
+    )
+
+    # Without the reranker nothing clears the minimum (the fallback would fire); with it,
+    # the product Chunk does, and the rest are left out for falling below it.
+    assert plain.candidates == []
+    assert texts(reranked) == [PRODUCT]
+    assert {e.reason for e in reranked.excluded} == {"below_min_score"}
+    assert {e.relevance for e in reranked.excluded} == {0.0}
+    higher = await search(
+        app, project_id, PRODUCT_QUESTION, hybrid_weight=1, min_score=0.5, reranker=FAKE_RERANKER
+    )
+    assert higher.candidates == []
+
+
+async def test_the_candidates_are_ordered_by_the_rerankers_scores(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+    # Keyword search matches whole words only: LEAVE, RULES, RULES_REPEATED and PARKING each
+    # have one of the four ("leave", "rules", "park"). The fake reranker counts "visitors" as
+    # "visitor", so PARKING has two of the four words and the rest one.
+    question = "leave rules visitor park"
+
+    plain = await search(app, project_id, question, hybrid_weight=0, top_k=20)
+    reranked = await search(
+        app, project_id, question, hybrid_weight=0, top_k=20, reranker=FAKE_RERANKER
+    )
+
+    assert texts(plain)[0] != PARKING
+    assert sorted(texts(reranked)) == sorted(texts(plain))
+    assert texts(reranked)[0] == PARKING
+    assert [c.rerank_score for c in reranked.candidates] == [
+        pytest.approx(2 / 4),
+        *[pytest.approx(1 / 4)] * 3,
+    ]
+    assert [c.rank for c in reranked.candidates] == [1, 2, 3, 4]
+
+
+class NeverCalledReranker:
+    model_name = "rerank-2.5"
+
+    async def rerank(
+        self, query: str, documents: Sequence[str], *, top_k: int | None = None
+    ) -> list[RankedDocument]:
+        raise AssertionError("nothing to rerank")  # pragma: no cover
+
+
+async def test_the_reranker_isnt_asked_when_nothing_is_found(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+
+    result = await search(app, project_id, "?!", hybrid_weight=0, reranker=NeverCalledReranker())
+
+    assert (result.candidates, result.excluded) == ([], [])
+
+
 async def _tag_documents(
     member: SignedUpMember, project_id: str, tags: dict[str, list[str]]
 ) -> dict[str, str]:
@@ -294,3 +411,23 @@ async def test_chunks_outside_the_tags_are_reported_as_excluded(
     (best_outside,) = [e for e in narrow.excluded if e.reason == "outside_tags"]
     assert best_outside.text == PRODUCT
     assert best_outside.score == pytest.approx(1.0)
+
+
+async def test_the_reranker_sees_only_the_chunks_inside_the_tags(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    project_id = await knowledge_base(app, owner)
+    tags = await _tag_documents(owner, project_id, {"HR": ["leave.txt", "expenses.txt"]})
+
+    result = await search(
+        app, project_id, PRODUCT_QUESTION, top_k=2, tag_ids=[tags["HR"]], reranker=FAKE_RERANKER
+    )
+
+    # The product Chunk would win the rerank, but scoping keeps it out of the pool: the HR
+    # Chunks are reranked (neither shares a word with the question), and the Chunks outside
+    # the Tags are reported without a rerank score.
+    assert sorted(texts(result)) == sorted([LEAVE, EXPENSES])
+    assert {c.rerank_score for c in result.candidates} == {0.0}
+    outside = [e for e in result.excluded if e.reason == "outside_tags"]
+    assert outside[0].text == PRODUCT
+    assert {e.rerank_score for e in outside} == {None}
