@@ -4,7 +4,8 @@
     "Migrating loads this file into the model_prices table (app.pricing.sync); edit it and run `make migrate` to change prices.",
     "To change a price from a date, add a new entry with that effective_from rather than editing the old one, so past costs keep their price.",
     "Embedding and rerank models have no output tokens (output 0) and no cache discount (cached_input = input).",
-    "Cohere Rerank 3.5 on Bedrock is priced per search query, not per token, so it has no entry; Owners can override it per credential."
+    "Cohere Rerank 3.5 on Bedrock is priced per search query, not per token, so it has no entry; Owners can override it per credential.",
+    "The demo model (provider demo) costs nothing: it answers with canned text and calls no provider."
   ],
   "currency": "USD",
   "unit": "per million tokens",
@@ -152,6 +153,14 @@
       "input": "0.02",
       "output": "0",
       "cached_input": "0.02"
+    },
+    {
+      "provider": "demo",
+      "model": "demo-chat",
+      "effective_from": "2026-11-06",
+      "input": "0",
+      "output": "0",
+      "cached_input": "0"
     }
   ]
 }
