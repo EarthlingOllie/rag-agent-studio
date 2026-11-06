@@ -23,6 +23,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
+from app.gateway.demo import demo_chat_model
 from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
 
 ChatBuilder = Callable[[Provider, str, str], Model]
@@ -159,6 +160,9 @@ class FakeModelAdapters:
         self._chat = chat
 
     def chat(self, provider: Provider, secret: str, model: str) -> Model:
+        # The demo model is offline already, so the fakes build it too.
+        if provider is Provider.DEMO:
+            return demo_chat_model(model)
         return self._chat(provider, secret, model)
 
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel:

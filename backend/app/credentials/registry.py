@@ -13,6 +13,9 @@ class Provider(enum.StrEnum):
     OPENAI = "openai"
     BEDROCK = "bedrock"
     VOYAGE = "voyage"
+    # The demo provider: canned answers from the Knowledge Base, no AI and no key
+    # (``app.gateway.demo``). The seeded demo Organisation uses it.
+    DEMO = "demo"
 
 
 class AuthKind(enum.StrEnum):
@@ -108,6 +111,12 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
                     Model("rerank-2.5-lite", "rerank-2.5-lite"),
                 ),
             },
+        ),
+        ProviderSpec(
+            Provider.DEMO,
+            "Demo (not a real model)",
+            (AuthKind.API_KEY,),
+            {Capability.CHAT: (Model("demo-chat", "Demo model"),)},
         ),
     )
 }
