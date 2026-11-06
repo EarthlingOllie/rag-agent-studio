@@ -118,7 +118,7 @@ async def start_upload(
         # A newer edition of a Document doesn't add one; confirming it checks the Document.
         await _check_quota(session, project)
     upload_id = uuid.uuid4()
-    object_key = f"organisations/{scope.organisation_id}/projects/{project.id}/{upload_id}"
+    object_key = f"{projects.storage_prefix(scope.organisation_id, project.id)}{upload_id}"
     pending = {"name": filename, "mime_type": content_type, "object_key": object_key}
     await redis.set(
         _PENDING.format(f"{project.id}:{upload_id}"), json.dumps(pending), ex=ttl_seconds

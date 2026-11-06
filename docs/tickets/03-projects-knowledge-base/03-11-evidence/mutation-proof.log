@@ -1,0 +1,13 @@
+$ uv run python ../docs/tickets/03-projects-knowledge-base/03-11-evidence/mutate.py @ 3e535c7
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+CAUGHT  an active Project may be deleted: 1 failed, 4 passed, 7 deselected in 10.43s
+CAUGHT  the name is matched loosely: 1 failed, 7 passed, 7 deselected in 15.06s
+CAUGHT  the cascade ignores a restore: 1 failed, 12 passed, 7 deselected in 21.29s
+CAUGHT  the deletion is audited as something else: 1 failed, 2 passed, 7 deselected in 8.02s
+CAUGHT  the Audit Event takes the database's time: 1 failed, 2 passed, 7 deselected in 8.27s
+CAUGHT  stored files are kept: 1 failed, 1 passed, 7 deselected in 6.28s
+CAUGHT  Editors may delete: 1 failed, 3 passed, 7 deselected in 12.23s
+CAUGHT  S3 deletes only the first page: 1 failed, 14 passed, 7 deselected in 61.72s (0:01:01)
+CAUGHT  the fake deletes sibling prefixes: 1 failed, 15 passed, 7 deselected in 94.65s (0:01:34)
+unmodified: 18 passed, 7 deselected in 166.91s (0:02:46)
+exit 0

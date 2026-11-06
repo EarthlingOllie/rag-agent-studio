@@ -188,6 +188,16 @@ async def _an_archived_project(owner: SignedUpMember, add_member: MemberFactory)
     return {"project_id": await _make_project(owner, archived=True)}, None
 
 
+async def _an_archived_project_to_delete(
+    owner: SignedUpMember, add_member: MemberFactory
+) -> Prepared:
+    project_id = await _make_project(owner, archived=True)
+    project = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/projects/{project_id}"
+    )
+    return {"project_id": project_id}, {"confirm_name": project.json()["name"]}
+
+
 PROJECTS = "/api/organisations/{organisation_id}/projects"
 
 
@@ -343,6 +353,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("PATCH", PROJECTS + "/{project_id}", EDITOR, _a_project_to_rename),
     ScopedRoute("POST", PROJECTS + "/{project_id}/archive", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/restore", OWNER, _an_archived_project),
+    ScopedRoute("DELETE", PROJECTS + "/{project_id}", OWNER, _an_archived_project_to_delete),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions", EDITOR, _a_project),
     ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("POST", PROJECTS + "/{project_id}/uploads", EDITOR, _an_upload_to_start),

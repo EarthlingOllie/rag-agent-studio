@@ -8,7 +8,12 @@ HEALTH_CHECK_TASK = "worker.health_check"
 
 celery_app = Celery(
     "rag_agent_studio",
-    include=["app.worker.tasks", "app.documents.tasks", "app.re_embedding.tasks"],
+    include=[
+        "app.worker.tasks",
+        "app.documents.tasks",
+        "app.projects.tasks",
+        "app.re_embedding.tasks",
+    ],
 )
 
 

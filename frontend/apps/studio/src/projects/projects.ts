@@ -28,7 +28,7 @@ function failed(response: Response, error: unknown): ProjectRequestError {
 export function projectFailure(error: Error | null): string | undefined {
   if (error === null) return undefined;
   if (error instanceof ProjectRequestError) {
-    if (error.status === 409 && error.detail) return error.detail;
+    if ((error.status === 409 || error.status === 400) && error.detail) return error.detail;
     if (error.status === 422) return "Give the Project a name of up to 200 characters, and a description of up to 2,000.";
   }
   return "Something went wrong. Try again.";
@@ -120,5 +120,27 @@ export function useArchiveOrRestore(organisationId: string, action: "archive" | 
       return data;
     },
     onSuccess: store,
+  });
+}
+
+/**
+ * Permanently delete an archived Project (Owners), confirmed by its name typed exactly. The API
+ * accepts the request and a background task removes everything in the Project; the Project is
+ * forgotten here at once.
+ */
+export function useDeleteProject(organisationId: string, projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (confirmName: string): Promise<void> => {
+      const { error, response } = await api.DELETE("/api/organisations/{organisation_id}/projects/{project_id}", {
+        params: { path: { organisation_id: organisationId, project_id: projectId } },
+        body: { confirm_name: confirmName },
+      });
+      if (!response.ok) throw failed(response, error);
+    },
+    onSuccess: async () => {
+      queryClient.removeQueries({ queryKey: projectKey(organisationId, projectId) });
+      await queryClient.invalidateQueries({ queryKey: [...projectsKey(organisationId), "list"] });
+    },
   });
 }
