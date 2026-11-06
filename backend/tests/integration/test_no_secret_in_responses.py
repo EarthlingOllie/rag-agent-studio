@@ -32,6 +32,8 @@ ALLOWED = {
     # Spec 04: how many model tokens an answer used; counts, not access tokens.
     ("MessageOut", "input_tokens"): "the number of input tokens a model call used",
     ("MessageOut", "output_tokens"): "the number of output tokens a model call used",
+    # Spec 04: an Agent's limit on how long an answer may be; a count, not an access token.
+    ("Behaviour-Output", "max_output_tokens"): "the most tokens an Agent's answer may use",
 }
 
 

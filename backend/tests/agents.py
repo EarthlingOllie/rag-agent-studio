@@ -15,6 +15,40 @@ from tests.conftest import SignedUpMember
 from tests.documents import project_path
 from tests.integration.test_provider_credentials import OPENAI_KEY, added
 
+# A new Agent's Draft: every AgentConfig group at its defaults, as the API returns it.
+FULL_DEFAULT_DRAFT: dict[str, Any] = {
+    "behaviour": {
+        "system_prompt": "",
+        "model": None,
+        "temperature": 0.7,
+        "max_output_tokens": 1024,
+        "remembered_turns": 5,
+        "fallback_text": "Sorry, I don't know the answer to that.",
+    },
+    "retrieval": {
+        "top_k": 5,
+        "hybrid_weight": 0.5,
+        "min_score": 0,
+        "tag_ids": [],
+        "reranker": None,
+        "citations": True,
+    },
+    "experience": {
+        "display_name": "",
+        "avatar_url": None,
+        "greeting": "",
+        "starter_questions": [],
+        "ui_text": {"send_button": None, "rate_conversation": None, "unavailable_message": None},
+        "rating_prompt_after": 3,
+    },
+    "guardrails": {
+        "input_mode": "block",
+        "classifier": None,
+        "fail_mode": "closed",
+        "refusal_text": "Sorry, I can't help with that request.",
+    },
+}
+
 StreamFunction = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str]]
 
 
