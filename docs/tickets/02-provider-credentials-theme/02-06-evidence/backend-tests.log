@@ -1,5 +1,5 @@
 $ make test-backend
-# 2026-11-06T03:40:58Z in a fresh clone at 7a26a6d
+# 2026-11-06T05:19:28Z in a fresh clone at ec276a1
 cd backend && uv run pytest
 ============================= test session starts ==============================
 platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
@@ -8,7 +8,7 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 1272 items / 7 deselected / 1265 selected
+collected 1278 items / 7 deselected / 1271 selected
 
 tests/integration/test_agent_config.py ................................. [  2%]
 ..........                                                               [  3%]
@@ -26,14 +26,14 @@ tests/integration/test_embedding_models.py ............................. [ 18%]
 .........                                                                [ 18%]
 tests/integration/test_health.py ...                                     [ 19%]
 tests/integration/test_invites.py ..............................         [ 21%]
-tests/integration/test_logging.py .......                                [ 22%]
-tests/integration/test_mailer.py {"timestamp": "2026-11-06T03:46:56.346318+00:00", "level": "INFO", "logger": "mail.log", "message": "('127.0.0.1', 32844) connection lost", "service": "api"}
+tests/integration/test_logging.py .......                                [ 21%]
+tests/integration/test_mailer.py {"timestamp": "2026-11-06T05:24:50.689725+00:00", "level": "INFO", "logger": "mail.log", "message": "('127.0.0.1', 58618) Connection lost during _handle_client()", "service": "api"}
 ........                                [ 22%]
 tests/integration/test_members.py ...............                        [ 23%]
 tests/integration/test_mfa.py .....................................      [ 26%]
 tests/integration/test_migrations.py ..                                  [ 26%]
 tests/integration/test_no_secret_in_responses.py ....                    [ 27%]
-tests/integration/test_object_store.py .........                         [ 27%]
+tests/integration/test_object_store.py ...........                       [ 28%]
 tests/integration/test_ocr.py ............                               [ 28%]
 tests/integration/test_openapi.py ...                                    [ 29%]
 tests/integration/test_organisation_switcher.py .......                  [ 29%]
@@ -62,10 +62,11 @@ tests/integration/test_tenant_isolation.py ............................. [ 53%]
 ........................................................................ [ 75%]
 ........................................................................ [ 81%]
 ........                                                                 [ 82%]
-tests/integration/test_theme.py .....................                    [ 83%]
-tests/integration/test_theme_images.py ..............................    [ 86%]
+tests/integration/test_theme.py ......................                   [ 83%]
+tests/integration/test_theme_images.py ................................. [ 86%]
+                                                                         [ 86%]
 tests/integration/test_worker_entrypoint.py ....                         [ 86%]
-tests/integration/test_worker_health.py ....                             [ 86%]
+tests/integration/test_worker_health.py ....                             [ 87%]
 tests/unit/test_bedrock_embedder.py ................                     [ 88%]
 tests/unit/test_bedrock_verifier.py ...............................      [ 90%]
 tests/unit/test_chunking.py ......                                       [ 91%]
@@ -75,7 +76,7 @@ tests/unit/test_embedding_registry.py ..........                         [ 93%]
 tests/unit/test_envelope_encryption.py .................                 [ 94%]
 tests/unit/test_http_credential_verifier.py ............................ [ 96%]
 .                                                                        [ 96%]
-tests/unit/test_ingestion_ports.py ....                                  [ 96%]
+tests/unit/test_ingestion_ports.py ....                                  [ 97%]
 tests/unit/test_kms_key_wrapper.py ........                              [ 97%]
 tests/unit/test_model_gateway.py ...........................             [ 99%]
 tests/unit/test_prompt_assembly.py ...                                   [100%]
@@ -191,9 +192,9 @@ app/runtime/runtime.py                   72      0     12      0   100%
 app/serve.py                              0      0      0      0   100%
 app/storage/__init__.py                   2      0      0      0   100%
 app/storage/factory.py                   11      0      2      0   100%
-app/storage/memory.py                    21      0      0      0   100%
-app/storage/port.py                      12      0      0      0   100%
-app/storage/s3.py                        41      0      4      0   100%
+app/storage/memory.py                    26      0      0      0   100%
+app/storage/port.py                      13      0      0      0   100%
+app/storage/s3.py                        49      0      6      0   100%
 app/tags/__init__.py                      0      0      0      0   100%
 app/tags/api.py                         104      0      0      0   100%
 app/tags/models.py                       19      0      0      0   100%
@@ -213,17 +214,17 @@ app/tenancy/switcher_api.py              17      0      2      0   100%
 app/theme/__init__.py                     0      0      0      0   100%
 app/theme/api.py                        112      0      2      0   100%
 app/theme/fonts.py                       32      0      4      0   100%
-app/theme/images.py                      96      0     18      0   100%
+app/theme/images.py                     100      0     20      0   100%
 app/theme/models.py                      19      0      0      0   100%
 app/theme/schema.py                      37      0      0      0   100%
-app/theme/service.py                    110      0     16      0   100%
+app/theme/service.py                    112      0     16      0   100%
 app/worker/__init__.py                    0      0      0      0   100%
 app/worker/celery_app.py                  8      0      0      0   100%
 app/worker/main.py                       17      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                  6198      0    612      0   100%
+TOTAL                                  6218      0    616      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=============== 1265 passed, 7 deselected in 1697.71s (0:28:17) ================
+=============== 1271 passed, 7 deselected in 1347.46s (0:22:27) ================
 # exit code: 0

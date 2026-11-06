@@ -1,11 +1,11 @@
 $ trivy image --exit-code 1 --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/api:0206 && trivy image --exit-code 1 --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/studio:0206
-# 2026-11-06T04:15:17Z in a fresh clone at 7a26a6d
-2026-11-06T04:15:17Z	INFO	[vuln] Vulnerability scanning is enabled
-2026-11-06T04:15:23Z	INFO	Detected OS	family="debian" version="13.7"
-2026-11-06T04:15:23Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
-2026-11-06T04:15:23Z	INFO	Number of language-specific files	num=1
-2026-11-06T04:15:23Z	INFO	[python-pkg] Detecting vulnerabilities...
-2026-11-06T04:15:23Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
+# 2026-11-06T05:48:14Z in a fresh clone at ec276a1
+2026-11-06T05:48:14Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T05:48:20Z	INFO	Detected OS	family="debian" version="13.7"
+2026-11-06T05:48:20Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
+2026-11-06T05:48:20Z	INFO	Number of language-specific files	num=1
+2026-11-06T05:48:20Z	INFO	[python-pkg] Detecting vulnerabilities...
+2026-11-06T05:48:20Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
 
 Report Summary
 
@@ -345,12 +345,12 @@ Legend:
 - '-': Not scanned
 - '0': Clean (no security findings detected)
 
-2026-11-06T04:15:24Z	INFO	[vuln] Vulnerability scanning is enabled
-2026-11-06T04:15:29Z	INFO	Detected OS	family="debian" version="12.15"
-2026-11-06T04:15:29Z	INFO	[debian] Detecting vulnerabilities...	os_version="12" pkg_num=88
-2026-11-06T04:15:29Z	INFO	Number of language-specific files	num=1
-2026-11-06T04:15:29Z	INFO	[node-pkg] Detecting vulnerabilities...
-2026-11-06T04:15:29Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
+2026-11-06T05:48:20Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-06T05:48:25Z	INFO	Detected OS	family="debian" version="12.15"
+2026-11-06T05:48:25Z	INFO	[debian] Detecting vulnerabilities...	os_version="12" pkg_num=88
+2026-11-06T05:48:25Z	INFO	Number of language-specific files	num=1
+2026-11-06T05:48:25Z	INFO	[node-pkg] Detecting vulnerabilities...
+2026-11-06T05:48:25Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.69/guide/scanner/vulnerability#severity-selection for details.
 
 Report Summary
 
