@@ -24,4 +24,8 @@ class Theme(IdMixin, Base):
     mode: Mapped[str] = mapped_column(String(20))
     launcher_type: Mapped[str] = mapped_column(String(20))
     launcher_position: Mapped[str] = mapped_column(String(20))
+    # The uploaded images, each {"object_key", "content_type", "size_bytes", "content_hash",
+    # "uploaded_at"}; None when there is none.
+    logo: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    avatar: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -7,7 +7,7 @@ export type SavedTheme = Schemas["ThemeOut"];
 export type ThemeSettings = Schemas["ThemeSettings"];
 export type ThemeFont = Schemas["FontOut"];
 
-const themeKey = (organisationId: string) => ["theme", organisationId] as const;
+export const themeKey = (organisationId: string) => ["theme", organisationId] as const;
 
 export function useTheme(organisationId: string) {
   return useQuery({

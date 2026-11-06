@@ -733,6 +733,20 @@
         "title": "CompletePasswordResetRequest",
         "type": "object"
       },
+      "ConfirmImageUploadRequest": {
+        "properties": {
+          "upload_id": {
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id"
+        ],
+        "title": "ConfirmImageUploadRequest",
+        "type": "object"
+      },
       "ConfirmUploadRequest": {
         "properties": {
           "content_hash": {
@@ -3520,6 +3534,62 @@
         "title": "SignUpRequest",
         "type": "object"
       },
+      "StartImageUploadRequest": {
+        "properties": {
+          "filename": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "size_bytes"
+        ],
+        "title": "StartImageUploadRequest",
+        "type": "object"
+      },
+      "StartImageUploadResponse": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "method": {
+            "default": "PUT",
+            "title": "Method",
+            "type": "string"
+          },
+          "upload_id": {
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id",
+          "url",
+          "content_type",
+          "expires_at"
+        ],
+        "title": "StartImageUploadResponse",
+        "type": "object"
+      },
       "StartUploadRequest": {
         "properties": {
           "filename": {
@@ -3701,6 +3771,43 @@
         "title": "ThemeColours",
         "type": "object"
       },
+      "ThemeImageKind": {
+        "enum": [
+          "logo",
+          "avatar"
+        ],
+        "title": "ThemeImageKind",
+        "type": "string"
+      },
+      "ThemeImageOut": {
+        "properties": {
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "content_type",
+          "size_bytes",
+          "uploaded_at"
+        ],
+        "title": "ThemeImageOut",
+        "type": "object"
+      },
       "ThemeMode": {
         "enum": [
           "light",
@@ -3712,6 +3819,16 @@
       },
       "ThemeOut": {
         "properties": {
+          "avatar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThemeImageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "colours": {
             "$ref": "#/components/schemas/ThemeColours"
           },
@@ -3723,6 +3840,16 @@
           },
           "launcher_type": {
             "$ref": "#/components/schemas/LauncherType"
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThemeImageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "mode": {
             "$ref": "#/components/schemas/ThemeMode"
@@ -3754,7 +3881,9 @@
           "mode",
           "launcher_type",
           "launcher_position",
-          "updated_at"
+          "updated_at",
+          "logo",
+          "avatar"
         ],
         "title": "ThemeOut",
         "type": "object"
@@ -10610,7 +10739,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the Theme. It applies at once. Colours that fail contrast are saved: the\nStudio warns about them but never blocks.",
+        "description": "Replaces the Theme's settings; its images stay. It applies at once. Colours that fail\ncontrast are saved: the Studio warns about them but never blocks.",
         "operationId": "saveTheme",
         "parameters": [
           {
@@ -10677,6 +10806,328 @@
           }
         },
         "summary": "Save Theme",
+        "tags": [
+          "theme"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/theme/images/{kind}": {
+      "delete": {
+        "description": "Removes the Theme's logo or avatar and deletes its file. Removing one there is none of\nchanges nothing.",
+        "operationId": "removeThemeImage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThemeImageKind"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Image",
+        "tags": [
+          "theme"
+        ]
+      },
+      "get": {
+        "description": "The Theme's logo or avatar itself. Any Member can fetch it.",
+        "operationId": "getThemeImage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThemeImageKind"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {},
+              "image/png": {},
+              "image/webp": {}
+            },
+            "description": "The image."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Image",
+        "tags": [
+          "theme"
+        ]
+      },
+      "put": {
+        "description": "Checks the uploaded image and makes it the Theme's logo or avatar, replacing the one it\nhad. It applies at once and is recorded as ``theme.updated``.",
+        "operationId": "confirmThemeImageUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThemeImageKind"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The image hasn't reached storage yet. Upload it, then save. / This upload wasn't found or has expired. Start the upload again."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The stored file isn't an image of the declared type, or is too large."
+          }
+        },
+        "summary": "Confirm Image Upload",
+        "tags": [
+          "theme"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/theme/images/{kind}/uploads": {
+      "post": {
+        "description": "Checks the image type (PNG, JPEG or WebP) and size, then answers with a presigned URL to\nPUT the image to.",
+        "operationId": "startThemeImageUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ThemeImageKind"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartImageUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The image is larger than the Theme image limit."
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Upload a PNG, JPEG or WebP image."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Image Upload",
         "tags": [
           "theme"
         ]
