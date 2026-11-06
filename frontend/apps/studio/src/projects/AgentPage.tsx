@@ -1,77 +1,13 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
-import { FormError, formValues } from "../auth/AuthLayout";
-import { type Agent, agentFailure, askPlayground, startConversation, useAgent, useSaveDraft } from "./agents";
+import { FormError } from "../auth/AuthLayout";
+import { type Agent, agentFailure, askPlayground, startConversation, useAgent } from "./agents";
+import { DraftEditor } from "./DraftEditor";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 
 function useAgentParams() {
   return useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId" });
-}
-
-/**
- * The Agent's Draft: its system prompt and how many Chunks it is given. Saving keeps the Draft's
- * other settings as they are (the full editor arrives with ticket 04-07).
- */
-function DraftForm({ agent, organisationId }: { agent: Agent; organisationId: string }) {
-  const save = useSaveDraft(organisationId, agent.project_id, agent.id);
-
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const values = formValues(event.currentTarget, ["system_prompt", "top_k"]);
-    const { behaviour, retrieval } = agent.draft;
-    save.mutate({
-      behaviour: { ...behaviour, system_prompt: values.system_prompt },
-      retrieval: { ...retrieval, top_k: Number(values.top_k) },
-    });
-  }
-
-  return (
-    <form aria-labelledby="draft-heading" onSubmit={onSubmit} className="space-y-3">
-      <h2 id="draft-heading" className="text-lg font-semibold">
-        Draft
-      </h2>
-      <FormError message={agentFailure(save.error)} />
-      <div>
-        <label htmlFor="system-prompt" className="block text-sm font-medium">
-          System prompt
-        </label>
-        <textarea
-          id="system-prompt"
-          name="system_prompt"
-          rows={8}
-          maxLength={20000}
-          defaultValue={agent.draft.behaviour.system_prompt}
-          className={`${INPUT} font-mono text-sm`}
-        />
-      </div>
-      <div>
-        <label htmlFor="top-k" className="block text-sm font-medium">
-          Chunks per answer (top-k)
-        </label>
-        <input
-          id="top-k"
-          name="top_k"
-          type="number"
-          required
-          min={1}
-          max={20}
-          defaultValue={agent.draft.retrieval.top_k}
-          className={`${INPUT} w-24`}
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={save.isPending} className={BUTTON}>
-          {save.isPending ? "Saving…" : "Save Draft"}
-        </button>
-        {save.isSuccess && (
-          <span role="status" className="text-sm text-slate-700">
-            Draft saved
-          </span>
-        )}
-      </div>
-    </form>
-  );
 }
 
 type ChatMessage = { role: "user" | "assistant"; content: string; usage?: string };
@@ -177,7 +113,7 @@ export function AgentPage() {
       <>
         <h2 className="text-xl font-semibold">{agent.data.name}</h2>
         <div className="grid gap-8 lg:grid-cols-2">
-          <DraftForm key={agent.data.id} agent={agent.data} organisationId={organisationId} />
+          <DraftEditor key={agent.data.id} agent={agent.data} organisationId={organisationId} />
           <Playground key={`playground-${agent.data.id}`} agent={agent.data} organisationId={organisationId} />
         </div>
       </>

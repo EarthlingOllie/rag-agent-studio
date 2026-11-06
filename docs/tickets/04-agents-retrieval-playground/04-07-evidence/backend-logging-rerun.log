@@ -1,0 +1,6 @@
+$ uv run pytest --no-cov tests/integration/test_logging.py (rerun 1) @ 61be96d
+7 passed in 25.01s
+$ uv run pytest --no-cov tests/integration/test_logging.py (rerun 2) @ 61be96d
+7 passed in 27.09s
+$ uv run pytest --no-cov tests/integration/test_logging.py (rerun 3) @ 61be96d
+7 passed in 28.07s
