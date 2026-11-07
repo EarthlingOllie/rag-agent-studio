@@ -119,6 +119,12 @@ class Settings(BaseSettings):
     # Scans Chunks for instructions aimed at an AI during ingestion: the heuristic baseline, or
     # the rule-driven fake (tests). Spec 08 adds the local ONNX classifier.
     injection_classifier: Literal["heuristic", "fake"] = "heuristic"
+    # Checks every Visitor message before the model sees it (the input Guardrail): the local
+    # ONNX prompt-injection model (bundled in the API image), the heuristic patterns (stacks
+    # built without the model), or the rule-driven fake (tests).
+    input_classifier: Literal["local", "heuristic", "fake"] = "local"
+    # The local model's score, from 0 to 1, at or above which a message is flagged.
+    input_classifier_threshold: float = Field(default=0.5, gt=0, le=1)
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
     # Transient ingestion failures (the Embedding Model's provider failing) are retried

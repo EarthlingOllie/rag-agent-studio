@@ -42,6 +42,7 @@ from app.documents.models import Chunk, Document
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
+from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent, blocked
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
 from app.projects.instructions import project_version
@@ -50,7 +51,7 @@ from app.projects.service import active_project
 from app.retrieval.service import RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import Turn
-from app.runtime.runtime import CitationEvent, DoneEvent, ReplaceEvent, TokenEvent, run_turn
+from app.runtime.runtime import CitationEvent, DoneEvent, ReplaceEvent, TokenEvent
 from app.tenancy.repository import OrganisationScope
 
 
@@ -147,11 +148,13 @@ async def get_conversation(
 
 
 def _turns(messages: list[Message]) -> list[Turn]:
-    """Each question with the answer that followed it; a question left unanswered is skipped."""
+    """Each question with the answer that followed it. A question left unanswered is skipped,
+    and so is one the input Guardrail blocked: an attack isn't replayed to the model later."""
     return [
         Turn(question.content, answer.content)
         for question, answer in itertools.pairwise(messages)
         if (question.role, answer.role) == (MessageRole.USER, MessageRole.ASSISTANT)
+        and not blocked(answer.guardrail_outcomes)
     ]
 
 
@@ -358,12 +361,16 @@ async def answer(
     *,
     sessionmaker: async_sessionmaker[AsyncSession],
     gateway: ModelGateway,
+    guardrails: GuardrailPipeline,
     embedders: dict[str, Embedder],
     clock: Clock,
-) -> AsyncIterator[TokenEvent | ReplaceEvent | CitationEvent | ErrorEvent | Answered]:
+) -> AsyncIterator[
+    TokenEvent | ReplaceEvent | RefusalEvent | CitationEvent | ErrorEvent | Answered
+]:
     """Streams the answer's tokens and citations (or the replacement of an answer that leaked
-    the Canary token), then saves the answer, with what retrieval found for it and the
-    Guardrail outcomes, and ends with ``Answered``. If the provider fails, it ends with an
+    the Canary token, or the refusal of a question the input Guardrail blocked), then saves
+    the answer, with what retrieval found for it and the Guardrail outcomes, and ends with
+    ``Answered``. If the provider fails, it ends with an
     ``ErrorEvent`` instead and saves no answer, so the question is not remembered."""
     started = time.perf_counter()
     first_token_ms: int | None = None
@@ -388,7 +395,7 @@ async def answer(
                 session, prepared.project, query, settings, embedders, reranker=reranker
             )
 
-        async for event in run_turn(
+        async for event in guardrails.run_turn(
             prepared.turns,
             prepared.config,
             prepared.instructions,
@@ -401,12 +408,13 @@ async def answer(
                     first_token_ms = _elapsed_ms(started)
                 yield event
                 continue
-            if isinstance(event, CitationEvent | ReplaceEvent | ErrorEvent):
+            if isinstance(event, CitationEvent | ReplaceEvent | RefusalEvent | ErrorEvent):
                 yield event
                 continue
             latency_ms = _elapsed_ms(started)
             now = clock.now()
             usage = TokenUsage(event.input_tokens, event.output_tokens)
+            asked_none = event.fallback or event.refused
             pricing = await credential_pricing(session, chosen.credential)
             message = Message(
                 organisation_id=prepared.organisation_id,
@@ -421,9 +429,9 @@ async def answer(
                     prepared.instructions_source if prepared.agent_version_id is None else None
                 ),
                 instructions_version_id=prepared.instructions_version_id,
-                # A fallback reply asked no model, so it names none.
-                model_provider=None if event.fallback else chosen.credential.provider,
-                model_name=None if event.fallback else chosen.model,
+                # A fallback reply or a refusal asked no model, so it names none.
+                model_provider=None if asked_none else chosen.credential.provider,
+                model_name=None if asked_none else chosen.model,
                 input_tokens=event.input_tokens,
                 output_tokens=event.output_tokens,
                 first_token_ms=first_token_ms if first_token_ms is not None else latency_ms,

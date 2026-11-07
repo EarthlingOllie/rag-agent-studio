@@ -48,6 +48,10 @@ x-backend: &backend
     # The ingestion scan flags Chunks that look like instructions to an AI with the heuristic
     # classifier (spec 08 adds the ONNX one).
     INJECTION_CLASSIFIER: ${INJECTION_CLASSIFIER:-heuristic}
+    # The input Guardrail checks every Visitor message with the local ONNX prompt-injection model
+    # bundled in the image. A stack built with BUNDLE_MODELS=false sets INPUT_CLASSIFIER=heuristic
+    # in .env (or the API downloads the model from Hugging Face on the first message).
+    INPUT_CLASSIFIER: ${INPUT_CLASSIFIER:-local}
   depends_on:
     postgres:
       condition: service_healthy

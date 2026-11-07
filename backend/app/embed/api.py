@@ -29,6 +29,7 @@ from app.auth.api import Db, ErrorResponse
 from app.documents.ports import IngestionPorts
 from app.embed import service
 from app.embed.tokens import TokenSigner
+from app.guardrails.pipeline import RefusalEvent
 from app.playground.api import QUESTION_MAX
 from app.playground.service import NoDefaultModelError, answer
 from app.projects.service import ProjectNotFoundError
@@ -175,8 +176,9 @@ def _sse(event: str, data: dict[str, Any]) -> str:
                 "Server-Sent Events: `token` events (`text`), then `citation` events "
                 "(`label`, `document_name`) and one `done` event (`message_id`); or, when the "
                 "answer leaks the Canary token, a `replace` event (`text`) then `done`; or, "
-                "when the model provider fails, one `error` event (`code`, and a `message` for "
-                "Visitors that names no model or credential)."
+                "when the input Guardrail blocks the message, a `refusal` event (`text`) then "
+                "`done`, and no model is asked; or, when the model provider fails, one `error` "
+                "event (`code`, and a `message` for Visitors that names no model or credential)."
             ),
         },
         **_errors((401, INVALID_TOKEN), (404, NO_LONGER_AVAILABLE), (503, TEMPORARILY_UNAVAILABLE)),
@@ -213,6 +215,7 @@ async def send_message(
             prepared,
             sessionmaker=request.app.state.sessionmaker,
             gateway=request.app.state.model_gateway,
+            guardrails=request.app.state.guardrails,
             embedders=ingestion.embedders,
             clock=request.app.state.clock,
         ):
@@ -220,6 +223,8 @@ async def send_message(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
+            elif isinstance(event, RefusalEvent):
+                yield _sse("refusal", {"text": event.text})
             elif isinstance(event, ErrorEvent):
                 # The event's message is written for Editors (it may name the model or say to
                 # rotate the Provider Credential); Visitors get the generic one.
