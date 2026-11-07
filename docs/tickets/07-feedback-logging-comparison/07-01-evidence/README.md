@@ -78,6 +78,24 @@ The first clean-checkout pass at 8840273 found two problems, both outside this t
 - **Frontend coverage gate failed** at 99.96% statements / 99.94% branches ([log](clean-checkout/frontend-tests-8840273-flaky.log)). All 630 tests passed. The cause was a timing race in 05-04's `DraftEditor.test.tsx`, "a change still waiting to be saved is saved when the Editor leaves the page". At load average ~11, the 600 ms autosave timer sometimes fired between typing and clicking away, so the unmount flush (`DraftEditor.tsx:467`) was not run. Commit 186c718 makes the test change the field and leave in the same tick, so the result no longer depends on machine speed. It is a test-only change and has no effect on the backend, so the backend run at 8840273 still applies to 186c718.
 - **Two e2e specs failed** at load average 17–20 with the disk 98% full ([log](clean-checkout/e2e-8840273-under-load.log)): `agent-revert.spec.ts` and `bulk-rollout.spec.ts`, both from other tickets. Both hit the 30 s Playwright test timeout on the first try and on the retry. The other 68 specs passed, including `conversations.spec.ts`. Both specs passed in the original run and in the clean rerun at 186c718, so this was the overloaded machine and not a defect. Neither spec was changed.
 
+### Rerun after merging the latest candidate
+
+Before the merge, `origin/candidate` (`4ebc317`, with 06-02, 06-04 and 09-06) was merged into the branch with no conflicts (merge commit `0b715aa`). Every check was then run again in the branch's worktree, one at a time. The logs are in [merged-candidate/](merged-candidate/).
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` @ 0b715aa | exit 0 | [install.log](merged-candidate/install.log) |
+| `make lint` @ 0b715aa (ruff, ruff format, mypy --strict, eslint, tsc) | exit 0 | [lint.log](merged-candidate/lint.log) |
+| `make check-client` @ 0b715aa | "API client is up to date.", no diff | [client.log](merged-candidate/client.log) |
+| `make test-frontend` @ 0b715aa | 53 files, 689 tests; 100% on every metric; `embed.js` 1367 B / 778 B gzipped, within budget | [fe.log](merged-candidate/fe.log) |
+| `make test-backend` @ 0b715aa | **2056 passed**, 7 deselected (live); 100.00% lines and branches (9381 statements, 1058 branches) | [be.log](merged-candidate/be.log) |
+| Images (`build.sh`) @ 0b715aa | exit 0 | [images.log](merged-candidate/images.log) |
+| `make e2e` @ 0b715aa | **74 passed** (5.2 min), including `conversations.spec.ts` | [e2e.log](merged-candidate/e2e.log) |
+| gitleaks + `make audit` @ 0b715aa | no leaks; no known vulnerabilities | [security.log](merged-candidate/security.log) |
+| Infra | not run: this ticket changes no infra (09-06's infra came from candidate and was checked in its own PR) | n/a |
+
+An earlier pass on the first merge (`a11e8cb`, candidate `fa78cf9`) had every unit, lint and backend check green. Its e2e run, at load average 17–18, had one failure and one flaky test, both in other tickets' specs: `bulk-rollout.spec.ts` failed twice and `members.spec.ts` passed on retry ([log](merged-candidate/e2e-a11e8cb-under-load.log)). `bulk-rollout.spec.ts` had failed the same way under load in the clean-checkout pass above. Candidate then moved, and the run above, after the second merge, passed all 74 specs on the first try. A first `make lint` at `0b715aa` failed only because eslint read a `playwright-report/` folder left in the worktree by that failed e2e run. The folder is untracked and git-ignored, so a clean checkout never has it. The folder was deleted and lint passed.
+
 ## Gaps and judgement calls
 
 - **Seams not confirmed with a human.** The TDD skill asks for the seams to be agreed first; no human is reachable in this run, so the spec's own seams (API, network, end-to-end) were used.
