@@ -43,7 +43,7 @@ async function agent(request: APIRequestContext, organisation: string, name: str
 }
 
 /** A Visitor's browser (no Studio session) on the demo host page showing the Agent. */
-async function visit(browser: Browser, publicId: string, setUp?: (context: BrowserContext) => Promise<void>) {
+async function visit(browser: Browser, publicId: string, setUp?: (context: BrowserContext) => Promise<unknown>) {
   const context = await browser.newContext();
   if (setUp) await setUp(context);
   const host = await context.newPage();
