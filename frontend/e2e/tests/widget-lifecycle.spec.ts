@@ -33,7 +33,9 @@ async function agent(request: APIRequestContext, organisation: string, name: str
   expect(created.status()).toBe(201);
   const { id, public_id: publicId } = (await created.json()) as { id: string; public_id: string };
   const agentPath = `${projectPath}/agents/${id}`;
-  const origins = await request.put(`${agentPath}/allowed-origins`, { data: { origins: [new URL(HOST_URL).origin] } });
+  const origins = await request.patch(`${agentPath}/operational-settings`, {
+    data: { allowed_origins: [new URL(HOST_URL).origin] },
+  });
   expect(origins.status()).toBe(200);
   if (publish) {
     const version = await request.post(`${agentPath}/versions`, { data: { note: "First release" } });
