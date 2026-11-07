@@ -63,3 +63,38 @@ output "log_group_names" {
   description = "CloudWatch log group of each service, keyed by service."
   value       = { for k, g in aws_cloudwatch_log_group.service : k => g.name }
 }
+
+output "task_definition_arns" {
+  description = "Task definition ARN of each service at the current image tag, keyed by service. The deploy workflow rolls each service onto it after migrations succeed."
+  value       = { for k, t in aws_ecs_task_definition.this : k => t.arn }
+}
+
+output "migration_task" {
+  description = "How the deploy workflow runs the one-off migration task: task definition, container, private subnets and security group."
+  value = {
+    task_definition_arn = aws_ecs_task_definition.migrate.arn
+    container_name      = "migrate"
+    subnet_ids          = var.private_subnet_ids
+    security_group_id   = aws_security_group.migrate.id
+  }
+}
+
+output "migration_security_group_id" {
+  description = "Security group of the migration task: the database admits it."
+  value       = aws_security_group.migrate.id
+}
+
+output "migration_task_role_policy" {
+  description = "Policy document of the migration task role (null: no permissions)."
+  value       = null
+}
+
+output "migration_execution_role_policy" {
+  description = "Policy document of the migration task's execution role."
+  value       = local.migration_execution_role_policy
+}
+
+output "task_environment" {
+  description = "Plain environment variables of each container (api, worker, beat, migrate), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
+  value       = merge(local.environment, { migrate = local.migrate_environment })
+}

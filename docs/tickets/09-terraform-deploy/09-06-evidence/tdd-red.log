@@ -1,0 +1,101 @@
+Red: this ticket's tests run against origin/candidate (e77f204), before the implementation.
+Each test file is copied from the branch onto candidate; the code under test is candidate's.
+
+$ terraform -chdir=infra/modules/ecs test
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... pass
+  run "services_reach_only_their_data_stores_and_https"... pass
+  run "deployments_roll_back_and_beat_never_runs_twice"... pass
+  run "outputs_the_cluster_services_and_the_bedrock_trust_principal"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer"... pass
+  run "rejects_an_unknown_cpu_value"... pass
+  run "accepts_every_fargate_cpu_size"... pass
+  run "accepts_4_vcpu_tasks"... pass
+  run "rejects_a_missing_service_size"... pass
+  run "rejects_two_beats"... pass
+  run "rejects_a_negative_count"... pass
+  run "rejects_the_latest_tag"... pass
+  run "rejects_an_image_from_outside_ecr"... pass
+  run "rejects_a_repository_arn_that_is_not_ecr"... pass
+  run "rejects_keeping_logs_forever"... pass
+  run "rejects_a_logfire_secret_that_is_not_a_secret_arn"... pass
+  run "rejects_a_header_name_with_spaces"... pass
+  run "rejects_fractional_secret_versions"... pass
+  run "rejects_a_single_public_subnet"... pass
+  run "rejects_no_private_subnets"... pass
+  run "rejects_arns_of_the_wrong_kind"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "alb_deletion_protection_is_off_for_the_demo_and_can_be_turned_on"... pass
+  run "the_demo_alb_can_be_destroyed_in_one_run"... pass
+  run "migrations_run_as_a_one_off_task_on_the_backend_image"... fail
+  run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https"... skip
+  run "outputs_how_to_run_the_migration_task_and_each_service_task_definition"... skip
+  run "the_migration_task_size_is_a_variable"... skip
+  run "rejects_a_migration_task_size_fargate_does_not_offer"... skip
+  run "a_migration_logfire_token_is_injected_when_given"... skip
+Failure! 43 passed, 1 failed, 5 skipped.
+exit 1
+
+$ terraform -chdir=infra/envs/demo test
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "wires_the_data_modules_into_the_environment"... pass
+  run "wires_the_compute_module_into_the_data_modules"... fail
+  run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb"... skip
+  run "outputs_everything_the_deploy_workflow_needs"... skip
+  run "a_domain_name_adds_acm_and_route53_to_the_demo"... skip
+  run "rejects_an_unknown_environment"... skip
+Failure! 2 passed, 1 failed, 4 skipped.
+exit 1
+
+$ scripts/deploy/tests/smoke.test.sh   # no scripts/deploy/smoke.sh on candidate
+FAIL passes_when_health_studio_and_the_widget_shell_respond: exit 127, expected 0. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user
+FAIL passes_against_a_live_agent_whose_shell_names_its_allowed_origins: exit 127, expected 0. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0
+FAIL fails_when_the_health_endpoint_reports_an_error: exit 127, expected 1. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user-rag-ag
+FAIL fails_when_health_answers_200_without_status_ok: exit 127, expected 1. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user-rag-ag
+FAIL fails_when_the_studio_is_not_served: exit 127, expected 1. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user-rag-agent-studio/6
+FAIL fails_when_the_studio_page_is_not_the_studio: exit 127, expected 1. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user-rag-agent
+FAIL fails_when_the_studio_is_not_html: exit 127, expected 1. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user-rag-agent-studio/6b1
+FAIL fails_when_the_widget_shell_has_no_csp: exit 127, expected 1. Output: scripts/deploy/tests/smoke.test.sh: line 48: /tmp/claude-0/-home-user-rag-agent-studi
+exit 1
+
+$ scripts/deploy/tests/deploy.test.sh   # no scripts/deploy/deploy.sh on candidate
+FAIL deploys_in_order_at_the_given_tag: exit 127, expected 0. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scrat
+FAIL deploys_in_order_at_the_given_tag: expected '^terraform -chdir=.*init -input=false -backend-config=bucket=rag-agent-studio-tfstate-123456789012 -backend-co
+FAIL deploys_in_order_at_the_given_tag: expected '^terraform .* apply .*-target=module.ecr' (line none) before '^aws ecr describe-images --repository-name rag-a
+FAIL deploys_in_order_at_the_given_tag: expected '^aws ecr describe-images' (line none) before '^terraform .* apply -input=false -auto-approve -var=image_tag=01
+FAIL deploys_in_order_at_the_given_tag: expected '^terraform .* apply -input=false -auto-approve -var=image_tag=0123abc$' (line none) before '^aws ecs run-task'
+FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs run-task' (line none) before '^aws ecs wait tasks-stopped --cluster studio-demo-ecs --tasks arn:aws:e
+FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs wait tasks-stopped' (line none) before '^aws ecs describe-tasks' (line none)
+FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs describe-tasks' (line none) before '^aws ecs update-service' (line none)
+exit 141
+
+$ scripts/deploy/tests/destroy.test.sh   # no scripts/deploy/destroy.sh on candidate
+FAIL destroys_the_demo_when_the_confirmation_is_typed_exactly: exit 127, expected 0. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-
+FAIL refuses_without_a_confirmation: exit 127, expected 1. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchp
+FAIL refuses_a_confirmation_that_is_nearly_right: exit 127, expected 1. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51
+FAIL refuses_a_confirmation_with_extra_text: exit 127, expected 1. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/
+FAIL refuses_the_environment_name_alone: exit 127, expected 1. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scra
+FAIL requires_the_state_bucket: exit 127, expected 2. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/re
+FAIL a_failed_destroy_fails_the_run: exit 127, expected 1. Output: env: '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchp
+FAIL rejects_missing_arguments: scripts/deploy/tests/destroy.test.sh: line 38: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/sc
+exit 1
+
+Green: the same suites on the branch are in fresh-clone.log.
