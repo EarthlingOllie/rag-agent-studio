@@ -89,6 +89,7 @@ module "ecs" {
   documents_bucket_arn = module.storage.documents_bucket_arn
   credentials_key_arn  = module.kms.credentials_key_arn
   data_key_arn         = module.kms.data_key_arn
+  studio_url           = module.cdn.url
 
   database = {
     address             = module.database.address

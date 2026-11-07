@@ -37,6 +37,20 @@ To deploy from a laptop instead, with credentials for the account: build the fro
 
 The GitHub deploy role ARN (the principal GitHub Actions assumes) is the bootstrap's `deploy_role_arn` output.
 
+### What the tasks are given
+
+The API, worker, Beat and migration task run the same backend image, and their settings are validated at start (`backend/app/core/settings.py`). The ecs module gives each container plain values as environment variables and secrets by reference to Secrets Manager:
+
+| Container | Environment | Secrets |
+|---|---|---|
+| all four | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true` | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
+| API and worker | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
+| API only | `BEDROCK_PLATFORM_PRINCIPAL` (its own task role) | `SESSION_SECRET` |
+| Beat | | `REDIS_AUTH_TOKEN` |
+| migration | | `DATABASE_PASSWORD` |
+
+The settings build `DATABASE_URL` (`postgresql+asyncpg://…?ssl=require`) and `REDIS_URL` (`rediss://…?ssl_cert_reqs=required`) from the parts. Beat and the migration task get the addresses they never connect to because every process loads the same settings. [`infra/modules/ecs/tests/task-settings.json`](../infra/modules/ecs/tests/task-settings.json) records this table; the ecs module's `terraform test` and the backend's `tests/unit/test_aws_task_settings.py` both check against it, so a change on either side that would stop the tasks starting fails a test. Bump the ecs module's `key_wrapper_secret_version` for a new `LOCAL_KEY_WRAPPER_KEY` (issued widget tokens stop working).
+
 ## Destroy (stop paying)
 
 Actions, **destroy**, Run workflow, and type `destroy demo` into the confirmation. Anything else fails the run before it asks AWS for credentials, and nothing changes. The job runs [`scripts/deploy/destroy.sh`](../scripts/deploy/destroy.sh), which checks the confirmation again and runs `terraform destroy`. Buckets and ECR repositories are created with `force_destroy` / `force_delete`, and the ALB without deletion protection, so one run removes everything, including uploaded Documents and the database (RDS skips its final snapshot in the demo). The state bucket and the deploy role stay, so the next deploy works without re-bootstrapping.

@@ -1,4 +1,3 @@
-$ docs/tickets/09-terraform-deploy/09-06-evidence/gate.sh   # at a74940d
 caught  ecs_migration_runs_another_command (exit 1):   run "migrations_run_as_a_one_off_task_on_the_backend_image"... fail
 caught  ecs_migration_gets_the_redis_token (exit 1):   run "migrations_run_as_a_one_off_task_on_the_backend_image"... fail
 caught  ecs_migration_reaches_redis (exit 1):   run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https"... fail
@@ -7,13 +6,20 @@ caught  ecs_migration_runs_in_public_subnets (exit 1):   run "outputs_how_to_run
 caught  demo_database_does_not_admit_migrations (exit 1):   run "wires_the_compute_module_into_the_data_modules"... fail
 caught  demo_deploy_output_lacks_the_bucket (exit 1):   run "outputs_everything_the_deploy_workflow_needs"... fail
 caught  demo_deploy_output_has_a_stale_tag (exit 1):   run "outputs_everything_the_deploy_workflow_needs"... fail
+caught  ecs_drops_the_local_key_wrapper_key (exit 1):   run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... fail
+caught  ecs_database_without_tls (exit 1):   run "task_settings_match_the_recorded_contract"... fail
+caught  ecs_beat_without_a_database_address (exit 1):   run "task_settings_match_the_recorded_contract"... fail
+caught  contract_beat_without_a_database_address (exit 1): =================================== FAILURES ===================================
+caught  settings_rediss_without_cert_reqs (exit 1): =================================== FAILURES ===================================
+caught  settings_database_without_ssl (exit 1): =================================== FAILURES ===================================
+caught  settings_password_not_escaped (exit 1): =================================== FAILURES ===================================
 caught  demo_drops_the_cdn (exit 1): FAIL cdn: envs/demo does not compose it
 caught  deploy_ignores_a_failed_migration (exit 1): FAIL a_failed_migration_stops_before_any_service_rolls: exit 0, expected 1. Output: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
 caught  deploy_does_not_wait_for_the_migration (exit 1): FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs run-task' (line 7) before '^aws ecs wait tasks-stopped --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-
 caught  deploy_does_not_wait_for_stable_services (exit 1): FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs update-service' (line 10) before '^aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api studio-demo-ecs-beat
-caught  deploy_skips_the_smoke_check (exit 1): FAIL deploys_in_order_at_the_given_tag: expected 'Smoke check passed: http://127.0.0.1:33205' in: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
+caught  deploy_skips_the_smoke_check (exit 1): FAIL deploys_in_order_at_the_given_tag: expected 'Smoke check passed: http://127.0.0.1:38153' in: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
 caught  deploy_does_not_invalidate_the_loader (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: invalidation was: aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html --query Inval
-caught  deploy_caches_widget_js_for_a_year (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: sync was: aws s3 sync /tmp/tmp.b1Q67bNOJZ/static s3://studio-demo-static-123456789012 --delete --cache-control public,max
+caught  deploy_caches_widget_js_for_a_year (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: sync was: aws s3 sync /tmp/tmp.qnZGN3K1X9/static s3://studio-demo-static-123456789012 --delete --cache-control public,max
 caught  deploy_uploads_only_the_studio (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: uploaded: ./assets/index-abc123.js ./index.html 
 caught  deploy_runs_migrations_with_a_public_ip (exit 1): FAIL runs_the_migration_task_in_the_private_subnets: run-task call was: aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-
 caught  deploy_accepts_latest (exit 1): FAIL rejects_the_tag_'latest': exit 0, expected 2. Output: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
@@ -25,5 +31,5 @@ caught  smoke_accepts_any_html (exit 1): FAIL fails_when_the_studio_page_is_not_
 caught  smoke_does_not_retry (exit 1): FAIL retries_each_check_before_failing: expected 'after 3 attempts' in: ::error title=Smoke check failed::health: /api/health answered 503: {"status":"error"} (after 1 attempts)
 caught  destroy_without_confirmation (exit 1): FAIL refuses_without_a_confirmation: exit 0, expected 1. Output: The demo environment is destroyed.
 caught  destroy_case_insensitive (exit 1): FAIL refuses_a_confirmation_that_is_nearly_right: exit 0, expected 1. Output: The demo environment is destroyed.
-caught 26, missed 0
+caught 33, missed 0
 exit 0

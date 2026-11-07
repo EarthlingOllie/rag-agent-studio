@@ -4,8 +4,10 @@
 # and security group: it reaches only Postgres and HTTPS, and its task role has no AWS permissions at all.
 
 locals {
-  migrate_environment = merge(local.common_environment, local.database_environment)
-  migrate_secrets     = merge({ DATABASE_PASSWORD = var.database.password_secret_arn }, local.logfire_secret)
+  # The settings need a Redis address and the local key too, though migrations use neither: no AUTH token is given
+  # and the security group has no route to Redis.
+  migrate_environment = local.base_environment
+  migrate_secrets     = merge({ DATABASE_PASSWORD = var.database.password_secret_arn }, local.key_wrapper_secret, local.logfire_secret)
 
   migration_execution_role_policy = {
     Version = "2012-10-17"

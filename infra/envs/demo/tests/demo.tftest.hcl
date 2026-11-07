@@ -177,6 +177,16 @@ run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb" {
   }
 
   assert {
+    condition     = module.ecs.task_environment.api.STUDIO_URL == module.cdn.url && module.ecs.task_environment.worker.STUDIO_URL == module.cdn.url
+    error_message = "The API and worker must put the CloudFront URL in links in emails (STUDIO_URL)."
+  }
+
+  assert {
+    condition     = module.ecs.task_environment.api.BEDROCK_PLATFORM_PRINCIPAL == output.bedrock_trust_principal
+    error_message = "The API must show Organisations the same trust principal the environment outputs."
+  }
+
+  assert {
     condition     = module.storage.documents_cors_allowed_origin == module.cdn.url
     error_message = "Browsers may upload Documents to S3 only from the CloudFront origin (spec 09 story 10)."
   }

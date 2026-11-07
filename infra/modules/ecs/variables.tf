@@ -243,6 +243,27 @@ variable "session_secret_version" {
   }
 }
 
+variable "key_wrapper_secret_version" {
+  description = "Bump to generate a new LOCAL_KEY_WRAPPER_KEY, which signs widget tokens. Bumping it invalidates every issued widget token."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.key_wrapper_secret_version >= 1 && floor(var.key_wrapper_secret_version) == var.key_wrapper_secret_version
+    error_message = "key_wrapper_secret_version must be a positive whole number."
+  }
+}
+
+variable "studio_url" {
+  description = "The Studio's public HTTPS address (the cdn module's url). The API and worker put it in links in emails."
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://[a-z0-9.-]+$", var.studio_url))
+    error_message = "studio_url must be an https:// origin with no path, for example https://d111111abcdef8.cloudfront.net."
+  }
+}
+
 variable "alb_deletion_protection" {
   description = "Block deletion of the ALB. Off for the demo so it can be destroyed in one run (spec 09 story 27)."
   type        = bool

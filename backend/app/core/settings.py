@@ -2,7 +2,8 @@
 
 import base64
 import binascii
-from typing import Literal
+from typing import Any, Literal
+from urllib.parse import quote
 
 from pydantic import (
     Field,
@@ -28,6 +29,19 @@ class Settings(BaseSettings):
     environment: Literal["local", "test", "demo", "production"] = "local"
     database_url: PostgresDsn
     redis_url: RedisDsn
+    # In AWS the URLs arrive in parts: ECS injects the password and AUTH token from Secrets
+    # Manager as their own variables (ticket 09-06). Unset DATABASE_URL or REDIS_URL is then
+    # built from these; a whole URL always wins.
+    database_host: str | None = None
+    database_port: int = Field(default=5432, gt=0, lt=65536)
+    database_name: str | None = None
+    database_user: str | None = None
+    database_password: SecretStr | None = None
+    database_tls: bool = False
+    redis_host: str | None = None
+    redis_port: int = Field(default=6379, gt=0, lt=65536)
+    redis_tls: bool = False
+    redis_auth_token: SecretStr | None = None
     celery_task_always_eager: bool = False
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
     # How long a Studio session lasts without signing in again.
@@ -135,6 +149,36 @@ class Settings(BaseSettings):
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.
     logfire_base_url: HttpUrl | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _urls_from_parts(cls, data: dict[str, Any]) -> dict[str, Any]:
+        # Runs on the raw values from the environment, before any are parsed.
+        if not data.get("database_url") and data.get("database_host"):
+            if not (data.get("database_name") and data.get("database_user")):
+                raise ValueError(
+                    "DATABASE_HOST is set, so DATABASE_NAME and DATABASE_USER are required"
+                )
+            data["database_url"] = _url(
+                "postgresql+asyncpg",
+                _credentials(data["database_user"], data.get("database_password")),
+                data["database_host"],
+                data.get("database_port", 5432),
+                data["database_name"],
+                "ssl=require" if _true(data.get("database_tls")) else "",
+            )
+        if not data.get("redis_url") and data.get("redis_host"):
+            tls = _true(data.get("redis_tls"))
+            data["redis_url"] = _url(
+                "rediss" if tls else "redis",
+                _credentials("", data.get("redis_auth_token")),
+                data["redis_host"],
+                data.get("redis_port", 6379),
+                "0",
+                # redis-py and Celery both refuse a rediss:// URL that does not say how to verify.
+                "ssl_cert_reqs=required" if tls else "",
+            )
+        return data
+
     @field_validator("local_key_wrapper_key")
     @classmethod
     def _is_a_32_byte_key(cls, value: SecretStr) -> SecretStr:
@@ -151,6 +195,20 @@ class Settings(BaseSettings):
         if self.key_wrapper == "kms" and not self.kms_key_id:
             raise ValueError("KMS_KEY_ID is required when KEY_WRAPPER is kms")
         return self
+
+
+def _true(value: Any) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _credentials(user: str, secret: Any) -> str:
+    if secret is None:
+        return f"{quote(user, safe='')}@" if user else ""
+    return f"{quote(user, safe='')}:{quote(str(secret), safe='')}@"
+
+
+def _url(scheme: str, credentials: str, host: str, port: Any, path: str, query: str) -> str:
+    return f"{scheme}://{credentials}{host}:{port}/{path}" + (f"?{query}" if query else "")
 
 
 def load_settings() -> Settings:

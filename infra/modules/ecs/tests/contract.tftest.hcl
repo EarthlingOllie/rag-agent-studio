@@ -64,7 +64,20 @@ override_resource {
   values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" }
 }
 
+# Its own ARN for the local key wrapper secret, so the policies are shown to name it (the mock gives every secret one ARN).
+override_resource {
+  target = aws_secretsmanager_secret.platform["key-wrapper"]
+  values = { arn = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd" }
+}
+
+# The API's task role is the Bedrock trust principal the API is told about (BEDROCK_PLATFORM_PRINCIPAL).
+override_resource {
+  target = aws_iam_role.task["api"]
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-api-task" }
+}
+
 variables {
+  studio_url           = "https://d111111abcdef8.cloudfront.net"
   name_prefix          = "studio-demo"
   tags                 = { Environment = "demo", Project = "rag-agent-studio" }
   vpc_id               = "vpc-0123456789abcdef0"
@@ -440,19 +453,22 @@ run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values" {
   command = apply
 
   assert {
-    condition = { for k, t in aws_ecs_task_definition.this : k => jsondecode(t.container_definitions)[0].secrets } == {
-      api = [
-        { name = "DATABASE_PASSWORD", valueFrom = var.database.password_secret_arn },
-        { name = "REDIS_AUTH_TOKEN", valueFrom = var.cache.auth_token_secret_arn },
-        { name = "SESSION_SECRET", valueFrom = aws_secretsmanager_secret.platform["session"].arn },
-      ]
-      worker = [
-        { name = "DATABASE_PASSWORD", valueFrom = var.database.password_secret_arn },
-        { name = "REDIS_AUTH_TOKEN", valueFrom = var.cache.auth_token_secret_arn },
-      ]
-      beat = [
-        { name = "REDIS_AUTH_TOKEN", valueFrom = var.cache.auth_token_secret_arn },
-      ]
+    condition = { for k, t in aws_ecs_task_definition.this : k => { for e in jsondecode(t.container_definitions)[0].secrets : e.name => e.valueFrom } } == {
+      api = {
+        DATABASE_PASSWORD     = var.database.password_secret_arn
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        SESSION_SECRET        = aws_secretsmanager_secret.platform["session"].arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
+      worker = {
+        DATABASE_PASSWORD     = var.database.password_secret_arn
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
+      beat = {
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
     }
     error_message = "Each service must get only the secrets it needs, by reference to Secrets Manager."
   }
@@ -465,31 +481,22 @@ run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values" {
   }
 
   assert {
-    condition = { for e in jsondecode(aws_ecs_task_definition.this["api"].container_definitions)[0].environment : e.name => e.value } == {
-      ENVIRONMENT             = "demo"
-      AWS_REGION              = "eu-west-2"
-      DATABASE_HOST           = "studio-demo-database.abc.eu-west-2.rds.amazonaws.com"
-      DATABASE_PORT           = "5432"
-      DATABASE_NAME           = "studio"
-      DATABASE_USER           = "studio"
-      REDIS_HOST              = "master.studio-demo-cache.abc.euw2.cache.amazonaws.com"
-      REDIS_PORT              = "6379"
-      REDIS_TLS               = "true"
-      DOCUMENTS_BUCKET        = "studio-demo-documents-123456789012"
-      CREDENTIALS_KMS_KEY_ARN = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
-    }
-    error_message = "The API must get its connection settings as plain environment variables."
+    condition = (
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "OBJECT_STORE_BUCKET") &&
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "KMS_KEY_ID") &&
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].secrets : e.name], "DATABASE_PASSWORD")
+    )
+    error_message = "Beat learns nothing about Documents or the credentials key, and gets no database password."
   }
 
   assert {
-    condition = (
-      contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
-      contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "DOCUMENTS_BUCKET") &&
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "DOCUMENTS_BUCKET") &&
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "DATABASE_HOST")
-    )
-    error_message = "The API and worker learn the credentials key, and Beat learns nothing about the database or Documents."
+    condition     = aws_secretsmanager_secret.platform["key-wrapper"].kms_key_id == var.data_key_arn && aws_secretsmanager_secret_version.key_wrapper.secret_id == aws_secretsmanager_secret.platform["key-wrapper"].id
+    error_message = "The local key wrapper key must be stored encrypted with the data key."
+  }
+
+  assert {
+    condition     = (aws_secretsmanager_secret_version.key_wrapper.secret_string == null || aws_secretsmanager_secret_version.key_wrapper.secret_string == "") && aws_secretsmanager_secret_version.key_wrapper.secret_string_wo_version == 1
+    error_message = "The local key wrapper key must be written write-only, so it never reaches state."
   }
 
   assert {
@@ -631,7 +638,7 @@ run "each_service_has_its_own_least_privilege_execution_role" {
           Sid      = "ReadOwnSecrets"
           Effect   = "Allow"
           Action   = "secretsmanager:GetSecretValue"
-          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB"]
+          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd", "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB"]
         },
         {
           Sid       = "DecryptSecretsThroughSecretsManager"
@@ -642,24 +649,26 @@ run "each_service_has_its_own_least_privilege_execution_role" {
         },
       ]
     }
-    error_message = "Beat's execution role may pull the image, write its own logs and read only the Redis token."
+    error_message = "Beat's execution role may pull the image, write its own logs and read only the Redis token and the local key wrapper key."
   }
 
   assert {
     condition = output.execution_role_policies.api.Statement[3].Resource == [
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA",
+      "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd",
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB",
       aws_secretsmanager_secret.platform["session"].arn,
     ]
-    error_message = "The API's execution role may read exactly the database password, Redis token and session secret."
+    error_message = "The API's execution role may read exactly the database password, Redis token, local key wrapper key and session secret."
   }
 
   assert {
     condition = output.execution_role_policies.worker.Statement[3].Resource == [
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA",
+      "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd",
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB",
     ]
-    error_message = "The worker's execution role may read exactly the database password and Redis token."
+    error_message = "The worker's execution role may read exactly the database password, local key wrapper key and Redis token."
   }
 
   assert {
@@ -1044,20 +1053,11 @@ run "migrations_run_as_a_one_off_task_on_the_backend_image" {
   }
 
   assert {
-    condition = (
-      { for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].environment : e.name => e.value } == {
-        ENVIRONMENT   = "demo"
-        AWS_REGION    = "eu-west-2"
-        DATABASE_HOST = "studio-demo-database.abc.eu-west-2.rds.amazonaws.com"
-        DATABASE_PORT = "5432"
-        DATABASE_NAME = "studio"
-        DATABASE_USER = "studio"
-      } &&
-      { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom } == {
-        DATABASE_PASSWORD = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"
-      }
-    )
-    error_message = "The migration task gets only the database settings and the database password."
+    condition = { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom } == {
+      DATABASE_PASSWORD     = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"
+      LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+    }
+    error_message = "The migration task gets the database password and the local key its settings require, and no Redis token."
   }
 
   assert {
@@ -1111,7 +1111,7 @@ run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_
           Sid      = "ReadOwnSecrets"
           Effect   = "Allow"
           Action   = "secretsmanager:GetSecretValue"
-          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"]
+          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA", "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd"]
         },
         {
           Sid       = "DecryptSecretsThroughSecretsManager"
@@ -1122,7 +1122,7 @@ run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_
         },
       ]
     }
-    error_message = "The migration execution role may pull the image, write its own logs and read only the database password."
+    error_message = "The migration execution role may pull the image, write its own logs and read only the database password and the local key wrapper key."
   }
 
   assert {
@@ -1206,4 +1206,35 @@ run "a_migration_logfire_token_is_injected_when_given" {
     condition     = { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom }["LOGFIRE_TOKEN"] == "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
     error_message = "Migrations must trace to Logfire like the services when a token is given."
   }
+}
+
+# The backend's Settings are loaded from task-settings.json by backend/tests/unit/test_aws_task_settings.py. This run
+# pins the module to that file, so a container whose environment or secrets the backend cannot start with fails one
+# of the two suites (ticket 09-06).
+run "task_settings_match_the_recorded_contract" {
+  command = apply
+
+  assert {
+    condition = jsonencode(merge(
+      { for k, t in aws_ecs_task_definition.this : k => {
+        environment = { for e in jsondecode(t.container_definitions)[0].environment : e.name => e.value }
+        secrets     = sort([for e in jsondecode(t.container_definitions)[0].secrets : e.name])
+      } },
+      { migrate = {
+        environment = { for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].environment : e.name => e.value }
+        secrets     = sort([for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : e.name])
+      } },
+    )) == jsonencode({ for k, v in jsondecode(file("${path.module}/tests/task-settings.json")) : k => v if k != "_comment" })
+    error_message = "The containers' environment and secret names must match infra/modules/ecs/tests/task-settings.json, which the backend tests load into Settings."
+  }
+}
+
+run "rejects_a_studio_url_that_is_not_an_https_origin" {
+  command = plan
+
+  variables {
+    studio_url = "http://d111111abcdef8.cloudfront.net/studio"
+  }
+
+  expect_failures = [var.studio_url]
 }

@@ -93,3 +93,8 @@ output "migration_execution_role_policy" {
   description = "Policy document of the migration task's execution role."
   value       = local.migration_execution_role_policy
 }
+
+output "task_environment" {
+  description = "Plain environment variables of each container (api, worker, beat, migrate), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
+  value       = merge(local.environment, { migrate = local.migrate_environment })
+}

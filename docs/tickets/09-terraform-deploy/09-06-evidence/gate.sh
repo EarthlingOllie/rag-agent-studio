@@ -30,6 +30,9 @@ mutate() {
   rm -rf "$copy"
 }
 
+# The backend's settings tests against the copy's code: PYTHONPATH puts it ahead of the editable install.
+settings_tests() { (cd backend && PYTHONPATH=. "$repo/backend/.venv/bin/python" -m pytest -q --no-cov -p no:cacheprovider tests/unit/test_aws_task_settings.py tests/unit/test_settings_from_parts.py); }
+
 tf() { terraform -chdir="$1" init -backend=false -input=false -no-color >/dev/null && terraform -chdir="$1" test -no-color; }
 
 # --- Terraform: the migration task and the demo wiring ----------------------------------------------------------------
@@ -42,6 +45,22 @@ mutate ecs_migration_runs_in_public_subnets infra/modules/ecs/outputs.tf 'subnet
 mutate demo_database_does_not_admit_migrations infra/envs/demo/main.tf '    { migrate = module.ecs.migration_security_group_id },' '' tf infra/envs/demo
 mutate demo_deploy_output_lacks_the_bucket infra/envs/demo/outputs.tf '    static_bucket_name         = module.storage.static_bucket_name' '    static_bucket_name         = module.storage.documents_bucket_name' tf infra/envs/demo
 mutate demo_deploy_output_has_a_stale_tag infra/envs/demo/outputs.tf '    image_tag                  = var.image_tag' '    image_tag                  = "bootstrap"' tf infra/envs/demo
+
+# --- Task settings: what the containers are given must start the backend ---------------------------------------------
+mutate ecs_drops_the_local_key_wrapper_key infra/modules/ecs/main.tf 'key_wrapper_secret = { LOCAL_KEY_WRAPPER_KEY' 'key_wrapper_secret = { WIDGET_KEY' tf infra/modules/ecs
+mutate ecs_database_without_tls infra/modules/ecs/main.tf 'DATABASE_TLS  = "true"' 'DATABASE_TLS  = "false"' tf infra/modules/ecs
+mutate ecs_beat_without_a_database_address infra/modules/ecs/main.tf '    beat   = local.base_environment' '    beat   = merge(local.common_environment, local.cache_environment)' tf infra/modules/ecs
+mutate contract_beat_without_a_database_address infra/modules/ecs/tests/task-settings.json '"beat": {
+    "environment": {
+      "ENVIRONMENT": "demo",
+      "AWS_REGION": "eu-west-2",
+      "DATABASE_HOST": "studio-demo-database.abc.eu-west-2.rds.amazonaws.com",' '"beat": {
+    "environment": {
+      "ENVIRONMENT": "demo",
+      "AWS_REGION": "eu-west-2",' settings_tests
+mutate settings_rediss_without_cert_reqs backend/app/core/settings.py '"ssl_cert_reqs=required" if tls else ""' '""' settings_tests
+mutate settings_database_without_ssl backend/app/core/settings.py '"ssl=require" if _true(data.get("database_tls")) else ""' '""' settings_tests
+mutate settings_password_not_escaped backend/app/core/settings.py "{quote(str(secret), safe='')}" '{secret}' settings_tests
 
 # --- Composition ------------------------------------------------------------------------------------------------------
 mutate demo_drops_the_cdn infra/envs/demo/main.tf 'source                             = "../../modules/cdn"' 'source                             = "../../modules/cdn-old"' infra/tests/compose.test.sh
