@@ -309,8 +309,8 @@ async def test_the_detail_shows_a_dismissal_without_a_rating_and_nothing_when_un
     token = await conversation_token(visitor, public_id)
     await reply(visitor, public_id, token, "How much leave?")
     await dismiss(visitor, public_id, token)
-    untouched = await conversation_token(visitor, public_id)
     clock.advance(60)
+    untouched = await conversation_token(visitor, public_id)
     await reply(visitor, public_id, untouched, "And sick days?")
 
     newest, oldest = (await listed(owner, project_id))["items"]
