@@ -1,9 +1,9 @@
 ### Deploy at a tag that is only built locally (first deploy)
-$ scripts/deploy/deploy.sh 30f00be
+$ scripts/deploy/deploy.sh a74940d
 ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
 ==> Making sure the ECR repositories exist
-==> Pushing the images at 30f00be to 123456789012.dkr.ecr.eu-west-2.amazonaws.com
-==> terraform apply at image tag 30f00be
+==> Pushing the images at a74940d to 123456789012.dkr.ecr.eu-west-2.amazonaws.com
+==> terraform apply at image tag a74940d
 ==> Running the migration task
 ==> Rolling studio-demo-ecs-api onto arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-api:2
 ==> Rolling studio-demo-ecs-beat onto arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-beat:2
@@ -11,38 +11,38 @@ $ scripts/deploy/deploy.sh 30f00be
 ==> Waiting for studio-demo-ecs-api studio-demo-ecs-beat studio-demo-ecs-worker to stabilise
 ==> Uploading the Studio and widget builds to studio-demo-static-123456789012
 ==> Invalidating the HTML and the loader in E2EXAMPLE0ABCD
-==> Smoke checking http://127.0.0.1:46469
+==> Smoke checking http://127.0.0.1:39959
 ok   health
 ok   studio
 ok   widget_shell
-Smoke check passed: http://127.0.0.1:46469
-Deployed 30f00be: http://127.0.0.1:46469
+Smoke check passed: http://127.0.0.1:39959
+Deployed a74940d: http://127.0.0.1:39959
 exit 0
 --- cloud CLI calls, in order:
     terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo init -input=false -backend-config=bucket=rag-agent-studio-tfstate-123456789012 -backend-config=region=eu-west-2
     terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo apply -input=false -auto-approve -target=module.ecr
     aws sts get-caller-identity --query Account --output text
-    aws ecr describe-images --repository-name rag-agent-studio/api --image-ids imageTag=30f00be
-    docker image inspect rag-agent-studio/api:30f00be
+    aws ecr describe-images --repository-name rag-agent-studio/api --image-ids imageTag=a74940d
+    docker image inspect --format {{.Architecture}} rag-agent-studio/api:a74940d
     docker login --username AWS --password-stdin 123456789012.dkr.ecr.eu-west-2.amazonaws.com
     aws ecr get-login-password --region eu-west-2
-    docker tag rag-agent-studio/api:30f00be 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:30f00be
-    docker push 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:30f00be
-    docker tag rag-agent-studio/studio:30f00be 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/studio:30f00be
-    docker push 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/studio:30f00be
-    terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo apply -input=false -auto-approve -var=image_tag=30f00be
+    docker tag rag-agent-studio/api:a74940d 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:a74940d
+    docker push 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:a74940d
+    docker tag rag-agent-studio/studio:a74940d 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/studio:a74940d
+    docker push 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/studio:a74940d
+    terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo apply -input=false -auto-approve -var=image_tag=a74940d
     terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo output -json deploy
-    aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-migrate:2 --launch-type FARGATE --started-by deploy-30f00be --network-configuration awsvpcConfiguration={subnets=[subnet-0ccccccccccccccc3,subnet-0ddddddddddddddd4],securityGroups=[sg-0migrate000000001],assignPublicIp=DISABLED} --query tasks[0].taskArn --output text
+    aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-migrate:2 --launch-type FARGATE --started-by deploy-a74940d --network-configuration awsvpcConfiguration={subnets=[subnet-0ccccccccccccccc3,subnet-0ddddddddddddddd4],securityGroups=[sg-0migrate000000001],assignPublicIp=DISABLED} --query tasks[0].taskArn --output text
     aws ecs wait tasks-stopped --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef
     aws ecs describe-tasks --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef --query tasks[0].containers[?name==`migrate`].exitCode | [0] --output text
     aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-api --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-api:2 --query service.serviceName --output text
     aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-beat --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-beat:2 --query service.serviceName --output text
     aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-worker --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-worker:2 --query service.serviceName --output text
     aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api studio-demo-ecs-beat studio-demo-ecs-worker
-    aws s3 sync /tmp/tmp.f3bhVZ2ids/static s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js
-    aws s3 cp /tmp/tmp.f3bhVZ2ids/static/index.html s3://studio-demo-static-123456789012/index.html --cache-control no-cache
-    aws s3 cp /tmp/tmp.f3bhVZ2ids/static/embed.js s3://studio-demo-static-123456789012/embed.js --cache-control no-cache
-    aws s3 cp /tmp/tmp.f3bhVZ2ids/static/widget/assets/widget.js s3://studio-demo-static-123456789012/widget/assets/widget.js --cache-control no-cache
+    aws s3 sync /tmp/tmp.xaYZTsmYq3/static s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js
+    aws s3 cp /tmp/tmp.xaYZTsmYq3/static/index.html s3://studio-demo-static-123456789012/index.html --cache-control no-cache
+    aws s3 cp /tmp/tmp.xaYZTsmYq3/static/embed.js s3://studio-demo-static-123456789012/embed.js --cache-control no-cache
+    aws s3 cp /tmp/tmp.xaYZTsmYq3/static/widget/assets/widget.js s3://studio-demo-static-123456789012/widget/assets/widget.js --cache-control no-cache
     aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html /embed.js /widget/assets/widget.js --query Invalidation.Id --output text
     aws cloudfront wait invalidation-completed --distribution-id E2EXAMPLE0ABCD --id I2J0I21PCUYOIK
 
@@ -54,11 +54,11 @@ exit 0
     ./widget/assets/widget.js
 
 ### Redeploy a tag already in ECR
-$ scripts/deploy/deploy.sh 30f00be
+$ scripts/deploy/deploy.sh a74940d
 ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
 ==> Making sure the ECR repositories exist
-==> rag-agent-studio/api:30f00be is already in ECR
-==> terraform apply at image tag 30f00be
+==> rag-agent-studio/api:a74940d is already in ECR
+==> terraform apply at image tag a74940d
 ==> Running the migration task
 ==> Rolling studio-demo-ecs-api onto arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-api:2
 ==> Rolling studio-demo-ecs-beat onto arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-beat:2
@@ -66,31 +66,31 @@ $ scripts/deploy/deploy.sh 30f00be
 ==> Waiting for studio-demo-ecs-api studio-demo-ecs-beat studio-demo-ecs-worker to stabilise
 ==> Uploading the Studio and widget builds to studio-demo-static-123456789012
 ==> Invalidating the HTML and the loader in E2EXAMPLE0ABCD
-==> Smoke checking http://127.0.0.1:46469
+==> Smoke checking http://127.0.0.1:39959
 ok   health
 ok   studio
 ok   widget_shell
-Smoke check passed: http://127.0.0.1:46469
-Deployed 30f00be: http://127.0.0.1:46469
+Smoke check passed: http://127.0.0.1:39959
+Deployed a74940d: http://127.0.0.1:39959
 exit 0
 --- cloud CLI calls, in order:
     terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo init -input=false -backend-config=bucket=rag-agent-studio-tfstate-123456789012 -backend-config=region=eu-west-2
     terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo apply -input=false -auto-approve -target=module.ecr
     aws sts get-caller-identity --query Account --output text
-    aws ecr describe-images --repository-name rag-agent-studio/api --image-ids imageTag=30f00be
-    terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo apply -input=false -auto-approve -var=image_tag=30f00be
+    aws ecr describe-images --repository-name rag-agent-studio/api --image-ids imageTag=a74940d
+    terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo apply -input=false -auto-approve -var=image_tag=a74940d
     terraform -chdir=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906/infra/envs/demo output -json deploy
-    aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-migrate:2 --launch-type FARGATE --started-by deploy-30f00be --network-configuration awsvpcConfiguration={subnets=[subnet-0ccccccccccccccc3,subnet-0ddddddddddddddd4],securityGroups=[sg-0migrate000000001],assignPublicIp=DISABLED} --query tasks[0].taskArn --output text
+    aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-migrate:2 --launch-type FARGATE --started-by deploy-a74940d --network-configuration awsvpcConfiguration={subnets=[subnet-0ccccccccccccccc3,subnet-0ddddddddddddddd4],securityGroups=[sg-0migrate000000001],assignPublicIp=DISABLED} --query tasks[0].taskArn --output text
     aws ecs wait tasks-stopped --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef
     aws ecs describe-tasks --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef --query tasks[0].containers[?name==`migrate`].exitCode | [0] --output text
     aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-api --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-api:2 --query service.serviceName --output text
     aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-beat --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-beat:2 --query service.serviceName --output text
     aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-worker --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-worker:2 --query service.serviceName --output text
     aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api studio-demo-ecs-beat studio-demo-ecs-worker
-    aws s3 sync /tmp/tmp.e9jwWhoSIz/static s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js
-    aws s3 cp /tmp/tmp.e9jwWhoSIz/static/index.html s3://studio-demo-static-123456789012/index.html --cache-control no-cache
-    aws s3 cp /tmp/tmp.e9jwWhoSIz/static/embed.js s3://studio-demo-static-123456789012/embed.js --cache-control no-cache
-    aws s3 cp /tmp/tmp.e9jwWhoSIz/static/widget/assets/widget.js s3://studio-demo-static-123456789012/widget/assets/widget.js --cache-control no-cache
+    aws s3 sync /tmp/tmp.tHfcYk6Ym5/static s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js
+    aws s3 cp /tmp/tmp.tHfcYk6Ym5/static/index.html s3://studio-demo-static-123456789012/index.html --cache-control no-cache
+    aws s3 cp /tmp/tmp.tHfcYk6Ym5/static/embed.js s3://studio-demo-static-123456789012/embed.js --cache-control no-cache
+    aws s3 cp /tmp/tmp.tHfcYk6Ym5/static/widget/assets/widget.js s3://studio-demo-static-123456789012/widget/assets/widget.js --cache-control no-cache
     aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html /embed.js /widget/assets/widget.js --query Invalidation.Id --output text
     aws cloudfront wait invalidation-completed --distribution-id E2EXAMPLE0ABCD --id I2J0I21PCUYOIK
 

@@ -9,12 +9,12 @@
 - [09-05: CDN module](05-cdn-module.md)
 - [06-01: Embed tracer](../06-embed-widget-operational-settings/01-embed-tracer.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] `envs/demo` composes all the modules
-- [ ] The deploy workflow applies at a tag, runs the migration task, waits for services to stabilise, uploads static assets, invalidates the cache, and runs a smoke check (health, Studio, widget CSP)
-- [ ] Destroy is a separate workflow with a typed confirmation
-- [ ] Outputs include the CloudFront URL and the trust principal
-- [ ] The expected cost is documented
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] `envs/demo` composes all the modules
+- [x] The deploy workflow applies at a tag, runs the migration task, waits for services to stabilise, uploads static assets, invalidates the cache, and runs a smoke check (health, Studio, widget CSP)
+- [x] Destroy is a separate workflow with a typed confirmation
+- [x] Outputs include the CloudFront URL and the trust principal
+- [x] The expected cost is documented
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

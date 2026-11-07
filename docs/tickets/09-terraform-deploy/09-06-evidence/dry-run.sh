@@ -23,7 +23,7 @@ for _ in $(seq 100); do [ -s "$work/port" ] && break; sleep 0.05; done
 url="http://127.0.0.1:$(cat "$work/port")"
 
 jq -n --arg url "$url" '{
-  image_tag: "30f00be", cluster_name: "studio-demo-ecs",
+  image_tag: "a74940d", cluster_name: "studio-demo-ecs",
   services: {api: "studio-demo-ecs-api", beat: "studio-demo-ecs-beat", worker: "studio-demo-ecs-worker"},
   task_definition_arns: {
     api: "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-api:2",
@@ -48,10 +48,10 @@ run() { # <label> <script> <args...>
   echo
 }
 
-run "Deploy at a tag that is only built locally (first deploy)" scripts/deploy/deploy.sh 30f00be
+run "Deploy at a tag that is only built locally (first deploy)" scripts/deploy/deploy.sh a74940d
 echo "--- static bucket contents after the sync:"
 (cd "$work/uploaded" && find . -type f | sort | sed 's/^/    /')
 echo
-IN_ECR=0 run "Redeploy a tag already in ECR" scripts/deploy/deploy.sh 30f00be
+IN_ECR=0 run "Redeploy a tag already in ECR" scripts/deploy/deploy.sh a74940d
 run "Destroy with a mistyped confirmation" scripts/deploy/destroy.sh "destroy"
 run "Destroy with the typed confirmation" scripts/deploy/destroy.sh "destroy demo"
