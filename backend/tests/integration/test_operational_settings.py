@@ -25,6 +25,8 @@ from tests.integration.test_playground_errors import failing
 
 DEFAULT_UNAVAILABLE = "This assistant is temporarily unavailable. Please try again later."
 CHANGED = "agent.operational_settings_changed"
+# The default rate limits (06-05), which these tests leave alone.
+LIMITS = {"conversation_messages_per_minute": 10, "ip_messages_per_minute": 30}
 
 
 @pytest.fixture
@@ -62,7 +64,11 @@ async def test_a_new_agent_has_no_allowed_origins_and_the_default_unavailable_te
     response = await settings(editor, agent)
 
     assert response.status_code == 200, response.text
-    assert response.json() == {"allowed_origins": [], "unavailable_text": DEFAULT_UNAVAILABLE}
+    assert response.json() == {
+        "allowed_origins": [],
+        "unavailable_text": DEFAULT_UNAVAILABLE,
+        **LIMITS,
+    }
 
 
 async def test_operational_settings_are_not_part_of_the_draft_or_a_version(
@@ -90,6 +96,7 @@ async def test_operational_settings_are_not_part_of_the_draft_or_a_version(
     assert (await settings(owner, agent)).json() == {
         "allowed_origins": ["https://www.example.com"],
         "unavailable_text": "Back soon.",
+        **LIMITS,
     }
     assert await csp(visitor, agent) == "frame-ancestors https://www.example.com"
 
@@ -119,7 +126,11 @@ async def test_an_editor_sets_the_allowed_origins_and_the_next_shell_uses_them(
         "https://shop.example.co.uk:8443",
     ]
     assert response.status_code == 200, response.text
-    assert response.json() == {"allowed_origins": expected, "unavailable_text": DEFAULT_UNAVAILABLE}
+    assert response.json() == {
+        "allowed_origins": expected,
+        "unavailable_text": DEFAULT_UNAVAILABLE,
+        **LIMITS,
+    }
     assert (await settings(editor, agent)).json()["allowed_origins"] == expected
     # No publish needed: the next shell carries them.
     assert await csp(visitor, agent) == "frame-ancestors " + " ".join(expected)
@@ -239,6 +250,7 @@ async def test_the_unavailable_text_is_set_and_visitors_get_it_on_the_next_reque
     assert response.json() == {
         "allowed_origins": [],
         "unavailable_text": "Our helper is having a break. Call us on 0123.",
+        **LIMITS,
     }
     # Without publishing, in the same Conversation.
     after = await send(visitor, agent["public_id"], token, "Hello?")
@@ -303,6 +315,7 @@ async def test_a_change_to_one_setting_leaves_the_other_as_it_was(owner: SignedU
     assert unchanged.json() == {
         "allowed_origins": ["https://b.example.com"],
         "unavailable_text": "B.",
+        **LIMITS,
     }
 
 

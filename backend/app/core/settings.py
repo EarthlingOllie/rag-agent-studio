@@ -2,7 +2,7 @@
 
 import base64
 import binascii
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from urllib.parse import quote
 
 from pydantic import (
@@ -15,7 +15,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from app.embed.client_ip import Network, trusted_networks
 
 
 class SettingsError(RuntimeError):
@@ -58,6 +60,11 @@ class Settings(BaseSettings):
     sign_in_delay_base_seconds: int = Field(default=1, gt=0)
     sign_in_delay_max_seconds: int = Field(default=30, gt=0)
     sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
+    # The proxies whose X-Forwarded-For entries are believed when finding a Visitor's IP address
+    # for the widget's per-IP rate limits: comma-separated networks or addresses, such as the
+    # VPC's CIDR (the ALB) and CloudFront's origin-facing ranges. Empty: the connection's peer
+    # is the Visitor.
+    trusted_proxies: Annotated[list[Network], NoDecode] = []
     # How long a password-checked sign-in waits for its MFA code.
     mfa_pending_ttl_seconds: int = Field(default=5 * 60, gt=0)
     # Wraps the data keys of envelope-encrypted secrets (TOTP secrets, Provider Credentials):
@@ -178,6 +185,11 @@ class Settings(BaseSettings):
                 "ssl_cert_reqs=required" if tls else "",
             )
         return data
+
+    @field_validator("trusted_proxies", mode="before")
+    @classmethod
+    def _networks(cls, value: Any) -> Any:
+        return trusted_networks(value.split(",")) if isinstance(value, str) else value
 
     @field_validator("local_key_wrapper_key")
     @classmethod

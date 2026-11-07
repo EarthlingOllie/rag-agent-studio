@@ -450,6 +450,8 @@ export function fakeAgentsApi(
   let settings: Schemas["OperationalSettingsOut"] = {
     allowed_origins: [...(options.allowedOrigins ?? [])],
     unavailable_text: options.unavailableText ?? DEFAULT_UNAVAILABLE_TEXT,
+    conversation_messages_per_minute: 10,
+    ip_messages_per_minute: 30,
   };
   server.use(
     http.get(
@@ -486,6 +488,9 @@ export function fakeAgentsApi(
           allowed_origins: origins ?? settings.allowed_origins,
           unavailable_text:
             "unavailable_text" in body ? text || DEFAULT_UNAVAILABLE_TEXT : settings.unavailable_text,
+          conversation_messages_per_minute:
+            body.conversation_messages_per_minute ?? settings.conversation_messages_per_minute,
+          ip_messages_per_minute: body.ip_messages_per_minute ?? settings.ip_messages_per_minute,
         };
         return HttpResponse.json(settings);
       },

@@ -300,6 +300,28 @@ test("a provider failure mid-answer shows the Agent's unavailable message too", 
   expect(await screen.findByRole("alert")).toHaveTextContent("Hana is on a break.");
 });
 
+test("a message over the rate limit shows the unavailable text the API sends", async () => {
+  fakeWidgetApi(() => sse([["unavailable", { reason: "rate_limited", message: "Busy right now; back in a minute." }]]));
+  render(<Widget boot={boot} />);
+
+  await ask("Hello");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Busy right now; back in a minute.");
+  // The question stays, and the Visitor can ask again.
+  expect(screen.getByText("Hello")).toBeInTheDocument();
+  expect(screen.getByLabelText("Message")).toBeEnabled();
+});
+
+test("a message over the rate limit shows the Agent's unavailable message when it has one", async () => {
+  fakeWidgetApi(() => sse([["unavailable", { reason: "rate_limited", message: "Temporarily unavailable." }]]));
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break." };
+  render(<Widget boot={{ ...boot, ui_text }} />);
+
+  await ask("Hello");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Hana is on a break.");
+});
+
 test("other refusals keep their own message even with an unavailable message set", async () => {
   fakeWidgetApi(() => HttpResponse.json({ detail: "This chat has expired. Reload the page to start a new one." }, { status: 401 }));
   const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break." };

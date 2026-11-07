@@ -480,15 +480,25 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins and the Unavailable text are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins, the Unavailable text and the rate limits are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
-What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, and later a rate limit or spent Token Budget). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit, and later a spent Token Budget). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
 _Avoid_: Error message, offline message
 
 **Theme override**:
 An Agent's own colours and avatar in its widget, replacing the Theme's for that Agent only: any of the Colour Tokens (each with its light and dark value) and an avatar image. The other tokens, the font, radius, mode and Launcher still follow the Theme. Like the Theme, only Owners change it; it is an Operational Setting, so it isn't versioned and applies at once. The widget's avatar is the Agent's own, else the Live Version's avatar URL, else the Theme's default avatar.
 _Avoid_: Agent theme, sub-brand theme
+
+**Rate limits**:
+How many Visitor messages an Agent admits in any one minute, per Conversation (its Conversation token; 10 by default) and per IP address (30 by default), counted in sliding windows. Part of the Operational Settings. A message over a limit isn't answered or saved: the widget gets an `unavailable` event and shows the Unavailable text, and the refused message doesn't count, so waiting always works. The Playground has none.
+_Avoid_: Throttling (that is sign-in protection), quota
+
+**Admission control**:
+The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: the Agent's Rate limits now, the Token Budget later. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
+
+**Trusted proxies**:
+The load balancers and CDN ranges (`TRUSTED_PROXIES`) whose `X-Forwarded-For` entries are believed when finding a Visitor's IP address for the per-IP Rate limit. The Visitor is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the Visitor's.
 
 **Token Budget**:
 The maximum tokens an Agent may consume per day before it stops answering Visitors.

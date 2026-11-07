@@ -26,6 +26,11 @@ NAME_MAX = 200
 PUBLIC_ID_PREFIX = "agt_"
 ORIGIN_MAX = 255
 UNAVAILABLE_TEXT_MAX = 500
+# Rate limits: Visitor messages admitted in any one minute.
+CONVERSATION_RATE_DEFAULT = 10
+CONVERSATION_RATE_MAX = 1000
+IP_RATE_DEFAULT = 30
+IP_RATE_MAX = 10000
 
 
 def new_public_id() -> str:
@@ -58,6 +63,14 @@ class Agent(IdMixin, Base):
     )
     # What Visitors are told when the Agent can't answer; None means the platform's default.
     unavailable_text: Mapped[str | None] = mapped_column(String(UNAVAILABLE_TEXT_MAX))
+    # Rate limits: how many Visitor messages are admitted in any minute (a sliding window) for
+    # one Conversation, and for one IP address.
+    conversation_messages_per_minute: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(CONVERSATION_RATE_DEFAULT))
+    )
+    ip_messages_per_minute: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(IP_RATE_DEFAULT))
+    )
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

@@ -1,4 +1,5 @@
-"""Embedding rules: an Agent's Operational Settings (its Allowed Origins and unavailable text),
+"""Embedding rules: an Agent's Operational Settings (its Allowed Origins, unavailable text and
+rate limits),
 the shell's framing policy, and Visitors' Conversations, which are reached only through their
 Conversation token.
 
@@ -23,6 +24,7 @@ from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
 from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
+from app.embed.admission import Admission, Limits, Refusal
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.playground.service import PreparedTurn
@@ -93,12 +95,17 @@ class OperationalSettings:
     allowed_origins: list[str]
     # What Visitors are told when the Agent can't answer.
     unavailable_text: str
+    # Rate limits: Visitor messages admitted in any minute per Conversation and per IP address.
+    conversation_messages_per_minute: int
+    ip_messages_per_minute: int
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
     return OperationalSettings(
         allowed_origins=list(agent.allowed_origins),
         unavailable_text=agent.unavailable_text or DEFAULT_UNAVAILABLE_TEXT,
+        conversation_messages_per_minute=agent.conversation_messages_per_minute,
+        ip_messages_per_minute=agent.ip_messages_per_minute,
     )
 
 
@@ -116,6 +123,8 @@ async def change_operational_settings(
     *,
     allowed_origins: list[str] | None = None,
     unavailable_text: str | None = None,
+    conversation_messages_per_minute: int | None = None,
+    ip_messages_per_minute: int | None = None,
     now: datetime,
 ) -> OperationalSettings:
     """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
@@ -129,6 +138,10 @@ async def change_operational_settings(
         agent.allowed_origins = origins
     if unavailable_text is not None:
         agent.unavailable_text = unavailable_text.strip() or None
+    if conversation_messages_per_minute is not None:
+        agent.conversation_messages_per_minute = conversation_messages_per_minute
+    if ip_messages_per_minute is not None:
+        agent.ip_messages_per_minute = ip_messages_per_minute
     after = asdict(_settings_of(agent))
     changed = [key for key in before if before[key] != after[key]]
     if changed:
@@ -235,6 +248,14 @@ async def start_conversation(
     return token
 
 
+class NotAdmittedError(Exception):
+    """Admission control refused the message: the Visitor gets the unavailable text."""
+
+    def __init__(self, reason: Refusal) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
 async def prepare_turn(
     session: AsyncSession,
     signer: TokenSigner,
@@ -242,11 +263,24 @@ async def prepare_turn(
     token: str,
     question: str,
     *,
+    admission: Admission,
+    ip: str,
     now: datetime,
 ) -> PreparedTurn:
     """Saves the Visitor's question in the token's Conversation, to be answered by the Agent's
-    Live Version at this moment."""
+    Live Version at this moment. A valid token's message first goes through admission control
+    with the Agent's current rate limits; a refused one raises ``NotAdmittedError`` and nothing
+    is saved."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
+    agent = await session.get_one(Agent, conversation.agent_id)
+    limits = Limits(
+        public_id=agent.public_id,
+        conversation_messages_per_minute=agent.conversation_messages_per_minute,
+        ip_messages_per_minute=agent.ip_messages_per_minute,
+    )
+    refusal = await admission.admit(limits, token, ip)
+    if refusal is not None:
+        raise NotAdmittedError(refusal)
     return await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
 
 
