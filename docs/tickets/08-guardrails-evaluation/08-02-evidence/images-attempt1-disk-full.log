@@ -1,0 +1,348 @@
++ docker build -t rag-agent-studio/api:0802 backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 3.77kB 0.0s done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 DONE 0.0s
+
+#7 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#7 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#7 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#7 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#8 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#8 CACHED
+
+#5 [internal] load build context
+#5 transferring context: 2.68MB 0.7s done
+#5 DONE 0.7s
+
+#9 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#9 0.480 Ign:1 http://deb.debian.org/debian trixie InRelease
+#9 0.480 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#9 0.480 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#9 1.481 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#9 1.483 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#9 1.484 Ign:1 http://deb.debian.org/debian trixie InRelease
+#9 3.594 Ign:1 http://deb.debian.org/debian trixie InRelease
+#9 3.595 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#9 3.596 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#9 7.601 Err:3 http://deb.debian.org/debian-security trixie-security InRelease
+#9 7.601   Could not resolve 'deb.debian.org'
+#9 7.602 Err:2 http://deb.debian.org/debian trixie-updates InRelease
+#9 7.602   Could not resolve 'deb.debian.org'
+#9 7.605 Err:1 http://deb.debian.org/debian trixie InRelease
+#9 7.605   Could not resolve 'deb.debian.org'
+#9 7.617 Reading package lists...
+#9 7.716 W: Failed to fetch http://deb.debian.org/debian/dists/trixie/InRelease  Could not resolve 'deb.debian.org'
+#9 7.716 W: Failed to fetch http://deb.debian.org/debian/dists/trixie-updates/InRelease  Could not resolve 'deb.debian.org'
+#9 7.716 W: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Could not resolve 'deb.debian.org'
+#9 7.716 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#9 7.778 Reading package lists...
+#9 7.793 Building dependency tree...
+#9 7.795 Reading state information...
+#9 7.798 Calculating upgrade...
+#9 7.956 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#9 DONE 8.1s
+
+#10 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#10 6.492 Collecting uv==0.11.32
+#10 6.906   Downloading uv-0.11.32-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+#10 6.974 Downloading uv-0.11.32-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (27.0 MB)
+#10 7.380    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 27.0/27.0 MB 122.8 MB/s  0:00:00
+#10 7.862 Installing collected packages: uv
+#10 ...
+
+#11 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#11 ...
+
+#10 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#10 9.310 Successfully installed uv-0.11.32
+#10 9.311 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#10 9.316 
+#10 9.316 [notice] A new release of pip is available: 26.2.2 -> 26.3
+#10 9.316 [notice] To update, run: pip install --upgrade pip
+#10 DONE 9.6s
+
+#12 [build 4/6] WORKDIR /app
+#12 DONE 0.1s
+
+#11 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#11 ...
+
+#13 [build 5/6] COPY pyproject.toml uv.lock ./
+#13 DONE 0.1s
+
+#14 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#14 1.304 Using CPython 3.13.18 interpreter at: /usr/local/bin/python3
+#14 1.304 Creating virtual environment at: /opt/venv
+#14 2.359 Downloading hf-xet (4.1MiB)
+#14 2.359 Downloading sqlalchemy (4.4MiB)
+#14 2.361 Downloading lxml (5.0MiB)
+#14 2.361 Downloading pillow (6.8MiB)
+#14 2.361 Downloading pandas (11.4MiB)
+#14 2.361 Downloading onnxruntime (22.7MiB)
+#14 2.362 Downloading pygments (1.2MiB)
+#14 2.362 Downloading numpy (15.9MiB)
+#14 2.362 Downloading openai (2.3MiB)
+#14 2.362 Downloading tokenizers (3.2MiB)
+#14 2.362 Downloading asyncpg (3.6MiB)
+#14 2.363 Downloading cryptography (4.5MiB)
+#14 2.363 Downloading uvloop (4.3MiB)
+#14 2.364 Downloading transformers (12.4MiB)
+#14 2.364 Downloading tiktoken (1.1MiB)
+#14 2.364 Downloading docling-slim (1.1MiB)
+#14 2.392 Downloading pydantic-ai-slim (2.7MiB)
+#14 2.392 Downloading anthropic (2.3MiB)
+#14 2.392 Downloading pydantic-core (2.1MiB)
+#14 2.406 Downloading botocore (15.5MiB)
+#14 4.980  Downloaded docling-slim
+#14 5.004  Downloaded pygments
+#14 5.006  Downloaded tiktoken
+#14 ...
+
+#11 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#11 5.492 Found existing installation: pip 26.2.2
+#11 5.569 Uninstalling pip-26.2.2:
+#11 6.134   Successfully uninstalled pip-26.2.2
+#11 6.440 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#11 DONE 7.2s
+
+#14 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#14 5.861  Downloaded pydantic-core
+#14 6.278  Downloaded pydantic-ai-slim
+#14 6.485  Downloaded tokenizers
+#14 6.609  Downloaded openai
+#14 6.686  Downloaded asyncpg
+#14 6.864  Downloaded hf-xet
+#14 6.931  Downloaded uvloop
+#14 6.974  Downloaded anthropic
+#14 6.979  Downloaded cryptography
+#14 7.015  Downloaded sqlalchemy
+#14 7.179  Downloaded lxml
+#14 8.418  Downloaded pillow
+#14 9.612  Downloaded pandas
+#14 9.709  Downloaded transformers
+#14 10.51  Downloaded numpy
+#14 10.67  Downloaded botocore
+#14 10.77  Downloaded onnxruntime
+#14 10.77 Prepared 151 packages in 9.41s
+#14 19.61 Installed 151 packages in 8.85s
+#14 68.92 Bytecode compiled 15209 files in 49.30s
+#14 68.92  + alembic==1.20.1
+#14 68.92  + amqp==5.4.2
+#14 68.92  + annotated-doc==0.0.5
+#14 68.92  + annotated-types==0.8.0
+#14 68.92  + anthropic==2.5.0
+#14 68.92  + anyio==4.16.0
+#14 68.92  + argon2-cffi==25.1.0
+#14 68.92  + argon2-cffi-bindings==26.1.0
+#14 68.92  + asgiref==3.13.0
+#14 68.92  + asyncpg==0.32.0
+#14 68.92  + attrs==26.1.0
+#14 68.92  + beautifulsoup4==4.15.0
+#14 68.92  + billiard==4.3.2
+#14 68.92  + boto3==1.43.124
+#14 68.92  + botocore==1.43.124
+#14 68.92  + celery==5.6.3
+#14 68.92  + certifi==2026.10.23
+#14 68.92  + cffi==2.1.1
+#14 68.92  + charset-normalizer==3.5.2
+#14 68.92  + click==8.5.0
+#14 68.92  + click-didyoumean==0.3.1
+#14 68.92  + click-plugins==1.1.1.2
+#14 68.92  + click-repl==0.4.1
+#14 68.92  + cryptography==50.0.2
+#14 68.92  + defusedxml==0.7.1
+#14 68.92  + dill==0.4.1
+#14 68.92  + doclang==0.9.0
+#14 68.92  + docling-core==2.106.0
+#14 68.92  + docling-slim==2.147.0
+#14 68.92  + docstring-parser==0.18.0
+#14 68.92  + executing==2.3.0
+#14 68.92  + fastapi==0.162.0
+#14 68.92  + fastembed==0.9.1
+#14 68.92  + filelock==4.2.9
+#14 68.92  + filetype==1.2.0
+#14 68.92  + flatbuffers==25.12.19
+#14 68.92  + fsspec==2026.9.0
+#14 68.92  + genai-prices==0.2.1
+#14 68.92  + googleapis-common-protos==1.76.0
+#14 68.92  + greenlet==3.5.6
+#14 68.93  + griffelib==2.4.1
+#14 68.93  + h11==0.16.0
+#14 68.93  + hf-xet==1.8.0
+#14 68.93  + httpcore==1.0.9
+#14 68.93  + httpcore2==2.16.0
+#14 68.93  + httptools==0.9.0
+#14 68.93  + httpx==0.28.1
+#14 68.93  + httpx2==2.16.0
+#14 68.93  + huggingface-hub==1.33.0
+#14 68.93  + idna==3.20
+#14 68.93  + jiter==0.18.0
+#14 68.93  + jmespath==1.1.0
+#14 68.93  + jsonref==1.1.0
+#14 68.93  + jsonschema==4.26.0
+#14 68.93  + jsonschema-specifications==2025.9.1
+#14 68.93  + kombu==5.7.0
+#14 68.93  + langcodes==3.5.1
+#14 68.93  + latex2mathml==3.81.1
+#14 68.93  + logfire==5.4.0
+#14 68.93  + logfire-api==5.4.0
+#14 68.93  + logfire-sdk==5.4.0
+#14 68.93  + loguru==0.7.3
+#14 68.93  + lxml==6.1.3
+#14 68.93  + mako==1.4.3
+#14 68.93  + markdown-it-py==4.2.0
+#14 68.93  + marko==2.2.5
+#14 68.93  + markupsafe==3.0.4
+#14 68.93  + mdurl==0.1.2
+#14 68.93  + mmh3==5.3.1
+#14 68.93  + mpire==2.10.2
+#14 68.93  + multiprocess==0.70.19
+#14 68.93  + numpy==2.5.4
+#14 68.93  + onnxruntime==1.31.1
+#14 68.93  + openai==3.46.0
+#14 68.93  + opentelemetry-api==1.45.2
+#14 68.93  + opentelemetry-exporter-http-transport==0.66b2
+#14 68.93  + opentelemetry-exporter-otlp-common==0.66b2
+#14 68.93  + opentelemetry-exporter-otlp-proto-common==1.45.2
+#14 68.93  + opentelemetry-exporter-otlp-proto-http==1.45.2
+#14 68.93  + opentelemetry-instrumentation==0.66b2
+#14 68.93  + opentelemetry-instrumentation-asgi==0.66b2
+#14 68.93  + opentelemetry-instrumentation-celery==0.66b2
+#14 68.93  + opentelemetry-instrumentation-fastapi==0.66b2
+#14 68.93  + opentelemetry-instrumentation-httpx==0.66b2
+#14 68.93  + opentelemetry-instrumentation-sqlalchemy==0.66b2
+#14 68.93  + opentelemetry-proto==1.45.2
+#14 68.93  + opentelemetry-sdk==1.45.2
+#14 68.93  + opentelemetry-semantic-conventions==0.66b2
+#14 68.93  + opentelemetry-util-http==0.66b2
+#14 68.93  + packaging==26.3
+#14 68.93  + pandas==3.1.1
+#14 68.93  + pgvector==0.5.1
+#14 68.93  + pillow==13.0.0
+#14 68.93  + pluggy==1.7.0
+#14 68.93  + prompt-toolkit==3.0.53
+#14 68.93  + protobuf==7.36.2
+#14 68.93  + py-rust-stemmers==0.1.8
+#14 68.93  + pycparser==3.12
+#14 68.93  + pydantic==2.14.2
+#14 68.93  + pydantic-ai-slim==2.66.0
+#14 68.93  + pydantic-core==2.50.2
+#14 68.93  + pydantic-graph==2.66.0
+#14 68.93  + pydantic-settings==2.16.2
+#14 68.93  + pygments==2.21.0
+#14 68.93  + pylatexenc==2.11
+#14 68.93  + pyotp==2.10.0
+#14 68.93  + python-dateutil==2.9.0.post0
+#14 68.93  + python-docx==1.2.0
+#14 68.93  + python-dotenv==1.2.4
+#14 68.93  + python-pptx==1.0.2
+#14 68.93  + pyyaml==6.0.3
+#14 68.93  + redis==8.1.0
+#14 68.93  + referencing==0.37.0
+#14 68.93  + regex==2026.9.29
+#14 68.93  + requests==2.34.2
+#14 68.93  + rich==15.0.0
+#14 68.93  + rpds-py==2026.9.1
+#14 68.93  + s3transfer==0.19.3
+#14 68.93  + safetensors==0.8.0
+#14 68.93  + segno==1.6.6
+#14 68.93  + semchunk==3.2.5
+#14 68.93  + shellingham==1.5.4
+#14 68.93  + six==1.17.0
+#14 68.93  + sniffio==1.3.1
+#14 68.93  + soupsieve==4.0.1
+#14 68.93  + sqlalchemy==2.1.8
+#14 68.93  + starlette==1.10.0
+#14 68.94  + tabulate==0.10.0
+#14 68.94  + tiktoken==0.14.0
+#14 68.94  + tokenizers==0.23.3
+#14 68.94  + tqdm==4.70.1
+#14 68.94  + transformers==5.22.1
+#14 68.94  + tree-sitter==0.26.0
+#14 68.94  + tree-sitter-c==0.24.2
+#14 68.94  + tree-sitter-javascript==0.25.0
+#14 68.94  + tree-sitter-python==0.25.0
+#14 68.94  + tree-sitter-typescript==0.23.2
+#14 68.94  + truststore==0.10.5
+#14 68.94  + typer==0.27.3
+#14 68.94  + typing-extensions==4.16.0
+#14 68.94  + typing-inspection==0.4.5
+#14 68.94  + tzlocal==5.4.5
+#14 68.94  + urllib3==2.8.0
+#14 68.94  + uvicorn==0.54.0
+#14 68.94  + uvloop==0.23.0
+#14 68.94  + vine==5.1.0
+#14 68.94  + watchfiles==1.3.0
+#14 68.94  + wcwidth==0.9.4
+#14 68.94  + websockets==17.4
+#14 68.94  + wrapt==2.5.2
+#14 68.94  + xlsxwriter==3.3.1
+#14 DONE 69.8s
+
+#15 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
+#15 DONE 6.5s
+
+#16 [stage-1  6/11] WORKDIR /app
+#16 DONE 0.6s
+
+#17 [stage-1  7/11] COPY alembic.ini ./
+#17 DONE 0.1s
+
+#18 [stage-1  8/11] COPY app ./app
+#18 DONE 0.1s
+
+#19 [stage-1  9/11] COPY migrations ./migrations
+#19 DONE 0.1s
+
+#20 [stage-1 10/11] RUN mkdir -p /opt/models/docling     && if [ "true" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && python -c "from app.guardrails import onnx_model; onnx_model.load()"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
+#20 12.83 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 13.37 Fetching 5 files:  20%|██        | 1/5 [00:00<00:02,  1.87it/s]Fetching 5 files:  60%|██████    | 3/5 [00:00<00:00,  4.87it/s]Fetching 5 files:  80%|████████  | 4/5 [00:01<00:00,  2.49it/s]Fetching 5 files: 100%|██████████| 5/5 [00:11<00:00,  3.42s/it]Fetching 5 files: 100%|██████████| 5/5 [00:11<00:00,  2.21s/it]
+#20 46.49 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 DONE 73.2s
+
+#21 [stage-1 11/11] RUN useradd --system --uid 10001 studio
+#21 0.639 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.8s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 133.4s done
+#22 exporting manifest sha256:0e0427f7e68137e33a6a433de7af232aee23df1737cd372a74de72c3a8a94649 done
+#22 exporting config sha256:34532684a0013e004e67890dba11d03634404b4f69ad1f1a9431c63ca9f92197 0.1s done
+#22 exporting attestation manifest sha256:f30a78b1bef2a30a06fd47f62424c928f33b722b880dfb23206c00ea08169e83
+#22 exporting attestation manifest sha256:f30a78b1bef2a30a06fd47f62424c928f33b722b880dfb23206c00ea08169e83 0.1s done
+#22 exporting manifest list sha256:1a3c8df24d747552bb2c90ed9814aac48cdebc6d10ba4a1f40b9abadc978ed02 0.0s done
+#22 naming to docker.io/rag-agent-studio/api:0802
+#22 naming to docker.io/rag-agent-studio/api:0802 done
+#22 unpacking to docker.io/rag-agent-studio/api:0802
+#22 unpacking to docker.io/rag-agent-studio/api:0802 44.5s done
+#22 ERROR: failed to extract layer sha256:7e96a55b0964dd9ca75b66812311c23d8855082dd396789822270e8f98d3c1e9: write /var/lib/docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/13429/fs/opt/models/huggingface/hub/models--protectai--deberta-v3-base-prompt-injection-v2/blobs/f0ea7f239f765aedbde7c9e163a7cb38a79c5b8853d3f76db5152172047b228c: no space left on device
+------
+ > exporting to image:
+------
+ERROR: failed to build: failed to solve: failed to extract layer sha256:7e96a55b0964dd9ca75b66812311c23d8855082dd396789822270e8f98d3c1e9: write /var/lib/docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/13429/fs/opt/models/huggingface/hub/models--protectai--deberta-v3-base-prompt-injection-v2/blobs/f0ea7f239f765aedbde7c9e163a7cb38a79c5b8853d3f76db5152172047b228c: no space left on device
+exit 1

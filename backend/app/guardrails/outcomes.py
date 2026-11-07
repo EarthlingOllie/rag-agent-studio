@@ -8,7 +8,11 @@ from typing import Literal
 # ``canary``: the Canary token, which checks the answer as it streams.
 Layer = Literal["input", "canary"]
 Verdict = Literal["injection", "leak"]
-Action = Literal["blocked", "replaced", "flagged"]
+# ``blocked``: the input Guardrail refused the message (block mode). ``flagged``: the message or
+# answer went through but is marked (the input Guardrail's warn mode, which also cautions the
+# model; or an encoded canary found after sending). ``logged``: the input Guardrail's verdict is
+# only recorded (log mode). ``replaced``: the canary cut the answer off and replaced it.
+Action = Literal["blocked", "replaced", "flagged", "logged"]
 
 
 @dataclass(frozen=True)

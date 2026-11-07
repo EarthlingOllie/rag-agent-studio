@@ -20,6 +20,9 @@ Every model call carries a fresh Canary token in its preamble, and the answer st
 the answer is sent, and a ``ReplaceEvent`` carrying the fallback text replaces what was sent; the
 ``DoneEvent``'s answer is then the fallback text. A completed answer is checked again for an
 encoded canary, which is logged and flagged but can't be un-sent.
+
+With ``cautioned`` (the input Guardrail's warn mode flagged the message), the prompt carries a
+caution block after the system prompt (``app.runtime.prompt.CAUTION``).
 """
 
 import logging
@@ -149,10 +152,19 @@ async def run_turn(
     *,
     model: Model,
     retrieve: Retrieve,
+    cautioned: bool = False,
 ) -> AsyncIterator[TurnEvent]:
     try:
         async with aclosing(
-            _turn(turns, config, instructions, visitor_input, model=model, retrieve=retrieve)
+            _turn(
+                turns,
+                config,
+                instructions,
+                visitor_input,
+                model=model,
+                retrieve=retrieve,
+                cautioned=cautioned,
+            )
         ) as events:
             async for event in events:
                 yield event
@@ -169,6 +181,7 @@ async def _turn(
     *,
     model: Model,
     retrieve: Retrieve,
+    cautioned: bool,
 ) -> AsyncGenerator[TurnEvent]:
     behaviour = config.behaviour
     retrieved = await retrieve(visitor_input, config.retrieval)
@@ -187,7 +200,9 @@ async def _turn(
         return
     remembered = list(turns)[-behaviour.remembered_turns :] if behaviour.remembered_turns else []
     canary = new_canary()
-    messages = history(instructions, behaviour.system_prompt, remembered, canary=canary)
+    messages = history(
+        instructions, behaviour.system_prompt, remembered, canary=canary, cautioned=cautioned
+    )
     question = data_blocks(retrieved.candidates, visitor_input)
     settings = ModelSettings(
         temperature=behaviour.temperature, max_tokens=behaviour.max_output_tokens
