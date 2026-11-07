@@ -242,6 +242,7 @@ export const hrTrace: Schemas["TraceOut"] = {
   message_id: done.message_id,
   config_source: "draft",
   agent_version_id: null,
+  agent_version_number: null,
   ...ranWithDraft,
   model_provider: "openai",
   model_name: "gpt-4.1-mini",
