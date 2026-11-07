@@ -54,6 +54,7 @@ from tests.conftest import ClientFactory, SignedUpMember
 from tests.documents import create_project, upload
 from tests.integration.test_agent_versions import knowledgeable_project, published
 from tests.integration.test_embed import conversation_token, send
+from tests.integration.test_provider_credentials import added, credentials_path
 
 LEAVE = "Everyone gets 25 days of annual leave a year."
 ANSWER = "Leave is 25 days [C1]."
@@ -63,6 +64,7 @@ JUDGE_REASON = "Asks the assistant to adopt a persona without its rules."
 REFUSAL = "I can only answer questions about our HR policies."
 CHAT_MODEL = "gpt-4.1-mini"
 CLASSIFIER_MODEL = "gpt-4o-mini"
+SECOND_OPENAI_KEY = "sk-proj-test-only-3333333333333333333333333333-c803"
 LOCAL_RULE = FakeRule(
     contains="ignore your instructions",
     label="prompt_injection",
@@ -481,3 +483,42 @@ async def test_a_visitor_gets_the_live_versions_llm_classifier_and_fail_mode(
     answered = parse_sse((await send(visitor, created["public_id"], token, LEAVE)).text)
     assert answer_text(answered) == ANSWER
     assert len(answerer.calls) == 1
+
+
+async def test_the_classifiers_own_credential_is_a_reference_that_cant_be_deleted(
+    app: FastAPI, owner: SignedUpMember, new_client: ClientFactory
+) -> None:
+    project_id = await knowledgeable_project(app, owner)
+    judge, _, built = models(app)
+    # The classifier uses its own credential, separate from the one that answers.
+    classifier_credential = await added(owner, provider="openai", api_key=SECOND_OPENAI_KEY)
+    created = await create_agent(owner, project_id)
+    await save_draft(
+        owner,
+        project_id,
+        created["id"],
+        {"guardrails": guardrails(classifier_credential["id"])},
+    )
+    await published(owner, project_id, created["id"])
+    # Only the Live Version still names it once the Draft drops the classifier.
+    await save_draft(owner, project_id, created["id"], {"guardrails": {"classifier": None}})
+
+    refused = await owner.client.delete(
+        credentials_path(owner.organisation_id, classifier_credential["id"])
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["references"] == [
+        {
+            "kind": "agent",
+            "id": created["id"],
+            "name": "HR helper Live Version (Guardrail classifier)",
+        }
+    ]
+    # And it is that credential the Live Version's classifier is built from.
+    visitor = await new_client()
+    token = await conversation_token(visitor, created["public_id"])
+    built.clear()
+    await send(visitor, created["public_id"], token, JAILBREAK)
+    assert built == [f"openai:{CHAT_MODEL}", f"openai:{CLASSIFIER_MODEL}"]
+    assert len(judge.calls) == 1
