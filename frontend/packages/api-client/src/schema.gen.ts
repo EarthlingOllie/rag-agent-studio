@@ -2072,7 +2072,8 @@ export interface paths {
          * Get Conversation
          * @description The token's Conversation, for a Visitor who comes back to the page: its Messages in
          *     order, each answer with its sources and feedback, and its Conversation Rating. Coming back
-         *     counts as activity, so the token's 24-hour window slides on; after 24 hours without activity the token is refused.
+         *     counts as activity, so the token's 24-hour window slides on; after 24 hours without
+         *     activity the token is refused.
          */
         get: operations["getWidgetConversation"];
         put?: never;

@@ -16174,7 +16174,7 @@
         ]
       },
       "get": {
-        "description": "The token's Conversation, for a Visitor who comes back to the page: its Messages in\norder, each answer with its sources and feedback, and its Conversation Rating. Coming back\ncounts as activity, so the token's 24-hour window slides on; after 24 hours without activity the token is refused.",
+        "description": "The token's Conversation, for a Visitor who comes back to the page: its Messages in\norder, each answer with its sources and feedback, and its Conversation Rating. Coming back\ncounts as activity, so the token's 24-hour window slides on; after 24 hours without\nactivity the token is refused.",
         "operationId": "getWidgetConversation",
         "parameters": [
           {
