@@ -464,8 +464,20 @@ _Avoid_: Widget page, iframe HTML
 A short-lived (15 minutes), signed token the Widget shell gives the widget, bound to the Agent. The widget exchanges it for a Conversation token, which starts the Visitor's Conversation.
 
 **Conversation token**:
-The signed, opaque token that is a Visitor's only credential: bound to one Visitor Conversation and its Agent, and expiring 24 hours after the Conversation's last activity (each message slides the window on). Only its hash is stored. Each answer it gets comes from the Agent's Live Version at that moment.
+The signed, opaque token that is a Visitor's only credential: bound to one Visitor Conversation and its Agent, and expiring 24 hours after the Conversation's last activity (each message and each Resume slides the window on). Only its hash is stored. Each answer it gets comes from the Agent's Live Version at that moment. The widget keeps it in the iframe's local storage, which browsers partition per top-level site; where that storage is blocked, the widget keeps it in memory only and a reload starts a new Conversation. Once its Conversation is ended it is refused.
 _Avoid_: Session, visitor token
+
+**Resume**:
+Getting a Visitor's Conversation back when they reload or move to another page of the same site within 24 hours of its last activity: the widget sends its kept Conversation token and shows the earlier Messages with their sources, and the next question continues that Conversation. After 24 hours without activity the token is refused and the widget silently starts afresh.
+_Avoid_: Restore, reconnect
+
+**Ending a Conversation**:
+A Visitor closing their Conversation from the widget (End chat), or leaving it to start another (New chat). The Conversation and its Messages are kept for the Studio; only its Conversation token stops working, and the Visitor's next question starts a new Conversation.
+_Avoid_: Delete, close session
+
+**No longer available shell**:
+What a Visitor sees in place of the chat when the Agent is archived, in an archived Project, unknown or has never been published: "This assistant is no longer available." The Widget shell serves it on page load, and the widget switches to it if the Agent is retired mid-Conversation or before a Resume.
+_Avoid_: Error page, 404
 
 **Operational Settings**:
 An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits and Token Budget.
