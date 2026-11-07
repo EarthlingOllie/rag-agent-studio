@@ -31,7 +31,9 @@ test.describe("Message Feedback", () => {
     const created = await page.request.post(`${organisation}/projects/${projectId}/agents`, { data: { name: "HR helper" } });
     const { id: agentId, public_id: publicId } = (await created.json()) as { id: string; public_id: string };
     const agentApi = `${organisation}/projects/${projectId}/agents/${agentId}`;
-    expect((await page.request.put(`${agentApi}/allowed-origins`, { data: { origins: [new URL(HOST_URL).origin] } })).status()).toBe(200);
+    expect(
+      (await page.request.patch(`${agentApi}/operational-settings`, { data: { allowed_origins: [new URL(HOST_URL).origin] } })).status(),
+    ).toBe(200);
     expect((await page.request.post(`${agentApi}/versions`, { data: { note: "First release" } })).status()).toBe(201);
 
     // A Visitor (another browser, no Studio session) chats on the demo host page.

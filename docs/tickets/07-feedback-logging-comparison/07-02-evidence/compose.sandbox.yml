@@ -1,5 +1,5 @@
 # Sandbox-only override for `make e2e`: the stack runs the images build.sh just built (the
-# committed Dockerfiles plus the egress proxy CA, with PDF and bundled models off; compose's own
+# committed Dockerfiles plus the egress proxy CA, with PDF off and the models bundled; compose's own
 # build can't add the CA), and host ports move so this stack runs beside other tickets' stacks
 # on the same Docker daemon. Everything else is docker-compose.yml.
 services:
