@@ -1,0 +1,39 @@
+$ make test-frontend @ 8840273 (clean clone, load average ~11): the run that failed the coverage gate, fixed in 186c718
+cd frontend && pnpm test && pnpm check-embed-size
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend
+      Coverage enabled with v8
+
+
+ Test Files  51 passed (51)
+      Tests  630 passed (630)
+   Start at  03:41:58
+   Duration  386.55s (tests 70%, environment 15%, import 7%, setup 6%, transform 2%, worker 1%)
+
+    Isolate  51 workers spawned · ~3.65s startup each (spawn + environment, per file)
+             at least ~58.40s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.96 |    99.94 |     100 |     100 |                   
+ ...o/src/projects |   99.94 |    99.91 |     100 |     100 |                   
+  DraftEditor.tsx  |   99.41 |    98.87 |     100 |     100 | 467               
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.96% ( 3180/3181 )
+Branches     : 99.94% ( 1981/1982 )
+Functions    : 100% ( 1185/1185 )
+Lines        : 100% ( 2817/2817 )
+================================================================================
+ERROR: Coverage for statements (99.96%) does not meet global threshold (100%)
+ERROR: Coverage for branches (99.94%) does not meet global threshold (100%)
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:37: test-frontend] Error 1
+exit 2

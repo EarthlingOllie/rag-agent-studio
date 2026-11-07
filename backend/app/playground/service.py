@@ -35,10 +35,14 @@ from app.conversations.models import (
     MessageRetrieval,
     MessageRole,
 )
+from app.conversations.service import (
+    TracedChunk,
+    answer_in,
+    traced_chunks,
+)
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.default_model.service import read_default
-from app.documents.models import Chunk, Document
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
@@ -52,10 +56,6 @@ from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import Turn
 from app.runtime.runtime import CitationEvent, DoneEvent, ReplaceEvent, TokenEvent, run_turn
 from app.tenancy.repository import OrganisationScope
-
-
-class MessageNotFoundError(Exception):
-    """No answer with that ID in the Conversation."""
 
 
 class ConversationNotFoundError(Exception):
@@ -116,6 +116,8 @@ async def start_conversation(
         agent_id=found.agent.id,
         is_playground=True,
         last_activity_at=now,
+        # It started now, by the app's clock (the Conversations list filters on it).
+        created_at=now,
     )
     session.add(conversation)
     await session.commit()
@@ -306,16 +308,6 @@ def _retrievals(
     return rows
 
 
-@dataclass(frozen=True)
-class TracedChunk:
-    """A Chunk retrieval of an answer, with its Chunk's text and Document's name when the
-    Chunk still exists."""
-
-    retrieval: MessageRetrieval
-    document_name: str | None
-    text: str | None
-
-
 async def get_trace(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -326,19 +318,8 @@ async def get_trace(
 ) -> tuple[Message, list[TracedChunk]]:
     """An answer of the Playground Conversation and its Chunk retrievals, in Trace order."""
     _, messages = await get_conversation(session, scope, project_id, agent_id, conversation_id)
-    message = next(
-        (m for m in messages if m.id == message_id and m.role == MessageRole.ASSISTANT), None
-    )
-    if message is None:
-        raise MessageNotFoundError
-    rows = await session.execute(
-        select(MessageRetrieval, Document.name, Chunk.text)
-        .outerjoin(Chunk, Chunk.id == MessageRetrieval.chunk_id)
-        .outerjoin(Document, Document.id == MessageRetrieval.document_id)
-        .where(MessageRetrieval.message_id == message.id)
-        .order_by(MessageRetrieval.position)
-    )
-    return message, [TracedChunk(row, name, text) for row, name, text in rows]
+    message = answer_in(messages, message_id)
+    return message, await traced_chunks(session, message)
 
 
 @dataclass(frozen=True)
