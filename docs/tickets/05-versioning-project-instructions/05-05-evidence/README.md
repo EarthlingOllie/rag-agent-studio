@@ -53,17 +53,17 @@ These follow the [shared test seams](../../../specs/README.md#shared-test-seams)
 
 ## Results
 
-All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran at `c5376a5` with no uncommitted code changes; only this folder and the ticket file were being written. `origin/candidate` had not moved. Each log's first line names the command and the commit. The first end-to-end run was cut off by a container restart (no exit line), so it was re-run from scratch on fresh containers; the log here is that re-run.
+All runs are local, one suite at a time (GitHub Actions is down; the user authorised merging on local results). The first full run was at `c5376a5`. `origin/candidate` then moved to `102056d` (05-04, Diffs and Draft management, #51), so it was merged into the branch as `ba648fe`. The conflicts were all additive: both tickets added routes, OpenAPI operation IDs, tenant-isolation rows and Studio props, and both sides were kept (`PublishInstructionsForm` takes 05-04's stale-Draft handling and this ticket's `onPublished`; `InstructionsTab` keeps 05-04's reload-on-conflict and this ticket's rollout and revert dialogs). The API client was regenerated. **Every check below was re-run at `ba648fe`** with no uncommitted code changes. Each log's first line names the command and the commit.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
 | Install | `make install` | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Backend tests + coverage gate | `make test-backend` against fresh `rag0505-svc` Postgres/pgvector, Redis and RustFS containers (ports 48532/48579/48591); OpenTelemetry span lines filtered out | **1798 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate | `make test-frontend` | **44 files, 552 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` against fresh `rag0505-svc` Postgres/pgvector, Redis and RustFS containers (ports 48532/48579/48591); OpenTelemetry span lines filtered out | **1870 passed**, 7 deselected (live); coverage **100.00%** lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate | `make test-frontend` | **46 files, 584 tests passed**; 100% statements, branches, functions and lines | [frontend-tests.log](frontend-tests.log) |
 | Images | `build.sh` (sandbox `make images`) | both images built (`rag-agent-studio/api:0505`, `rag-agent-studio/studio:0505`), exit 0; removed afterwards | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0505-e2e`, host ports 49510–49625) | **67 passed** (6.3 min), including `bulk-rollout.spec.ts` with its axe scans; exit 0 | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` (project `rag0505-e2e`, host ports 49510–49625) | **68 passed** (3.0 min), including `bulk-rollout.spec.ts` with its axe scans; exit 0 | [e2e.log](e2e.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks, no known vulnerabilities | [security.log](security.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
@@ -71,7 +71,7 @@ All runs are local, one suite at a time (GitHub Actions is down; the user author
 
 - **Out of this ticket's scope:**
   - A Visitor-facing route arrives with 06-01, so "Agent A serves v2/v1" is checked through the API (the Live Version and its pinned Instructions), and in the API seam through the serving module with the echo model.
-  - 05-04 (Diffs and Draft management) is being built in parallel and may add its own "has unpublished changes" flag to the Agent. This ticket computes the badge in the rollout summary only (Draft config ≠ Live Version config) to avoid touching 05-04's files. If both land, they should agree, and the rollout can reuse 05-04's flag.
+  - 05-04 (Diffs and Draft management), merged while this ticket was in review, added `has_unpublished_changes` to the Agent. The rollout summary's `has_draft_changes` is computed separately (Draft config ≠ Live Version config). The two agree today; a follow-up could make the rollout reuse 05-04's flag.
 - **Best guesses, recorded instead of asking:**
   - **Agents already on the chosen Instructions Version are skipped**, rather than given an identical new Version.
   - **A bulk action names at most 200 Agents.** The spec sets no limit.
