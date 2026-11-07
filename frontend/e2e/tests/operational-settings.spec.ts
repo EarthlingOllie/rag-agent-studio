@@ -93,7 +93,10 @@ test.describe("Operational Settings", () => {
     elsewhere.on("console", (message) => {
       if (message.text().includes("frame-ancestors")) refusals.push(message.text());
     });
-    const shellLoaded = elsewhere.waitForResponse((response) => response.url().endsWith(`/widget/a/${publicId}`));
+    // The loader adds the host and launcher as query parameters.
+    const shellLoaded = elsewhere.waitForResponse(
+      (response) => new URL(response.url()).pathname === `/widget/a/${publicId}`,
+    );
     await elsewhere.goto(`${disallowed.origin}/?agent=${publicId}&launcher=inline`);
     await expect(elsewhere.getByRole("heading", { name: "Northwind Traders" })).toBeVisible();
     expect((await shellLoaded).status()).toBe(200);
