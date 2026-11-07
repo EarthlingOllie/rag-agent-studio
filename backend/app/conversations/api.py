@@ -5,7 +5,7 @@ Playground Conversations are listed beside Visitor ones and flagged with ``is_pl
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Query
 from pydantic import AwareDatetime, BaseModel
@@ -13,6 +13,7 @@ from pydantic import AwareDatetime, BaseModel
 from app.agents.api import NOT_FOUND_RESPONSE, not_found
 from app.auth.api import Db
 from app.conversations import service
+from app.feedback.models import MessageFeedback
 from app.playground.api import (
     MessageOut,
     TraceOut,
@@ -44,6 +45,9 @@ class ConversationSummaryOut(BaseModel):
     preview: str | None
     # The numbers of the Agent Versions that answered, ascending; empty in the Playground.
     version_numbers: list[int]
+    # How many of its replies the Visitor gave a thumbs up, and a thumbs down.
+    thumbs_up: int
+    thumbs_down: int
 
 
 class ConversationPageOut(BaseModel):
@@ -72,12 +76,26 @@ async def list_conversations(
         bool | None,
         Query(description="true: only Playground Conversations; false: only Visitors'"),
     ] = None,
+    feedback: Annotated[
+        service.FeedbackFilter | None,
+        Query(
+            description=(
+                "Only those with a reply given a thumbs up (`up`) or down (`down`), with any "
+                "Message Feedback (`any`), or with none (`none`)"
+            )
+        ),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
     """The Project's Conversations, Visitors' and the Playground's, newest first."""
     where = service.ConversationFilter(
-        agent_id=agent_id, version_id=version_id, start=start, end=end, playground=playground
+        agent_id=agent_id,
+        version_id=version_id,
+        start=start,
+        end=end,
+        playground=playground,
+        feedback=feedback,
     )
     try:
         result = await service.list_conversations(
@@ -97,6 +115,8 @@ async def list_conversations(
                 message_count=row.message_count,
                 preview=row.preview,
                 version_numbers=row.version_numbers,
+                thumbs_up=row.thumbs_up,
+                thumbs_down=row.thumbs_down,
             )
             for row in result.rows
         ],
@@ -106,11 +126,22 @@ async def list_conversations(
     )
 
 
+class MessageFeedbackRead(BaseModel):
+    rating: Literal["up", "down"]
+    comment: str | None
+    # The Agent Version the feedback is attributed to: the reply's, stored when it was given.
+    agent_version_number: int | None
+    # When the Visitor gave it, or last changed it.
+    updated_at: datetime
+
+
 class ConversationMessageOut(MessageOut):
     # The number of the Agent Version that answered; null for questions and Draft answers.
     agent_version_number: int | None
     # True when the answer is the Agent's fallback text (no Chunk reached the minimum score).
     fallback: bool
+    # The Visitor's Message Feedback on a reply; null when none was given.
+    feedback: MessageFeedbackRead | None
 
 
 class ConversationDetailOut(BaseModel):
@@ -121,6 +152,21 @@ class ConversationDetailOut(BaseModel):
     created_at: datetime
     last_activity_at: datetime
     messages: list[ConversationMessageOut]
+
+
+def _feedback_read(
+    feedback: MessageFeedback | None, numbers: dict[uuid.UUID, int]
+) -> MessageFeedbackRead | None:
+    if feedback is None:
+        return None
+    return MessageFeedbackRead(
+        rating=cast(Literal["up", "down"], feedback.rating),
+        comment=feedback.comment,
+        agent_version_number=(
+            None if feedback.agent_version_id is None else numbers[feedback.agent_version_id]
+        ),
+        updated_at=feedback.updated_at,
+    )
 
 
 _DETAIL_NOT_FOUND = (
@@ -155,6 +201,7 @@ async def get_conversation(
                     None if m.agent_version_id is None else read.version_numbers[m.agent_version_id]
                 ),
                 fallback=m.fallback,
+                feedback=_feedback_read(read.feedback.get(m.id), read.version_numbers),
             )
             for m in read.messages
         ],

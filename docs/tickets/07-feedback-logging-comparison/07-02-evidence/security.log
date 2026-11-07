@@ -1,0 +1,20 @@
+$ gitleaks git --log-opts=origin/candidate..HEAD @ aee5ab3
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+9:47PM INF 18 commits scanned.
+9:47PM INF scanned ~5389770 bytes (5.39 MB) in 648ms
+9:47PM INF no leaks found
+exit 0
+$ make audit @ aee5ab3
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit 0

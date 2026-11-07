@@ -66,22 +66,27 @@ async def test_a_visitor_who_reloads_gets_their_conversation_back(
     response = await resume(visitor, public_id, token)
 
     assert response.status_code == 200, response.text
-    assert response.json() == {
-        "messages": [
-            {"role": "user", "content": "How much leave?", "citations": []},
-            {
-                "role": "assistant",
-                "content": "Leave is 25 days [C1].",
-                "citations": [{"label": "C1", "document_name": "leave.txt"}],
-            },
-            {"role": "user", "content": "And sick days?", "citations": []},
-            {
-                "role": "assistant",
-                "content": "Leave is 25 days [C1].",
-                "citations": [{"label": "C1", "document_name": "leave.txt"}],
-            },
-        ]
-    }
+    messages = response.json()["messages"]
+    # Each Message's ID (an answer's is the stream's `message_id`, for Message Feedback).
+    ids = [m.pop("id") for m in messages]
+    assert messages == [
+        {"role": "user", "content": "How much leave?", "citations": [], "feedback": None},
+        {
+            "role": "assistant",
+            "content": "Leave is 25 days [C1].",
+            "citations": [{"label": "C1", "document_name": "leave.txt"}],
+            "feedback": None,
+        },
+        {"role": "user", "content": "And sick days?", "citations": [], "feedback": None},
+        {
+            "role": "assistant",
+            "content": "Leave is 25 days [C1].",
+            "citations": [{"label": "C1", "document_name": "leave.txt"}],
+            "feedback": None,
+        },
+    ]
+    assert [ids[1], ids[3]] == [first[-1][1]["message_id"], second[-1][1]["message_id"]]
+    assert len(set(ids)) == 4
     assert first[-1][0] == second[-1][0] == "done"
 
 
