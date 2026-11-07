@@ -97,7 +97,11 @@ def _saved(row: Theme | None) -> SavedTheme:
 
 
 async def _row(session: AsyncSession, scope: OrganisationScope) -> Theme | None:
-    return await session.scalar(select(Theme).where(Theme.organisation_id == scope.organisation_id))
+    return await _organisation_row(session, scope.organisation_id)
+
+
+async def _organisation_row(session: AsyncSession, organisation_id: uuid.UUID) -> Theme | None:
+    return await session.scalar(select(Theme).where(Theme.organisation_id == organisation_id))
 
 
 async def _locked_row(session: AsyncSession, scope: OrganisationScope) -> Theme | None:
@@ -128,6 +132,11 @@ def _new_row(session: AsyncSession, scope: OrganisationScope) -> Theme:
 async def read_theme(session: AsyncSession, scope: OrganisationScope) -> SavedTheme:
     """The Organisation's Theme, or the default if it never saved one."""
     return _saved(await _row(session, scope))
+
+
+async def organisation_theme(session: AsyncSession, organisation_id: uuid.UUID) -> SavedTheme:
+    """The Theme of an Organisation, for its widgets, which Visitors see without a Membership."""
+    return _saved(await _organisation_row(session, organisation_id))
 
 
 def _changes(

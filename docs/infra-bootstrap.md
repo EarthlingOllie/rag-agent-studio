@@ -49,7 +49,7 @@ You need an AWS account, credentials for an administrator in it (for example `aw
 
 ## Tearing down
 
-Destroy every environment first (the `deploy` workflow's `destroy` run). The bootstrap's bucket and key have `prevent_destroy`, so removing them is deliberate: delete the `lifecycle` blocks, empty the bucket (every object version), then `terraform destroy` in `infra/bootstrap`. The KMS key is scheduled for deletion after 30 days.
+Destroy every environment first (the `destroy` workflow; see [deploy-demo.md](deploy-demo.md#destroy-stop-paying)). The bootstrap's bucket and key have `prevent_destroy`, so removing them is deliberate: delete the `lifecycle` blocks, empty the bucket (every object version), then `terraform destroy` in `infra/bootstrap`. The KMS key is scheduled for deletion after 30 days.
 
 ## Cost
 

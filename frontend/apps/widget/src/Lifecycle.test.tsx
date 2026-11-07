@@ -8,9 +8,21 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
 import { server } from "../../studio/src/test/server";
+import type { Boot } from "./chat";
 import { Widget } from "./Widget";
 
-const boot = { agent: "agt_hr", name: "HR helper", bootstrap_token: "wb1.agt_hr.1.sig" };
+const boot: Boot = {
+  agent: "agt_hr",
+  name: "HR helper",
+  bootstrap_token: "wb1.agt_hr.1.sig",
+  theme: { mode: "light", launcher_type: "inline", launcher_position: "bottom-right", font: "Inter" },
+  logo_url: null,
+  avatar_url: null,
+  greeting: "",
+  starter_questions: [],
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
+  citations: true,
+};
 const STORED = "rag-widget:conversation:agt_hr";
 const RETIRED = "This assistant is no longer available.";
 const EXPIRED = "This chat has expired. Reload the page to start a new one.";

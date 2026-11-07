@@ -15,8 +15,16 @@ const style = document.createElement("style");
 style.textContent = STYLES;
 document.head.append(style);
 
+// The loader passes the snippet's `data-launcher`, if any, and the host page's origin.
+const params = new URLSearchParams(window.location.search);
+const launcher = params.get("launcher");
+
 createRoot(root).render(
   <StrictMode>
-    <Widget boot={JSON.parse(boot.textContent) as Boot} />
+    <Widget
+      boot={JSON.parse(boot.textContent) as Boot}
+      launcher={launcher === "bubble" || launcher === "inline" ? (launcher) : null}
+      host={params.get("host")}
+    />
   </StrictMode>,
 );

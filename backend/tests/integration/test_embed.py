@@ -25,6 +25,7 @@ from tests.documents import create_project, project_path
 from tests.fakes.clock import ControllableClock
 from tests.integration.test_agent_archive import archive as archive_agent
 from tests.integration.test_agent_versions import knowledgeable_project, published
+from tests.integration.test_playground import LEAVE
 from tests.integration.test_playground_errors import INVALID_KEY, failing
 from tests.integration.test_project_instructions_versions import published as instructions
 from tests.integration.test_projects import archive as archive_project
@@ -470,7 +471,7 @@ async def test_citations_stream_with_the_document_name(
     events = parse_sse(response.text)
     assert events[:-1] == [
         ("token", {"text": "Leave is 25 days [C1]."}),
-        ("citation", {"label": "C1", "document_name": "leave.txt"}),
+        ("citation", {"label": "C1", "document_name": "leave.txt", "passage": LEAVE}),
     ]
     assert events[-1][0] == "done"
 

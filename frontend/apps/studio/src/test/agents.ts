@@ -1,6 +1,7 @@
 import type { Schemas } from "@studio/api-client";
 import { http, HttpResponse } from "msw";
 
+import { fakeBrandingApi } from "./branding";
 import { server } from "./server";
 
 export type Agent = Schemas["AgentOut"];
@@ -396,6 +397,8 @@ export function fakeAgentsApi(
   } = {},
 ) {
   let agents = [...(options.agents ?? [])];
+  // Every Agent page shows the widget branding.
+  fakeBrandingApi();
   const versions: Record<string, AgentVersion[]> = { ...options.versions };
   const find = (agentId: unknown) =>
     agents.find((candidate) => candidate.id === agentId) as Agent;
