@@ -1,0 +1,201 @@
+$ docs/tickets/06-embed-widget-operational-settings/06-03-evidence/build.sh . 0603 @ 76584ff (fresh clone of origin/ticket/06-03-branded-widget)
++ docker build -t rag-agent-studio/api:0603 backend (WITH_PDF=false BUNDLE_MODELS=false, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 3.13kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.8s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.59MB 0.1s done
+#7 DONE 0.1s
+
+#8 [build 4/6] WORKDIR /app
+#8 CACHED
+
+#9 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#9 CACHED
+
+#10 [build 5/6] COPY pyproject.toml uv.lock ./
+#10 CACHED
+
+#11 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#11 CACHED
+
+#12 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
+#12 CACHED
+
+#13 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#13 CACHED
+
+#14 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#14 CACHED
+
+#15 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#15 CACHED
+
+#16 [stage-1  5/10] WORKDIR /app
+#16 CACHED
+
+#17 [stage-1  6/10] COPY alembic.ini ./
+#17 CACHED
+
+#18 [stage-1  7/10] COPY app ./app
+#18 DONE 0.1s
+
+#19 [stage-1  8/10] COPY migrations ./migrations
+#19 DONE 0.0s
+
+#20 [stage-1  9/10] RUN mkdir -p /opt/models/docling     && if [ "false" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
+#20 DONE 0.1s
+
+#21 [stage-1 10/10] RUN useradd --system --uid 10001 studio
+#21 0.096 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.1s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 0.2s done
+#22 exporting manifest sha256:f02c7ecf675c845d9d3ecea862e58f3513a5387c58be8cd3c03773670f50e254 done
+#22 exporting config sha256:e8cde704bc25e70dc26a814d7745efeef783d7f3c568fff36d2d855440dec3d7 done
+#22 exporting attestation manifest sha256:d1196e40abac3601db0c810f587a3007741f82006ad930463756a6e9973f697a done
+#22 exporting manifest list sha256:1b8c24d694788711999634534163ccf324993c6af60fb64212d83e111e8acc65 done
+#22 naming to docker.io/rag-agent-studio/api:0603 done
+#22 unpacking to docker.io/rag-agent-studio/api:0603
+#22 unpacking to docker.io/rag-agent-studio/api:0603 9.2s done
+#22 DONE 9.4s
++ docker build -t rag-agent-studio/studio:0603 frontend (sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 transferring dockerfile: 1.84kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22-slim
+#3 DONE 0.9s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 104B done
+#4 DONE 0.0s
+
+#5 [install  1/12] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.28MB 0.1s done
+#7 DONE 0.1s
+
+#8 [install  3/12] RUN corepack enable
+#8 CACHED
+
+#9 [install  4/12] WORKDIR /app
+#9 CACHED
+
+#10 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#10 CACHED
+
+#11 [install  5/12] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#11 CACHED
+
+#12 [install  7/12] COPY apps/widget/package.json apps/widget/
+#12 CACHED
+
+#13 [install  2/12] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#13 CACHED
+
+#14 [install  6/12] COPY apps/studio/package.json apps/studio/
+#14 CACHED
+
+#15 [install  9/12] COPY packages/ui/package.json packages/ui/
+#15 CACHED
+
+#16 [install 10/12] RUN pnpm install --frozen-lockfile
+#16 CACHED
+
+#17 [install 11/12] COPY . .
+#17 DONE 1.0s
+
+#18 [install 12/12] RUN pnpm --filter @studio/widget build
+#18 0.666 
+#18 0.666 > @studio/widget@ build /app/apps/widget
+#18 0.666 > vite build && vite build --config vite.embed.config.ts
+#18 0.666 
+#18 1.028 vite v8.3.5 building client environment for production...
+#18 1.062 transforming...
+#18 1.209 ✓ 76 modules transformed.
+#18 1.325 rendering chunks...
+#18 1.478 computing gzip size...
+#18 1.492 dist/widget/assets/widget.js  642.08 kB │ gzip: 202.45 kB
+#18 1.492 
+#18 1.498 ✓ built in 469ms
+#18 1.500 [plugin builtin:vite-reporter] 
+#18 1.500 (!) Some chunks are larger than 500 kB after minification. Consider:
+#18 1.500 - Using dynamic import() to code-split the application
+#18 1.500 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#18 1.500 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#18 1.725 vite v8.3.5 building client environment for production...
+#18 1.738 transforming...
+#18 1.754 ✓ 3 modules transformed.
+#18 1.760 rendering chunks...
+#18 1.766 computing gzip size...
+#18 1.766 dist/embed.js  1.36 kB │ gzip: 0.77 kB
+#18 1.766 
+#18 1.768 ✓ built in 40ms
+#18 DONE 1.8s
+
+#19 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#19 CACHED
+
+#20 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#20 CACHED
+
+#21 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
+#21 DONE 1.6s
+
+#22 [stage-1 5/5] WORKDIR /app/apps/studio
+#22 DONE 0.2s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 12.7s done
+#23 exporting manifest sha256:5177d6da4c1b332dd3065cd9a2da5f29dfd76dab20055a0ab95025ac96127d23
+#23 exporting manifest sha256:5177d6da4c1b332dd3065cd9a2da5f29dfd76dab20055a0ab95025ac96127d23 0.3s done
+#23 exporting config sha256:379ec35a95ff5846580ece620f992525d9d374682de3f05a59cb3769c7560328
+#23 exporting config sha256:379ec35a95ff5846580ece620f992525d9d374682de3f05a59cb3769c7560328 done
+#23 exporting attestation manifest sha256:4bc53e2085f129a172943ad5da255bb2467b30cfb83d2dee0ade64f3165fb074
+#23 exporting attestation manifest sha256:4bc53e2085f129a172943ad5da255bb2467b30cfb83d2dee0ade64f3165fb074 0.1s done
+#23 exporting manifest list sha256:a1e5adb9ea73ef6536f531dada7b7ce888b31d5a1b21d5aa9b93aea21ae4d286 0.1s done
+#23 naming to docker.io/rag-agent-studio/studio:0603
+#23 naming to docker.io/rag-agent-studio/studio:0603 done
+#23 unpacking to docker.io/rag-agent-studio/studio:0603
+#23 unpacking to docker.io/rag-agent-studio/studio:0603 4.6s done
+#23 DONE 18.1s
+exit 0

@@ -343,6 +343,42 @@ async def _allowed_origins(owner: SignedUpMember, add_member: MemberFactory) -> 
     return params, {"origins": ["https://www.example.com"]}
 
 
+def _override_path(owner: SignedUpMember, params: dict[str, str]) -> str:
+    return (
+        PROJECTS.format(organisation_id=owner.organisation_id)
+        + f"/{params['project_id']}/agents/{params['agent_id']}/theme-override"
+    )
+
+
+async def _a_colour_override(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"colours": {"primary": {"light": "#111111", "dark": "#eeeeee"}}}
+
+
+async def _an_agent_avatar_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"filename": "avatar.png", "size_bytes": 10}
+
+
+async def _an_uploaded_agent_avatar(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    data = theme_images.png()
+    started = await owner.client.post(
+        _override_path(owner, params) + "/avatar/uploads",
+        json={"filename": "avatar.png", "size_bytes": len(data)},
+    )
+    assert started.status_code == 201, started.text
+    await theme_images.put_file(owner, started.json(), data)
+    return params, {"upload_id": started.json()["upload_id"]}
+
+
+async def _an_agent_avatar(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _an_uploaded_agent_avatar(owner, add_member)
+    confirmed = await owner.client.put(_override_path(owner, params) + "/avatar", json=body)
+    assert confirmed.status_code == 200, confirmed.text
+    return params, None
+
+
 async def _an_agent_to_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, body = await _an_agent_to_publish(owner, add_member)
     for _ in range(2):
@@ -523,6 +559,14 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/allowed-origins", EDITOR, _an_agent),
     ScopedRoute("PUT", _AGENT + "/allowed-origins", EDITOR, _allowed_origins),
+    ScopedRoute("GET", _AGENT + "/theme-override", EDITOR, _an_agent),
+    ScopedRoute("PUT", _AGENT + "/theme-override", OWNER, _a_colour_override),
+    ScopedRoute(
+        "POST", _AGENT + "/theme-override/avatar/uploads", OWNER, _an_agent_avatar_to_start
+    ),
+    ScopedRoute("PUT", _AGENT + "/theme-override/avatar", OWNER, _an_uploaded_agent_avatar),
+    ScopedRoute("DELETE", _AGENT + "/theme-override/avatar", OWNER, _an_agent_avatar),
+    ScopedRoute("GET", _AGENT + "/theme-override/avatar", EDITOR, _an_agent_avatar),
     ScopedRoute(
         "POST", PROJECTS + "/{project_id}/agents/bulk-publish", EDITOR, _agents_to_bulk_publish
     ),

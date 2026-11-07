@@ -5,16 +5,44 @@
  */
 import type { Schemas } from "@studio/api-client";
 
-/** What the shell hands the widget, in its `#widget-boot` element. */
-export type Boot = { agent: string; name: string; bootstrap_token: string };
+export type Launcher = "bubble" | "inline";
 
-export type Citation = { label: string; document_name: string | null };
+/**
+ * What the shell hands the widget, in its `#widget-boot` element: the Agent, a bootstrap token,
+ * the Theme's mode and Launcher (its colours are already inlined as CSS custom properties), the
+ * images, and the public Experience of the Agent's Live Version.
+ */
+export type Boot = {
+  agent: string;
+  name: string;
+  bootstrap_token: string;
+  theme: {
+    mode: "light" | "dark" | "auto";
+    launcher_type: Launcher;
+    launcher_position: "bottom-right" | "bottom-left";
+    font: string;
+  };
+  logo_url: string | null;
+  avatar_url: string | null;
+  greeting: string;
+  starter_questions: string[];
+  ui_text: { send_button: string | null; rate_conversation: string | null; unavailable_message: string | null };
+  citations: boolean;
+};
 
-/** Something the Visitor should be told instead of an answer; `status` is the API's, if any. */
+/** A source an answer cited; `passage` is the cited text, sent with a live answer but not with a resumed one. */
+export type Citation = { label: string; document_name: string | null; passage?: string };
+
+/**
+ * Something the Visitor should be told instead of an answer; `status` is the API's, if any.
+ * `unavailable` marks the Agent being temporarily unable to answer (a 503, or a provider failure
+ * mid-answer), which the Agent's own text may replace.
+ */
 export class ChatError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    readonly unavailable = status === 503,
   ) {
     super(message);
   }
@@ -103,7 +131,7 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
       const fields = Object.fromEntries(
         block.split("\n").map((line) => [line.slice(0, line.indexOf(": ")), line.slice(line.indexOf(": ") + 2)]),
       ) as { event: string; data: string };
-      const data = JSON.parse(fields.data) as { text: string; message: string } & Citation;
+      const data = JSON.parse(fields.data) as { text: string; message: string; passage: string } & Citation;
       switch (fields.event) {
         case "token":
           handlers.onToken(data.text);
@@ -112,10 +140,10 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
           handlers.onReplace(data.text);
           break;
         case "citation":
-          handlers.onCitation({ label: data.label, document_name: data.document_name });
+          handlers.onCitation({ label: data.label, document_name: data.document_name, passage: data.passage });
           break;
         case "error":
-          throw new ChatError(data.message);
+          throw new ChatError(data.message, undefined, true);
         case "done":
           return;
       }

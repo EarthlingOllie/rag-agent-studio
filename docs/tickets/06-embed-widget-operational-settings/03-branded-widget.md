@@ -8,12 +8,12 @@
 - [06-01: Embed tracer](01-embed-tracer.md)
 - [02-05: Theme editor](../02-provider-credentials-theme/05-theme-editor.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The shell inlines the resolved Theme plus the per-Agent override, which is Owner-only and not versioned
-- [ ] Bubble and inline launchers are chosen by data attributes, with postMessage resizing that validates the message origin
-- [ ] Greeting, starter questions, UI text and citations come from the Live Version
-- [ ] Phones get a full-screen layout
-- [ ] Light, dark and auto modes work
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The shell inlines the resolved Theme plus the per-Agent override, which is Owner-only and not versioned
+- [x] Bubble and inline launchers are chosen by data attributes, with postMessage resizing that validates the message origin
+- [x] Greeting, starter questions, UI text and citations come from the Live Version
+- [x] Phones get a full-screen layout
+- [x] Light, dark and auto modes work
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
