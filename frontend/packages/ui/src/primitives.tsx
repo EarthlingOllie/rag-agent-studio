@@ -54,7 +54,7 @@ const HEADER_IMAGE = { width: 28, height: 28, flex: "none" } as const;
 /**
  * The chat panel: a header with the Agent's avatar (or initial), name, the Theme's logo and any
  * `actions` (such as a close button), then the Messages and the Composer. With `logLabel` the
- * Messages are a `log`, so new ones are announced; `className` lets the widget lay it out.
+ * list of Messages is inside a `log`, so new ones are announced; `className` lets the widget lay it out.
  * With `announcements` the log stays silent (a streamed reply would be read out token by token)
  * and a visually hidden polite status region reads out what the widget puts there instead.
  */
@@ -129,24 +129,14 @@ export function ChatWindow({
         {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, maxWidth: 96, objectFit: "contain" }} />}
         {actions}
       </header>
-      <ol
+      <div
         role={logLabel ? "log" : undefined}
         aria-label={logLabel}
         aria-live={announcements === undefined ? undefined : "off"}
-        style={{
-          listStyle: "none",
-          margin: 0,
-          padding: 14,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          flex: "1 1 auto",
-          minHeight: 0,
-          overflowY: "auto",
-        }}
+        style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}
       >
-        {children}
-      </ol>
+        <ol style={{ listStyle: "none", margin: 0, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>{children}</ol>
+      </div>
       {composer}
       {announcements !== undefined && (
         <div role="status" aria-live="polite" aria-label="Announcements" style={VISUALLY_HIDDEN}>

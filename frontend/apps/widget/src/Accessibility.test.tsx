@@ -159,3 +159,11 @@ test.each([
   expect(scrolled.mock.contexts.at(-1)).toBe(answer.closest("li"));
   reply.end();
 });
+
+test("the Conversation log holds a list of Messages, so each is announced as a list item", () => {
+  render(<Widget boot={boot} launcher="inline" />);
+
+  const log = screen.getByRole("log", { name: "Conversation" });
+  const list = within(log).getByRole("list");
+  expect(within(list).getByRole("listitem", { name: "HR helper's greeting" })).toHaveTextContent("Hi!");
+});
