@@ -18,7 +18,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
@@ -36,11 +36,14 @@ from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
+from app.theme import images
+from app.theme.resolve import font_stylesheet_url, theme_stylesheet, widget_theme
 
 NO_LONGER_AVAILABLE = "This assistant is no longer available."
 TEMPORARILY_UNAVAILABLE = "This assistant is temporarily unavailable. Please try again later."
 INVALID_TOKEN = "This chat has expired. Reload the page to start a new one."  # noqa: S105 (a message)
 WIDGET_SCRIPT = "/widget/assets/widget.js"
+IMAGES = ("avatar", "logo")
 
 
 def get_signer(request: Request) -> TokenSigner:
@@ -57,16 +60,16 @@ Signer = Annotated[TokenSigner, Depends(get_signer)]
 shell_router = APIRouter()
 
 
-def _json_for_script(data: dict[str, str]) -> str:
+def _json_for_script(data: dict[str, Any]) -> str:
     # Inside <script>, "</script>" or "<!--" in a value would end or confuse the element.
     return json.dumps(data).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
-def _page(title: str, body: str) -> str:
+def _page(title: str, body: str, head: str = "") -> str:
     return (
         '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"<title>{html.escape(title)}</title>\n</head>\n<body>\n{body}\n</body>\n</html>\n"
+        f"<title>{html.escape(title)}</title>\n{head}</head>\n<body>\n{body}\n</body>\n</html>\n"
     )
 
 
@@ -88,8 +91,26 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
             status_code=status.HTTP_404_NOT_FOUND,
             headers={**_HEADERS, "Content-Security-Policy": "frame-ancestors *"},
         )
+    experience = found.experience
     boot = _json_for_script(
-        {"agent": found.public_id, "name": found.name, "bootstrap_token": found.bootstrap_token}
+        {
+            "agent": found.public_id,
+            "name": found.name,
+            "bootstrap_token": found.bootstrap_token,
+            "theme": widget_theme(found.theme),
+            "logo_url": found.logo_url,
+            "avatar_url": found.avatar_url,
+            "greeting": experience.greeting,
+            "starter_questions": experience.starter_questions,
+            "ui_text": experience.ui_text.model_dump(mode="json"),
+            "citations": found.citations,
+        }
+    )
+    # The Theme's values are validated (hex colours, a whole radius, an allowlisted font), so
+    # they can't close the <style> element.
+    head = (
+        f'<link rel="stylesheet" href="{html.escape(font_stylesheet_url(found.theme))}">\n'
+        f'<style id="widget-theme">{theme_stylesheet(found.theme, "#root")}</style>\n'
     )
     return HTMLResponse(
         _page(
@@ -97,10 +118,32 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
             '<div id="root"></div>\n'
             f'<script id="widget-boot" type="application/json">{boot}</script>\n'
             f'<script type="module" src="{WIDGET_SCRIPT}"></script>',
+            head,
         ),
         headers={
             **_HEADERS,
             "Content-Security-Policy": service.frame_ancestors(found.allowed_origins),
+        },
+    )
+
+
+@shell_router.get("/widget/a/{public_id}/{kind}", include_in_schema=False)
+async def widget_image(public_id: str, kind: str, db: Db, request: Request) -> Response:
+    """The widget's avatar or logo, for Visitors: no Studio session."""
+    try:
+        image = await service.widget_image(db, public_id, kind) if kind in IMAGES else None
+        if image is None:
+            raise images.ImageNotFoundError
+        found = await images.read_stored(request.app.state.ingestion.object_store, image)
+    except (AgentNotServedError, AgentNotLiveError, images.ImageNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found.") from None
+    return Response(
+        found.data,
+        media_type=found.content_type,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            # The URL carries the image's content hash, so it always names the same bytes.
+            "Cache-Control": "public, max-age=31536000, immutable",
         },
     )
 
@@ -183,7 +226,8 @@ def _sse(event: str, data: dict[str, Any]) -> str:
             "content": {"text/event-stream": {"schema": {"type": "string"}}},
             "description": (
                 "Server-Sent Events: `token` events (`text`), then `citation` events "
-                "(`label`, `document_name`) and one `done` event (`message_id`); or, when the "
+                "(`label`, `document_name`, `passage`; only when the Live Version shows "
+                "citations) and one `done` event (`message_id`); or, when the "
                 "answer leaks the Canary token, a `replace` event (`text`) then `done`; or, "
                 "when the model provider fails, one `error` event (`code`, and a `message` for "
                 "Visitors that names no model or credential)."
@@ -233,10 +277,16 @@ async def send_message(
                 # rotate the Provider Credential); Visitors get the generic one.
                 yield _sse("error", {"code": event.kind, "message": TEMPORARILY_UNAVAILABLE})
             elif isinstance(event, CitationEvent):
-                yield _sse(
-                    "citation",
-                    {"label": event.label, "document_name": event.chunk.document_name},
-                )
+                # Only when the Live Version shows citations to Visitors.
+                if prepared.config.retrieval.citations:
+                    yield _sse(
+                        "citation",
+                        {
+                            "label": event.label,
+                            "document_name": event.chunk.document_name,
+                            "passage": event.chunk.text,
+                        },
+                    )
             else:
                 yield _sse("done", {"message_id": str(event.message_id)})
 

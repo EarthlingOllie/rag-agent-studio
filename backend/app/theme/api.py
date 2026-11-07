@@ -120,7 +120,7 @@ def _out(saved: service.SavedTheme, organisation_id: uuid.UUID) -> ThemeOut:
     )
 
 
-def _too_large(settings: Settings) -> str:
+def image_too_large(settings: Settings) -> str:
     return f"Images can be up to {settings.max_theme_image_bytes // (1024 * 1024)} MB."
 
 
@@ -185,7 +185,7 @@ async def start_image_upload(
     except images.UnsupportedImageTypeError:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, UNSUPPORTED_IMAGE) from None
     except images.ImageTooLargeError:
-        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, _too_large(settings)) from None
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, image_too_large(settings)) from None
     return StartImageUploadResponse(
         upload_id=pending.upload_id,
         url=pending.url,
@@ -232,7 +232,9 @@ async def confirm_image_upload(
     except images.ImageNotUploadedError:
         raise HTTPException(status.HTTP_409_CONFLICT, IMAGE_NOT_UPLOADED) from None
     except images.ImageTooLargeError:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _too_large(settings)) from None
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, image_too_large(settings)
+        ) from None
     except images.NotDeclaredTypeError as error:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

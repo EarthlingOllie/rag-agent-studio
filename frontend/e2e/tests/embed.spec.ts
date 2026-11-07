@@ -84,6 +84,8 @@ test.describe("Embed an Agent", () => {
     await host.goto(`${HOST_URL}/?agent=${publicId}`);
     await expect(host.getByRole("heading", { name: "Northwind Traders" })).toBeVisible();
     const widget = host.frameLocator('iframe[title="Chat"]');
+    // The Theme's Launcher is a bubble: the chat opens from it.
+    await widget.getByRole("button", { name: "Open chat" }).click({ timeout: 15_000 });
     await expect(widget.getByRole("heading", { name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await widget.getByLabel("Message").fill("How many days of annual leave do I get?");
     await widget.getByRole("button", { name: "Send" }).click();
