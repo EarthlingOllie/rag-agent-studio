@@ -1,0 +1,5 @@
+$ uv run pytest tests/integration/test_object_store.py --no-cov @ 1105556 (rerun of the file whose setup timed out in backend-tests.log)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+..............                                                           [100%]
+14 passed in 45.12s
+exit 0

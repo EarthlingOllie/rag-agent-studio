@@ -14,6 +14,7 @@ gateway). The question is saved before the answer streams; the answer, with its 
 and cost, once the stream ends.
 """
 
+import functools
 import itertools
 import time
 import uuid
@@ -177,6 +178,8 @@ class PreparedTurn:
     instructions_version_id: uuid.UUID | None = None
     instructions_version_number: int | None = None
     reranker: ChosenModel | None = None
+    # The LLM classifier of the Guardrails, when the configuration names one.
+    classifier: ChosenModel | None = None
     # The Agent Version answering; None for the Draft.
     agent_version_id: uuid.UUID | None = None
 
@@ -248,6 +251,12 @@ async def save_question(
         if reranker_choice is None
         else await _chosen(session, organisation_id, reranker_choice)
     )
+    classifier_choice = config.guardrails.classifier
+    classifier = (
+        None
+        if classifier_choice is None
+        else await _chosen(session, organisation_id, classifier_choice)
+    )
     session.add(
         Message(
             organisation_id=organisation_id,
@@ -272,6 +281,7 @@ async def save_question(
             None if instructions_version is None else instructions_version.number
         ),
         reranker=reranker,
+        classifier=classifier,
         agent_version_id=agent_version_id,
     )
 
@@ -369,6 +379,15 @@ async def answer(
         except PROVIDER_ERRORS as error:
             yield provider_error(error, reranking.model)
             return
+    judging = prepared.classifier
+    llm_classifier = (
+        None
+        if judging is None
+        else guardrails.llm_classifier(
+            functools.partial(gateway.chat_model, judging.credential, judging.model),
+            judging.model,
+        )
+    )
     async with sessionmaker() as session:
 
         async def retrieve_in_project(query: str, settings: Retrieval) -> RetrievalResult:
@@ -383,6 +402,7 @@ async def answer(
             prepared.question,
             model=model,
             retrieve=retrieve_in_project,
+            llm_classifier=llm_classifier,
         ):
             if isinstance(event, TokenEvent):
                 if first_token_ms is None:
