@@ -3,8 +3,11 @@ import { useParams } from "@tanstack/react-router";
 import { type SubmitEvent, useRef, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { AgentsBehind, BulkRevertOffer, RolloutDialog } from "./BulkRollout";
 import {
   type DraftInstructions,
+  type InstructionsReverted,
+  type InstructionsVersion,
   instructionsFailure,
   StaleInstructionsError,
   useInstructions,
@@ -23,12 +26,14 @@ function InstructionsForm({
   draft,
   archived,
   onReplaced,
+  onPublished,
 }: {
   organisationId: string;
   projectId: string;
   draft: DraftInstructions;
   archived: boolean;
   onReplaced: () => void;
+  onPublished: (version: InstructionsVersion) => void;
 }) {
   const save = useSaveInstructions(organisationId, projectId);
   const store = useStoreInstructions(organisationId, projectId);
@@ -124,6 +129,7 @@ function InstructionsForm({
             base.current = revision;
           }}
           onStale={setConflict}
+          onPublished={onPublished}
         />
       )}
     </>
@@ -136,6 +142,13 @@ export function InstructionsTab() {
   const { projectId } = useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId" });
   const project = useProject(organisationId, projectId);
   const instructions = useInstructions(organisationId, projectId);
+  // After publishing, the rollout dialog; after reverting, the offer to bulk-revert Agents.
+  const [dialog, setDialog] = useState<
+    { kind: "rollout"; version: { id: string; number: number } } | { kind: "revert"; reverted: InstructionsReverted } | null
+  >(null);
+  const close = () => {
+    setDialog(null);
+  };
   // Moves on when someone else's Draft is loaded, so the editor starts again from it.
   const [generation, setGeneration] = useState(0);
 
@@ -155,6 +168,9 @@ export function InstructionsTab() {
         onReplaced={() => {
           setGeneration((count) => count + 1);
         }}
+        onPublished={(version) => {
+          setDialog({ kind: "rollout", version });
+        }}
       />
     );
   }
@@ -168,9 +184,39 @@ export function InstructionsTab() {
         Project Instructions are the shared rules every Agent in this Project follows. They come before each Agent's system prompt.
       </p>
       {body}
-      <h3 className="pt-4 text-base font-semibold">Versions</h3>
+      {dialog?.kind === "rollout" && (
+        <RolloutDialog organisationId={organisationId} projectId={projectId} version={dialog.version} onClose={close} />
+      )}
+      {dialog?.kind === "revert" && (
+        <BulkRevertOffer
+          organisationId={organisationId}
+          projectId={projectId}
+          reverted={dialog.reverted.reverted_from}
+          candidates={dialog.reverted.bulk_revert_candidates}
+          onClose={close}
+        />
+      )}
       {project.data && (
-        <InstructionsVersions organisationId={organisationId} projectId={projectId} archived={project.data.archived_at !== null} />
+        <>
+          <h3 className="pt-4 text-base font-semibold">Agents</h3>
+          <AgentsBehind
+            organisationId={organisationId}
+            projectId={projectId}
+            archived={project.data.archived_at !== null}
+            onRollOut={(version) => {
+              setDialog({ kind: "rollout", version });
+            }}
+          />
+          <h3 className="pt-4 text-base font-semibold">Versions</h3>
+          <InstructionsVersions
+            organisationId={organisationId}
+            projectId={projectId}
+            archived={project.data.archived_at !== null}
+            onReverted={(reverted) => {
+              setDialog(reverted.bulk_revert_candidates.length > 0 ? { kind: "revert", reverted } : null);
+            }}
+          />
+        </>
       )}
     </section>
   );

@@ -84,6 +84,8 @@ export function fakeProjectsApi(
     projects?: Project[];
     instructions?: Record<string, string>;
     versions?: Record<string, InstructionsHistory>;
+    /** The Agents a revert reports as still pinned to the reverted Version; none when left out. */
+    revertCandidates?: Schemas["BulkRevertCandidateOut"][];
     /** Refuses every Instructions diff with this status. */
     diffStatus?: number;
   } = {},
@@ -235,10 +237,16 @@ export function fakeProjectsApi(
       requests.push({ route: "revert", projectId });
       if ((find(projectId) as Project).archived_at !== null) return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
       const history = historyOf(projectId);
-      const target = history.versions.find((version) => version.id === currentOf(history)?.previous_version_id);
-      if (!target) return HttpResponse.json({ detail: NOTHING_TO_REVERT }, { status: 409 });
+      const current = currentOf(history);
+      const target = history.versions.find((version) => version.id === current?.previous_version_id);
+      if (!current || !target) return HttpResponse.json({ detail: NOTHING_TO_REVERT }, { status: 409 });
       versions[projectId] = { ...history, current_version_id: target.id };
-      return HttpResponse.json(target);
+      const reverted: Schemas["InstructionsRevertOut"] = {
+        ...target,
+        reverted_from: { id: current.id, number: current.number },
+        bulk_revert_candidates: options.revertCandidates ?? [],
+      };
+      return HttpResponse.json(reverted);
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/restore", ({ params }) => {
       const projectId = params.projectId as string;

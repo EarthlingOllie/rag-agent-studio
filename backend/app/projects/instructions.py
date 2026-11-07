@@ -178,17 +178,25 @@ async def publish(
     return await _view(session, version)
 
 
+@dataclass(frozen=True)
+class Reverted:
+    """The Version that is Current again, and the one it replaced."""
+
+    view: VersionView
+    reverted_from: InstructionsVersion
+
+
 async def revert(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, now: datetime
-) -> VersionView:
+) -> Reverted:
     """Moves the Current Version back to the one that was Current before it."""
     project = await active_project(session, scope, project_id, lock=True)
     current = await _version(session, project.current_instructions_version_id)
     target = await _version(session, current.previous_version_id if current else None)
-    if target is None:
+    if current is None or target is None:
         raise NothingToRevertError
     await _move(session, scope, project, current, target, "reverted", now)
-    return await _view(session, target)
+    return Reverted(await _view(session, target), current)
 
 
 async def _move(

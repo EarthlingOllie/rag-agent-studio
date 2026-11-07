@@ -2,6 +2,7 @@ import type { Schemas } from "@studio/api-client";
 import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { rolloutKey } from "./bulk";
 import { ProjectRequestError } from "./projects";
 
 function failed(response: Response, error: unknown): ProjectRequestError {
@@ -52,6 +53,7 @@ export function versionFailure(error: Error | null): string | undefined {
 
 export type InstructionsVersion = Schemas["InstructionsVersionOut"];
 export type InstructionsHistory = Schemas["InstructionsHistoryOut"];
+export type InstructionsReverted = Schemas["InstructionsRevertOut"];
 
 const instructionsKey = (organisationId: string, projectId: string) => ["instructions", organisationId, projectId] as const;
 
@@ -166,7 +168,11 @@ export function usePublishInstructions(organisationId: string, projectId: string
       if (!data) throw failed(response, error);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: versionsKey(organisationId, projectId) }),
+    onSuccess: () => {
+      // Which Agents are behind changes too; the outcome shows without waiting for it.
+      void queryClient.invalidateQueries({ queryKey: rolloutKey(organisationId, projectId) });
+      return queryClient.invalidateQueries({ queryKey: versionsKey(organisationId, projectId) });
+    },
   });
 }
 
@@ -175,14 +181,18 @@ export function useRevertInstructions(organisationId: string, projectId: string)
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: [...changeKey(organisationId, projectId), "revert"],
-    mutationFn: async (): Promise<InstructionsVersion> => {
+    mutationFn: async (): Promise<InstructionsReverted> => {
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/projects/{project_id}/instructions/revert", {
         params: { path: { organisation_id: organisationId, project_id: projectId } },
       });
       if (!data) throw failed(response, error);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: versionsKey(organisationId, projectId) }),
+    onSuccess: () => {
+      // Which Agents are behind changes too; the outcome shows without waiting for it.
+      void queryClient.invalidateQueries({ queryKey: rolloutKey(organisationId, projectId) });
+      return queryClient.invalidateQueries({ queryKey: versionsKey(organisationId, projectId) });
+    },
   });
 }
 

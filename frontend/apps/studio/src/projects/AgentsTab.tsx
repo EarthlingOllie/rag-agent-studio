@@ -4,6 +4,8 @@ import { type SubmitEvent, useState } from "react";
 import { FormError, formValues } from "../auth/AuthLayout";
 import { LiveStatus } from "./AgentPublish";
 import { agentFailure, useAgents, useCreateAgent } from "./agents";
+import { bulkFailure, useBulkRevert } from "./bulk";
+import { BulkResults } from "./BulkRollout";
 import { useProject } from "./projects";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 
@@ -58,17 +60,88 @@ function NewAgentForm({
   );
 }
 
-/** The Project's active Agents, or its archived ones, each linking to its page. */
+/** Reverts the selected Agents together, after confirmation, and reports each one's result. */
+function BulkRevert({
+  organisationId,
+  projectId,
+  selected,
+  onDone,
+}: {
+  organisationId: string;
+  projectId: string;
+  selected: string[];
+  onDone: () => void;
+}) {
+  const revert = useBulkRevert(organisationId, projectId);
+  const [confirming, setConfirming] = useState(false);
+  const count = `${String(selected.length)} ${selected.length === 1 ? "Agent" : "Agents"}`;
+
+  return (
+    <div role="group" aria-label="Bulk actions" className="space-y-2">
+      <FormError message={bulkFailure(revert.error)} />
+      {confirming ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span>
+            Revert {count}? Each one's Live Version moves back one step in its Live History. Drafts aren't changed.
+          </span>
+          <button
+            type="button"
+            disabled={revert.isPending}
+            className="rounded bg-red-700 px-2 py-1 text-white"
+            onClick={() => {
+              revert.mutate(selected, {
+                onSuccess: onDone,
+                onSettled: () => {
+                  setConfirming(false);
+                },
+              });
+            }}
+          >
+            Yes, revert {count}
+          </button>
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              setConfirming(false);
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={BUTTON}
+          disabled={selected.length === 0}
+          onClick={() => {
+            revert.reset();
+            setConfirming(true);
+          }}
+        >
+          Revert selected ({selected.length})
+        </button>
+      )}
+      {revert.isSuccess && <BulkResults result={revert.data} verb="Reverted to" />}
+    </div>
+  );
+}
+
+/** The Project's active Agents, or its archived ones, each linking to its page. Active Agents
+ * of an active Project can be selected and reverted together. */
 function AgentList({
   organisationId,
   projectId,
   archived,
+  selectable,
 }: {
   organisationId: string;
   projectId: string;
   archived: boolean;
+  selectable: boolean;
 }) {
   const agents = useAgents(organisationId, projectId, archived);
+  const [selected, setSelected] = useState<string[]>([]);
   if (agents.isPending)
     return <p role="status">Loading Agents…</p>;
   if (agents.isError)
@@ -84,20 +157,36 @@ function AgentList({
         Documents.
       </p>
     );
-  return (
+  const list = (
     <ul
       aria-label={archived ? "Archived Agents" : "Agents"}
       className="divide-y divide-slate-200 rounded border border-slate-200 bg-white"
     >
       {agents.data.map((agent) => (
         <li key={agent.id} className="flex justify-between gap-4 px-4 py-3">
-          <Link
+          <span className="flex items-center gap-3">
+            {selectable && (
+              <input
+                type="checkbox"
+                aria-label={`Select ${agent.name}`}
+                checked={selected.includes(agent.id)}
+                onChange={(event) => {
+                  setSelected(
+                    event.currentTarget.checked
+                      ? [...selected, agent.id]
+                      : selected.filter((id) => id !== agent.id),
+                  );
+                }}
+              />
+            )}
+            <Link
             to="/organisations/$organisationId/projects/$projectId/agents/$agentId"
             params={{ organisationId, projectId, agentId: agent.id }}
             className="font-medium underline"
           >
-            {agent.name}
-          </Link>
+              {agent.name}
+            </Link>
+          </span>
           <span className="flex items-center gap-3">
             <LiveStatus agent={agent} />
             {agent.archived_at && (
@@ -109,6 +198,20 @@ function AgentList({
         </li>
       ))}
     </ul>
+  );
+  if (!selectable) return list;
+  return (
+    <div className="space-y-3">
+      <BulkRevert
+        organisationId={organisationId}
+        projectId={projectId}
+        selected={selected}
+        onDone={() => {
+          setSelected([]);
+        }}
+      />
+      {list}
+    </div>
   );
 }
 
@@ -160,6 +263,7 @@ export function AgentsTab() {
         organisationId={organisationId}
         projectId={projectId}
         archived={showArchived}
+        selectable={!showArchived && project.data?.archived_at === null}
       />
       {!archivedProject && !showArchived && (
         <NewAgentForm organisationId={organisationId} projectId={projectId} />
