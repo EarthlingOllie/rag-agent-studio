@@ -135,12 +135,23 @@ export function ChatWindow({
 }
 
 /** One Message: the Agent's on the surface, the Visitor's in the primary colour. */
-export function MessageBubble({ from, children, label }: { from: "agent" | "visitor"; children: ReactNode; label?: string }) {
+export function MessageBubble({
+  from,
+  children,
+  label,
+  className,
+}: {
+  from: "agent" | "visitor";
+  children: ReactNode;
+  label?: string;
+  className?: string;
+}) {
   const visitor = from === "visitor";
   return (
     <li
       data-from={from}
       aria-label={label}
+      className={className}
       style={{
         alignSelf: visitor ? "flex-end" : "flex-start",
         maxWidth: "85%",

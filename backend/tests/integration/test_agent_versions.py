@@ -506,6 +506,7 @@ async def serve(app: FastAPI, public_id: str, question: str) -> tuple[str, dict[
             prepared,
             sessionmaker=app.state.sessionmaker,
             gateway=app.state.model_gateway,
+            guardrails=app.state.guardrails,
             embedders=app.state.ingestion.embedders,
             clock=app.state.clock,
         )

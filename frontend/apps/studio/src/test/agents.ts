@@ -323,6 +323,8 @@ export function streamedAnswer(
     end?: boolean;
     citations?: (typeof leaveCitation)[];
     replace?: string;
+    /** The input Guardrail blocked the question: a `refusal` event instead of any token. */
+    refusal?: string;
     /** Ends the stream with a provider `error` event instead of `done`. */
     error?: { code: string; message: string };
     /** What the `done` event says the answer ran with; the Instructions Draft by default. */
@@ -331,6 +333,9 @@ export function streamedAnswer(
 ) {
   const body =
     tokens.map((text) => sse("token", { text })).join("") +
+    (options.refusal === undefined
+      ? ""
+      : sse("refusal", { text: options.refusal })) +
     (options.replace === undefined
       ? ""
       : sse("replace", { text: options.replace })) +

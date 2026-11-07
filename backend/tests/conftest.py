@@ -52,6 +52,7 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCUMENT_CONVERTER", "fake")
     monkeypatch.setenv("EMBEDDER", "fake")
     monkeypatch.setenv("INJECTION_CLASSIFIER", "fake")
+    monkeypatch.setenv("INPUT_CLASSIFIER", "fake")
     monkeypatch.setenv("MODEL_GATEWAY", "fake")
 
 

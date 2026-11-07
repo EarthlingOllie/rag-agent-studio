@@ -38,7 +38,8 @@ COPY alembic.ini ./
 COPY app ./app
 COPY migrations ./migrations
 
-# The local Embedding Model, its tokenizer and (with PDF) the Docling models the PDF pipeline
+# The local Embedding Model, its tokenizer, the input Guardrail's prompt-injection classifier
+# (ONNX, loaded once here to check it works) and (with PDF) the Docling models the PDF pipeline
 # uses (layout, table structure and RapidOCR's) are downloaded at build time, so the worker
 # doesn't fetch them at startup. ``embed_passages`` is a coroutine, so it is run to load the model.
 # RapidOCR's models come from ModelScope, not Hugging Face; BUNDLE_OCR_MODELS=false leaves them
@@ -54,6 +55,7 @@ ENV HF_HOME=/opt/models/huggingface \
 RUN mkdir -p /opt/models/docling \
     && if [ "$BUNDLE_MODELS" = "true" ]; then \
         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)" \
+        && python -c "from app.guardrails import onnx_model; onnx_model.load()" \
         && if [ "$WITH_PDF" = "true" ]; then \
             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='$BUNDLE_OCR_MODELS' == 'true')"; \
         fi; \

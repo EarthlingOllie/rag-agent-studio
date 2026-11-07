@@ -8,12 +8,12 @@
 - [04-06: Citations and Trace drawer](../04-agents-retrieval-playground/06-citations-trace.md)
 - [06-01: Embed tracer](../06-embed-widget-operational-settings/01-embed-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A Guardrail pipeline wraps the runtime without changing its interface
-- [ ] A local ONNX classifier adapter handles windowing, max score and a threshold; the model is baked into the image, with a live-suite test
-- [ ] Block mode short-circuits with the refusal text and makes no model call
-- [ ] Outcomes are saved on the Message and shown in the Trace
-- [ ] The widget and Playground render refusals
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A Guardrail pipeline wraps the runtime without changing its interface
+- [x] A local ONNX classifier adapter handles windowing, max score and a threshold; the model is baked into the image, with a live-suite test
+- [x] Block mode short-circuits with the refusal text and makes no model call
+- [x] Outcomes are saved on the Message and shown in the Trace
+- [x] The widget and Playground render refusals
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

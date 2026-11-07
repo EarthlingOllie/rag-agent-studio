@@ -275,7 +275,7 @@ The Guardrail check ingestion runs on every Chunk: the injection classifier look
 _Avoid_: Document scan, content filter, malware scan
 
 **Injection classifier**:
-The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07), the rule-driven fake in tests, and later the local ONNX model and the LLM classifier (spec 08).
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07, still used by the ingestion scan), the local classifier (the input Guardrail's default), the rule-driven fake in tests, and later the LLM classifier (spec 08).
 _Avoid_: Detector, filter, moderation model
 
 **Guardrail flag**:
@@ -513,8 +513,18 @@ A check on Visitor input, Agent output or a Document that can flag or block cont
 A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
 _Avoid_: Canary, honeytoken, tripwire
 
+**Input Guardrail**:
+The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup. In block mode a flagged message never reaches retrieval or the model: the Visitor gets the Agent's refusal text, and the Trace records why. Warn and log modes come later (ticket 08-02).
+
+**Local classifier**:
+The input Guardrail's default injection classifier: a DeBERTa-v3 prompt-injection model (ONNX) run on the API's CPU, bundled in the API image and loaded once per process. A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
+
+**Refusal text**:
+What the Agent replies, in place of an answer, to a message the input Guardrail blocked. Set per Agent in its Guardrails settings and versioned with it; the default is "Sorry, I can't help with that request."
+_Avoid_: Block message, rejection text
+
 **Guardrail outcome**:
-What one Guardrail layer decided about an answer: its layer, verdict, action (such as replaced or flagged) and reason. Saved on the Message and shown in its Trace.
+What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak), action (blocked, replaced or flagged), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
 ## Conversations
 

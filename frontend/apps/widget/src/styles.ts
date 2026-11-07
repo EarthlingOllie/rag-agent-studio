@@ -11,6 +11,7 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .chat { flex: 1; min-width: 0; height: 100%; }
 .chat li p { margin: 0; white-space: pre-wrap; }
 .close { margin-left: 4px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 22px; line-height: 1; cursor: pointer; }
+.chat li.refusal { border: 1px solid #b45309; }
 .sources { margin-top: 6px; font-size: 12px; color: var(--theme-muted); }
 .sources details { margin-top: 2px; }
 .sources summary { cursor: pointer; color: var(--theme-accent); }
