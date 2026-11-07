@@ -275,7 +275,7 @@ The Guardrail check ingestion runs on every Chunk: the injection classifier look
 _Avoid_: Document scan, content filter, malware scan
 
 **Injection classifier**:
-The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07), the rule-driven fake in tests, and later the local ONNX model and the LLM classifier (spec 08).
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07, still used by the ingestion scan), the local classifier (the input Guardrail's default), the rule-driven fake in tests, and later the LLM classifier (spec 08).
 _Avoid_: Detector, filter, moderation model
 
 **Guardrail flag**:
@@ -480,7 +480,11 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits, Token Budget and the Theme override.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins and the Unavailable text are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+
+**Unavailable text**:
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, and later a rate limit or spent Token Budget). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+_Avoid_: Error message, offline message
 
 **Theme override**:
 An Agent's own colours and avatar in its widget, replacing the Theme's for that Agent only: any of the Colour Tokens (each with its light and dark value) and an avatar image. The other tokens, the font, radius, mode and Launcher still follow the Theme. Like the Theme, only Owners change it; it is an Operational Setting, so it isn't versioned and applies at once. The widget's avatar is the Agent's own, else the Live Version's avatar URL, else the Theme's default avatar.
@@ -490,7 +494,7 @@ _Avoid_: Agent theme, sub-brand theme
 The maximum tokens an Agent may consume per day before it stops answering Visitors.
 
 **Allowed Origins**:
-The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Changes apply to the next page load, without publishing.
+The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). A host may start with a subdomain wildcard over a named site (`https://*.example.com` is every subdomain of example.com, but not example.com itself, and never a bare `*.com`), and localhost (`localhost`, `127.0.0.1`, `[::1]`) may take any port as `http://localhost:*`, for development. The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Part of the Operational Settings: changes apply to the next page load, without publishing, and are audited.
 
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
@@ -499,8 +503,18 @@ A check on Visitor input, Agent output or a Document that can flag or block cont
 A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
 _Avoid_: Canary, honeytoken, tripwire
 
+**Input Guardrail**:
+The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup. In block mode a flagged message never reaches retrieval or the model: the Visitor gets the Agent's refusal text, and the Trace records why. Warn and log modes come later (ticket 08-02).
+
+**Local classifier**:
+The input Guardrail's default injection classifier: a DeBERTa-v3 prompt-injection model (ONNX) run on the API's CPU, bundled in the API image and loaded once per process. A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
+
+**Refusal text**:
+What the Agent replies, in place of an answer, to a message the input Guardrail blocked. Set per Agent in its Guardrails settings and versioned with it; the default is "Sorry, I can't help with that request."
+_Avoid_: Block message, rejection text
+
 **Guardrail outcome**:
-What one Guardrail layer decided about an answer: its layer, verdict, action (such as replaced or flagged) and reason. Saved on the Message and shown in its Trace.
+What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak), action (blocked, replaced or flagged), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
 ## Conversations
 

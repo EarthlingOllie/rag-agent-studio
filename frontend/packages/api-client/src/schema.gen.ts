@@ -961,31 +961,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/allowed-origins": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Allowed Origins
-         * @description The sites whose pages may show the Agent's widget.
-         */
-        get: operations["getAllowedOrigins"];
-        /**
-         * Set Allowed Origins
-         * @description Replaces the Agent's Allowed Origins; the widget's next page load uses them, without
-         *     publishing.
-         */
-        put: operations["setAllowedOrigins"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/archive": {
         parameters: {
             query?: never;
@@ -1116,6 +1091,31 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/operational-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Operational Settings
+         * @description The Agent's Operational Settings: not part of its Draft or Versions.
+         */
+        get: operations["getOperationalSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Operational Settings
+         * @description Changes the settings given. The next request uses them, without publishing, and the
+         *     change is recorded as an Audit Event with the before and after values.
+         */
+        patch: operations["changeOperationalSettings"];
         trace?: never;
     };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations": {
@@ -2250,16 +2250,6 @@ export interface components {
             /** Versions */
             versions: components["schemas"]["AgentVersionOut"][];
         };
-        /** AllowedOriginsIn */
-        AllowedOriginsIn: {
-            /** Origins */
-            origins: string[];
-        };
-        /** AllowedOriginsOut */
-        AllowedOriginsOut: {
-            /** Origins */
-            origins: string[];
-        };
         /** AuditActorOut */
         AuditActorOut: {
             /** Email */
@@ -3245,19 +3235,21 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "replaced" | "flagged";
+            action: "blocked" | "replaced" | "flagged";
             /**
              * Layer
-             * @constant
+             * @enum {string}
              */
-            layer: "canary";
+            layer: "input" | "canary";
             /** Reason */
             reason: string;
+            /** Score */
+            score?: number | null;
             /**
              * Verdict
-             * @constant
+             * @enum {string}
              */
-            verdict: "leak";
+            verdict: "injection" | "leak";
         };
         /**
          * Guardrails
@@ -3699,6 +3691,23 @@ export interface components {
             model_name: string;
             override: components["schemas"]["OptionalPricesOut"] | null;
             platform: components["schemas"]["PricesOut"] | null;
+        };
+        /**
+         * OperationalSettingsChange
+         * @description The settings to change; one left out stays as it is.
+         */
+        OperationalSettingsChange: {
+            /** Allowed Origins */
+            allowed_origins?: string[] | null;
+            /** Unavailable Text */
+            unavailable_text?: string | null;
+        };
+        /** OperationalSettingsOut */
+        OperationalSettingsOut: {
+            /** Allowed Origins */
+            allowed_origins: string[];
+            /** Unavailable Text */
+            unavailable_text: string;
         };
         /** OptionalPricesOut */
         OptionalPricesOut: {
@@ -7350,94 +7359,6 @@ export interface operations {
             };
         };
     };
-    getAllowedOrigins: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-                agent_id: string;
-                organisation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AllowedOriginsOut"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    setAllowedOrigins: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                project_id: string;
-                agent_id: string;
-                organisation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AllowedOriginsIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AllowedOriginsOut"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     archiveAgent: {
         parameters: {
             query?: never;
@@ -7757,6 +7678,94 @@ export interface operations {
             };
         };
     };
+    getOperationalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalSettingsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    changeOperationalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperationalSettingsChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalSettingsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     startPlaygroundConversation: {
         parameters: {
             query?: never;
@@ -7869,7 +7878,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -10735,7 +10744,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, and a `message` for Visitors that names no model or credential). */
+            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -10771,7 +10780,7 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
-            /** @description This assistant is temporarily unavailable. Please try again later. */
+            /** @description The Agent's unavailable text: it has no model to answer with. */
             503: {
                 headers: {
                     [name: string]: unknown;

@@ -39,7 +39,9 @@ async function brandedAgent(request: APIRequestContext): Promise<{ organisation:
   });
   expect(draft.status()).toBe(200);
   expect((await request.post(`${agentPath}/versions`, { data: { note: "Branded" } })).status()).toBe(201);
-  const origins = await request.put(`${agentPath}/allowed-origins`, { data: { origins: [new URL(HOST_URL).origin] } });
+  const origins = await request.patch(`${agentPath}/operational-settings`, {
+    data: { allowed_origins: [new URL(HOST_URL).origin] },
+  });
   expect(origins.status()).toBe(200);
   return { organisation, agent };
 }

@@ -17,8 +17,16 @@ import { LAYOUT_MESSAGE, type Layout } from "./embed";
 import { FeedbackControls } from "./Feedback";
 import { tokenStore } from "./storage";
 
-/** `id` is the Message's, once the API has it (a reply's when it has finished streaming). */
-type Message = { role: "visitor" | "agent"; text: string; citations: Citation[]; id?: string; feedback: Feedback | null };
+type Message = {
+  role: "visitor" | "agent";
+  text: string;
+  citations: Citation[];
+  /** The Message's id, once the API has it (a reply's when it has finished streaming). */
+  id?: string;
+  feedback: Feedback | null;
+  // The input Guardrail blocked the Visitor's message: the text is the Agent's refusal.
+  refused?: boolean;
+};
 
 /**
  * - `loading`: checking a kept Conversation token, to resume its Conversation.
@@ -189,6 +197,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         onReplace: (text) => {
           updateReply((reply) => ({ ...reply, text }));
         },
+        onRefusal: (text) => {
+          updateReply((reply) => ({ ...reply, text, refused: true }));
+        },
         onCitation: (citation) => {
           updateReply((reply) => ({ ...reply, citations: [...reply.citations, citation] }));
         },
@@ -350,7 +361,12 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             )}
             {chatting &&
               messages.map((message, index) => (
-                <MessageBubble key={index} from={message.role} label={message.role === "visitor" ? "You" : name}>
+                <MessageBubble
+                  key={index}
+                  from={message.role}
+                  label={message.role === "visitor" ? "You" : name}
+                  {...(message.refused ? { className: "refusal" } : {})}
+                >
                   <p>{message.text}</p>
                   {boot.citations && message.citations.length > 0 && <Sources citations={message.citations} />}
                   {message.role === "agent" && message.id !== undefined && (

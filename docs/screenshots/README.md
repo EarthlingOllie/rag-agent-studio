@@ -52,3 +52,26 @@ output. `capture-seeded.cjs` recaptures them (`node docs/screenshots/capture-see
 | `25-credentials-seeded.png` | Credentials |
 | `26-members-seeded.png` | Members: the demo Owner and Editor |
 | `27-audit-seeded.png` | Audit Events from the seed |
+
+## Publishing, embedding and Conversations (through PR #60)
+
+Captured on the seeded demo after the shots above. `capture-live.cjs` publishes the Agents, rolls out
+Instructions and embeds HR helper on the demo host page (`apps/widget/host`, port 5175);
+`capture-widget.cjs` re-takes just the widget and Conversations shots. Both expect a freshly seeded
+database.
+
+| File | Screen |
+| --- | --- |
+| `28-agent-not-live.png` | An Agent before its first publish: "Not live" and the Publish form |
+| `29-agent-published-v1.png` | Published v1 with Instructions v1: now Live |
+| `30-live-history.png` | Live History after a second publish |
+| `31-version-diff.png` | Versions list and Compare: the Instructions diff between v2 and v3 |
+| `32-embed-snippet-origins.png` | Embed: the snippet and Allowed Origins |
+| `33-playground-instructions-picker.png` | Playground Instructions picker (Draft or a published Version) |
+| `34-rollout-dialog.png` | Roll out Instructions v2 to the Live Agents |
+| `35-rollout-results.png` | Rollout results |
+| `36-agents-live.png` | Agents list with Live badges and bulk revert |
+| `37-widget-on-host.png` | The branded widget on a host page on another origin |
+| `38-widget-guardrail-block.png` | The input Guardrail refusing a prompt-injection message |
+| `39-conversations.png` | Conversations viewer with filters |
+| `40-conversation-detail.png` | One Visitor Conversation, pinned to its Agent Version |

@@ -38,6 +38,7 @@ from app.embed import branding_api
 from app.embed.tokens import TokenSigner
 from app.feedback import api as feedback_api
 from app.gateway.adapters import build_model_gateway
+from app.guardrails.pipeline import build_pipeline
 from app.mail.factory import build_mailer
 from app.playground import api as playground_api
 from app.pricing import api as pricing_api
@@ -80,7 +81,7 @@ ROUTERS: Sequence[APIRouter] = (
     bulk_api.router,
     playground_api.router,
     conversations_api.router,
-    embed_api.origins_router,
+    embed_api.settings_router,
     branding_api.router,
     embed_api.widget_router,
     feedback_api.widget_router,
@@ -122,6 +123,8 @@ def _lifespan(
         # this process and use these same adapters.
         app.state.ingestion = build_ports(settings, app.state.envelope)
         install_ports(app.state.ingestion)
+        # The Guardrails around the Agent runtime: the input classifier checks every message.
+        app.state.guardrails = build_pipeline(settings)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})

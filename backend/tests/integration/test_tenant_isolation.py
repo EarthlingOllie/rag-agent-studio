@@ -338,9 +338,9 @@ async def _an_agent_to_publish(owner: SignedUpMember, add_member: MemberFactory)
     return params, {"note": "First release"}
 
 
-async def _allowed_origins(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+async def _operational_settings(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _an_agent(owner, add_member)
-    return params, {"origins": ["https://www.example.com"]}
+    return params, {"allowed_origins": ["https://www.example.com"], "unavailable_text": "Soon."}
 
 
 def _override_path(owner: SignedUpMember, params: dict[str, str]) -> str:
@@ -559,8 +559,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _AGENT + "/revert", EDITOR, _an_agent_to_revert),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
-    ScopedRoute("GET", _AGENT + "/allowed-origins", EDITOR, _an_agent),
-    ScopedRoute("PUT", _AGENT + "/allowed-origins", EDITOR, _allowed_origins),
+    ScopedRoute("GET", _AGENT + "/operational-settings", EDITOR, _an_agent),
+    ScopedRoute("PATCH", _AGENT + "/operational-settings", EDITOR, _operational_settings),
     ScopedRoute("GET", _AGENT + "/theme-override", EDITOR, _an_agent),
     ScopedRoute("PUT", _AGENT + "/theme-override", OWNER, _a_colour_override),
     ScopedRoute(
