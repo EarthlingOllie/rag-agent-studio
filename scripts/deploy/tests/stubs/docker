@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Stand-in for docker in the deploy script tests: logs each call; images exist locally when STUB_LOCAL_IMAGES=1.
+echo "docker $*" >>"$STUB_CALLS"
+case "$1 $2" in
+  "image inspect") [ "${STUB_LOCAL_IMAGES:-0}" = 1 ] ;;
+  "login --username") cat >/dev/null ;;
+esac

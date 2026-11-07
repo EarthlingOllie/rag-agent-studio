@@ -248,3 +248,23 @@ variable "alb_deletion_protection" {
   type        = bool
   default     = false
 }
+
+variable "migration_task_size" {
+  description = "Fargate CPU units and memory (MiB) of the one-off migration task (ticket 09-06)."
+  type = object({
+    cpu    = number
+    memory = number
+  })
+  default = { cpu = 256, memory = 512 }
+
+  # Fargate's allowed pairs up to 1 vCPU: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html
+  validation {
+    condition = (
+      var.migration_task_size.cpu == 256 ? contains([512, 1024, 2048], var.migration_task_size.memory) :
+      var.migration_task_size.cpu == 512 ? var.migration_task_size.memory >= 1024 && var.migration_task_size.memory <= 4096 && var.migration_task_size.memory % 1024 == 0 :
+      var.migration_task_size.cpu == 1024 ? var.migration_task_size.memory >= 2048 && var.migration_task_size.memory <= 8192 && var.migration_task_size.memory % 1024 == 0 :
+      false
+    )
+    error_message = "migration_task_size must be a Fargate CPU and memory pair of at most 1 vCPU, such as 256 and 512."
+  }
+}

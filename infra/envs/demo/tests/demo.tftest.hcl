@@ -153,8 +153,8 @@ run "wires_the_compute_module_into_the_data_modules" {
   }
 
   assert {
-    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], worker = module.ecs.service_security_group_ids["worker"] }
-    error_message = "Only the API and worker may connect to the database."
+    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], worker = module.ecs.service_security_group_ids["worker"], migrate = module.ecs.migration_security_group_id }
+    error_message = "Only the API, the worker and the migration task may connect to the database."
   }
 
   assert {
@@ -194,6 +194,38 @@ run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb" {
   assert {
     condition     = output.cloudfront_distribution_id == module.cdn.distribution_id && module.cdn.certificate_arn == null
     error_message = "The demo has no custom domain by default, and outputs the distribution ID for the deploy workflow's invalidations."
+  }
+}
+
+run "outputs_everything_the_deploy_workflow_needs" {
+  command = apply
+
+  variables {
+    image_tag = "0123abc"
+  }
+
+  assert {
+    condition = output.deploy == {
+      image_tag                  = "0123abc"
+      cluster_name               = "studio-demo-ecs"
+      services                   = { api = "studio-demo-ecs-api", worker = "studio-demo-ecs-worker", beat = "studio-demo-ecs-beat" }
+      task_definition_arns       = module.ecs.task_definition_arns
+      migration_task             = module.ecs.migration_task
+      static_bucket_name         = "studio-demo-static-123456789012"
+      cloudfront_distribution_id = module.cdn.distribution_id
+      cloudfront_url             = "https://d111111abcdef8.cloudfront.net"
+    }
+    error_message = "The deploy output must name the cluster, services, task definitions, migration task, static bucket and distribution."
+  }
+
+  assert {
+    condition     = tolist(output.deploy.migration_task.subnet_ids) == tolist(module.network.private_subnet_ids) && output.deploy.migration_task.security_group_id == module.ecs.migration_security_group_id
+    error_message = "The migration task must run in the private subnets with the security group the database admits."
+  }
+
+  assert {
+    condition     = alltrue([for arn in values(output.deploy.task_definition_arns) : arn != null]) && keys(output.deploy.task_definition_arns) == ["api", "beat", "worker"]
+    error_message = "The deploy output must carry a task definition for each service at the new tag."
   }
 }
 

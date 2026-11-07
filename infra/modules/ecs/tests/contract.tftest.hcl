@@ -1004,3 +1004,193 @@ run "the_demo_alb_can_be_destroyed_in_one_run" {
     error_message = "The demo ALB has no deletion protection, and its idle timeout outlasts SSE keep-alive gaps."
   }
 }
+
+# --- Migrations (ticket 09-06): a one-off task the deploy workflow runs, and waits on, before services roll ----------
+
+run "migrations_run_as_a_one_off_task_on_the_backend_image" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.migrate.family == "studio-demo-ecs-migrate" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].name == "migrate" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].image == "123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:0123abc" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].command == ["alembic", "upgrade", "head"]
+    )
+    error_message = "The migration task must run `alembic upgrade head` on the backend image at the given tag."
+  }
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.migrate.requires_compatibilities == toset(["FARGATE"]) &&
+      aws_ecs_task_definition.migrate.network_mode == "awsvpc" &&
+      one(aws_ecs_task_definition.migrate.runtime_platform).cpu_architecture == "ARM64" &&
+      aws_ecs_task_definition.migrate.cpu == "256" && aws_ecs_task_definition.migrate.memory == "512" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].readonlyRootFilesystem == true
+    )
+    error_message = "The migration task must be a small ARM64 Fargate task with a read-only root filesystem."
+  }
+
+  assert {
+    condition = (
+      { for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].environment : e.name => e.value } == {
+        ENVIRONMENT   = "demo"
+        AWS_REGION    = "eu-west-2"
+        DATABASE_HOST = "studio-demo-database.abc.eu-west-2.rds.amazonaws.com"
+        DATABASE_PORT = "5432"
+        DATABASE_NAME = "studio"
+        DATABASE_USER = "studio"
+      } &&
+      { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom } == {
+        DATABASE_PASSWORD = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"
+      }
+    )
+    error_message = "The migration task gets only the database settings and the database password."
+  }
+
+  assert {
+    condition     = jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].logConfiguration.options["awslogs-group"] == "/ecs/studio-demo-ecs/migrate" && aws_cloudwatch_log_group.migrate.retention_in_days == 14
+    error_message = "The migration task must log to its own log group, with the services' retention."
+  }
+}
+
+run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.migrate.task_role_arn == aws_iam_role.migrate_task.arn &&
+      aws_ecs_task_definition.migrate.execution_role_arn == aws_iam_role.migrate_execution.arn &&
+      aws_iam_role.migrate_task.assume_role_policy == aws_iam_role.task["api"].assume_role_policy &&
+      aws_iam_role.migrate_execution.assume_role_policy == aws_iam_role.task["api"].assume_role_policy
+    )
+    error_message = "The migration task must run with its own task and execution roles, assumable only by ECS tasks in this account."
+  }
+
+  assert {
+    condition     = output.migration_task_role_policy == null
+    error_message = "Migrations only talk to Postgres, so the migration task role gets no AWS permissions."
+  }
+
+  assert {
+    condition = jsondecode(aws_iam_role_policy.migrate_execution.policy) == output.migration_execution_role_policy && output.migration_execution_role_policy == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "AuthenticateToEcr"
+          Effect   = "Allow"
+          Action   = "ecr:GetAuthorizationToken"
+          Resource = "*"
+        },
+        {
+          Sid      = "PullTheBackendImage"
+          Effect   = "Allow"
+          Action   = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
+          Resource = "arn:aws:ecr:eu-west-2:123456789012:repository/rag-agent-studio/api"
+        },
+        {
+          Sid      = "WriteOwnLogs"
+          Effect   = "Allow"
+          Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+          Resource = "${aws_cloudwatch_log_group.migrate.arn}:log-stream:*"
+        },
+        {
+          Sid      = "ReadOwnSecrets"
+          Effect   = "Allow"
+          Action   = "secretsmanager:GetSecretValue"
+          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"]
+        },
+        {
+          Sid       = "DecryptSecretsThroughSecretsManager"
+          Effect    = "Allow"
+          Action    = "kms:Decrypt"
+          Resource  = "arn:aws:kms:eu-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
+          Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.eu-west-2.amazonaws.com" } }
+        },
+      ]
+    }
+    error_message = "The migration execution role may pull the image, write its own logs and read only the database password."
+  }
+
+  assert {
+    condition = jsonencode({ for k, r in aws_vpc_security_group_egress_rule.migrate : k => [r.security_group_id, r.ip_protocol, r.from_port, r.to_port, r.cidr_ipv4, r.referenced_security_group_id] }) == jsonencode({
+      https    = [aws_security_group.migrate.id, "tcp", 443, 443, "0.0.0.0/0", null]
+      postgres = [aws_security_group.migrate.id, "tcp", 5432, 5432, null, "sg-0database00000001"]
+    })
+    error_message = "The migration task may reach HTTPS (image pulls, logs, secrets) and Postgres, nothing else."
+  }
+
+  assert {
+    condition     = length(aws_security_group.migrate.ingress) == 0 && length(aws_security_group.migrate.egress) == 0 && aws_security_group.migrate.vpc_id == var.vpc_id
+    error_message = "The migration security group must have no inline rules and no ingress."
+  }
+}
+
+run "outputs_how_to_run_the_migration_task_and_each_service_task_definition" {
+  command = apply
+
+  assert {
+    condition = output.migration_task == {
+      task_definition_arn = aws_ecs_task_definition.migrate.arn
+      container_name      = "migrate"
+      subnet_ids          = var.private_subnet_ids
+      security_group_id   = aws_security_group.migrate.id
+    }
+    error_message = "The deploy workflow needs the migration task definition, its container, private subnets and security group."
+  }
+
+  assert {
+    condition     = output.migration_security_group_id == aws_security_group.migrate.id
+    error_message = "The module must output the migration security group, for the database ingress rule."
+  }
+
+  assert {
+    condition     = output.task_definition_arns == { for k, t in aws_ecs_task_definition.this : k => t.arn } && keys(output.task_definition_arns) == ["api", "beat", "worker"]
+    error_message = "The deploy workflow rolls each service onto its task definition at the new tag."
+  }
+
+  assert {
+    condition = alltrue([for tags in [
+      aws_ecs_task_definition.migrate.tags, aws_iam_role.migrate_task.tags, aws_iam_role.migrate_execution.tags,
+      aws_security_group.migrate.tags, aws_cloudwatch_log_group.migrate.tags,
+      aws_vpc_security_group_egress_rule.migrate["https"].tags, aws_vpc_security_group_egress_rule.migrate["postgres"].tags,
+    ] : alltrue([for key, value in output.tags : lookup(tags, key, null) == value])])
+    error_message = "The migration task's resources must carry the standard tags."
+  }
+}
+
+run "the_migration_task_size_is_a_variable" {
+  command = plan
+
+  variables {
+    migration_task_size = { cpu = 512, memory = 1024 }
+  }
+
+  assert {
+    condition     = aws_ecs_task_definition.migrate.cpu == "512" && aws_ecs_task_definition.migrate.memory == "1024"
+    error_message = "migration_task_size must size the migration task."
+  }
+}
+
+run "rejects_a_migration_task_size_fargate_does_not_offer" {
+  command = plan
+
+  variables {
+    migration_task_size = { cpu = 256, memory = 4096 }
+  }
+
+  expect_failures = [var.migration_task_size]
+}
+
+run "a_migration_logfire_token_is_injected_when_given" {
+  command = plan
+
+  variables {
+    logfire_token_secret_arn = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
+  }
+
+  assert {
+    condition     = { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom }["LOGFIRE_TOKEN"] == "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
+    error_message = "Migrations must trace to Logfire like the services when a token is given."
+  }
+}

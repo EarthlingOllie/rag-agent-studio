@@ -1,32 +1,39 @@
 name: deploy
 
+# Push: build the images on every branch, and push them to ECR on main when AWS is configured (spec 09 story 24).
+# Manual run: bring the demo environment up at an image tag (spec 09 stories 25, 26 and 32). scripts/deploy/deploy.sh
+# applies at the tag, runs the migration task and waits for it, rolls the services and waits until they are stable,
+# uploads the Studio and widget builds, invalidates CloudFront and smoke checks the URL. Tearing down is destroy.yml.
 on:
   push:
     branches: ["**"]
   workflow_dispatch:
     inputs:
-      action:
-        description: "Build images only, or also apply or destroy envs/demo"
-        type: choice
-        options: [build, apply, destroy]
-        default: build
+      image_tag:
+        description: "Image tag to deploy. Empty builds and deploys this commit (its SHA)."
+        type: string
+        default: ""
+      smoke_agent_id:
+        description: "Optional public ID of a live Agent, to smoke check its widget shell. Empty checks an unknown one."
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
-  # Empty until infra/bootstrap creates the OIDC role (docs/infra-bootstrap.md); every AWS step is skipped while it is.
+  # Empty until infra/bootstrap creates the OIDC role (docs/infra-bootstrap.md); pushes are skipped while it is.
   AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
 
 jobs:
   images:
     name: Build images (push on main when AWS is configured)
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    concurrency:
+      group: images-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write
@@ -44,16 +51,16 @@ jobs:
       - name: Build the API and Studio images
         run: make images IMAGE_TAG=${{ github.sha }}
       - uses: aws-actions/configure-aws-credentials@v4
-        if: steps.aws.outputs.configured == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        if: steps.aws.outputs.configured == 'true' && github.ref == 'refs/heads/main'
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Log in to ECR
         id: ecr
-        if: steps.aws.outputs.configured == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        if: steps.aws.outputs.configured == 'true' && github.ref == 'refs/heads/main'
         uses: aws-actions/amazon-ecr-login@v2
       - name: Push images to ECR
-        if: steps.aws.outputs.configured == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+        if: steps.aws.outputs.configured == 'true' && github.ref == 'refs/heads/main'
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           TAG: ${{ github.sha }}
@@ -63,40 +70,52 @@ jobs:
             docker push "$REGISTRY/rag-agent-studio/$image:$TAG"
           done
 
-  terraform:
-    name: Apply or destroy envs/demo
-    if: github.event_name == 'workflow_dispatch' && inputs.action != 'build'
-    needs: images
+  deploy:
+    name: Deploy the demo environment
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: demo
+    # One run at a time against the demo environment, shared with destroy.yml; a queued run waits, never cancels.
+    concurrency:
+      group: demo-environment
+      cancel-in-progress: false
+    timeout-minutes: 90
     permissions:
       contents: read
       id-token: write
+    env:
+      TAG: ${{ inputs.image_tag || github.sha }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      SMOKE_AGENT_ID: ${{ inputs.smoke_agent_id }}
     steps:
-      - uses: actions/checkout@v4
       - name: Check for AWS access
-        id: aws
         run: |
-          if [ -n "$AWS_ROLE_ARN" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=${{ inputs.action }} skipped::AWS secrets are not configured, so nothing is applied or destroyed."
+          if [ -z "$AWS_ROLE_ARN" ] || [ -z "$TF_STATE_BUCKET" ]; then
+            echo "::error title=Deploy not configured::Set the AWS_DEPLOY_ROLE_ARN secret and the TF_STATE_BUCKET variable from the bootstrap's outputs (docs/infra-bootstrap.md)."
+            exit 1
           fi
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Build the Studio and the widget
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Build the images at this commit
+        if: inputs.image_tag == ''
+        run: make images IMAGE_TAG="$TAG"
       - name: Install Terraform
-        if: steps.aws.outputs.configured == 'true'
         run: scripts/ci/install-tools.sh terraform
       - uses: aws-actions/configure-aws-credentials@v4
-        if: steps.aws.outputs.configured == 'true'
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: terraform ${{ inputs.action }}
-        if: steps.aws.outputs.configured == 'true'
-        working-directory: infra/envs/demo
-        env:
-          ACTION: ${{ inputs.action }}
-          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
-        run: |
-          terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="region=$AWS_REGION"
-          terraform "$ACTION" -input=false -auto-approve
+      - name: Apply, migrate, roll, upload, invalidate and smoke check
+        run: scripts/deploy/deploy.sh "$TAG"

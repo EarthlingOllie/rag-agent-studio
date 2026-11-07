@@ -533,4 +533,11 @@ resource "aws_ecs_service" "this" {
   }
 
   tags = merge(local.tags, { Name = "${local.name}-${each.key}" })
+
+  # An apply at a new image tag registers new task definitions but does not roll the services: the deploy
+  # workflow first runs the migration task, then points each service at its new task definition and waits for
+  # it to stabilise (spec 09 story 26). Terraform still sets the task definition when it creates a service.
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }
