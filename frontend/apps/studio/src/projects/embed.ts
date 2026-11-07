@@ -1,51 +1,58 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
+import type { Schemas } from "@studio/api-client";
 
 /** The Embed Snippet a web team pastes into its pages; it loads the widget from this origin. */
 export function embedSnippet(publicId: string, origin = window.location.origin): string {
   return `<script src="${origin}/embed.js" data-agent="${publicId}" async></script>`;
 }
 
-/** Why saving the Allowed Origins failed: the API's reason for a bad origin, or a generic one. */
-export class AllowedOriginsError extends Error {}
+/** Why the Operational Settings couldn't be loaded or saved: the API's reason, or a generic one. */
+export class OperationalSettingsError extends Error {}
 
 type Path = { organisation_id: string; project_id: string; agent_id: string };
 
+/** An Agent's Allowed Origins and unavailable text: not part of its Draft or Versions. */
+export type OperationalSettings = Schemas["OperationalSettingsOut"];
+
 const PATH =
-  "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/allowed-origins";
+  "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/operational-settings";
 
-const originsKey = (path: Path) => ["allowed-origins", path.organisation_id, path.agent_id] as const;
+const settingsKey = (path: Path) =>
+  ["operational-settings", path.organisation_id, path.agent_id] as const;
 
-/** The sites whose pages may show the Agent's widget. */
-export function useAllowedOrigins(path: Path) {
+/** The Agent's Operational Settings. */
+export function useOperationalSettings(path: Path) {
   return useQuery({
-    queryKey: originsKey(path),
-    queryFn: async (): Promise<string[]> => {
+    queryKey: settingsKey(path),
+    queryFn: async (): Promise<OperationalSettings> => {
       const { data } = await api.GET(PATH, { params: { path } });
-      if (!data) throw new AllowedOriginsError();
-      return data.origins;
+      if (!data) throw new OperationalSettingsError();
+      return data;
     },
   });
 }
 
-/** Replaces the Allowed Origins; the widget's next page load uses them. */
-export function useSaveAllowedOrigins(path: Path) {
+/** Changes the settings given, leaving the others; the widget's next request uses them. */
+export function useChangeOperationalSettings(path: Path) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (origins: string[]): Promise<string[]> => {
-      const { data, error } = await api.PUT(PATH, { params: { path }, body: { origins } });
+    mutationFn: async (
+      change: Schemas["OperationalSettingsChange"],
+    ): Promise<OperationalSettings> => {
+      const { data, error } = await api.PATCH(PATH, { params: { path }, body: change });
       if (!data) {
         const detail = (error as { detail?: unknown }).detail;
         const first = Array.isArray(detail) ? (detail[0] as { msg?: unknown } | undefined) : undefined;
-        throw new AllowedOriginsError(
+        throw new OperationalSettingsError(
           typeof first?.msg === "string" ? first.msg : "Something went wrong. Try again.",
         );
       }
-      return data.origins;
+      return data;
     },
-    onSuccess: (origins) => {
-      queryClient.setQueryData(originsKey(path), origins);
+    onSuccess: (settings) => {
+      queryClient.setQueryData(settingsKey(path), settings);
     },
   });
 }

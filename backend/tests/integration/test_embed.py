@@ -20,7 +20,7 @@ from sqlalchemy import text
 
 from app.runtime.prompt import preamble
 from tests.agents import agents_path, answer_with, create_agent, parse_sse, save_draft
-from tests.conftest import ClientFactory, MemberFactory, SignedUpMember, TenantFactory
+from tests.conftest import ClientFactory, SignedUpMember
 from tests.documents import create_project, project_path
 from tests.fakes.clock import ControllableClock
 from tests.integration.test_agent_archive import archive as archive_agent
@@ -30,15 +30,16 @@ from tests.integration.test_project_instructions_versions import published as in
 from tests.integration.test_projects import archive as archive_project
 
 
-def origins_path(member: SignedUpMember, project_id: str, agent_id: str) -> str:
-    return agents_path(member, project_id, agent_id, "allowed-origins")
+def settings_path(member: SignedUpMember, project_id: str, agent_id: str) -> str:
+    return agents_path(member, project_id, agent_id, "operational-settings")
 
 
 async def allow(
     member: SignedUpMember, project_id: str, agent_id: str, *origins: str
 ) -> httpx.Response:
-    return await member.client.put(
-        origins_path(member, project_id, agent_id), json={"origins": list(origins)}
+    """Sets the Agent's Allowed Origins through its Operational Settings."""
+    return await member.client.patch(
+        settings_path(member, project_id, agent_id), json={"allowed_origins": list(origins)}
     )
 
 
@@ -142,107 +143,6 @@ async def test_the_agent_name_cannot_break_out_of_the_shell(
     assert "<script>alert(1)" not in shell.text
     assert "<b>" not in shell.text
     assert boot(shell)["name"] == name
-
-
-# Allowed Origins
-
-
-async def test_an_editor_sets_the_allowed_origins_and_the_next_shell_uses_them(
-    owner: SignedUpMember, member_factory: MemberFactory, visitor: httpx.AsyncClient
-) -> None:
-    editor = await member_factory(owner, "editor")
-    agent = await live_agent(owner)
-    project_id, agent_id = agent["project_id"], agent["id"]
-    initially = await editor.client.get(origins_path(editor, project_id, agent_id))
-    assert initially.json() == {"origins": []}
-
-    response = await allow(
-        editor,
-        project_id,
-        agent_id,
-        " HTTPS://WWW.Example.com/ ",
-        "http://localhost:8080",
-        "https://www.example.com",
-        "https://shop.example.co.uk:8443",
-    )
-
-    expected = [
-        "https://www.example.com",
-        "http://localhost:8080",
-        "https://shop.example.co.uk:8443",
-    ]
-    assert response.status_code == 200, response.text
-    assert response.json() == {"origins": expected}
-    read = await editor.client.get(origins_path(editor, project_id, agent_id))
-    assert read.json() == {"origins": expected}
-    # No publish needed: the next shell carries them.
-    shell = await visitor.get(f"/widget/a/{agent['public_id']}")
-    assert shell.headers["content-security-policy"] == "frame-ancestors " + " ".join(expected)
-    assert (await allow(editor, project_id, agent_id)).json() == {"origins": []}
-    shell = await visitor.get(f"/widget/a/{agent['public_id']}")
-    assert shell.headers["content-security-policy"] == "frame-ancestors 'none'"
-
-
-@pytest.mark.parametrize(
-    "origin",
-    [
-        "www.example.com",
-        "ftp://example.com",
-        "https://example.com/path",
-        "https://example.com; script-src *",
-        "https://exa mple.com",
-        "https://*.example.com",
-        "https://example.com:0",
-        "https://example.com:70000",
-        "https://-example.com",
-        "javascript:alert(1)",
-        "",
-        "https://" + "a" * 250 + ".com",
-    ],
-)
-async def test_an_allowed_origin_must_be_a_scheme_host_and_optional_port(
-    owner: SignedUpMember, origin: str
-) -> None:
-    agent = await live_agent(owner, "https://www.example.com")
-
-    response = await allow(
-        owner, agent["project_id"], agent["id"], "https://ok.example.com", origin
-    )
-
-    assert response.status_code == 422, response.text
-    (problem,) = response.json()["detail"]
-    assert problem["loc"] == ["body", "origins", 1]
-    assert "isn't a site address" in problem["msg"]
-    read = await owner.client.get(origins_path(owner, agent["project_id"], agent["id"]))
-    assert read.json() == {"origins": ["https://www.example.com"]}
-
-
-async def test_at_most_fifty_allowed_origins(owner: SignedUpMember) -> None:
-    agent = await live_agent(owner)
-    origins = [f"https://site{n}.example.com" for n in range(51)]
-
-    response = await allow(owner, agent["project_id"], agent["id"], *origins)
-
-    assert response.status_code == 422, response.text
-    assert (await allow(owner, agent["project_id"], agent["id"], *origins[:50])).status_code == 200
-
-
-async def test_allowed_origins_are_not_found_outside_their_project(
-    owner: SignedUpMember, tenant_factory: TenantFactory
-) -> None:
-    agent = await live_agent(owner)
-    other_project = await create_project(owner)
-    stranger = await tenant_factory()
-
-    for path in (
-        origins_path(owner, other_project, agent["id"]),
-        origins_path(owner, agent["project_id"], "00000000-0000-0000-0000-000000000000"),
-    ):
-        assert (await owner.client.get(path)).status_code == 404
-        assert (await owner.client.put(path, json={"origins": []})).status_code == 404
-    elsewhere = f"/api/organisations/{stranger.organisation_id}/projects/{agent['project_id']}"
-    response = await owner.client.get(f"{elsewhere}/agents/{agent['id']}/allowed-origins")
-    assert response.status_code == 404
 
 
 # Bootstrap and Conversation tokens

@@ -2,7 +2,7 @@ import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import type { Agent } from "./agents";
-import { embedSnippet, useAllowedOrigins, useSaveAllowedOrigins } from "./embed";
+import { embedSnippet, useChangeOperationalSettings, useOperationalSettings } from "./embed";
 import { BUTTON, INPUT } from "./ProjectsPage";
 
 function Snippet({ agent }: { agent: Agent }) {
@@ -47,14 +47,15 @@ function Snippet({ agent }: { agent: Agent }) {
   );
 }
 
-function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationId: string }) {
-  const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
-  const origins = useAllowedOrigins(path);
-  const save = useSaveAllowedOrigins(path);
+type SettingsPath = { organisation_id: string; project_id: string; agent_id: string };
+
+function AllowedOrigins({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const save = useChangeOperationalSettings(path);
   const [edited, setEdited] = useState<string | null>(null);
-  const text = edited ?? (origins.data ?? []).join("\n");
+  const text = edited ?? (settings.data?.allowed_origins ?? []).join("\n");
   // Until the saved list is here, saving would replace it with whatever the box holds.
-  const loaded = origins.isSuccess;
+  const loaded = settings.isSuccess;
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,11 +63,14 @@ function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationI
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
-    save.mutate(lines, {
-      onSuccess: () => {
-        setEdited(null);
+    save.mutate(
+      { allowed_origins: lines },
+      {
+        onSuccess: () => {
+          setEdited(null);
+        },
       },
-    });
+    );
   }
 
   return (
@@ -75,10 +79,13 @@ function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationI
         Allowed Origins
       </label>
       <p id="allowed-origins-hint" className="text-sm text-slate-700">
-        One site per line, such as https://www.example.com. Only pages on these sites can show the
-        Agent.
+        One site per line, such as https://www.example.com, https://*.example.com for all its
+        subdomains, or http://localhost:3000 (http://localhost:* for any port) while developing.
+        Only pages on these sites can show the Agent.
       </p>
-      {origins.isError && <p className="text-sm text-slate-700">The Allowed Origins could not be loaded.</p>}
+      {settings.isError && (
+        <p className="text-sm text-slate-700">The Operational Settings could not be loaded.</p>
+      )}
       <textarea
         id="allowed-origins"
         aria-describedby="allowed-origins-hint"
@@ -104,8 +111,66 @@ function AllowedOrigins({ agent, organisationId }: { agent: Agent; organisationI
   );
 }
 
-/** The Agent's Embed Snippet, once it has a Live Version, and the sites allowed to show it. */
+const UNAVAILABLE_TEXT_MAX = 500;
+
+function UnavailableText({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const save = useChangeOperationalSettings(path);
+  const [edited, setEdited] = useState<string | null>(null);
+  const text = edited ?? settings.data?.unavailable_text ?? "";
+  const loaded = settings.isSuccess;
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save.mutate(
+      { unavailable_text: text },
+      {
+        onSuccess: () => {
+          setEdited(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-2">
+      <label htmlFor="unavailable-text" className="block text-sm font-medium">
+        Unavailable text
+      </label>
+      <p id="unavailable-text-hint" className="text-sm text-slate-700">
+        What Visitors see when the Agent can&apos;t answer. Leave it empty for the default.
+      </p>
+      <textarea
+        id="unavailable-text"
+        aria-describedby="unavailable-text-hint"
+        rows={2}
+        maxLength={UNAVAILABLE_TEXT_MAX}
+        className={INPUT}
+        disabled={!loaded}
+        value={text}
+        onChange={(event) => {
+          save.reset();
+          setEdited(event.target.value);
+        }}
+      />
+      <FormError message={save.error?.message} />
+      <div className="flex items-center gap-3">
+        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
+          Save unavailable text
+        </button>
+        <p role="status" className="text-sm text-slate-700">
+          {save.isSuccess ? "Saved. Visitors see it from their next message." : ""}
+        </p>
+      </div>
+    </form>
+  );
+}
+
+/** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings: the
+ * sites allowed to show it and what Visitors see when it can't answer. They apply at once,
+ * without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+  const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   return (
     <section aria-labelledby="embed-heading" className="space-y-3">
       <h2 id="embed-heading" className="text-lg font-semibold">
@@ -116,7 +181,13 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
       ) : (
         <p className="text-sm text-slate-700">Publish the Agent to get its Embed Snippet.</p>
       )}
-      <AllowedOrigins agent={agent} organisationId={organisationId} />
+      <h3 className="font-semibold">Operational Settings</h3>
+      <p className="text-sm text-slate-700">
+        These apply straight away, without publishing, and every change is recorded in the Audit
+        log.
+      </p>
+      <AllowedOrigins path={path} />
+      <UnavailableText path={path} />
     </section>
   );
 }

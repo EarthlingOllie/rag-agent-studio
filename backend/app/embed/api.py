@@ -8,7 +8,8 @@
   Conversation token, then send messages with it (``Authorization: Bearer …``); each answer
   streams as Server-Sent Events from the Live Version. Visitors are anonymous: these routes take
   no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS.
-- The Studio's Allowed Origins routes, for Editors and Owners.
+- The Studio's Operational Settings routes (Allowed Origins and the unavailable text), for
+  Editors and Owners. Changes apply on the next request and are audited.
 """
 
 import html
@@ -22,7 +23,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
-from app.agents.models import ORIGIN_MAX
+from app.agents.models import ORIGIN_MAX, UNAVAILABLE_TEXT_MAX
 from app.agents.service import AgentNotFoundError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db, ErrorResponse
@@ -38,7 +39,7 @@ from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 
 NO_LONGER_AVAILABLE = "This assistant is no longer available."
-TEMPORARILY_UNAVAILABLE = "This assistant is temporarily unavailable. Please try again later."
+TEMPORARILY_UNAVAILABLE = service.DEFAULT_UNAVAILABLE_TEXT
 INVALID_TOKEN = "This chat has expired. Reload the page to start a new one."  # noqa: S105 (a message)
 WIDGET_SCRIPT = "/widget/assets/widget.js"
 
@@ -175,11 +176,15 @@ def _sse(event: str, data: dict[str, Any]) -> str:
                 "Server-Sent Events: `token` events (`text`), then `citation` events "
                 "(`label`, `document_name`) and one `done` event (`message_id`); or, when the "
                 "answer leaks the Canary token, a `replace` event (`text`) then `done`; or, "
-                "when the model provider fails, one `error` event (`code`, and a `message` for "
-                "Visitors that names no model or credential)."
+                "when the model provider fails, one `error` event (`code`, and as `message` the "
+                "Agent's unavailable text, which names no model or credential)."
             ),
         },
-        **_errors((401, INVALID_TOKEN), (404, NO_LONGER_AVAILABLE), (503, TEMPORARILY_UNAVAILABLE)),
+        **_errors(
+            (401, INVALID_TOKEN),
+            (404, NO_LONGER_AVAILABLE),
+            (503, "The Agent's unavailable text: it has no model to answer with."),
+        ),
     },
 )
 async def send_message(
@@ -196,6 +201,9 @@ async def send_message(
     scheme, _, token = authorization.partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise _invalid()
+    # The Agent's own words for "can't answer now", read on every request so a change applies
+    # at once.
+    unavailable = await service.unavailable_text(db, public_id)
     try:
         prepared = await service.prepare_turn(
             db, signer, public_id, token.strip(), body.content, now=clock.now()
@@ -205,7 +213,7 @@ async def send_message(
     except (AgentNotServedError, AgentNotLiveError):
         raise _gone() from None
     except NoDefaultModelError:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, TEMPORARILY_UNAVAILABLE) from None
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, unavailable) from None
     ingestion: IngestionPorts = request.app.state.ingestion
 
     async def events() -> AsyncIterator[str]:
@@ -222,8 +230,8 @@ async def send_message(
                 yield _sse("replace", {"text": event.text})
             elif isinstance(event, ErrorEvent):
                 # The event's message is written for Editors (it may name the model or say to
-                # rotate the Provider Credential); Visitors get the generic one.
-                yield _sse("error", {"code": event.kind, "message": TEMPORARILY_UNAVAILABLE})
+                # rotate the Provider Credential); Visitors get the Agent's unavailable text.
+                yield _sse("error", {"code": event.kind, "message": unavailable})
             elif isinstance(event, CitationEvent):
                 yield _sse(
                     "citation",
@@ -239,49 +247,81 @@ async def send_message(
     )
 
 
-# Allowed Origins, in the Studio
+# Operational Settings, in the Studio
 
 
-origins_router = APIRouter(
+settings_router = APIRouter(
     prefix=ORGANISATION_PREFIX + "/projects/{project_id}/agents/{agent_id}", tags=["embed"]
 )
 
 Origin = Annotated[str, StringConstraints(max_length=ORIGIN_MAX * 2)]
+UnavailableText = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=UNAVAILABLE_TEXT_MAX)
+]
 
 
-class AllowedOriginsIn(BaseModel):
-    # Each a scheme, host and optional port: `https://www.example.com`, `http://localhost:8080`.
-    origins: Annotated[list[Origin], Field(max_length=service.ORIGINS_MAX)]
+class OperationalSettingsOut(BaseModel):
+    # The sites whose pages may show the widget: `https://www.example.com`,
+    # `https://*.example.com` (its subdomains), `http://localhost:8080`, `http://localhost:*`.
+    allowed_origins: list[str]
+    # What Visitors are told when the Agent can't answer.
+    unavailable_text: str
 
 
-class AllowedOriginsOut(BaseModel):
-    origins: list[str]
+class OperationalSettingsChange(BaseModel):
+    """The settings to change; one left out stays as it is."""
+
+    allowed_origins: Annotated[list[Origin], Field(max_length=service.ORIGINS_MAX)] | None = None
+    # Null or blank restores the default.
+    unavailable_text: UnavailableText | None = None
 
 
-@origins_router.get(
-    "/allowed-origins", operation_id="getAllowedOrigins", responses=NOT_FOUND_RESPONSE
+def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
+    return OperationalSettingsOut(
+        allowed_origins=found.allowed_origins, unavailable_text=found.unavailable_text
+    )
+
+
+@settings_router.get(
+    "/operational-settings", operation_id="getOperationalSettings", responses=NOT_FOUND_RESPONSE
 )
-async def get_allowed_origins(
+async def get_operational_settings(
     project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db
-) -> AllowedOriginsOut:
-    """The sites whose pages may show the Agent's widget."""
+) -> OperationalSettingsOut:
+    """The Agent's Operational Settings: not part of its Draft or Versions."""
     try:
-        origins = await service.allowed_origins(db, scope, project_id, agent_id)
+        found = await service.operational_settings(db, scope, project_id, agent_id)
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
-    return AllowedOriginsOut(origins=origins)
+    return _out(found)
 
 
-@origins_router.put(
-    "/allowed-origins", operation_id="setAllowedOrigins", responses=NOT_FOUND_RESPONSE
+@settings_router.patch(
+    "/operational-settings",
+    operation_id="changeOperationalSettings",
+    responses=NOT_FOUND_RESPONSE,
 )
-async def set_allowed_origins(
-    project_id: uuid.UUID, agent_id: uuid.UUID, body: AllowedOriginsIn, scope: Scope, db: Db
-) -> AllowedOriginsOut:
-    """Replaces the Agent's Allowed Origins; the widget's next page load uses them, without
-    publishing."""
+async def change_operational_settings(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    body: OperationalSettingsChange,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> OperationalSettingsOut:
+    """Changes the settings given. The next request uses them, without publishing, and the
+    change is recorded as an Audit Event with the before and after values."""
+    blank_text = "unavailable_text" in body.model_fields_set and body.unavailable_text is None
     try:
-        origins = await service.set_allowed_origins(db, scope, project_id, agent_id, body.origins)
+        found = await service.change_operational_settings(
+            db,
+            scope,
+            project_id,
+            agent_id,
+            allowed_origins=body.allowed_origins,
+            unavailable_text="" if blank_text else body.unavailable_text,
+            now=clock.now(),
+        )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
     except service.InvalidOriginError as error:
@@ -289,13 +329,14 @@ async def set_allowed_origins(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             [
                 {
-                    "loc": ["body", "origins", error.index],
+                    "loc": ["body", "allowed_origins", error.index],
                     "msg": (
                         f"{error.origin!r} isn't a site address. Use a scheme, host and optional "
-                        "port, such as https://www.example.com or http://localhost:8080."
+                        "port, such as https://www.example.com, https://*.example.com for its "
+                        "subdomains, or http://localhost:8080 (http://localhost:* for any port)."
                     ),
                     "type": "value_error",
                 }
             ],
         ) from None
-    return AllowedOriginsOut(origins=origins)
+    return _out(found)

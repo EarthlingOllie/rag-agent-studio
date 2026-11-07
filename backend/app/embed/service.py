@@ -1,19 +1,21 @@
-"""Embedding rules: an Agent's Allowed Origins, the shell's framing policy, and Visitors'
-Conversations, which are reached only through their Conversation token.
+"""Embedding rules: an Agent's Operational Settings (its Allowed Origins and unavailable text),
+the shell's framing policy, and Visitors' Conversations, which are reached only through their
+Conversation token.
 
-Allowed Origins are a simple list here: each is a scheme (``http`` or ``https``), a host and an
-optional port, with no path. Spec 06's Operational Settings (ticket 06-02) add subdomain
-wildcards and auditing.
+Operational Settings are not part of any Draft or Version (ADR-0009): they are edited here, apply
+on the next request without publishing, and every change is an Audit Event with the before and
+after values of the settings it changed.
 """
 
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import audit
 from app.agents import serving
 from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
@@ -23,8 +25,18 @@ from app.playground.service import PreparedTurn
 from app.tenancy.repository import OrganisationScope
 
 ORIGINS_MAX = 50
+DEFAULT_UNAVAILABLE_TEXT = "This assistant is temporarily unavailable. Please try again later."
+OPERATIONAL_SETTINGS_CHANGED = "agent.operational_settings_changed"
+
 _LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
-_ORIGIN = re.compile(rf"https?://{_LABEL}(?:\.{_LABEL})*(?::[0-9]{{1,5}})?")
+# A host; or a subdomain wildcard over a named site of at least two labels (``*.example.com``,
+# never ``*.com``); or IPv6 loopback. The port is a number or, for this machine only, ``*``.
+_ORIGIN = re.compile(
+    rf"https?://(?P<host>{_LABEL}(?:\.{_LABEL})*|\*\.{_LABEL}(?:\.{_LABEL})+|\[::1\])"
+    r"(?::(?P<port>[0-9]{1,5}|\*))?"
+)
+# The developer's own machine, where any port may be allowed.
+_LOOPBACK = frozenset({"localhost", "127.0.0.1", "[::1]"})
 
 
 class InvalidOriginError(Exception):
@@ -34,18 +46,29 @@ class InvalidOriginError(Exception):
         self.origin = origin
 
 
+def _valid(origin: str) -> bool:
+    found = _ORIGIN.fullmatch(origin)
+    if found is None or len(origin) > ORIGIN_MAX:
+        return False
+    port = found["port"]
+    if port == "*":
+        return found["host"] in _LOOPBACK
+    return port is None or 0 < int(port) < 65536
+
+
 def normalise_origins(origins: list[str]) -> list[str]:
     """The origins, lower-cased, without a trailing slash and without repeats, in order; an
-    entry that isn't an origin raises ``InvalidOriginError``."""
+    entry that isn't an origin raises ``InvalidOriginError``.
+
+    An origin is ``http`` or ``https``, a host and an optional port, with no path. The host may
+    start with a subdomain wildcard (``https://*.example.com``, any subdomain of example.com but
+    not example.com itself). Localhost (``localhost``, ``127.0.0.1``, ``[::1]``) may take any
+    port with ``:*``, for development.
+    """
     found: list[str] = []
     for index, raw in enumerate(origins):
         origin = raw.strip().lower().removesuffix("/")
-        port = origin.rpartition(":")[2]
-        if (
-            len(origin) > ORIGIN_MAX
-            or not _ORIGIN.fullmatch(origin)
-            or (port.isdigit() and not 0 < int(port) < 65536)
-        ):
+        if not _valid(origin):
             raise InvalidOriginError(index, raw)
         if origin not in found:
             found.append(origin)
@@ -57,25 +80,68 @@ def frame_ancestors(origins: list[str]) -> str:
     return "frame-ancestors " + (" ".join(origins) if origins else "'none'")
 
 
-async def allowed_origins(
+@dataclass(frozen=True)
+class OperationalSettings:
+    allowed_origins: list[str]
+    # What Visitors are told when the Agent can't answer.
+    unavailable_text: str
+
+
+def _settings_of(agent: Agent) -> OperationalSettings:
+    return OperationalSettings(
+        allowed_origins=list(agent.allowed_origins),
+        unavailable_text=agent.unavailable_text or DEFAULT_UNAVAILABLE_TEXT,
+    )
+
+
+async def operational_settings(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
-) -> list[str]:
-    return (await get_agent(session, scope, project_id, agent_id)).agent.allowed_origins
+) -> OperationalSettings:
+    return _settings_of((await get_agent(session, scope, project_id, agent_id)).agent)
 
 
-async def set_allowed_origins(
+async def change_operational_settings(
     session: AsyncSession,
     scope: OrganisationScope,
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
-    origins: list[str],
-) -> list[str]:
-    """Replaces the Agent's Allowed Origins; the next shell served uses them."""
-    normalised = normalise_origins(origins)
+    *,
+    allowed_origins: list[str] | None = None,
+    unavailable_text: str | None = None,
+    now: datetime,
+) -> OperationalSettings:
+    """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
+    restores the default). The next request uses them. A change is recorded as an
+    ``agent.operational_settings_changed`` Audit Event holding the before and after values of
+    the settings that changed; a save that changes nothing records nothing."""
+    origins = None if allowed_origins is None else normalise_origins(allowed_origins)
     agent = (await get_agent(session, scope, project_id, agent_id, lock=True)).agent
-    agent.allowed_origins = normalised
+    before = asdict(_settings_of(agent))
+    if origins is not None:
+        agent.allowed_origins = origins
+    if unavailable_text is not None:
+        agent.unavailable_text = unavailable_text.strip() or None
+    after = asdict(_settings_of(agent))
+    changed = [key for key in before if before[key] != after[key]]
+    if changed:
+        await audit.record(
+            session,
+            organisation_id=scope.organisation_id,
+            actor_id=scope.member_id,
+            action=OPERATIONAL_SETTINGS_CHANGED,
+            target=audit.AuditTarget("agent", agent.id),
+            before={key: before[key] for key in changed},
+            after={key: after[key] for key in changed},
+            occurred_at=now,
+        )
     await session.commit()
-    return normalised
+    return _settings_of(agent)
+
+
+async def unavailable_text(session: AsyncSession, public_id: str) -> str:
+    """What Visitors of the Agent are told when it can't answer."""
+    text = await session.scalar(select(Agent.unavailable_text).where(Agent.public_id == public_id))
+    return text or DEFAULT_UNAVAILABLE_TEXT
 
 
 @dataclass(frozen=True)

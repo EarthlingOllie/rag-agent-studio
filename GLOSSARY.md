@@ -468,13 +468,17 @@ The signed, opaque token that is a Visitor's only credential: bound to one Visit
 _Avoid_: Session, visitor token
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits and Token Budget.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, rate limits and Token Budget. They are edited through their own endpoint, apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+
+**Unavailable text**:
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, and later a rate limit or spent Token Budget). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+_Avoid_: Error message, offline message
 
 **Token Budget**:
 The maximum tokens an Agent may consume per day before it stops answering Visitors.
 
 **Allowed Origins**:
-The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Changes apply to the next page load, without publishing.
+The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). A host may start with a subdomain wildcard over a named site (`https://*.example.com` is every subdomain of example.com, but not example.com itself, and never a bare `*.com`), and localhost (`localhost`, `127.0.0.1`, `[::1]`) may take any port as `http://localhost:*`, for development. The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Part of the Operational Settings: changes apply to the next page load, without publishing, and are audited.
 
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.

@@ -25,6 +25,7 @@ from app.core.db import Base, IdMixin
 NAME_MAX = 200
 PUBLIC_ID_PREFIX = "agt_"
 ORIGIN_MAX = 255
+UNAVAILABLE_TEXT_MAX = 500
 
 
 def new_public_id() -> str:
@@ -49,11 +50,14 @@ class Agent(IdMixin, Base):
     live_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("agent_versions.id", name="fk_agents_live_version", use_alter=True)
     )
-    # The sites (scheme, host and optional port) whose pages may frame the Agent's widget: the
-    # shell's ``frame-ancestors`` policy. Empty means none may.
+    # Operational Settings: not part of any Draft or Version, and applied on the next request.
+    # The sites (scheme, host or subdomain wildcard, and optional port) whose pages may frame
+    # the Agent's widget: the shell's ``frame-ancestors`` policy. Empty means none may.
     allowed_origins: Mapped[list[str]] = mapped_column(
         ARRAY(String(ORIGIN_MAX)), server_default=text("'{}'")
     )
+    # What Visitors are told when the Agent can't answer; None means the platform's default.
+    unavailable_text: Mapped[str | None] = mapped_column(String(UNAVAILABLE_TEXT_MAX))
 
 
 class AgentDraft(Base):

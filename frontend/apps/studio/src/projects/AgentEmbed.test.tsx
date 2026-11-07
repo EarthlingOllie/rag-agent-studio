@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import { fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
+import { DEFAULT_UNAVAILABLE_TEXT, fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -81,8 +81,11 @@ test("an Editor saves the Allowed Origins, one per line", async () => {
 
   expect(await within(embed).findByText("Saved. Pages on these sites can show the Agent now.")).toBeInTheDocument();
   expect(field).toHaveValue("https://shop.example.com\nhttp://localhost:8080");
-  expect(requests.filter((r) => r.route === "allowed-origins")).toEqual([
-    { route: "allowed-origins", body: { origins: ["HTTPS://Shop.example.com/", "http://localhost:8080"] } },
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: { allowed_origins: ["HTTPS://Shop.example.com/", "http://localhost:8080"] },
+    },
   ]);
 });
 
@@ -100,17 +103,18 @@ test("an invalid Allowed Origin is explained", async () => {
   await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
 
   expect(await within(embed).findByRole("alert")).toHaveTextContent(
-    "'www.example.com' isn't a site address. Use a scheme, host and optional port, such as https://www.example.com or http://localhost:8080.",
+    "'www.example.com' isn't a site address. Use a scheme, host and optional port, such as https://www.example.com, https://*.example.com for its subdomains, or http://localhost:8080 (http://localhost:* for any port).",
   );
   expect(field).toHaveValue("www.example.com");
 });
 
-const originsPath = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins";
+const settingsPath =
+  "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/operational-settings";
 
 test("a failure to save the Allowed Origins is reported", async () => {
   const user = userEvent.setup();
   setUp({ allowedOrigins: ["https://www.example.com"] });
-  server.use(http.put(originsPath, () => HttpResponse.json({ detail: "Boom" }, { status: 500 })));
+  server.use(http.patch(settingsPath, () => HttpResponse.json({ detail: "Boom" }, { status: 500 })));
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
   await within(embed).findByDisplayValue("https://www.example.com");
@@ -125,10 +129,10 @@ test("while the Allowed Origins load, they cannot be saved over", async () => {
   const { requests } = setUp({ allowedOrigins: ["https://www.example.com"] });
   let puts = 0;
   server.use(
-    http.get(originsPath, () => new Promise<Response>(() => undefined)),
-    http.put(originsPath, () => {
+    http.get(settingsPath, () => new Promise<Response>(() => undefined)),
+    http.patch(settingsPath, () => {
       puts += 1;
-      return HttpResponse.json({ origins: [] });
+      return HttpResponse.json({ allowed_origins: [], unavailable_text: "" });
     }),
   );
   renderStudio(agentPage(liveHelper.id));
@@ -139,7 +143,7 @@ test("while the Allowed Origins load, they cannot be saved over", async () => {
   expect(save).toBeDisabled();
   await user.click(save);
   expect(puts).toBe(0);
-  expect(requests.filter((r) => r.route === "allowed-origins")).toEqual([]);
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([]);
 });
 
 test("when the Allowed Origins can't be loaded, they cannot be saved over", async () => {
@@ -147,19 +151,116 @@ test("when the Allowed Origins can't be loaded, they cannot be saved over", asyn
   setUp({ allowedOrigins: ["https://www.example.com"] });
   let puts = 0;
   server.use(
-    http.get(originsPath, () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
-    http.put(originsPath, () => {
+    http.get(settingsPath, () => HttpResponse.json({ detail: "Not Found" }, { status: 404 })),
+    http.patch(settingsPath, () => {
       puts += 1;
-      return HttpResponse.json({ origins: [] });
+      return HttpResponse.json({ allowed_origins: [], unavailable_text: "" });
     }),
   );
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
 
-  expect(await within(embed).findByText("The Allowed Origins could not be loaded.")).toBeInTheDocument();
+  expect(await within(embed).findByText("The Operational Settings could not be loaded.")).toBeInTheDocument();
   const save = within(embed).getByRole("button", { name: "Save Allowed Origins" });
   expect(within(embed).getByLabelText("Allowed Origins")).toBeDisabled();
   expect(save).toBeDisabled();
   await user.click(save);
   expect(puts).toBe(0);
+});
+
+test("subdomain wildcards and localhost on any port are saved as Allowed Origins", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp();
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const field = within(embed).getByLabelText("Allowed Origins");
+  await waitFor(() => {
+    expect(field).toBeEnabled();
+  });
+
+  await user.type(field, "https://*.Example.com\nhttp://localhost:*");
+  await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
+
+  expect(await within(embed).findByText("Saved. Pages on these sites can show the Agent now.")).toBeInTheDocument();
+  expect(field).toHaveValue("https://*.example.com\nhttp://localhost:*");
+  expect(requests).toContainEqual({
+    route: "operational-settings",
+    body: { allowed_origins: ["https://*.Example.com", "http://localhost:*"] },
+  });
+});
+
+test("an Editor words the unavailable text Visitors see", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ allowedOrigins: ["https://www.example.com"] });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const field = within(embed).getByLabelText("Unavailable text");
+  expect(await within(embed).findByDisplayValue(DEFAULT_UNAVAILABLE_TEXT)).toBe(field);
+
+  await user.clear(field);
+  await user.type(field, "Our helper is having a break. Call us on 0123.");
+  await user.click(within(embed).getByRole("button", { name: "Save unavailable text" }));
+
+  expect(await within(embed).findByText("Saved. Visitors see it from their next message.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: { unavailable_text: "Our helper is having a break. Call us on 0123." },
+    },
+  ]);
+  // The Allowed Origins are left as they were.
+  expect(within(embed).getByLabelText("Allowed Origins")).toHaveValue("https://www.example.com");
+});
+
+test("emptying the unavailable text restores the default", async () => {
+  const user = userEvent.setup();
+  setUp({ unavailableText: "Back soon." });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const field = await within(embed).findByDisplayValue("Back soon.");
+
+  await user.clear(field);
+  await user.click(within(embed).getByRole("button", { name: "Save unavailable text" }));
+
+  expect(await within(embed).findByDisplayValue(DEFAULT_UNAVAILABLE_TEXT)).toBe(field);
+});
+
+test("a refused unavailable text is explained", async () => {
+  const user = userEvent.setup();
+  setUp();
+  server.use(
+    http.patch(settingsPath, () =>
+      HttpResponse.json(
+        {
+          detail: [
+            {
+              loc: ["body", "unavailable_text"],
+              msg: "String should have at most 500 characters",
+              type: "string_too_long",
+            },
+          ],
+        },
+        { status: 422 },
+      ),
+    ),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  await within(embed).findByDisplayValue(DEFAULT_UNAVAILABLE_TEXT);
+
+  await user.click(within(embed).getByRole("button", { name: "Save unavailable text" }));
+
+  expect(await within(embed).findByRole("alert")).toHaveTextContent(
+    "String should have at most 500 characters",
+  );
+});
+
+test("while the Operational Settings load, the unavailable text cannot be saved over", async () => {
+  setUp();
+  server.use(http.get(settingsPath, () => new Promise<Response>(() => undefined)));
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(within(embed).getByLabelText("Unavailable text")).toBeDisabled();
+  expect(within(embed).getByRole("button", { name: "Save unavailable text" })).toBeDisabled();
 });
