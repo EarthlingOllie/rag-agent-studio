@@ -1,0 +1,40 @@
+$ make lint @ 18f5105 (fresh clone of origin/ticket/06-07-wcag-aa)
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+All checks passed!
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+309 files already formatted
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Success: no issues found in 309 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend
+> eslint . --max-warnings=0
+
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/assets/codeMirrorModule-BEB2e8M3.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/assets/codeMirrorModule-BEB2e8M3.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/assets/defaultSettingsView-D-g2vrvf.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/assets/defaultSettingsView-D-g2vrvf.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/assets/urlMatch-L3liM589.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/assets/urlMatch-L3liM589.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/index.oNry3Hjv.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/index.oNry3Hjv.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/snapshot.B_Jk1wbt.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/snapshot.B_Jk1wbt.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/sw.bundle.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/sw.bundle.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/uiMode.CYwC_gH1.js
+  0:0  error  Parsing error: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0607/frontend/playwright-report/trace/uiMode.CYwC_gH1.js was not found by the project service. Consider either including it in the tsconfig.json or including it in allowDefaultProject
+
+✖ 7 problems (7 errors, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:45: lint-frontend] Error 1
+exit 2
