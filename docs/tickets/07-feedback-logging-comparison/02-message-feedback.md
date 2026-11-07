@@ -7,7 +7,7 @@
 **Blocked by:**
 - [07-01: Conversations viewer](01-conversations-viewer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The widget offers thumbs plus an optional comment, which can be changed or removed
 - [ ] Feedback is only allowed on Messages in the Visitor's own Conversation
