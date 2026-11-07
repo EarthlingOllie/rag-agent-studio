@@ -57,10 +57,8 @@ test.describe("Message Feedback", () => {
     await reply.getByLabel("Comment (optional)").fill("Our contract says 30 days.");
     await reply.getByRole("button", { name: "Save comment" }).click();
     await expect(reply.getByText("“Our contract says 30 days.”")).toBeVisible();
-    // `listitem` is left out: the widget's Message list (role="log" on its <ol>, from 06-01) predates
-    // this ticket and is ticket 06-07's (WCAG 2.2 AA widget) to fix. Everything else, the feedback
-    // controls included, must pass.
-    const widgetAxe = new AxeBuilder({ page: host }).withTags(AXE_TAGS).disableRules(["listitem"]);
+    // The whole host page, the widget iframe and its feedback controls included.
+    const widgetAxe = new AxeBuilder({ page: host }).withTags(AXE_TAGS);
     expect((await widgetAxe.analyze()).violations).toEqual([]);
 
     // After a reload the feedback is still there.

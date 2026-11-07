@@ -1,6 +1,10 @@
 // The widget's layout. Colours, radius and font come from the Theme: the shell inlines them as
 // CSS custom properties on #root (`--theme-*`), which the shared UI primitives read. The page
 // itself stays transparent, so a closed bubble shows only its Launcher on the host page.
+//
+// WCAG 2.2 AA: every control shows a 2 px focus ring in the text colour of what it sits on
+// (so it contrasts as the Theme's text does), every control is at least 24 × 24 px, and the
+// bubble's opening animation, like any other, is off for Visitors who prefer reduced motion.
 export const STYLES = `
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: transparent; }
@@ -30,7 +34,7 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .feedback-notice { margin: 4px 0 0; color: var(--theme-muted); }
 .feedback-error { margin: 4px 0 0; padding: 4px 6px; border-radius: 6px; background: #fef2f2; color: #991b1b; }
 .controls { display: inline-flex; gap: 4px; }
-.controls button { font: inherit; font-size: 12px; font-weight: 400; padding: 3px 8px; border-radius: var(--theme-radius); border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+.controls button { font: inherit; font-size: 12px; font-weight: 400; min-height: 28px; padding: 3px 8px; border-radius: var(--theme-radius); border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
 .controls button:disabled { opacity: 0.6; cursor: default; }
 .notice { margin: 0; padding: 10px; }
 .ended { display: grid; gap: 8px; justify-items: start; }
@@ -39,6 +43,12 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .error { margin: 0 10px; padding: 6px 8px; border-radius: 6px; background: #fef2f2; color: #991b1b; font-size: 14px; }
 .starters { list-style: none; margin: 0; padding: 0 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .starters button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: var(--theme-radius); border: 1px solid var(--theme-primary); background: var(--theme-surface); color: var(--theme-on-surface); cursor: pointer; }
+:focus-visible { outline: 2px solid var(--theme-on-surface) !important; outline-offset: 2px; }
+.chat header :focus-visible, .launcher :focus-visible { outline-color: var(--theme-on-primary) !important; }
+.launcher :focus-visible { outline-offset: -6px; }
+.sources summary { min-height: 24px; }
+@keyframes widget-open { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.widget[data-launcher="bubble"] .panel { animation: widget-open 160ms ease-out; }
 @media (max-width: 640px) {
   .widget[data-launcher="bubble"][data-open="true"] .panel { inset: 0; }
   .widget[data-launcher="bubble"][data-open="true"] .chat { border-radius: 0 !important; }

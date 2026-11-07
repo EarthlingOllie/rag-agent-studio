@@ -1,0 +1,1122 @@
+$ env CI=1 make e2e COMPOSE=docker compose -p rag0607-e2e -f docker-compose.yml -f docs/tickets/06-embed-widget-operational-settings/06-07-evidence/compose.sandbox.yml @ 71f6a2a (after merging origin/candidate)
+docker compose -p rag0607-e2e -f docker-compose.yml -f docs/tickets/06-embed-widget-operational-settings/06-07-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0607-e2e_default Creating 
+ Volume rag0607-e2e_postgres-data Creating 
+ Volume rag0607-e2e_postgres-data Creating 
+ Volume rag0607-e2e_postgres-data Created 
+ Volume rag0607-e2e_postgres-data Created 
+ Network rag0607-e2e_default Creating 
+ Volume rag0607-e2e_rustfs-data Creating 
+ Volume rag0607-e2e_rustfs-data Creating 
+ Volume rag0607-e2e_rustfs-data Created 
+ Volume rag0607-e2e_rustfs-data Created 
+ Network rag0607-e2e_default Created 
+ Network rag0607-e2e_default Created 
+ Container rag0607-e2e-host-1 Creating 
+ Container rag0607-e2e-redis-1 Creating 
+ Container rag0607-e2e-mailpit-1 Creating 
+ Container rag0607-e2e-postgres-1 Creating 
+ Container rag0607-e2e-widget-1 Creating 
+ Container rag0607-e2e-rustfs-1 Creating 
+ Container rag0607-e2e-mailpit-1 Created 
+ Container rag0607-e2e-widget-1 Created 
+ Container rag0607-e2e-host-1 Created 
+ Container rag0607-e2e-postgres-1 Created 
+ Container rag0607-e2e-rustfs-1 Created 
+ Container rag0607-e2e-redis-1 Created 
+ Container rag0607-e2e-beat-1 Creating 
+ Container rag0607-e2e-api-1 Creating 
+ Container rag0607-e2e-worker-1 Creating 
+ Container rag0607-e2e-worker-1 Created 
+ Container rag0607-e2e-api-1 Created 
+ Container rag0607-e2e-beat-1 Created 
+ Container rag0607-e2e-studio-1 Creating 
+ Container rag0607-e2e-studio-1 Created 
+ Container rag0607-e2e-postgres-1 Starting 
+ Container rag0607-e2e-redis-1 Starting 
+ Container rag0607-e2e-mailpit-1 Starting 
+ Container rag0607-e2e-rustfs-1 Starting 
+ Container rag0607-e2e-host-1 Starting 
+ Container rag0607-e2e-widget-1 Starting 
+ Container rag0607-e2e-postgres-1 Started 
+ Container rag0607-e2e-redis-1 Started 
+ Container rag0607-e2e-mailpit-1 Started 
+ Container rag0607-e2e-rustfs-1 Started 
+ Container rag0607-e2e-postgres-1 Waiting 
+ Container rag0607-e2e-redis-1 Waiting 
+ Container rag0607-e2e-rustfs-1 Waiting 
+ Container rag0607-e2e-rustfs-1 Waiting 
+ Container rag0607-e2e-postgres-1 Waiting 
+ Container rag0607-e2e-redis-1 Waiting 
+ Container rag0607-e2e-rustfs-1 Waiting 
+ Container rag0607-e2e-postgres-1 Waiting 
+ Container rag0607-e2e-redis-1 Waiting 
+ Container rag0607-e2e-host-1 Started 
+ Container rag0607-e2e-widget-1 Started 
+ Container rag0607-e2e-redis-1 Healthy 
+ Container rag0607-e2e-redis-1 Healthy 
+ Container rag0607-e2e-redis-1 Healthy 
+ Container rag0607-e2e-rustfs-1 Healthy 
+ Container rag0607-e2e-rustfs-1 Healthy 
+ Container rag0607-e2e-rustfs-1 Healthy 
+ Container rag0607-e2e-postgres-1 Healthy 
+ Container rag0607-e2e-api-1 Starting 
+ Container rag0607-e2e-postgres-1 Healthy 
+ Container rag0607-e2e-beat-1 Starting 
+ Container rag0607-e2e-postgres-1 Healthy 
+ Container rag0607-e2e-worker-1 Starting 
+ Container rag0607-e2e-api-1 Started 
+ Container rag0607-e2e-api-1 Waiting 
+ Container rag0607-e2e-widget-1 Waiting 
+ Container rag0607-e2e-widget-1 Healthy 
+ Container rag0607-e2e-beat-1 Started 
+ Container rag0607-e2e-worker-1 Started 
+ Container rag0607-e2e-api-1 Healthy 
+ Container rag0607-e2e-studio-1 Starting 
+ Container rag0607-e2e-studio-1 Started 
+ Container rag0607-e2e-studio-1 Waiting 
+ Container rag0607-e2e-postgres-1 Waiting 
+ Container rag0607-e2e-rustfs-1 Waiting 
+ Container rag0607-e2e-host-1 Waiting 
+ Container rag0607-e2e-beat-1 Waiting 
+ Container rag0607-e2e-redis-1 Waiting 
+ Container rag0607-e2e-mailpit-1 Waiting 
+ Container rag0607-e2e-worker-1 Waiting 
+ Container rag0607-e2e-api-1 Waiting 
+ Container rag0607-e2e-widget-1 Waiting 
+ Container rag0607-e2e-api-1 Healthy 
+ Container rag0607-e2e-widget-1 Healthy 
+ Container rag0607-e2e-worker-1 Healthy 
+ Container rag0607-e2e-rustfs-1 Healthy 
+ Container rag0607-e2e-postgres-1 Healthy 
+ Container rag0607-e2e-host-1 Healthy 
+ Container rag0607-e2e-redis-1 Healthy 
+ Container rag0607-e2e-beat-1 Healthy 
+ Container rag0607-e2e-mailpit-1 Healthy 
+ Container rag0607-e2e-studio-1 Healthy 
+make seed
+make[1]: Entering directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607'
+docker compose -p rag0607-e2e -f docker-compose.yml -f docs/tickets/06-embed-widget-operational-settings/06-07-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag0607-e2e-api-run-1e0638492ae2 Creating 
+ Container rag0607-e2e-api-run-1e0638492ae2 Created 
+[0;93m2026-11-07 14:12:18.217435331 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:154: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:49683/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+make[1]: Leaving directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607'
+cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend
+> playwright test
+
+
+Running 78 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (886ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (403ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (502ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (2.2s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (194ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.6s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (153ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (242ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (211ms)
+  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (16.2s)
+  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (16.4s)
+  ✘  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (37.3s)
+  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (10.9s)
+  ✓  16 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (16.6s)
+  ✓  17 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (5.0s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (4.3s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (4.1s)
+  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.8s)
+  ✘  15 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (retry #1) (35.4s)
+  ✓  21 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (3.6s)
+  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.5s)
+  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (4.8s)
+  ✓  22 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (13.0s)
+  ✓  26 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (19.3s)
+  ✘  25 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (27.4s)
+  ✘  28 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (retry #1) (22.8s)
+  ✓  29 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (8.0s)
+  ✓  30 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (11.2s)
+  ✓  31 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (12.9s)
+  ✓  32 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (8.1s)
+  ✓  33 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (9.5s)
+  ✓  34 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook (8.4s)
+  ✘  35 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (27.3s)
+  ✘  27 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (2.0m)
+  ✘  36 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (retry #1) (28.8s)
+  ✓  38 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (12.6s)
+  ✓  39 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (13.1s)
+  ✓  40 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (9.2s)
+  ✓  41 [studio] › e2e/tests/instructions-versions.spec.ts:4:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (8.3s)
+  ✓  42 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (11.0s)
+  ✓  43 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (14.9s)
+  ✓  44 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (12.3s)
+  ✘  37 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (retry #1) (2.0m)
+  ✓  45 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (19.8s)
+  ✓  47 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (11.3s)
+  ✓  46 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (20.7s)
+  ✓  49 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (6.0s)
+  ✓  48 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (10.4s)
+  ✓  50 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (13.7s)
+  ✓  51 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (11.5s)
+  ✓  53 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (9.5s)
+  ✓  54 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (9.9s)
+  ✓  52 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (20.3s)
+  ✓  55 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (3.6s)
+  ✓  57 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (4.1s)
+  ✓  58 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (5.3s)
+  ✘  56 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (26.5s)
+  ✘  59 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (21.9s)
+  ✘  60 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (retry #1) (24.0s)
+  ✘  61 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (retry #1) (25.0s)
+  ✓  63 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (11.3s)
+  ✓  64 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (11.4s)
+  ✘  62 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (35.0s)
+  ✓  65 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (14.8s)
+  ✓  67 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (15.1s)
+  ✘  66 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (retry #1) (29.7s)
+  ✓  68 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (22.1s)
+  ✓  70 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (7.7s)
+  ✓  71 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (4.8s)
+  ✓  72 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.1s)
+  ✓  73 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.2s)
+  ✘  69 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (36.0s)
+  ✘  74 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (30.0s)
+  ✘  75 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (retry #1) (32.7s)
+  ✘  76 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (retry #1) (27.1s)
+  ✓  77 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (15.8s)
+  ✓  79 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (11.3s)
+  ✓  80 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (7.2s)
+  ✘  78 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (25.3s)
+  ✓  81 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (12.1s)
+  ✓  83 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (11.3s)
+  ✘  82 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (retry #1) (26.0s)
+  ✘  84 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (20.6s)
+  ✘  85 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (25.1s)
+  ✘  86 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (retry #1) (20.5s)
+  ✓  88 [studio] › e2e/tests/widget-lifecycle.spec.ts:126:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (4.8s)
+  ✘  87 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (retry #1) (26.4s)
+  ✘  89 [studio] › e2e/tests/widget-lifecycle.spec.ts:141:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (20.8s)
+  ✓  90 [studio] › e2e/tests/widget-accessibility.spec.ts:135:1 › axe finds no AA violations on the inline widget in light and dark mode (13.0s)
+  ✘  91 [studio] › e2e/tests/widget-lifecycle.spec.ts:141:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (retry #1) (22.2s)
+
+
+  1) [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+    Expected substring: "Fake reply from openai:gpt-4.1-mini."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      90 |     await page.getByRole("button", { name: "Send" }).click();
+      91 |     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
+    > 92 |     await expect(answer).toContainText("Fake reply from openai:gpt-4.1-mini.", { timeout: 15_000 });
+         |                          ^
+      93 |
+      94 |     // The OpenAI credential is a Credential reference now, so it can't be deleted.
+      95 |     const deleted = await page.request.delete(`${organisation}/credentials/${openAi}`);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/agent-config.spec.ts:92:26
+
+    Error Context: test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+    Expected substring: "Fake reply from openai:gpt-4.1-mini."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      90 |     await page.getByRole("button", { name: "Send" }).click();
+      91 |     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
+    > 92 |     await expect(answer).toContainText("Fake reply from openai:gpt-4.1-mini.", { timeout: 15_000 });
+         |                          ^
+      93 |
+      94 |     // The OpenAI credential is a Credential reference now, so it can't be deleted.
+      95 |     const deleted = await page.request.delete(`${organisation}/credentials/${openAi}`);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/agent-config.spec.ts:92:26
+
+    Error Context: test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark 
+
+    Error: expect(locator).not.toBeEmpty() failed
+
+    Locator:  locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'Hana from HR', exact: true })
+    Expected: not empty
+    Received: empty
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "not toBeEmpty" locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'Hana from HR', exact: true }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'Hana from HR', exact: true })
+        33 × locator resolved to <li data-from="agent" aria-label="Hana from HR">…</li>
+           - unexpected value "empty"
+
+
+      100 |     await widget.getByRole("list", { name: "Suggested questions" }).getByRole("button", { name: "How much leave do I get?" }).click();
+      101 |     await expect(log.getByRole("listitem", { name: "You" })).toHaveText("How much leave do I get?");
+    > 102 |     await expect(log.getByRole("listitem", { name: "Hana from HR", exact: true })).not.toBeEmpty({ timeout: 15_000 });
+          |                                                                                        ^
+      103 |     await widget.getByRole("button", { name: "Close chat" }).first().click();
+      104 |     await expect(frame).toHaveCSS("width", "88px");
+      105 |     await phone.close();
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/branded-widget.spec.ts:102:88
+
+    Error Context: test-results/tests-branded-widget-Brand-472ad-phone-inline-light-and-dark-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-branded-widget-Brand-472ad-phone-inline-light-and-dark-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-branded-widget-Brand-472ad-phone-inline-light-and-dark-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).not.toBeEmpty() failed
+
+    Locator:  locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'Hana from HR', exact: true })
+    Expected: not empty
+    Received: empty
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "not toBeEmpty" locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'Hana from HR', exact: true }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'Hana from HR', exact: true })
+        33 × locator resolved to <li data-from="agent" aria-label="Hana from HR">…</li>
+           - unexpected value "empty"
+
+
+      100 |     await widget.getByRole("list", { name: "Suggested questions" }).getByRole("button", { name: "How much leave do I get?" }).click();
+      101 |     await expect(log.getByRole("listitem", { name: "You" })).toHaveText("How much leave do I get?");
+    > 102 |     await expect(log.getByRole("listitem", { name: "Hana from HR", exact: true })).not.toBeEmpty({ timeout: 15_000 });
+          |                                                                                        ^
+      103 |     await widget.getByRole("button", { name: "Close chat" }).first().click();
+      104 |     await expect(frame).toHaveCSS("width", "88px");
+      105 |     await phone.close();
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/branded-widget.spec.ts:102:88
+
+    Error Context: test-results/tests-branded-widget-Brand-472ad-phone-inline-light-and-dark-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-branded-widget-Brand-472ad-phone-inline-light-and-dark-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-branded-widget-Brand-472ad-phone-inline-light-and-dark-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: apiRequestContext.post: Test ended.
+    Call log:
+      - → POST http://localhost:49683/api/widget/agents/agt_5kJnR7ZszuP81G8h2bCIVdg9/messages
+        - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - Authorization: Bearer wc1.b42066db977e471f96e7eba922bd984b.bLbXeUfiKL7Aefjdto0Zx1gNA9ebGGqx.8q6P12ja01SH15Kt7QOo9Rh1d1JOBmhn59Us4niTaXY
+        - content-type: application/json
+        - content-length: 53
+
+
+      42 |     expect(started.status()).toBe(201);
+      43 |     const { conversation_token: token } = (await started.json()) as { conversation_token: string };
+    > 44 |     const asked = await visitor.request.post(`/api/widget/agents/${publicId}/messages`, {
+         |                                         ^
+      45 |       data: { content: "How many days of annual leave do I get?" },
+      46 |       headers: { Authorization: `Bearer ${token}` },
+      47 |     });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/conversations.spec.ts:44:41
+
+    Error Context: test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 120000ms exceeded.
+
+    Error: apiRequestContext.post: Test ended.
+    Call log:
+      - → POST http://localhost:49683/api/widget/agents/agt_vJPZyj9ofuZn6Jt-4hoEf40e/messages
+        - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - Authorization: Bearer wc1.57adaa5275634aa9bbe31bf17fffeed5.tk5OgfZmkjT5iIFB48pkM1fevC9kLwvM.wGwhB7SA5BeMAtyM233ekd9VwX6dUth0lC-qeKM9kas
+        - content-type: application/json
+        - content-length: 53
+
+
+      42 |     expect(started.status()).toBe(201);
+      43 |     const { conversation_token: token } = (await started.json()) as { conversation_token: string };
+    > 44 |     const asked = await visitor.request.post(`/api/widget/agents/${publicId}/messages`, {
+         |                                         ^
+      45 |       data: { content: "How many days of annual leave do I get?" },
+      46 |       headers: { Authorization: `Bearer ${token}` },
+      47 |     });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/conversations.spec.ts:44:41
+
+    Error Context: test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'HR helper' }).first()
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'HR helper' }).first() with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'HR helper' }).first()
+        33 × locator resolved to <li data-from="agent" aria-label="HR helper">…</li>
+           - unexpected value ""
+
+
+      93 |     await expect(log.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");
+      94 |     const reply = log.getByRole("listitem", { name: "HR helper" }).first();
+    > 95 |     await expect(reply).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                         ^
+      96 |     await expect(reply).toContainText("Sources: northwind-staff-handbook.md");
+      97 |
+      98 |     // An attack never reaches the model: the input Guardrail blocks it and the Visitor gets the
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/embed.spec.ts:95:25
+
+    Error Context: test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'HR helper' }).first()
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'HR helper' }).first() with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('log', { name: 'Conversation' }).getByRole('listitem', { name: 'HR helper' }).first()
+        33 × locator resolved to <li data-from="agent" aria-label="HR helper">…</li>
+           - unexpected value ""
+
+
+      93 |     await expect(log.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");
+      94 |     const reply = log.getByRole("listitem", { name: "HR helper" }).first();
+    > 95 |     await expect(reply).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                         ^
+      96 |     await expect(reply).toContainText("Sources: northwind-staff-handbook.md");
+      97 |
+      98 |     // An attack never reaches the model: the input Guardrail blocks it and the Visitor gets the
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/embed.spec.ts:95:25
+
+    Error Context: test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }).first()
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }).first() with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }).first()
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      45 |     await question.fill("How many days of annual leave do I get?");
+      46 |     await send.click();
+    > 47 |     await expect(answers.first()).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                                   ^
+      48 |
+      49 |     // Each provider failure ends the stream with its own readable message, and no answer. (The
+      50 |     // questions pass the input Guardrail's local classifier, which scores "Please simulate an
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/playground-errors.spec.ts:47:35
+
+    Error Context: test-results/tests-playground-errors-Pl-76405-t-starts-a-new-Conversation-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-playground-errors-Pl-76405-t-starts-a-new-Conversation-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-playground-errors-Pl-76405-t-starts-a-new-Conversation-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }).first()
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }).first() with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }).first()
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      45 |     await question.fill("How many days of annual leave do I get?");
+      46 |     await send.click();
+    > 47 |     await expect(answers.first()).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                                   ^
+      48 |
+      49 |     // Each provider failure ends the stream with its own readable message, and no answer. (The
+      50 |     // questions pass the input Guardrail's local classifier, which scores "Please simulate an
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/playground-errors.spec.ts:47:35
+
+    Error Context: test-results/tests-playground-errors-Pl-76405-t-starts-a-new-Conversation-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-playground-errors-Pl-76405-t-starts-a-new-Conversation-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-playground-errors-Pl-76405-t-starts-a-new-Conversation-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Picker helper' }).first()
+    Expected substring: "Instructions: Draft"
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Picker helper' }).first() with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Picker helper' }).first()
+        33 × locator resolved to <li aria-label="Picker helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      54 |     await page.getByRole("button", { name: "Send" }).click();
+      55 |     const { id: conversationId } = (await (await started).json()) as { id: string };
+    > 56 |     await expect(answers.nth(0)).toContainText("Instructions: Draft", { timeout: 15_000 });
+         |                                  ^
+      57 |     // Then with v1.
+      58 |     await picker.selectOption({ label: "v1 (Current) · First rules" });
+      59 |     await page.getByLabel("Question", { exact: true }).fill("And with v1?");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/playground-instructions.spec.ts:56:34
+
+    Error Context: test-results/tests-playground-instructi-ef6f4-d-each-answer-records-which-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-playground-instructi-ef6f4-d-each-answer-records-which-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-playground-instructi-ef6f4-d-each-answer-records-which-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Picker helper' }).first()
+    Expected substring: "Instructions: Draft"
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Picker helper' }).first() with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Picker helper' }).first()
+        33 × locator resolved to <li aria-label="Picker helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      54 |     await page.getByRole("button", { name: "Send" }).click();
+      55 |     const { id: conversationId } = (await (await started).json()) as { id: string };
+    > 56 |     await expect(answers.nth(0)).toContainText("Instructions: Draft", { timeout: 15_000 });
+         |                                  ^
+      57 |     // Then with v1.
+      58 |     await picker.selectOption({ label: "v1 (Current) · First rules" });
+      59 |     await page.getByLabel("Question", { exact: true }).fill("And with v1?");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/playground-instructions.spec.ts:56:34
+
+    Error Context: test-results/tests-playground-instructi-ef6f4-d-each-answer-records-which-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-playground-instructi-ef6f4-d-each-answer-records-which-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-playground-instructi-ef6f4-d-each-answer-records-which-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      60 |     await expect(messages.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");
+      61 |     const answer = messages.getByRole("listitem", { name: "HR helper" });
+    > 62 |     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                          ^
+      63 |     await expect(answer).toContainText(/\d+ input and \d+ output tokens · \d+ ms/);
+      64 |     // The fake model cites the first Chunk it is given: a chip links to it in the Document viewer.
+      65 |     const chip = answer.getByRole("list", { name: "Sources" }).getByRole("link", { name: /^C1 northwind-staff-handbook\.md$/ });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/playground.spec.ts:62:26
+
+    Error Context: test-results/tests-playground-Agent-and-80fd6-n-and-the-answer-streams-in-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-playground-Agent-and-80fd6-n-and-the-answer-streams-in-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-playground-Agent-and-80fd6-n-and-the-answer-streams-in-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      60 |     await expect(messages.getByRole("listitem", { name: "You" })).toHaveText("How many days of annual leave do I get?");
+      61 |     const answer = messages.getByRole("listitem", { name: "HR helper" });
+    > 62 |     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                          ^
+      63 |     await expect(answer).toContainText(/\d+ input and \d+ output tokens · \d+ ms/);
+      64 |     // The fake model cites the first Chunk it is given: a chip links to it in the Document viewer.
+      65 |     const chip = answer.getByRole("list", { name: "Sources" }).getByRole("link", { name: /^C1 northwind-staff-handbook\.md$/ });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/playground.spec.ts:62:26
+
+    Error Context: test-results/tests-playground-Agent-and-80fd6-n-and-the-answer-streams-in-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-playground-Agent-and-80fd6-n-and-the-answer-streams-in-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-playground-Agent-and-80fd6-n-and-the-answer-streams-in-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Support helper' })
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Support helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Support helper' })
+        33 × locator resolved to <li aria-label="Support helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      83 |     await page.getByRole("button", { name: "Send" }).click();
+      84 |     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "Support helper" });
+    > 85 |     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                          ^
+      86 |     await answer.getByRole("button", { name: "Trace" }).click();
+      87 |     const trace = page.getByRole("dialog", { name: "Trace" });
+      88 |     const rows = trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/reranker.spec.ts:85:26
+
+    Error Context: test-results/tests-reranker-Reranker-an-dd05b-best-Chunk-rises-to-the-top-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-reranker-Reranker-an-dd05b-best-Chunk-rises-to-the-top-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-reranker-Reranker-an-dd05b-best-Chunk-rises-to-the-top-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Support helper' })
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Support helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'Support helper' })
+        33 × locator resolved to <li aria-label="Support helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      83 |     await page.getByRole("button", { name: "Send" }).click();
+      84 |     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "Support helper" });
+    > 85 |     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                          ^
+      86 |     await answer.getByRole("button", { name: "Trace" }).click();
+      87 |     const trace = page.getByRole("dialog", { name: "Trace" });
+      88 |     const rows = trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/reranker.spec.ts:85:26
+
+    Error Context: test-results/tests-reranker-Reranker-an-dd05b-best-Chunk-rises-to-the-top-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-reranker-Reranker-an-dd05b-best-Chunk-rises-to-the-top-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-reranker-Reranker-an-dd05b-best-Chunk-rises-to-the-top-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      75 |     await page.getByRole("button", { name: "Send" }).click();
+      76 |     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
+    > 77 |     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                          ^
+      78 |     await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link")).toHaveText(["C1 leave-policy.md"]);
+      79 |     await answer.getByRole("button", { name: "Trace" }).click();
+      80 |     const trace = page.getByRole("dialog", { name: "Trace" });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/tag-scoping.spec.ts:77:26
+
+    Error Context: test-results/tests-tag-scoping-Tag-scop-da851-g-warns-which-Agents-use-it-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-tag-scoping-Tag-scop-da851-g-warns-which-Agents-use-it-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-tag-scoping-Tag-scop-da851-g-warns-which-Agents-use-it-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+    Expected substring: "Fake reply from anthropic:claude-haiku-4-5."
+    Received string:    ""
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Playground messages' }).getByRole('listitem', { name: 'HR helper' })
+        33 × locator resolved to <li aria-label="HR helper" class="rounded px-3 py-2 text-sm border border-slate-200 bg-white">…</li>
+           - unexpected value ""
+
+
+      75 |     await page.getByRole("button", { name: "Send" }).click();
+      76 |     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
+    > 77 |     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
+         |                          ^
+      78 |     await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link")).toHaveText(["C1 leave-policy.md"]);
+      79 |     await answer.getByRole("button", { name: "Trace" }).click();
+      80 |     const trace = page.getByRole("dialog", { name: "Trace" });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/tag-scoping.spec.ts:77:26
+
+    Error Context: test-results/tests-tag-scoping-Tag-scop-da851-g-warns-which-Agents-use-it-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-tag-scoping-Tag-scop-da851-g-warns-which-Agents-use-it-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-tag-scoping-Tag-scop-da851-g-warns-which-Agents-use-it-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations 
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+
+
+      117 |     await host.keyboard.press("Enter");
+      118 |     const reply = chat.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "Hana from HR", exact: true });
+    > 119 |     await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+          |                                                              ^
+      120 |     const answer = (await reply.innerText()).trim();
+      121 |     expect(answer).not.toBe("");
+      122 |     await expect(chat.getByRole("status", { name: "Announcements" })).toHaveText(`Hana from HR: ${answer}`);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-accessibility.spec.ts:119:62
+
+    Error Context: test-results/tests-widget-accessibility-51069--axe-finds-no-AA-violations-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-accessibility-51069--axe-finds-no-AA-violations-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-accessibility-51069--axe-finds-no-AA-violations-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+
+
+      117 |     await host.keyboard.press("Enter");
+      118 |     const reply = chat.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "Hana from HR", exact: true });
+    > 119 |     await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+          |                                                              ^
+      120 |     const answer = (await reply.innerText()).trim();
+      121 |     expect(answer).not.toBe("");
+      122 |     await expect(chat.getByRole("status", { name: "Announcements" })).toHaveText(`Hana from HR: ${answer}`);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-accessibility.spec.ts:119:62
+
+    Error Context: test-results/tests-widget-accessibility-51069--axe-finds-no-AA-violations-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-accessibility-51069--axe-finds-no-AA-violations-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-accessibility-51069--axe-finds-no-AA-violations-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations 
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+
+
+      117 |     await host.keyboard.press("Enter");
+      118 |     const reply = chat.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "Hana from HR", exact: true });
+    > 119 |     await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+          |                                                              ^
+      120 |     const answer = (await reply.innerText()).trim();
+      121 |     expect(answer).not.toBe("");
+      122 |     await expect(chat.getByRole("status", { name: "Announcements" })).toHaveText(`Hana from HR: ${answer}`);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-accessibility.spec.ts:119:62
+
+    Error Context: test-results/tests-widget-accessibility-842fd--axe-finds-no-AA-violations-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-accessibility-842fd--axe-finds-no-AA-violations-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-accessibility-842fd--axe-finds-no-AA-violations-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('region', { name: 'Chat with Hana from HR' }).getByRole('button', { name: 'Send' })
+
+
+      117 |     await host.keyboard.press("Enter");
+      118 |     const reply = chat.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "Hana from HR", exact: true });
+    > 119 |     await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+          |                                                              ^
+      120 |     const answer = (await reply.innerText()).trim();
+      121 |     expect(answer).not.toBe("");
+      122 |     await expect(chat.getByRole("status", { name: "Announcements" })).toHaveText(`Hana from HR: ${answer}`);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-accessibility.spec.ts:119:62
+
+    Error Context: test-results/tests-widget-accessibility-842fd--axe-finds-no-AA-violations-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-accessibility-842fd--axe-finds-no-AA-violations-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-accessibility-842fd--axe-finds-no-AA-violations-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so 
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+
+
+      73 |     const reply = log.getByRole("listitem", { name: "HR helper" });
+      74 |     await expect(reply).toHaveCount(1, { timeout: 15_000 });
+    > 75 |     await expect(widget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+         |                                                                ^
+      76 |     const answer = (await reply.textContent()) ?? "";
+      77 |     expect(answer).not.toBe("");
+      78 |     await host.reload();
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-lifecycle.spec.ts:75:64
+
+    Error Context: test-results/tests-widget-lifecycle-Wid-69181-esh-a-retired-Agent-says-so-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-lifecycle-Wid-69181-esh-a-retired-Agent-says-so-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-lifecycle-Wid-69181-esh-a-retired-Agent-says-so-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+
+
+      73 |     const reply = log.getByRole("listitem", { name: "HR helper" });
+      74 |     await expect(reply).toHaveCount(1, { timeout: 15_000 });
+    > 75 |     await expect(widget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+         |                                                                ^
+      76 |     const answer = (await reply.textContent()) ?? "";
+      77 |     expect(answer).not.toBe("");
+      78 |     await host.reload();
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-lifecycle.spec.ts:75:64
+
+    Error Context: test-results/tests-widget-lifecycle-Wid-69181-esh-a-retired-Agent-says-so-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-lifecycle-Wid-69181-esh-a-retired-Agent-says-so-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-lifecycle-Wid-69181-esh-a-retired-Agent-says-so-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [studio] › e2e/tests/widget-lifecycle.spec.ts:141:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh 
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+
+
+      164 |     await widget.getByRole("button", { name: "Send" }).click();
+      165 |     await expect(log.getByRole("listitem", { name: "Storage helper" })).toHaveCount(1, { timeout: 15_000 });
+    > 166 |     await expect(widget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+          |                                                                ^
+      167 |     await widget.getByLabel("Message").fill("Again?");
+      168 |     await widget.getByRole("button", { name: "Send" }).click();
+      169 |     await expect(log.getByRole("listitem", { name: "Storage helper" })).toHaveCount(2, { timeout: 15_000 });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-lifecycle.spec.ts:166:64
+
+    Error Context: test-results/tests-widget-lifecycle-Wid-42a74--and-a-reload-starts-afresh-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-lifecycle-Wid-42a74--and-a-reload-starts-afresh-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-lifecycle-Wid-42a74--and-a-reload-starts-afresh-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toBeEnabled() failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeEnabled" locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' }) with timeout 15000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('button', { name: 'Send' })
+
+
+      164 |     await widget.getByRole("button", { name: "Send" }).click();
+      165 |     await expect(log.getByRole("listitem", { name: "Storage helper" })).toHaveCount(1, { timeout: 15_000 });
+    > 166 |     await expect(widget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+          |                                                                ^
+      167 |     await widget.getByLabel("Message").fill("Again?");
+      168 |     await widget.getByRole("button", { name: "Send" }).click();
+      169 |     await expect(log.getByRole("listitem", { name: "Storage helper" })).toHaveCount(2, { timeout: 15_000 });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0607/frontend/e2e/tests/widget-lifecycle.spec.ts:166:64
+
+    Error Context: test-results/tests-widget-lifecycle-Wid-42a74--and-a-reload-starts-afresh-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-widget-lifecycle-Wid-42a74--and-a-reload-starts-afresh-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-widget-lifecycle-Wid-42a74--and-a-reload-starts-afresh-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13 failed
+    [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override 
+    [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark 
+    [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace 
+    [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version 
+    [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation 
+    [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which 
+    [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in 
+    [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top 
+    [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it 
+    [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations 
+    [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations 
+    [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so 
+    [studio] › e2e/tests/widget-lifecycle.spec.ts:141:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh 
+  65 passed (13.3m)
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:125: e2e] Error 1
+exit 2
