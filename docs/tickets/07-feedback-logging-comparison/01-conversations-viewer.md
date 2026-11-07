@@ -8,7 +8,7 @@
 - [06-01: Embed tracer](../06-embed-widget-operational-settings/01-embed-tracer.md)
 - [04-06: Citations and Trace drawer](../04-agents-retrieval-playground/06-citations-trace.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The list can be filtered by date, Version and Playground
 - [ ] The detail view shows Messages with a Trace drawer
