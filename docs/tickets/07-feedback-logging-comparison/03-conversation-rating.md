@@ -7,7 +7,7 @@
 **Blocked by:**
 - [07-02: Message Feedback](02-message-feedback.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The prompt appears after the Nth reply (a Live Version setting) and on end if no rating has been given; a dismissal is saved
 - [ ] Changing a rating is recorded in a change log
