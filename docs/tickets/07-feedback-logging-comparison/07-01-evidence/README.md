@@ -59,6 +59,25 @@ All runs are local and one at a time (GitHub Actions is down; the user authorise
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` | no leaks; no known vulnerabilities | [security.log](security.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
+### Clean-checkout rerun
+
+Every check was run again from a fresh clone of the pushed branch (`scratchpad/ev0701`), one at a time, on a machine shared with five other tickets. The logs are in [clean-checkout/](clean-checkout/).
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` @ 186c718 | exit 0 | [install.log](clean-checkout/install.log) |
+| `make lint` @ 186c718 | exit 0 | [lint.log](clean-checkout/lint.log) |
+| `make check-client` @ 186c718 | "API client is up to date.", no diff | [client-drift.log](clean-checkout/client-drift.log) |
+| `make test-frontend` @ 186c718 | 51 files, 630 tests; 100% on every metric | [frontend-tests.log](clean-checkout/frontend-tests.log) |
+| `make test-backend` @ 8840273 | 1961 passed, 7 deselected; 100.00% lines and branches | [backend-tests.log](clean-checkout/backend-tests.log) |
+| Images (`build.sh`) @ 186c718 | exit 0 | [images.log](clean-checkout/images.log) |
+| `make e2e` @ 186c718 | **70 passed** (5.4 min), no retries needed | [e2e.log](clean-checkout/e2e.log) |
+
+The first clean-checkout pass at 8840273 found two problems, both outside this ticket's code:
+
+- **Frontend coverage gate failed** at 99.96% statements / 99.94% branches ([log](clean-checkout/frontend-tests-8840273-flaky.log)). All 630 tests passed. The cause was a timing race in 05-04's `DraftEditor.test.tsx`, "a change still waiting to be saved is saved when the Editor leaves the page". At load average ~11, the 600 ms autosave timer sometimes fired between typing and clicking away, so the unmount flush (`DraftEditor.tsx:467`) was not run. Commit 186c718 makes the test change the field and leave in the same tick, so the result no longer depends on machine speed. It is a test-only change and has no effect on the backend, so the backend run at 8840273 still applies to 186c718.
+- **Two e2e specs failed** at load average 17–20 with the disk 98% full ([log](clean-checkout/e2e-8840273-under-load.log)): `agent-revert.spec.ts` and `bulk-rollout.spec.ts`, both from other tickets. Both hit the 30 s Playwright test timeout on the first try and on the retry. The other 68 specs passed, including `conversations.spec.ts`. Both specs passed in the original run and in the clean rerun at 186c718, so this was the overloaded machine and not a defect. Neither spec was changed.
+
 ## Gaps and judgement calls
 
 - **Seams not confirmed with a human.** The TDD skill asks for the seams to be agreed first; no human is reachable in this run, so the spec's own seams (API, network, end-to-end) were used.
@@ -70,3 +89,4 @@ All runs are local and one at a time (GitHub Actions is down; the user authorise
 - **Archived Agents' Conversations** are listed (archiving keeps Conversations, per the glossary), and archived Agents are offered in the Agent filter marked "(archived)".
 - **Conversation `created_at`** now comes from the app's Clock rather than the database's `now()`; in production both are the system clock.
 - **E2E without a Document:** the e2e Project holds no Document (set up through the API to keep the test short), so its Trace has no Chunks; the e2e test checks the drawer and the Version attribution. Chunk-level Trace content through the Conversations route is covered at the API seam (`test_a_visitor_replys_trace_shows_its_version_and_the_chunks_it_cited`).
+- **Out-of-ticket test fix:** 186c718 edits one test in 05-04's `DraftEditor.test.tsx` to stop it failing the coverage gate under load (see Clean-checkout rerun). The component is unchanged.
