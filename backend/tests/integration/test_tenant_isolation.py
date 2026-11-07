@@ -475,6 +475,8 @@ async def _a_playground_answer(owner: SignedUpMember, add_member: MemberFactory)
 
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
+# The Conversations viewer: every Conversation of the Project, Visitors' and the Playground's.
+_CONVERSATIONS = PROJECTS + "/{project_id}/conversations"
 
 
 # Routes that act on one Project. They are also checked at the Project level below.
@@ -582,6 +584,14 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
+    ),
+    ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
+    ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
+    ScopedRoute(
+        "GET",
+        _CONVERSATIONS + "/{conversation_id}/messages/{message_id}/trace",
+        EDITOR,
+        _a_playground_answer,
     ),
 ]
 
@@ -930,3 +940,27 @@ def test_every_project_route_is_in_the_project_isolation_test() -> None:
     }
 
     assert found == listed
+
+
+async def test_each_organisation_lists_only_its_own_conversations_for_a_member_of_both(
+    two_organisations: TwoOrganisations, member_factory: MemberFactory
+) -> None:
+    """The Conversations list holds only the Conversations of the Project in the path, and
+    filtering it by another Organisation's Agent or Agent Version finds nothing."""
+    member, other = two_organisations.member, two_organisations.other
+    own, _ = await _a_playground_answer(member, member_factory)
+    others, _ = await _a_playground_answer(other, member_factory)
+    others_version, _ = await _an_agent_version(other, member_factory)
+    own_path = _CONVERSATIONS.format(organisation_id=member.organisation_id, **own)
+    others_path = _CONVERSATIONS.format(organisation_id=other.organisation_id, **others)
+
+    async def listed(path: str, **query: str) -> list[str]:
+        response = await member.client.get(path, params=query)
+        assert response.status_code == 200, response.text
+        return [item["id"] for item in response.json()["items"]]
+
+    assert await listed(own_path) == [own["conversation_id"]]
+    assert await listed(others_path) == [others["conversation_id"]]
+    assert await listed(own_path, agent_id=others["agent_id"]) == []
+    assert await listed(own_path, version_id=others_version["version_id"]) == []
+    assert await listed(others_path, agent_id=own["agent_id"]) == []
