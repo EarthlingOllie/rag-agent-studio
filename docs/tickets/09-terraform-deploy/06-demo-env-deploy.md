@@ -9,7 +9,7 @@
 - [09-05: CDN module](05-cdn-module.md)
 - [06-01: Embed tracer](../06-embed-widget-operational-settings/01-embed-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] `envs/demo` composes all the modules
 - [ ] The deploy workflow applies at a tag, runs the migration task, waits for services to stabilise, uploads static assets, invalidates the cache, and runs a smoke check (health, Studio, widget CSP)
