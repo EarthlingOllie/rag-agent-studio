@@ -56,10 +56,9 @@ export function Widget({ boot }: { boot: Boot }) {
   useEffect(() => {
     const kept = store.load();
     if (!kept) return;
-    let current = true;
-    resume(boot, kept).then(
+    // Nothing to cancel on unmount: the widget is the iframe's whole page.
+    void resume(boot, kept).then(
       (resumed) => {
-        if (!current) return;
         if (resumed === null) {
           store.clear();
         } else {
@@ -75,7 +74,6 @@ export function Widget({ boot }: { boot: Boot }) {
         setPhase("chat");
       },
       (failure: unknown) => {
-        if (!current) return;
         if (failure instanceof ChatError && failure.status === 404) {
           store.clear();
           setPhase("retired");
@@ -87,9 +85,6 @@ export function Widget({ boot }: { boot: Boot }) {
         setPhase("chat");
       },
     );
-    return () => {
-      current = false;
-    };
   }, [boot, store]);
 
   useEffect(() => {
