@@ -7,7 +7,7 @@
 **Blocked by:**
 - [06-01: Embed tracer](01-embed-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Operational Settings are separate from AgentConfig and apply on the next request
 - [ ] Allowed Origins are validated, including subdomain wildcards and localhost
