@@ -1,4 +1,4 @@
-$ gitleaks git --log-opts=origin/candidate..HEAD @ 5499eec
+$ gitleaks git --log-opts=origin/candidate..HEAD @ 5ce7623
 
     ○
     │╲
@@ -6,9 +6,9 @@ $ gitleaks git --log-opts=origin/candidate..HEAD @ 5499eec
     ○ ░
     ░    gitleaks
 
-[90m9:00AM[0m [32mINF[0m [1m7 commits scanned.[0m
-[90m9:00AM[0m [32mINF[0m [1mscanned ~3238552 bytes (3.24 MB) in 744ms[0m
-[90m9:00AM[0m [32mINF[0m [1mno leaks found[0m
+[90m10:13AM[0m [32mINF[0m [1m8 commits scanned.[0m
+[90m10:13AM[0m [32mINF[0m [1mscanned ~3861231 bytes (3.86 MB) in 613ms[0m
+[90m10:13AM[0m [32mINF[0m [1mno leaks found[0m
 exit 0
 $ make audit
 cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
