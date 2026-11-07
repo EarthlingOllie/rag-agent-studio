@@ -499,12 +499,16 @@ _Avoid_: Session, chat, thread
 **Message**:
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
+**Conversations viewer**:
+The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, and by Visitor or Playground. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered and its Trace in the Trace drawer. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
+_Avoid_: Chat log, transcript list
+
 **Message Feedback**:
 A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Message.
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, Version, and the Project Instructions it ran with. Shown in the Playground's Trace drawer.
+The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown in the Trace drawer, in the Playground and in the Conversations viewer.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:

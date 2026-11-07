@@ -492,12 +492,15 @@ export function useAgentDiff(
 }
 
 /** The Agent's Versions, newest first, and which is Live. */
+/** The Agent's Versions; with `enabled` false, nothing is fetched (no Agent chosen yet). */
 export function useAgentVersions(
   organisationId: string,
   projectId: string,
   agentId: string,
+  enabled = true,
 ) {
   return useQuery({
+    enabled,
     queryKey: [...agentsKey(organisationId, projectId), agentId, "versions"],
     queryFn: async (): Promise<Schemas["AgentVersionsOut"]> => {
       const { data, error, response } = await api.GET(

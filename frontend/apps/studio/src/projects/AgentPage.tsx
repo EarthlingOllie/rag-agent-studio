@@ -642,6 +642,14 @@ export function AgentPage() {
         All Agents
       </Link>
       {body}
+      <Link
+        to="/organisations/$organisationId/projects/$projectId/conversations"
+        params={{ organisationId, projectId }}
+        search={{ agent: agentId }}
+        className="block text-sm text-slate-700 underline"
+      >
+        Conversations with this Agent
+      </Link>
     </section>
   );
 }

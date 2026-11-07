@@ -146,6 +146,12 @@ def test_openapi_document_describes_every_endpoint() -> None:
             f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
             "get",
         ),
+        "listConversations": (f"{_PROJECT}/conversations", "get"),
+        "getConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "get"),
+        "getConversationTrace": (
+            f"{_PROJECT}/conversations/{{conversation_id}}/messages/{{message_id}}/trace",
+            "get",
+        ),
     }
 
 
