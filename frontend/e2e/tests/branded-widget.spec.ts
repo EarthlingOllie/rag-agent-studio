@@ -97,7 +97,7 @@ test.describe("Branded widget", () => {
     // A starter question asks itself, and the reply streams in from the Live Version.
     await widget.getByRole("list", { name: "Suggested questions" }).getByRole("button", { name: "How much leave do I get?" }).click();
     await expect(log.getByRole("listitem", { name: "You" })).toHaveText("How much leave do I get?");
-    await expect(log.getByRole("listitem", { name: "Hana from HR" })).not.toBeEmpty({ timeout: 15_000 });
+    await expect(log.getByRole("listitem", { name: "Hana from HR", exact: true })).not.toBeEmpty({ timeout: 15_000 });
     await widget.getByRole("button", { name: "Close chat" }).first().click();
     await expect(frame).toHaveCSS("width", "88px");
     await phone.close();
