@@ -141,8 +141,22 @@ test("the Trace shows each Guardrail outcome, or that none stepped in", async ()
             verdict: "leak",
             action: "replaced",
             reason: "The reply contained the canary token, so it was cut off and replaced.",
+            score: null,
           },
-          { layer: "canary", verdict: "leak", action: "flagged", reason: "The reply contained the canary token, encoded (base64)." },
+          {
+            layer: "canary",
+            verdict: "leak",
+            action: "flagged",
+            reason: "The reply contained the canary token, encoded (base64).",
+            score: null,
+          },
+          {
+            layer: "input",
+            verdict: "injection",
+            action: "blocked",
+            reason: "The local classifier scored the message 0.99 as a prompt injection.",
+            score: 0.9871,
+          },
         ],
       }),
   });
@@ -158,7 +172,58 @@ test("the Trace shows each Guardrail outcome, or that none stepped in", async ()
   ).toEqual([
     "Canary token: leak, cut off and replaced. The reply contained the canary token, so it was cut off and replaced.",
     "Canary token: leak, flagged after sending. The reply contained the canary token, encoded (base64).",
+    "Input Guardrail: injection (score 0.99), blocked before the model. The local classifier scored the message 0.99 as a prompt injection.",
   ]);
+});
+
+test("a question the input Guardrail blocked gets the Agent's refusal text, marked as blocked", async () => {
+  const { answer } = await askLeave({
+    answer: () => streamedAnswer([], { refusal: "I can only answer questions about our HR policies." }),
+  });
+
+  expect(within(answer).getByText("I can only answer questions about our HR policies.")).toBeInTheDocument();
+  expect(within(answer).getByText("Blocked by the input Guardrail: the model wasn't asked.")).toBeInTheDocument();
+  expect(within(answer).queryByRole("list", { name: "Sources" })).not.toBeInTheDocument();
+  // Its Trace says why.
+  expect(within(answer).getByRole("button", { name: "Trace" })).toBeInTheDocument();
+});
+
+test("the Trace of a refusal says the input Guardrail blocked the question and no model was asked", async () => {
+  const { answer } = await askLeave({
+    answer: () => streamedAnswer([], { refusal: "I can only answer questions about our HR policies." }),
+    trace: () =>
+      HttpResponse.json({
+        ...hrTrace,
+        model_provider: null,
+        model_name: null,
+        input_tokens: 0,
+        output_tokens: 0,
+        cost_usd: "0",
+        chunks: [],
+        guardrail_outcomes: [
+          {
+            layer: "input",
+            verdict: "injection",
+            action: "blocked",
+            reason: "The local classifier scored the message 1.00 as a prompt injection.",
+            score: 1,
+          },
+        ],
+      }),
+  });
+
+  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  expect(await within(drawer).findByText("None (blocked)")).toBeInTheDocument();
+  expect(
+    within(drawer).getByText(
+      "The input Guardrail blocked the question, so the Agent replied with its refusal text and the model wasn't asked.",
+    ),
+  ).toBeInTheDocument();
+  expect(within(within(drawer).getByRole("list", { name: "Guardrails" })).getByRole("listitem")).toHaveTextContent(
+    "Input Guardrail: injection (score 1.00), blocked before the model. The local classifier scored the message 1.00 as a prompt injection.",
+  );
 });
 
 test("the Trace of a fallback reply says no Chunk was relevant enough, and Escape closes it", async () => {

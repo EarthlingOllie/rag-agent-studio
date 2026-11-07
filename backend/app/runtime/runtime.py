@@ -71,7 +71,7 @@ class DoneEvent:
     """The end of the turn: the full answer, token usage, the Chunks the model was given and
     the Chunks retrieval left out. ``fallback`` is true when no Chunk reached the minimum score,
     so the answer is the fallback text and the model wasn't asked. ``guardrail_outcomes`` holds
-    what the Guardrails decided (a canary leak replaced or flagged)."""
+    what the Guardrails decided (a canary leak replaced or flagged, a question blocked)."""
 
     answer: str
     input_tokens: int
@@ -80,6 +80,9 @@ class DoneEvent:
     excluded: list[Excluded]
     fallback: bool = False
     cited: list[Candidate] = field(default_factory=list)
+    # True when the input Guardrail blocked the question (``app.guardrails.pipeline``): the
+    # answer is the refusal text, and nothing was retrieved and no model was asked.
+    refused: bool = False
     guardrail_outcomes: list[GuardrailOutcome] = field(default_factory=list)
 
 

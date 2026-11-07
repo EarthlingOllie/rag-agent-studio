@@ -8,12 +8,27 @@ type TraceChunk = Trace["chunks"][number];
 type GuardrailOutcome = Trace["guardrail_outcomes"][number];
 
 const LAYERS: Record<GuardrailOutcome["layer"], string> = {
+  input: "Input Guardrail",
   canary: "Canary token",
 };
 const ACTIONS: Record<GuardrailOutcome["action"], string> = {
+  blocked: "blocked before the model",
   replaced: "cut off and replaced",
   flagged: "flagged after sending",
 };
+
+/** "injection (score 0.99)", or the verdict alone for a layer that doesn't score. */
+function verdict(outcome: GuardrailOutcome): string {
+  if (typeof outcome.score !== "number") return outcome.verdict;
+  return `${outcome.verdict} (score ${outcome.score.toFixed(2)})`;
+}
+
+/** Whether the input Guardrail blocked the question, so the reply is the refusal text. */
+function blocked(trace: Trace): boolean {
+  return trace.guardrail_outcomes.some(
+    (outcome) => outcome.layer === "input" && outcome.action === "blocked",
+  );
+}
 
 export type TracePath = {
   organisation_id: string;
@@ -43,9 +58,11 @@ function dollars(amount: string | null): string {
     .replace(/\.?0+$/, "")}`;
 }
 
-/** A fallback reply asked no model, so its model provider and name are both null. */
+/** A fallback reply or a refusal asked no model, so its model provider and name are both
+ * null. */
 function model(trace: Trace): string {
-  if (trace.model_name === null) return "None (fallback)";
+  if (trace.model_name === null)
+    return blocked(trace) ? "None (blocked)" : "None (fallback)";
   return `${String(trace.model_provider)} · ${trace.model_name}`;
 }
 
@@ -91,6 +108,12 @@ function TraceBody({ trace }: { trace: Trace }) {
           fallback text and the model wasn't asked.
         </p>
       )}
+      {blocked(trace) && (
+        <p className="text-sm text-slate-700">
+          The input Guardrail blocked the question, so the Agent replied with
+          its refusal text and the model wasn't asked.
+        </p>
+      )}
       <section aria-labelledby="trace-guardrails" className="space-y-1 text-sm">
         <h3 id="trace-guardrails" className="font-medium">
           Guardrails
@@ -101,7 +124,7 @@ function TraceBody({ trace }: { trace: Trace }) {
           <ul aria-labelledby="trace-guardrails" className="list-disc pl-5">
             {trace.guardrail_outcomes.map((outcome, index) => (
               <li key={index}>
-                {LAYERS[outcome.layer]}: {outcome.verdict},{" "}
+                {LAYERS[outcome.layer]}: {verdict(outcome)},{" "}
                 {ACTIONS[outcome.action]}. {outcome.reason}
               </li>
             ))}

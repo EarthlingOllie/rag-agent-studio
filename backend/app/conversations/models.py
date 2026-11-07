@@ -106,8 +106,9 @@ class Message(IdMixin, Base):
     # True when no Chunk reached the minimum score, so the answer is the fallback text and no
     # model was asked (its model is then null).
     fallback: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
-    # What the Guardrails decided about the answer: a list of {layer, verdict, action, reason}.
-    guardrail_outcomes: Mapped[list[dict[str, str]]] = mapped_column(
+    # What the Guardrails decided about the answer: a list of
+    # {layer, verdict, action, reason, score}.
+    guardrail_outcomes: Mapped[list[dict[str, str | float | None]]] = mapped_column(
         JSONB, default=list, server_default=text("'[]'::jsonb")
     )
 

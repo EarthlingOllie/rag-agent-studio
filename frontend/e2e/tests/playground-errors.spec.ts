@@ -46,10 +46,12 @@ test.describe("Playground errors and reset", () => {
     await send.click();
     await expect(answers.first()).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
 
-    // Each provider failure ends the stream with its own readable message, and no answer.
+    // Each provider failure ends the stream with its own readable message, and no answer. (The
+    // questions pass the input Guardrail's local classifier, which scores "Please simulate an
+    // invalid key." as an attack.)
     const failures: [string, RegExp][] = [
       ["Please simulate a rate limit.", /over its rate limit or quota\. Wait a moment and try again/],
-      ["Please simulate an invalid key.", /The provider rejected the API key\. An Owner can check or rotate the Provider Credential/],
+      ["Could you simulate an invalid key error?", /The provider rejected the API key\. An Owner can check or rotate the Provider Credential/],
       ["Please simulate an unavailable model.", /The model claude-haiku-4-5 isn't available from the provider right now/],
     ];
     for (const [asked, explained] of failures) {

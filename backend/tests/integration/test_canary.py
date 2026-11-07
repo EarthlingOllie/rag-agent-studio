@@ -156,6 +156,8 @@ async def test_a_canary_leaked_across_chunks_is_cut_off_and_replaced_with_the_fa
             "verdict": "leak",
             "action": "replaced",
             "reason": "The reply contained the canary token, so it was cut off and replaced.",
+            # The canary doesn't score: it either appears or it doesn't.
+            "score": None,
         }
     ]
     assert trace["fallback"] is False
@@ -212,5 +214,6 @@ async def test_an_encoded_leak_is_logged_and_flagged_after_the_answer(
             "verdict": "leak",
             "action": "flagged",
             "reason": "The reply contained the canary token, encoded (base64).",
+            "score": None,
         }
     ]

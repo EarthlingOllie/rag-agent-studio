@@ -3196,19 +3196,21 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "replaced" | "flagged";
+            action: "blocked" | "replaced" | "flagged";
             /**
              * Layer
-             * @constant
+             * @enum {string}
              */
-            layer: "canary";
+            layer: "input" | "canary";
             /** Reason */
             reason: string;
+            /** Score */
+            score?: number | null;
             /**
              * Verdict
-             * @constant
+             * @enum {string}
              */
-            verdict: "leak";
+            verdict: "injection" | "leak";
         };
         /**
          * Guardrails
@@ -7784,7 +7786,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -10648,7 +10650,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
+            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;
