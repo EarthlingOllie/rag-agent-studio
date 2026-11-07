@@ -2,8 +2,8 @@
 marked (still retrieved) or excluded from retrieval. Every existing Project marks them, as
 before.
 
-Revision ID: 0032_flagged_chunk_mode
-Revises: 0031_operational_settings
+Revision ID: 0033_flagged_chunk_mode
+Revises: 0032_message_feedback
 Create Date: 2026-11-07
 """
 
@@ -12,8 +12,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0032_flagged_chunk_mode"
-down_revision: str | None = "0031_operational_settings"
+revision: str = "0033_flagged_chunk_mode"
+down_revision: str | None = "0032_message_feedback"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
