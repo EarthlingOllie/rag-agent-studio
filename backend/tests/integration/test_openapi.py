@@ -133,6 +133,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "changeOperationalSettings": (f"{_AGENT}/operational-settings", "patch"),
         "startWidgetConversation": ("/api/widget/agents/{public_id}/conversations", "post"),
         "sendWidgetMessage": ("/api/widget/agents/{public_id}/messages", "post"),
+        "getWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "get"),
+        "endWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "delete"),
         "bulkPublishAgents": (f"{_PROJECT}/agents/bulk-publish", "post"),
         "bulkRevertAgents": (f"{_PROJECT}/agents/bulk-revert", "post"),
         "getInstructionsRollout": (f"{_PROJECT}/instructions/rollout", "get"),
