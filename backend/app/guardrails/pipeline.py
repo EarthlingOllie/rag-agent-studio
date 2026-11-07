@@ -104,7 +104,9 @@ class GuardrailPipeline:
         outcome: GuardrailOutcome | None = None
         # The LLM classifier's failure, when the Agent fails open: recorded on the answer.
         unchecked: GuardrailOutcome | None = None
-        if flag is None and llm_classifier is not None:
+        # Only block mode acts on a flag yet (warn and log are 08-02's): in any other mode
+        # the paid LLM classifier's judgement would be thrown away, so it isn't asked.
+        if flag is None and llm_classifier is not None and guardrails.input_mode is InputMode.BLOCK:
             try:
                 flag = await llm_classifier.classify(visitor_input)
             except LlmClassifierError as error:

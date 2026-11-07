@@ -12,6 +12,7 @@ carries what went wrong; the pipeline applies the Agent's fail mode.
 """
 
 import asyncio
+import re
 from collections.abc import Callable
 from typing import Annotated, Literal
 
@@ -61,9 +62,14 @@ class LlmClassifierError(Exception):
         self.kind = kind
 
 
+# Any spelling of the closing marker: any letter case, whitespace inside the brackets.
+_CLOSING_MARKER = re.compile(r"<\s*/\s*message\s*>", re.IGNORECASE)
+
+
 def spotlighted(message: str) -> str:
-    """The message as the classifier model sees it: between markers it can't close early."""
-    safe = message.replace("</message>", "</ message>")
+    """The message as the classifier model sees it: between markers it can't close early.
+    Every spelling of ``</message>`` in it is escaped, so the only closing marker is ours."""
+    safe = _CLOSING_MARKER.sub("&lt;/message&gt;", message)
     return f"<message>\n{safe}\n</message>"
 
 
