@@ -42,6 +42,7 @@ const EXCLUDED: Record<NonNullable<TraceChunk["excluded_reason"]>, string> = {
   below_min_score: "Excluded: below the minimum score",
   outside_top_k: "Excluded: outside top-k",
   outside_tags: "Excluded: outside the Agent's Tags",
+  guardrail_flagged: "Excluded: flagged by the ingestion scan",
 };
 
 function outcome(chunk: TraceChunk): string {

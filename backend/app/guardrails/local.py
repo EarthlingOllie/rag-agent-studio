@@ -6,7 +6,8 @@ windows that overlap by ``overlap`` tokens, so an attack straddling a boundary i
 of them; each window is scored and the text's score is the highest. A text scoring at or above
 the threshold is flagged.
 
-The model is loaded once per process, the first time a text is classified.
+The model is loaded the first time a text is classified. ``onnx_model.load`` caches it, so the
+input Guardrail and the ingestion scan share one copy per process.
 """
 
 import threading
@@ -19,7 +20,7 @@ from numpy.typing import NDArray
 
 from app.guardrails.classifier import INJECTION_LABEL, InjectionFlag
 
-REASON = "The local classifier scored the message {score:.2f} as a prompt injection."
+REASON = "The local classifier scored the {subject} {score:.2f} as a prompt injection."
 
 
 class Session(Protocol):
@@ -53,13 +54,21 @@ def windows(ids: list[int], size: int, overlap: int) -> list[list[int]]:
 
 class LocalClassifier:
     def __init__(
-        self, load: Callable[[], LoadedModel], threshold: float, overlap: int = 64
+        self,
+        load: Callable[[], LoadedModel],
+        threshold: float,
+        overlap: int = 64,
+        *,
+        subject: str = "message",
     ) -> None:
         self._load = load
         self._model: LoadedModel | None = None
         self._lock = threading.Lock()
         self.threshold = threshold
         self.overlap = overlap
+        # What a flag's reason says was classified: the input Guardrail's "message", the
+        # ingestion scan's "Chunk".
+        self.subject = subject
 
     def _loaded(self) -> LoadedModel:
         with self._lock:
@@ -88,7 +97,9 @@ class LocalClassifier:
         for text in texts:
             score = round(self.score(text), 4)
             flags.append(
-                InjectionFlag(INJECTION_LABEL, score, REASON.format(score=score))
+                InjectionFlag(
+                    INJECTION_LABEL, score, REASON.format(subject=self.subject, score=score)
+                )
                 if score >= self.threshold
                 else None
             )

@@ -1,8 +1,9 @@
 """The injection-classifier port: does a text look like instructions aimed at an AI?
 
 Ingestion runs every Chunk through it (the ingestion Guardrail scan) and stores the verdict of
-each Chunk it flags. The heuristic adapter is this slice's baseline; spec 08 puts the local ONNX
-classifier behind the same port.
+each Chunk it flags; the input Guardrail runs every Visitor message through it. The local ONNX
+classifier is the default adapter for both; the heuristic one is the baseline for stacks built
+without the model.
 """
 
 from collections.abc import Sequence

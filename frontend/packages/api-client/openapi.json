@@ -2758,6 +2758,15 @@
         "title": "FieldChangeOut",
         "type": "object"
       },
+      "FlaggedChunkMode": {
+        "description": "What retrieval does with the Chunks the ingestion Guardrail scan flags.",
+        "enum": [
+          "mark",
+          "exclude"
+        ],
+        "title": "FlaggedChunkMode",
+        "type": "string"
+      },
       "Font": {
         "enum": [
           "Inter",
@@ -4495,6 +4504,9 @@
             "title": "Embedding Model Id",
             "type": "string"
           },
+          "flagged_chunk_mode": {
+            "$ref": "#/components/schemas/FlaggedChunkMode"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -4519,7 +4531,8 @@
           "agent_count",
           "embedding_model_id",
           "ocr_enabled",
-          "embedding_credential_id"
+          "embedding_credential_id",
+          "flagged_chunk_mode"
         ],
         "title": "ProjectOut",
         "type": "object"
@@ -5869,7 +5882,8 @@
                 "enum": [
                   "below_min_score",
                   "outside_top_k",
-                  "outside_tags"
+                  "outside_tags",
+                  "guardrail_flagged"
                 ],
                 "type": "string"
               },
@@ -6052,6 +6066,16 @@
               }
             ],
             "title": "Description"
+          },
+          "flagged_chunk_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlaggedChunkMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "name": {
             "anyOf": [
@@ -9636,7 +9660,7 @@
         ]
       },
       "patch": {
-        "description": "Renames the Project, edits its description or turns OCR on or off. An archived Project\nis refused.",
+        "description": "Renames the Project, edits its description, turns OCR on or off or sets whether Chunks\nthe ingestion Guardrail scan flags are marked or excluded from retrieval. An archived\nProject is refused.",
         "operationId": "updateProject",
         "parameters": [
           {
@@ -13429,6 +13453,93 @@
           }
         },
         "summary": "List Chunks",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag": {
+      "delete": {
+        "description": "Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,\nfor a false positive: the Chunk is retrieved again at once, even in a Project that excludes\nflagged Chunks. Records ``chunk.flag_cleared`` with the flag it had.",
+        "operationId": "clearChunkFlag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chunk_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chunk Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or the Chunk isn't flagged: This Chunk isn't flagged."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Chunk Flag",
         "tags": [
           "documents"
         ]

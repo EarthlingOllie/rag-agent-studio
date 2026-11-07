@@ -9,6 +9,7 @@ first use. This adapter needs those files, so it is exercised by the live suite
 (``tests/live``), outside the coverage gate (ADR-0008), like the local Embedding Model.
 """
 
+import functools
 import json
 from pathlib import Path
 
@@ -29,7 +30,9 @@ def download() -> Path:
     return paths[0].parent
 
 
+@functools.cache
 def load() -> LoadedModel:
+    """The model, loaded once per process: the input Guardrail and the ingestion scan share it."""
     folder = download()
     config = json.loads((folder / "config.json").read_text())
     tokenizer = Tokenizer.from_file(str(folder / "tokenizer.json"))
