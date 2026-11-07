@@ -2,9 +2,26 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
 
+/** The snippet's Launcher choice: none (the Theme's), a bubble, or inline in a container. */
+export type SnippetLayout = { launcher: "theme" } | { launcher: "bubble" } | { launcher: "inline"; target: string };
+
+function attribute(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
 /** The Embed Snippet a web team pastes into its pages; it loads the widget from this origin. */
-export function embedSnippet(publicId: string, origin = window.location.origin): string {
-  return `<script src="${origin}/embed.js" data-agent="${publicId}" async></script>`;
+export function embedSnippet(
+  publicId: string,
+  origin = window.location.origin,
+  layout: SnippetLayout = { launcher: "theme" },
+): string {
+  let attributes = "";
+  if (layout.launcher === "bubble") attributes = ' data-launcher="bubble"';
+  if (layout.launcher === "inline") {
+    attributes = ' data-launcher="inline"';
+    if (layout.target.trim()) attributes += ` data-target="${attribute(layout.target.trim())}"`;
+  }
+  return `<script src="${origin}/embed.js" data-agent="${publicId}"${attributes} async></script>`;
 }
 
 /** Why saving the Allowed Origins failed: the API's reason for a bad origin, or a generic one. */

@@ -13,6 +13,7 @@ import {
   useArchiveOrRestoreAgent,
   useDeleteAgent,
 } from "./agents";
+import { AgentBranding } from "./AgentBranding";
 import { AgentEmbed } from "./AgentEmbed";
 import { LiveHistory } from "./AgentLiveHistory";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
@@ -608,6 +609,14 @@ export function AgentPage() {
             key={`embed-${agent.data.id}`}
             agent={agent.data}
             organisationId={organisationId}
+          />
+        )}
+        {!archived && (
+          <AgentBranding
+            key={`branding-${agent.data.id}`}
+            agent={agent.data}
+            organisationId={organisationId}
+            isOwner={isOwner}
           />
         )}
         {archived && (
