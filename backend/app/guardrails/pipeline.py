@@ -6,12 +6,15 @@ Visitor's message, the input classifier (the injection-classifier port: the loca
 production, the rule-driven fake in tests) judges it. When it flags the message and the Agent's
 input mode is block, the turn short-circuits: no retrieval, no model call, a ``RefusalEvent``
 carrying the Agent's refusal text, then a ``DoneEvent`` whose answer is that text and whose
-Guardrail outcome says why. Otherwise the runtime answers as usual (the canary filter still
-wraps its stream). Warn and log modes are ticket 08-02's; until then a flagged message in
-those modes is answered as usual.
+Guardrail outcome says why. In warn mode a flagged message is answered, but the runtime adds a
+caution block to the prompt and the answer's ``DoneEvent`` carries an ``input / injection /
+flagged`` outcome, so the Message is flagged. In log mode it is answered exactly as an unflagged
+one would be, and the outcome (``logged``) only records the verdict. An unflagged message is
+answered as usual and leaves no outcome (the canary filter still wraps every model stream).
 """
 
 import asyncio
+import dataclasses
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass
 
@@ -78,9 +81,24 @@ class GuardrailPipeline:
                 ],
             )
             return
+        warned = flag is not None and guardrails.input_mode is InputMode.WARN
         async for event in run_turn(
-            turns, config, instructions, visitor_input, model=model, retrieve=retrieve
+            turns,
+            config,
+            instructions,
+            visitor_input,
+            model=model,
+            retrieve=retrieve,
+            cautioned=warned,
         ):
+            if flag is not None and isinstance(event, DoneEvent):
+                # Record the input verdict first, before what later layers decided.
+                verdict = GuardrailOutcome(
+                    "input", "injection", "flagged" if warned else "logged", flag.reason, flag.score
+                )
+                event = dataclasses.replace(
+                    event, guardrail_outcomes=[verdict, *event.guardrail_outcomes]
+                )
             yield event
 
 

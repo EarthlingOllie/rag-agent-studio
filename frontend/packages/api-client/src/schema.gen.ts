@@ -3196,7 +3196,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "blocked" | "replaced" | "flagged";
+            action: "blocked" | "replaced" | "flagged" | "logged";
             /**
              * Layer
              * @enum {string}

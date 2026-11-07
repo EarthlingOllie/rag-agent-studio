@@ -768,8 +768,9 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
 
       <Group legend="Guardrails" disabled={readOnly}>
         <p className="text-sm text-slate-700">
-          Every message is checked by the built-in classifier. Block mode is enforced; warn, log
-          and the LLM classifier are saved with the Draft and enforced in a later release.
+          Every message is checked by the built-in classifier. Block refuses a flagged message,
+          warn answers it with a caution to the model and flags it, and log only records the
+          verdict. The LLM classifier is saved with the Draft and enforced in a later release.
         </p>
         <ChoiceField
           label="Input Guardrail mode"
