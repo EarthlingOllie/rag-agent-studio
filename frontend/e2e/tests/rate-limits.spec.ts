@@ -5,6 +5,8 @@ import { HOST_URL } from "../fixtures/env";
 // chat model. No real provider is called and no real key is used.
 const CHAT_KEY = "sk-ant-e2e-test-only-not-a-real-key-e605";
 const UNAVAILABLE = "Lots of questions right now. Please wait a minute and ask again.";
+// The Project holds no Documents, so retrieval finds nothing and the Agent gives its fallback answer.
+const ANSWER = "Sorry, I don't know the answer to that.";
 
 test.describe("Rate limits", () => {
   test("an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt", async ({
@@ -77,9 +79,7 @@ test.describe("Rate limits", () => {
     const log = widget.getByRole("log", { name: "Conversation" });
     await widget.getByLabel("Message").fill("What are your opening hours?");
     await widget.getByRole("button", { name: "Send" }).click();
-    await expect(log.getByRole("listitem", { name: "Busy helper" })).toContainText("Fake reply from anthropic:claude-haiku-4-5.", {
-      timeout: 15_000,
-    });
+    await expect(log.getByRole("listitem", { name: "Busy helper" })).toContainText(ANSWER, { timeout: 15_000 });
     await widget.getByLabel("Message").fill("And at weekends?");
     await widget.getByRole("button", { name: "Send" }).click();
     await expect(widget.getByRole("alert")).toHaveText(UNAVAILABLE, { timeout: 15_000 });
@@ -95,10 +95,9 @@ test.describe("Rate limits", () => {
     for (const [index, question] of ["What are your opening hours?", "And at weekends?"].entries()) {
       await page.getByLabel("Question", { exact: true }).fill(question);
       await page.getByRole("button", { name: "Send" }).click();
-      await expect(messages.getByRole("listitem", { name: "Busy helper" }).nth(index)).toContainText(
-        "Fake reply from anthropic:claude-haiku-4-5.",
-        { timeout: 15_000 },
-      );
+      await expect(messages.getByRole("listitem", { name: "Busy helper" }).nth(index)).toContainText(ANSWER, {
+        timeout: 15_000,
+      });
     }
   });
 });
