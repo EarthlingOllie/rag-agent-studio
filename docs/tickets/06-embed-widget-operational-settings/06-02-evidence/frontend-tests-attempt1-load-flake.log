@@ -1,0 +1,46 @@
+$ make test-frontend @ 82eebce
+cd frontend && pnpm test && pnpm check-embed-size
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0602/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0602/frontend
+      Coverage enabled with v8
+
+ ❯ apps/studio/src/projects/AgentPage.test.tsx (23 tests | 1 failed) 29174ms
+   × the Playground can't be reset while an answer streams in 1495ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/studio/src/projects/AgentPage.test.tsx > the Playground can't be reset while an answer streams in
+Error: [2mexpect([22m[31melement[39m[2m).toBeEnabled()[22m
+
+Received element is not enabled:
+  [31m<button
+  class="text-sm text-slate-900 underline disabled:opacity-50"
+  disabled=""
+  type="button"
+/>[39m
+ ❯ apps/studio/src/projects/AgentPage.test.tsx:367:70
+    365|   release();
+    366|   await screen.findByText(/output tokens/);
+    367|   expect(screen.getByRole("button", { name: "Reset conversation" })).t…
+       |                                                                      ^
+    368| });
+    369|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 49 passed (50)
+      Tests  1 failed | 621 passed (622)
+   Start at  03:09:25
+   Duration  286.10s (tests 69%, environment 15%, import 7%, setup 6%, transform 2%, worker 1%)
+
+    Isolate  50 workers spawned · ~2.88s startup each (spawn + environment, per file)
+             at least ~45.17s faster with isolate: false — reuses workers across files instead of one per file
+
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:37: test-frontend] Error 1
+exit 2
