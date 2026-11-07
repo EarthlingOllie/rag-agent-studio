@@ -2,11 +2,14 @@ import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import type { Agent } from "./agents";
-import { embedSnippet, useChangeOperationalSettings, useOperationalSettings } from "./embed";
+import { embedSnippet, type SnippetLayout, useChangeOperationalSettings, useOperationalSettings } from "./embed";
 import { BUTTON, INPUT } from "./ProjectsPage";
 
 function Snippet({ agent }: { agent: Agent }) {
-  const snippet = embedSnippet(agent.public_id);
+  const [launcher, setLauncher] = useState<SnippetLayout["launcher"]>("theme");
+  const [target, setTarget] = useState("#chat");
+  const layout: SnippetLayout = launcher === "inline" ? { launcher, target } : { launcher };
+  const snippet = embedSnippet(agent.public_id, window.location.origin, layout);
   const [copied, setCopied] = useState<string>("");
 
   async function copy() {
@@ -23,6 +26,37 @@ function Snippet({ agent }: { agent: Agent }) {
       <p className="text-sm text-slate-700">
         Paste this into the pages where Visitors should chat with the Agent&apos;s Live Version.
       </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-sm font-medium">
+          Launcher
+          <select
+            value={launcher}
+            onChange={(event) => {
+              setCopied("");
+              setLauncher(event.target.value as SnippetLayout["launcher"]);
+            }}
+            className={`${INPUT} mt-1 block`}
+          >
+            <option value="theme">The Theme&apos;s Launcher</option>
+            <option value="bubble">Bubble in the corner</option>
+            <option value="inline">Inline in a container</option>
+          </select>
+        </label>
+        {launcher === "inline" && (
+          <label className="text-sm font-medium">
+            Container selector
+            <input
+              value={target}
+              onChange={(event) => {
+                setCopied("");
+                setTarget(event.target.value);
+              }}
+              spellCheck={false}
+              className={`${INPUT} mt-1 block font-mono`}
+            />
+          </label>
+        )}
+      </div>
       <pre
         aria-label="Embed Snippet"
         className="overflow-x-auto rounded border border-slate-300 bg-slate-50 p-2 text-xs"

@@ -44,12 +44,13 @@ async function agent(request: APIRequestContext, organisation: string, name: str
   return { project: projectPath, id, publicId };
 }
 
-/** A Visitor's browser (no Studio session) on the demo host page showing the Agent. */
+/** A Visitor's browser (no Studio session) on the demo host page showing the Agent inline. */
 async function visit(browser: Browser, publicId: string, setUp?: (context: BrowserContext) => Promise<unknown>) {
   const context = await browser.newContext();
   if (setUp) await setUp(context);
   const host = await context.newPage();
-  await host.goto(`${HOST_URL}/?agent=${publicId}`);
+  // Inline, so the chat is open on every load without opening the Theme's bubble first.
+  await host.goto(`${HOST_URL}/?agent=${publicId}&launcher=inline`);
   await expect(host.getByRole("heading", { name: "Northwind Traders" })).toBeVisible();
   const widget = host.frameLocator('iframe[title="Chat"]');
   return { context, host, widget, log: widget.getByRole("log", { name: "Conversation" }) };

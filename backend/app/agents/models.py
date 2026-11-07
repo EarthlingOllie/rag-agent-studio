@@ -58,6 +58,11 @@ class Agent(IdMixin, Base):
     )
     # What Visitors are told when the Agent can't answer; None means the platform's default.
     unavailable_text: Mapped[str | None] = mapped_column(String(UNAVAILABLE_TEXT_MAX))
+    # The Theme override, set by Owners and not versioned: colour tokens replacing the
+    # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
+    # image (stored as the Theme's images are), or None.
+    theme_colours: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    avatar: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class AgentDraft(Base):

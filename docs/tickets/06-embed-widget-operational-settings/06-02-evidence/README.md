@@ -6,7 +6,7 @@ Branch `ticket/06-02-operational-settings-origins`, from `origin/candidate` at `
 
 ## What was built
 
-- **Data** (migration `backend/migrations/versions/20261107_0030_operational_settings.py`): `agents.unavailable_text` (up to 500 characters, null meaning the platform default). `agents.allowed_origins` (06-01) stays where it was. Both are columns on the Agent itself, not in the Draft's or a Version's AgentConfig snapshot.
+- **Data** (migration `backend/migrations/versions/20261107_0031_operational_settings.py`): `agents.unavailable_text` (up to 500 characters, null meaning the platform default). `agents.allowed_origins` (06-01) stays where it was. Both are columns on the Agent itself, not in the Draft's or a Version's AgentConfig snapshot.
 - **Service** (`backend/app/embed/service.py`):
   - `operational_settings` / `change_operational_settings`: a partial change (a setting left out is untouched; a blank unavailable text restores the default). The Agent row is locked, the before and after values are compared, and only if something changed an `agent.operational_settings_changed` Audit Event is recorded with the before and after of just the settings that changed. Then commit. Nothing is published and the Draft is not touched.
   - `normalise_origins`: `http`/`https`, host, optional port 1–65535, no path; lower-cased, trailing slash dropped, de-duplicated in order; at most 50. New: a **subdomain wildcard** as the first label over a named site of at least two labels (`https://*.example.com`, `https://*.example.co.uk:8443`; never `*`, `https://*`, `https://*.com`, `https://www.*.example.com`, `http://*.localhost`). **Localhost** (`localhost`, `127.0.0.1`, `[::1]`) may take any port with `:*`; no other host may.
@@ -19,7 +19,7 @@ Branch `ticket/06-02-operational-settings-origins`, from `origin/candidate` at `
 
 The [shared test seams](../../../specs/README.md#shared-test-seams) and the spec's Testing Decisions; not confirmed with a human, they are the ones the spec names.
 
-- **API seam:** `backend/tests/integration/test_operational_settings.py` (15 tests, 51 cases) drives the app in process with a Studio member and a Visitor client against real Postgres and Redis. Assertions are on HTTP responses, the shell's `Content-Security-Policy` header, the widget's 503/SSE, and the Audit Events API. 06-01's Allowed Origins tests in `test_embed.py` moved here. `test_tenant_isolation.py` covers the two new routes (other Organisations 404, unauthenticated 401, Editors allowed); `test_openapi.py` lists the operations; `test_migrations.py` round-trips `0030`.
+- **API seam:** `backend/tests/integration/test_operational_settings.py` (15 tests, 51 cases) drives the app in process with a Studio member and a Visitor client against real Postgres and Redis. Assertions are on HTTP responses, the shell's `Content-Security-Policy` header, the widget's 503/SSE, and the Audit Events API. 06-01's Allowed Origins tests in `test_embed.py` moved here. `test_tenant_isolation.py` covers the two new routes (other Organisations 404, unauthenticated 401, Editors allowed); `test_openapi.py` lists the operations; `test_migrations.py` round-trips `0031`.
 - **Network seam:** `AgentEmbed.test.tsx` (14 tests) with `fakeAgentsApi` (`frontend/apps/studio/src/test/agents.ts`) holding stateful Operational Settings.
 - **End-to-end seam:** `frontend/e2e/tests/operational-settings.spec.ts`, Playwright against the compose stack, with axe.
 

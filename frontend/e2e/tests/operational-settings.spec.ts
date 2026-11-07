@@ -79,7 +79,8 @@ test.describe("Operational Settings", () => {
     // A Visitor on the allowed origin sees the widget, and the Agent's unavailable text.
     const visitor = await browser.newContext();
     const host = await visitor.newPage();
-    await host.goto(`${allowed.origin}/?agent=${publicId}`);
+    // Inline, so the chat is open without opening the Theme's bubble first.
+    await host.goto(`${allowed.origin}/?agent=${publicId}&launcher=inline`);
     const widget = host.frameLocator('iframe[title="Chat"]');
     await expect(widget.getByRole("heading", { name: "Support helper" })).toBeVisible({ timeout: 15_000 });
     await widget.getByLabel("Message").fill("Are you there?");
@@ -93,7 +94,7 @@ test.describe("Operational Settings", () => {
       if (message.text().includes("frame-ancestors")) refusals.push(message.text());
     });
     const shellLoaded = elsewhere.waitForResponse((response) => response.url().endsWith(`/widget/a/${publicId}`));
-    await elsewhere.goto(`${disallowed.origin}/?agent=${publicId}`);
+    await elsewhere.goto(`${disallowed.origin}/?agent=${publicId}&launcher=inline`);
     await expect(elsewhere.getByRole("heading", { name: "Northwind Traders" })).toBeVisible();
     expect((await shellLoaded).status()).toBe(200);
     await expect(elsewhere.locator('iframe[title="Chat"]')).toHaveCount(1);

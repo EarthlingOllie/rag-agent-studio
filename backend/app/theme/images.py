@@ -14,6 +14,7 @@ Only PNG, JPEG and WebP are accepted. SVG is not: it can carry script.
 import hashlib
 import json
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import PurePath
@@ -100,6 +101,33 @@ async def start_upload(
     ttl_seconds: int,
     now: datetime,
 ) -> PendingUpload:
+    return await start_image_upload(
+        redis,
+        store,
+        pending_key=lambda upload_id: _pending_key(scope, kind, upload_id),
+        object_prefix=f"organisations/{scope.organisation_id}/theme/{kind.value}",
+        filename=filename,
+        size_bytes=size_bytes,
+        max_bytes=max_bytes,
+        ttl_seconds=ttl_seconds,
+        now=now,
+    )
+
+
+async def start_image_upload(
+    redis: Redis,
+    store: ObjectStore,
+    *,
+    pending_key: Callable[[uuid.UUID], str],
+    object_prefix: str,
+    filename: str,
+    size_bytes: int,
+    max_bytes: int,
+    ttl_seconds: int,
+    now: datetime,
+) -> PendingUpload:
+    """Starts the upload of an image (a Theme's, or an Agent's avatar): checks its type and
+    size, remembers it under ``pending_key`` and presigns a PUT under ``object_prefix``."""
     try:
         content_type = IMAGE_TYPES[PurePath(filename).suffix.lower()]
     except KeyError:
@@ -107,9 +135,9 @@ async def start_upload(
     if size_bytes > max_bytes:
         raise ImageTooLargeError
     upload_id = uuid.uuid4()
-    object_key = f"organisations/{scope.organisation_id}/theme/{kind.value}/{upload_id}"
+    object_key = f"{object_prefix}/{upload_id}"
     pending = {"content_type": content_type, "object_key": object_key}
-    await redis.set(_pending_key(scope, kind, upload_id), json.dumps(pending), ex=ttl_seconds)
+    await redis.set(pending_key(upload_id), json.dumps(pending), ex=ttl_seconds)
     url = store.presign_put(object_key, content_type=content_type, expires_in=ttl_seconds)
     return PendingUpload(
         upload_id=upload_id,
@@ -131,7 +159,20 @@ async def confirm_upload(
     now: datetime,
 ) -> SavedTheme:
     """Makes the uploaded image the Theme's, replacing (and deleting) the one it had."""
-    key = _pending_key(scope, kind, upload_id)
+    image = await claim_upload(
+        redis, store, _pending_key(scope, kind, upload_id), max_bytes=max_bytes, now=now
+    )
+    change = await service.set_image(session, scope, kind, image, now=now)
+    if change.replaced is not None and change.replaced.object_key != image.object_key:
+        await store.delete(change.replaced.object_key)
+    return change.theme
+
+
+async def claim_upload(
+    redis: Redis, store: ObjectStore, key: str, *, max_bytes: int, now: datetime
+) -> StoredImage:
+    """Claims the pending upload under ``key`` and checks the stored file is an image of its
+    declared type within ``max_bytes``; a file that fails is deleted."""
     # Claim the upload: read and remove it in one step, so two confirmations of it at once
     # can't both use it (the second would take the first's image as the one it replaces, and
     # delete the file both point to).
@@ -163,17 +204,13 @@ async def confirm_upload(
         if len(data) > max_bytes:
             raise ImageTooLargeError
         raise NotDeclaredTypeError(content_type)
-    image = StoredImage(
+    return StoredImage(
         object_key=object_key,
         content_type=content_type,
         size_bytes=len(data),
         content_hash=hashlib.sha256(data).hexdigest(),
         uploaded_at=now,
     )
-    change = await service.set_image(session, scope, kind, image, now=now)
-    if change.replaced is not None and change.replaced.object_key != object_key:
-        await store.delete(change.replaced.object_key)
-    return change.theme
 
 
 async def remove_image(
@@ -199,7 +236,11 @@ class ImageFile:
 async def read_image(
     session: AsyncSession, store: ObjectStore, scope: OrganisationScope, kind: ThemeImageKind
 ) -> ImageFile:
-    image = (await service.read_theme(session, scope)).images[kind]
+    return await read_stored(store, (await service.read_theme(session, scope)).images[kind])
+
+
+async def read_stored(store: ObjectStore, image: StoredImage | None) -> ImageFile:
+    """The stored image's bytes; ``ImageNotFoundError`` when there is none or it is missing."""
     if image is None:
         raise ImageNotFoundError
     try:
