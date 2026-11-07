@@ -51,8 +51,8 @@ test("the Conversations tab lists Visitor and Playground Conversations, Playgrou
 
   expect(await screen.findByRole("heading", { level: 2, name: "Conversations" })).toBeInTheDocument();
   expect(await rows()).toEqual([
-    ["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Testing leave"],
-    ["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "How much leave do I get?"],
+    ["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Not rated", "Testing leave"],
+    ["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "4 of 5", "How much leave do I get?"],
   ]);
   const table = screen.getByRole("table", { name: "Conversations" });
   expect(within(table).getByText("Playground")).toHaveAccessibleDescription(
@@ -81,7 +81,7 @@ test("the list is filtered by Agent, Version, dates and Playground", async () =>
   await userEvent.type(within(filters()).getByLabelText("To (UTC)"), "2026-11-06");
   await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Playground only");
 
-  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Testing leave"]]);
+  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Not rated", "Testing leave"]]);
   expect(Object.fromEntries(queries.at(-1) ?? [])).toEqual({
     agent_id: hrHelper.id,
     version_id: helperV1.id,
@@ -94,7 +94,7 @@ test("the list is filtered by Agent, Version, dates and Playground", async () =>
   });
 
   await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Visitors only");
-  expect(await rows()).toEqual([["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "How much leave do I get?"]]);
+  expect(await rows()).toEqual([["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "4 of 5", "How much leave do I get?"]]);
   expect(queries.at(-1)?.get("playground")).toBe("false");
 
   // Another Agent's Versions differ, so changing the Agent clears the Version.
@@ -248,7 +248,7 @@ test("a Conversation where nothing was asked yet still opens from the list", asy
   setUp({ conversations: [{ ...playgroundConversation, preview: null, message_count: 0 }] });
   renderStudio(conversationsTab);
 
-  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "0", "None", "(nothing asked yet)"]]);
+  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "0", "None", "Not rated", "(nothing asked yet)"]]);
   expect(screen.getByRole("link", { name: "(nothing asked yet)" })).toHaveAttribute(
     "href",
     `${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`,
@@ -260,7 +260,7 @@ test("the list shows each Conversation's thumbs and is filtered by feedback", as
   const disliked = { ...visitorConversation, id: "c7000000-0000-4000-8000-000000000004", preview: "Hated it", thumbs_up: 0, thumbs_down: 3 };
   const { queries } = setUp({ conversations: [playgroundConversation, liked, disliked] });
   renderStudio(conversationsTab);
-  const feedbackOf = async () => (await rows()).map((row) => [row[6], row[5]]);
+  const feedbackOf = async () => (await rows()).map((row) => [row[7], row[5]]);
   expect(await feedbackOf()).toEqual([
     ["Testing leave", "None"],
     ["Liked it", "2 up"],
@@ -346,4 +346,109 @@ test("a reply nobody rated shows no feedback", async () => {
   const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
   expect(within(items[1] as HTMLElement).getByText("No feedback")).toBeInTheDocument();
   expect(screen.queryByRole("group", { name: "Visitor feedback" })).not.toBeInTheDocument();
+});
+
+test("the list shows each Conversation's rating and is filtered by it", async () => {
+  const loved = { ...visitorConversation, id: "c7000000-0000-4000-8000-000000000005", preview: "Loved it", rating: 5 };
+  const hated = { ...visitorConversation, id: "c7000000-0000-4000-8000-000000000006", preview: "Hated it", rating: 1 };
+  const { queries } = setUp({ conversations: [playgroundConversation, loved, hated] });
+  renderStudio(conversationsTab);
+  const ratingOf = async () => (await rows()).map((row) => [row[7], row[6]]);
+  expect(await ratingOf()).toEqual([
+    ["Testing leave", "Not rated"],
+    ["Loved it", "5 of 5"],
+    ["Hated it", "1 of 5"],
+  ]);
+  const rating = within(filters()).getByLabelText("Rating");
+  expect(rating).toHaveTextContent("Rated or not5 of 54 of 53 of 52 of 51 of 5RatedNot rated");
+
+  await userEvent.selectOptions(rating, "1 of 5");
+  expect(await ratingOf()).toEqual([["Hated it", "1 of 5"]]);
+  expect(queries.at(-1)?.get("rating")).toBe("1");
+  await userEvent.selectOptions(rating, "3 of 5");
+  expect(await screen.findByText("No Conversations match these filters.")).toBeInTheDocument();
+  await userEvent.selectOptions(rating, "Rated");
+  expect(await ratingOf()).toEqual([
+    ["Loved it", "5 of 5"],
+    ["Hated it", "1 of 5"],
+  ]);
+  await userEvent.selectOptions(rating, "Not rated");
+  expect(await ratingOf()).toEqual([["Testing leave", "Not rated"]]);
+  expect(queries.at(-1)?.get("rating")).toBe("none");
+
+  await userEvent.selectOptions(rating, "Rated or not");
+  expect(await rows()).toHaveLength(3);
+  expect(queries.at(-1)?.has("rating")).toBe(false);
+});
+
+test.each([
+  ["?rating=4", "4"],
+  ["?rating=any", "any"],
+  ["?rating=9", ""],
+  ["?rating=great", ""],
+])("a rating filter in the URL (%s) is kept when it is one", async (search, kept) => {
+  const { queries } = setUp();
+  renderStudio(`${conversationsTab}${search}`);
+  await screen.findByRole("group", { name: "Filter Conversations" });
+  expect(within(filters()).getByLabelText("Rating")).toHaveValue(kept);
+  expect(queries.at(-1)?.get("rating") ?? "").toBe(kept);
+});
+
+test("an Editor reads the Visitor's Conversation Rating, the Version it counts for and its change log", async () => {
+  setUp();
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const rating = await screen.findByRole("region", { name: "Conversation Rating" });
+
+  expect(rating).toHaveTextContent("Rated 4 of 5 · for Agent Version v2 · 2026-11-06 10:22 UTC");
+  expect(rating).toHaveTextContent("The Visitor dismissed the rating prompt · 2026-11-06 10:17 UTC");
+  const changes = within(within(rating).getByRole("list", { name: "Rating changes" })).getAllByRole("listitem");
+  expect(changes.map((change) => change.textContent)).toEqual([
+    "Rated 2 · for Agent Version v1 · 2026-11-06 10:16 UTC",
+    "Changed from 2 to 4 · for Agent Version v2 · 2026-11-06 10:22 UTC",
+  ]);
+});
+
+test("a Conversation the Visitor didn't rate says so", async () => {
+  setUp({ details: [{ ...visitorDetail, rating: null }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const rating = await screen.findByRole("region", { name: "Conversation Rating" });
+  expect(rating).toHaveTextContent(/^Conversation RatingNot rated$/);
+});
+
+test("a dismissal without a rating is shown, and a Playground Conversation has no rating", async () => {
+  const dismissedOnly = {
+    ...visitorDetail,
+    rating: { score: null, agent_version_number: null, rated_at: null, prompt_dismissed_at: "2026-11-06T10:17:00Z", changes: [] },
+  };
+  setUp({ details: [dismissedOnly, playgroundDetail] });
+  const { unmount } = renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  const rating = await screen.findByRole("region", { name: "Conversation Rating" });
+  expect(rating).toHaveTextContent("Not rated");
+  expect(rating).toHaveTextContent("The Visitor dismissed the rating prompt · 2026-11-06 10:17 UTC");
+  expect(within(rating).queryByRole("list")).not.toBeInTheDocument();
+  unmount();
+
+  renderStudio(`${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`);
+  await screen.findByRole("list", { name: "Messages" });
+  expect(screen.queryByRole("region", { name: "Conversation Rating" })).not.toBeInTheDocument();
+});
+
+test("a rating attributed to a Draft answer says so", async () => {
+  const draftRated = {
+    ...visitorDetail,
+    rating: {
+      score: 3,
+      agent_version_number: null,
+      rated_at: "2026-11-06T10:22:00Z",
+      prompt_dismissed_at: null,
+      changes: [{ score: 3, previous_score: null, agent_version_number: null, changed_at: "2026-11-06T10:22:00Z" }],
+    },
+  };
+  setUp({ details: [draftRated] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  const rating = await screen.findByRole("region", { name: "Conversation Rating" });
+  expect(rating).toHaveTextContent("Rated 3 of 5 · for the Draft · 2026-11-06 10:22 UTC");
+  expect(rating).not.toHaveTextContent("dismissed");
 });

@@ -33,6 +33,16 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .comment-actions { display: flex; gap: 4px; }
 .feedback-notice { margin: 4px 0 0; color: var(--theme-muted); }
 .feedback-error { margin: 4px 0 0; padding: 4px 6px; border-radius: 6px; background: #fef2f2; color: #991b1b; }
+.rating { margin: 0 10px; padding: 8px 10px; border: 1px solid var(--theme-muted); border-radius: var(--theme-radius); font-size: 13px; }
+.rating p { margin: 0; }
+.rating.rated { border-style: dashed; }
+.scores { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.scores button, .rating-actions button, .rating.rated button { font: inherit; font-size: 13px; min-width: 40px; min-height: 28px; padding: 2px 8px; border-radius: var(--theme-radius); border: 1px solid var(--theme-muted); background: transparent; color: inherit; cursor: pointer; }
+.scores button[aria-pressed="true"] { border-color: var(--theme-primary); background: var(--theme-primary); color: var(--theme-on-primary); }
+.scores button:disabled, .rating-actions button:disabled { opacity: 0.6; cursor: default; }
+.rating-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.rating-notice { margin-top: 4px !important; color: var(--theme-muted); }
+.rating-error { margin-top: 4px !important; padding: 4px 6px; border-radius: 6px; background: #fef2f2; color: #991b1b; }
 .controls { display: inline-flex; gap: 4px; }
 .controls button { font: inherit; font-size: 12px; font-weight: 400; min-height: 28px; padding: 3px 8px; border-radius: var(--theme-radius); border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
 .controls button:disabled { opacity: 0.6; cursor: default; }

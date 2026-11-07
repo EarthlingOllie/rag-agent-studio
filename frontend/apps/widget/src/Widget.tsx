@@ -8,6 +8,7 @@ import {
   type Feedback,
   type Launcher,
   NO_LONGER_AVAILABLE,
+  type Rating,
   ask,
   endConversation,
   resume,
@@ -15,6 +16,7 @@ import {
 } from "./chat";
 import { LAYOUT_MESSAGE, type Layout } from "./embed";
 import { FeedbackControls } from "./Feedback";
+import { RatingPrompt, UNRATED } from "./Rating";
 import { tokenStore } from "./storage";
 
 type Message = {
@@ -31,10 +33,11 @@ type Message = {
 /**
  * - `loading`: checking a kept Conversation token, to resume its Conversation.
  * - `chat`: the chat.
+ * - `ending`: the Visitor chose "End chat" without having rated it, so they are asked to first.
  * - `ended`: the Visitor ended the chat.
  * - `retired`: the Agent is archived or no longer live.
  */
-type Phase = "loading" | "chat" | "ended" | "retired";
+type Phase = "loading" | "chat" | "ending" | "ended" | "retired";
 
 const GENERIC = "Something went wrong. Please try again.";
 
@@ -112,6 +115,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   const store = useMemo(() => tokenStore(boot.agent), [boot.agent]);
   const [phase, setPhase] = useState<Phase>(() => (store.load() ? "loading" : "chat"));
   const [messages, setMessages] = useState<Message[]>([]);
+  // The Conversation Rating, and whether the Visitor dismissed the rating prompt.
+  const [rating, setRating] = useState<Rating>(UNRATED);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The last completed reply, for screen readers; its `id` makes a repeated reply a new node.
@@ -161,8 +166,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
           store.clear();
         } else {
           token.current = kept;
+          setRating(resumed.rating);
           setMessages(
-            resumed.map((m) => ({
+            resumed.messages.map((m) => ({
               role: m.role === "user" ? "visitor" : "agent",
               text: m.content,
               citations: m.citations,
@@ -265,13 +271,43 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     if (token.current !== null) void endConversation(boot, token.current);
     forget();
     setMessages([]);
+    setRating(UNRATED);
     setError(null);
     focusInput.current = next === "chat";
     setPhase(next);
   }
 
+  // The Agent's finished replies, which the rating prompt counts.
+  const replies = messages.filter((m) => m.role === "agent" && m.id !== undefined).length;
+
+  /** "End chat": a Visitor who hasn't rated a Conversation with a reply is asked to first. */
+  function endChat() {
+    if (token.current !== null && replies > 0 && rating.score === null) setPhase("ending");
+    else close("ended");
+  }
+
+  const ratingPrompt = (ending: boolean) => (
+    <RatingPrompt
+      boot={boot}
+      token={() => token.current}
+      rating={rating}
+      replies={replies}
+      ending={ending}
+      onChange={setRating}
+      onEnd={() => {
+        close("ended");
+      }}
+      onKeepChatting={() => {
+        focusInput.current = true;
+        setPhase("chat");
+      }}
+    />
+  );
+
   const name = boot.name;
   const chatting = phase === "chat";
+  // While the Visitor is asked to rate on "End chat", the Conversation stays in view.
+  const showing = chatting || phase === "ending";
   let footer: ReactNode;
   if (phase === "retired") {
     footer = (
@@ -285,6 +321,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         Loading your chat…
       </p>
     );
+  } else if (phase === "ending") {
+    footer = ratingPrompt(true);
   } else if (phase === "ended") {
     footer = (
       <div className="notice ended">
@@ -324,6 +362,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             ))}
           </ul>
         )}
+        {ratingPrompt(false)}
         <Composer onSend={onSend} disabled={pending} sendLabel={pending ? "Answering…" : (boot.ui_text.send_button ?? "Send")} />
       </>
     );
@@ -347,7 +386,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             agentName={name}
             logoUrl={boot.logo_url}
             avatarUrl={boot.avatar_url}
-            {...(chatting
+            {...(showing
               ? { logLabel: "Conversation", announcements: announcement && <p key={announcement.id}>{announcement.text}</p> }
               : {})}
             actions={
@@ -366,9 +405,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() => {
-                        close("ended");
-                      }}
+                      onClick={endChat}
                     >
                       End chat
                     </button>
@@ -390,12 +427,12 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             }
             composer={footer}
           >
-            {chatting && boot.greeting && (
+            {showing && boot.greeting && (
               <MessageBubble from="agent" label={`${name}'s greeting`}>
                 {boot.greeting}
               </MessageBubble>
             )}
-            {chatting &&
+            {showing &&
               messages.map((message, index) => (
                 <MessageBubble
                   key={index}

@@ -550,7 +550,7 @@ _Avoid_: Session, chat, thread
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Conversations viewer**:
-The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, and by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none); each row shows its thumbs-up and thumbs-down counts. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
+The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), and by Conversation Rating (one score from 1 to 5, rated, or not rated); each row shows its thumbs-up and thumbs-down counts and its current Conversation Rating. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
 _Avoid_: Chat log, transcript list
 
 **Message Feedback**:
@@ -562,5 +562,13 @@ The record of why an Agent Message said what it did: the model, token use, Cost 
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:
-A Visitor's 1–5 score for a whole Conversation.
+A Visitor's 1–5 score for a whole Visitor Conversation, given from the widget's Rating prompt (authenticated by the Conversation token) once the Agent has replied; one current score per Conversation, which the Visitor can change. It belongs to the Agent Version of the last Agent Message before the rating, or before its latest change, stored when written, so a later publish or revert never moves it. The first rating and every change are kept in the Rating change log.
 _Avoid_: CSAT, review
+
+**Rating prompt**:
+The widget's card asking the Visitor to rate the Conversation from 1 to 5. It appears after the Live Version's Nth Agent reply (the Experience setting "rating prompt reply count"; 0 asks only at the end), until the Visitor rates or dismisses it ("Not now"); the dismissal is saved, so it isn't shown again in that Conversation. On "End chat" a Visitor who hasn't rated is asked once more ("Before you go"), and can rate or end without rating. The Experience's UI text can reword its question.
+_Avoid_: Survey, popup
+
+**Rating change log**:
+The append-only record of a Conversation's Conversation Ratings: the first rating and each change, with the score before it, the Agent Version it was attributed to and when. Giving the same score again isn't a change.
+_Avoid_: Rating history

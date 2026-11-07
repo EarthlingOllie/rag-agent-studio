@@ -28,6 +28,8 @@ export type Boot = {
   starter_questions: string[];
   ui_text: { send_button: string | null; rate_conversation: string | null; unavailable_message: string | null };
   citations: boolean;
+  /** After how many replies the Visitor is asked to rate the Conversation; 0 asks only when they end the chat. */
+  rating_prompt_after: number;
 };
 
 /** A source an answer cited; `passage` is the cited text, sent with a live answer but not with a resumed one. */
@@ -157,16 +159,18 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
 }
 
 export type ResumedMessage = Schemas["WidgetMessageOut"];
+export type Resumed = Schemas["WidgetConversationOut"];
 
 /**
- * The Messages of the token's Conversation, for a Visitor who has come back; null when the
- * token is no longer accepted (24 hours without activity, or the Conversation was ended).
+ * The token's Conversation, for a Visitor who has come back: its Messages and its Conversation
+ * Rating; null when the token is no longer accepted (24 hours without activity, or the
+ * Conversation was ended).
  */
-export async function resume(boot: Boot, token: string): Promise<ResumedMessage[] | null> {
+export async function resume(boot: Boot, token: string): Promise<Resumed | null> {
   const response = await request("GET", `${base(boot)}/conversation`, token);
   if (response.status === 401) return null;
   if (!response.ok) throw await refused(response);
-  return ((await response.json()) as Schemas["WidgetConversationOut"]).messages;
+  return (await response.json()) as Resumed;
 }
 
 /** Ends the token's Conversation. Best effort: the widget forgets the token either way. */
@@ -196,4 +200,28 @@ export async function giveFeedback(boot: Boot, token: string, messageId: string,
 export async function removeFeedback(boot: Boot, token: string, messageId: string): Promise<void> {
   const response = await request("DELETE", feedbackUrl(boot, messageId), token);
   if (!response.ok) throw await refused(response);
+}
+
+/** The Visitor's Conversation Rating (null until they rate) and whether they dismissed the rating prompt. */
+export type Rating = Schemas["WidgetRatingOut"];
+
+function ratingUrl(boot: Boot): string {
+  return `${base(boot)}/conversation/rating`;
+}
+
+/** Rates the token's Conversation from 1 to 5, or changes its rating; resolves with it as saved. */
+export async function rateConversation(boot: Boot, token: string, score: number): Promise<Rating> {
+  const body: Schemas["ConversationRatingIn"] = { score };
+  const response = await request("PUT", ratingUrl(boot), token, body);
+  if (!response.ok) throw await refused(response);
+  return (await response.json()) as Schemas["ConversationRatingOut"];
+}
+
+/** Saves that the Visitor dismissed the rating prompt. Best effort: the widget hides it either way. */
+export async function dismissRatingPrompt(boot: Boot, token: string): Promise<void> {
+  try {
+    await request("POST", `${ratingUrl(boot)}/dismissal`, token);
+  } catch {
+    // Unreachable: the prompt stays hidden in this page anyway.
+  }
 }

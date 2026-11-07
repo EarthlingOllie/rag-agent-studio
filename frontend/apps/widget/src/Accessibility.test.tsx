@@ -19,6 +19,7 @@ const boot: Boot = {
   starter_questions: [],
   ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
   citations: true,
+  rating_prompt_after: 0,
 };
 
 beforeEach(() => {
