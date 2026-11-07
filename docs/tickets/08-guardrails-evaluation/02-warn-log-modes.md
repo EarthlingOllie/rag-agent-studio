@@ -7,7 +7,7 @@
 **Blocked by:**
 - [08-01: Input Guardrail: local classifier, block mode](01-input-guardrail-block.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Warn adds a caution block to the prompt and flags the Message
 - [ ] Log only records the verdict
