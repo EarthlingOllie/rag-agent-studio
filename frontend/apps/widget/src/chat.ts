@@ -10,34 +10,48 @@ export type Boot = { agent: string; name: string; bootstrap_token: string };
 
 export type Citation = { label: string; document_name: string | null };
 
-/** Something the Visitor should be told instead of an answer. */
-export class ChatError extends Error {}
+/** Something the Visitor should be told instead of an answer; `status` is the API's, if any. */
+export class ChatError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+}
+
+/** What the API says once the Agent is archived or no longer has a Live Version. */
+export const NO_LONGER_AVAILABLE = "This assistant is no longer available.";
 
 const GENERIC = "Something went wrong. Please try again.";
 
 async function refused(response: Response): Promise<ChatError> {
   try {
     const { detail } = (await response.json()) as { detail?: unknown };
-    if (typeof detail === "string") return new ChatError(detail);
+    if (typeof detail === "string") return new ChatError(detail, response.status);
   } catch {
     // Not JSON: fall through to the generic message.
   }
-  return new ChatError(GENERIC);
+  return new ChatError(GENERIC, response.status);
 }
 
 function base(boot: Boot): string {
   return `/api/widget/agents/${encodeURIComponent(boot.agent)}`;
 }
 
-function post(url: string, body: unknown, token?: string): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(new URL(url, window.location.origin), { method: "POST", headers, body: JSON.stringify(body) });
+function request(method: string, url: string, token?: string, body?: unknown): Promise<Response> {
+  const init: RequestInit & { headers: Record<string, string> } = { method, headers: {} };
+  if (token) init.headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) {
+    init.headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body);
+  }
+  return fetch(new URL(url, window.location.origin), init);
 }
 
 function exchange(boot: Boot, bootstrapToken: string): Promise<Response> {
   const body: Schemas["StartConversationRequest"] = { bootstrap_token: bootstrapToken };
-  return post(`${base(boot)}/conversations`, body);
+  return request("POST", `${base(boot)}/conversations`, undefined, body);
 }
 
 /** A new bootstrap token from a fresh copy of the shell, or null when there is none. */
@@ -73,7 +87,7 @@ export type Handlers = {
 /** Asks the Agent's Live Version; resolves once the answer is complete. */
 export async function ask(boot: Boot, token: string, question: string, handlers: Handlers): Promise<void> {
   const body: Schemas["WidgetMessageRequest"] = { content: question };
-  const response = await post(`${base(boot)}/messages`, body, token);
+  const response = await request("POST", `${base(boot)}/messages`, token, body);
   if (!response.ok || !response.body) throw await refused(response);
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffered = "";
@@ -106,5 +120,27 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
           return;
       }
     }
+  }
+}
+
+export type ResumedMessage = Schemas["WidgetMessageOut"];
+
+/**
+ * The Messages of the token's Conversation, for a Visitor who has come back; null when the
+ * token is no longer accepted (24 hours without activity, or the Conversation was ended).
+ */
+export async function resume(boot: Boot, token: string): Promise<ResumedMessage[] | null> {
+  const response = await request("GET", `${base(boot)}/conversation`, token);
+  if (response.status === 401) return null;
+  if (!response.ok) throw await refused(response);
+  return ((await response.json()) as Schemas["WidgetConversationOut"]).messages;
+}
+
+/** Ends the token's Conversation. Best effort: the widget forgets the token either way. */
+export async function endConversation(boot: Boot, token: string): Promise<void> {
+  try {
+    await request("DELETE", `${base(boot)}/conversation`, token);
+  } catch {
+    // Unreachable: the token is forgotten anyway and expires in 24 hours.
   }
 }
