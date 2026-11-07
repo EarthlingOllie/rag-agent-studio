@@ -480,7 +480,11 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits, Token Budget and the Theme override.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins and the Unavailable text are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+
+**Unavailable text**:
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, and later a rate limit or spent Token Budget). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+_Avoid_: Error message, offline message
 
 **Theme override**:
 An Agent's own colours and avatar in its widget, replacing the Theme's for that Agent only: any of the Colour Tokens (each with its light and dark value) and an avatar image. The other tokens, the font, radius, mode and Launcher still follow the Theme. Like the Theme, only Owners change it; it is an Operational Setting, so it isn't versioned and applies at once. The widget's avatar is the Agent's own, else the Live Version's avatar URL, else the Theme's default avatar.
@@ -490,7 +494,7 @@ _Avoid_: Agent theme, sub-brand theme
 The maximum tokens an Agent may consume per day before it stops answering Visitors.
 
 **Allowed Origins**:
-The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Changes apply to the next page load, without publishing.
+The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). A host may start with a subdomain wildcard over a named site (`https://*.example.com` is every subdomain of example.com, but not example.com itself, and never a bare `*.com`), and localhost (`localhost`, `127.0.0.1`, `[::1]`) may take any port as `http://localhost:*`, for development. The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Part of the Operational Settings: changes apply to the next page load, without publishing, and are audited.
 
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
