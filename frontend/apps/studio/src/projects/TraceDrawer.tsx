@@ -1,3 +1,4 @@
+import type { UseQueryResult } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { type Trace, instructionsUsed, useTrace } from "./agents";
@@ -65,12 +66,22 @@ function model(trace: Trace): string {
   return `${String(trace.model_provider)} · ${trace.model_name}`;
 }
 
+/** "Agent Version v2" for a Live answer, "Draft" for a Playground one. */
+export function answeredBy(answer: { agent_version_number: number | null }): string {
+  return answer.agent_version_number === null ? "Draft" : `Agent Version v${String(answer.agent_version_number)}`;
+}
+
 function TraceBody({ trace }: { trace: Trace }) {
   const facts: [string, string][] = [
     // An answer always has its tokens and latency; a fallback reply names no model, and the
     // cost is unknown when the model has no price.
+    ["Answered by", answeredBy(trace)],
     ["Model", model(trace)],
-    ["Instructions", instructionsUsed(trace)],
+    // An Agent Version's answer ran with the Instructions the Version pins.
+    [
+      "Instructions",
+      trace.agent_version_number === null ? instructionsUsed(trace) : `Pinned by ${answeredBy(trace)}`,
+    ],
     [
       "Tokens",
       `${String(trace.input_tokens)} input · ${String(trace.output_tokens)} output`,
@@ -154,7 +165,7 @@ function TraceBody({ trace }: { trace: Trace }) {
   );
 }
 
-/** Why an answer came out as it did: the model, usage, cost, latency and the Chunks retrieved. */
+/** Why a Playground answer came out as it did: the model, usage, cost, latency and the Chunks retrieved. */
 export function TraceDrawer({
   path,
   onClose,
@@ -162,8 +173,17 @@ export function TraceDrawer({
   path: TracePath;
   onClose: () => void;
 }) {
-  const trace = useTrace(path);
+  return <TraceDrawerFrame trace={useTrace(path)} onClose={onClose} />;
+}
 
+/** The Trace drawer around a Trace however it is loaded (the Playground's or a Conversation's). */
+export function TraceDrawerFrame({
+  trace,
+  onClose,
+}: {
+  trace: UseQueryResult<Trace>;
+  onClose: () => void;
+}) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();

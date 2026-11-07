@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
@@ -384,8 +384,9 @@ test("a change still waiting to be saved is saved when the Editor leaves the pag
   const { requests } = setUp();
   await openEditor();
 
-  await userEvent.type(within(group("Experience")).getByLabelText("Greeting"), "Hi");
-  await userEvent.click(screen.getByRole("link", { name: "All Agents" }));
+  // Change and leave in the same tick, so the autosave timer can't fire first however slow the machine.
+  fireEvent.change(within(group("Experience")).getByLabelText("Greeting"), { target: { value: "Hi" } });
+  fireEvent.click(screen.getByRole("link", { name: "All Agents" }));
 
   await screen.findByRole("heading", { name: "Agents" }, { timeout: 5000 });
   await vi.waitFor(() => {

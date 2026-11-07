@@ -38,6 +38,7 @@ from app.agents.api import (
 from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.conversations.models import Conversation, Message
+from app.conversations.service import MessageNotFoundError, TracedChunk
 from app.core.clock import Clock, get_clock
 from app.documents.ports import IngestionPorts
 from app.guardrails.outcomes import Action, Layer, Verdict
@@ -140,6 +141,8 @@ class TraceOut(BaseModel):
 
     message_id: uuid.UUID
     config_source: str | None
+    # The number of the Agent Version that answered; null for a Draft answer.
+    agent_version_number: int | None
     instructions_source: InstructionsSourceOut | None
     instructions_version_id: uuid.UUID | None
     instructions_version_number: int | None
@@ -178,6 +181,31 @@ async def _numbers(db: Db, messages: list[Message]) -> dict[uuid.UUID, int]:
     )
 
 
+def message_fields(message: Message, numbers: dict[uuid.UUID, int]) -> dict[str, Any]:
+    """A ``MessageOut``'s fields; ``numbers`` holds the Instructions Versions' numbers."""
+    return {
+        "id": message.id,
+        "role": message.role,
+        "content": message.content,
+        "created_at": message.created_at,
+        "config_source": message.config_source,
+        **_instructions(message, numbers),
+        "agent_version_id": message.agent_version_id,
+        "model_provider": message.model_provider,
+        "model_name": message.model_name,
+        "input_tokens": message.input_tokens,
+        "output_tokens": message.output_tokens,
+        "first_token_ms": message.first_token_ms,
+        "latency_ms": message.latency_ms,
+        "cost_usd": message.cost_usd,
+    }
+
+
+async def instructions_numbers(db: Db, messages: list[Message]) -> dict[uuid.UUID, int]:
+    """The numbers of the Instructions Versions the Messages ran with."""
+    return await _numbers(db, messages)
+
+
 def _out(
     conversation: Conversation, messages: list[Message], numbers: dict[uuid.UUID, int]
 ) -> ConversationOut:
@@ -187,24 +215,44 @@ def _out(
         is_playground=conversation.is_playground,
         created_at=conversation.created_at,
         last_activity_at=conversation.last_activity_at,
-        messages=[
-            MessageOut(
-                id=m.id,
-                role=m.role,
-                content=m.content,
-                created_at=m.created_at,
-                config_source=m.config_source,
-                **_instructions(m, numbers),
-                agent_version_id=m.agent_version_id,
-                model_provider=m.model_provider,
-                model_name=m.model_name,
-                input_tokens=m.input_tokens,
-                output_tokens=m.output_tokens,
-                first_token_ms=m.first_token_ms,
-                latency_ms=m.latency_ms,
-                cost_usd=m.cost_usd,
+        messages=[MessageOut(**message_fields(m, numbers)) for m in messages],
+    )
+
+
+async def trace_out(
+    db: Db, message: Message, agent_version_number: int | None, chunks: list[TracedChunk]
+) -> TraceOut:
+    """The Trace of an answer, as the Studio reads it."""
+    return TraceOut(
+        message_id=message.id,
+        config_source=message.config_source,
+        agent_version_number=agent_version_number,
+        **_instructions(message, await _numbers(db, [message])),
+        agent_version_id=message.agent_version_id,
+        model_provider=message.model_provider,
+        model_name=message.model_name,
+        input_tokens=message.input_tokens,
+        output_tokens=message.output_tokens,
+        cost_usd=message.cost_usd,
+        first_token_ms=message.first_token_ms,
+        latency_ms=message.latency_ms,
+        fallback=message.fallback,
+        guardrail_outcomes=[
+            GuardrailOutcomeOut.model_validate(o) for o in message.guardrail_outcomes
+        ],
+        chunks=[
+            TracedChunkOut(
+                chunk_id=c.retrieval.chunk_id,
+                document_id=c.retrieval.document_id,
+                document_name=c.document_name,
+                text=c.text,
+                score=c.retrieval.score,
+                relevance=c.retrieval.relevance,
+                rank=c.retrieval.rank,
+                cited=c.retrieval.cited,
+                excluded_reason=cast(ExcludedReason | None, c.retrieval.excluded_reason),
             )
-            for m in messages
+            for c in chunks
         ],
     )
 
@@ -273,40 +321,10 @@ async def get_trace(
         ProjectNotFoundError,
         AgentNotFoundError,
         service.ConversationNotFoundError,
-        service.MessageNotFoundError,
+        MessageNotFoundError,
     ):
         raise not_found() from None
-    return TraceOut(
-        message_id=message.id,
-        config_source=message.config_source,
-        **_instructions(message, await _numbers(db, [message])),
-        agent_version_id=message.agent_version_id,
-        model_provider=message.model_provider,
-        model_name=message.model_name,
-        input_tokens=message.input_tokens,
-        output_tokens=message.output_tokens,
-        cost_usd=message.cost_usd,
-        first_token_ms=message.first_token_ms,
-        latency_ms=message.latency_ms,
-        fallback=message.fallback,
-        guardrail_outcomes=[
-            GuardrailOutcomeOut.model_validate(o) for o in message.guardrail_outcomes
-        ],
-        chunks=[
-            TracedChunkOut(
-                chunk_id=c.retrieval.chunk_id,
-                document_id=c.retrieval.document_id,
-                document_name=c.document_name,
-                text=c.text,
-                score=c.retrieval.score,
-                relevance=c.retrieval.relevance,
-                rank=c.retrieval.rank,
-                cited=c.retrieval.cited,
-                excluded_reason=cast(ExcludedReason | None, c.retrieval.excluded_reason),
-            )
-            for c in chunks
-        ],
-    )
+    return await trace_out(db, message, None, chunks)
 
 
 def _sse(event: str, data: dict[str, Any]) -> str:

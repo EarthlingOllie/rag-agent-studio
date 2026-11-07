@@ -1,0 +1,60 @@
+$ make test-frontend @ 186c718
+cd frontend && pnpm test && pnpm check-embed-size
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend
+      Coverage enabled with v8
+
+
+ Test Files  51 passed (51)
+      Tests  630 passed (630)
+   Start at  05:00:05
+   Duration  243.99s (tests 69%, environment 15%, import 7%, setup 5%, transform 2%, worker 1%)
+
+    Isolate  51 workers spawned · ~2.46s startup each (spawn + environment, per file)
+             at least ~39.33s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+78 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 3181/3181 )
+Branches     : 100% ( 1982/1982 )
+Functions    : 100% ( 1185/1185 )
+Lines        : 100% ( 2817/2817 )
+================================================================================
+
+> rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend
+> pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size
+
+
+> @studio/widget@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend/apps/widget
+> vite build && vite build --config vite.embed.config.ts
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 15 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/widget/assets/widget.js  223.47 kB │ gzip: 70.23 kB
+
+✓ built in 208ms
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/embed.js  0.41 kB │ gzip: 0.31 kB
+
+✓ built in 37ms
+
+> @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0701/frontend/apps/widget
+> node scripts/check-size.mjs
+
+embed.js: 417 bytes, 315 gzipped (budget 2048 and 1024)
+exit 0

@@ -19,6 +19,7 @@ from app.api import health
 from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
 from app.auth import api as auth_api
+from app.conversations import api as conversations_api
 from app.core.clock import SystemClock
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
@@ -78,6 +79,7 @@ ROUTERS: Sequence[APIRouter] = (
     agent_versions_api.router,
     bulk_api.router,
     playground_api.router,
+    conversations_api.router,
     embed_api.origins_router,
     branding_api.router,
     embed_api.widget_router,

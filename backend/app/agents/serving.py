@@ -66,6 +66,8 @@ async def start_conversation(session: AsyncSession, public_id: str, *, now: date
         agent_id=found.agent.id,
         is_playground=False,
         last_activity_at=now,
+        # It started now, by the app's clock (the Conversations list filters on it).
+        created_at=now,
     )
     session.add(conversation)
     await session.commit()
