@@ -1143,6 +1143,16 @@
             },
             "title": "Messages",
             "type": "array"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationRatingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1152,7 +1162,8 @@
           "is_playground",
           "created_at",
           "last_activity_at",
-          "messages"
+          "messages",
+          "rating"
         ],
         "title": "ConversationDetailOut",
         "type": "object"
@@ -1441,6 +1452,105 @@
         "title": "ConversationPageOut",
         "type": "object"
       },
+      "ConversationRatingIn": {
+        "properties": {
+          "score": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score"
+        ],
+        "title": "ConversationRatingIn",
+        "type": "object"
+      },
+      "ConversationRatingOut": {
+        "properties": {
+          "prompt_dismissed": {
+            "title": "Prompt Dismissed",
+            "type": "boolean"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "prompt_dismissed"
+        ],
+        "title": "ConversationRatingOut",
+        "type": "object"
+      },
+      "ConversationRatingRead": {
+        "properties": {
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/RatingChangeRead"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "prompt_dismissed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Dismissed At"
+          },
+          "rated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rated At"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "score",
+          "agent_version_number",
+          "rated_at",
+          "prompt_dismissed_at",
+          "changes"
+        ],
+        "title": "ConversationRatingRead",
+        "type": "object"
+      },
       "ConversationSummaryOut": {
         "properties": {
           "agent_id": {
@@ -1486,6 +1596,17 @@
             ],
             "title": "Preview"
           },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
           "thumbs_down": {
             "title": "Thumbs Down",
             "type": "integer"
@@ -1513,7 +1634,8 @@
           "preview",
           "version_numbers",
           "thumbs_up",
-          "thumbs_down"
+          "thumbs_down",
+          "rating"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -4750,6 +4872,63 @@
         "title": "PublishInstructionsRequest",
         "type": "object"
       },
+      "RatingChangeRead": {
+        "properties": {
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "previous_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "previous_score",
+          "agent_version_number",
+          "changed_at"
+        ],
+        "title": "RatingChangeRead",
+        "type": "object"
+      },
+      "RatingFilter": {
+        "description": "Which Conversations to keep by their Conversation Rating: one score (1 to 5), rated\n(any score), or not rated.",
+        "enum": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "any",
+          "none"
+        ],
+        "title": "RatingFilter",
+        "type": "string"
+      },
       "ReEmbedOut": {
         "description": "A re-embed job: the Knowledge Base moving from one Embedding Model to another.",
         "properties": {
@@ -6399,10 +6578,14 @@
             },
             "title": "Messages",
             "type": "array"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/WidgetRatingOut"
           }
         },
         "required": [
-          "messages"
+          "messages",
+          "rating"
         ],
         "title": "WidgetConversationOut",
         "type": "object"
@@ -6496,6 +6679,31 @@
           "content"
         ],
         "title": "WidgetMessageRequest",
+        "type": "object"
+      },
+      "WidgetRatingOut": {
+        "properties": {
+          "prompt_dismissed": {
+            "title": "Prompt Dismissed",
+            "type": "boolean"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "score",
+          "prompt_dismissed"
+        ],
+        "title": "WidgetRatingOut",
         "type": "object"
       },
       "WorkerHealthResponse": {
@@ -12722,6 +12930,24 @@
             }
           },
           {
+            "description": "Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`)",
+            "in": "query",
+            "name": "rating",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RatingFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`)",
+              "title": "Rating"
+            }
+          },
+          {
             "in": "query",
             "name": "page",
             "required": false,
@@ -15948,7 +16174,7 @@
         ]
       },
       "get": {
-        "description": "The token's Conversation, for a Visitor who comes back to the page: its Messages in\norder, each answer with its sources. Coming back counts as activity, so the token's\n24-hour window slides on; after 24 hours without activity the token is refused.",
+        "description": "The token's Conversation, for a Visitor who comes back to the page: its Messages in\norder, each answer with its sources and feedback, and its Conversation Rating. Coming back\ncounts as activity, so the token's 24-hour window slides on; after 24 hours without activity the token is refused.",
         "operationId": "getWidgetConversation",
         "parameters": [
           {
@@ -16016,6 +16242,149 @@
           }
         },
         "summary": "Get Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/rating": {
+      "put": {
+        "description": "Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and\neach change are kept in a change log. The rating belongs to the Agent Version of the last\nreply before it. Refused until the Agent has replied.",
+        "operationId": "rateConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationRatingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRatingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There is nothing to rate yet."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rate Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/rating/dismissal": {
+      "post": {
+        "description": "Saves that the Visitor dismissed the rating prompt, so the widget doesn't show it again\nin this Conversation (it still asks when they end the chat without a rating).",
+        "operationId": "dismissRatingPrompt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Rating Prompt",
         "tags": [
           "widget"
         ]

@@ -105,6 +105,7 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
             "greeting": experience.greeting,
             "starter_questions": experience.starter_questions,
             "ui_text": experience.ui_text.model_dump(mode="json"),
+            "rating_prompt_after": experience.rating_prompt_after,
             "citations": found.citations,
         }
     )
@@ -332,8 +333,16 @@ class WidgetMessageOut(BaseModel):
     feedback: WidgetFeedbackOut | None
 
 
+class WidgetRatingOut(BaseModel):
+    # The Visitor's Conversation Rating, 1 to 5; null when they haven't rated.
+    score: int | None
+    # True once the Visitor dismissed the rating prompt in this Conversation.
+    prompt_dismissed: bool
+
+
 class WidgetConversationOut(BaseModel):
     messages: list[WidgetMessageOut]
+    rating: WidgetRatingOut
 
 
 @widget_router.get(
@@ -345,10 +354,10 @@ async def get_conversation(
     public_id: str, db: Db, signer: Signer, clock: ClockDep, authorization: Authorization = ""
 ) -> WidgetConversationOut:
     """The token's Conversation, for a Visitor who comes back to the page: its Messages in
-    order, each answer with its sources. Coming back counts as activity, so the token's
-    24-hour window slides on; after 24 hours without activity the token is refused."""
+    order, each answer with its sources and feedback, and its Conversation Rating. Coming back
+    counts as activity, so the token's 24-hour window slides on; after 24 hours without activity the token is refused."""
     try:
-        messages = await service.resume(
+        resumed = await service.resume(
             db, signer, public_id, _bearer(authorization), now=clock.now()
         )
     except service.InvalidTokenError:
@@ -374,8 +383,11 @@ async def get_conversation(
                     )
                 ),
             )
-            for m in messages
-        ]
+            for m in resumed.messages
+        ],
+        rating=WidgetRatingOut(
+            score=resumed.rating.score, prompt_dismissed=resumed.rating.prompt_dismissed
+        ),
     )
 
 

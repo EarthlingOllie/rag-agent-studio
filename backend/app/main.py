@@ -85,6 +85,7 @@ ROUTERS: Sequence[APIRouter] = (
     branding_api.router,
     embed_api.widget_router,
     feedback_api.widget_router,
+    feedback_api.rating_router,
     embed_api.shell_router,
 )
 

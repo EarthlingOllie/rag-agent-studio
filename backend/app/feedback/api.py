@@ -1,6 +1,7 @@
-"""Widget routes for Message Feedback, under the widget API. They are authenticated by the
-Conversation token (``Authorization: Bearer …``), so a Visitor can only give feedback on replies
-in their own Conversation; any other Message is not found."""
+"""Widget routes for Message Feedback and the Conversation Rating, under the widget API. They are
+authenticated by the Conversation token (``Authorization: Bearer …``), so a Visitor can only give
+feedback on replies in their own Conversation (any other Message is not found) and only rate
+their own Conversation."""
 
 import uuid
 from typing import Annotated, Literal
@@ -13,9 +14,10 @@ from app.auth.api import Db
 from app.embed import service as embed
 from app.embed.api import INVALID_TOKEN, Authorization, Signer, _bearer, _errors, _invalid
 from app.feedback import service
-from app.feedback.models import COMMENT_MAX, Thumb
+from app.feedback.models import COMMENT_MAX, SCORE_MAX, SCORE_MIN, Thumb
 
 REPLY_NOT_FOUND = "There is no such reply in this chat."
+NOTHING_TO_RATE = "There is nothing to rate yet."
 
 widget_router = APIRouter(
     prefix="/api/widget/agents/{public_id}/messages/{message_id}/feedback", tags=["widget"]
@@ -96,3 +98,76 @@ async def remove_feedback(
         raise _invalid() from None
     except service.ReplyNotFoundError:
         raise _not_found() from None
+
+
+# The Conversation Rating
+
+
+rating_router = APIRouter(
+    prefix="/api/widget/agents/{public_id}/conversation/rating", tags=["widget"]
+)
+
+
+class ConversationRatingIn(BaseModel):
+    score: Annotated[int, Field(strict=True, ge=SCORE_MIN, le=SCORE_MAX)]
+
+
+class ConversationRatingOut(BaseModel):
+    # 1 to 5.
+    score: int
+    # True once the Visitor dismissed the rating prompt in this Conversation.
+    prompt_dismissed: bool
+
+
+@rating_router.put(
+    "",
+    operation_id="rateConversation",
+    responses=_errors((401, INVALID_TOKEN), (409, NOTHING_TO_RATE)),
+)
+async def rate_conversation(
+    public_id: str,
+    body: ConversationRatingIn,
+    db: Db,
+    signer: Signer,
+    clock: ClockDep,
+    authorization: Authorization = "",
+) -> ConversationRatingOut:
+    """Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and
+    each change are kept in a change log. The rating belongs to the Agent Version of the last
+    reply before it. Refused until the Agent has replied."""
+    now = clock.now()
+    try:
+        conversation = await embed.visitor_conversation(
+            db, signer, public_id, _bearer(authorization), now=now
+        )
+        rated = await service.rate(db, conversation, body.score, now=now)
+    except embed.InvalidTokenError:
+        raise _invalid() from None
+    except service.NothingToRateError:
+        raise HTTPException(status.HTTP_409_CONFLICT, NOTHING_TO_RATE) from None
+    return ConversationRatingOut(score=body.score, prompt_dismissed=rated.prompt_dismissed)
+
+
+@rating_router.post(
+    "/dismissal",
+    operation_id="dismissRatingPrompt",
+    status_code=204,
+    responses=_errors((401, INVALID_TOKEN)),
+)
+async def dismiss_rating_prompt(
+    public_id: str,
+    db: Db,
+    signer: Signer,
+    clock: ClockDep,
+    authorization: Authorization = "",
+) -> None:
+    """Saves that the Visitor dismissed the rating prompt, so the widget doesn't show it again
+    in this Conversation (it still asks when they end the chat without a rating)."""
+    now = clock.now()
+    try:
+        conversation = await embed.visitor_conversation(
+            db, signer, public_id, _bearer(authorization), now=now
+        )
+    except embed.InvalidTokenError:
+        raise _invalid() from None
+    await service.dismiss_prompt(db, conversation, now=now)

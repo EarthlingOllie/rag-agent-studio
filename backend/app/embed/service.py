@@ -26,7 +26,7 @@ from app.documents.models import Document
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.feedback.models import MessageFeedback
-from app.feedback.service import feedback_on
+from app.feedback.service import RatingState, feedback_on, rating_state
 from app.playground.service import PreparedTurn
 from app.runtime.prompt import chunk_label
 from app.tenancy.repository import OrganisationScope
@@ -290,11 +290,19 @@ class ResumedMessage:
     feedback: MessageFeedback | None
 
 
+@dataclass(frozen=True)
+class ResumedConversation:
+    messages: list[ResumedMessage]
+    # The Visitor's Conversation Rating and whether they dismissed the rating prompt.
+    rating: RatingState
+
+
 async def resume(
     session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
-) -> list[ResumedMessage]:
+) -> ResumedConversation:
     """The Messages of the token's Conversation, in order, each answer with the sources it
-    cited. A reload counts as activity, so it slides the 24-hour window on. Raises
+    cited, and its Conversation Rating. A reload counts as activity, so it slides the 24-hour
+    window on. Raises
     ``serving.AgentNotServedError`` or ``serving.AgentNotLiveError`` once the Agent is
     retired."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
@@ -319,10 +327,13 @@ async def resume(
     for message_id, rank, name in rows:
         cited.setdefault(message_id, []).append(ResumedCitation(chunk_label(cast(int, rank)), name))
     given = await feedback_on(session, [m.id for m in messages])
-    return [
-        ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id))
-        for m in messages
-    ]
+    return ResumedConversation(
+        [
+            ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id))
+            for m in messages
+        ],
+        await rating_state(session, conversation),
+    )
 
 
 async def end(
