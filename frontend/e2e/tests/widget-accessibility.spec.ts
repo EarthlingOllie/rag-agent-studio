@@ -117,7 +117,8 @@ for (const [colorScheme, reducedMotion, animation] of [
     await host.keyboard.press("Enter");
     const reply = chat.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "Hana from HR", exact: true });
     await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
-    const answer = (await reply.innerText()).trim();
+    // The reply's text only: the bubble also holds its Message Feedback thumbs (07-02).
+    const answer = (await reply.locator("p").first().innerText()).trim();
     expect(answer).not.toBe("");
     await expect(chat.getByRole("status", { name: "Announcements" })).toHaveText(`Hana from HR: ${answer}`);
 

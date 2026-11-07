@@ -6,6 +6,7 @@ Everything is found through the Project, which is found through the Organisation
 Conversation of another Project or Organisation is simply not found.
 """
 
+import enum
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -17,10 +18,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent, AgentVersion
 from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole
 from app.documents.models import Chunk, Document
+from app.feedback.models import MessageFeedback, Thumb
+from app.feedback.service import feedback_on
 from app.projects.service import get_project
 from app.tenancy.repository import OrganisationScope
 
 PREVIEW_MAX = 120
+
+
+class FeedbackFilter(enum.StrEnum):
+    """Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs
+    down, with any feedback, or with none."""
+
+    UP = "up"
+    DOWN = "down"
+    ANY = "any"
+    NONE = "none"
+
+
+def _with_feedback(rating: Thumb | None = None) -> ColumnElement[bool]:
+    given = select(Message.conversation_id).join(
+        MessageFeedback, MessageFeedback.message_id == Message.id
+    )
+    if rating is not None:
+        given = given.where(MessageFeedback.rating == rating)
+    return Conversation.id.in_(given)
 
 
 class ConversationNotFoundError(Exception):
@@ -35,13 +57,15 @@ class MessageNotFoundError(Exception):
 class ConversationFilter:
     """Which Conversations to list. ``start`` and ``end`` bound when the Conversation started
     (``end`` exclusive); ``version_id`` keeps those with a reply from that Agent Version;
-    ``playground`` keeps only Playground (True) or only Visitor (False) Conversations."""
+    ``playground`` keeps only Playground (True) or only Visitor (False) Conversations;
+    ``feedback`` keeps them by their Message Feedback."""
 
     agent_id: uuid.UUID | None = None
     version_id: uuid.UUID | None = None
     start: datetime | None = None
     end: datetime | None = None
     playground: bool | None = None
+    feedback: FeedbackFilter | None = None
 
     def conditions(self) -> list[ColumnElement[bool]]:
         found: list[ColumnElement[bool]] = []
@@ -61,6 +85,12 @@ class ConversationFilter:
             found.append(Conversation.created_at < self.end)
         if self.playground is not None:
             found.append(Conversation.is_playground.is_(self.playground))
+        if self.feedback in (FeedbackFilter.UP, FeedbackFilter.DOWN):
+            found.append(_with_feedback(Thumb(self.feedback.value)))
+        elif self.feedback is FeedbackFilter.ANY:
+            found.append(_with_feedback())
+        elif self.feedback is FeedbackFilter.NONE:
+            found.append(~_with_feedback())
         return found
 
 
@@ -73,6 +103,9 @@ class ConversationSummary:
     preview: str | None
     # The Agent Versions that answered, in order; empty for a Playground Conversation.
     version_numbers: list[int]
+    # How many of its replies have a thumbs up, and a thumbs down.
+    thumbs_up: int
+    thumbs_down: int
 
 
 @dataclass(frozen=True)
@@ -141,6 +174,15 @@ async def list_conversations(
         .order_by(Message.conversation_id, AgentVersion.number)
     ):
         numbers.setdefault(conversation_id, []).append(number)
+    thumbs: dict[tuple[uuid.UUID, str], int] = {
+        (conversation_id, rating): count
+        for conversation_id, rating, count in await session.execute(
+            select(Message.conversation_id, MessageFeedback.rating, func.count())
+            .join(MessageFeedback, MessageFeedback.message_id == Message.id)
+            .where(Message.conversation_id.in_(ids))
+            .group_by(Message.conversation_id, MessageFeedback.rating)
+        )
+    }
     return ConversationPage(
         rows=[
             ConversationSummary(
@@ -149,6 +191,8 @@ async def list_conversations(
                 message_count=counts.get(conversation.id, 0),
                 preview=previews.get(conversation.id),
                 version_numbers=numbers.get(conversation.id, []),
+                thumbs_up=thumbs.get((conversation.id, Thumb.UP), 0),
+                thumbs_down=thumbs.get((conversation.id, Thumb.DOWN), 0),
             )
             for conversation, agent_name in found
         ],
@@ -161,8 +205,10 @@ class ConversationRead:
     conversation: Conversation
     agent_name: str
     messages: list[Message]
-    # The number of each Agent Version that answered in it.
+    # The number of each Agent Version that answered in it, or that feedback is attributed to.
     version_numbers: dict[uuid.UUID, int]
+    # The Message Feedback on its replies, by Message ID.
+    feedback: dict[uuid.UUID, MessageFeedback]
 
 
 async def get_conversation(
@@ -186,16 +232,18 @@ async def get_conversation(
             select(Message).where(Message.conversation_id == conversation.id).order_by(Message.seq)
         )
     )
+    feedback = await feedback_on(session, [m.id for m in messages])
+    versions = {m.agent_version_id for m in messages} | {
+        f.agent_version_id for f in feedback.values()
+    }
     numbers: dict[uuid.UUID, int] = dict(
         (
             await session.execute(
-                select(AgentVersion.id, AgentVersion.number).where(
-                    AgentVersion.id.in_({m.agent_version_id for m in messages})
-                )
+                select(AgentVersion.id, AgentVersion.number).where(AgentVersion.id.in_(versions))
             )
         ).all()
     )
-    return ConversationRead(conversation, agent_name, messages, numbers)
+    return ConversationRead(conversation, agent_name, messages, numbers, feedback)
 
 
 @dataclass(frozen=True)

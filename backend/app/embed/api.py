@@ -355,11 +355,19 @@ class WidgetCitationOut(BaseModel):
     document_name: str | None
 
 
+class WidgetFeedbackOut(BaseModel):
+    rating: Literal["up", "down"]
+    comment: str | None
+
+
 class WidgetMessageOut(BaseModel):
+    id: uuid.UUID
     role: Literal["user", "assistant"]
     content: str
     # The sources an answer cited; empty for the Visitor's own questions.
     citations: list[WidgetCitationOut]
+    # The Visitor's thumbs on an answer (Message Feedback); null when none was given.
+    feedback: WidgetFeedbackOut | None
 
 
 class WidgetConversationOut(BaseModel):
@@ -388,12 +396,21 @@ async def get_conversation(
     return WidgetConversationOut(
         messages=[
             WidgetMessageOut(
+                id=m.id,
                 role=cast(Literal["user", "assistant"], m.role),
                 content=m.content,
                 citations=[
                     WidgetCitationOut(label=c.label, document_name=c.document_name)
                     for c in m.citations
                 ],
+                feedback=(
+                    None
+                    if m.feedback is None
+                    else WidgetFeedbackOut(
+                        rating=cast(Literal["up", "down"], m.feedback.rating),
+                        comment=m.feedback.comment,
+                    )
+                ),
             )
             for m in messages
         ]

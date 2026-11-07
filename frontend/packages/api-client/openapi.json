@@ -1217,6 +1217,16 @@
             "title": "Fallback",
             "type": "boolean"
           },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageFeedbackRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "first_token_ms": {
             "anyOf": [
               {
@@ -1349,7 +1359,8 @@
           "latency_ms",
           "cost_usd",
           "agent_version_number",
-          "fallback"
+          "fallback",
+          "feedback"
         ],
         "title": "ConversationMessageOut",
         "type": "object"
@@ -1475,6 +1486,14 @@
             ],
             "title": "Preview"
           },
+          "thumbs_down": {
+            "title": "Thumbs Down",
+            "type": "integer"
+          },
+          "thumbs_up": {
+            "title": "Thumbs Up",
+            "type": "integer"
+          },
           "version_numbers": {
             "items": {
               "type": "integer"
@@ -1492,7 +1511,9 @@
           "last_activity_at",
           "message_count",
           "preview",
-          "version_numbers"
+          "version_numbers",
+          "thumbs_up",
+          "thumbs_down"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -2692,6 +2713,17 @@
         "title": "FailureCategory",
         "type": "string"
       },
+      "FeedbackFilter": {
+        "description": "Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs\ndown, with any feedback, or with none.",
+        "enum": [
+          "up",
+          "down",
+          "any",
+          "none"
+        ],
+        "title": "FeedbackFilter",
+        "type": "string"
+      },
       "FieldChangeOut": {
         "properties": {
           "added": {
@@ -3663,6 +3695,111 @@
           "mfa_required"
         ],
         "title": "MembershipOut",
+        "type": "object"
+      },
+      "MessageFeedbackIn": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "MessageFeedbackIn",
+        "type": "object"
+      },
+      "MessageFeedbackOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating",
+          "comment"
+        ],
+        "title": "MessageFeedbackOut",
+        "type": "object"
+      },
+      "MessageFeedbackRead": {
+        "properties": {
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating",
+          "comment",
+          "agent_version_number",
+          "updated_at"
+        ],
+        "title": "MessageFeedbackRead",
         "type": "object"
       },
       "MessageOut": {
@@ -6306,6 +6443,35 @@
         "title": "WidgetConversationOut",
         "type": "object"
       },
+      "WidgetFeedbackOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating",
+          "comment"
+        ],
+        "title": "WidgetFeedbackOut",
+        "type": "object"
+      },
       "WidgetMessageOut": {
         "properties": {
           "citations": {
@@ -6319,6 +6485,21 @@
             "title": "Content",
             "type": "string"
           },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidgetFeedbackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "role": {
             "enum": [
               "user",
@@ -6329,9 +6510,11 @@
           }
         },
         "required": [
+          "id",
           "role",
           "content",
-          "citations"
+          "citations",
+          "feedback"
         ],
         "title": "WidgetMessageOut",
         "type": "object"
@@ -12557,6 +12740,24 @@
             }
           },
           {
+            "description": "Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`)",
+            "in": "query",
+            "name": "feedback",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FeedbackFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`)",
+              "title": "Feedback"
+            }
+          },
+          {
             "in": "query",
             "name": "page",
             "required": false,
@@ -16019,6 +16220,177 @@
           }
         },
         "summary": "Send Message",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/messages/{message_id}/feedback": {
+      "delete": {
+        "description": "Removes the Visitor's feedback on one of the Agent's replies in the token's\nConversation (nothing happens when there is none).",
+        "operationId": "removeMessageFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There is no such reply in this chat."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Feedback",
+        "tags": [
+          "widget"
+        ]
+      },
+      "put": {
+        "description": "Gives a thumbs up or down, with an optional comment, on one of the Agent's replies in the\ntoken's Conversation; giving it again replaces it. The feedback belongs to the Agent Version\nthat gave the reply.",
+        "operationId": "giveMessageFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageFeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageFeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There is no such reply in this chat."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Give Feedback",
         "tags": [
           "widget"
         ]

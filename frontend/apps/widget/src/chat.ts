@@ -115,8 +115,8 @@ export type Handlers = {
   onRefusal: (text: string) => void;
 };
 
-/** Asks the Agent's Live Version; resolves once the answer is complete. */
-export async function ask(boot: Boot, token: string, question: string, handlers: Handlers): Promise<void> {
+/** Asks the Agent's Live Version; resolves with the reply's Message ID once the answer is complete. */
+export async function ask(boot: Boot, token: string, question: string, handlers: Handlers): Promise<string> {
   const body: Schemas["WidgetMessageRequest"] = { content: question };
   const response = await request("POST", `${base(boot)}/messages`, token, body);
   if (!response.ok || !response.body) throw await refused(response);
@@ -134,7 +134,7 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
       const fields = Object.fromEntries(
         block.split("\n").map((line) => [line.slice(0, line.indexOf(": ")), line.slice(line.indexOf(": ") + 2)]),
       ) as { event: string; data: string };
-      const data = JSON.parse(fields.data) as { text: string; message: string; passage: string } & Citation;
+      const data = JSON.parse(fields.data) as { text: string; message: string; passage: string; message_id: string } & Citation;
       switch (fields.event) {
         case "token":
           handlers.onToken(data.text);
@@ -154,7 +154,7 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
         case "unavailable":
           throw new ChatError(data.message, undefined, true);
         case "done":
-          return;
+          return data.message_id;
       }
     }
   }
@@ -180,4 +180,24 @@ export async function endConversation(boot: Boot, token: string): Promise<void> 
   } catch {
     // Unreachable: the token is forgotten anyway and expires in 24 hours.
   }
+}
+
+/** A Visitor's thumbs on one of the Agent's replies, with an optional comment (Message Feedback). */
+export type Feedback = Schemas["MessageFeedbackOut"];
+
+function feedbackUrl(boot: Boot, messageId: string): string {
+  return `${base(boot)}/messages/${encodeURIComponent(messageId)}/feedback`;
+}
+
+/** Gives (or replaces) the Visitor's feedback on a reply; resolves with it as saved. */
+export async function giveFeedback(boot: Boot, token: string, messageId: string, feedback: Schemas["MessageFeedbackIn"]): Promise<Feedback> {
+  const response = await request("PUT", feedbackUrl(boot, messageId), token, feedback);
+  if (!response.ok) throw await refused(response);
+  return (await response.json()) as Feedback;
+}
+
+/** Removes the Visitor's feedback on a reply. */
+export async function removeFeedback(boot: Boot, token: string, messageId: string): Promise<void> {
+  const response = await request("DELETE", feedbackUrl(boot, messageId), token);
+  if (!response.ok) throw await refused(response);
 }

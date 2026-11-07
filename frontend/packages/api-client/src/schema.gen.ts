@@ -2131,6 +2131,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/widget/agents/{public_id}/messages/{message_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give Feedback
+         * @description Gives a thumbs up or down, with an optional comment, on one of the Agent's replies in the
+         *     token's Conversation; giving it again replaces it. The feedback belongs to the Agent Version
+         *     that gave the reply.
+         */
+        put: operations["giveMessageFeedback"];
+        post?: never;
+        /**
+         * Remove Feedback
+         * @description Removes the Visitor's feedback on one of the Agent's replies in the token's
+         *     Conversation (nothing happens when there is none).
+         */
+        delete: operations["removeMessageFeedback"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2599,6 +2626,7 @@ export interface components {
             created_at: string;
             /** Fallback */
             fallback: boolean;
+            feedback: components["schemas"]["MessageFeedbackRead"] | null;
             /** First Token Ms */
             first_token_ms: number | null;
             /**
@@ -2693,6 +2721,10 @@ export interface components {
             message_count: number;
             /** Preview */
             preview: string | null;
+            /** Thumbs Down */
+            thumbs_down: number;
+            /** Thumbs Up */
+            thumbs_up: number;
             /** Version Numbers */
             version_numbers: number[];
         };
@@ -3148,6 +3180,13 @@ export interface components {
          * @enum {string}
          */
         FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        /**
+         * FeedbackFilter
+         * @description Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs
+         *     down, with any feedback, or with none.
+         * @enum {string}
+         */
+        FeedbackFilter: "up" | "down" | "any" | "none";
         /** FieldChangeOut */
         FieldChangeOut: {
             /** Added */
@@ -3523,6 +3562,43 @@ export interface components {
             /** Name */
             name: string;
             role: components["schemas"]["Role"];
+        };
+        /** MessageFeedbackIn */
+        MessageFeedbackIn: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+        };
+        /** MessageFeedbackOut */
+        MessageFeedbackOut: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+        };
+        /** MessageFeedbackRead */
+        MessageFeedbackRead: {
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** MessageOut */
         MessageOut: {
@@ -4466,12 +4542,28 @@ export interface components {
             /** Messages */
             messages: components["schemas"]["WidgetMessageOut"][];
         };
+        /** WidgetFeedbackOut */
+        WidgetFeedbackOut: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+        };
         /** WidgetMessageOut */
         WidgetMessageOut: {
             /** Citations */
             citations: components["schemas"]["WidgetCitationOut"][];
             /** Content */
             content: string;
+            feedback: components["schemas"]["WidgetFeedbackOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /**
              * Role
              * @enum {string}
@@ -8518,6 +8610,8 @@ export interface operations {
                 end?: string | null;
                 /** @description true: only Playground Conversations; false: only Visitors' */
                 playground?: boolean | null;
+                /** @description Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`) */
+                feedback?: components["schemas"]["FeedbackFilter"] | null;
                 page?: number;
                 page_size?: number;
             };
@@ -10702,6 +10796,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    giveMessageFeedback: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageFeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageFeedbackOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is no such reply in this chat. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    removeMessageFeedback: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is no such reply in this chat. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -1,0 +1,14 @@
+e2e at 7eb73ac (after merging 06-07): 06-07's widget-accessibility.spec read the reply bubble's whole text, which now also holds the feedback thumbs, for the announcement it expects; 6509f0f reads the reply's paragraph. 77 others passed.
+(trimmed: failed tests, their errors and the summary; the full log is ~600 KB)
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0702-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-02-evidence/compose.sandbox.yml' @ 7eb73ac
+  ✘  71 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (18.6s)
+  ✘  74 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (retry #1) (16.7s)
+  ✘  77 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (16.1s)
+  ✘  80 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (retry #1) (13.5s)
+    Error: expect(locator).toHaveText(expected) failed
+    Error: expect(locator).toHaveText(expected) failed
+    Error: expect(locator).toHaveText(expected) failed
+    Error: expect(locator).toHaveText(expected) failed
+  2 failed
+  77 passed (7.6m)
+exit 2

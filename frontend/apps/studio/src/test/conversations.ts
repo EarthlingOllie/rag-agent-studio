@@ -25,6 +25,8 @@ export const visitorConversation: Summary = {
   message_count: 4,
   preview: "How much leave do I get?",
   version_numbers: [1, 2],
+  thumbs_up: 1,
+  thumbs_down: 1,
 };
 
 /** An Editor trying HR helper's Draft in the Playground. */
@@ -38,6 +40,8 @@ export const playgroundConversation: Summary = {
   message_count: 2,
   preview: "Testing leave",
   version_numbers: [],
+  thumbs_up: 0,
+  thumbs_down: 0,
 };
 
 const unanswered = {
@@ -55,6 +59,7 @@ const unanswered = {
   latency_ms: null,
   cost_usd: null,
   fallback: false,
+  feedback: null,
 };
 
 function question(id: string, content: string, created_at: string): Message {
@@ -90,11 +95,20 @@ export const visitorDetail: Detail = {
   last_activity_at: visitorConversation.last_activity_at,
   messages: [
     question("e7000000-0000-4000-8000-000000000001", "How much leave do I get?", "2026-11-06T10:15:00Z"),
-    reply(VISITOR_REPLY_ID, "Twenty-five days.", "2026-11-06T10:15:02Z", 1),
+    {
+      ...reply(VISITOR_REPLY_ID, "Twenty-five days.", "2026-11-06T10:15:02Z", 1),
+      feedback: { rating: "up", comment: null, agent_version_number: 1, updated_at: "2026-11-06T10:16:00Z" },
+    },
     question("e7000000-0000-4000-8000-000000000003", "And part-time?", "2026-11-06T10:19:00Z"),
     {
       ...reply("e7000000-0000-4000-8000-000000000004", "Sorry, I don't know the answer to that.", "2026-11-06T10:19:01Z", 2),
       fallback: true,
+      feedback: {
+        rating: "down",
+        comment: "It should know part-time leave.",
+        agent_version_number: 2,
+        updated_at: "2026-11-06T10:21:00Z",
+      },
     },
   ],
 };
@@ -125,7 +139,8 @@ export const visitorTrace: Trace = {
 
 /**
  * Serves the Conversations viewer's routes from these Conversations. The list keeps those of the
- * Agent asked for and the Playground filter, like the API; other filters are only recorded. Every
+ * Agent asked for and the Playground and feedback filters, like the API; other filters are only
+ * recorded. Every
  * list query is recorded, as are Trace reads.
  */
 export function fakeConversationsApi(
@@ -152,10 +167,19 @@ export function fakeConversationsApi(
       if (options.listStatus) return HttpResponse.json({ detail: "Not found" }, { status: options.listStatus });
       const agentId = query.get("agent_id");
       const playground = query.get("playground");
+      const feedback = query.get("feedback");
+      const given = (conversation: Summary) => {
+        const { thumbs_up: up, thumbs_down: down } = conversation;
+        if (feedback === "up") return up > 0;
+        if (feedback === "down") return down > 0;
+        if (feedback === "any") return up + down > 0;
+        return feedback === null || up + down === 0;
+      };
       const items = conversations.filter(
         (conversation) =>
           (agentId === null || conversation.agent_id === agentId) &&
-          (playground === null || String(conversation.is_playground) === playground),
+          (playground === null || String(conversation.is_playground) === playground) &&
+          given(conversation),
       );
       return HttpResponse.json({
         items,
