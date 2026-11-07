@@ -6,6 +6,7 @@ import { TextDiff } from "./AgentDiff";
 import {
   type DraftInstructions,
   type InstructionsDiff,
+  type InstructionsReverted,
   type InstructionsVersion,
   useInstructions,
   useInstructionsDiff,
@@ -22,8 +23,8 @@ type Target = { organisationId: string; projectId: string };
 
 /**
  * Publishes the Draft as written in the editor (`markdown()`, made on revision `baseRevision()`),
- * with a note, as the next Version. A Draft someone else changed since is not published:
- * `onStale` gets their Draft.
+ * with a note, as the next Version, then hands it to `onPublished`. A Draft someone else changed
+ * since is not published: `onStale` gets their Draft.
  */
 export function PublishInstructionsForm({
   organisationId,
@@ -32,11 +33,13 @@ export function PublishInstructionsForm({
   baseRevision,
   onSaved,
   onStale,
+  onPublished,
 }: Target & {
   markdown: () => string;
   baseRevision: () => number;
   onSaved: (revision: number) => void;
   onStale: (latest: DraftInstructions) => void;
+  onPublished: (version: InstructionsVersion) => void;
 }) {
   const publish = usePublishInstructions(organisationId, projectId);
   const latest = useIsLatestInstructionsChange(organisationId, projectId, publish.submittedAt);
@@ -48,8 +51,9 @@ export function PublishInstructionsForm({
     publish.mutate(
       { markdown: markdown(), note, baseRevision: baseRevision(), onSaved },
       {
-        onSuccess: () => {
+        onSuccess: (version) => {
           form.reset();
+          onPublished(version);
         },
         onError: (error) => {
           if (error instanceof StaleInstructionsError) onStale(error.latest);
@@ -157,7 +161,12 @@ function CompareInstructions({ organisationId, projectId, versions, currentId }:
 }
 
 /** The Version history, the Current Version and reverting it. Read-only while the Project is archived. */
-export function InstructionsVersions({ organisationId, projectId, archived }: Target & { archived: boolean }) {
+export function InstructionsVersions({
+  organisationId,
+  projectId,
+  archived,
+  onReverted,
+}: Target & { archived: boolean; onReverted: (reverted: InstructionsReverted) => void }) {
   const versions = useInstructionsVersions(organisationId, projectId);
   const revert = useRevertInstructions(organisationId, projectId);
   const latest = useIsLatestInstructionsChange(organisationId, projectId, revert.submittedAt);
@@ -182,6 +191,7 @@ export function InstructionsVersions({ organisationId, projectId, archived }: Ta
           type="button"
           onClick={() => {
             revert.mutate(undefined, {
+              onSuccess: onReverted,
               onSettled: () => {
                 setConfirming(false);
               },

@@ -10,6 +10,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field, StringConstraints
 
+from app.agents import bulk
 from app.auth.api import Db, ErrorResponse
 from app.projects import instructions, service
 from app.projects.api import PROJECT_ARCHIVED, ClockDep
@@ -55,6 +56,25 @@ class InstructionsHistoryOut(BaseModel):
     current_version_id: uuid.UUID | None
     # Newest first.
     versions: list[InstructionsVersionOut]
+
+
+class VersionNumberOut(BaseModel):
+    id: uuid.UUID
+    number: int
+
+
+class BulkRevertCandidateOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    live_version: VersionNumberOut
+
+
+class InstructionsRevertOut(InstructionsVersionOut):
+    # The Version that was Current until this revert.
+    reverted_from: VersionNumberOut
+    # The active Agents whose Live Version pins the Version that was just reverted, oldest
+    # first: the Studio offers to bulk-revert them.
+    bulk_revert_candidates: list[BulkRevertCandidateOut]
 
 
 class PublishInstructionsRequest(BaseModel):
@@ -128,18 +148,32 @@ async def publish_instructions(
 )
 async def revert_instructions(
     project_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
-) -> InstructionsVersionOut:
+) -> InstructionsRevertOut:
     """Moves the Current Version back to the Version that was Current before it, and returns
-    it. The Draft is unchanged. Records ``project.instructions_reverted``."""
+    it with the Agents still pinned to the reverted Version, so they can be bulk-reverted. The
+    Draft is unchanged. Records ``project.instructions_reverted``."""
     try:
-        view = await instructions.revert(db, scope, project_id, now=clock.now())
+        reverted = await instructions.revert(db, scope, project_id, now=clock.now())
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
     except instructions.NothingToRevertError:
         raise HTTPException(status.HTTP_409_CONFLICT, NOTHING_TO_REVERT) from None
-    return _out(view)
+    reverted_from = reverted.reverted_from
+    candidates = await bulk.pinned_to(db, project_id, reverted_from.id)
+    return InstructionsRevertOut(
+        **_out(reverted.view).model_dump(),
+        reverted_from=VersionNumberOut(id=reverted_from.id, number=reverted_from.number),
+        bulk_revert_candidates=[
+            BulkRevertCandidateOut(
+                id=agent.id,
+                name=agent.name,
+                live_version=VersionNumberOut(id=live.id, number=live.number),
+            )
+            for agent, live in candidates
+        ],
+    )
 
 
 class InstructionsVersionNumberOut(BaseModel):

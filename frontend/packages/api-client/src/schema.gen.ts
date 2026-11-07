@@ -890,6 +890,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Publish Agents
+         * @description Publishes a new Version of each Agent from its Live configuration (never its Draft)
+         *     pinning the chosen Instructions Version, and makes it Live. Each Agent is processed in its
+         *     own transaction; never-published Agents and Agents already on that Version are skipped.
+         *     Records ``agent.bulk_published`` per Agent and ``project.agents_bulk_published``.
+         */
+        post: operations["bulkPublishAgents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Revert Agents
+         * @description Moves each Agent's Live Version back one step in its Live History. Each Agent is
+         *     processed in its own transaction; Agents with nothing to revert to are skipped. Records
+         *     ``agent.bulk_reverted`` per Agent and ``project.agents_bulk_reverted``.
+         */
+        post: operations["bulkRevertAgents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}": {
         parameters: {
             query?: never;
@@ -1550,9 +1595,31 @@ export interface paths {
         /**
          * Revert Instructions
          * @description Moves the Current Version back to the Version that was Current before it, and returns
-         *     it. The Draft is unchanged. Records ``project.instructions_reverted``.
+         *     it with the Agents still pinned to the reverted Version, so they can be bulk-reverted. The
+         *     Draft is unchanged. Records ``project.instructions_reverted``.
          */
         post: operations["revertProjectInstructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/rollout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Instructions Rollout
+         * @description Which Instructions Version each active Agent's Live Version pins, whether its Draft has
+         *     unpublished changes, and how many Agents are behind the Current Version.
+         */
+        get: operations["getInstructionsRollout"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2064,6 +2131,63 @@ export interface components {
              * @default 0.7
              */
             temperature: number;
+        };
+        /** BulkOutcomeOut */
+        BulkOutcomeOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            instructions_version: components["schemas"]["VersionNumberOut"] | null;
+            live_version: components["schemas"]["VersionNumberOut"] | null;
+            /** Name */
+            name: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "skipped" | "failed";
+        };
+        /** BulkPublishRequest */
+        BulkPublishRequest: {
+            /** Agent Ids */
+            agent_ids: string[];
+            /**
+             * Instructions Version Id
+             * Format: uuid
+             */
+            instructions_version_id: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** BulkResultOut */
+        BulkResultOut: {
+            /**
+             * Bulk Operation Id
+             * Format: uuid
+             */
+            bulk_operation_id: string;
+            /** Results */
+            results: components["schemas"]["BulkOutcomeOut"][];
+        };
+        /** BulkRevertCandidateOut */
+        BulkRevertCandidateOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            live_version: components["schemas"]["VersionNumberOut"];
+            /** Name */
+            name: string;
+        };
+        /** BulkRevertRequest */
+        BulkRevertRequest: {
+            /** Agent Ids */
+            agent_ids: string[];
         };
         /** BulkTagRequest */
         BulkTagRequest: {
@@ -2824,6 +2948,39 @@ export interface components {
             /** Versions */
             versions: components["schemas"]["InstructionsVersionOut"][];
         };
+        /** InstructionsRevertOut */
+        InstructionsRevertOut: {
+            author: components["schemas"]["VersionAuthor"] | null;
+            /** Bulk Revert Candidates */
+            bulk_revert_candidates: components["schemas"]["BulkRevertCandidateOut"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Markdown */
+            markdown: string;
+            /** Note */
+            note: string;
+            /** Number */
+            number: number;
+            /** Previous Version Id */
+            previous_version_id: string | null;
+            reverted_from: components["schemas"]["VersionNumberOut"];
+        };
+        /** InstructionsRolloutOut */
+        InstructionsRolloutOut: {
+            /** Agents */
+            agents: components["schemas"]["RolloutAgentOut"][];
+            /** Behind */
+            behind: number;
+            current_version: components["schemas"]["VersionNumberOut"] | null;
+        };
         /** InstructionsVersionNumberOut */
         InstructionsVersionNumberOut: {
             /**
@@ -3420,6 +3577,22 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "editor";
+        /** RolloutAgentOut */
+        RolloutAgentOut: {
+            /** Behind */
+            behind: boolean;
+            /** Has Draft Changes */
+            has_draft_changes: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            instructions_version: components["schemas"]["VersionNumberOut"] | null;
+            live_version: components["schemas"]["VersionNumberOut"] | null;
+            /** Name */
+            name: string;
+        };
         /** RotateCredentialRequest */
         RotateCredentialRequest: {
             /**
@@ -6431,6 +6604,114 @@ export interface operations {
             };
         };
     };
+    bulkPublishAgents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkResultOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description That Instructions Version isn't one of this Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulkRevertAgents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRevertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkResultOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getAgent: {
         parameters: {
             query?: never;
@@ -8226,7 +8507,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InstructionsVersionOut"];
+                    "application/json": components["schemas"]["InstructionsRevertOut"];
                 };
             };
             /** @description Not found */
@@ -8240,6 +8521,47 @@ export interface operations {
             };
             /** @description This Project is archived. An Owner can restore it. Or: There's no earlier Version to revert to. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstructionsRollout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsRolloutOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

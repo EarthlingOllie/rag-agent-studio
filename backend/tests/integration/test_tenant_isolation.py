@@ -348,6 +348,22 @@ async def _an_agent_to_revert(owner: SignedUpMember, add_member: MemberFactory) 
     return params, None
 
 
+async def _agents_to_bulk_publish(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_to_revert(owner, add_member)
+    path = PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}"
+    saved = await owner.client.put(f"{path}/instructions", json={"markdown": "# Rules"})
+    assert saved.status_code == 200, saved.text
+    rules = await owner.client.post(f"{path}/instructions/versions", json={"note": "Rules"})
+    assert rules.status_code == 201, rules.text
+    body = {"agent_ids": [params["agent_id"]], "instructions_version_id": rules.json()["id"]}
+    return {"project_id": params["project_id"]}, body
+
+
+async def _agents_to_bulk_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_to_revert(owner, add_member)
+    return {"project_id": params["project_id"]}, {"agent_ids": [params["agent_id"]]}
+
+
 async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, body = await _an_agent_to_publish(owner, add_member)
     published = await owner.client.post(
@@ -500,6 +516,13 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _AGENT + "/revert", EDITOR, _an_agent_to_revert),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/agents/bulk-publish", EDITOR, _agents_to_bulk_publish
+    ),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/agents/bulk-revert", EDITOR, _agents_to_bulk_revert
+    ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/rollout", EDITOR, _a_project),
     ScopedRoute("GET", _AGENT + "/diff", EDITOR, _an_agent, {"from": "draft", "to": "draft"}),
     ScopedRoute("POST", _AGENT + "/draft/discard", EDITOR, _a_live_agent),
     ScopedRoute("POST", _AGENT + "/draft/from-version", EDITOR, _a_version_to_start_from),

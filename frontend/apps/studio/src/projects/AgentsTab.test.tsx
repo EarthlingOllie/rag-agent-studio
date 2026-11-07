@@ -1,8 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 
-import { fakeAgentsApi, hrHelper } from "../test/agents";
+import { fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
+import { fakeBulkApi, NOTHING_TO_REVERT, rolloutAgent } from "../test/bulk";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject, oldProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -71,4 +72,79 @@ test("Agents that can't be loaded say so", async () => {
   renderStudio(agentsTab(hrProject.id));
 
   expect(await screen.findByText("The Agents could not be loaded. Try again shortly.", {}, { timeout: 5000 })).toBeInTheDocument();
+});
+
+// Multi-select bulk revert
+
+const liveHelper = { ...hrHelper, live_version: { id: "a2e00000-0000-4000-8000-000000000103", number: 3 } };
+const benefits = { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Benefits FAQ", live_version: { id: "a2e00000-0000-4000-8000-000000000201", number: 1 } };
+const rollout = { current_version: null, behind: 0, agents: [rolloutAgent(1, "HR helper", 3, null), rolloutAgent(2, "Benefits FAQ", 1, null)] };
+
+test("an Editor selects several Agents and reverts them together after confirming", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [liveHelper, benefits] });
+  const { requests } = fakeBulkApi({ rollout });
+  renderStudio(agentsTab(hrProject.id));
+
+  const revertSelected = await screen.findByRole("button", { name: "Revert selected (0)" }, { timeout: 5000 });
+  expect(revertSelected).toBeDisabled();
+  await userEvent.click(screen.getByRole("checkbox", { name: "Select HR helper" }));
+  await userEvent.click(screen.getByRole("checkbox", { name: "Select Benefits FAQ" }));
+  await userEvent.click(screen.getByRole("checkbox", { name: "Select Benefits FAQ" }));
+  await userEvent.click(screen.getByRole("button", { name: "Revert selected (1)" }));
+  expect(screen.getByRole("group", { name: "Bulk actions" })).toHaveTextContent(
+    "Revert 1 Agent? Each one's Live Version moves back one step in its Live History. Drafts aren't changed.",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(requests).toEqual([]);
+
+  await userEvent.click(screen.getByRole("checkbox", { name: "Select Benefits FAQ" }));
+  await userEvent.click(screen.getByRole("button", { name: "Revert selected (2)" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, revert 2 Agents" }));
+
+  expect(requests).toEqual([{ route: "bulk-revert", body: { agent_ids: [liveHelper.id, benefits.id] } }]);
+  const results = await screen.findByRole("list", { name: "Results" });
+  expect(within(results).getAllByRole("listitem").map((row) => row.textContent)).toEqual([
+    "HR helper — Done: Reverted to v2 without Project Instructions. It is now Live.",
+    `Benefits FAQ — Skipped: ${NOTHING_TO_REVERT}`,
+  ]);
+  // The selection is cleared once it's done.
+  expect(screen.getByRole("checkbox", { name: "Select HR helper" })).not.toBeChecked();
+  expect(screen.getByRole("button", { name: "Revert selected (0)" })).toBeDisabled();
+});
+
+test("a bulk revert refused as a whole says why", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [liveHelper] });
+  server.use(
+    http.post("*/api/organisations/:organisationId/projects/:projectId/agents/bulk-revert", async () => {
+      await delay(100);
+      return HttpResponse.json({ detail: "This Project is archived. An Owner can restore it." }, { status: 409 });
+    }),
+  );
+  renderStudio(agentsTab(hrProject.id));
+
+  await userEvent.click(await screen.findByRole("checkbox", { name: "Select HR helper" }, { timeout: 5000 }));
+  await userEvent.click(screen.getByRole("button", { name: "Revert selected (1)" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, revert 1 Agent" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("This Project is archived. An Owner can restore it.");
+  expect(screen.getByRole("checkbox", { name: "Select HR helper" })).toBeChecked();
+});
+
+test("archived Agents and an archived Project's Agents can't be selected", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [liveHelper, oldHelper] });
+  const { unmount } = renderStudio(agentsTab(oldProject.id));
+  expect(await screen.findByRole("link", { name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  unmount();
+
+  renderStudio(agentsTab(hrProject.id));
+  await userEvent.click(await screen.findByRole("button", { name: "Show archived Agents" }, { timeout: 5000 }));
+  expect(await screen.findByRole("link", { name: "Old helper" })).toBeInTheDocument();
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 });

@@ -24,6 +24,10 @@ Live Version pointer, which is None until the first publish (the Agent is then "
   move is written to the Live History as ``revert``, and ``agent.reverted`` is audited. The
   Draft is left alone. A Version whose credentials have since been deleted can't be made Live
   again.
+- **Bulk publish and bulk revert** (``app.agents.bulk``) make the same moves through
+  ``make_live`` and ``step_back``, one Agent per transaction, writing ``bulk_publish`` or
+  ``bulk_revert`` entries and ``agent.bulk_published`` or ``agent.bulk_reverted`` events that
+  carry the bulk operation ID.
 - **Versions are immutable.** No route changes or deletes one, and migration
   ``0026_agent_versions`` adds a trigger refusing every UPDATE to Versions and Live History
   entries. They go only with their Agent.
@@ -50,7 +54,7 @@ Every operation goes through the Project and Agent lookups, so another Organisat
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,12 +73,29 @@ from app.versioning.diff import FieldChange, Line, diff_configs, diff_text
 
 PUBLISHED = "agent.published"
 REVERTED = "agent.reverted"
+BULK_PUBLISHED = "agent.bulk_published"
+BULK_REVERTED = "agent.bulk_reverted"
 PUBLISH = "publish"
 DRAFT_DISCARDED = "agent.draft_discarded"
 DRAFT_STARTED_FROM_VERSION = "agent.draft_started_from_version"
 REVERT = "revert"
+BULK_PUBLISH = "bulk_publish"
+BULK_REVERT = "bulk_revert"
 # The Live History actions that put a new Version Live; reverts follow these back.
-_PUSHES = (PUBLISH, "bulk_publish")
+_PUSHES = (PUBLISH, BULK_PUBLISH)
+_AUDIT_ACTIONS = {
+    PUBLISH: PUBLISHED,
+    REVERT: REVERTED,
+    BULK_PUBLISH: BULK_PUBLISHED,
+    BULK_REVERT: BULK_REVERTED,
+}
+
+
+NOTHING_TO_REVERT = "There's no earlier Live Version to revert to."
+REVERT_TARGET_INVALID = (
+    "The Version that was Live before uses a Provider Credential or model that is no longer "
+    "available, so it can't be made Live again. Publish a fixed Version instead."
+)
 
 
 class InstructionsVersionNotFoundError(Exception):
@@ -176,18 +197,62 @@ async def publish(
     project = await active_project(session, scope, project_id)
     # Lock the Agent row: publishes of one Agent queue here, so numbers never collide.
     found = await active_agent(session, scope, project_id, agent_id, lock=True)
-    agent = found.agent
     pinned_id = project.current_instructions_version_id
     if instructions_version_id is not None:
-        pinned_id = await session.scalar(
-            select(InstructionsVersion.id).where(
-                InstructionsVersion.id == instructions_version_id,
-                InstructionsVersion.project_id == project.id,
-            )
+        pinned_id = await project_instructions_version(session, project.id, instructions_version_id)
+    draft = await session.get_one(AgentDraft, found.agent.id)
+    view = await make_live(
+        session, scope, found.agent, draft.config, pinned_id, note, Move(PUBLISH), now=now
+    )
+    await session.commit()
+    return view
+
+
+async def project_instructions_version(
+    session: AsyncSession, project_id: uuid.UUID, version_id: uuid.UUID
+) -> uuid.UUID:
+    """``version_id`` when it is one of the Project's Instructions Versions."""
+    found = await session.scalar(
+        select(InstructionsVersion.id).where(
+            InstructionsVersion.id == version_id, InstructionsVersion.project_id == project_id
         )
-        if pinned_id is None:
-            raise InstructionsVersionNotFoundError
-    draft = await session.get_one(AgentDraft, agent.id)
+    )
+    if found is None:
+        raise InstructionsVersionNotFoundError
+    return found
+
+
+@dataclass(frozen=True)
+class Move:
+    """How the Live Version moves: the Live History action and, for a bulk action, its ID."""
+
+    action: str
+    bulk_operation_id: uuid.UUID | None = None
+
+    @property
+    def audit_action(self) -> str:
+        return _AUDIT_ACTIONS[self.action]
+
+    def audited(self, after: dict[str, object]) -> dict[str, object]:
+        if self.bulk_operation_id is None:
+            return after
+        return {**after, "bulk_operation_id": str(self.bulk_operation_id)}
+
+
+async def make_live(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    agent: Agent,
+    config: dict[str, Any],
+    pinned_id: uuid.UUID | None,
+    note: str,
+    move: Move,
+    *,
+    now: datetime,
+) -> VersionView:
+    """Adds the Agent's next Version (``config`` pinning ``pinned_id``) and makes it Live,
+    writing the Live History entry and the Audit Event. The caller holds the Agent row lock and
+    commits."""
     latest = await session.scalar(
         select(func.max(AgentVersion.number)).where(AgentVersion.agent_id == agent.id)
     )
@@ -196,7 +261,7 @@ async def publish(
         organisation_id=scope.organisation_id,
         agent_id=agent.id,
         number=(latest or 0) + 1,
-        config=draft.config,
+        config=config,
         instructions_version_id=pinned_id,
         note=note,
         author_id=scope.member_id,
@@ -205,36 +270,44 @@ async def publish(
     session.add(version)
     await session.flush()
     agent.live_version_id = version.id
+    _write_history(session, scope, agent, previous, version, move, now)
+    view = await _view(session, version)
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=move.audit_action,
+        target=audit.AuditTarget("agent", agent.id),
+        before={"live_version": _summary(previous)},
+        after=move.audited(
+            {"live_version": {**(_summary(version) or {}), "note": note, **_pinned(view)}}
+        ),
+        occurred_at=now,
+    )
+    return view
+
+
+def _write_history(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    agent: Agent,
+    previous: AgentVersion | None,
+    version: AgentVersion,
+    move: Move,
+    now: datetime,
+) -> None:
     session.add(
         LiveHistoryEntry(
             organisation_id=scope.organisation_id,
             agent_id=agent.id,
             from_version_id=previous and previous.id,
             to_version_id=version.id,
-            action=PUBLISH,
+            action=move.action,
             actor_id=scope.member_id,
             occurred_at=now,
+            bulk_operation_id=move.bulk_operation_id,
         )
     )
-    view = await _view(session, version)
-    await audit.record(
-        session,
-        organisation_id=scope.organisation_id,
-        actor_id=scope.member_id,
-        action=PUBLISHED,
-        target=audit.AuditTarget("agent", agent.id),
-        before={"live_version": _summary(previous)},
-        after={
-            "live_version": {
-                **(_summary(version) or {}),
-                "note": note,
-                **_pinned(view),
-            }
-        },
-        occurred_at=now,
-    )
-    await session.commit()
-    return view
 
 
 async def revert(
@@ -249,6 +322,16 @@ async def revert(
     the rule) and returns the Version that is Live again."""
     await active_project(session, scope, project_id)
     agent = (await active_agent(session, scope, project_id, agent_id, lock=True)).agent
+    view = await step_back(session, scope, agent, Move(REVERT), now=now)
+    await session.commit()
+    return view
+
+
+async def step_back(
+    session: AsyncSession, scope: OrganisationScope, agent: Agent, move: Move, *, now: datetime
+) -> VersionView:
+    """Moves the Agent's Live Version back by the revert rule, writing the Live History entry
+    and the Audit Event. The caller holds the Agent row lock and commits."""
     current = await _version(session, agent.live_version_id)
     target = None
     if current is not None:
@@ -269,29 +352,18 @@ async def revert(
     if problems:
         raise RevertTargetInvalidError(problems)
     agent.live_version_id = target.id
-    session.add(
-        LiveHistoryEntry(
-            organisation_id=scope.organisation_id,
-            agent_id=agent.id,
-            from_version_id=current.id,
-            to_version_id=target.id,
-            action=REVERT,
-            actor_id=scope.member_id,
-            occurred_at=now,
-        )
-    )
+    _write_history(session, scope, agent, current, target, move, now)
     view = await _view(session, target)
     await audit.record(
         session,
         organisation_id=scope.organisation_id,
         actor_id=scope.member_id,
-        action=REVERTED,
+        action=move.audit_action,
         target=audit.AuditTarget("agent", agent.id),
         before={"live_version": _summary(current)},
-        after={"live_version": {**(_summary(target) or {}), **_pinned(view)}},
+        after=move.audited({"live_version": {**(_summary(target) or {}), **_pinned(view)}}),
         occurred_at=now,
     )
-    await session.commit()
     return view
 
 

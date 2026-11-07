@@ -216,13 +216,17 @@ async def test_revert_returns_the_version_it_moved_to_and_leaves_the_draft_alone
     editor = await member_factory(owner, "editor")
     project_id = await create_project(owner)
     first = await published(owner, project_id, "Be kind.", "First rules")
-    await published(owner, project_id, "Be curt.", "Shorter")
+    second = await published(owner, project_id, "Be curt.", "Shorter")
     await save_draft(owner, project_id, "Draft in progress")
 
     reverted = await revert(editor, project_id)
 
     assert reverted.status_code == 200, reverted.text
-    assert reverted.json() == first
+    assert reverted.json() == {
+        **first,
+        "reverted_from": {"id": second["id"], "number": 2},
+        "bulk_revert_candidates": [],
+    }
     assert (await history(owner, project_id))["current_version_id"] == first["id"]
     assert await draft(owner, project_id) == "Draft in progress"
 
@@ -482,4 +486,8 @@ async def test_the_migration_turns_existing_instructions_into_the_draft_and_v1(
     v2 = await published(owner, with_rules, "Be curt.", "Shorter")
     assert (v2["number"], v2["previous_version_id"]) == (2, v1["id"])
     reverted = await revert(owner, with_rules)
-    assert reverted.json() == v1
+    assert reverted.json() == {
+        **v1,
+        "reverted_from": {"id": v2["id"], "number": 2},
+        "bulk_revert_candidates": [],
+    }
