@@ -34,6 +34,23 @@ These are the shared infrastructure seams in `docs/specs/README.md` and the "dep
 | 6 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams as above. Every branch of the three scripts has a case: tag valid or invalid, bucket set or missing, builds present or missing, image in ECR / built arm64 / built amd64 / absent, migration start failure / non-zero / `None` / 0, services stable or not, smoke pass, fail, retry-then-pass, unreachable, live Agent ID or default, and confirmation exact or not. In Terraform, every new resource, output and validation has a run, including both sides of the `migration_task_size` validation and the Logfire secret toggle. [gate-demo.log](gate-demo.log) applies 33 single-line regressions with [gate.sh](gate.sh): 8 Terraform, 7 task settings (3 in the ecs module, 1 in the fixture, 3 in `settings.py`), 1 composition, 11 deploy, 4 smoke and 2 destroy. Every one fails the tests. [tdd-red.log](tdd-red.log) runs round 1's tests against `origin/candidate`, and [tdd-red-settings.log](tdd-red-settings.log) runs round 2's against the previous code; both are red. [fresh-clone.log](fresh-clone.log) is green: 11 Terraform roots (ecs 51, demo 7), deploy 22, smoke 17, destroy 8, composition 9, with TFLint clean and Checkov at 0 failed. The backend changed in round 2: [backend-tests.log](backend-tests.log) passes with the 100% line and branch coverage gate, and [backend-lint.log](backend-lint.log) (ruff, ruff format, mypy) is clean. The frontend did not change. |
 | 7 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | No domain terms were added. Migration task, smoke check and deploy workflow are infrastructure vocabulary, and the glossary has no infrastructure entries (same reasoning as 09-04 and 09-05). No ADR changed. ADR-0010 (ECS Fargate on ARM64) and ADR-0011 (one CloudFront origin) are implemented as written, and the migrate-then-roll order is spec 09's own implementation decision. |
 
+## After merging origin/candidate (merge gate)
+
+The branch was brought up to `origin/candidate` at `58bb07a` (06-03, PR #55) in merge commit `5c9bd50`; both merges were clean. GitHub Actions is down and the user authorised merging on local results, so every gate ran locally at `5c9bd50`, one after another, and each log ends with its exit code:
+
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Install | `make install` | exit 0 | [merged-install.log](merged-install.log) |
+| Lint and types | `make lint` (ruff, ruff format, mypy --strict, eslint, tsc) | exit 0 | [merged-lint.log](merged-lint.log) |
+| Backend | `make test-backend` against fresh `rag0906-*` Postgres/pgvector, Redis, RustFS | **2016 passed**, 100% lines and branches (9220 statements, 1044 branches) | [merged-backend-tests.log](merged-backend-tests.log) |
+| Frontend | `make test-frontend` | **52 files, 676 tests**, 100% coverage, loader size budget met | [merged-frontend-tests.log](merged-frontend-tests.log) |
+| API client drift | `make check-client` | no drift | [merged-client-drift.log](merged-client-drift.log) |
+| Infra | `make infra-check` (fmt, validate, `terraform test` with mock providers in every root, deploy/smoke/destroy/composition tests, TFLint, Checkov) | exit 0; Checkov 288 passed, 0 failed | [merged-infra-check.log](merged-infra-check.log) |
+| Images | [build.sh](build.sh) (sandbox `make images`: proxy CA added, `WITH_PDF=false BUNDLE_MODELS=false`) | exit 0 | [merged-images.log](merged-images.log) |
+| End-to-end | `make e2e` with [compose.sandbox.yml](compose.sandbox.yml) and [e2e.env](e2e.env) (project `rag0906-e2e`, host ports 498xx) | **73 passed** | [merged-e2e.log](merged-e2e.log) |
+
+Containers, volumes and images were removed afterwards.
+
 ## Decisions recorded (best guesses, no human asked)
 
 - **Services ignore task definition changes; the script rolls them.** Otherwise `terraform apply` at a new tag would replace the services' task definitions before the migration ran, which breaks spec 09 story 26. A plain `terraform apply` (for example, the PR plan) now registers new revisions without rolling them. Only the deploy script moves services onto them.
