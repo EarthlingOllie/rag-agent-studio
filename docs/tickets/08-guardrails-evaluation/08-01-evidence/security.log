@@ -1,0 +1,12 @@
+$ gitleaks git (origin/candidate..HEAD) @ 883e880
+[90m3:00AM[0m [32mINF[0m [1m5 commits scanned.[0m
+[90m3:00AM[0m [32mINF[0m [1mscanned ~673926 bytes (673.93 KB) in 322ms[0m
+[90m3:00AM[0m [32mINF[0m [1mno leaks found[0m
+exit 0
+$ make audit @ 883e880
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+exit 0
