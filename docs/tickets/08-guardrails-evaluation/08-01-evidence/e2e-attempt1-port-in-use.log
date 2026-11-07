@@ -1,0 +1,48 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0801-e2e -f docker-compose.yml -f /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0801/docs/tickets/08-guardrails-evaluation/08-01-evidence/compose.sandbox.yml' @ eaf9c0e
+docker compose -p rag0801-e2e -f docker-compose.yml -f /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0801/docs/tickets/08-guardrails-evaluation/08-01-evidence/compose.sandbox.yml up -d --build --wait
+ Volume rag0801-e2e_rustfs-data Creating 
+ Volume rag0801-e2e_rustfs-data Creating 
+ Volume rag0801-e2e_postgres-data Creating 
+ Volume rag0801-e2e_postgres-data Creating 
+ Network rag0801-e2e_default Creating 
+ Network rag0801-e2e_default Creating 
+ Volume rag0801-e2e_postgres-data Created 
+ Volume rag0801-e2e_postgres-data Created 
+ Volume rag0801-e2e_rustfs-data Created 
+ Volume rag0801-e2e_rustfs-data Created 
+ Network rag0801-e2e_default Created 
+ Network rag0801-e2e_default Created 
+ Container rag0801-e2e-widget-1 Creating 
+ Container rag0801-e2e-host-1 Creating 
+ Container rag0801-e2e-mailpit-1 Creating 
+ Container rag0801-e2e-redis-1 Creating 
+ Container rag0801-e2e-rustfs-1 Creating 
+ Container rag0801-e2e-postgres-1 Creating 
+ Container rag0801-e2e-redis-1 Created 
+ Container rag0801-e2e-widget-1 Created 
+ Container rag0801-e2e-postgres-1 Created 
+ Container rag0801-e2e-mailpit-1 Created 
+ Container rag0801-e2e-host-1 Created 
+ Container rag0801-e2e-rustfs-1 Created 
+ Container rag0801-e2e-worker-1 Creating 
+ Container rag0801-e2e-api-1 Creating 
+ Container rag0801-e2e-beat-1 Creating 
+ Container rag0801-e2e-worker-1 Created 
+ Container rag0801-e2e-beat-1 Created 
+ Container rag0801-e2e-api-1 Created 
+ Container rag0801-e2e-studio-1 Creating 
+ Container rag0801-e2e-studio-1 Created 
+ Container rag0801-e2e-widget-1 Starting 
+ Container rag0801-e2e-host-1 Starting 
+ Container rag0801-e2e-mailpit-1 Starting 
+ Container rag0801-e2e-rustfs-1 Starting 
+ Container rag0801-e2e-redis-1 Starting 
+ Container rag0801-e2e-postgres-1 Starting 
+ Container rag0801-e2e-widget-1 Started 
+ Container rag0801-e2e-host-1 Started 
+ Container rag0801-e2e-mailpit-1 Started 
+ Container rag0801-e2e-rustfs-1 Started 
+ Container rag0801-e2e-redis-1 Started 
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint rag0801-e2e-postgres-1 (f0988e760e1e57dbc0dd951894ad843c83e88cb4775cade94052a648b5d124a6): failed to bind host port 0.0.0.0:46242/tcp: address already in use
+make: *** [Makefile:117: e2e] Error 1
+exit 2
