@@ -7,8 +7,10 @@ from typing import Literal
 # ``input``: the input Guardrail, which checks the Visitor's message before the model sees it.
 # ``canary``: the Canary token, which checks the answer as it streams.
 Layer = Literal["input", "canary"]
-Verdict = Literal["injection", "leak"]
-Action = Literal["blocked", "replaced", "flagged"]
+# ``unchecked``: the LLM classifier couldn't judge the message (its provider failed); the
+# Agent's fail mode decides between ``blocked`` (closed) and ``allowed`` (open).
+Verdict = Literal["injection", "leak", "unchecked"]
+Action = Literal["blocked", "replaced", "flagged", "allowed"]
 
 
 @dataclass(frozen=True)

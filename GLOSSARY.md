@@ -275,7 +275,7 @@ The Guardrail check ingestion runs on every Chunk: the injection classifier look
 _Avoid_: Document scan, content filter, malware scan
 
 **Injection classifier**:
-The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07, still used by the ingestion scan), the local classifier (the input Guardrail's default), the rule-driven fake in tests, and later the LLM classifier (spec 08).
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07, still used by the ingestion scan), the local classifier (the input Guardrail's default), the rule-driven fake in tests, and the LLM classifier (an Agent's optional second check on Visitor messages).
 _Avoid_: Detector, filter, moderation model
 
 **Guardrail flag**:
@@ -504,17 +504,25 @@ A random secret placed in the platform preamble of every prompt, with the instru
 _Avoid_: Canary, honeytoken, tripwire
 
 **Input Guardrail**:
-The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup. In block mode a flagged message never reaches retrieval or the model: the Visitor gets the Agent's refusal text, and the Trace records why. Warn and log modes come later (ticket 08-02).
+The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup; an Agent can add an LLM classifier. In block mode a flagged message never reaches retrieval or the model: the Visitor gets the Agent's refusal text, and the Trace records why. Warn and log modes come later (ticket 08-02).
 
 **Local classifier**:
 The input Guardrail's default injection classifier: a DeBERTa-v3 prompt-injection model (ONNX) run on the API's CPU, bundled in the API image and loaded once per process. A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
+
+**LLM classifier**:
+An Agent's optional second injection classifier for the input Guardrail: a chat model of one of the Organisation's Provider Credentials (a Credential reference), chosen in the Agent's Guardrails settings and versioned with it. Each message the local classifier passes is also judged by it, through the model gateway, with a fixed classifier prompt and a structured answer (label, score, reason); the message is shown to it as delimited, untrusted data. Its fail mode decides what happens when it can't judge.
+_Avoid_: AI classifier, judge model
+
+**Fail mode**:
+What the input Guardrail does when the LLM classifier can't judge a message (its provider errors, it answers off the schema, or it doesn't answer within `LLM_CLASSIFIER_TIMEOUT_S`). Closed (the default) treats the message as flagged, so in block mode the Visitor gets the refusal text; open answers it without that check. Either way the Trace records an `unchecked` Guardrail outcome saying why.
+_Avoid_: Fail-safe, fallback mode
 
 **Refusal text**:
 What the Agent replies, in place of an answer, to a message the input Guardrail blocked. Set per Agent in its Guardrails settings and versioned with it; the default is "Sorry, I can't help with that request."
 _Avoid_: Block message, rejection text
 
 **Guardrail outcome**:
-What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak), action (blocked, replaced or flagged), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
+What one Guardrail layer decided about an answer: its layer (input or canary), verdict (injection, leak, or unchecked when the LLM classifier couldn't judge), action (blocked, replaced, flagged, or allowed when an Agent failing open let an unchecked message through), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
 ## Conversations
 

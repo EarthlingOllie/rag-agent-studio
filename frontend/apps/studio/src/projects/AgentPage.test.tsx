@@ -176,6 +176,54 @@ test("the Trace shows each Guardrail outcome, or that none stepped in", async ()
   ]);
 });
 
+test("the Trace says when the LLM classifier flagged a message or couldn't check it", async () => {
+  const { answer } = await askLeave({
+    trace: () =>
+      HttpResponse.json({
+        ...hrTrace,
+        guardrail_outcomes: [
+          {
+            layer: "input",
+            verdict: "unchecked",
+            action: "allowed",
+            reason:
+              "The LLM classifier (gpt-4o-mini) couldn't check the message: the provider failed. The Agent fails open, so the message was answered without this check.",
+            score: null,
+          },
+          {
+            layer: "input",
+            verdict: "unchecked",
+            action: "blocked",
+            reason:
+              "The LLM classifier (gpt-4o-mini) couldn't check the message: the provider failed. The Agent fails closed, so the message was refused.",
+            score: null,
+          },
+          {
+            layer: "input",
+            verdict: "injection",
+            action: "blocked",
+            reason: "The LLM classifier (gpt-4o-mini) flagged the message: Asks for a persona without rules.",
+            score: 0.91,
+          },
+        ],
+      }),
+  });
+
+  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const outcomes = await within(drawer).findByRole("list", { name: "Guardrails" });
+  expect(
+    within(outcomes)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual([
+    "Input Guardrail: unchecked, let through without the check. The LLM classifier (gpt-4o-mini) couldn't check the message: the provider failed. The Agent fails open, so the message was answered without this check.",
+    "Input Guardrail: unchecked, blocked before the model. The LLM classifier (gpt-4o-mini) couldn't check the message: the provider failed. The Agent fails closed, so the message was refused.",
+    "Input Guardrail: injection (score 0.91), blocked before the model. The LLM classifier (gpt-4o-mini) flagged the message: Asks for a persona without rules.",
+  ]);
+});
+
 test("a question the input Guardrail blocked gets the Agent's refusal text, marked as blocked", async () => {
   const { answer } = await askLeave({
     answer: () => streamedAnswer([], { refusal: "I can only answer questions about our HR policies." }),

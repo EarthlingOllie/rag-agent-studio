@@ -59,7 +59,7 @@ test("every configuration group is shown with the Draft's settings", async () =>
   expect(within(guardrails).getByLabelText("Input Guardrail mode")).toHaveValue("block");
   expect(
     within(guardrails).getByText(
-      "Every message is checked by the built-in classifier. Block mode is enforced; warn, log and the LLM classifier are saved with the Draft and enforced in a later release.",
+      "Every message is checked by the built-in classifier. Block mode and the LLM classifier are enforced; warn and log are saved with the Draft and enforced in a later release.",
     ),
   ).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "Draft status" })).toHaveTextContent("All changes saved");

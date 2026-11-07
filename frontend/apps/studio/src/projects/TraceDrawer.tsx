@@ -15,6 +15,7 @@ const ACTIONS: Record<GuardrailOutcome["action"], string> = {
   blocked: "blocked before the model",
   replaced: "cut off and replaced",
   flagged: "flagged after sending",
+  allowed: "let through without the check",
 };
 
 /** "injection (score 0.99)", or the verdict alone for a layer that doesn't score. */
