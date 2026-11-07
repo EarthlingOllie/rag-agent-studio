@@ -26,7 +26,7 @@ Once `make dev` is up:
 - RustFS console: <http://localhost:9001>
 - Demo host page: <http://localhost:5175/?agent=agt_…> (a separate origin that pastes an Agent's Embed Snippet; add `http://localhost:5175` to the Agent's Allowed Origins on its Embed section first)
 
-**Embedding.** The widget shares the Studio's origin locally as it shares the API's behind CloudFront (ADR-0011). The Studio's dev server proxies `/widget/a/` (the widget shell, served by the API with `frame-ancestors` from the Agent's Allowed Origins) to the API, and `/embed.js` (the loader) and `/widget/assets/` (the widget app) to the `widget` service, a `vite preview` of `frontend/apps/widget`'s build. `make test-frontend` ends with the loader's size budget (`pnpm check-embed-size`: 2 KB, 1 KB gzipped).
+**Embedding.** The widget shares the Studio's origin locally as it shares the API's behind CloudFront (ADR-0011). The Studio's dev server proxies `/widget/a/` (the widget shell, served by the API with `frame-ancestors` from the Agent's Allowed Origins) to the API, and `/embed.js` (the loader) and `/widget/assets/` (the widget app) to the `widget` service, a `vite preview` of `frontend/apps/widget`'s build. `make test-frontend` ends with the loader's size budget (`pnpm check-embed-size`: 2 KB, 1 KB gzipped). The widget keeps its Conversation token in the iframe's local storage (key `rag-widget:conversation:<public ID>`), so reloading the demo host page resumes the Conversation; clear the host page's site data (or use **New chat**/**End chat**) to start afresh.
 
 ## Settings
 

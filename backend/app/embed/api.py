@@ -15,7 +15,7 @@ import html
 import json
 import uuid
 from collections.abc import AsyncIterator
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -133,6 +133,16 @@ def _invalid() -> HTTPException:
     return HTTPException(status.HTTP_401_UNAUTHORIZED, INVALID_TOKEN)
 
 
+def _bearer(authorization: str) -> str:
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise _invalid()
+    return token.strip()
+
+
+Authorization = Annotated[str, Header(description="`Bearer <conversation token>`")]
+
+
 @widget_router.post(
     "/conversations",
     operation_id="startWidgetConversation",
@@ -191,16 +201,14 @@ async def send_message(
     db: Db,
     signer: Signer,
     clock: ClockDep,
-    authorization: Annotated[str, Header(description="`Bearer <conversation token>`")] = "",
+    authorization: Authorization = "",
 ) -> StreamingResponse:
     """Asks the Agent's Live Version a question in the token's Conversation. The answer is
     recorded against the Version that was Live when it was generated."""
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise _invalid()
+    token = _bearer(authorization)
     try:
         prepared = await service.prepare_turn(
-            db, signer, public_id, token.strip(), body.content, now=clock.now()
+            db, signer, public_id, token, body.content, now=clock.now()
         )
     except service.InvalidTokenError:
         raise _invalid() from None
@@ -242,6 +250,74 @@ async def send_message(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+class WidgetCitationOut(BaseModel):
+    label: str
+    # None when the Document has since been deleted.
+    document_name: str | None
+
+
+class WidgetMessageOut(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+    # The sources an answer cited; empty for the Visitor's own questions.
+    citations: list[WidgetCitationOut]
+
+
+class WidgetConversationOut(BaseModel):
+    messages: list[WidgetMessageOut]
+
+
+@widget_router.get(
+    "/conversation",
+    operation_id="getWidgetConversation",
+    responses=_errors((401, INVALID_TOKEN), (404, NO_LONGER_AVAILABLE)),
+)
+async def get_conversation(
+    public_id: str, db: Db, signer: Signer, clock: ClockDep, authorization: Authorization = ""
+) -> WidgetConversationOut:
+    """The token's Conversation, for a Visitor who comes back to the page: its Messages in
+    order, each answer with its sources. Coming back counts as activity, so the token's
+    24-hour window slides on; after 24 hours without activity the token is refused."""
+    try:
+        messages = await service.resume(
+            db, signer, public_id, _bearer(authorization), now=clock.now()
+        )
+    except service.InvalidTokenError:
+        raise _invalid() from None
+    except (AgentNotServedError, AgentNotLiveError):
+        raise _gone() from None
+    return WidgetConversationOut(
+        messages=[
+            WidgetMessageOut(
+                role=cast(Literal["user", "assistant"], m.role),
+                content=m.content,
+                citations=[
+                    WidgetCitationOut(label=c.label, document_name=c.document_name)
+                    for c in m.citations
+                ],
+            )
+            for m in messages
+        ]
+    )
+
+
+@widget_router.delete(
+    "/conversation",
+    operation_id="endWidgetConversation",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_errors((401, INVALID_TOKEN)),
+)
+async def end_conversation(
+    public_id: str, db: Db, signer: Signer, clock: ClockDep, authorization: Authorization = ""
+) -> None:
+    """Ends the token's Conversation: the token is refused from then on. The Visitor's next
+    question starts a new Conversation."""
+    try:
+        await service.end(db, signer, public_id, _bearer(authorization), now=clock.now())
+    except service.InvalidTokenError:
+        raise _invalid() from None
 
 
 # Allowed Origins, in the Studio
