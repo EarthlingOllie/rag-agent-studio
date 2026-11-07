@@ -7,7 +7,7 @@
 **Blocked by:**
 - [08-01: Input Guardrail: local classifier, block mode](01-input-guardrail-block.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A structured-output classifier runs through the model gateway
 - [ ] Fail-open or fail-closed behaviour is configurable
