@@ -1057,10 +1057,23 @@ run "migrations_run_as_a_one_off_task_on_the_backend_image" {
 run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https" {
   command = apply
 
+  # Distinct ARNs, so the task definition is shown to use these two roles and not the services' (the mock
+  # provider otherwise gives every role the same ARN).
+  override_resource {
+    target = aws_iam_role.migrate_task
+    values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-task" }
+  }
+
+  override_resource {
+    target = aws_iam_role.migrate_execution
+    values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" }
+  }
+
   assert {
     condition = (
-      aws_ecs_task_definition.migrate.task_role_arn == aws_iam_role.migrate_task.arn &&
-      aws_ecs_task_definition.migrate.execution_role_arn == aws_iam_role.migrate_execution.arn &&
+      aws_ecs_task_definition.migrate.task_role_arn == "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-task" &&
+      aws_ecs_task_definition.migrate.execution_role_arn == "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" &&
+      aws_iam_role.migrate_task.name == "studio-demo-ecs-migrate-task" && aws_iam_role.migrate_execution.name == "studio-demo-ecs-migrate-execution" &&
       aws_iam_role.migrate_task.assume_role_policy == aws_iam_role.task["api"].assume_role_policy &&
       aws_iam_role.migrate_execution.assume_role_policy == aws_iam_role.task["api"].assume_role_policy
     )
