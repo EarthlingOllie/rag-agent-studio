@@ -5,6 +5,7 @@ import {
   type Boot,
   type Citation,
   ChatError,
+  type Feedback,
   type Launcher,
   NO_LONGER_AVAILABLE,
   ask,
@@ -13,9 +14,11 @@ import {
   startConversation,
 } from "./chat";
 import { LAYOUT_MESSAGE, type Layout } from "./embed";
+import { FeedbackControls } from "./Feedback";
 import { tokenStore } from "./storage";
 
-type Message = { role: "visitor" | "agent"; text: string; citations: Citation[] };
+/** `id` is the Message's, once the API has it (a reply's when it has finished streaming). */
+type Message = { role: "visitor" | "agent"; text: string; citations: Citation[]; id?: string; feedback: Feedback | null };
 
 /**
  * - `loading`: checking a kept Conversation token, to resume its Conversation.
@@ -134,6 +137,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
               role: m.role === "user" ? "visitor" : "agent",
               text: m.content,
               citations: m.citations,
+              id: m.id,
+              feedback: m.feedback,
             })),
           );
         }
@@ -169,15 +174,15 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     setPending(true);
     setMessages((current) => [
       ...current,
-      { role: "visitor", text: question, citations: [] },
-      { role: "agent", text: "", citations: [] },
+      { role: "visitor", text: question, citations: [], feedback: null },
+      { role: "agent", text: "", citations: [], feedback: null },
     ]);
     try {
       if (token.current === null) {
         token.current = await startConversation(boot);
         store.save(token.current);
       }
-      await ask(boot, token.current, question, {
+      const id = await ask(boot, token.current, question, {
         onToken: (text) => {
           updateReply((reply) => ({ ...reply, text: reply.text + text }));
         },
@@ -188,6 +193,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
           updateReply((reply) => ({ ...reply, citations: [...reply.citations, citation] }));
         },
       });
+      updateReply((reply) => ({ ...reply, id }));
     } catch (failure) {
       if (failure instanceof ChatError && failure.status === 404) {
         retire();
@@ -347,6 +353,17 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
                 <MessageBubble key={index} from={message.role} label={message.role === "visitor" ? "You" : name}>
                   <p>{message.text}</p>
                   {boot.citations && message.citations.length > 0 && <Sources citations={message.citations} />}
+                  {message.role === "agent" && message.id !== undefined && (
+                    <FeedbackControls
+                      boot={boot}
+                      token={() => token.current}
+                      messageId={message.id}
+                      feedback={message.feedback}
+                      onChange={(feedback) => {
+                        setMessages((current) => current.map((m, i) => (i === index ? { ...m, feedback } : m)));
+                      }}
+                    />
+                  )}
                 </MessageBubble>
               ))}
           </ChatWindow>

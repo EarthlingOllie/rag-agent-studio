@@ -10,7 +10,9 @@ import {
   VISITOR_REPLY_ID,
   fakeConversationsApi,
   playgroundConversation,
+  playgroundDetail,
   visitorConversation,
+  visitorDetail,
 } from "../test/conversations";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -49,8 +51,8 @@ test("the Conversations tab lists Visitor and Playground Conversations, Playgrou
 
   expect(await screen.findByRole("heading", { level: 2, name: "Conversations" })).toBeInTheDocument();
   expect(await rows()).toEqual([
-    ["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "Testing leave"],
-    ["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "How much leave do I get?"],
+    ["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Testing leave"],
+    ["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "How much leave do I get?"],
   ]);
   const table = screen.getByRole("table", { name: "Conversations" });
   expect(within(table).getByText("Playground")).toHaveAccessibleDescription(
@@ -79,7 +81,7 @@ test("the list is filtered by Agent, Version, dates and Playground", async () =>
   await userEvent.type(within(filters()).getByLabelText("To (UTC)"), "2026-11-06");
   await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Playground only");
 
-  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "Testing leave"]]);
+  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Testing leave"]]);
   expect(Object.fromEntries(queries.at(-1) ?? [])).toEqual({
     agent_id: hrHelper.id,
     version_id: helperV1.id,
@@ -92,7 +94,7 @@ test("the list is filtered by Agent, Version, dates and Playground", async () =>
   });
 
   await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Visitors only");
-  expect(await rows()).toEqual([["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "How much leave do I get?"]]);
+  expect(await rows()).toEqual([["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "How much leave do I get?"]]);
   expect(queries.at(-1)?.get("playground")).toBe("false");
 
   // Another Agent's Versions differ, so changing the Agent clears the Version.
@@ -246,9 +248,102 @@ test("a Conversation where nothing was asked yet still opens from the list", asy
   setUp({ conversations: [{ ...playgroundConversation, preview: null, message_count: 0 }] });
   renderStudio(conversationsTab);
 
-  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "0", "(nothing asked yet)"]]);
+  expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "0", "None", "(nothing asked yet)"]]);
   expect(screen.getByRole("link", { name: "(nothing asked yet)" })).toHaveAttribute(
     "href",
     `${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`,
   );
+});
+
+test("the list shows each Conversation's thumbs and is filtered by feedback", async () => {
+  const liked = { ...visitorConversation, id: "c7000000-0000-4000-8000-000000000003", preview: "Liked it", thumbs_up: 2, thumbs_down: 0 };
+  const disliked = { ...visitorConversation, id: "c7000000-0000-4000-8000-000000000004", preview: "Hated it", thumbs_up: 0, thumbs_down: 3 };
+  const { queries } = setUp({ conversations: [playgroundConversation, liked, disliked] });
+  renderStudio(conversationsTab);
+  const feedbackOf = async () => (await rows()).map((row) => [row[6], row[5]]);
+  expect(await feedbackOf()).toEqual([
+    ["Testing leave", "None"],
+    ["Liked it", "2 up"],
+    ["Hated it", "3 down"],
+  ]);
+  const feedback = within(filters()).getByLabelText("Feedback");
+  expect(feedback).toHaveTextContent("Any or noneThumbs upThumbs downWith feedbackWithout feedback");
+
+  await userEvent.selectOptions(feedback, "Thumbs down");
+  expect(await screen.findByRole("link", { name: "Hated it" })).toBeInTheDocument();
+  expect(await feedbackOf()).toEqual([["Hated it", "3 down"]]);
+  expect(queries.at(-1)?.get("feedback")).toBe("down");
+
+  await userEvent.selectOptions(feedback, "Thumbs up");
+  expect(await feedbackOf()).toEqual([["Liked it", "2 up"]]);
+  await userEvent.selectOptions(feedback, "With feedback");
+  expect(await feedbackOf()).toEqual([
+    ["Liked it", "2 up"],
+    ["Hated it", "3 down"],
+  ]);
+  await userEvent.selectOptions(feedback, "Without feedback");
+  expect(await feedbackOf()).toEqual([["Testing leave", "None"]]);
+  expect(queries.at(-1)?.get("feedback")).toBe("none");
+
+  await userEvent.selectOptions(feedback, "Any or none");
+  expect(await rows()).toHaveLength(3);
+  expect(queries.at(-1)?.has("feedback")).toBe(false);
+});
+
+test("a feedback filter in the URL is kept", async () => {
+  const { queries } = setUp();
+  renderStudio(`${conversationsTab}?feedback=up`);
+  await rows();
+  expect(within(filters()).getByLabelText("Feedback")).toHaveValue("up");
+  expect(queries.at(-1)?.get("feedback")).toBe("up");
+});
+
+test("an unknown feedback filter in the URL is ignored", async () => {
+  const { queries } = setUp();
+  renderStudio(`${conversationsTab}?feedback=sideways`);
+  await rows();
+  expect(within(filters()).getByLabelText("Feedback")).toHaveValue("");
+  expect(queries.at(-1)?.has("feedback")).toBe(false);
+});
+
+test("an Editor reads each reply's Visitor feedback, with its comment and the Version it counts for", async () => {
+  setUp();
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+
+  const first = within(items[1] as HTMLElement).getByRole("group", { name: "Visitor feedback" });
+  expect(first).toHaveTextContent("Thumbs up · for Agent Version v1 · 2026-11-06 10:16 UTC");
+  const second = within(items[3] as HTMLElement).getByRole("group", { name: "Visitor feedback" });
+  expect(second).toHaveTextContent("Thumbs down · for Agent Version v2 · 2026-11-06 10:21 UTC");
+  expect(within(second).getByText("It should know part-time leave.").tagName).toBe("BLOCKQUOTE");
+  expect(within(items[0] as HTMLElement).queryByRole("group")).not.toBeInTheDocument();
+});
+
+test("a reply without feedback, or with feedback on a Draft answer, says so plainly", async () => {
+  setUp({
+    details: [
+      {
+        ...playgroundDetail,
+        messages: playgroundDetail.messages.map((message) =>
+          message.role === "assistant"
+            ? { ...message, feedback: { rating: "down", comment: null, agent_version_number: null, updated_at: "2026-11-07T08:05:00Z" } }
+            : message,
+        ),
+      },
+      visitorDetail,
+    ],
+  });
+  renderStudio(`${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`);
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  const feedback = within(items[1] as HTMLElement).getByRole("group", { name: "Visitor feedback" });
+  expect(feedback).toHaveTextContent("Thumbs down · for the Draft · 2026-11-07 08:05 UTC");
+  expect(within(feedback).queryByRole("blockquote")).not.toBeInTheDocument();
+});
+
+test("a reply nobody rated shows no feedback", async () => {
+  setUp({ details: [{ ...visitorDetail, messages: visitorDetail.messages.map((m) => ({ ...m, feedback: null })) }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  expect(within(items[1] as HTMLElement).getByText("No feedback")).toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Visitor feedback" })).not.toBeInTheDocument();
 });

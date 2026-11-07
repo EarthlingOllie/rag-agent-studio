@@ -15,7 +15,8 @@ export const PAGE_SIZE = 25;
 /**
  * The Conversations list's filters, kept in the tab's URL so they survive opening a
  * Conversation: an Agent, one of its Versions, `YYYY-MM-DD` UTC days (both inclusive), which
- * Conversations to show (Visitors' or the Playground's; both when left out) and the page.
+ * Conversations to show (Visitors' or the Playground's; both when left out), their Message
+ * Feedback (a reply with a thumbs up or down, any feedback, or none) and the page.
  */
 export interface ConversationFilters {
   agent?: string;
@@ -23,8 +24,12 @@ export interface ConversationFilters {
   from?: string;
   to?: string;
   show?: "visitors" | "playground";
+  feedback?: FeedbackFilter;
   page?: number;
 }
+
+export type FeedbackFilter = "up" | "down" | "any" | "none";
+const FEEDBACK_FILTERS: readonly unknown[] = ["up", "down", "any", "none"] satisfies FeedbackFilter[];
 
 /** The filters in a URL's search (or any record), leaving out anything that isn't one, an empty
  * value, and the first page. */
@@ -35,6 +40,7 @@ export function conversationFilters(search: Record<string, unknown>): Conversati
     if (typeof value === "string" && value !== "") filters[key] = value;
   }
   if (search.show === "visitors" || search.show === "playground") filters.show = search.show;
+  if (FEEDBACK_FILTERS.includes(search.feedback)) filters.feedback = search.feedback as FeedbackFilter;
   const page = Number(search.page);
   if (Number.isInteger(page) && page > 1) filters.page = page;
   return filters;
@@ -55,6 +61,7 @@ function listQuery(filters: ConversationFilters) {
     // The To day is inclusive here; the API's end is exclusive.
     ...(filters.to && { end: startOfUtcDay(filters.to, 1) }),
     ...(filters.show && { playground: filters.show === "playground" }),
+    ...(filters.feedback && { feedback: filters.feedback }),
   };
 }
 

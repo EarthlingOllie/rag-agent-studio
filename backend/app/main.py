@@ -36,6 +36,7 @@ from app.documents.ports import build_ports, install_ports
 from app.embed import api as embed_api
 from app.embed import branding_api
 from app.embed.tokens import TokenSigner
+from app.feedback import api as feedback_api
 from app.gateway.adapters import build_model_gateway
 from app.mail.factory import build_mailer
 from app.playground import api as playground_api
@@ -82,6 +83,7 @@ ROUTERS: Sequence[APIRouter] = (
     embed_api.origins_router,
     branding_api.router,
     embed_api.widget_router,
+    feedback_api.widget_router,
     embed_api.shell_router,
 )
 

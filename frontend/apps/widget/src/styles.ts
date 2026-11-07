@@ -15,6 +15,19 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .sources details { margin-top: 2px; }
 .sources summary { cursor: pointer; color: var(--theme-accent); }
 .sources blockquote { margin: 4px 0 0; padding-left: 8px; border-left: 2px solid var(--theme-muted); white-space: pre-wrap; }
+.feedback { margin-top: 6px; font-size: 12px; }
+.thumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.thumbs button, .comment-actions button { font: inherit; font-size: 12px; min-width: 32px; min-height: 28px; padding: 2px 8px; border-radius: var(--theme-radius); border: 1px solid var(--theme-muted); background: transparent; color: inherit; cursor: pointer; }
+.thumbs button[aria-pressed="true"] { border-color: var(--theme-primary); background: var(--theme-primary); color: var(--theme-on-primary); }
+.thumbs button:disabled, .comment-actions button:disabled { opacity: 0.6; cursor: default; }
+.thumbs button:focus-visible, .comment-actions button:focus-visible, .comment-form textarea:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
+.comment { margin: 4px 0 0; font-style: italic; white-space: pre-wrap; }
+.comment-form { display: grid; gap: 4px; margin-top: 4px; }
+.comment-form label { display: grid; gap: 2px; }
+.comment-form textarea { font: inherit; font-size: 13px; width: 100%; resize: vertical; padding: 4px 6px; border-radius: var(--theme-radius); border: 1px solid var(--theme-muted); background: var(--theme-surface); color: var(--theme-on-surface); }
+.comment-actions { display: flex; gap: 4px; }
+.feedback-notice { margin: 4px 0 0; color: var(--theme-muted); }
+.feedback-error { margin: 4px 0 0; padding: 4px 6px; border-radius: 6px; background: #fef2f2; color: #991b1b; }
 .controls { display: inline-flex; gap: 4px; }
 .controls button { font: inherit; font-size: 12px; font-weight: 400; padding: 3px 8px; border-radius: var(--theme-radius); border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
 .controls button:disabled { opacity: 0.6; cursor: default; }

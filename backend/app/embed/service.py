@@ -23,6 +23,8 @@ from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
+from app.feedback.models import MessageFeedback
+from app.feedback.service import feedback_on
 from app.playground.service import PreparedTurn
 from app.runtime.prompt import chunk_label
 from app.tenancy.repository import OrganisationScope
@@ -214,9 +216,12 @@ class ResumedCitation:
 
 @dataclass(frozen=True)
 class ResumedMessage:
+    id: uuid.UUID
     role: str
     content: str
     citations: list[ResumedCitation]
+    # The Visitor's Message Feedback on an answer, if they gave some.
+    feedback: MessageFeedback | None
 
 
 async def resume(
@@ -247,7 +252,11 @@ async def resume(
     )
     for message_id, rank, name in rows:
         cited.setdefault(message_id, []).append(ResumedCitation(chunk_label(cast(int, rank)), name))
-    return [ResumedMessage(m.role, m.content, cited.get(m.id, [])) for m in messages]
+    given = await feedback_on(session, [m.id for m in messages])
+    return [
+        ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id))
+        for m in messages
+    ]
 
 
 async def end(
@@ -259,3 +268,11 @@ async def end(
     conversation = await _conversation(session, signer, public_id, token, now=now)
     conversation.token_hash = None
     await session.commit()
+
+
+async def visitor_conversation(
+    session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
+) -> Conversation:
+    """The Visitor Conversation the Conversation token stands for, for other modules' widget
+    routes (Message Feedback); raises ``InvalidTokenError`` like the routes here."""
+    return await _conversation(session, signer, public_id, token, now=now)
