@@ -7,10 +7,10 @@
 **Blocked by:**
 - [08-01: Input Guardrail: local classifier, block mode](01-input-guardrail-block.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Warn adds a caution block to the prompt and flags the Message
-- [ ] Log only records the verdict
-- [ ] The mode is part of the versioned AgentConfig, and tests cover each mode
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Warn adds a caution block to the prompt and flags the Message
+- [x] Log only records the verdict
+- [x] The mode is part of the versioned AgentConfig, and tests cover each mode
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

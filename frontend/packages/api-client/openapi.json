@@ -2864,7 +2864,8 @@
             "enum": [
               "blocked",
               "replaced",
-              "flagged"
+              "flagged",
+              "logged"
             ],
             "title": "Action",
             "type": "string"

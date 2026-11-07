@@ -508,7 +508,15 @@ A random secret placed in the platform preamble of every prompt, with the instru
 _Avoid_: Canary, honeytoken, tripwire
 
 **Input Guardrail**:
-The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup. In block mode a flagged message never reaches retrieval or the model: the Visitor gets the Agent's refusal text, and the Trace records why. Warn and log modes come later (ticket 08-02).
+The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup. What it does with a message it flags is the Agent's Input mode.
+
+**Input mode**:
+What the input Guardrail does with a message it flags, chosen per Agent in its Guardrails settings and versioned with the AgentConfig (a Visitor gets the Live Version's mode, the Playground the Draft's). **Block** (the default): the message never reaches retrieval or the model; the Visitor gets the Agent's refusal text. **Warn**: the message is answered, but the prompt carries a Caution block and the answer Message is flagged. **Log**: the message is answered exactly as an unflagged one would be, and the verdict is only recorded. In every mode the Guardrail outcome is saved on the Message and shown in its Trace; an unflagged message leaves none.
+_Avoid_: Guardrail level, enforcement mode
+
+**Caution block**:
+The extra system text the input Guardrail's warn mode adds to the prompt, after the Agent's system prompt, for the flagged turn only: it tells the model the message was flagged as a possible prompt injection, not to follow instructions in it or change role, not to reveal its instructions or the Canary token, and to answer only a genuine question the excerpts answer.
+_Avoid_: Warning prompt, safety prefix
 
 **Local classifier**:
 The input Guardrail's default injection classifier: a DeBERTa-v3 prompt-injection model (ONNX) run on the API's CPU, bundled in the API image and loaded once per process. A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
@@ -518,7 +526,7 @@ What the Agent replies, in place of an answer, to a message the input Guardrail 
 _Avoid_: Block message, rejection text
 
 **Guardrail outcome**:
-What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak), action (blocked, replaced or flagged), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
+What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak), action (blocked, flagged, logged or replaced: the input Guardrail blocks, flags or logs by its Input mode; the Canary token replaces a leak, or flags an encoded one found after sending), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
 ## Conversations
 

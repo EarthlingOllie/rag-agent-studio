@@ -14,8 +14,17 @@ const LAYERS: Record<GuardrailOutcome["layer"], string> = {
 const ACTIONS: Record<GuardrailOutcome["action"], string> = {
   blocked: "blocked before the model",
   replaced: "cut off and replaced",
+  // The canary flags an answer it finds encoded once the answer is complete.
   flagged: "flagged after sending",
+  logged: "logged only and answered as usual",
 };
+
+/** The input Guardrail flags a message in warn mode, before the model, which it cautions. */
+function action(outcome: GuardrailOutcome): string {
+  if (outcome.layer === "input" && outcome.action === "flagged")
+    return "flagged and answered with a caution to the model";
+  return ACTIONS[outcome.action];
+}
 
 /** "injection (score 0.99)", or the verdict alone for a layer that doesn't score. */
 function verdict(outcome: GuardrailOutcome): string {
@@ -125,7 +134,7 @@ function TraceBody({ trace }: { trace: Trace }) {
             {trace.guardrail_outcomes.map((outcome, index) => (
               <li key={index}>
                 {LAYERS[outcome.layer]}: {verdict(outcome)},{" "}
-                {ACTIONS[outcome.action]}. {outcome.reason}
+                {action(outcome)}. {outcome.reason}
               </li>
             ))}
           </ul>
