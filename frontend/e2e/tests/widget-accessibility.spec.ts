@@ -37,7 +37,10 @@ async function publishedAgent(request: APIRequestContext): Promise<string> {
   });
   expect(draft.status()).toBe(200);
   expect((await request.post(`${agentPath}/versions`, { data: { note: "Accessible" } })).status()).toBe(201);
-  expect((await request.put(`${agentPath}/allowed-origins`, { data: { origins: [new URL(HOST_URL).origin] } })).status()).toBe(200);
+  const origins = await request.patch(`${agentPath}/operational-settings`, {
+    data: { allowed_origins: [new URL(HOST_URL).origin] },
+  });
+  expect(origins.status()).toBe(200);
   const theme = (await (await request.get(`${organisation}/theme`)).json()) as Record<string, unknown>;
   for (const key of ["updated_at", "logo", "avatar"]) Reflect.deleteProperty(theme, key);
   expect((await request.put(`${organisation}/theme`, { data: { ...theme, mode: "auto" } })).status()).toBe(200);
