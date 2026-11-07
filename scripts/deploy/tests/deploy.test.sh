@@ -154,6 +154,15 @@ done
 before $name '^docker push .*/rag-agent-studio/api:0123abc' '^terraform .* apply -input=false -auto-approve -var=image_tag=0123abc$' || ok=0
 [ $ok = 1 ] && echo "ok   $name"
 
+name=refuses_to_push_images_that_are_not_arm64
+run "$name" 0123abc STUB_IMAGE_IN_ECR=254 STUB_LOCAL_IMAGES=1 STUB_LOCAL_ARCH=amd64
+ok=1
+expect_status $name 1 || ok=0
+expect_output $name "rag-agent-studio/api:0123abc is built for amd64, but the tasks run on arm64" || ok=0
+never $name '^docker push' || ok=0
+never $name '^terraform .* apply -input=false -auto-approve -var=image_tag' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
 name=fails_when_the_tag_is_neither_in_ecr_nor_built
 run "$name" 0123abc STUB_IMAGE_IN_ECR=254 STUB_LOCAL_IMAGES=0
 ok=1

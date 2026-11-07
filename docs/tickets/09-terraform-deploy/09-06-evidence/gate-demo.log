@@ -1,9 +1,9 @@
-$ docs/tickets/09-terraform-deploy/09-06-evidence/gate.sh   # at 02e3d0d
+$ docs/tickets/09-terraform-deploy/09-06-evidence/gate.sh   # at 1e09798
 caught  ecs_migration_runs_another_command (exit 1):   run "migrations_run_as_a_one_off_task_on_the_backend_image"... fail
 caught  ecs_migration_gets_the_redis_token (exit 1):   run "migrations_run_as_a_one_off_task_on_the_backend_image"... fail
 caught  ecs_migration_reaches_redis (exit 1):   run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https"... fail
 caught  ecs_migration_reuses_the_api_task_role (exit 1):   run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https"... fail
-caught  ecs_migration_runs_in_public_subnets (exit 1):   run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https"... fail
+caught  ecs_migration_runs_in_public_subnets (exit 1):   run "outputs_how_to_run_the_migration_task_and_each_service_task_definition"... fail
 caught  demo_database_does_not_admit_migrations (exit 1):   run "wires_the_compute_module_into_the_data_modules"... fail
 caught  demo_deploy_output_lacks_the_bucket (exit 1):   run "outputs_everything_the_deploy_workflow_needs"... fail
 caught  demo_deploy_output_has_a_stale_tag (exit 1):   run "outputs_everything_the_deploy_workflow_needs"... fail
@@ -11,9 +11,9 @@ caught  demo_drops_the_cdn (exit 1): FAIL cdn: envs/demo does not compose it
 caught  deploy_ignores_a_failed_migration (exit 1): FAIL a_failed_migration_stops_before_any_service_rolls: exit 0, expected 1. Output: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
 caught  deploy_does_not_wait_for_the_migration (exit 1): FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs run-task' (line 7) before '^aws ecs wait tasks-stopped --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-
 caught  deploy_does_not_wait_for_stable_services (exit 1): FAIL deploys_in_order_at_the_given_tag: expected '^aws ecs update-service' (line 10) before '^aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api studio-demo-ecs-beat
-caught  deploy_skips_the_smoke_check (exit 1): FAIL deploys_in_order_at_the_given_tag: expected 'Smoke check passed: http://127.0.0.1:44503' in: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
+caught  deploy_skips_the_smoke_check (exit 1): FAIL deploys_in_order_at_the_given_tag: expected 'Smoke check passed: http://127.0.0.1:37233' in: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
 caught  deploy_does_not_invalidate_the_loader (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: invalidation was: aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html --query Inval
-caught  deploy_caches_widget_js_for_a_year (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: sync was: aws s3 sync /tmp/tmp.HkrmqB4pnf/static s3://studio-demo-static-123456789012 --delete --cache-control public,max
+caught  deploy_caches_widget_js_for_a_year (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: sync was: aws s3 sync /tmp/tmp.UYBynNv0Bj/static s3://studio-demo-static-123456789012 --delete --cache-control public,max
 caught  deploy_uploads_only_the_studio (exit 1): FAIL uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader: uploaded: ./assets/index-abc123.js ./index.html 
 caught  deploy_runs_migrations_with_a_public_ip (exit 1): FAIL runs_the_migration_task_in_the_private_subnets: run-task call was: aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-
 caught  deploy_accepts_latest (exit 1): FAIL rejects_the_tag_'latest': exit 0, expected 2. Output: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)

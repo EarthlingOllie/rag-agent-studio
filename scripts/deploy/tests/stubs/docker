@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Stand-in for docker in the deploy script tests: logs each call; images exist locally when STUB_LOCAL_IMAGES=1.
+# Stand-in for docker in the deploy script tests: logs each call; images exist locally when STUB_LOCAL_IMAGES=1, built for
+# STUB_LOCAL_ARCH (default arm64).
 echo "docker $*" >>"$STUB_CALLS"
 case "$1 $2" in
-  "image inspect") [ "${STUB_LOCAL_IMAGES:-0}" = 1 ] ;;
+  "image inspect")
+    [ "${STUB_LOCAL_IMAGES:-0}" = 1 ] || exit 1
+    echo "${STUB_LOCAL_ARCH:-arm64}" ;;
   "login --username") cat >/dev/null ;;
 esac

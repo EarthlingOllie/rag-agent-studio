@@ -2,7 +2,7 @@
 # Brings the demo environment up at an image tag (spec 09 stories 25, 26 and 32). The deploy workflow runs it; it
 # also runs by hand with AWS credentials for the account. In order:
 #   1. terraform init against the bootstrap's state bucket, and apply the ECR repositories (a first run creates them)
-#   2. push the API and Studio images at the tag, unless ECR already has the tag
+#   2. push the API and Studio images at the tag (built for arm64), unless ECR already has the tag
 #   3. terraform apply at the tag: new task definitions for the services and the migration task (the services
 #      themselves do not roll on apply; see the ecs module)
 #   4. run the migration task (`alembic upgrade head`) and wait for it; anything but exit 0 stops the deploy here
@@ -46,8 +46,13 @@ registry="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$
 if aws ecr describe-images --repository-name rag-agent-studio/api --image-ids "imageTag=$tag" >/dev/null 2>&1; then
   step "rag-agent-studio/api:$tag is already in ECR"
 else
-  if ! docker image inspect "rag-agent-studio/api:$tag" >/dev/null 2>&1; then
-    echo "::error title=No image::rag-agent-studio/api:$tag is not in ECR and was not built here. Deploy a pushed tag, or build it first (make images IMAGE_TAG=$tag)." >&2
+  if ! arch=$(docker image inspect --format '{{.Architecture}}' "rag-agent-studio/api:$tag" 2>/dev/null); then
+    echo "::error title=No image::rag-agent-studio/api:$tag is not in ECR and was not built here. Deploy a pushed tag, or build it first (make images IMAGE_TAG=$tag IMAGE_PLATFORM=linux/arm64)." >&2
+    exit 1
+  fi
+  # The tasks run on ARM64 Fargate (ADR-0010); an x86 image would fail to start with "exec format error".
+  if [ "$arch" != arm64 ]; then
+    echo "::error title=Wrong architecture::rag-agent-studio/api:$tag is built for $arch, but the tasks run on arm64. Build it with IMAGE_PLATFORM=linux/arm64." >&2
     exit 1
   fi
   step "Pushing the images at $tag to $registry"

@@ -48,8 +48,16 @@ jobs:
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice title=Push skipped::AWS secrets are not configured. Images are built but not pushed."
           fi
+      # Images pushed to ECR must be ARM64, the tasks' architecture (ADR-0010), so they build under QEMU. Branch builds
+      # that are not pushed stay native and fast.
+      - uses: docker/setup-qemu-action@v3
+        if: steps.aws.outputs.configured == 'true' && github.ref == 'refs/heads/main'
+        with:
+          platforms: arm64
       - name: Build the API and Studio images
-        run: make images IMAGE_TAG=${{ github.sha }}
+        env:
+          IMAGE_PLATFORM: ${{ steps.aws.outputs.configured == 'true' && github.ref == 'refs/heads/main' && 'linux/arm64' || '' }}
+        run: make images IMAGE_TAG=${{ github.sha }} IMAGE_PLATFORM="$IMAGE_PLATFORM"
       - uses: aws-actions/configure-aws-credentials@v4
         if: steps.aws.outputs.configured == 'true' && github.ref == 'refs/heads/main'
         with:
@@ -108,9 +116,14 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm build
-      - name: Build the images at this commit
+      # The tasks run on ARM64 Fargate (ADR-0010): build for it under QEMU. deploy.sh refuses to push anything else.
+      - uses: docker/setup-qemu-action@v3
         if: inputs.image_tag == ''
-        run: make images IMAGE_TAG="$TAG"
+        with:
+          platforms: arm64
+      - name: Build the images at this commit (linux/arm64)
+        if: inputs.image_tag == ''
+        run: make images IMAGE_TAG="$TAG" IMAGE_PLATFORM=linux/arm64
       - name: Install Terraform
         run: scripts/ci/install-tools.sh terraform
       - uses: aws-actions/configure-aws-credentials@v4

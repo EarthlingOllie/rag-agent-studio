@@ -56,6 +56,7 @@ mutate deploy_caches_widget_js_for_a_year scripts/deploy/deploy.sh 'no_cache=(in
 mutate deploy_uploads_only_the_studio scripts/deploy/deploy.sh 'cp -R "$widget_dist/." "$work/static/"' 'true' scripts/deploy/tests/deploy.test.sh
 mutate deploy_runs_migrations_with_a_public_ip scripts/deploy/deploy.sh 'assignPublicIp=DISABLED' 'assignPublicIp=ENABLED' scripts/deploy/tests/deploy.test.sh
 mutate deploy_accepts_latest scripts/deploy/deploy.sh '&& [ "$tag" != latest ]' '' scripts/deploy/tests/deploy.test.sh
+mutate deploy_pushes_x86_images scripts/deploy/deploy.sh 'if [ "$arch" != arm64 ]; then' 'if false; then' scripts/deploy/tests/deploy.test.sh
 mutate deploy_pushes_a_tag_already_in_ecr scripts/deploy/deploy.sh 'if aws ecr describe-images' 'if false && aws ecr describe-images' scripts/deploy/tests/deploy.test.sh
 
 # --- Smoke check ------------------------------------------------------------------------------------------------------

@@ -11,10 +11,10 @@ Actions, **deploy**, Run workflow. Inputs:
 - `image_tag`: the image tag to deploy. Leave it empty to build and deploy the commit you run the workflow on (its SHA). A tag that ECR already has (every merge to `main` pushes one) is deployed without rebuilding.
 - `smoke_agent_id` (optional): the public ID of a live Agent. The smoke check then fetches that Agent's widget shell and expects 200. Empty checks an unknown Agent, which answers 404 with `frame-ancestors *`.
 
-The job builds the Studio and widget (`pnpm build`), builds the images if no tag was given, and runs [`scripts/deploy/deploy.sh`](../scripts/deploy/deploy.sh):
+The job builds the Studio and widget (`pnpm build`), builds the images for `linux/arm64` if no tag was given, and runs [`scripts/deploy/deploy.sh`](../scripts/deploy/deploy.sh):
 
 1. `terraform init` against the state bucket, then `terraform apply -target=module.ecr`, so that a first run creates the ECR repositories before pushing to them.
-2. Push `rag-agent-studio/api` and `rag-agent-studio/studio` at the tag, unless ECR already has it. A tag that is neither in ECR nor built in the job fails here, before anything else changes.
+2. Push `rag-agent-studio/api` and `rag-agent-studio/studio` at the tag, unless ECR already has it. The job builds them for `linux/arm64` under QEMU, because the tasks run on ARM64 Fargate (ADR-0010); the script refuses to push an image of any other architecture. A tag that is neither in ECR nor built in the job fails here, before anything else changes.
 3. `terraform apply -var=image_tag=<tag>`. This registers new task definitions for the API, worker, Beat and the migration task. It does **not** roll the services: they ignore task definition changes after creation (`lifecycle.ignore_changes` in the ecs module), so code never runs against an old schema.
 4. Run the migration task (`alembic upgrade head`, its own least-privilege roles and security group, in the private subnets), wait for it to stop, and read its exit code. Anything but 0 stops the deploy; services keep running the old version.
 5. Point each service at its new task definition (`aws ecs update-service`) and wait until all three are stable (`aws ecs wait services-stable`). A service that cannot stabilise is rolled back by its deployment circuit breaker, and the run fails.
@@ -24,7 +24,7 @@ The job builds the Studio and widget (`pnpm build`), builds the images if no tag
 
 Deploys and destroys share the `demo-environment` concurrency group, so they never overlap.
 
-To deploy from a laptop instead, with credentials for the account: build the frontend (`cd frontend && pnpm build`), then `TF_STATE_BUCKET=<state_bucket_name> AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`. Run `make images IMAGE_TAG=<tag>` first if the tag is not in ECR yet. Tagging the images on an x86 laptop gives x86 images, while the tasks run on ARM64, so prefer the workflow or an ARM machine.
+To deploy from a laptop instead, with credentials for the account: build the frontend (`cd frontend && pnpm build`), then `TF_STATE_BUCKET=<state_bucket_name> AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`. Run `make images IMAGE_TAG=<tag> IMAGE_PLATFORM=linux/arm64` first if the tag is not in ECR yet (on an x86 machine this needs QEMU binfmt support, as Docker Desktop has).
 
 `terraform output` in `infra/envs/demo` gives:
 
