@@ -37,6 +37,8 @@ type ChatMessage = {
   citations?: Citation[];
   // Set once the answer is saved, so its Trace can be opened.
   messageId?: string;
+  // The input Guardrail blocked the question: the content is the Agent's refusal text.
+  refused?: boolean;
 };
 
 /** Where a citation chip leads: the cited Chunk in the Document viewer. */
@@ -193,6 +195,10 @@ function Playground({
           // The answer leaked the Canary token: what streamed is replaced by the fallback text.
           appendToAnswer((answer) => ({ ...answer, content: text }));
         },
+        (text) => {
+          // The input Guardrail blocked the question: the refusal text is the whole reply.
+          appendToAnswer((answer) => ({ ...answer, content: text, refused: true }));
+        },
       );
       appendToAnswer((answer) => ({
         ...answer,
@@ -277,6 +283,11 @@ function Playground({
             className={`rounded px-3 py-2 text-sm ${message.role === "user" ? "bg-slate-100" : "border border-slate-200 bg-white"}`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
+            {message.refused && (
+              <p className="mt-1 text-xs font-medium text-amber-900">
+                Blocked by the input Guardrail: the model wasn&apos;t asked.
+              </p>
+            )}
             {message.citations && (
               <Sources
                 citations={message.citations}

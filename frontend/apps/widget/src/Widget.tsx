@@ -2,7 +2,13 @@ import { type SubmitEvent, useRef, useState } from "react";
 
 import { type Boot, type Citation, ChatError, ask, startConversation } from "./chat";
 
-type Message = { role: "visitor" | "agent"; text: string; citations: Citation[] };
+type Message = {
+  role: "visitor" | "agent";
+  text: string;
+  citations: Citation[];
+  // The input Guardrail blocked the Visitor's message: the text is the Agent's refusal.
+  refused?: boolean;
+};
 
 /** The chat a Visitor sees inside the iframe: their questions and the Agent's streamed replies. */
 export function Widget({ boot }: { boot: Boot }) {
@@ -34,6 +40,9 @@ export function Widget({ boot }: { boot: Boot }) {
         onReplace: (text) => {
           updateReply((reply) => ({ ...reply, text }));
         },
+        onRefusal: (text) => {
+          updateReply((reply) => ({ ...reply, text, refused: true }));
+        },
         onCitation: (citation) => {
           updateReply((reply) => ({ ...reply, citations: [...reply.citations, citation] }));
         },
@@ -60,7 +69,11 @@ export function Widget({ boot }: { boot: Boot }) {
       <h1>{boot.name}</h1>
       <ol role="log" aria-label="Conversation" className="messages">
         {messages.map((message, index) => (
-          <li key={index} className={message.role} aria-label={message.role === "visitor" ? "You" : boot.name}>
+          <li
+            key={index}
+            className={message.refused ? `${message.role} refusal` : message.role}
+            aria-label={message.role === "visitor" ? "You" : boot.name}
+          >
             <p>{message.text}</p>
             {message.citations.length > 0 && (
               <p className="sources">

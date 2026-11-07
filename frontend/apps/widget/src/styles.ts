@@ -10,6 +10,7 @@ html, body { margin: 0; height: 100%; font: 15px/1.4 system-ui, sans-serif; colo
 .messages li p { margin: 0; }
 .visitor { background: #e2e8f0; align-self: flex-end; max-width: 85%; }
 .agent { border: 1px solid #cbd5e1; max-width: 95%; }
+.agent.refusal { border-color: #b45309; background: #fffbeb; }
 .sources { margin-top: 4px !important; font-size: 0.8rem; color: #334155; }
 [role="alert"] { margin: 0; padding: 6px 8px; border-radius: 6px; background: #fef2f2; color: #991b1b; }
 form { display: grid; gap: 4px; }

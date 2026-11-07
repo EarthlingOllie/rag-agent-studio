@@ -68,6 +68,8 @@ export type Handlers = {
   onToken: (text: string) => void;
   onCitation: (citation: Citation) => void;
   onReplace: (text: string) => void;
+  /** The input Guardrail blocked the message: the Agent's refusal text is the whole reply. */
+  onRefusal: (text: string) => void;
 };
 
 /** Asks the Agent's Live Version; resolves once the answer is complete. */
@@ -96,6 +98,9 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
           break;
         case "replace":
           handlers.onReplace(data.text);
+          break;
+        case "refusal":
+          handlers.onRefusal(data.text);
           break;
         case "citation":
           handlers.onCitation({ label: data.label, document_name: data.document_name });
