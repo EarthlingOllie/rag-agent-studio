@@ -74,6 +74,13 @@ def build_ports(settings: Settings, envelope: EnvelopeEncryption) -> IngestionPo
     )
 
 
+def warm_up(ports: IngestionPorts) -> None:
+    """Loads the ingestion scan's local model, if that is its classifier, so the first
+    Document a process ingests doesn't wait for it."""
+    if isinstance(ports.classifier, LocalClassifier):
+        ports.classifier.load()
+
+
 class PortsNotInstalledError(RuntimeError):
     """A task ran before the API or worker installed the ingestion adapters."""
 

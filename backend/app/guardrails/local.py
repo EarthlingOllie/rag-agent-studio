@@ -70,6 +70,10 @@ class LocalClassifier:
         # ingestion scan's "Chunk".
         self.subject = subject
 
+    def load(self) -> None:
+        """Loads the model now instead of on the first text (a worker process warming up)."""
+        self._loaded()
+
     def _loaded(self) -> LoadedModel:
         with self._lock:
             if self._model is None:

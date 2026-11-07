@@ -15,7 +15,13 @@ source $S/env0805.sh
 docker exec rag0805-pg psql -U studio -c "DROP DATABASE IF EXISTS studio_test" -c "CREATE DATABASE studio_test" >/dev/null
 (echo "\$ make test-backend (TEST_* -> rag0805-pg/redis/rustfs) @ $H"; timeout 6000 make test-backend 2>&1 | grep -vE '^\{"' ; echo "exit ${PIPESTATUS[0]}") > $E/backend-tests.log
 df -h / | tail -1
-(timeout 3600 bash $E/build.sh "$C0" 0805 > $E/images.log 2>&1; echo "exit $?" >> $E/images.log)
+rm -rf $C0/backend/.venv  # not in the image (.dockerignore); frees disk for the build
+# The full build needs several GB free on this shared disk; below 9 GB the overlay build stands in (see README).
+if [ "$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" -ge 9 ]; then
+  (echo "\$ build.sh (clean clone of $H)"; timeout 3600 bash $E/build.sh "$C0" 0805 2>&1; echo "exit $?") > $E/images.log 2>&1
+else
+  (echo "\$ build-overlay.sh on api/studio:0702 (clean clone of $H; disk below 9 GB)"; BASE_API=rag-agent-studio/api:0702 BASE_STUDIO=rag-agent-studio/studio:0702 timeout 3600 bash $E/build-overlay.sh "$C0" 0805 2>&1; echo "exit $?") > $E/images.log 2>&1
+fi
 set -a; source $E/e2e.env; set +a; export CI=1; CMP="docker compose -p rag0805-e2e -f docker-compose.yml -f $E/compose.sandbox.yml"
 $CMP down -v > /dev/null 2>&1
 (echo "\$ (env from e2e.env) CI=1 make e2e COMPOSE='$CMP' @ $H (CI settings: one retry)"; timeout 3600 make e2e COMPOSE="$CMP" 2>&1; echo "exit $?") > $E/e2e.log 2>&1

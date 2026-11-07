@@ -1,76 +1,152 @@
-+ docker build -t rag-agent-studio/api:0805 backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)
++ overlay rag-agent-studio/api:0805 on rag-agent-studio/api:0702 (sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241)
 #0 building with "default" instance using docker driver
 
-#1 [internal] load build definition from Dockerfile.backend
-#1 transferring dockerfile: 3.77kB done
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 201B done
 #1 DONE 0.0s
 
-#2 [context sandboxca] load .dockerignore
-#2 transferring sandboxca: 2B done
+#2 [internal] load metadata for docker.io/rag-agent-studio/api:0702
 #2 DONE 0.0s
 
-#3 [internal] load metadata for docker.io/library/python:3.13-slim
-#3 DONE 0.1s
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
 
-#4 [internal] load .dockerignore
-#4 transferring context: 125B 0.0s done
+#4 [1/5] FROM docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241
+#4 resolve docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241 0.0s done
+#4 DONE 0.2s
+
+#5 [internal] load build context
+#5 transferring context: 932.88kB 0.1s done
+#5 DONE 0.1s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241
+#4 extracting sha256:7d53da9ee498c4982659b75c4eae503dfffaeaf66172bfbdd03e35669dd1f948 0.0s done
+#4 extracting sha256:b067a7f3cc1b532ea1c57f897c5908e3f1b0796713ae3ee3796eb81dee1ea090 0.0s done
+#4 extracting sha256:b7058f0810dcd2d956589cf27c98373af485e4368dc19104eeb66ddd8b820e86 0.1s done
+#4 extracting sha256:4e1f3c99a31718d97c96269d280bacc6fddb8b9a1b23dfc0dcc97f29b4b8a16a
+#4 extracting sha256:4e1f3c99a31718d97c96269d280bacc6fddb8b9a1b23dfc0dcc97f29b4b8a16a 10.7s done
+#4 extracting sha256:88f56d4c93478c1bb9fd205d9e413e7479c99772b00284fb90ec0609cdee271e
+#4 extracting sha256:88f56d4c93478c1bb9fd205d9e413e7479c99772b00284fb90ec0609cdee271e 0.1s done
+#4 extracting sha256:8d5a1f9051a2b0b4785ed66b1b7ac010c081fa471ab625db0ced79de63183de7
+#4 extracting sha256:8d5a1f9051a2b0b4785ed66b1b7ac010c081fa471ab625db0ced79de63183de7 0.0s done
+#4 extracting sha256:bbf38e25692e5aee8fa591c5cedb7e9b7a8ddf05f29ce2751d3c249b288b87d0 0.1s done
+#4 DONE 11.4s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241
+#4 extracting sha256:cd5fe304a9d492877535729ea53e9bb0f294e05de64d6d0d01ed86ed603da9d2 0.0s done
+#4 extracting sha256:0a50784e4ebe73d3896ed20c5704ee016c53c09dbcb13601b272f6a2f4e20cc0
+#4 extracting sha256:0a50784e4ebe73d3896ed20c5704ee016c53c09dbcb13601b272f6a2f4e20cc0 20.4s done
+#4 extracting sha256:ce5240197c91bfb5e43c974c9b8ddc3711e7f90d507815550a9e2d1f794d6154
+#4 extracting sha256:ce5240197c91bfb5e43c974c9b8ddc3711e7f90d507815550a9e2d1f794d6154 0.0s done
+#4 DONE 31.9s
+
+#6 [2/5] RUN rm -rf /app/app /app/migrations
+#6 DONE 2.2s
+
+#7 [3/5] COPY alembic.ini /app/
+#7 DONE 0.0s
+
+#8 [4/5] COPY app /app/app
+#8 DONE 0.1s
+
+#9 [5/5] COPY migrations /app/migrations
+#9 DONE 0.1s
+
+#10 exporting to image
+#10 exporting layers
+#10 exporting layers 0.3s done
+#10 exporting manifest sha256:f59658e792e9fe325c10c83103009523d533b172f11430250d279fbfb17a2b89
+#10 exporting manifest sha256:f59658e792e9fe325c10c83103009523d533b172f11430250d279fbfb17a2b89 0.0s done
+#10 exporting config sha256:572f10f9ea5f35133c15af5f457991a3e9e332888d027b9b37945fdf6df94aef 0.0s done
+#10 exporting attestation manifest sha256:b27f65e5e809a4fcf53e427ebac506943c43128131e5999770fb3361fdb13e8f done
+#10 exporting manifest list sha256:773e854409c0bb471a9a3bdf2a376e0a808c18507b4fb31982de72a7b66abb00 done
+#10 naming to docker.io/rag-agent-studio/api:0805 done
+#10 unpacking to docker.io/rag-agent-studio/api:0805 0.1s done
+#10 DONE 0.6s
++ docker run: the bundled classifier loads with no network; the ingestion scan uses it
+[0;93m2026-11-07 17:11:22.040150109 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+attack: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the message 1.00 as a prompt injection.')]
+benign: [None]
+ingestion scan adapter: LocalClassifier Chunk shares the model: True
+planted Chunk: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the Chunk 1.00 as a prompt injection.')]
+policy Chunk: [None]
++ overlay rag-agent-studio/studio:0805 on rag-agent-studio/studio:0702 (sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 301B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/rag-agent-studio/studio:0702
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05
+#4 resolve docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05 0.0s done
 #4 DONE 0.0s
 
 #5 [internal] load build context
-#5 DONE 0.0s
+#5 transferring context: 2.40MB 0.3s done
+#5 DONE 0.3s
 
-#6 [context sandboxca] load from client
-#6 DONE 0.0s
+#4 [1/5] FROM docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05
+#4 extracting sha256:5e243d4d1d1ea074060558421aec8046c785db64e082381425a8f9a987de4d24 0.1s done
+#4 extracting sha256:b38d66f295a0641ae73494df8f1276494aca6761c61dc6d7a58318ec3d9df3c7 0.0s done
+#4 extracting sha256:b81b9d505583c0faa3e23e88241ee14bd4802a08ab7e85dc7dfaac7b4254cb01 0.0s done
+#4 extracting sha256:11b3e041c39b65bb419a734f063b12aef6f73510defbb18f3e08c54e0fb9dc64
+#4 extracting sha256:11b3e041c39b65bb419a734f063b12aef6f73510defbb18f3e08c54e0fb9dc64 5.0s done
+#4 DONE 5.3s
 
-#7 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
-#7 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.1s done
-#7 DONE 0.1s
+#4 [1/5] FROM docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05
+#4 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 done
+#4 DONE 5.3s
 
-#6 [context sandboxca] load from client
-#6 transferring sandboxca: 36B done
-#6 DONE 0.1s
+#6 [2/5] COPY --chown=node:node src/ /app/
+#6 DONE 0.7s
 
-#5 [internal] load build context
-#5 transferring context: 2.70MB 0.6s done
-#5 DONE 0.6s
+#7 [3/5] WORKDIR /app/apps/widget
+#7 DONE 0.2s
 
-#8 [stage-1  6/11] WORKDIR /app
-#8 CACHED
+#8 [4/5] RUN rm -rf dist && node /app/node_modules/vite/bin/vite.js build && node /app/node_modules/vite/bin/vite.js build --config vite.embed.config.ts
+#8 1.893 vite v8.3.5 building client environment for production...
+#8 1.958 transforming...
+#8 2.503 ✓ 76 modules transformed.
+#8 2.944 rendering chunks...
+#8 3.929 computing gzip size...
+#8 3.945 dist/widget/assets/widget.js  642.28 kB │ gzip: 202.53 kB
+#8 3.945 
+#8 3.945 ✓ built in 2.04s
+#8 3.945 [plugin builtin:vite-reporter] 
+#8 3.945 (!) Some chunks are larger than 500 kB after minification. Consider:
+#8 3.945 - Using dynamic import() to code-split the application
+#8 3.945 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#8 3.945 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#8 4.570 vite v8.3.5 building client environment for production...
+#8 4.621 transforming...
+#8 4.621 ✓ 3 modules transformed.
+#8 4.628 rendering chunks...
+#8 4.632 computing gzip size...
+#8 4.632 dist/embed.js  1.36 kB │ gzip: 0.77 kB
+#8 4.632 
+#8 4.633 ✓ built in 57ms
+#8 DONE 4.8s
 
-#9 [build 4/6] WORKDIR /app
-#9 CACHED
+#9 [5/5] WORKDIR /app/apps/studio
+#9 DONE 0.1s
 
-#10 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
-#10 CACHED
-
-#11 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
-#11 CACHED
-
-#12 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
-#12 CACHED
-
-#13 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
-#13 CACHED
-
-#14 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
-#14 CACHED
-
-#15 [build 5/6] COPY pyproject.toml uv.lock ./
-#15 CACHED
-
-#16 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
-#16 CACHED
-
-#17 [stage-1  7/11] COPY alembic.ini ./
-#17 CACHED
-
-#18 [stage-1  8/11] COPY app ./app
-#18 DONE 2.0s
-
-#19 [stage-1  9/11] COPY migrations ./migrations
-#19 DONE 0.1s
-
-#20 [stage-1 10/11] RUN mkdir -p /opt/models/docling     && if [ "true" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && python -c "from app.guardrails import onnx_model; onnx_model.load()"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
-#20 10.21 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-#20 10.48 Fetching 5 files:  20%|██        | 1/5 [00:00<00:01,  3.79it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  4.50it/s]Fetching 5 files:  60%|██████    | 3/5 [00:00<00:00,  5.29it/s]Fetching 5 files:  80%|████████  | 4/5 [00:01<00:00,  1.80it/s]Fetching 5 files: 100%|██████████| 5/5 [00:10<00:00,  3.43s/it]Fetching 5 files: 100%|██████████| 5/5 [00:10<00:00,  2.05s/it]
-#20 37.41 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#10 exporting to image
+#10 exporting layers
+#10 exporting layers 0.4s done
+#10 exporting manifest sha256:7f7870f984ba91e4d0f112344e37b99d67d12b4c88f10a46427b9b56580faf3c 0.0s done
+#10 exporting config sha256:c97c00360671ee5f58a49b356d5fd47e25119b4d3bd76da7a608d774886f7022 0.1s done
+#10 exporting attestation manifest sha256:eb80f7b98f09c8a888795101a11bcbd7516b5a40cd3a6db3707e472cb0553cd8 done
+#10 exporting manifest list sha256:f63bd5f592e6619bd953956c704b4ae888384210796930058317c67c82a46b64 0.1s done
+#10 naming to docker.io/rag-agent-studio/studio:0805 done
+#10 unpacking to docker.io/rag-agent-studio/studio:0805
+#10 unpacking to docker.io/rag-agent-studio/studio:0805 0.2s done
+#10 DONE 1.0s
+exit 0
