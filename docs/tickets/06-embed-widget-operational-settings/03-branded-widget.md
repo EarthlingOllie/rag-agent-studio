@@ -8,7 +8,7 @@
 - [06-01: Embed tracer](01-embed-tracer.md)
 - [02-05: Theme editor](../02-provider-credentials-theme/05-theme-editor.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The shell inlines the resolved Theme plus the per-Agent override, which is Owner-only and not versioned
 - [ ] Bubble and inline launchers are chosen by data attributes, with postMessage resizing that validates the message origin
