@@ -67,10 +67,10 @@ test.describe("Rate limits", () => {
     // A Visitor on the host page: the first message is answered, the second is over the limit.
     const visitor = await browser.newContext();
     const host = await visitor.newPage();
-    const refusals: string[] = [];
+    const bodies: string[] = [];
     host.on("response", (response) => {
       if (response.url().endsWith(`/api/widget/agents/${publicId}/messages`)) {
-        void response.text().then((body) => refusals.push(body));
+        void response.text().then((body) => bodies.push(body));
       }
     });
     await host.goto(`${HOST_URL}/?agent=${publicId}&launcher=inline`);
@@ -86,8 +86,12 @@ test.describe("Rate limits", () => {
     // Only the first question got an answer; the refusal was an `unavailable` event.
     await expect(log.getByRole("listitem", { name: "Busy helper" })).toHaveCount(1);
     await expect
-      .poll(() => refusals.at(-1))
-      .toBe(`event: unavailable\ndata: ${JSON.stringify({ reason: "rate_limited", message: UNAVAILABLE })}\n\n`);
+      .poll(() => {
+        // The last response's only event, as [name, data].
+        const [event = "", data = "null"] = (bodies.at(-1) ?? "").trim().split("\n");
+        return [event, JSON.parse(data.replace(/^data: /, "")) as unknown];
+      })
+      .toEqual(["event: unavailable", { reason: "rate_limited", message: UNAVAILABLE }]);
     await visitor.close();
 
     // The Playground has no limits: two questions in a row are both answered.
