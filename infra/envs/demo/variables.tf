@@ -21,7 +21,7 @@ variable "aws_region" {
 }
 
 variable "image_tag" {
-  description = "Backend image tag the services run. The deploy workflow (ticket 09-06) sets it to the pushed git SHA; until then services point at a tag that does not exist yet."
+  description = "Backend image tag the services and the migration task run. The deploy workflow sets it to the tag it deploys (by default the pushed git SHA); bootstrap is only a placeholder for plans and tests."
   type        = string
   default     = "bootstrap"
 }
