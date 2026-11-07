@@ -1,8 +1,8 @@
 """Message Feedback: a Visitor's thumbs up or down, with an optional comment, on an Agent reply;
 one per Message, attributed to the Message's Agent Version when written.
 
-Revision ID: 0031_message_feedback
-Revises: 0030_agent_theme_override
+Revision ID: 0032_message_feedback
+Revises: 0031_operational_settings
 Create Date: 2026-11-07
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0031_message_feedback"
-down_revision: str | None = "0030_agent_theme_override"
+revision: str = "0032_message_feedback"
+down_revision: str | None = "0031_operational_settings"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
