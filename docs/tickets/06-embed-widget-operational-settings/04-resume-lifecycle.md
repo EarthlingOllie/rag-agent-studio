@@ -7,7 +7,7 @@
 **Blocked by:**
 - [06-01: Embed tracer](01-embed-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Conversation token is kept in iframe storage, and resume works within a 24-hour sliding window and is refused after it
 - [ ] Visitors can start a new Conversation or end the current one
