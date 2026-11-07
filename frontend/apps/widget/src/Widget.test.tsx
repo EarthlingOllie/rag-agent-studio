@@ -26,6 +26,10 @@ function render(element: ReactElement) {
 const conversations = "*/api/widget/agents/agt_hr/conversations";
 const messages = "*/api/widget/agents/agt_hr/messages";
 
+beforeEach(() => {
+  localStorage.clear();
+});
+
 function sse(events: [string, unknown][]): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -223,7 +227,8 @@ test("an Agent that is no longer available says so when the chat starts", async 
 
   await ask("Hello");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("This assistant is no longer available.");
+  expect(await screen.findByRole("status")).toHaveTextContent("This assistant is no longer available.");
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
 test("the Send button waits for the answer", async () => {

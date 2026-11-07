@@ -2000,6 +2000,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/widget/agents/{public_id}/conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Conversation
+         * @description The token's Conversation, for a Visitor who comes back to the page: its Messages in
+         *     order, each answer with its sources. Coming back counts as activity, so the token's
+         *     24-hour window slides on; after 24 hours without activity the token is refused.
+         */
+        get: operations["getWidgetConversation"];
+        put?: never;
+        post?: never;
+        /**
+         * End Conversation
+         * @description Ends the token's Conversation: the token is refused from then on. The Visitor's next
+         *     question starts a new Conversation.
+         */
+        delete: operations["endWidgetConversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/widget/agents/{public_id}/conversations": {
         parameters: {
             query?: never;
@@ -4227,6 +4254,30 @@ export interface components {
             id: string;
             /** Number */
             number: number;
+        };
+        /** WidgetCitationOut */
+        WidgetCitationOut: {
+            /** Document Name */
+            document_name: string | null;
+            /** Label */
+            label: string;
+        };
+        /** WidgetConversationOut */
+        WidgetConversationOut: {
+            /** Messages */
+            messages: components["schemas"]["WidgetMessageOut"][];
+        };
+        /** WidgetMessageOut */
+        WidgetMessageOut: {
+            /** Citations */
+            citations: components["schemas"]["WidgetCitationOut"][];
+            /** Content */
+            content: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
         };
         /** WidgetMessageRequest */
         WidgetMessageRequest: {
@@ -10102,6 +10153,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FontOut"][];
+                };
+            };
+        };
+    };
+    getWidgetConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetConversationOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    endWidgetConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

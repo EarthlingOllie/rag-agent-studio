@@ -1,12 +1,35 @@
 import { ChatWindow, Composer, Launcher as LauncherButton, MessageBubble } from "@studio/ui";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
-import { type Boot, type Citation, ChatError, type Launcher, ask, startConversation } from "./chat";
+import {
+  type Boot,
+  type Citation,
+  ChatError,
+  type Launcher,
+  NO_LONGER_AVAILABLE,
+  ask,
+  endConversation,
+  resume,
+  startConversation,
+} from "./chat";
 import { LAYOUT_MESSAGE, type Layout } from "./embed";
+import { tokenStore } from "./storage";
 
 type Message = { role: "visitor" | "agent"; text: string; citations: Citation[] };
 
+/**
+ * - `loading`: checking a kept Conversation token, to resume its Conversation.
+ * - `chat`: the chat.
+ * - `ended`: the Visitor ended the chat.
+ * - `retired`: the Agent is archived or no longer live.
+ */
+type Phase = "loading" | "chat" | "ended" | "retired";
+
 const GENERIC = "Something went wrong. Please try again.";
+
+function message(failure: unknown): string {
+  return failure instanceof ChatError ? failure.message : GENERIC;
+}
 
 /** The host page's origin, from the frame's address, if it is one; layout goes only there. */
 export function hostOrigin(host: string | null): string | null {
@@ -19,16 +42,27 @@ export function hostOrigin(host: string | null): string | null {
   }
 }
 
+/** An answer's sources; each expands to the passage it cited, when the widget was sent one. */
 function Sources({ citations }: { citations: Citation[] }) {
   return (
     <div className="sources">
       Sources:{" "}
-      {citations.map((citation, index) => (
-        <details key={index}>
-          <summary>{citation.document_name ?? citation.label}</summary>
-          <blockquote>{citation.passage}</blockquote>
-        </details>
-      ))}
+      {citations.map((citation, index) => {
+        const name = citation.document_name ?? citation.label;
+        return (
+          <span key={index}>
+            {index > 0 && ", "}
+            {citation.passage === undefined ? (
+              name
+            ) : (
+              <details>
+                <summary>{name}</summary>
+                <blockquote>{citation.passage}</blockquote>
+              </details>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -37,19 +71,29 @@ function Sources({ citations }: { citations: Citation[] }) {
  * The chat a Visitor sees inside the iframe, in the Organisation's Theme: the Agent's greeting
  * and starter questions, their questions and the Agent's streamed replies with expandable
  * sources. As a bubble it opens from a Launcher in the corner; inline it is always open. It
- * tells the host page (`host`, the only origin it posts to) how to size its frame.
+ * tells the host page (`host`, the only origin it posts to) how to size its frame. The
+ * Conversation token is kept in the iframe's storage, so a Visitor who comes back resumes their
+ * Conversation; they can start a new chat or end it.
  */
 export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?: Launcher | null; host?: string | null }) {
   const type = launcher ?? boot.theme.launcher_type;
   const bubble = type === "bubble";
   const [open, setOpen] = useState(!bubble);
+  const store = useMemo(() => tokenStore(boot.agent), [boot.agent]);
+  const [phase, setPhase] = useState<Phase>(() => (store.load() ? "loading" : "chat"));
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The Conversation token, once the bootstrap token has been exchanged for one.
+  // The Conversation token, once the bootstrap token has been exchanged for one (or kept from
+  // an earlier page load).
   const token = useRef<string | null>(null);
   const root = useRef<HTMLDivElement | null>(null);
   const opened = useRef(false);
+  const focusInput = useRef(false);
+
+  function messageBox() {
+    return root.current?.querySelector<HTMLInputElement>('input[name="message"]');
+  }
 
   useEffect(() => {
     const target = hostOrigin(host);
@@ -59,10 +103,62 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     }
     // Opening moves focus into the chat; closing returns it to the Launcher.
     if (!bubble) return;
-    if (open) root.current?.querySelector<HTMLInputElement>('input[name="message"]')?.focus();
+    if (open) messageBox()?.focus();
     else if (opened.current) root.current?.querySelector<HTMLButtonElement>(".launcher button")?.focus();
     opened.current ||= open;
   }, [open, type, bubble, host, boot.theme.launcher_position]);
+
+  function forget() {
+    token.current = null;
+    store.clear();
+  }
+
+  function retire() {
+    forget();
+    setPhase("retired");
+  }
+
+  // A Visitor coming back within 24 hours gets their Conversation back.
+  useEffect(() => {
+    const kept = store.load();
+    if (!kept) return;
+    // Nothing to cancel on unmount: the widget is the iframe's whole page.
+    void resume(boot, kept).then(
+      (resumed) => {
+        if (resumed === null) {
+          store.clear();
+        } else {
+          token.current = kept;
+          setMessages(
+            resumed.map((m) => ({
+              role: m.role === "user" ? "visitor" : "agent",
+              text: m.content,
+              citations: m.citations,
+            })),
+          );
+        }
+        setPhase("chat");
+      },
+      (failure: unknown) => {
+        if (failure instanceof ChatError && failure.status === 404) {
+          store.clear();
+          setPhase("retired");
+          return;
+        }
+        // Keep the token: the Conversation can carry on even if its history didn't load.
+        token.current = kept;
+        setError(message(failure));
+        setPhase("chat");
+      },
+    );
+  }, [boot, store]);
+
+  useEffect(() => {
+    if (focusInput.current && phase === "chat") {
+      focusInput.current = false;
+      messageBox()?.focus();
+    }
+  });
 
   function updateReply(update: (reply: Message) => Message) {
     setMessages((current) => [...current.slice(0, -1), update(current[current.length - 1] as Message)]);
@@ -77,7 +173,10 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
       { role: "agent", text: "", citations: [] },
     ]);
     try {
-      token.current ??= await startConversation(boot);
+      if (token.current === null) {
+        token.current = await startConversation(boot);
+        store.save(token.current);
+      }
       await ask(boot, token.current, question, {
         onToken: (text) => {
           updateReply((reply) => ({ ...reply, text: reply.text + text }));
@@ -90,10 +189,16 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         },
       });
     } catch (failure) {
+      if (failure instanceof ChatError && failure.status === 404) {
+        retire();
+        return;
+      }
+      // An expired or ended token: the next question starts a new Conversation.
+      if (failure instanceof ChatError && failure.status === 401) forget();
       // Drop the reply and whatever of it streamed before the failure.
       setMessages((current) => current.slice(0, -1));
       const unavailable = failure instanceof ChatError && failure.unavailable ? boot.ui_text.unavailable_message : null;
-      setError(unavailable ?? (failure instanceof ChatError ? failure.message : GENERIC));
+      setError(unavailable ?? message(failure));
     } finally {
       setPending(false);
     }
@@ -104,7 +209,75 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     if (question) void send(question);
   }
 
+  /** Ends the current Conversation (if one started) and clears the chat. */
+  function close(next: Phase) {
+    if (token.current !== null) void endConversation(boot, token.current);
+    forget();
+    setMessages([]);
+    setError(null);
+    focusInput.current = next === "chat";
+    setPhase(next);
+  }
+
   const name = boot.name;
+  const chatting = phase === "chat";
+  let footer: ReactNode;
+  if (phase === "retired") {
+    footer = (
+      <p role="status" className="notice">
+        {NO_LONGER_AVAILABLE}
+      </p>
+    );
+  } else if (phase === "loading") {
+    footer = (
+      <p role="status" className="notice">
+        Loading your chat…
+      </p>
+    );
+  } else if (phase === "ended") {
+    footer = (
+      <div className="notice ended">
+        <p role="status">You ended the chat.</p>
+        <button
+          type="button"
+          onClick={() => {
+            focusInput.current = true;
+            setPhase("chat");
+          }}
+        >
+          Start a new chat
+        </button>
+      </div>
+    );
+  } else {
+    footer = (
+      <>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        {messages.length === 0 && boot.starter_questions.length > 0 && (
+          <ul aria-label="Suggested questions" className="starters">
+            {boot.starter_questions.map((question) => (
+              <li key={question}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSend(question);
+                  }}
+                >
+                  {question}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Composer onSend={onSend} disabled={pending} sendLabel={pending ? "Answering…" : (boot.ui_text.send_button ?? "Send")} />
+      </>
+    );
+  }
+
   return (
     <div
       ref={root}
@@ -123,63 +296,59 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             agentName={name}
             logoUrl={boot.logo_url}
             avatarUrl={boot.avatar_url}
-            logLabel="Conversation"
+            {...(chatting ? { logLabel: "Conversation" } : {})}
             actions={
-              bubble && (
-                <button
-                  type="button"
-                  className="close"
-                  aria-label="Close chat"
-                  onClick={() => {
-                    setOpen(false);
-                  }}
-                >
-                  ×
-                </button>
-              )
-            }
-            composer={
               <>
-                {error && (
-                  <p role="alert" className="error">
-                    {error}
-                  </p>
+                {chatting && (
+                  <span className="controls">
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => {
+                        close("chat");
+                      }}
+                    >
+                      New chat
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => {
+                        close("ended");
+                      }}
+                    >
+                      End chat
+                    </button>
+                  </span>
                 )}
-                {messages.length === 0 && boot.starter_questions.length > 0 && (
-                  <ul aria-label="Suggested questions" className="starters">
-                    {boot.starter_questions.map((question) => (
-                      <li key={question}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSend(question);
-                          }}
-                        >
-                          {question}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                {bubble && (
+                  <button
+                    type="button"
+                    className="close"
+                    aria-label="Close chat"
+                    onClick={() => {
+                      setOpen(false);
+                    }}
+                  >
+                    ×
+                  </button>
                 )}
-                <Composer
-                  onSend={onSend}
-                  disabled={pending}
-                  sendLabel={pending ? "Answering…" : (boot.ui_text.send_button ?? "Send")}
-                />
               </>
             }
+            composer={footer}
           >
-            {boot.greeting && (
+            {chatting && boot.greeting && (
               <MessageBubble from="agent" label={`${name}'s greeting`}>
                 {boot.greeting}
               </MessageBubble>
             )}
-            {messages.map((message, index) => (
-              <MessageBubble key={index} from={message.role} label={message.role === "visitor" ? "You" : name}>
-                <p>{message.text}</p>
-                {boot.citations && message.citations.length > 0 && <Sources citations={message.citations} />}
-              </MessageBubble>
-            ))}
+            {chatting &&
+              messages.map((message, index) => (
+                <MessageBubble key={index} from={message.role} label={message.role === "visitor" ? "You" : name}>
+                  <p>{message.text}</p>
+                  {boot.citations && message.citations.length > 0 && <Sources citations={message.citations} />}
+                </MessageBubble>
+              ))}
           </ChatWindow>
         </div>
       )}

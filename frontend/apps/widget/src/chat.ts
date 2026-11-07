@@ -30,46 +30,56 @@ export type Boot = {
   citations: boolean;
 };
 
-export type Citation = { label: string; document_name: string | null; passage: string };
+/** A source an answer cited; `passage` is the cited text, sent with a live answer but not with a resumed one. */
+export type Citation = { label: string; document_name: string | null; passage?: string };
 
 /**
- * Something the Visitor should be told instead of an answer. `unavailable` marks the Agent
- * being temporarily unable to answer, which the Agent's own text may replace.
+ * Something the Visitor should be told instead of an answer; `status` is the API's, if any.
+ * `unavailable` marks the Agent being temporarily unable to answer (a 503, or a provider failure
+ * mid-answer), which the Agent's own text may replace.
  */
 export class ChatError extends Error {
   constructor(
     message: string,
-    readonly unavailable = false,
+    readonly status?: number,
+    readonly unavailable = status === 503,
   ) {
     super(message);
   }
 }
+
+/** What the API says once the Agent is archived or no longer has a Live Version. */
+export const NO_LONGER_AVAILABLE = "This assistant is no longer available.";
 
 const GENERIC = "Something went wrong. Please try again.";
 
 async function refused(response: Response): Promise<ChatError> {
   try {
     const { detail } = (await response.json()) as { detail?: unknown };
-    if (typeof detail === "string") return new ChatError(detail, response.status === 503);
+    if (typeof detail === "string") return new ChatError(detail, response.status);
   } catch {
     // Not JSON: fall through to the generic message.
   }
-  return new ChatError(GENERIC);
+  return new ChatError(GENERIC, response.status);
 }
 
 function base(boot: Boot): string {
   return `/api/widget/agents/${encodeURIComponent(boot.agent)}`;
 }
 
-function post(url: string, body: unknown, token?: string): Promise<Response> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(new URL(url, window.location.origin), { method: "POST", headers, body: JSON.stringify(body) });
+function request(method: string, url: string, token?: string, body?: unknown): Promise<Response> {
+  const init: RequestInit & { headers: Record<string, string> } = { method, headers: {} };
+  if (token) init.headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) {
+    init.headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body);
+  }
+  return fetch(new URL(url, window.location.origin), init);
 }
 
 function exchange(boot: Boot, bootstrapToken: string): Promise<Response> {
   const body: Schemas["StartConversationRequest"] = { bootstrap_token: bootstrapToken };
-  return post(`${base(boot)}/conversations`, body);
+  return request("POST", `${base(boot)}/conversations`, undefined, body);
 }
 
 /** A new bootstrap token from a fresh copy of the shell, or null when there is none. */
@@ -105,7 +115,7 @@ export type Handlers = {
 /** Asks the Agent's Live Version; resolves once the answer is complete. */
 export async function ask(boot: Boot, token: string, question: string, handlers: Handlers): Promise<void> {
   const body: Schemas["WidgetMessageRequest"] = { content: question };
-  const response = await post(`${base(boot)}/messages`, body, token);
+  const response = await request("POST", `${base(boot)}/messages`, token, body);
   if (!response.ok || !response.body) throw await refused(response);
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffered = "";
@@ -121,7 +131,7 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
       const fields = Object.fromEntries(
         block.split("\n").map((line) => [line.slice(0, line.indexOf(": ")), line.slice(line.indexOf(": ") + 2)]),
       ) as { event: string; data: string };
-      const data = JSON.parse(fields.data) as { text: string; message: string } & Citation;
+      const data = JSON.parse(fields.data) as { text: string; message: string; passage: string } & Citation;
       switch (fields.event) {
         case "token":
           handlers.onToken(data.text);
@@ -133,10 +143,32 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
           handlers.onCitation({ label: data.label, document_name: data.document_name, passage: data.passage });
           break;
         case "error":
-          throw new ChatError(data.message, true);
+          throw new ChatError(data.message, undefined, true);
         case "done":
           return;
       }
     }
+  }
+}
+
+export type ResumedMessage = Schemas["WidgetMessageOut"];
+
+/**
+ * The Messages of the token's Conversation, for a Visitor who has come back; null when the
+ * token is no longer accepted (24 hours without activity, or the Conversation was ended).
+ */
+export async function resume(boot: Boot, token: string): Promise<ResumedMessage[] | null> {
+  const response = await request("GET", `${base(boot)}/conversation`, token);
+  if (response.status === 401) return null;
+  if (!response.ok) throw await refused(response);
+  return ((await response.json()) as Schemas["WidgetConversationOut"]).messages;
+}
+
+/** Ends the token's Conversation. Best effort: the widget forgets the token either way. */
+export async function endConversation(boot: Boot, token: string): Promise<void> {
+  try {
+    await request("DELETE", `${base(boot)}/conversation`, token);
+  } catch {
+    // Unreachable: the token is forgotten anyway and expires in 24 hours.
   }
 }

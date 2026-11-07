@@ -15,6 +15,13 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .sources details { margin-top: 2px; }
 .sources summary { cursor: pointer; color: var(--theme-accent); }
 .sources blockquote { margin: 4px 0 0; padding-left: 8px; border-left: 2px solid var(--theme-muted); white-space: pre-wrap; }
+.controls { display: inline-flex; gap: 4px; }
+.controls button { font: inherit; font-size: 12px; font-weight: 400; padding: 3px 8px; border-radius: var(--theme-radius); border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+.controls button:disabled { opacity: 0.6; cursor: default; }
+.notice { margin: 0; padding: 10px; }
+.ended { display: grid; gap: 8px; justify-items: start; }
+.ended p { margin: 0; }
+.ended button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: var(--theme-radius); border: 0; background: var(--theme-primary); color: var(--theme-on-primary); cursor: pointer; }
 .error { margin: 0 10px; padding: 6px 8px; border-radius: 6px; background: #fef2f2; color: #991b1b; font-size: 14px; }
 .starters { list-style: none; margin: 0; padding: 0 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .starters button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: var(--theme-radius); border: 1px solid var(--theme-primary); background: var(--theme-surface); color: var(--theme-on-surface); cursor: pointer; }
