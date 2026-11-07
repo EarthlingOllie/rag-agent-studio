@@ -49,6 +49,22 @@ All runs are local and one at a time (GitHub Actions is down; the user authorise
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks; no known vulnerabilities | [security.log](security.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
+### After updating from `origin/candidate` `5ba01fd` (merge commit `ca2e683`)
+
+The branch was merged with the newer candidate (clean merge, no conflicts) and every check was rerun the same way, one at a time, from a fresh clone of `ca2e683` with [run-checks.sh](run-checks.sh) (logs prefixed `merged-`). Fresh `rag0802-pg/redis/rustfs` containers; compose project `rag0802-e2e`.
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` | exit 0 | [merged-install.log](merged-install.log) |
+| `make lint` (ruff, ruff format, mypy --strict, eslint, tsc) | exit 0 | [merged-lint.log](merged-lint.log) |
+| `make check-client` | up to date, exit 0 | [merged-client-drift.log](merged-client-drift.log) |
+| `make test-backend` | **2129 passed**, 22 deselected (live); **100.00%** coverage (60 min) | [merged-backend-tests.log](merged-backend-tests.log) |
+| `make test-frontend` | **54 files, 704 tests**; no files with missing coverage; `embed.js` 1367 B / 778 B gzipped | [merged-frontend-tests.log](merged-frontend-tests.log) |
+| Images ([build.sh](build.sh)) | `api:0802` (3.43 GB) and `studio:0802` built; bundled classifier offline: attack 1.0, benign none | [merged-images.log](merged-images.log) |
+| `CI=1 make e2e` (real bundled ONNX classifier) | **78 passed** (6.3 min), 0 failed | [merged-e2e.log](merged-e2e.log) |
+| gitleaks + `make audit` | no leaks; no known vulnerabilities | [merged-security.log](merged-security.log) |
+| Infra | not run: no infra change | n/a |
+
 Earlier attempts are kept (same commit `108c6ee`, no code change between):
 - [backend-tests-attempt1-timeout.log](backend-tests-attempt1-timeout.log): killed by the script's 60-minute `timeout` at 73% with every test so far passing (the shared 4-CPU machine ran six tickets; the rerun took 95 minutes). The timeout is now 120 minutes.
 - [images-attempt1-disk-full.log](images-attempt1-disk-full.log): the shared Docker disk filled ("no space left on device") while extracting the model layer; [e2e-attempt1-no-image.log](e2e-attempt1-no-image.log) then had no image to run. Rerun after `docker builder prune`.
