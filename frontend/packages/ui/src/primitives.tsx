@@ -36,12 +36,27 @@ export function ThemeScope({
   );
 }
 
+/** Read by screen readers, not shown. */
+const VISUALLY_HIDDEN: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
 const HEADER_IMAGE = { width: 28, height: 28, flex: "none" } as const;
 
 /**
  * The chat panel: a header with the Agent's avatar (or initial), name, the Theme's logo and any
  * `actions` (such as a close button), then the Messages and the Composer. With `logLabel` the
  * Messages are a `log`, so new ones are announced; `className` lets the widget lay it out.
+ * With `announcements` the log stays silent (a streamed reply would be read out token by token)
+ * and a visually hidden polite status region reads out what the widget puts there instead.
  */
 export function ChatWindow({
   agentName,
@@ -52,6 +67,7 @@ export function ChatWindow({
   actions,
   logLabel,
   className,
+  announcements,
 }: {
   agentName: string;
   children: ReactNode;
@@ -61,6 +77,7 @@ export function ChatWindow({
   actions?: ReactNode;
   logLabel?: string;
   className?: string;
+  announcements?: ReactNode;
 }) {
   return (
     <section
@@ -115,6 +132,7 @@ export function ChatWindow({
       <ol
         role={logLabel ? "log" : undefined}
         aria-label={logLabel}
+        aria-live={announcements === undefined ? undefined : "off"}
         style={{
           listStyle: "none",
           margin: 0,
@@ -130,6 +148,11 @@ export function ChatWindow({
         {children}
       </ol>
       {composer}
+      {announcements !== undefined && (
+        <div role="status" aria-live="polite" aria-label="Announcements" style={VISUALLY_HIDDEN}>
+          {announcements}
+        </div>
+      )}
     </section>
   );
 }

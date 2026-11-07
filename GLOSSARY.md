@@ -25,8 +25,12 @@ Whether the widget uses the Colour Tokens' light values, their dark values, or f
 _Avoid_: Colour scheme setting, dark mode toggle
 
 **Launcher**:
-How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page.
+How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
 _Avoid_: Chat button, trigger
+
+**Reply announcement**:
+What a screen reader hears when an Agent's reply is complete: the Agent's name and the whole reply, read once from the widget's polite status region. The Conversation log itself stays silent, so a streamed reply is never read out token by token; a failed reply is announced by its error instead.
+_Avoid_: Live update, toast
 
 **Theme Image**:
 One of the two images a Theme can have: the **logo**, shown in the widget's header, and the **default Agent avatar**, shown beside the Agent's name for every Agent without an avatar of its own. Each is a PNG, JPEG or WebP image of at most 1 MB, uploaded straight to object storage, and applies as soon as it is uploaded; Owners replace or remove it.

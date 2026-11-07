@@ -1,5 +1,5 @@
 import { ChatWindow, Composer, Launcher as LauncherButton, MessageBubble } from "@studio/ui";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type Boot,
@@ -26,6 +26,25 @@ type Message = { role: "visitor" | "agent"; text: string; citations: Citation[] 
 type Phase = "loading" | "chat" | "ended" | "retired";
 
 const GENERIC = "Something went wrong. Please try again.";
+
+/** What Tab can reach inside the open chat. */
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), summary, a[href], [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Keeps Tab inside `panel` while the bubble is open: past the last control focus wraps to the
+ * first, and Shift+Tab before the first wraps to the last.
+ */
+function trapFocus(event: KeyboardEvent<HTMLElement>) {
+  if (event.key !== "Tab") return;
+  const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>(FOCUSABLE)];
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  const active = document.activeElement;
+  if (event.shiftKey ? active === first : active === last) {
+    event.preventDefault();
+    ((event.shiftKey ? last : first) as HTMLElement).focus();
+  }
+}
 
 function message(failure: unknown): string {
   return failure instanceof ChatError ? failure.message : GENERIC;
@@ -84,6 +103,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The last completed reply, for screen readers; its `id` makes a repeated reply a new node.
+  const [announcement, setAnnouncement] = useState<{ id: number; text: string } | null>(null);
   // The Conversation token, once the bootstrap token has been exchanged for one (or kept from
   // an earlier page load).
   const token = useRef<string | null>(null);
@@ -160,6 +181,15 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     }
   });
 
+  // The newest Message scrolls into view as it arrives, without animation for Visitors who
+  // prefer reduced motion.
+  useEffect(() => {
+    const newest = root.current?.querySelector("li[data-from]:last-of-type");
+    if (!newest || messages.length === 0) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    newest.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
+  }, [messages]);
+
   function updateReply(update: (reply: Message) => Message) {
     setMessages((current) => [...current.slice(0, -1), update(current[current.length - 1] as Message)]);
   }
@@ -177,17 +207,21 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         token.current = await startConversation(boot);
         store.save(token.current);
       }
+      let answer = "";
       await ask(boot, token.current, question, {
         onToken: (text) => {
+          answer += text;
           updateReply((reply) => ({ ...reply, text: reply.text + text }));
         },
         onReplace: (text) => {
+          answer = text;
           updateReply((reply) => ({ ...reply, text }));
         },
         onCitation: (citation) => {
           updateReply((reply) => ({ ...reply, citations: [...reply.citations, citation] }));
         },
       });
+      setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text: `${boot.name}: ${answer}` }));
     } catch (failure) {
       if (failure instanceof ChatError && failure.status === 404) {
         retire();
@@ -290,13 +324,15 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
       }}
     >
       {open && (
-        <div className="panel">
+        <div className="panel" {...(bubble ? { onKeyDown: trapFocus } : {})}>
           <ChatWindow
             className="chat"
             agentName={name}
             logoUrl={boot.logo_url}
             avatarUrl={boot.avatar_url}
-            {...(chatting ? { logLabel: "Conversation" } : {})}
+            {...(chatting
+              ? { logLabel: "Conversation", announcements: announcement && <p key={announcement.id}>{announcement.text}</p> }
+              : {})}
             actions={
               <>
                 {chatting && (
