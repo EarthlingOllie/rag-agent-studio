@@ -7,7 +7,7 @@
 **Blocked by:**
 - [06-03: Branded widget](03-branded-widget.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Keyboard users can open and close the widget, focus is trapped while it's open, and focus returns to the launcher afterwards
 - [ ] A live region announces completed replies
