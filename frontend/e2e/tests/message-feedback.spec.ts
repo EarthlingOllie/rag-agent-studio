@@ -46,11 +46,11 @@ test.describe("Message Feedback", () => {
     await expect(thumbs).toBeVisible({ timeout: 15_000 });
 
     // Thumbs up, then changes their mind: thumbs down with a comment.
-    await thumbs.getByRole("button", { name: "Helpful" }).click();
-    await expect(thumbs.getByRole("button", { name: "Helpful" })).toHaveAttribute("aria-pressed", "true");
+    await thumbs.getByRole("button", { name: "Helpful", exact: true }).click();
+    await expect(thumbs.getByRole("button", { name: "Helpful", exact: true })).toHaveAttribute("aria-pressed", "true");
     await thumbs.getByRole("button", { name: "Not helpful" }).click();
     await expect(thumbs.getByRole("button", { name: "Not helpful" })).toHaveAttribute("aria-pressed", "true");
-    await expect(thumbs.getByRole("button", { name: "Helpful" })).toHaveAttribute("aria-pressed", "false");
+    await expect(thumbs.getByRole("button", { name: "Helpful", exact: true })).toHaveAttribute("aria-pressed", "false");
     await thumbs.getByRole("button", { name: "Add a comment" }).click();
     await reply.getByLabel("Comment (optional)").fill("Our contract says 30 days.");
     await reply.getByRole("button", { name: "Save comment" }).click();
