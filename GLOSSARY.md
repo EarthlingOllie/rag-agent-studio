@@ -25,7 +25,7 @@ Whether the widget uses the Colour Tokens' light values, their dark values, or f
 _Avoid_: Colour scheme setting, dark mode toggle
 
 **Launcher**:
-How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat, or an inline container that shows it in place.
+How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page.
 _Avoid_: Chat button, trigger
 
 **Theme Image**:
@@ -453,11 +453,11 @@ A model provider's failure while answering, reported at the end of the answer's 
 _Avoid_: Model error, API error, crash
 
 **Embed Snippet**:
-The code an Organisation pastes into its site to show an Agent: one `<script>` tag that loads the platform's small loader with the Agent's Public ID. The loader injects an iframe for the Agent's Widget shell. The Studio shows it, with a copy button, only once the Agent has a Live Version.
+The code an Organisation pastes into its site to show an Agent: one `<script>` tag that loads the platform's small loader with the Agent's Public ID, and optionally `data-launcher` and `data-target` to choose the Launcher. The loader injects an iframe for the Agent's Widget shell and sizes it as the widget asks, taking those layout messages only from the widget's own frame and origin. The Studio shows it, with a copy button, only once the Agent has a Live Version.
 _Avoid_: Embed link, widget code
 
 **Widget shell**:
-The HTML page the Embed Snippet's iframe loads, served by the API for each request. Its `frame-ancestors` policy lets only the Agent's Allowed Origins show it, and it hands the widget a Bootstrap token. An archived, unknown or not-live Agent gets the "no longer available" shell instead.
+The HTML page the Embed Snippet's iframe loads, served by the API for each request. Its `frame-ancestors` policy lets only the Agent's Allowed Origins show it, and it hands the widget a Bootstrap token. It inlines the Theme, with the Agent's Theme override, as CSS custom properties, and the Live Version's public Experience: name, avatar, greeting, starter questions, UI text overrides and whether citations show. An archived, unknown or not-live Agent gets the "no longer available" shell instead.
 _Avoid_: Widget page, iframe HTML
 
 **Bootstrap token**:
@@ -468,7 +468,11 @@ The signed, opaque token that is a Visitor's only credential: bound to one Visit
 _Avoid_: Session, visitor token
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits and Token Budget.
+An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits, Token Budget and the Theme override.
+
+**Theme override**:
+An Agent's own colours and avatar in its widget, replacing the Theme's for that Agent only: any of the Colour Tokens (each with its light and dark value) and an avatar image. The other tokens, the font, radius, mode and Launcher still follow the Theme. Like the Theme, only Owners change it; it is an Operational Setting, so it isn't versioned and applies at once. The widget's avatar is the Agent's own, else the Live Version's avatar URL, else the Theme's default avatar.
+_Avoid_: Agent theme, sub-brand theme
 
 **Token Budget**:
 The maximum tokens an Agent may consume per day before it stops answering Visitors.

@@ -54,6 +54,11 @@ class Agent(IdMixin, Base):
     allowed_origins: Mapped[list[str]] = mapped_column(
         ARRAY(String(ORIGIN_MAX)), server_default=text("'{}'")
     )
+    # The Theme override, set by Owners and not versioned: colour tokens replacing the
+    # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
+    # image (stored as the Theme's images are), or None.
+    theme_colours: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    avatar: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class AgentDraft(Base):

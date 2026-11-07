@@ -5,20 +5,52 @@
  */
 import type { Schemas } from "@studio/api-client";
 
-/** What the shell hands the widget, in its `#widget-boot` element. */
-export type Boot = { agent: string; name: string; bootstrap_token: string };
+export type Launcher = "bubble" | "inline";
 
-export type Citation = { label: string; document_name: string | null };
+/**
+ * What the shell hands the widget, in its `#widget-boot` element: the Agent, a bootstrap token,
+ * the Theme's mode and Launcher (its colours are already inlined as CSS custom properties), the
+ * images, and the public Experience of the Agent's Live Version.
+ */
+export type Boot = {
+  agent: string;
+  name: string;
+  bootstrap_token: string;
+  theme: {
+    mode: "light" | "dark" | "auto";
+    launcher_type: Launcher;
+    launcher_position: "bottom-right" | "bottom-left";
+    font: string;
+  };
+  logo_url: string | null;
+  avatar_url: string | null;
+  greeting: string;
+  starter_questions: string[];
+  ui_text: { send_button: string | null; rate_conversation: string | null; unavailable_message: string | null };
+  citations: boolean;
+};
 
-/** Something the Visitor should be told instead of an answer. */
-export class ChatError extends Error {}
+export type Citation = { label: string; document_name: string | null; passage: string };
+
+/**
+ * Something the Visitor should be told instead of an answer. `unavailable` marks the Agent
+ * being temporarily unable to answer, which the Agent's own text may replace.
+ */
+export class ChatError extends Error {
+  constructor(
+    message: string,
+    readonly unavailable = false,
+  ) {
+    super(message);
+  }
+}
 
 const GENERIC = "Something went wrong. Please try again.";
 
 async function refused(response: Response): Promise<ChatError> {
   try {
     const { detail } = (await response.json()) as { detail?: unknown };
-    if (typeof detail === "string") return new ChatError(detail);
+    if (typeof detail === "string") return new ChatError(detail, response.status === 503);
   } catch {
     // Not JSON: fall through to the generic message.
   }
@@ -98,10 +130,10 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
           handlers.onReplace(data.text);
           break;
         case "citation":
-          handlers.onCitation({ label: data.label, document_name: data.document_name });
+          handlers.onCitation({ label: data.label, document_name: data.document_name, passage: data.passage });
           break;
         case "error":
-          throw new ChatError(data.message);
+          throw new ChatError(data.message, true);
         case "done":
           return;
       }

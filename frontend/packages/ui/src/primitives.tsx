@@ -39,8 +39,9 @@ export function ThemeScope({
 const HEADER_IMAGE = { width: 28, height: 28, flex: "none" } as const;
 
 /**
- * The chat panel: a header with the Agent's avatar (or initial), name and the Theme's logo,
- * then the Messages and the Composer.
+ * The chat panel: a header with the Agent's avatar (or initial), name, the Theme's logo and any
+ * `actions` (such as a close button), then the Messages and the Composer. With `logLabel` the
+ * Messages are a `log`, so new ones are announced; `className` lets the widget lay it out.
  */
 export function ChatWindow({
   agentName,
@@ -48,16 +49,23 @@ export function ChatWindow({
   composer,
   logoUrl,
   avatarUrl,
+  actions,
+  logLabel,
+  className,
 }: {
   agentName: string;
   children: ReactNode;
   composer: ReactNode;
-  logoUrl?: string | undefined;
-  avatarUrl?: string | undefined;
+  logoUrl?: string | null | undefined;
+  avatarUrl?: string | null | undefined;
+  actions?: ReactNode;
+  logLabel?: string;
+  className?: string;
 }) {
   return (
     <section
       aria-label={`Chat with ${agentName}`}
+      className={className}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -102,19 +110,37 @@ export function ChatWindow({
         )}
         <h3 style={{ margin: 0, fontSize: 15, flex: 1 }}>{agentName}</h3>
         {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, maxWidth: 96, objectFit: "contain" }} />}
+        {actions}
       </header>
-      <ol style={{ listStyle: "none", margin: 0, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>{children}</ol>
+      <ol
+        role={logLabel ? "log" : undefined}
+        aria-label={logLabel}
+        style={{
+          listStyle: "none",
+          margin: 0,
+          padding: 14,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          flex: "1 1 auto",
+          minHeight: 0,
+          overflowY: "auto",
+        }}
+      >
+        {children}
+      </ol>
       {composer}
     </section>
   );
 }
 
 /** One Message: the Agent's on the surface, the Visitor's in the primary colour. */
-export function MessageBubble({ from, children }: { from: "agent" | "visitor"; children: ReactNode }) {
+export function MessageBubble({ from, children, label }: { from: "agent" | "visitor"; children: ReactNode; label?: string }) {
   const visitor = from === "visitor";
   return (
     <li
       data-from={from}
+      aria-label={label}
       style={{
         alignSelf: visitor ? "flex-end" : "flex-start",
         maxWidth: "85%",
@@ -145,15 +171,26 @@ export function AccentLink({ href, children }: { href: string; children: ReactNo
   );
 }
 
-/** The message box and Send button; sending passes the typed Message on and clears the box. */
-export function Composer({ onSend }: { onSend: (message: string) => void }) {
+/**
+ * The message box and Send button; sending passes the typed Message on and clears the box.
+ * `sendLabel` replaces the button's "Send" (a UI text override); `disabled` holds the button.
+ */
+export function Composer({
+  onSend,
+  sendLabel = "Send",
+  disabled = false,
+}: {
+  onSend: (message: string) => void;
+  sendLabel?: string;
+  disabled?: boolean;
+}) {
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        const form = event.currentTarget;
-        onSend((form.elements.namedItem("message") as HTMLInputElement).value);
-        form.reset();
+        const input = event.currentTarget.elements.namedItem("message") as HTMLInputElement;
+        onSend(input.value);
+        input.value = "";
       }}
       style={{
         display: "flex",
@@ -181,6 +218,7 @@ export function Composer({ onSend }: { onSend: (message: string) => void }) {
       />
       <button
         type="submit"
+        disabled={disabled}
         style={{
           padding: "8px 14px",
           borderRadius: RADIUS,
@@ -193,7 +231,7 @@ export function Composer({ onSend }: { onSend: (message: string) => void }) {
           outlineColor: "var(--theme-accent)",
         }}
       >
-        Send
+        {sendLabel}
       </button>
     </form>
   );

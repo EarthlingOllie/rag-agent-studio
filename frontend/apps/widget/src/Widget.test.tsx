@@ -1,11 +1,28 @@
-import { render, screen, within } from "@testing-library/react";
+import { render as renderInDom, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import type { ReactElement } from "react";
 
 import { server } from "../../studio/src/test/server";
-import { Widget } from "./Widget";
+import type { Boot } from "./chat";
+import { hostOrigin, Widget } from "./Widget";
 
-const boot = { agent: "agt_hr", name: "HR helper", bootstrap_token: "wb1.agt_hr.1.sig" };
+const boot: Boot = {
+  agent: "agt_hr",
+  name: "HR helper",
+  bootstrap_token: "wb1.agt_hr.1.sig",
+  theme: { mode: "light", launcher_type: "inline", launcher_position: "bottom-right", font: "Inter" },
+  logo_url: null,
+  avatar_url: null,
+  greeting: "",
+  starter_questions: [],
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
+  citations: true,
+};
+
+function render(element: ReactElement) {
+  return renderInDom(element);
+}
 const conversations = "*/api/widget/agents/agt_hr/conversations";
 const messages = "*/api/widget/agents/agt_hr/messages";
 
@@ -28,7 +45,7 @@ function sse(events: [string, unknown][]): Response {
 function fakeWidgetApi(answer: (question: string) => Response = () => sse([
   ["token", { text: "Twenty-five " }],
   ["token", { text: "days [C1]." }],
-  ["citation", { label: "C1", document_name: "handbook.pdf" }],
+  ["citation", { label: "C1", document_name: "handbook.pdf", passage: "Staff get 25 days." }],
   ["done", { message_id: "m1" }],
 ])) {
   const requests: { route: string; body: unknown; authorization?: string | null }[] = [];
@@ -63,6 +80,7 @@ test("a Visitor asks a question and the reply streams in with its sources", asyn
   const reply = await within(log).findByText("Twenty-five days [C1].");
   expect(within(log).getByText("How much leave?")).toBeInTheDocument();
   expect(reply.closest("li")).toHaveTextContent("Sources: handbook.pdf");
+  expect(within(log).getByRole("listitem", { name: "HR helper" })).toBe(reply.closest("li"));
   expect(screen.getByLabelText("Message")).toHaveValue("");
   expect(requests).toEqual([
     { route: "start", body: { bootstrap_token: boot.bootstrap_token } },
@@ -124,12 +142,12 @@ test.each([
 });
 
 test("a source whose Document is gone is shown by its label", async () => {
-  fakeWidgetApi(() => sse([["token", { text: "See [C1]." }], ["citation", { label: "C1", document_name: null }], ["done", { message_id: "m" }]]));
+  fakeWidgetApi(() => sse([["token", { text: "See [C1]." }], ["citation", { label: "C1", document_name: null, passage: "Gone." }], ["done", { message_id: "m" }]]));
   render(<Widget boot={boot} />);
 
   await ask("How much leave?");
 
-  expect(await screen.findByText("Sources: C1")).toBeInTheDocument();
+  expect((await screen.findByText("C1")).closest(".sources")).toHaveTextContent("Sources: C1");
 });
 
 test("a network failure is shown as a generic error", async () => {
@@ -219,4 +237,194 @@ test("the Send button waits for the answer", async () => {
   finish(sse([["token", { text: "Done." }], ["done", { message_id: "m" }]]));
   expect(await screen.findByText("Done.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Send" })).toBeEnabled();
+});
+
+// The branded widget: the Live Version's Experience, the Theme's images and the Launchers.
+
+test("the greeting and starter questions come first, and a starter question asks itself", async () => {
+  const requests = fakeWidgetApi();
+  render(
+    <Widget
+      boot={{ ...boot, greeting: "Hi! Ask me about leave.", starter_questions: ["How much leave?", "When is payday?"] }}
+    />,
+  );
+  const log = screen.getByRole("log", { name: "Conversation" });
+  expect(within(log).getByRole("listitem", { name: "HR helper's greeting" })).toHaveTextContent("Hi! Ask me about leave.");
+  const starters = screen.getByRole("list", { name: "Suggested questions" });
+  expect(within(starters).getAllByRole("button").map((button) => button.textContent)).toEqual([
+    "How much leave?",
+    "When is payday?",
+  ]);
+
+  await userEvent.setup().click(within(starters).getByRole("button", { name: "How much leave?" }));
+
+  expect(await within(log).findByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(within(log).getByRole("listitem", { name: "You" })).toHaveTextContent("How much leave?");
+  expect(screen.queryByRole("list", { name: "Suggested questions" })).not.toBeInTheDocument();
+  expect(requests[1]?.body).toEqual({ content: "How much leave?" });
+});
+
+test("without a greeting or starter questions there is neither", () => {
+  render(<Widget boot={boot} />);
+
+  expect(within(screen.getByRole("log", { name: "Conversation" })).queryAllByRole("listitem")).toEqual([]);
+  expect(screen.queryByRole("list", { name: "Suggested questions" })).not.toBeInTheDocument();
+});
+
+test("the UI text overrides replace the built-in Send button and unavailable message", async () => {
+  fakeWidgetApi(() =>
+    HttpResponse.json({ detail: "This assistant is temporarily unavailable. Please try again later." }, { status: 503 }),
+  );
+  const ui_text = { send_button: "Ask", rate_conversation: null, unavailable_message: "Hana is on a break." };
+  render(<Widget boot={{ ...boot, ui_text }} />);
+
+  await userEvent.setup().type(screen.getByLabelText("Message"), "Hello");
+  await userEvent.setup().click(screen.getByRole("button", { name: "Ask" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Hana is on a break.");
+  expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
+});
+
+test("a provider failure mid-answer shows the Agent's unavailable message too", async () => {
+  fakeWidgetApi(() => sse([["error", { code: "provider_error", message: "Temporarily unavailable." }]]));
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break." };
+  render(<Widget boot={{ ...boot, ui_text }} />);
+
+  await ask("Hello");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Hana is on a break.");
+});
+
+test("other refusals keep their own message even with an unavailable message set", async () => {
+  fakeWidgetApi(() => HttpResponse.json({ detail: "This chat has expired. Reload the page to start a new one." }, { status: 401 }));
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break." };
+  render(<Widget boot={{ ...boot, ui_text }} />);
+
+  await ask("Hello");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("This chat has expired.");
+});
+
+test("a source expands to show its passage", async () => {
+  fakeWidgetApi();
+  render(<Widget boot={boot} />);
+
+  await ask("How much leave?");
+
+  const source = await screen.findByText("handbook.pdf");
+  const details = source.closest("details") as HTMLDetailsElement;
+  expect(details.open).toBe(false);
+  await userEvent.setup().click(source);
+  expect(details.open).toBe(true);
+  expect(within(details).getByText("Staff get 25 days.")).toBeVisible();
+});
+
+test("a Live Version that hides citations shows no sources", async () => {
+  fakeWidgetApi();
+  render(<Widget boot={{ ...boot, citations: false }} />);
+
+  await ask("How much leave?");
+
+  expect(await screen.findByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(screen.queryByText(/Sources/)).not.toBeInTheDocument();
+});
+
+test("the header shows the Agent's avatar and the Theme's logo", () => {
+  render(<Widget boot={{ ...boot, name: "Hana from HR", avatar_url: "/widget/a/agt_hr/avatar?v=1", logo_url: "/widget/a/agt_hr/logo?v=2" }} />);
+
+  const chat = screen.getByRole("region", { name: "Chat with Hana from HR" });
+  expect(within(chat).getByRole("heading", { name: "Hana from HR" })).toBeInTheDocument();
+  expect(within(chat).getByRole("img", { name: "Hana from HR's avatar" })).toHaveAttribute("src", "/widget/a/agt_hr/avatar?v=1");
+  expect(within(chat).getByRole("img", { name: "Logo" })).toHaveAttribute("src", "/widget/a/agt_hr/logo?v=2");
+});
+
+const HOST = "https://www.northwind.example";
+
+/** Pretends the widget is framed, recording what it posts to its host page. */
+function framed() {
+  const posted: { message: unknown; origin: string }[] = [];
+  const parent = { postMessage: (message: unknown, origin: string) => posted.push({ message, origin }) };
+  vi.spyOn(window, "parent", "get").mockReturnValue(parent as unknown as Window);
+  return posted;
+}
+
+test("as a bubble the chat opens from the Launcher and the host page is told to resize", async () => {
+  const posted = framed();
+  const user = userEvent.setup();
+  render(<Widget boot={boot} launcher="bubble" host={HOST} />);
+  expect(screen.queryByRole("region", { name: "Chat with HR helper" })).not.toBeInTheDocument();
+  expect(posted).toEqual([
+    { message: { type: "rag-agent-studio:layout", launcher: "bubble", open: false, position: "bottom-right" }, origin: HOST },
+  ]);
+
+  await user.click(screen.getByRole("button", { name: "Open chat" }));
+
+  expect(screen.getByRole("region", { name: "Chat with HR helper" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Message")).toHaveFocus();
+  expect(screen.getByRole("button", { name: "Close chat", expanded: true })).toBeInTheDocument();
+  expect(posted.at(-1)).toEqual({
+    message: { type: "rag-agent-studio:layout", launcher: "bubble", open: true, position: "bottom-right" },
+    origin: HOST,
+  });
+
+  await user.keyboard("{Escape}");
+
+  expect(screen.queryByRole("region", { name: "Chat with HR helper" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Open chat" })).toHaveFocus();
+  expect(posted.at(-1)?.message).toMatchObject({ open: false });
+
+  await user.click(screen.getByRole("button", { name: "Open chat" }));
+  const chat = screen.getByRole("region", { name: "Chat with HR helper" });
+  await user.click(within(chat).getByRole("button", { name: "Close chat" }));
+  expect(screen.queryByRole("region", { name: "Chat with HR helper" })).not.toBeInTheDocument();
+});
+
+test("the Theme's Launcher and position apply when the snippet doesn't choose", () => {
+  const posted = framed();
+  const theme = { ...boot.theme, launcher_type: "bubble" as const, launcher_position: "bottom-left" as const };
+
+  const { container } = render(<Widget boot={{ ...boot, theme }} host={HOST} />);
+
+  expect(screen.getByRole("button", { name: "Open chat" })).toHaveAttribute("data-position", "bottom-left");
+  expect(container.querySelector(".widget")).toHaveAttribute("data-position", "bottom-left");
+  expect(posted[0]?.message).toMatchObject({ launcher: "bubble", position: "bottom-left" });
+});
+
+test("inline the chat is always open, with no Launcher, and Escape doesn't close it", async () => {
+  const posted = framed();
+  render(<Widget boot={{ ...boot, theme: { ...boot.theme, launcher_type: "bubble" } }} launcher="inline" host={HOST} />);
+
+  expect(screen.getByRole("region", { name: "Chat with HR helper" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Open chat|Close chat/ })).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Message")).not.toHaveFocus();
+  await userEvent.setup().type(screen.getByLabelText("Message"), "{Escape}");
+  expect(screen.getByRole("region", { name: "Chat with HR helper" })).toBeInTheDocument();
+  expect(posted).toEqual([
+    { message: { type: "rag-agent-studio:layout", launcher: "inline", open: true, position: "bottom-right" }, origin: HOST },
+  ]);
+});
+
+test("nothing is posted without a valid host origin or outside a frame", () => {
+  const posted = framed();
+  render(<Widget boot={boot} host="javascript:alert(1)" />);
+  render(<Widget boot={boot} host={`${HOST}/path`} />);
+  render(<Widget boot={boot} host={null} />);
+  expect(posted).toEqual([]);
+
+  vi.restoreAllMocks();
+  const own = vi.spyOn(window, "postMessage");
+  render(<Widget boot={boot} host={HOST} />);
+  expect(own).not.toHaveBeenCalled();
+});
+
+test.each([
+  [null, null],
+  ["", null],
+  ["not a url", null],
+  ["ftp://files.example", null],
+  ["https://www.example.com/", null],
+  ["https://www.example.com", "https://www.example.com"],
+  ["http://localhost:8080", "http://localhost:8080"],
+])("the host origin %s is %s", (host, origin) => {
+  expect(hostOrigin(host)).toBe(origin);
 });

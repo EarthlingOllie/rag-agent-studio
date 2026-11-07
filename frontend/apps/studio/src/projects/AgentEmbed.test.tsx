@@ -163,3 +163,36 @@ test("when the Allowed Origins can't be loaded, they cannot be saved over", asyn
   await user.click(save);
   expect(puts).toBe(0);
 });
+
+test("the snippet chooses a bubble or an inline container by its data attributes", async () => {
+  const user = userEvent.setup();
+  setUp();
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const launcher = within(embed).getByRole("combobox", { name: "Launcher" });
+  expect(launcher).toHaveValue("theme");
+  expect(within(embed).queryByLabelText("Container selector")).not.toBeInTheDocument();
+  const start = `<script src="${window.location.origin}/embed.js" data-agent="${hrHelper.public_id}"`;
+
+  await user.selectOptions(launcher, "bubble");
+  expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(`${start} data-launcher="bubble" async></script>`);
+
+  await user.selectOptions(launcher, "inline");
+  expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(
+    `${start} data-launcher="inline" data-target="#chat" async></script>`,
+  );
+  const target = within(embed).getByLabelText("Container selector");
+  await user.clear(target);
+  await user.type(target, '[[data-help="a&b"]');
+  expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(
+    `${start} data-launcher="inline" data-target="[data-help=&quot;a&amp;b&quot;]" async></script>`,
+  );
+  await user.click(within(embed).getByRole("button", { name: "Copy snippet" }));
+  expect(await navigator.clipboard.readText()).toBe(
+    `${start} data-launcher="inline" data-target="[data-help=&quot;a&amp;b&quot;]" async></script>`,
+  );
+
+  // Without a selector the widget follows the snippet.
+  await user.clear(target);
+  expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(`${start} data-launcher="inline" async></script>`);
+});
