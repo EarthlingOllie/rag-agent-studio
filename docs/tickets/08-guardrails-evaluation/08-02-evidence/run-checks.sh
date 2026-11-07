@@ -11,7 +11,7 @@ source $S/env0802.sh
 (echo "\$ make check-client @ $H"; timeout 900 make check-client 2>&1; echo "exit $?") > $E/client-drift.log
 (echo "\$ gitleaks git (origin/candidate..HEAD) @ $H"; cd $W; gitleaks git --log-opts="origin/candidate..HEAD" --no-banner . 2>&1; echo "exit $?"; cd $C0; echo "\$ make audit @ $H"; timeout 900 make audit 2>&1 | grep -v UV_NATIVE_TLS; echo "exit ${PIPESTATUS[0]}") > $E/security.log
 docker exec rag0802-pg psql -U studio -d postgres -c "DROP DATABASE IF EXISTS studio_test" -c "CREATE DATABASE studio_test" >/dev/null
-(echo "\$ make test-backend (TEST_* -> rag0802-pg/redis/rustfs) @ $H"; timeout 3600 make test-backend 2>&1 | grep -vE '^\{"' ; echo "exit ${PIPESTATUS[0]}") > $E/backend-tests.log
+(echo "\$ make test-backend (TEST_* -> rag0802-pg/redis/rustfs) @ $H"; timeout 7200 make test-backend 2>&1 | grep -vE '^\{"' ; echo "exit ${PIPESTATUS[0]}") > $E/backend-tests.log
 (timeout 3000 bash $E/build.sh "$C0" 0802 > $E/images.log 2>&1; echo "exit $?" >> $E/images.log)
 set -a; source $E/e2e.env; set +a; export CI=1; CMP="docker compose -p rag0802-e2e -f docker-compose.yml -f $E/compose.sandbox.yml"
 $CMP down -v > /dev/null 2>&1
