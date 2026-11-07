@@ -52,7 +52,32 @@ mock_provider "aws" {
   }
 }
 
+# Distinct ARNs for the migration task's roles, so its task definition is shown to use them and not the services'
+# (the mock provider otherwise gives every role the same ARN).
+override_resource {
+  target = aws_iam_role.migrate_task
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-task" }
+}
+
+override_resource {
+  target = aws_iam_role.migrate_execution
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" }
+}
+
+# Its own ARN for the local key wrapper secret, so the policies are shown to name it (the mock gives every secret one ARN).
+override_resource {
+  target = aws_secretsmanager_secret.platform["key-wrapper"]
+  values = { arn = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd" }
+}
+
+# The API's task role is the Bedrock trust principal the API is told about (BEDROCK_PLATFORM_PRINCIPAL).
+override_resource {
+  target = aws_iam_role.task["api"]
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-api-task" }
+}
+
 variables {
+  studio_url           = "https://d111111abcdef8.cloudfront.net"
   name_prefix          = "studio-demo"
   tags                 = { Environment = "demo", Project = "rag-agent-studio" }
   vpc_id               = "vpc-0123456789abcdef0"
@@ -428,19 +453,22 @@ run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values" {
   command = apply
 
   assert {
-    condition = { for k, t in aws_ecs_task_definition.this : k => jsondecode(t.container_definitions)[0].secrets } == {
-      api = [
-        { name = "DATABASE_PASSWORD", valueFrom = var.database.password_secret_arn },
-        { name = "REDIS_AUTH_TOKEN", valueFrom = var.cache.auth_token_secret_arn },
-        { name = "SESSION_SECRET", valueFrom = aws_secretsmanager_secret.platform["session"].arn },
-      ]
-      worker = [
-        { name = "DATABASE_PASSWORD", valueFrom = var.database.password_secret_arn },
-        { name = "REDIS_AUTH_TOKEN", valueFrom = var.cache.auth_token_secret_arn },
-      ]
-      beat = [
-        { name = "REDIS_AUTH_TOKEN", valueFrom = var.cache.auth_token_secret_arn },
-      ]
+    condition = { for k, t in aws_ecs_task_definition.this : k => { for e in jsondecode(t.container_definitions)[0].secrets : e.name => e.valueFrom } } == {
+      api = {
+        DATABASE_PASSWORD     = var.database.password_secret_arn
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        SESSION_SECRET        = aws_secretsmanager_secret.platform["session"].arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
+      worker = {
+        DATABASE_PASSWORD     = var.database.password_secret_arn
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
+      beat = {
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
     }
     error_message = "Each service must get only the secrets it needs, by reference to Secrets Manager."
   }
@@ -453,31 +481,22 @@ run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values" {
   }
 
   assert {
-    condition = { for e in jsondecode(aws_ecs_task_definition.this["api"].container_definitions)[0].environment : e.name => e.value } == {
-      ENVIRONMENT             = "demo"
-      AWS_REGION              = "eu-west-2"
-      DATABASE_HOST           = "studio-demo-database.abc.eu-west-2.rds.amazonaws.com"
-      DATABASE_PORT           = "5432"
-      DATABASE_NAME           = "studio"
-      DATABASE_USER           = "studio"
-      REDIS_HOST              = "master.studio-demo-cache.abc.euw2.cache.amazonaws.com"
-      REDIS_PORT              = "6379"
-      REDIS_TLS               = "true"
-      DOCUMENTS_BUCKET        = "studio-demo-documents-123456789012"
-      CREDENTIALS_KMS_KEY_ARN = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
-    }
-    error_message = "The API must get its connection settings as plain environment variables."
+    condition = (
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "OBJECT_STORE_BUCKET") &&
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "KMS_KEY_ID") &&
+      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].secrets : e.name], "DATABASE_PASSWORD")
+    )
+    error_message = "Beat learns nothing about Documents or the credentials key, and gets no database password."
   }
 
   assert {
-    condition = (
-      contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "CREDENTIALS_KMS_KEY_ARN") &&
-      contains([for e in jsondecode(aws_ecs_task_definition.this["worker"].container_definitions)[0].environment : e.name], "DOCUMENTS_BUCKET") &&
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "DOCUMENTS_BUCKET") &&
-      !contains([for e in jsondecode(aws_ecs_task_definition.this["beat"].container_definitions)[0].environment : e.name], "DATABASE_HOST")
-    )
-    error_message = "The API and worker learn the credentials key, and Beat learns nothing about the database or Documents."
+    condition     = aws_secretsmanager_secret.platform["key-wrapper"].kms_key_id == var.data_key_arn && aws_secretsmanager_secret_version.key_wrapper.secret_id == aws_secretsmanager_secret.platform["key-wrapper"].id
+    error_message = "The local key wrapper key must be stored encrypted with the data key."
+  }
+
+  assert {
+    condition     = (aws_secretsmanager_secret_version.key_wrapper.secret_string == null || aws_secretsmanager_secret_version.key_wrapper.secret_string == "") && aws_secretsmanager_secret_version.key_wrapper.secret_string_wo_version == 1
+    error_message = "The local key wrapper key must be written write-only, so it never reaches state."
   }
 
   assert {
@@ -619,7 +638,7 @@ run "each_service_has_its_own_least_privilege_execution_role" {
           Sid      = "ReadOwnSecrets"
           Effect   = "Allow"
           Action   = "secretsmanager:GetSecretValue"
-          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB"]
+          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd", "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB"]
         },
         {
           Sid       = "DecryptSecretsThroughSecretsManager"
@@ -630,24 +649,26 @@ run "each_service_has_its_own_least_privilege_execution_role" {
         },
       ]
     }
-    error_message = "Beat's execution role may pull the image, write its own logs and read only the Redis token."
+    error_message = "Beat's execution role may pull the image, write its own logs and read only the Redis token and the local key wrapper key."
   }
 
   assert {
     condition = output.execution_role_policies.api.Statement[3].Resource == [
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA",
+      "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd",
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB",
       aws_secretsmanager_secret.platform["session"].arn,
     ]
-    error_message = "The API's execution role may read exactly the database password, Redis token and session secret."
+    error_message = "The API's execution role may read exactly the database password, Redis token, local key wrapper key and session secret."
   }
 
   assert {
     condition = output.execution_role_policies.worker.Statement[3].Resource == [
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA",
+      "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd",
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB",
     ]
-    error_message = "The worker's execution role may read exactly the database password and Redis token."
+    error_message = "The worker's execution role may read exactly the database password, local key wrapper key and Redis token."
   }
 
   assert {
@@ -1003,4 +1024,217 @@ run "the_demo_alb_can_be_destroyed_in_one_run" {
     condition     = aws_lb.this.enable_deletion_protection == false && aws_lb.this.idle_timeout == 300
     error_message = "The demo ALB has no deletion protection, and its idle timeout outlasts SSE keep-alive gaps."
   }
+}
+
+# --- Migrations (ticket 09-06): a one-off task the deploy workflow runs, and waits on, before services roll ----------
+
+run "migrations_run_as_a_one_off_task_on_the_backend_image" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.migrate.family == "studio-demo-ecs-migrate" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].name == "migrate" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].image == "123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:0123abc" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].command == ["alembic", "upgrade", "head"]
+    )
+    error_message = "The migration task must run `alembic upgrade head` on the backend image at the given tag."
+  }
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.migrate.requires_compatibilities == toset(["FARGATE"]) &&
+      aws_ecs_task_definition.migrate.network_mode == "awsvpc" &&
+      one(aws_ecs_task_definition.migrate.runtime_platform).cpu_architecture == "ARM64" &&
+      aws_ecs_task_definition.migrate.cpu == "256" && aws_ecs_task_definition.migrate.memory == "512" &&
+      jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].readonlyRootFilesystem == true
+    )
+    error_message = "The migration task must be a small ARM64 Fargate task with a read-only root filesystem."
+  }
+
+  assert {
+    condition = { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom } == {
+      DATABASE_PASSWORD     = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"
+      LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+    }
+    error_message = "The migration task gets the database password and the local key its settings require, and no Redis token."
+  }
+
+  assert {
+    condition     = jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].logConfiguration.options["awslogs-group"] == "/ecs/studio-demo-ecs/migrate" && aws_cloudwatch_log_group.migrate.retention_in_days == 14
+    error_message = "The migration task must log to its own log group, with the services' retention."
+  }
+}
+
+run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.migrate.task_role_arn == "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-task" &&
+      aws_ecs_task_definition.migrate.execution_role_arn == "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" &&
+      aws_iam_role.migrate_task.name == "studio-demo-ecs-migrate-task" && aws_iam_role.migrate_execution.name == "studio-demo-ecs-migrate-execution" &&
+      aws_iam_role.migrate_task.assume_role_policy == aws_iam_role.task["api"].assume_role_policy &&
+      aws_iam_role.migrate_execution.assume_role_policy == aws_iam_role.task["api"].assume_role_policy
+    )
+    error_message = "The migration task must run with its own task and execution roles, assumable only by ECS tasks in this account."
+  }
+
+  assert {
+    condition     = output.migration_task_role_policy == null
+    error_message = "Migrations only talk to Postgres, so the migration task role gets no AWS permissions."
+  }
+
+  assert {
+    condition = jsondecode(aws_iam_role_policy.migrate_execution.policy) == output.migration_execution_role_policy && output.migration_execution_role_policy == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "AuthenticateToEcr"
+          Effect   = "Allow"
+          Action   = "ecr:GetAuthorizationToken"
+          Resource = "*"
+        },
+        {
+          Sid      = "PullTheBackendImage"
+          Effect   = "Allow"
+          Action   = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
+          Resource = "arn:aws:ecr:eu-west-2:123456789012:repository/rag-agent-studio/api"
+        },
+        {
+          Sid      = "WriteOwnLogs"
+          Effect   = "Allow"
+          Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+          Resource = "${aws_cloudwatch_log_group.migrate.arn}:log-stream:*"
+        },
+        {
+          Sid      = "ReadOwnSecrets"
+          Effect   = "Allow"
+          Action   = "secretsmanager:GetSecretValue"
+          Resource = ["arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA", "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd"]
+        },
+        {
+          Sid       = "DecryptSecretsThroughSecretsManager"
+          Effect    = "Allow"
+          Action    = "kms:Decrypt"
+          Resource  = "arn:aws:kms:eu-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
+          Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.eu-west-2.amazonaws.com" } }
+        },
+      ]
+    }
+    error_message = "The migration execution role may pull the image, write its own logs and read only the database password and the local key wrapper key."
+  }
+
+  assert {
+    condition = jsonencode({ for k, r in aws_vpc_security_group_egress_rule.migrate : k => [r.security_group_id, r.ip_protocol, r.from_port, r.to_port, r.cidr_ipv4, r.referenced_security_group_id] }) == jsonencode({
+      https    = [aws_security_group.migrate.id, "tcp", 443, 443, "0.0.0.0/0", null]
+      postgres = [aws_security_group.migrate.id, "tcp", 5432, 5432, null, "sg-0database00000001"]
+    })
+    error_message = "The migration task may reach HTTPS (image pulls, logs, secrets) and Postgres, nothing else."
+  }
+
+  assert {
+    condition     = length(aws_security_group.migrate.ingress) == 0 && length(aws_security_group.migrate.egress) == 0 && aws_security_group.migrate.vpc_id == var.vpc_id
+    error_message = "The migration security group must have no inline rules and no ingress."
+  }
+}
+
+run "outputs_how_to_run_the_migration_task_and_each_service_task_definition" {
+  command = apply
+
+  assert {
+    condition = output.migration_task == {
+      task_definition_arn = aws_ecs_task_definition.migrate.arn
+      container_name      = "migrate"
+      subnet_ids          = var.private_subnet_ids
+      security_group_id   = aws_security_group.migrate.id
+    }
+    error_message = "The deploy workflow needs the migration task definition, its container, private subnets and security group."
+  }
+
+  assert {
+    condition     = output.migration_security_group_id == aws_security_group.migrate.id
+    error_message = "The module must output the migration security group, for the database ingress rule."
+  }
+
+  assert {
+    condition     = output.task_definition_arns == { for k, t in aws_ecs_task_definition.this : k => t.arn } && keys(output.task_definition_arns) == ["api", "beat", "worker"]
+    error_message = "The deploy workflow rolls each service onto its task definition at the new tag."
+  }
+
+  assert {
+    condition = alltrue([for tags in [
+      aws_ecs_task_definition.migrate.tags, aws_iam_role.migrate_task.tags, aws_iam_role.migrate_execution.tags,
+      aws_security_group.migrate.tags, aws_cloudwatch_log_group.migrate.tags,
+      aws_vpc_security_group_egress_rule.migrate["https"].tags, aws_vpc_security_group_egress_rule.migrate["postgres"].tags,
+    ] : alltrue([for key, value in output.tags : lookup(tags, key, null) == value])])
+    error_message = "The migration task's resources must carry the standard tags."
+  }
+}
+
+run "the_migration_task_size_is_a_variable" {
+  command = plan
+
+  variables {
+    migration_task_size = { cpu = 512, memory = 1024 }
+  }
+
+  assert {
+    condition     = aws_ecs_task_definition.migrate.cpu == "512" && aws_ecs_task_definition.migrate.memory == "1024"
+    error_message = "migration_task_size must size the migration task."
+  }
+}
+
+run "rejects_a_migration_task_size_fargate_does_not_offer" {
+  command = plan
+
+  variables {
+    migration_task_size = { cpu = 256, memory = 4096 }
+  }
+
+  expect_failures = [var.migration_task_size]
+}
+
+run "a_migration_logfire_token_is_injected_when_given" {
+  command = plan
+
+  variables {
+    logfire_token_secret_arn = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
+  }
+
+  assert {
+    condition     = { for s in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : s.name => s.valueFrom }["LOGFIRE_TOKEN"] == "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
+    error_message = "Migrations must trace to Logfire like the services when a token is given."
+  }
+}
+
+# The backend's Settings are loaded from task-settings.json by backend/tests/unit/test_aws_task_settings.py. This run
+# pins the module to that file, so a container whose environment or secrets the backend cannot start with fails one
+# of the two suites (ticket 09-06).
+run "task_settings_match_the_recorded_contract" {
+  command = apply
+
+  assert {
+    condition = jsonencode(merge(
+      { for k, t in aws_ecs_task_definition.this : k => {
+        environment = { for e in jsondecode(t.container_definitions)[0].environment : e.name => e.value }
+        secrets     = sort([for e in jsondecode(t.container_definitions)[0].secrets : e.name])
+      } },
+      { migrate = {
+        environment = { for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].environment : e.name => e.value }
+        secrets     = sort([for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : e.name])
+      } },
+    )) == jsonencode({ for k, v in jsondecode(file("${path.module}/tests/task-settings.json")) : k => v if k != "_comment" })
+    error_message = "The containers' environment and secret names must match infra/modules/ecs/tests/task-settings.json, which the backend tests load into Settings."
+  }
+}
+
+run "rejects_a_studio_url_that_is_not_an_https_origin" {
+  command = plan
+
+  variables {
+    studio_url = "http://d111111abcdef8.cloudfront.net/studio"
+  }
+
+  expect_failures = [var.studio_url]
 }

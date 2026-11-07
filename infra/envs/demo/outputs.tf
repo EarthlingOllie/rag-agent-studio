@@ -41,3 +41,17 @@ output "static_bucket_name" {
   description = "Bucket the deploy workflow uploads the Studio and widget builds to."
   value       = module.storage.static_bucket_name
 }
+
+output "deploy" {
+  description = "Everything scripts/deploy/deploy.sh reads after an apply: the cluster, services and their new task definitions, the migration task, the static bucket and the distribution."
+  value = {
+    image_tag                  = var.image_tag
+    cluster_name               = module.ecs.cluster_name
+    services                   = module.ecs.service_names
+    task_definition_arns       = module.ecs.task_definition_arns
+    migration_task             = module.ecs.migration_task
+    static_bucket_name         = module.storage.static_bucket_name
+    cloudfront_distribution_id = module.cdn.distribution_id
+    cloudfront_url             = module.cdn.url
+  }
+}

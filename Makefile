@@ -74,12 +74,18 @@ seed-reset: ## Erase the demo Organisation (only that one) and seed it again
 
 TF_ROOTS := $(sort $(dir $(wildcard infra/bootstrap/main.tf infra/modules/*/main.tf infra/envs/*/main.tf)))
 IMAGE_TAG ?= local
+# Empty builds for this machine's architecture. The deploy workflow sets linux/arm64: the ECS tasks run on ARM64.
+IMAGE_PLATFORM ?=
 TRIVY_SEVERITY ?= HIGH,CRITICAL
 AUDIT_REQUIREMENTS ?= $(or $(RUNNER_TEMP),/tmp)/requirements-audit.txt
 
-infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on the bootstrap, every module and environment
+infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on the bootstrap, every module and environment, plus the deploy scripts' tests
 	terraform fmt -check -recursive -diff infra
 	infra/tests/backend.test.sh
+	infra/tests/compose.test.sh
+	scripts/deploy/tests/smoke.test.sh
+	scripts/deploy/tests/deploy.test.sh
+	scripts/deploy/tests/destroy.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
 		$(wildcard infra/modules/*/functions/*.test.mjs)
 	scripts/ci/tests/plan-gate.test.sh
@@ -92,9 +98,9 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	cd infra && tflint --init && tflint --recursive --config "$$PWD/.tflint.hcl"
 	cd infra && checkov --config-file .checkov.yaml
 
-images: ## Build the API (also used by the worker and Beat) and Studio images
-	docker build -t rag-agent-studio/api:$(IMAGE_TAG) backend
-	docker build -t rag-agent-studio/studio:$(IMAGE_TAG) frontend
+images: ## Build the API (also used by the worker and Beat) and Studio images; IMAGE_PLATFORM=linux/arm64 builds for Fargate
+	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) -t rag-agent-studio/api:$(IMAGE_TAG) backend
+	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) -t rag-agent-studio/studio:$(IMAGE_TAG) frontend
 
 security: secret-scan audit image-scan ## Every security gate: gitleaks, pip-audit, pnpm audit and Trivy
 
