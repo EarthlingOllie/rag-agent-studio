@@ -81,6 +81,7 @@ module "ecs" {
   name_prefix          = local.name_prefix
   tags                 = local.tags
   vpc_id               = module.network.vpc_id
+  vpc_cidr             = module.network.vpc_cidr
   public_subnet_ids    = module.network.public_subnet_ids
   private_subnet_ids   = module.network.private_subnet_ids
   image_repository_url = module.ecr.repository_urls["rag-agent-studio/api"]

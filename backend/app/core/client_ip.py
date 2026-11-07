@@ -1,17 +1,23 @@
-"""The Visitor's IP address, for per-IP rate limits, believing forwarding headers only from
-the configured trusted proxies.
+"""A request's client IP address, for per-IP limits (widget rate limits, sign-in throttling),
+believing forwarding headers only from the configured trusted proxies (``TRUSTED_PROXIES``).
+
+This is the one place forwarding headers are believed: the API server runs uvicorn with its own
+proxy-header handling off (``app/serve.py``), so the connection peer reaching the app is the real
+one and a client can't choose where the walk starts.
 
 In AWS a Visitor's request reaches the API through CloudFront and then the ALB. CloudFront
 appends the viewer's address to ``X-Forwarded-For`` and the ALB appends CloudFront's, so the
 API's connection peer is the ALB. Walking the chain from the right (the peer, then each
 ``X-Forwarded-For`` entry right to left), every address that is a trusted proxy was written by a
 proxy we believe; the first one that isn't is the Visitor. Anything further left was written by
-the client and is ignored, so a Visitor can't pose as someone else to dodge a limit. With no
-trusted proxies (``docker compose``, tests) the peer is the Visitor.
+the client and is ignored, so a client can't pose as someone else to dodge a limit. With no
+trusted proxies (``docker compose``, tests) the peer is the client.
 """
 
 from collections.abc import Iterable, Sequence
 from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
+
+from starlette.requests import Request
 
 Network = IPv4Network | IPv6Network
 
@@ -62,3 +68,10 @@ def client_ip(peer: str | None, forwarded_for: Sequence[str], trusted: Sequence[
             break
         current = previous
     return str(current)
+
+
+def request_ip(request: Request) -> str:
+    """The client's address for this request, through the app's trusted proxies."""
+    peer = None if request.client is None else request.client.host
+    trusted: Sequence[Network] = request.app.state.settings.trusted_proxies
+    return client_ip(peer, request.headers.getlist("x-forwarded-for"), trusted)

@@ -502,7 +502,7 @@ _Avoid_: Throttling (that is sign-in protection), quota
 The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: the Agent's Rate limits now, the Token Budget later. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
 
 **Trusted proxies**:
-The load balancers and CDN ranges (`TRUSTED_PROXIES`) whose `X-Forwarded-For` entries are believed when finding a Visitor's IP address for the per-IP Rate limit. The Visitor is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the Visitor's.
+The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
 
 **Token Budget**:
 The maximum tokens an Agent may consume per day before it stops answering Visitors.

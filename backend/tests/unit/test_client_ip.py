@@ -11,7 +11,7 @@ from ipaddress import ip_network
 
 import pytest
 
-from app.embed.client_ip import client_ip, trusted_networks
+from app.core.client_ip import client_ip, trusted_networks
 
 # The deployment's proxies: the VPC (the ALB) and one CloudFront range.
 TRUSTED = trusted_networks(["10.0.0.0/16", "130.176.0.0/17", "2001:db8::/32"])

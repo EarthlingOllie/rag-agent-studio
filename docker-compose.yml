@@ -24,9 +24,10 @@ x-backend: &backend
     MODEL_GATEWAY: ${MODEL_GATEWAY:-fake}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
-    # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.
-    # Local only: a deployment lists just its load balancers here.
-    FORWARDED_ALLOW_IPS: "*"
+    # X-Forwarded-For is believed only from TRUSTED_PROXIES (app/core/client_ip.py); uvicorn's own
+    # proxy-header handling is off. Unset locally, so the connection's peer is the client and no
+    # one can pick their own address with the header; AWS lists the VPC and CloudFront there.
+    TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
     # Email goes to Mailpit; read it at http://localhost:8025.
     MAILER: smtp
     SMTP_HOST: mailpit

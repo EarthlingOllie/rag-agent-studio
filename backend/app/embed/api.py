@@ -32,11 +32,10 @@ from app.agents.models import (
 from app.agents.service import AgentNotFoundError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db, ErrorResponse
-from app.core.settings import Settings
+from app.core.client_ip import request_ip
 from app.documents.ports import IngestionPorts
 from app.embed import service
 from app.embed.admission import Admission
-from app.embed.client_ip import client_ip
 from app.embed.tokens import TokenSigner
 from app.guardrails.pipeline import RefusalEvent
 from app.playground.api import QUESTION_MAX
@@ -73,14 +72,7 @@ def get_admission(request: Request) -> Admission:
 AdmissionDep = Annotated[Admission, Depends(get_admission)]
 
 
-def visitor_ip(request: Request) -> str:
-    """The Visitor's IP address, believing ``X-Forwarded-For`` only from trusted proxies."""
-    settings: Settings = request.app.state.settings
-    peer = None if request.client is None else request.client.host
-    return client_ip(peer, request.headers.getlist("x-forwarded-for"), settings.trusted_proxies)
-
-
-VisitorIp = Annotated[str, Depends(visitor_ip)]
+VisitorIp = Annotated[str, Depends(request_ip)]
 
 
 # The shell

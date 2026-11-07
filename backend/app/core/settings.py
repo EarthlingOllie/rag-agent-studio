@@ -17,7 +17,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-from app.embed.client_ip import Network, trusted_networks
+from app.core.client_ip import Network, trusted_networks
 
 
 class SettingsError(RuntimeError):
@@ -60,10 +60,10 @@ class Settings(BaseSettings):
     sign_in_delay_base_seconds: int = Field(default=1, gt=0)
     sign_in_delay_max_seconds: int = Field(default=30, gt=0)
     sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
-    # The proxies whose X-Forwarded-For entries are believed when finding a Visitor's IP address
-    # for the widget's per-IP rate limits: comma-separated networks or addresses, such as the
-    # VPC's CIDR (the ALB) and CloudFront's origin-facing ranges. Empty: the connection's peer
-    # is the Visitor.
+    # The proxies whose X-Forwarded-For entries are believed when finding a client's IP address
+    # for per-IP limits (widget rate limits, sign-in protection): comma-separated networks or
+    # addresses, such as the VPC's CIDR (the ALB) and CloudFront's origin-facing ranges (the ecs
+    # module sets both). Empty: the connection's peer is the client.
     trusted_proxies: Annotated[list[Network], NoDecode] = []
     # How long a password-checked sign-in waits for its MFA code.
     mfa_pending_ttl_seconds: int = Field(default=5 * 60, gt=0)
