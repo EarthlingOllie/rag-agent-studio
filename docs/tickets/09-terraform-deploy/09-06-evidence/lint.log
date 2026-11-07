@@ -1,0 +1,39 @@
+$ actionlint -verbose .github/workflows/*.yml   # actionlint 1.7.12 with shellcheck 0.11.0 on PATH
+verbose: Linting 8 files
+verbose: Linting .github/workflows/guardrails-eval.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/guardrails-eval.yml
+verbose: Linting .github/workflows/security.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/security.yml
+verbose: Linting .github/workflows/infra.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/infra.yml
+verbose: Linting .github/workflows/deploy.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/deploy.yml
+verbose: Linting .github/workflows/backend.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/backend.yml
+verbose: Linting .github/workflows/frontend.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/frontend.yml
+verbose: Linting .github/workflows/destroy.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/destroy.yml
+verbose: Linting .github/workflows/e2e.yml
+verbose: Using project at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0906
+verbose: Found 0 parse errors in 0 ms for .github/workflows/e2e.yml
+verbose: Found total 0 errors in 28 ms for .github/workflows/guardrails-eval.yml
+verbose: Found total 0 errors in 33 ms for .github/workflows/security.yml
+verbose: Found total 0 errors in 46 ms for .github/workflows/infra.yml
+verbose: Found total 0 errors in 84 ms for .github/workflows/deploy.yml
+verbose: Found total 0 errors in 104 ms for .github/workflows/backend.yml
+verbose: Found total 0 errors in 111 ms for .github/workflows/frontend.yml
+verbose: Found total 0 errors in 123 ms for .github/workflows/destroy.yml
+verbose: Found total 0 errors in 130 ms for .github/workflows/e2e.yml
+verbose: Found 0 errors in 8 files
+exit 0
+
+$ shellcheck scripts/deploy/*.sh scripts/deploy/tests/*.sh scripts/deploy/tests/stubs/* infra/tests/compose.test.sh docs/tickets/09-terraform-deploy/09-06-evidence/*.sh
+exit 0

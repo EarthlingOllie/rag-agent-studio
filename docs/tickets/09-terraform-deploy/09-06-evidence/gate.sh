@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016,SC2329 # Literal code snippets in single quotes; functions called from traps or loops.
 # Applies single regressions to a throwaway copy of the repository, one at a time, and shows that the tests catch
 # each one (the suite must exit non-zero). Usage, from the repository root:
 #   docs/tickets/09-terraform-deploy/09-06-evidence/gate.sh > docs/tickets/09-terraform-deploy/09-06-evidence/gate-demo.log

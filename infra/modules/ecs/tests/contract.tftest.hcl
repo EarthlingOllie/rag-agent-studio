@@ -52,6 +52,18 @@ mock_provider "aws" {
   }
 }
 
+# Distinct ARNs for the migration task's roles, so its task definition is shown to use them and not the services'
+# (the mock provider otherwise gives every role the same ARN).
+override_resource {
+  target = aws_iam_role.migrate_task
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-task" }
+}
+
+override_resource {
+  target = aws_iam_role.migrate_execution
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" }
+}
+
 variables {
   name_prefix          = "studio-demo"
   tags                 = { Environment = "demo", Project = "rag-agent-studio" }
@@ -1056,18 +1068,6 @@ run "migrations_run_as_a_one_off_task_on_the_backend_image" {
 
 run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https" {
   command = apply
-
-  # Distinct ARNs, so the task definition is shown to use these two roles and not the services' (the mock
-  # provider otherwise gives every role the same ARN).
-  override_resource {
-    target = aws_iam_role.migrate_task
-    values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-task" }
-  }
-
-  override_resource {
-    target = aws_iam_role.migrate_execution
-    values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" }
-  }
 
   assert {
     condition = (
