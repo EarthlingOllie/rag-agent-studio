@@ -337,7 +337,8 @@ function parseEvent(block: string): StreamEvent {
 /**
  * Asks the Agent's Draft a question. `onToken` receives the answer as it streams in, and
  * `onCitation` each Chunk it cites; `onReplace` the text that replaces everything streamed so
- * far when the answer leaked the Canary token. The returned promise resolves with the `done`
+ * far when the answer leaked the Canary token; `onRefusal` the Agent's refusal text, the whole
+ * reply, when the input Guardrail blocked the question. The returned promise resolves with the `done`
  * event once the answer is complete and saved, or rejects with a `ProviderError` when the
  * stream ends with an `error` event because the model provider failed.
  */
@@ -349,6 +350,7 @@ export async function askPlayground(
   onToken: (text: string) => void,
   onCitation: (citation: Citation) => void,
   onReplace: (text: string) => void,
+  onRefusal: (text: string) => void,
 ): Promise<AnswerDone> {
   const { data, error, response } = await api.POST(
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages",
@@ -376,6 +378,8 @@ export async function askPlayground(
       if (event.event === "citation") onCitation(event.data as Citation);
       if (event.event === "replace")
         onReplace((event.data as { text: string }).text);
+      if (event.event === "refusal")
+        onRefusal((event.data as { text: string }).text);
       if (event.event === "done") return event.data as AnswerDone;
       if (event.event === "error") {
         const { code, message } = event.data as {

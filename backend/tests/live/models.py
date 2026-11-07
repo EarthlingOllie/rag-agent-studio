@@ -15,9 +15,14 @@ import httpx
 import pytest
 from huggingface_hub import hf_hub_url, snapshot_download
 
+from app.guardrails import onnx_model
+
 # Docling's default PDF layout model, and the local Embedding Model with its tokenizer.
 DOCLING_LAYOUT = "docling-project/docling-layout-heron"
 LOCAL_EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
+# The input Guardrail's local prompt-injection classifier, at the revision the API pins.
+INJECTION_CLASSIFIER_MODEL = onnx_model.REPO
+REVISIONS = {INJECTION_CLASSIFIER_MODEL: onnx_model.REVISION}
 
 
 def _on_disk(repo_id: str) -> bool:
@@ -26,7 +31,7 @@ def _on_disk(repo_id: str) -> bool:
         if artifacts and (Path(artifacts) / repo_id.replace("/", "--")).is_dir():
             return True
     try:
-        snapshot_download(repo_id, local_files_only=True)
+        snapshot_download(repo_id, revision=REVISIONS.get(repo_id), local_files_only=True)
     except Exception:  # any miss means "not cached"
         return False
     return True
@@ -38,6 +43,7 @@ def _on_disk(repo_id: str) -> bool:
 WEIGHT_FILES = {
     DOCLING_LAYOUT: ("model.safetensors",),
     LOCAL_EMBEDDING_MODEL: ("onnx/model.onnx",),
+    INJECTION_CLASSIFIER_MODEL: ("onnx/model.onnx",),
 }
 
 
@@ -52,7 +58,7 @@ def _unreachable(repo_id: str) -> str | None:
     try:
         for name in WEIGHT_FILES[repo_id]:
             httpx.get(
-                hf_hub_url(repo_id, name),
+                hf_hub_url(repo_id, name, revision=REVISIONS.get(repo_id)),
                 headers={"Range": "bytes=0-0"},
                 timeout=10,
                 follow_redirects=True,

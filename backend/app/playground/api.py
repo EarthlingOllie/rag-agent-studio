@@ -41,6 +41,8 @@ from app.conversations.models import Conversation, Message
 from app.conversations.service import MessageNotFoundError, TracedChunk
 from app.core.clock import Clock, get_clock
 from app.documents.ports import IngestionPorts
+from app.guardrails.outcomes import Action, Layer, Verdict
+from app.guardrails.pipeline import RefusalEvent
 from app.playground import service
 from app.projects.instructions import InstructionsVersionNotFoundError, version_numbers
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
@@ -124,10 +126,13 @@ class TracedChunkOut(BaseModel):
 class GuardrailOutcomeOut(BaseModel):
     """What one Guardrail layer decided about the answer, and what it did."""
 
-    layer: Literal["canary"]
-    verdict: Literal["leak"]
-    action: Literal["replaced", "flagged"]
+    # ``input``: the input Guardrail, before the model; ``canary``: the Canary token, after it.
+    layer: Layer
+    verdict: Verdict
+    action: Action
     reason: str
+    # How sure the layer was, from 0 to 1; null for a layer that doesn't score (the canary).
+    score: float | None = None
 
 
 class TraceOut(BaseModel):
@@ -332,6 +337,8 @@ _STREAM: dict[int | str, dict[str, Any]] = {
         "description": (
             "Server-Sent Events: `token` events, then `citation` events and one `done` event; "
             "or, when the answer leaks the Canary token, a `replace` event then `done`; "
+            "or, when the input Guardrail blocks the question, a `refusal` event (`text`, the "
+            "Agent's refusal text) then `done`, and no model is asked; "
             "or, when the model provider fails, one `error` event (`code`: `invalid_key`, "
             "`rate_limited`, `model_unavailable` or `provider_error`; `message`)."
         ),
@@ -396,6 +403,7 @@ async def send_message(
             prepared,
             sessionmaker=request.app.state.sessionmaker,
             gateway=request.app.state.model_gateway,
+            guardrails=request.app.state.guardrails,
             embedders=ingestion.embedders,
             clock=request.app.state.clock,
         ):
@@ -403,6 +411,8 @@ async def send_message(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
+            elif isinstance(event, RefusalEvent):
+                yield _sse("refusal", {"text": event.text})
             elif isinstance(event, ErrorEvent):
                 yield _sse("error", {"code": event.kind, "message": event.message})
             elif isinstance(event, CitationEvent):
