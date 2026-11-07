@@ -4,7 +4,12 @@ export const STYLES = `
 html, body { margin: 0; height: 100%; font: 15px/1.4 system-ui, sans-serif; color: #0f172a; background: #fff; }
 #root { height: 100%; }
 .widget { display: flex; flex-direction: column; height: 100%; padding: 12px; gap: 8px; }
+.widget header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .widget h1 { margin: 0; font-size: 1.1rem; }
+.controls { display: flex; gap: 4px; }
+.controls button { padding: 4px 10px; font-size: 0.85rem; background: #fff; color: #0f172a; }
+.ended { display: grid; gap: 8px; justify-items: start; }
+.ended p { margin: 0; }
 .messages { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .messages li { padding: 8px 10px; border-radius: 8px; white-space: pre-wrap; }
 .messages li p { margin: 0; }
