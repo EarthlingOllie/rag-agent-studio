@@ -1,4 +1,4 @@
-$ make test-backend (TEST_* -> fresh rag0605-pg/redis/rustfs) @ d900fb1 (ticket/06-05-rate-limits, clean tree: 0 changes)
+$ make test-backend (TEST_* -> fresh rag0605-pg/redis/rustfs) @ 492a710 (ticket/06-05-rate-limits, clean tree: 0 changes)
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -8,7 +8,7 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 2188 items / 22 deselected / 2166 selected
+collected 2191 items / 22 deselected / 2169 selected
 
 tests/integration/test_agent_archive.py ................                 [  0%]
 tests/integration/test_agent_config.py ................................. [  2%]
@@ -40,7 +40,7 @@ tests/integration/test_ingestion_failures.py ........................... [ 19%]
 tests/integration/test_ingestion_scan.py .....                           [ 20%]
 tests/integration/test_input_guardrail.py .....                          [ 20%]
 tests/integration/test_invites.py ..............................         [ 22%]
-tests/integration/test_logging.py .......                                [ 22%]
+tests/integration/test_logging.py ........                               [ 22%]
 tests/integration/test_mailer.py ........                                [ 22%]
 tests/integration/test_members.py ...............                        [ 23%]
 tests/integration/test_mfa.py .....................................      [ 25%]
@@ -78,7 +78,7 @@ tests/integration/test_retrieval_probe_index.py ..                       [ 47%]
 tests/integration/test_seed.py ..........................                [ 48%]
 tests/integration/test_settings.py .....                                 [ 48%]
 tests/integration/test_sign_in_and_out.py ........                       [ 49%]
-tests/integration/test_sign_in_throttling.py ...........                 [ 49%]
+tests/integration/test_sign_in_throttling.py .............               [ 49%]
 tests/integration/test_sign_up.py ............                           [ 50%]
 tests/integration/test_tag_scoping.py ..                                 [ 50%]
 tests/integration/test_tags.py .............                             [ 51%]
@@ -147,7 +147,7 @@ app/audit/models.py                      19      0      0      0   100%
 app/audit/service.py                     77      0     16      0   100%
 app/auth/__init__.py                      0      0      0      0   100%
 app/auth/account_api.py                  59      0      0      0   100%
-app/auth/api.py                         133      0     14      0   100%
+app/auth/api.py                         132      0     14      0   100%
 app/auth/mfa.py                         164      0     34      0   100%
 app/auth/mfa_api.py                      97      0      6      0   100%
 app/auth/mfa_pending.py                  30      0      2      0   100%
@@ -161,6 +161,7 @@ app/conversations/api.py                 64      0      0      0   100%
 app/conversations/models.py              56      0      0      0   100%
 app/conversations/service.py             97      0     16      0   100%
 app/core/__init__.py                      0      0      0      0   100%
+app/core/client_ip.py                    41      0     14      0   100%
 app/core/clock.py                        11      0      0      0   100%
 app/core/db.py                           16      0      0      0   100%
 app/core/deps.py                          7      0      0      0   100%
@@ -198,10 +199,9 @@ app/documents/service.py                255      0     46      0   100%
 app/documents/tasks.py                   34      0      4      0   100%
 app/embed/__init__.py                     0      0      0      0   100%
 app/embed/admission.py                   28      0      0      0   100%
-app/embed/api.py                        201      0     20      0   100%
+app/embed/api.py                        196      0     20      0   100%
 app/embed/branding.py                    67      0      6      0   100%
 app/embed/branding_api.py                84      0      0      0   100%
-app/embed/client_ip.py                   36      0     14      0   100%
 app/embed/service.py                    172      0     38      0   100%
 app/embed/tokens.py                      47      0     10      0   100%
 app/embeddings/__init__.py                0      0      0      0   100%
@@ -307,8 +307,8 @@ app/worker/celery_app.py                  8      0      0      0   100%
 app/worker/main.py                       17      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                  9643      0   1106      0   100%
+TOTAL                                  9642      0   1106      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=============== 2166 passed, 22 deselected in 4638.72s (1:17:18) ===============
+=============== 2169 passed, 22 deselected in 3575.93s (0:59:35) ===============
 exit 0

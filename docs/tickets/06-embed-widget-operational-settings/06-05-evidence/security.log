@@ -1,4 +1,4 @@
-$ gitleaks git (origin/candidate..HEAD) @ 2eb3044 (ticket/06-05-rate-limits, clean tree: 0 changes)
+$ gitleaks git (origin/candidate..HEAD) @ 492a710 (ticket/06-05-rate-limits, clean tree: 0 changes)
 
     ○
     │╲
@@ -6,11 +6,11 @@ $ gitleaks git (origin/candidate..HEAD) @ 2eb3044 (ticket/06-05-rate-limits, cle
     ○ ░
     ░    gitleaks
 
-[90m2:25PM[0m [32mINF[0m [1m2 commits scanned.[0m
-[90m2:25PM[0m [32mINF[0m [1mscanned ~55471 bytes (55.47 KB) in 334ms[0m
-[90m2:25PM[0m [32mINF[0m [1mno leaks found[0m
+[90m7:46PM[0m [32mINF[0m [1m8 commits scanned.[0m
+[90m7:46PM[0m [32mINF[0m [1mscanned ~3404446 bytes (3.40 MB) in 574ms[0m
+[90m7:46PM[0m [32mINF[0m [1mno leaks found[0m
 exit 0
-$ make audit @ 2eb3044 (ticket/06-05-rate-limits, clean tree: 0 changes)
+$ make audit @ 492a710 (ticket/06-05-rate-limits, clean tree: 0 changes)
 cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
 	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.

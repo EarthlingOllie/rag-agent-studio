@@ -1,4 +1,4 @@
-$ make lint @ d900fb1 (ticket/06-05-rate-limits; playwright-report removed; only the ticket Status edit uncommitted)
+$ make lint @ 492a710 (ticket/06-05-rate-limits, clean tree: 0 changes)
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 All checks passed!
