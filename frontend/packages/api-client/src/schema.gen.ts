@@ -3225,7 +3225,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "blocked" | "replaced" | "flagged" | "logged";
+            action: "blocked" | "replaced" | "flagged" | "logged" | "allowed";
             /**
              * Layer
              * @enum {string}
@@ -3239,7 +3239,7 @@ export interface components {
              * Verdict
              * @enum {string}
              */
-            verdict: "injection" | "leak";
+            verdict: "injection" | "leak" | "unchecked";
         };
         /**
          * Guardrails

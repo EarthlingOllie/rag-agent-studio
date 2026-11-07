@@ -11,23 +11,30 @@ caution block to the prompt and the answer's ``DoneEvent`` carries an ``input / 
 flagged`` outcome, so the Message is flagged. In log mode it is answered exactly as an unflagged
 one would be, and the outcome (``logged``) only records the verdict. An unflagged message is
 answered as usual and leaves no outcome (the canary filter still wraps every model stream).
+
+When the Agent names an LLM classifier and its input mode is block, a message the local
+classifier passed is judged by it too; when it can't judge (its provider failed), the Agent's
+fail mode decides: closed treats the message as flagged, open answers it and records that it
+went unchecked. In warn and log mode the LLM classifier isn't called yet (see ADR-0007).
 """
 
 import asyncio
 import dataclasses
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from pydantic_ai.models import Model
 
-from app.agents.config import AgentConfig, InputMode
+from app.agents.config import AgentConfig, FailMode, InputMode
 from app.core.settings import Settings
 from app.guardrails import onnx_model
 from app.guardrails.classifier import InjectionClassifier
 from app.guardrails.fake import RuleDrivenClassifier
 from app.guardrails.heuristic import HeuristicClassifier
+from app.guardrails.llm import LlmClassifier, LlmClassifierError
 from app.guardrails.local import LocalClassifier
 from app.guardrails.outcomes import GuardrailOutcome
+from app.runtime.errors import ProviderErrorKind
 from app.runtime.prompt import Turn
 from app.runtime.runtime import DoneEvent, Retrieve, TurnEvent, run_turn
 
@@ -49,10 +56,41 @@ def blocked(outcomes: Sequence[Mapping[str, object]]) -> bool:
     return any((o["layer"], o["action"]) == ("input", "blocked") for o in outcomes)
 
 
+_WHY: dict[str, str] = {
+    ProviderErrorKind.INVALID_KEY: "the provider rejected the API key",
+    ProviderErrorKind.RATE_LIMITED: "the provider says the key is over its rate limit or quota",
+    ProviderErrorKind.MODEL_UNAVAILABLE: "the model isn't available from the provider",
+    ProviderErrorKind.PROVIDER_ERROR: "the provider failed",
+}
+
+
+def _failed(classifier: LlmClassifier, error: LlmClassifierError, *, closed: bool) -> str:
+    """The reason an Editor reads in the Trace when the LLM classifier couldn't judge."""
+    why = (
+        f"it didn't answer within {classifier.timeout_s:g} s"
+        if error.kind == "timeout"
+        else _WHY[error.kind]
+    )
+    then = (
+        "The Agent fails closed, so the message was refused."
+        if closed
+        else "The Agent fails open, so the message was answered without this check."
+    )
+    return f"The LLM classifier ({classifier.model_name}) couldn't check the message: {why}. {then}"
+
+
 class GuardrailPipeline:
-    def __init__(self, classifier: InjectionClassifier) -> None:
+    def __init__(
+        self, classifier: InjectionClassifier, llm_classifier_timeout_s: float = 10
+    ) -> None:
         # The input classifier, loaded once per process.
         self.classifier = classifier
+        # How long the LLM classifier may take before it counts as a provider error.
+        self.llm_classifier_timeout_s = llm_classifier_timeout_s
+
+    def llm_classifier(self, build: Callable[[], Model], model_name: str) -> LlmClassifier:
+        """An Agent's LLM classifier: the chat model ``build`` returns, named ``model_name``."""
+        return LlmClassifier(build, model_name, self.llm_classifier_timeout_s)
 
     async def run_turn(
         self,
@@ -63,11 +101,34 @@ class GuardrailPipeline:
         *,
         model: Model,
         retrieve: Retrieve,
+        llm_classifier: LlmClassifier | None = None,
     ) -> AsyncIterator[GuardedEvent]:
         guardrails = config.guardrails
         # Classification is CPU-bound (ONNX inference), so it runs off the event loop.
         (flag,) = await asyncio.to_thread(self.classifier.classify, [visitor_input])
-        if flag is not None and guardrails.input_mode is InputMode.BLOCK:
+        outcome: GuardrailOutcome | None = None
+        # The LLM classifier's failure, when the Agent fails open: recorded on the answer.
+        unchecked: GuardrailOutcome | None = None
+        # The paid LLM classifier is asked only in block mode for now; warn and log mode act on
+        # the local classifier's flag alone (see ADR-0007).
+        if flag is None and llm_classifier is not None and guardrails.input_mode is InputMode.BLOCK:
+            try:
+                flag = await llm_classifier.classify(visitor_input)
+            except LlmClassifierError as error:
+                if guardrails.fail_mode is FailMode.CLOSED:
+                    outcome = GuardrailOutcome(
+                        "input", "unchecked", "blocked", _failed(llm_classifier, error, closed=True)
+                    )
+                else:
+                    unchecked = GuardrailOutcome(
+                        "input",
+                        "unchecked",
+                        "allowed",
+                        _failed(llm_classifier, error, closed=False),
+                    )
+        if flag is not None:
+            outcome = GuardrailOutcome("input", "injection", "blocked", flag.reason, flag.score)
+        if outcome is not None and guardrails.input_mode is InputMode.BLOCK:
             yield RefusalEvent(guardrails.refusal_text)
             yield DoneEvent(
                 answer=guardrails.refusal_text,
@@ -76,9 +137,7 @@ class GuardrailPipeline:
                 retrieved=[],
                 excluded=[],
                 refused=True,
-                guardrail_outcomes=[
-                    GuardrailOutcome("input", "injection", "blocked", flag.reason, flag.score)
-                ],
+                guardrail_outcomes=[outcome],
             )
             return
         warned = flag is not None and guardrails.input_mode is InputMode.WARN
@@ -91,14 +150,23 @@ class GuardrailPipeline:
             retrieve=retrieve,
             cautioned=warned,
         ):
-            if flag is not None and isinstance(event, DoneEvent):
+            if isinstance(event, DoneEvent):
                 # Record the input verdict first, before what later layers decided.
-                verdict = GuardrailOutcome(
-                    "input", "injection", "flagged" if warned else "logged", flag.reason, flag.score
-                )
-                event = dataclasses.replace(
-                    event, guardrail_outcomes=[verdict, *event.guardrail_outcomes]
-                )
+                if unchecked is not None:
+                    event = dataclasses.replace(
+                        event, guardrail_outcomes=[unchecked, *event.guardrail_outcomes]
+                    )
+                elif flag is not None:
+                    verdict = GuardrailOutcome(
+                        "input",
+                        "injection",
+                        "flagged" if warned else "logged",
+                        flag.reason,
+                        flag.score,
+                    )
+                    event = dataclasses.replace(
+                        event, guardrail_outcomes=[verdict, *event.guardrail_outcomes]
+                    )
             yield event
 
 
@@ -112,4 +180,4 @@ def build_pipeline(settings: Settings) -> GuardrailPipeline:
         classifier = HeuristicClassifier()
     else:
         classifier = LocalClassifier(onnx_model.load, settings.input_classifier_threshold)
-    return GuardrailPipeline(classifier)
+    return GuardrailPipeline(classifier, settings.llm_classifier_timeout_s)
