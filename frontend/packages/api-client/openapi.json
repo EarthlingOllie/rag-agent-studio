@@ -2865,7 +2865,8 @@
               "blocked",
               "replaced",
               "flagged",
-              "logged"
+              "logged",
+              "allowed"
             ],
             "title": "Action",
             "type": "string"
@@ -2896,7 +2897,8 @@
           "verdict": {
             "enum": [
               "injection",
-              "leak"
+              "leak",
+              "unchecked"
             ],
             "title": "Verdict",
             "type": "string"
