@@ -10,7 +10,12 @@ Layer = Literal["input", "canary"]
 # ``unchecked``: the LLM classifier couldn't judge the message (its provider failed); the
 # Agent's fail mode decides between ``blocked`` (closed) and ``allowed`` (open).
 Verdict = Literal["injection", "leak", "unchecked"]
-Action = Literal["blocked", "replaced", "flagged", "allowed"]
+# ``blocked``: the input Guardrail refused the message (block mode). ``flagged``: the message or
+# answer went through but is marked (the input Guardrail's warn mode, which also cautions the
+# model; or an encoded canary found after sending). ``logged``: the input Guardrail's verdict is
+# only recorded (log mode). ``replaced``: the canary cut the answer off and replaced it.
+# ``allowed``: the LLM classifier couldn't check the message and the Agent fails open.
+Action = Literal["blocked", "replaced", "flagged", "logged", "allowed"]
 
 
 @dataclass(frozen=True)

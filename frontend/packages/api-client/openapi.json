@@ -2833,6 +2833,7 @@
               "blocked",
               "replaced",
               "flagged",
+              "logged",
               "allowed"
             ],
             "title": "Action",

@@ -176,6 +176,36 @@ test("the Trace shows each Guardrail outcome, or that none stepped in", async ()
   ]);
 });
 
+test("the Trace says a flagged question was answered with a caution (warn) or only logged (log)", async () => {
+  const reason = "The local classifier scored the message 0.91 as a prompt injection.";
+  const { answer } = await askLeave({
+    trace: () =>
+      HttpResponse.json({
+        ...hrTrace,
+        guardrail_outcomes: [
+          { layer: "input", verdict: "injection", action: "flagged", reason, score: 0.91 },
+          { layer: "input", verdict: "injection", action: "logged", reason, score: 0.6 },
+        ],
+      }),
+  });
+
+  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+
+  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const outcomes = await within(drawer).findByRole("list", { name: "Guardrails" });
+  expect(
+    within(outcomes)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual([
+    `Input Guardrail: injection (score 0.91), flagged and answered with a caution to the model. ${reason}`,
+    `Input Guardrail: injection (score 0.60), logged only and answered as usual. ${reason}`,
+  ]);
+  // The model was asked, so it is named, and nothing says the question was blocked.
+  expect(within(drawer).queryByText(/blocked the question/)).not.toBeInTheDocument();
+  expect(within(drawer).queryByText("None (blocked)")).not.toBeInTheDocument();
+});
+
 test("the Trace says when the LLM classifier flagged a message or couldn't check it", async () => {
   const { answer } = await askLeave({
     trace: () =>

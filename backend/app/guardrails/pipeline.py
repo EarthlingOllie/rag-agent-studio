@@ -6,17 +6,22 @@ Visitor's message, the input classifier (the injection-classifier port: the loca
 production, the rule-driven fake in tests) judges it. When it flags the message and the Agent's
 input mode is block, the turn short-circuits: no retrieval, no model call, a ``RefusalEvent``
 carrying the Agent's refusal text, then a ``DoneEvent`` whose answer is that text and whose
-Guardrail outcome says why. When the Agent names an LLM classifier, a message the local
+Guardrail outcome says why. In warn mode a flagged message is answered, but the runtime adds a
+caution block to the prompt and the answer's ``DoneEvent`` carries an ``input / injection /
+flagged`` outcome, so the Message is flagged. In log mode it is answered exactly as an unflagged
+one would be, and the outcome (``logged``) only records the verdict. An unflagged message is
+answered as usual and leaves no outcome (the canary filter still wraps every model stream).
+
+When the Agent names an LLM classifier and its input mode is block, a message the local
 classifier passed is judged by it too; when it can't judge (its provider failed), the Agent's
 fail mode decides: closed treats the message as flagged, open answers it and records that it
-went unchecked. Otherwise the runtime answers as usual (the canary filter still
-wraps its stream). Warn and log modes are ticket 08-02's; until then a flagged message in
-those modes is answered as usual.
+went unchecked. In warn and log mode the LLM classifier isn't called yet (see ADR-0007).
 """
 
 import asyncio
+import dataclasses
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from pydantic_ai.models import Model
 
@@ -104,8 +109,8 @@ class GuardrailPipeline:
         outcome: GuardrailOutcome | None = None
         # The LLM classifier's failure, when the Agent fails open: recorded on the answer.
         unchecked: GuardrailOutcome | None = None
-        # Only block mode acts on a flag yet (warn and log are 08-02's): in any other mode
-        # the paid LLM classifier's judgement would be thrown away, so it isn't asked.
+        # The paid LLM classifier is asked only in block mode for now; warn and log mode act on
+        # the local classifier's flag alone (see ADR-0007).
         if flag is None and llm_classifier is not None and guardrails.input_mode is InputMode.BLOCK:
             try:
                 flag = await llm_classifier.classify(visitor_input)
@@ -135,11 +140,33 @@ class GuardrailPipeline:
                 guardrail_outcomes=[outcome],
             )
             return
+        warned = flag is not None and guardrails.input_mode is InputMode.WARN
         async for event in run_turn(
-            turns, config, instructions, visitor_input, model=model, retrieve=retrieve
+            turns,
+            config,
+            instructions,
+            visitor_input,
+            model=model,
+            retrieve=retrieve,
+            cautioned=warned,
         ):
-            if isinstance(event, DoneEvent) and unchecked is not None:
-                event = replace(event, guardrail_outcomes=[unchecked, *event.guardrail_outcomes])
+            if isinstance(event, DoneEvent):
+                # Record the input verdict first, before what later layers decided.
+                if unchecked is not None:
+                    event = dataclasses.replace(
+                        event, guardrail_outcomes=[unchecked, *event.guardrail_outcomes]
+                    )
+                elif flag is not None:
+                    verdict = GuardrailOutcome(
+                        "input",
+                        "injection",
+                        "flagged" if warned else "logged",
+                        flag.reason,
+                        flag.score,
+                    )
+                    event = dataclasses.replace(
+                        event, guardrail_outcomes=[verdict, *event.guardrail_outcomes]
+                    )
             yield event
 
 
