@@ -146,6 +146,9 @@ class Settings(BaseSettings):
     input_classifier: Literal["local", "heuristic", "fake"] = "local"
     # The local model's score, from 0 to 1, at or above which a message is flagged.
     input_classifier_threshold: float = Field(default=0.5, gt=0, le=1)
+    # How long an Agent's LLM classifier may take, in seconds, before it counts as a provider
+    # error (and the Agent's fail mode applies).
+    llm_classifier_timeout_s: float = Field(default=10, gt=0)
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
     # Transient ingestion failures (the Embedding Model's provider failing) are retried

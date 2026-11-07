@@ -17,6 +17,7 @@ const ACTIONS: Record<GuardrailOutcome["action"], string> = {
   // The canary flags an answer it finds encoded once the answer is complete.
   flagged: "flagged after sending",
   logged: "logged only and answered as usual",
+  allowed: "let through without the check",
 };
 
 /** The input Guardrail flags a message in warn mode, before the model, which it cautions. */
