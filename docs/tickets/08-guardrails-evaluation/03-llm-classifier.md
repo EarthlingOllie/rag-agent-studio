@@ -7,11 +7,13 @@
 **Blocked by:**
 - [08-01: Input Guardrail: local classifier, block mode](01-input-guardrail-block.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] A structured-output classifier runs through the model gateway
-- [ ] Fail-open or fail-closed behaviour is configurable
-- [ ] The classifier credential is registered as a reference
-- [ ] Provider error paths are tested
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A structured-output classifier runs through the model gateway
+- [x] Fail-open or fail-closed behaviour is configurable
+- [x] The classifier credential is registered as a reference
+- [x] Provider error paths are tested
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+
+Evidence: [08-03-evidence](08-03-evidence/README.md)

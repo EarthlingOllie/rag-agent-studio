@@ -14,7 +14,7 @@
 
 ## Test seams
 
-- **API seam** (`backend/tests/integration/test_llm_classifier.py`, 22 tests): the in-process API against real Postgres/pgvector and Redis; the gateway's chat builder returns a `FunctionModel` per model name: `Judge` for the classifier model (answers the structured-output tool, or raises a given provider error, answers off-schema, or is slow) and `Answerer` for the answering model (records every call, so "never reached the model" is observed directly). Assertions are on the SSE events, the saved Conversation and the Trace, through the Playground and widget APIs.
+- **API seam** (`backend/tests/integration/test_llm_classifier.py`, 21 tests): the in-process API against real Postgres/pgvector and Redis; the gateway's chat builder returns a `FunctionModel` per model name: `Judge` for the classifier model (answers the structured-output tool, or raises a given provider error, answers off-schema, or is slow) and `Answerer` for the answering model (records every call, so "never reached the model" is observed directly). Assertions are on the SSE events, the saved Conversation and the Trace, through the Playground and widget APIs.
 - **Gateway fake, unit** (`backend/tests/unit/test_model_gateway.py::test_the_fake_chat_model_plays_an_llm_classifier_for_the_whole_stack`): `LlmClassifier` over the real fake adapter.
 - **Frontend, network seam** (`AgentPage.test.tsx::the Trace says when the LLM classifier flagged a message or couldn't check it`).
 - **E2E** (`frontend/e2e/tests/llm-classifier.spec.ts`): against the compose stack with the real bundled local classifier and the fake gateway.
@@ -32,7 +32,22 @@
 
 ## Results
 
-RESULTS_PLACEHOLDER
+All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results), on a fresh clone of the branch at `a080026` (this ticket's code, based on `origin/candidate` at `a2e4a26`) with no uncommitted changes; each log's first line names the commit. `run-checks.sh` ran every step; `run-e2e.sh` reran the e2e step after attempt 1 could not bind a host port. Backend tests used fresh `rag0803-pg/redis/rustfs` containers (ports 48352, 48379, 48391); the e2e stack was compose project `rag0803-e2e` running the images `build.sh` built.
+
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Install | `make install` | exit 0 | [install.log](install.log) |
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
+| API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
+| Backend tests + coverage gate | `make test-backend` | **2142 passed**, 22 deselected (live); **100.00%** lines and branches (9604 statements, 1100 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate + loader budget | `make test-frontend` | **53 files, 698 tests**; 100% statements (3461/3461) and branches (2216/2216); `embed.js` 1367 B / 778 B gzipped (budget 2048 / 1024) | [frontend-tests.log](frontend-tests.log) |
+| Images | `build.sh` (sandbox `make images`, `WITH_PDF=false`, `BUNDLE_MODELS=true`) | `rag-agent-studio/api:0803` and `studio:0803` built; offline the bundled local classifier flags the attack (1.0) and passes the benign question | [images.log](images.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` and `e2e.env` (real bundled local classifier, fake gateway) | **76 passed** (6.6 min), 0 failed, 0 flaky, including the new `llm-classifier.spec.ts` | [e2e.log](e2e.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks; no known vulnerabilities | [security.log](security.log) |
+| Live suite | n/a | not run: this ticket adds no live-suite test (no real provider keys allowed) and doesn't change the local model | n/a |
+| Infra | terraform checks | not run: this ticket changes no infra | n/a |
+
+Earlier attempt kept: [e2e-attempt1-port-in-use.log](e2e-attempt1-port-in-use.log): the stack never started; Docker could not bind host port 38180, held at that moment by another process on the shared daemon. No test ran. The rerun moved the stack to ports 296xx.
 
 ## Gaps and best guesses
 
