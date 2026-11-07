@@ -1,4 +1,4 @@
-$ make lint @ d21c435
+$ make lint @ 6509f0f
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 All checks passed!

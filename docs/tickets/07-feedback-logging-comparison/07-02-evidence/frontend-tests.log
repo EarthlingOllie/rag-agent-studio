@@ -1,4 +1,4 @@
-$ make test-frontend @ bfe0fb1
+$ make test-frontend @ 7eb73ac
 cd frontend && pnpm test && pnpm check-embed-size
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0702r2/frontend
@@ -9,13 +9,13 @@ cd frontend && pnpm test && pnpm check-embed-size
       Coverage enabled with v8
 
 
- Test Files  54 passed (54)
-      Tests  716 passed (716)
-   Start at  14:26:30
-   Duration  463.32s (tests 69%, environment 15%, import 7%, setup 6%, transform 2%, worker 1%)
+ Test Files  55 passed (55)
+      Tests  722 passed (722)
+   Start at  17:44:56
+   Duration  299.81s (tests 69%, environment 15%, import 7%, setup 6%, transform 2%, worker 1%)
 
-    Isolate  54 workers spawned · ~4.13s startup each (spawn + environment, per file)
-             at least ~70.26s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  55 workers spawned · ~2.76s startup each (spawn + environment, per file)
+             at least ~47.85s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
@@ -23,10 +23,10 @@ No files with missing coverage.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 3531/3531 )
-Branches     : 100% ( 2278/2278 )
-Functions    : 100% ( 1284/1284 )
-Lines        : 100% ( 3125/3125 )
+Statements   : 100% ( 3554/3554 )
+Branches     : 100% ( 2302/2302 )
+Functions    : 100% ( 1287/1287 )
+Lines        : 100% ( 3145/3145 )
 ================================================================================
 
 > rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0702r2/frontend
@@ -41,14 +41,9 @@ transforming...
 ✓ 77 modules transformed.
 rendering chunks...
 computing gzip size...
-dist/widget/assets/widget.js  646.35 kB │ gzip: 203.56 kB
+dist/widget/assets/widget.js  647.91 kB │ gzip: 204.14 kB
 
-[plugin builtin:vite-reporter] 
-(!) Some chunks are larger than 500 kB after minification. Consider:
-- Using dynamic import() to code-split the application
-- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
-- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 1.30s
+✓ built in 659ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -56,7 +51,7 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 40ms
+✓ built in 23ms
 
 > @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0702r2/frontend/apps/widget
 > node scripts/check-size.mjs

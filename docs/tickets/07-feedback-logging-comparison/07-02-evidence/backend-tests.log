@@ -1,4 +1,4 @@
-$ make test-backend @ bfe0fb1 (fresh rag0702 Postgres/pgvector :47052, Redis :47053, RustFS :47054; OpenTelemetry span and JSON log lines filtered out)
+$ make test-backend @ 7eb73ac (fresh rag0702 Postgres/pgvector :47052, Redis :47053, RustFS :47054; OpenTelemetry span and JSON log lines filtered out)
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -40,7 +40,7 @@ tests/integration/test_ingestion_failures.py ........................... [ 20%]
 tests/integration/test_ingestion_scan.py .....                           [ 20%]
 tests/integration/test_input_guardrail.py .....                          [ 21%]
 tests/integration/test_invites.py ..............................         [ 22%]
-tests/integration/test_logging.py ..F....                                [ 22%]
+tests/integration/test_logging.py .......                                [ 22%]
 tests/integration/test_mailer.py ........                                [ 23%]
 tests/integration/test_members.py ...............                        [ 23%]
 tests/integration/test_message_feedback.py ................              [ 24%]
@@ -121,35 +121,6 @@ tests/unit/test_prompt_assembly.py ....                                  [ 99%]
 tests/unit/test_retry_backoff.py .                                       [ 99%]
 tests/unit/test_settings_from_parts.py .......                           [100%]
 
-=================================== FAILURES ===================================
-__________________ test_the_api_server_writes_only_json_lines __________________
-
-    def test_the_api_server_writes_only_json_lines() -> None:
-        port = _free_port()
-        service = _Service(sys.executable, "-m", "app.serve", str(port))
-        try:
->           service.wait_for("Application startup complete")
-
-tests/integration/test_logging.py:194: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-
-self = <tests.integration.test_logging._Service object at 0x7f170f7412b0>
-text = 'Application startup complete', timeout = 20.0
-
-    def wait_for(self, text: str, timeout: float = 20.0) -> None:
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            try:
-                line = self._queue.get(timeout=0.1)
-            except queue.Empty:
-                continue
-            self.lines.append(line)
-            if text in line:
-                return
->       raise AssertionError(f"{text!r} not logged; got:\n{''.join(self.lines)}")
-E       AssertionError: 'Application startup complete' not logged; got:
-
-tests/integration/test_logging.py:162: AssertionError
 ================================ tests coverage ================================
 _______________ coverage: platform linux, python 3.13.18-final-0 _______________
 
@@ -340,8 +311,5 @@ app/worker/tasks.py                       4      0      0      0   100%
 TOTAL                                  9665      0   1096      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=========================== short test summary info ============================
-FAILED tests/integration/test_logging.py::test_the_api_server_writes_only_json_lines
-========== 1 failed, 2135 passed, 22 deselected in 5310.93s (1:28:30) ==========
-make: *** [Makefile:31: test-backend] Error 1
-exit 2
+=============== 2136 passed, 22 deselected in 3578.74s (0:59:38) ===============
+exit 0
