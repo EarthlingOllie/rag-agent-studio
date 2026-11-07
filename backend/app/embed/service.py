@@ -10,6 +10,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,9 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents import serving
 from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
-from app.conversations.models import Conversation
+from app.conversations.models import Conversation, Message, MessageRetrieval
+from app.documents.models import Document
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.playground.service import PreparedTurn
+from app.runtime.prompt import chunk_label
 from app.tenancy.repository import OrganisationScope
 
 ORIGINS_MAX = 50
@@ -129,6 +132,15 @@ async def prepare_turn(
 ) -> PreparedTurn:
     """Saves the Visitor's question in the token's Conversation, to be answered by the Agent's
     Live Version at this moment."""
+    conversation = await _conversation(session, signer, public_id, token, now=now)
+    return await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
+
+
+async def _conversation(
+    session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
+) -> Conversation:
+    """The Visitor Conversation the token stands for; raises ``InvalidTokenError`` when the
+    token is tampered with, ended, expired or for another Agent."""
     conversation_id = signer.conversation_id(token)
     if conversation_id is None:
         raise InvalidTokenError
@@ -143,4 +155,59 @@ async def prepare_turn(
     )
     if conversation is None or expired(conversation.last_activity_at, now=now):
         raise InvalidTokenError
-    return await serving.prepare_turn(session, public_id, conversation_id, question, now=now)
+    return conversation
+
+
+@dataclass(frozen=True)
+class ResumedCitation:
+    label: str
+    document_name: str | None
+
+
+@dataclass(frozen=True)
+class ResumedMessage:
+    role: str
+    content: str
+    citations: list[ResumedCitation]
+
+
+async def resume(
+    session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
+) -> list[ResumedMessage]:
+    """The Messages of the token's Conversation, in order, each answer with the sources it
+    cited. A reload counts as activity, so it slides the 24-hour window on. Raises
+    ``serving.AgentNotServedError`` or ``serving.AgentNotLiveError`` once the Agent is
+    retired."""
+    conversation = await _conversation(session, signer, public_id, token, now=now)
+    await serving.live_agent(session, public_id)
+    conversation.last_activity_at = now
+    messages = list(
+        await session.scalars(
+            select(Message).where(Message.conversation_id == conversation.id).order_by(Message.seq)
+        )
+    )
+    await session.commit()
+    cited: dict[uuid.UUID, list[ResumedCitation]] = {}
+    rows = await session.execute(
+        select(MessageRetrieval.message_id, MessageRetrieval.rank, Document.name)
+        .outerjoin(Document, Document.id == MessageRetrieval.document_id)
+        .where(
+            MessageRetrieval.message_id.in_([m.id for m in messages]),
+            MessageRetrieval.cited.is_(True),
+        )
+        .order_by(MessageRetrieval.message_id, MessageRetrieval.rank)
+    )
+    for message_id, rank, name in rows:
+        cited.setdefault(message_id, []).append(ResumedCitation(chunk_label(cast(int, rank)), name))
+    return [ResumedMessage(m.role, m.content, cited.get(m.id, [])) for m in messages]
+
+
+async def end(
+    session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
+) -> None:
+    """Ends the token's Conversation: its token is forgotten, so it is refused from now on.
+    The Conversation and its Messages are kept. A retired Agent's Conversations can still be
+    ended."""
+    conversation = await _conversation(session, signer, public_id, token, now=now)
+    conversation.token_hash = None
+    await session.commit()
