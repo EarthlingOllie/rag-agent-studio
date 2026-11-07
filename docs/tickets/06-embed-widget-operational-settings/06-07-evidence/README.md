@@ -1,6 +1,6 @@
 # Evidence: ticket 06-07, WCAG 2.2 AA widget
 
-Branch `ticket/06-07-wcag-aa`, from `origin/candidate` at `58bb07a` (06-03, Branded widget, PR #55). The claim commit `5892e5f`, the first on the branch, set Status `in-progress`. The feature is `9d5e5c3`; `a592df3` adds this folder's sandbox files (`build.sh`, `compose.sandbox.yml`, `e2e.env`); `18f5105` fixes the one violation axe found in the first e2e run (see **Red, then green** below). Every check in **Results** ran from a fresh `git clone` of the pushed branch at `18f5105`, not from the working tree; each log's first line names that commit. The commit after it adds only this folder's logs and README and sets the ticket's Status, so no code changed after the checks. `origin/candidate` had not moved since `58bb07a` when the checks ran. Just after they finished, 09-06 (PR #57, `4ebc317`) merged into `origin/candidate`: it changes infra, deploy scripts, backend settings, the Makefile and `docs/development.md`, none of the widget or e2e files here; `git merge-tree` of this branch with it is clean (only `docs/development.md` is touched by both, in different paragraphs). The branch is left unmerged with it, for the merge step to rerun the gates on the combined tree.
+Branch `ticket/06-07-wcag-aa`, from `origin/candidate` at `58bb07a` (06-03, Branded widget, PR #55). The claim commit `5892e5f`, the first on the branch, set Status `in-progress`. The feature is `9d5e5c3`; `a592df3` adds this folder's sandbox files (`build.sh`, `compose.sandbox.yml`, `e2e.env`); `18f5105` fixes the one violation axe found in the first e2e run (see **Red, then green** below). Every check in **Results** ran from a fresh `git clone` of the pushed branch at `18f5105`, not from the working tree; each log's first line names that commit. The commit after it adds only this folder's logs and README and sets the ticket's Status, so no code changed after the checks. `origin/candidate` had not moved since `58bb07a` when the checks ran. Just after they finished, 09-06 (PR #57, `4ebc317`) merged into `origin/candidate`: it changes infra, deploy scripts, backend settings, the Makefile and `docs/development.md`, none of the widget or e2e files here; `git merge-tree` of this branch with it is clean (only `docs/development.md` is touched by both, in different paragraphs). The branch was then merged with it and later candidates; see **Merge with candidate** below.
 
 **Status: done.** Every criterion is met and evidenced below; gaps and best guesses are at the end.
 
@@ -56,6 +56,29 @@ All runs local and one at a time (GitHub Actions is down; the user authorised me
 
 **Clean checkout.** Every check above ran in the fresh clone at `18f5105`, the head pushed at the time; the final commit adds only this folder's logs and README and sets the ticket's Status and checkboxes (`git diff 18f5105 HEAD --stat` touches only `docs/tickets/06-embed-widget-operational-settings/`).
 
+## Merge with candidate (the merge gate)
+
+Before the PR merged, `origin/candidate` moved four times and each was merged into this branch (all clean at the text level): 09-06 demo deploy (`4ebc317`), 07-01 Conversations viewer (`2090bf5`), 06-02 Operational Settings (`ebaeb04`), 08-01 Input Guardrail (`a2e4a26`, touching `Widget.tsx`, `styles.ts` and `primitives.tsx`) and a screenshots-only docs commit (`51a993c`). The full set of checks ran green at the intermediate merges `9d3cd38` and `f412d2f` (logs superseded, not kept). Two things needed changes:
+
+- **06-02 replaced `PUT …/allowed-origins` with `PATCH …/operational-settings`.** At `4ca8460` the three `widget-accessibility.spec.ts` tests failed (404 setting the host page's origin). `b2874cc` sets `allowed_origins` through the new endpoint, as 06-02 did for the other widget specs; the next e2e run passed 78/78.
+- **08-01 made the local ONNX injection classifier the default input Guardrail.** With this folder's old `build.sh` (`BUNDLE_MODELS=false`) the API had no model, so every chat failed ([merged-e2e-attempt1-models-not-bundled.log](merged-e2e-attempt1-models-not-bundled.log): 13 failed). `build.sh` is now 08-01's sandbox build (models bundled, PDF off; it also checks the bundled classifier offline) and `e2e.env` sets `BUNDLE_MODELS=true`, `INPUT_CLASSIFIER=local`. The first image build at `7d98eaa` ran out of disk while unpacking ([merged-images-attempt1-disk-full.log](merged-images-attempt1-disk-full.log)); it was rebuilt once space was back.
+
+Final results. Backend, frontend, client drift and infra ran at `7d98eaa` (this ticket merged with candidate `a2e4a26`); the only later change is `51a993c`, which adds PNGs, two `.cjs` capture scripts and a README under `docs/screenshots/`, outside every check's scope (eslint and tsc run in `frontend/`, ruff and mypy in `backend/`). Lint, images and e2e ran at the final merge with `51a993c`.
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` | exit 0 | [merged-install.log](merged-install.log) |
+| `make lint` | exit 0: ruff, ruff format, mypy (322 files), eslint, tsc | [merged-lint.log](merged-lint.log) |
+| `make test-frontend` | exit 0: 703 tests; 100% statements (3484), branches (2240), functions (1262), lines (3084); `embed.js` 778 B gzipped | [merged-frontend-tests.log](merged-frontend-tests.log) |
+| `make check-client` | exit 0: "API client is up to date." | [merged-client-drift.log](merged-client-drift.log) |
+| `make test-backend` | exit 0: 2120 passed, 100.00% line and branch coverage | [merged-backend-tests.log](merged-backend-tests.log) |
+| `make infra-check` | exit 0: terraform fmt/validate/test, tflint, checkov (288 passed, 0 failed), deploy script tests | [merged-infra-check.log](merged-infra-check.log) |
+| Images (`build.sh`) | exit 0 | [merged-images.log](merged-images.log) |
+| e2e (`make e2e`'s three steps, one Playwright worker) | exit 0: **77 passed (16.3m), 1 flaky** (`agent-config.spec.ts`, a 30 s timeout on its first try, passed on the CI retry), none failed; the 3 `widget-accessibility.spec.ts` tests pass | [merged-e2e.log](merged-e2e.log) |
+
+**e2e under load.** With the models bundled, two full `make e2e` runs at `71f6a2a` each failed a different handful of Studio tests this ticket doesn't touch, every one a 30 s timeout while the shared machine's load average was 20-30 on 4 CPUs: [merged-e2e-attempt2-load-timeouts.log](merged-e2e-attempt2-load-timeouts.log) (75 passed, 1 flaky; `agent-archive` and `agent-drafts` failed) and [merged-e2e-attempt3-load-timeouts.log](merged-e2e-attempt3-load-timeouts.log) (73 passed, 2 flaky; `mfa`, `organisation-switcher` and `require-mfa` failed). The widget tests passed in both. The final run is `make e2e`'s own three steps (`compose up --wait`, `make seed`, `pnpm e2e`) with `--workers=1` so the suite's two workers don't compete with each other as well; everything else is unchanged (CI's one retry). OTel JSON span lines are filtered out of the e2e logs.
+
+
 ## Gaps and best guesses
 
 - **Theme colours an Owner picks** can fail contrast; the Theme editor warns (`contrastWarnings`, 02-05) and never blocks, as the glossary's Contrast warning says. AA is proven for the default Theme and its dark values. The per-Agent colour override (06-03) has no contrast warning of its own in the Studio; adding one is a small follow-up outside this ticket's criteria.
@@ -65,4 +88,4 @@ All runs local and one at a time (GitHub Actions is down; the user authorised me
   - The announcement reads the Agent's display name and the whole reply text once; sources are not read (they follow in the log for anyone who navigates to them).
   - The panel is not given `role="dialog"`: 06-03's tests and the Studio find it as the region "Chat with …", and the trap plus Escape give dialog behaviour; adding the role would add a second name for the same container.
   - Focus ring colour follows the text colour of the surface it sits on rather than the accent, because the Theme only guarantees text contrast (4.5:1), which also covers the 3:1 non-text requirement.
-- **Sandbox limits** (as in earlier tickets): images built with `WITH_PDF=false BUNDLE_MODELS=false` and the egress CA; e2e with `EMBEDDER=fake`; the live suite and Trivy not run; infra checks not run (no infra change).
+- **Sandbox limits** (as in earlier tickets): images built with `WITH_PDF=false` and the egress CA (`BUNDLE_MODELS=false` before the merge with 08-01, `true` after it, so the merged e2e runs the real bundled injection classifier); e2e with `EMBEDDER=fake`; the merged e2e with one Playwright worker (load); the live suite and Trivy not run; infra checks not run (no infra change).
