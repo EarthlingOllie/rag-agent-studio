@@ -1,4 +1,4 @@
-$ make test-live, the input Guardrail's classifier only (HF_HOME=shared cache, LIVE_REQUIRE_MODELS=1) @ 883e880
+$ make test-live, the input Guardrail's classifier only (HF_HOME=shared cache, LIVE_REQUIRE_MODELS=1) @ c7b7670
 ============================= test session starts ==============================
 platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0801/backend/.venv/bin/python
 cachedir: .pytest_cache
@@ -24,5 +24,5 @@ tests/live/test_local_injection_classifier_live.py::test_benign_questions_pass[W
 tests/live/test_local_injection_classifier_live.py::test_benign_questions_pass[question5] PASSED [ 93%]
 tests/live/test_local_injection_classifier_live.py::test_a_long_message_is_read_in_windows_beyond_the_models_limit PASSED [100%]
 
-============================= 15 passed in 25.00s ==============================
+============================= 15 passed in 15.96s ==============================
 exit 0

@@ -1,8 +1,8 @@
-$ make lint @ 883e880
+$ make lint @ c7b7670
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
 All checks passed!
-309 files already formatted
-Success: no issues found in 309 source files
+322 files already formatted
+Success: no issues found in 322 source files
 cd frontend && pnpm lint && pnpm typecheck
 
 > rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0801/frontend

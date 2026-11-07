@@ -14,7 +14,7 @@ Branch `ticket/08-01-input-guardrail-block`, from `origin/candidate` at `e77f204
 - **History**: a blocked question and its refusal are left out of the turns later answers send to the model (`_turns` in `app/playground/service.py`), so an attack isn't replayed.
 - **API**: a `refusal` SSE event (`{"text": …}`) then `done`, on both `sendPlaygroundMessage` and `sendWidgetMessage` (documented in their OpenAPI descriptions); `TraceOut.guardrail_outcomes[].score`. API client regenerated.
 - **Studio**: the Playground shows the refusal text with "Blocked by the input Guardrail: the model wasn't asked."; the Trace drawer shows "Model: None (blocked)", a sentence saying the input Guardrail blocked the question, and outcomes as e.g. "Input Guardrail: injection (score 0.99), blocked before the model. <reason>". The Draft editor's Guardrails note now says block mode is enforced.
-- **Widget**: `chat.ts` handles `refusal` (`onRefusal`); the reply bubble shows the refusal text (class `refusal`, amber border).
+- **Widget**: `chat.ts` handles `refusal` (`onRefusal`); the reply bubble shows the refusal text (class `refusal`, amber border; the shared UI `MessageBubble` gained an optional `className` for it).
 - Docs: `docs/development.md` (Input Guardrail paragraph), ADR-0007 (which model, why base not small, windowing, history), `GLOSSARY.md`.
 
 ## Test seams
@@ -41,18 +41,18 @@ The [shared test seams](../../../specs/README.md#shared-test-seams), as spec 08'
 
 ## Results
 
-All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results). Every check ran on a fresh clone of the branch at `883e880` (`origin/candidate` `e77f204` plus this ticket's commits) with no uncommitted code changes (only this folder and the ticket file were being written afterwards), and each log's first line names the commit. A container restart interrupted the first full run during the backend suite; the backend tests, images and e2e were rerun from a fresh clone of the same commit (install rerun first, exit 0). The backend used fresh `rag0801-pg/redis/rustfs` containers (ports 48152, 48179, 48191). The e2e stack was compose project `rag0801-e2e`.
+All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results). The final run is on a fresh clone of the branch at `c7b7670`, which is this ticket's code (`883e880`) merged with `origin/candidate` at `ebaeb04` (06-04 resume, 06-03 branded widget, 09-06 demo deploy, 07-01 Conversations viewer and 06-02 Operational Settings had merged meanwhile), with no uncommitted code changes; each log's first line names the commit. The merges needed three hand resolutions: the widget SSE description in `backend/app/embed/api.py` (06-02's unavailable text plus this ticket's `refusal` event), the widget's refusal class (`Widget.tsx`; with 06-03's branded widget the reply bubble is the shared `MessageBubble`, which now takes an optional `className` so the refusal keeps class `refusal` and its amber border) and the regenerated API client. The full set of checks also ran green at the intermediate merges `64af0ef`, `3eb2c13`, `8f1a7e1` (one frontend rerun after a timing failure in 06-03's `ThemeImages.test.tsx`) and `6f31cab` (logs not kept: superseded). The backend used fresh `rag0801-pg/redis/rustfs` containers (ports 48152, 48179, 48191). The e2e stack was compose project `rag0801-e2e`.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
 | Install | `make install` | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Backend tests + coverage gate | `make test-backend` | **1949 passed**, 22 deselected (live); 100.00% lines and branches | [backend-tests.log](backend-tests.log) |
-| Frontend tests + coverage gate + loader budget | `make test-frontend` | **50 files, 620 tests**; 100% statements, branches, functions, lines; `embed.js` 417 B / 315 B gzipped | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` | **2120 passed**, 22 deselected (live); 100.00% lines and branches | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate + loader budget | `make test-frontend` | **53 files, 697 tests**; 100% statements, branches, functions, lines; `embed.js` 1367 B / 778 B gzipped | [frontend-tests.log](frontend-tests.log) |
 | Live suite (this ticket's model) | `pytest -m live tests/live/test_local_injection_classifier_live.py` with `LIVE_REQUIRE_MODELS=1` | **15 passed** | [live-suite.log](live-suite.log) |
 | Images | `build.sh` (sandbox `make images`, `BUNDLE_MODELS=true`) | `rag-agent-studio/api:0801` and `studio:0801` built; offline (`--network none`, `HF_HUB_OFFLINE=1`) the bundled classifier flags the attack (score 1.0) and passes the benign question | [images.log](images.log) |
-| End-to-end | `make e2e` with `compose.sandbox.yml` and `e2e.env` (real bundled classifier, `INPUT_CLASSIFIER=local`) | **69 passed** (6.8 min), 0 failed, including `playground.spec.ts`, `embed.spec.ts` and `playground-errors.spec.ts` | [e2e.log](e2e.log) |
+| End-to-end | `make e2e` with `compose.sandbox.yml` and `e2e.env` (real bundled classifier, `INPUT_CLASSIFIER=local`) | **73 passed** (10.0 min), 0 failed, 2 flaky (passed on the CI retry), including `playground.spec.ts`, `embed.spec.ts` and `playground-errors.spec.ts` | [e2e.log](e2e.log) |
 | Security | gitleaks (`origin/candidate..HEAD`), `make audit` (pip-audit, pnpm audit) | no leaks; no known vulnerabilities | [security.log](security.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
@@ -71,5 +71,6 @@ Earlier attempts are kept:
   - **Loaded on first use** (once per process, under a lock) rather than at API startup, so the worker and Beat, which don't classify messages, never load it, and tests never touch it. The first message after an API start waits ~3 s.
   - **Refusal shape:** a dedicated `refusal` SSE event (not `token`), so clients can mark it; the Playground and Trace say the model wasn't asked. A refused answer names no model and costs 0, like a fallback reply, but `fallback` stays false.
   - **Blocked turns are left out of later history**, so an attack can't be replayed into a later turn's prompt.
-  - A classifier crash is not caught: the stream ends without `done` and the client shows its generic error (the local model has no transient failure mode; fail-open/closed is the LLM classifier's setting, 08-03).
+  - **A resumed Conversation (06-04) shows an earlier refusal as an ordinary Agent bubble:** the resume API returns role, content and citations only, so the widget can't tell a saved refusal from an answer. The text is right; only the amber mark is missing. Adding a `refused` flag to the resume payload is a small follow-up, left out to keep this ticket's scope.
+- A classifier crash is not caught: the stream ends without `done` and the client shows its generic error (the local model has no transient failure mode; fail-open/closed is the LLM classifier's setting, 08-03).
 - **Sandbox limits:** images built with `WITH_PDF=false` (PyTorch and Docling's models don't fit this shared machine), but with `BUNDLE_MODELS=true`, so the e2e stack runs the real bundled classifier; e2e still runs `EMBEDDER=fake` (as earlier tickets) to keep the stack's memory down. The live suite was run for this ticket's model only (the Docling and embedding live tests are unchanged by it). Trivy was not run (no new dependencies; only model files added). GitHub Actions is down; the user authorised merging on local results.
