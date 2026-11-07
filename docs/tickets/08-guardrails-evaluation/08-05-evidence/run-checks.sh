@@ -20,5 +20,7 @@ set -a; source $E/e2e.env; set +a; export CI=1; CMP="docker compose -p rag0805-e
 $CMP down -v > /dev/null 2>&1
 (echo "\$ (env from e2e.env) CI=1 make e2e COMPOSE='$CMP' @ $H (CI settings: one retry)"; timeout 3600 make e2e COMPOSE="$CMP" 2>&1; echo "exit $?") > $E/e2e.log 2>&1
 $CMP down -v > /dev/null 2>&1
+docker rmi rag-agent-studio/api:0805 rag-agent-studio/studio:0805 > /dev/null 2>&1; rm -rf $C0
+if [ "$(df --output=avail -BG / | tail -1 | tr -dc 0-9)" -lt 8 ]; then docker builder prune -af > /dev/null 2>&1; fi; df -h / | tail -1
 for f in install lint frontend-tests client-drift security live-suite backend-tests images e2e; do echo "$f: $(grep -a '^exit' $E/$f.log | tr '\n' ' ')"; done
 echo ALLDONE
