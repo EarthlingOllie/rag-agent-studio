@@ -79,7 +79,7 @@ ROUTERS: Sequence[APIRouter] = (
     bulk_api.router,
     playground_api.router,
     conversations_api.router,
-    embed_api.origins_router,
+    embed_api.settings_router,
     branding_api.router,
     embed_api.widget_router,
     embed_api.shell_router,

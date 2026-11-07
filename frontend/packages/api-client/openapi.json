@@ -253,40 +253,6 @@
         "title": "AgentVersionsOut",
         "type": "object"
       },
-      "AllowedOriginsIn": {
-        "properties": {
-          "origins": {
-            "items": {
-              "maxLength": 510,
-              "type": "string"
-            },
-            "maxItems": 50,
-            "title": "Origins",
-            "type": "array"
-          }
-        },
-        "required": [
-          "origins"
-        ],
-        "title": "AllowedOriginsIn",
-        "type": "object"
-      },
-      "AllowedOriginsOut": {
-        "properties": {
-          "origins": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Origins",
-            "type": "array"
-          }
-        },
-        "required": [
-          "origins"
-        ],
-        "title": "AllowedOriginsOut",
-        "type": "object"
-      },
       "AuditActorOut": {
         "properties": {
           "email": {
@@ -3988,6 +3954,62 @@
           "effective"
         ],
         "title": "ModelPricesOut",
+        "type": "object"
+      },
+      "OperationalSettingsChange": {
+        "description": "The settings to change; one left out stays as it is.",
+        "properties": {
+          "allowed_origins": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 510,
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Origins"
+          },
+          "unavailable_text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Text"
+          }
+        },
+        "title": "OperationalSettingsChange",
+        "type": "object"
+      },
+      "OperationalSettingsOut": {
+        "properties": {
+          "allowed_origins": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Origins",
+            "type": "array"
+          },
+          "unavailable_text": {
+            "title": "Unavailable Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowed_origins",
+          "unavailable_text"
+        ],
+        "title": "OperationalSettingsOut",
         "type": "object"
       },
       "OptionalPricesOut": {
@@ -10187,162 +10209,6 @@
         ]
       }
     },
-    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/allowed-origins": {
-      "get": {
-        "description": "The sites whose pages may show the Agent's widget.",
-        "operationId": "getAllowedOrigins",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Project Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "agent_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Agent Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "organisation_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Organisation Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllowedOriginsOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Allowed Origins",
-        "tags": [
-          "embed"
-        ]
-      },
-      "put": {
-        "description": "Replaces the Agent's Allowed Origins; the widget's next page load uses them, without\npublishing.",
-        "operationId": "setAllowedOrigins",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Project Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "agent_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Agent Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "organisation_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Organisation Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AllowedOriginsIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllowedOriginsOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Set Allowed Origins",
-        "tags": [
-          "embed"
-        ]
-      }
-    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/archive": {
       "post": {
         "description": "Archives the Agent: it leaves the Agents list and starts no new Playground Conversation,\nbut keeps its Draft and Conversations. Records ``agent.archived``.",
@@ -10958,6 +10824,162 @@
         "summary": "List Agent Live History",
         "tags": [
           "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/operational-settings": {
+      "get": {
+        "description": "The Agent's Operational Settings: not part of its Draft or Versions.",
+        "operationId": "getOperationalSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Operational Settings",
+        "tags": [
+          "embed"
+        ]
+      },
+      "patch": {
+        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values.",
+        "operationId": "changeOperationalSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperationalSettingsChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Operational Settings",
+        "tags": [
+          "embed"
         ]
       }
     },
@@ -15896,7 +15918,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, and a `message` for Visitors that names no model or credential)."
+            "description": "Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential)."
           },
           "401": {
             "content": {
@@ -15936,7 +15958,7 @@
                 }
               }
             },
-            "description": "This assistant is temporarily unavailable. Please try again later."
+            "description": "The Agent's unavailable text: it has no model to answer with."
           }
         },
         "summary": "Send Message",

@@ -141,6 +141,10 @@ export const hrHelper: Agent = {
 type AgentVersion = Schemas["AgentVersionOut"];
 type AgentDiff = Schemas["AgentDiffOut"];
 
+/** What Visitors are told when an Agent can't answer, until an Editor words it. */
+export const DEFAULT_UNAVAILABLE_TEXT =
+  "This assistant is temporarily unavailable. Please try again later.";
+
 export const STALE_DRAFT =
   "Someone else saved this Draft after you opened it. Load their changes, or save yours over them.";
 
@@ -382,6 +386,8 @@ export function fakeAgentsApi(
     ) => Response | undefined | Promise<Response | undefined>;
     /** The Allowed Origins every Agent starts with. */
     allowedOrigins?: string[];
+    /** The unavailable text every Agent starts with; the default when left out. */
+    unavailableText?: string;
     /** Each Agent's Versions, newest first. */
     versions?: Record<string, AgentVersion[]>;
     /** Decides each diff's response; by default no changes. `from` and `to` are as sent. */
@@ -441,39 +447,47 @@ export function fakeAgentsApi(
   const ada = { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" };
   const versionId = (number: number) =>
     `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`;
-  let allowedOrigins = [...(options.allowedOrigins ?? [])];
+  let settings: Schemas["OperationalSettingsOut"] = {
+    allowed_origins: [...(options.allowedOrigins ?? [])],
+    unavailable_text: options.unavailableText ?? DEFAULT_UNAVAILABLE_TEXT,
+  };
   server.use(
     http.get(
-      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins",
-      () => HttpResponse.json({ origins: allowedOrigins }),
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/operational-settings",
+      () => HttpResponse.json(settings),
     ),
-    http.put(
-      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/allowed-origins",
+    http.patch(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/operational-settings",
       async ({ request }) => {
-        const body = (await request.json()) as Schemas["AllowedOriginsIn"];
-        requests.push({ route: "allowed-origins", body });
+        const body = (await request.json()) as Schemas["OperationalSettingsChange"];
+        requests.push({ route: "operational-settings", body });
         // Like the API: lower-cased, without a trailing slash; a non-origin is a 422.
-        const origins = body.origins.map((origin) =>
+        const origins = body.allowed_origins?.map((origin) =>
           origin.trim().toLowerCase().replace(/\/$/, ""),
         );
-        const invalid = origins.findIndex(
-          (origin) => !/^https?:\/\/[a-z0-9.-]+(:[0-9]+)?$/.test(origin),
+        const invalid = (origins ?? []).findIndex(
+          (origin) => !/^https?:\/\/(\*\.)?[a-z0-9.-]+(:([0-9]+|\*))?$/.test(origin),
         );
         if (invalid >= 0)
           return HttpResponse.json(
             {
               detail: [
                 {
-                  loc: ["body", "origins", invalid],
-                  msg: `'${String(body.origins[invalid])}' isn't a site address. Use a scheme, host and optional port, such as https://www.example.com or http://localhost:8080.`,
+                  loc: ["body", "allowed_origins", invalid],
+                  msg: `'${String(body.allowed_origins?.[invalid])}' isn't a site address. Use a scheme, host and optional port, such as https://www.example.com, https://*.example.com for its subdomains, or http://localhost:8080 (http://localhost:* for any port).`,
                   type: "value_error",
                 },
               ],
             },
             { status: 422 },
           );
-        allowedOrigins = origins;
-        return HttpResponse.json({ origins });
+        const text = "unavailable_text" in body ? body.unavailable_text?.trim() : undefined;
+        settings = {
+          allowed_origins: origins ?? settings.allowed_origins,
+          unavailable_text:
+            "unavailable_text" in body ? text || DEFAULT_UNAVAILABLE_TEXT : settings.unavailable_text,
+        };
+        return HttpResponse.json(settings);
       },
     ),
     http.get(
