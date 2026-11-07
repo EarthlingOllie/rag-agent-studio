@@ -27,6 +27,12 @@ function useListParams() {
   return useParams({ from: LIST_ROUTE });
 }
 
+/** A Conversation's Message Feedback counts, such as "1 up · 2 down", or "None". */
+function thumbsText({ thumbs_up: up, thumbs_down: down }: ConversationSummary): string {
+  const counts = [up > 0 && `${String(up)} up`, down > 0 && `${String(down)} down`].filter(Boolean);
+  return counts.length === 0 ? "None" : counts.join(" · ");
+}
+
 const versionsText = (conversation: ConversationSummary) =>
   conversation.version_numbers.length === 0 ? "Draft" : conversation.version_numbers.map((n) => `v${String(n)}`).join(", ");
 
@@ -154,6 +160,22 @@ function Filters({
           <option value="playground">Playground only</option>
         </select>
       </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Feedback
+        <select
+          className={INPUT}
+          value={filters.feedback ?? ""}
+          onChange={(event) => {
+            set({ feedback: event.currentTarget.value });
+          }}
+        >
+          <option value="">Any or none</option>
+          <option value="up">Thumbs up</option>
+          <option value="down">Thumbs down</option>
+          <option value="any">With feedback</option>
+          <option value="none">Without feedback</option>
+        </select>
+      </label>
     </fieldset>
   );
 }
@@ -180,6 +202,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
             <th scope="col" className="py-2 pr-4 font-medium">With</th>
             <th scope="col" className="py-2 pr-4 font-medium">Answered by</th>
             <th scope="col" className="py-2 pr-4 font-medium">Messages</th>
+            <th scope="col" className="py-2 pr-4 font-medium">Feedback</th>
             <th scope="col" className="py-2 font-medium">First question</th>
           </tr>
         </thead>
@@ -193,6 +216,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
               </td>
               <td className="py-2 pr-4">{versionsText(conversation)}</td>
               <td className="py-2 pr-4">{conversation.message_count}</td>
+              <td className="whitespace-nowrap py-2 pr-4">{thumbsText(conversation)}</td>
               <td className="py-2">
                 <Link
                   to="/organisations/$organisationId/projects/$projectId/conversations/$conversationId"
@@ -232,7 +256,8 @@ function Pager({ data, onPage }: { data: ConversationPage; onPage: (page: number
 export function ConversationsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useListParams();
-  const filters = useSearch({ from: LIST_ROUTE });
+  // The router passes unknown search values through from its parent routes, so filter again.
+  const filters = conversationFilters(useSearch({ from: LIST_ROUTE }));
   const navigate = useNavigate({ from: "/organisations/$organisationId/projects/$projectId/conversations" });
   const conversations = useConversations(organisationId, projectId, filters);
   const show = (next: ConversationFilters) => {
@@ -279,6 +304,28 @@ function ConversationTrace({ path, onClose }: { path: ConversationPath & { messa
   return <TraceDrawerFrame trace={useConversationTrace(path)} onClose={onClose} />;
 }
 
+/** The Visitor's Message Feedback on a reply: the thumb, the Version it counts for, when, and any comment. */
+function FeedbackNote({ message, visitor }: { message: ConversationMessage; visitor: boolean }) {
+  const feedback = message.feedback;
+  if (feedback === null) {
+    return visitor ? <p className="mt-2 text-xs text-slate-700">No feedback</p> : null;
+  }
+  const version = feedback.agent_version_number === null ? "the Draft" : `Agent Version v${String(feedback.agent_version_number)}`;
+  return (
+    <div role="group" aria-label="Visitor feedback" className="mt-2 rounded bg-slate-50 p-2 text-sm">
+      <p>
+        <span className={feedback.rating === "up" ? "font-medium text-emerald-800" : "font-medium text-red-800"}>
+          {feedback.rating === "up" ? "Thumbs up" : "Thumbs down"}
+        </span>
+        {` · for ${version} · ${formatTime(feedback.updated_at)}`}
+      </p>
+      {feedback.comment !== null && (
+        <blockquote className="mt-1 whitespace-pre-wrap border-l-2 border-slate-300 pl-2 text-slate-800">{feedback.comment}</blockquote>
+      )}
+    </div>
+  );
+}
+
 function MessageItem({
   message,
   asker,
@@ -305,6 +352,7 @@ function MessageItem({
         {message.fallback && " · fallback reply"}
       </p>
       <p className="whitespace-pre-wrap">{message.content}</p>
+      <FeedbackNote message={message} visitor={asker === "Visitor"} />
       <button type="button" className={`${BUTTON} mt-2`} onClick={onTrace}>
         Trace
       </button>

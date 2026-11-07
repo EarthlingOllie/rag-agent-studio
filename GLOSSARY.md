@@ -554,11 +554,11 @@ _Avoid_: Session, chat, thread
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Conversations viewer**:
-The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, and by Visitor or Playground. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered and its Trace in the Trace drawer. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
+The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, and by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none); each row shows its thumbs-up and thumbs-down counts. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
 _Avoid_: Chat log, transcript list
 
 **Message Feedback**:
-A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Message.
+A Visitor's thumbs-up or thumbs-down, with an optional comment (up to 1000 characters), on one Agent Message in their own Conversation; at most one per Message. The Visitor gives it from the widget, authenticated by the Conversation token, and can change it (giving it again replaces it) or remove it (pressing the chosen thumb again). It belongs to the Agent Version of the Message it is on, stored when it is written, so a later publish or revert never moves it.
 _Avoid_: Reaction, vote
 
 **Trace**:

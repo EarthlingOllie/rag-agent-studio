@@ -1,0 +1,18 @@
+e2e at c015f51, images with the bundled classifier: message-feedback passes; embed.spec fails because the refusal bubble now also carries the thumbs (fixed in d21c435); members and require-mfa time out at load ~22 (not touched by this ticket; pass in the final run).
+(trimmed: failed tests, their errors and the summary; the full log is ~600 KB)
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0702-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-02-evidence/compose.sandbox.yml' @ c015f51
+  ✘  31 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (33.7s)
+  ✘  35 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (retry #1) (37.9s)
+  ✘  41 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (31.9s)
+  ✘  43 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (retry #1) (30.5s)
+  ✘  63 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (30.5s)
+  ✘  65 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (retry #1) (31.0s)
+    Error: expect(locator).toHaveText(expected) failed
+    Error: expect(locator).toHaveText(expected) failed
+    Error: expect(locator).toHaveCount(expected) failed
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+    Error: locator.click: Test ended.
+  3 failed
+  73 passed (11.5m)
+exit 2
