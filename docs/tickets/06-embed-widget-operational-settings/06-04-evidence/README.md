@@ -43,7 +43,7 @@ All runs are local and one at a time (GitHub Actions is down; the user authorise
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Install | `make install` | exit 0 | [install.log](install.log) |
+| Install | `make install` (rerun at `1edf0e1` after a container restart; the first log had lost its exit line) | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
 | API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
 | Backend tests + coverage gate | `make test-backend` | **1929 passed**, 7 deselected (live); 100.00% | [backend-tests.log](backend-tests.log) |
