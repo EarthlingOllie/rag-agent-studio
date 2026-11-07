@@ -97,7 +97,15 @@ test.describe("Operational Settings", () => {
     await expect(elsewhere.getByRole("heading", { name: "Northwind Traders" })).toBeVisible();
     expect((await shellLoaded).status()).toBe(200);
     await expect(elsewhere.locator('iframe[title="Chat"]')).toHaveCount(1);
-    await expect.poll(() => refusals, { timeout: 15_000 }).toEqual([expect.stringContaining("Refused to frame")]);
+    // Chrome reports the refusal: "Framing '<shell>' violates the following Content Security Policy
+    // directive: "frame-ancestors <Allowed Origins>". The request has been blocked."
+    await expect
+      .poll(() => refusals, { timeout: 15_000 })
+      .toEqual([
+        expect.stringMatching(
+          new RegExp(`frame-ancestors ${allowed.origin} https://\\*\\.example\\.com.*The request has been blocked`, "s"),
+        ),
+      ]);
     await expect(elsewhere.frameLocator('iframe[title="Chat"]').getByRole("heading", { name: "Support helper" })).toHaveCount(0);
     await expect(elsewhere.frameLocator('iframe[title="Chat"]').getByLabel("Message")).toHaveCount(0);
     await visitor.close();
