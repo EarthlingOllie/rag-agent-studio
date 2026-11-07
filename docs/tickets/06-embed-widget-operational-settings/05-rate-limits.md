@@ -7,7 +7,7 @@
 **Blocked by:**
 - [06-02: Operational Settings and origin enforcement](02-operational-settings-origins.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Admission control applies per-token and per-IP sliding windows in Redis, using limits from Operational Settings
 - [ ] Client IP extraction trusts only the configured proxies (table-tested)
