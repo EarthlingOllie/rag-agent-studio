@@ -32,6 +32,8 @@ from app.default_model import api as default_model_api
 from app.default_model.service import default_model_references
 from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
+from app.embed import api as embed_api
+from app.embed.tokens import TokenSigner
 from app.gateway.adapters import build_model_gateway
 from app.mail.factory import build_mailer
 from app.playground import api as playground_api
@@ -74,6 +76,9 @@ ROUTERS: Sequence[APIRouter] = (
     agent_versions_api.router,
     bulk_api.router,
     playground_api.router,
+    embed_api.origins_router,
+    embed_api.widget_router,
+    embed_api.shell_router,
 )
 
 
@@ -88,6 +93,7 @@ def _lifespan(
         app.state.settings = settings
         app.state.clock = SystemClock()
         app.state.envelope = build_envelope(settings)
+        app.state.widget_tokens = TokenSigner(settings.local_key_wrapper_key.get_secret_value())
         configure_celery(settings)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)

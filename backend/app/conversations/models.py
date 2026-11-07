@@ -62,6 +62,9 @@ class Conversation(IdMixin, Base):
     last_activity_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # A Visitor Conversation's Conversation token, as its SHA-256 hex digest; the token itself is
+    # only ever held by the Visitor's widget. None for Playground Conversations.
+    token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
 
 
 class Message(IdMixin, Base):

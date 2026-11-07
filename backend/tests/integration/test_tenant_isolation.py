@@ -338,6 +338,11 @@ async def _an_agent_to_publish(owner: SignedUpMember, add_member: MemberFactory)
     return params, {"note": "First release"}
 
 
+async def _allowed_origins(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"origins": ["https://www.example.com"]}
+
+
 async def _an_agent_to_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, body = await _an_agent_to_publish(owner, add_member)
     for _ in range(2):
@@ -516,6 +521,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _AGENT + "/revert", EDITOR, _an_agent_to_revert),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/allowed-origins", EDITOR, _an_agent),
+    ScopedRoute("PUT", _AGENT + "/allowed-origins", EDITOR, _allowed_origins),
     ScopedRoute(
         "POST", PROJECTS + "/{project_id}/agents/bulk-publish", EDITOR, _agents_to_bulk_publish
     ),

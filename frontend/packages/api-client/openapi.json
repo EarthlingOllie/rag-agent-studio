@@ -253,6 +253,40 @@
         "title": "AgentVersionsOut",
         "type": "object"
       },
+      "AllowedOriginsIn": {
+        "properties": {
+          "origins": {
+            "items": {
+              "maxLength": 510,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Origins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "origins"
+        ],
+        "title": "AllowedOriginsIn",
+        "type": "object"
+      },
+      "AllowedOriginsOut": {
+        "properties": {
+          "origins": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Origins",
+            "type": "array"
+          }
+        },
+        "required": [
+          "origins"
+        ],
+        "title": "AllowedOriginsOut",
+        "type": "object"
+      },
       "AuditActorOut": {
         "properties": {
           "email": {
@@ -1122,6 +1156,19 @@
           "messages"
         ],
         "title": "ConversationOut",
+        "type": "object"
+      },
+      "ConversationTokenOut": {
+        "properties": {
+          "conversation_token": {
+            "title": "Conversation Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_token"
+        ],
+        "title": "ConversationTokenOut",
         "type": "object"
       },
       "CreateAgentRequest": {
@@ -4671,6 +4718,20 @@
         "title": "SignUpRequest",
         "type": "object"
       },
+      "StartConversationRequest": {
+        "properties": {
+          "bootstrap_token": {
+            "maxLength": 1000,
+            "title": "Bootstrap Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bootstrap_token"
+        ],
+        "title": "StartConversationRequest",
+        "type": "object"
+      },
       "StartDraftRequest": {
         "properties": {
           "version_id": {
@@ -5683,6 +5744,21 @@
           "number"
         ],
         "title": "VersionNumberOut",
+        "type": "object"
+      },
+      "WidgetMessageRequest": {
+        "properties": {
+          "content": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "WidgetMessageRequest",
         "type": "object"
       },
       "WorkerHealthResponse": {
@@ -9597,6 +9673,162 @@
         "summary": "Get Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/allowed-origins": {
+      "get": {
+        "description": "The sites whose pages may show the Agent's widget.",
+        "operationId": "getAllowedOrigins",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowedOriginsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Allowed Origins",
+        "tags": [
+          "embed"
+        ]
+      },
+      "put": {
+        "description": "Replaces the Agent's Allowed Origins; the widget's next page load uses them, without\npublishing.",
+        "operationId": "setAllowedOrigins",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllowedOriginsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllowedOriginsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Allowed Origins",
+        "tags": [
+          "embed"
         ]
       }
     },
@@ -14025,6 +14257,174 @@
         "summary": "List Fonts",
         "tags": [
           "theme"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversations": {
+      "post": {
+        "description": "Exchanges the shell's bootstrap token for a new Conversation and its Conversation\ntoken.",
+        "operationId": "startWidgetConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationTokenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/messages": {
+      "post": {
+        "description": "Asks the Agent's Live Version a question in the token's Conversation. The answer is\nrecorded against the Version that was Live when it was generated.",
+        "operationId": "sendWidgetMessage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the model provider fails, one `error` event (`code`, and a `message` for Visitors that names no model or credential)."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is temporarily unavailable. Please try again later."
+          }
+        },
+        "summary": "Send Message",
+        "tags": [
+          "widget"
         ]
       }
     }

@@ -127,6 +127,7 @@ services:
     environment:
       API_PROXY_TARGET: http://api:8000
       OBJECT_STORE_PROXY_TARGET: http://rustfs:9000
+      WIDGET_PROXY_TARGET: http://widget:5174
     ports: ["5173:5173"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
@@ -136,6 +137,38 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      widget:
+        condition: service_healthy
+
+  # The widget app and the Embed Snippet's loader (`embed.js`), built into the frontend image.
+  # The Studio proxies /embed.js and /widget/assets here, so the widget shares the API's origin.
+  widget:
+    build:
+      context: ./frontend
+    working_dir: /app/apps/widget
+    command: ["node", "/app/node_modules/vite/bin/vite.js", "preview", "--host", "0.0.0.0", "--port", "5174", "--strictPort"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5174/embed.js').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # A demo host page on its own origin, embedding an Agent: http://localhost:5175/?agent=agt_…
+  # Add http://localhost:5175 to the Agent's Allowed Origins to let it show the widget.
+  host:
+    build:
+      context: ./frontend
+    command: ["node", "/app/apps/widget/host/serve.mjs"]
+    environment:
+      PORT: "5175"
+      # Where browsers load embed.js from: the Studio's origin.
+      WIDGET_URL: ${STUDIO_URL:-http://localhost:5173}
+    ports: ["5175:5175"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5175/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
 
 volumes:
   postgres-data:

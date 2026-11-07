@@ -1,0 +1,11 @@
+$ make install @ 93d3ffe
+cd backend && uv sync --frozen
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Checked 172 packages in 0.97ms
+cd frontend && pnpm install --frozen-lockfile
+Scope: all 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 565ms using pnpm v10.28.0
+exit 0

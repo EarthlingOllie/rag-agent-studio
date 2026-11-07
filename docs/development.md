@@ -4,7 +4,7 @@ Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/
 
 | Command | What it does |
 |---|---|
-| `make dev` | Builds and starts the whole stack: Postgres with pgvector, Redis, RustFS, Mailpit, the API, the Celery worker, Celery Beat and the Studio. |
+| `make dev` | Builds and starts the whole stack: Postgres with pgvector, Redis, RustFS, Mailpit, the API, the Celery worker, Celery Beat, the Studio, the widget and a demo host page. |
 | `make install` | Installs backend (`uv sync`) and frontend (`pnpm install`) dependencies on the host. |
 | `make services` | Starts only Postgres and Redis, which the backend tests need. |
 | `make test` | Backend and frontend tests, each failing below 100% line or branch coverage (ADR-0008). |
@@ -24,6 +24,9 @@ Once `make dev` is up:
 - API: <http://localhost:8000/api/health>, OpenAPI docs at <http://localhost:8000/docs>
 - Mailpit: <http://localhost:8025>
 - RustFS console: <http://localhost:9001>
+- Demo host page: <http://localhost:5175/?agent=agt_…> (a separate origin that pastes an Agent's Embed Snippet; add `http://localhost:5175` to the Agent's Allowed Origins on its Embed section first)
+
+**Embedding.** The widget shares the Studio's origin locally as it shares the API's behind CloudFront (ADR-0011). The Studio's dev server proxies `/widget/a/` (the widget shell, served by the API with `frame-ancestors` from the Agent's Allowed Origins) to the API, and `/embed.js` (the loader) and `/widget/assets/` (the widget app) to the `widget` service, a `vite preview` of `frontend/apps/widget`'s build. `make test-frontend` ends with the loader's size budget (`pnpm check-embed-size`: 2 KB, 1 KB gzipped).
 
 ## Settings
 
@@ -183,7 +186,7 @@ To use a Chromium that is already installed instead of Playwright's download, se
 | Workflow | Runs |
 |---|---|
 | `backend.yml` | ruff, `mypy --strict`, pytest with the coverage gate and the Alembic round trip |
-| `frontend.yml` | eslint, `tsc`, Vitest with the coverage gate, build, API client drift check |
+| `frontend.yml` | eslint, `tsc`, Vitest with the coverage gate, build, the embed loader's size budget, API client drift check |
 | `e2e.yml` | `make e2e`: compose stack, health checks, Playwright with axe; uploads the HTML report |
 | `security.yml` | gitleaks, pip-audit, pnpm audit, Trivy on the built images; also weekly |
 | `infra.yml` | `make infra-check`. On pull requests, `plan-gate` (`scripts/ci/plan-gate.sh`) decides whether `terraform plan (demo)` runs: only when the `AWS_DEPLOY_ROLE_ARN` secret exists and the pull request touches `infra/` or this workflow. Otherwise the plan job shows as skipped, with a notice saying why. When it runs, the plan is posted as a pull request comment. Setting it up: [infra-bootstrap.md](infra-bootstrap.md). |
