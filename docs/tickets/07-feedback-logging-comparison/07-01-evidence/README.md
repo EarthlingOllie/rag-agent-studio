@@ -80,7 +80,7 @@ The first clean-checkout pass at 8840273 found two problems, both outside this t
 
 ### Rerun after merging the latest candidate
 
-Before the merge, `origin/candidate` (`4ebc317`, with 06-02, 06-04 and 09-06) was merged into the branch with no conflicts (merge commit `0b715aa`). Every check was then run again in the branch's worktree, one at a time. The logs are in [merged-candidate/](merged-candidate/).
+Before the merge, `origin/candidate` (`4ebc317`, which adds 06-04, 06-03 and 09-06) was merged into the branch with no conflicts (merge commit `0b715aa`). Every check was then run again in the branch's worktree, one at a time. The logs are in [merged-candidate/](merged-candidate/).
 
 | Check | Result | Log |
 |---|---|---|
