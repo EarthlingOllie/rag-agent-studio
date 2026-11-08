@@ -27,6 +27,9 @@ SHOP_ORIGIN = "http://localhost:5175"
 DISALLOWED_ORIGIN = "http://localhost:5176"
 
 
+pytestmark = pytest.mark.usefixtures("quiet_seed_history")
+
+
 @pytest.fixture
 def settings_env(settings_env: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
     settings_env.setenv("DEMO_PAGES", "true")
