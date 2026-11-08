@@ -24,6 +24,10 @@ _Avoid_: Font list, web fonts
 Whether the widget uses the Colour Tokens' light values, their dark values, or follows the Visitor's preference (automatic).
 _Avoid_: Colour scheme setting, dark mode toggle
 
+**Appearance**:
+Whether the Studio itself shows light, dark, or follows the system setting. A Member's choice for their browser, set from the top bar; it never affects the widget, which follows its Theme Mode.
+_Avoid_: Theme, Theme Mode, dark mode
+
 **Launcher**:
 How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
 _Avoid_: Chat button, trigger
