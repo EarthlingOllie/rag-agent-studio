@@ -1,4 +1,4 @@
-$ make test-frontend @ 1e8de72
+$ make test-frontend @ 31aa25c
 cd frontend && pnpm test && pnpm check-embed-size
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0703/frontend
@@ -11,11 +11,11 @@ cd frontend && pnpm test && pnpm check-embed-size
 
  Test Files  56 passed (56)
       Tests  763 passed (763)
-   Start at  02:20:10
-   Duration  173.69s (tests 72%, environment 14%, import 6%, setup 5%, transform 2%, worker 1%)
+   Start at  04:20:48
+   Duration  123.78s (tests 71%, environment 14%, import 6%, setup 5%, transform 2%, worker 1%)
 
-    Isolate  56 workers spawned · ~1.43s startup each (spawn + environment, per file)
-             at least ~25.18s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  56 workers spawned · ~1.03s startup each (spawn + environment, per file)
+             at least ~18.28s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
@@ -48,7 +48,7 @@ dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 438ms
+✓ built in 316ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -56,7 +56,7 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 27ms
+✓ built in 26ms
 
 > @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0703/frontend/apps/widget
 > node scripts/check-size.mjs

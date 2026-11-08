@@ -1,4 +1,4 @@
-$ bash docs/tickets/07-feedback-logging-comparison/07-03-evidence/build.sh . 0703 @ 1e8de72
+$ bash docs/tickets/07-feedback-logging-comparison/07-03-evidence/build.sh . 0703 @ 31aa25c
 + docker build -t rag-agent-studio/api:0703 backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)
 #0 building with "default" instance using docker driver
 
@@ -26,31 +26,31 @@ $ bash docs/tickets/07-feedback-logging-comparison/07-03-evidence/build.sh . 070
 #6 DONE 0.0s
 
 #7 [internal] load build context
-#7 transferring context: 2.84MB 0.1s done
+#7 transferring context: 2.92MB 0.1s done
 #7 DONE 0.1s
 
 #8 [build 5/6] COPY pyproject.toml uv.lock ./
 #8 CACHED
 
-#9 [build 4/6] WORKDIR /app
+#9 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
 #9 CACHED
 
-#10 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#10 [build 4/6] WORKDIR /app
 #10 CACHED
 
-#11 [stage-1  6/11] WORKDIR /app
+#11 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
 #11 CACHED
 
-#12 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
+#12 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
 #12 CACHED
 
-#13 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#13 [stage-1  6/11] WORKDIR /app
 #13 CACHED
 
 #14 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
 #14 CACHED
 
-#15 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#15 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
 #15 CACHED
 
 #16 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
@@ -60,39 +60,42 @@ $ bash docs/tickets/07-feedback-logging-comparison/07-03-evidence/build.sh . 070
 #17 CACHED
 
 #18 [stage-1  8/11] COPY app ./app
-#18 DONE 0.0s
+#18 DONE 0.1s
 
 #19 [stage-1  9/11] COPY migrations ./migrations
 #19 DONE 0.0s
 
 #20 [stage-1 10/11] RUN mkdir -p /opt/models/docling     && if [ "true" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && python -c "from app.guardrails import onnx_model; onnx_model.load()"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
-#20 3.637 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-#20 3.797 Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  6.39it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  5.02it/s]Fetching 5 files:  60%|██████    | 3/5 [00:00<00:00,  6.49it/s]Fetching 5 files:  80%|████████  | 4/5 [00:01<00:00,  1.92it/s]Fetching 5 files: 100%|██████████| 5/5 [00:18<00:00,  6.48s/it]Fetching 5 files: 100%|██████████| 5/5 [00:18<00:00,  3.72s/it]
-#20 34.87 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-#20 DONE 38.3s
+#20 3.489 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 3.641 Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  6.58it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  4.90it/s]Fetching 5 files:  80%|████████  | 4/5 [00:00<00:00,  3.77it/s]Fetching 5 files: 100%|██████████| 5/5 [00:18<00:00,  5.74s/it]Fetching 5 files: 100%|██████████| 5/5 [00:18<00:00,  3.79s/it]
+#20 30.28 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 DONE 61.6s
 
 #21 [stage-1 11/11] RUN useradd --system --uid 10001 studio
-#21 0.083 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
-#21 DONE 0.1s
+#21 0.238 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.3s
 
 #22 exporting to image
 #22 exporting layers
-#22 exporting layers 51.9s done
-#22 exporting manifest sha256:429273456e6f3b9de4940ce5a860b32eb9afa3b03de2c686a16b6e1865f6a0ee done
-#22 exporting config sha256:9b573e498121b44749648941b14ebad10efad7824de50f48bae050d3c1f27db3 done
-#22 exporting attestation manifest sha256:0051f9dc031525eb59977bc24425cb138302d9cfd67193b81a724828ab62ad03 done
-#22 exporting manifest list sha256:609881fe7d87551ac3dff3f7cfaa83b5a486fd3adbeb204f08e4c734da5356fe done
+#22 exporting layers 50.3s done
+#22 exporting manifest sha256:d5585c313ebb17438ff8f4737138243499b2b2641ab11ddf2cf72eaa3f450a31 done
+#22 exporting config sha256:ecb6e97924900bf30b58f0dc55b242884c2cc3c8dad7bb27c955fdd6d948169d done
+#22 exporting attestation manifest sha256:00cb41acd6c3bb80a0c14c9f317c5af71a8df48ea4f8dca8ff7f268e198a1377 done
+#22 exporting manifest list sha256:085c7f335a9cd66a57b3493be7c427ec8080396e0a6de8e0b7cda2d2a8a72d5e done
 #22 naming to docker.io/rag-agent-studio/api:0703 done
 #22 unpacking to docker.io/rag-agent-studio/api:0703
-#22 unpacking to docker.io/rag-agent-studio/api:0703 18.8s done
-#22 DONE 70.8s
+#22 unpacking to docker.io/rag-agent-studio/api:0703 18.5s done
+#22 DONE 68.8s
 + docker run: the bundled classifier loads with no network and flags an attack
-[0;93m2026-11-08 03:10:04.155022919 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+[0;93m2026-11-08 05:07:28.562611756 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
 attack: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the message 1.00 as a prompt injection.')]
 benign: [None]
-api image size: 3427764978 bytes
+api image size: 3427925937 bytes
 + docker build -t rag-agent-studio/studio:0703 frontend (sandbox CA)
 #0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 DONE 0.0s
 
 #1 [internal] load build definition from Dockerfile.frontend
 #1 transferring dockerfile: 2.31kB done
@@ -121,85 +124,59 @@ api image size: 3427764978 bytes
 #7 transferring context: 2.56MB 0.1s done
 #7 DONE 0.1s
 
-#8 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#8 [install 10/12] RUN pnpm install --frozen-lockfile
 #8 CACHED
 
-#9 [install  2/12] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#9 [install  7/12] COPY apps/widget/package.json apps/widget/
 #9 CACHED
 
-#10 [install  4/12] WORKDIR /app
+#10 [install  9/12] COPY packages/ui/package.json packages/ui/
 #10 CACHED
 
-#11 [install  6/12] COPY apps/studio/package.json apps/studio/
+#11 [install 11/12] COPY . .
 #11 CACHED
 
-#12 [install  3/12] RUN corepack enable
+#12 [install 12/12] RUN pnpm --filter @studio/widget build
 #12 CACHED
 
-#13 [install  7/12] COPY apps/widget/package.json apps/widget/
+#13 [install  4/12] WORKDIR /app
 #13 CACHED
 
-#14 [install  9/12] COPY packages/ui/package.json packages/ui/
+#14 [install  5/12] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 #14 CACHED
 
-#15 [install  5/12] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#15 [install  3/12] RUN corepack enable
 #15 CACHED
 
-#16 [install 10/12] RUN pnpm install --frozen-lockfile
+#16 [install  2/12] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
 #16 CACHED
 
-#17 [install 11/12] COPY . .
-#17 DONE 0.1s
+#17 [stage-1 5/6] COPY --from=install --chown=node:node /app /app
+#17 CACHED
 
-#18 [install 12/12] RUN pnpm --filter @studio/widget build
-#18 0.613 
-#18 0.613 > @studio/widget@ build /app/apps/widget
-#18 0.613 > vite build && vite build --config vite.embed.config.ts
-#18 0.613 
-#18 0.956 vite v8.3.5 building client environment for production...
-#18 0.972 transforming...
-#18 1.095 ✓ 78 modules transformed.
-#18 1.154 rendering chunks...
-#18 1.466 computing gzip size...
-#18 1.492 [plugin builtin:vite-reporter] 
-#18 1.492 (!) Some chunks are larger than 500 kB after minification. Consider:
-#18 1.492 - Using dynamic import() to code-split the application
-#18 1.492 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
-#18 1.492 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-#18 1.492 dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
-#18 1.492 
-#18 1.492 ✓ built in 539ms
-#18 1.771 vite v8.3.5 building client environment for production...
-#18 1.792 transforming...
-#18 1.793 ✓ 3 modules transformed.
-#18 1.802 rendering chunks...
-#18 1.802 computing gzip size...
-#18 1.802 dist/embed.js  1.36 kB │ gzip: 0.77 kB
-#18 1.802 
-#18 1.802 ✓ built in 26ms
-#18 DONE 1.8s
+#18 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#18 CACHED
 
 #19 [stage-1 3/6] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
 #19 CACHED
 
-#20 [stage-1 4/6] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#20 [install  6/12] COPY apps/studio/package.json apps/studio/
 #20 CACHED
 
-#21 [stage-1 5/6] COPY --from=install --chown=node:node /app /app
-#21 DONE 1.6s
+#21 [stage-1 4/6] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#21 CACHED
 
 #22 [stage-1 6/6] WORKDIR /app/apps/studio
-#22 DONE 0.2s
+#22 CACHED
 
 #23 exporting to image
-#23 exporting layers
-#23 exporting layers 11.0s done
-#23 exporting manifest sha256:b82d97712fa12816606465a9962c4f7ed5687e11a0602f0b9a8643feed2d6761 done
-#23 exporting config sha256:275bc1d46191582c62a014cf58609c16a7197c6595774495ac871f85ca86e8e1 done
-#23 exporting attestation manifest sha256:7e5cec993f4282dc3e4670da0cf45105453afd33763de6d758ccd4caf1cd2cd0 done
-#23 exporting manifest list sha256:4d38bacdc3e315f80ee58cd50004f858cf687b858949cbcb46b8c047de7eb8d0 done
+#23 exporting layers done
+#23 exporting manifest sha256:79d506685bb773d63a4b4b782df1c6fb3d130a78b52de3421f3d4f183bd1e6c4 done
+#23 exporting config sha256:46c01c2fb412987b62f2df4d86eb6ce69af23b548b12f844d9dd01d87ad1b1c5 done
+#23 exporting attestation manifest sha256:df630b6159fb4792fdd754505aec0f399f1a3a6ca35a78f5d21786997aec1a84 done
+#23 exporting manifest list sha256:e6b31e1f6cf9daa4537e647020e0a13e639d0a777f40fbd0fd4256d70c849518 done
 #23 naming to docker.io/rag-agent-studio/studio:0703 done
 #23 unpacking to docker.io/rag-agent-studio/studio:0703
-#23 unpacking to docker.io/rag-agent-studio/studio:0703 3.0s done
-#23 DONE 14.0s
+#23 unpacking to docker.io/rag-agent-studio/studio:0703 3.2s done
+#23 DONE 3.3s
 exit 0
