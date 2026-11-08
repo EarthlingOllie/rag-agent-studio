@@ -324,18 +324,29 @@ function listed(document: DocumentDetail): ProjectDocument {
  */
 export function fakeDocumentViewerApi({ document, chunks }: { document: DocumentDetail; chunks: Chunk[] }) {
   const requests: { offset: number; limit: number }[] = [];
+  // Clearing a flag (DELETE …/chunks/{id}/flag) takes it off the Chunk and the Document's count.
+  const cleared: string[] = [];
+  let current = document;
+  let items = chunks;
   server.use(
-    http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () => HttpResponse.json([listed(document)])),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () => HttpResponse.json([listed(current)])),
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId", ({ params }) =>
-      params.documentId === document.id ? HttpResponse.json(document) : HttpResponse.json({ detail: "Not found" }, { status: 404 }),
+      params.documentId === document.id ? HttpResponse.json(current) : HttpResponse.json({ detail: "Not found" }, { status: 404 }),
     ),
+    http.delete("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks/:chunkId/flag", ({ params }) => {
+      const chunkId = params.chunkId as string;
+      cleared.push(chunkId);
+      items = items.map((chunk) => (chunk.id === chunkId ? { ...chunk, flag: null } : chunk));
+      current = { ...current, flagged_chunk_count: current.flagged_chunk_count - 1 };
+      return new HttpResponse(null, { status: 204 });
+    }),
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks", ({ request }) => {
       const query = new URL(request.url).searchParams;
       const offset = Number(query.get("offset") ?? 0);
       const limit = Number(query.get("limit") ?? 50);
       requests.push({ offset, limit });
-      return HttpResponse.json({ items: chunks.slice(offset, offset + limit), total: chunks.length, offset, limit });
+      return HttpResponse.json({ items: items.slice(offset, offset + limit), total: items.length, offset, limit });
     }),
   );
-  return { requests };
+  return { requests, cleared };
 }

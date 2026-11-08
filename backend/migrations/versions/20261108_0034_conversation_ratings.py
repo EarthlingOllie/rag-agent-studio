@@ -2,9 +2,9 @@
 and the append-only change log of ratings; each attributed to the Agent Version of the last
 reply before it when written.
 
-Revision ID: 0033_conversation_ratings
-Revises: 0032_message_feedback
-Create Date: 2026-11-07
+Revision ID: 0034_conversation_ratings
+Revises: 0033_flagged_chunk_mode
+Create Date: 2026-11-08
 """
 
 from collections.abc import Sequence
@@ -12,8 +12,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0033_conversation_ratings"
-down_revision: str | None = "0032_message_feedback"
+revision: str = "0034_conversation_ratings"
+down_revision: str | None = "0033_flagged_chunk_mode"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

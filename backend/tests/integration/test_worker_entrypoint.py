@@ -6,8 +6,12 @@ import sys
 from types import ModuleType
 
 import pytest
+from celery.signals import worker_process_init
 
 from app.core.settings import SettingsError
+from app.documents.ports import current_ports
+from app.guardrails.fake import RuleDrivenClassifier
+from app.guardrails.local import LoadedModel, LocalClassifier
 from tests.conftest import TEST_REDIS_URL
 
 
@@ -58,3 +62,39 @@ def test_the_worker_knows_every_table_its_tasks_write_to() -> None:
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_each_worker_process_loads_the_scans_local_model_when_it_starts(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    """So the first Document a worker process ingests doesn't wait for the model, and the load
+    happens when the worker starts rather than mid-ingestion."""
+    _import_worker_entrypoint()
+    loads: list[int] = []
+
+    def load() -> LoadedModel:
+        loads.append(1)
+        return LoadedModel(
+            session=None,  # type: ignore[arg-type]
+            tokenize=lambda text: [],
+            cls_id=0,
+            sep_id=1,
+            injection_index=1,
+            max_tokens=8,
+        )
+
+    settings_env.setattr(current_ports(), "classifier", LocalClassifier(load, 0.5))
+
+    worker_process_init.send(sender=None)
+
+    assert loads == [1]
+
+
+def test_a_worker_with_another_scan_classifier_has_nothing_to_load(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    _import_worker_entrypoint()
+    # The tests' rule-driven fake: nothing to load, and starting a process still works.
+    assert isinstance(current_ports().classifier, RuleDrivenClassifier)
+
+    worker_process_init.send(sender=None)

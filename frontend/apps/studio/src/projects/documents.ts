@@ -497,3 +497,34 @@ export function useChunkPage(organisationId: string, projectId: string, document
 export function downloadPath(organisationId: string, projectId: string, documentId: string): string {
   return `/api/organisations/${organisationId}/projects/${projectId}/documents/${documentId}/download`;
 }
+
+/**
+ * Clears the ingestion Guardrail scan's flag on a Chunk an Editor judges a false positive (the
+ * API audits it). The Document and its Chunks are read again, so the count and the note go.
+ */
+export function useClearChunkFlag(organisationId: string, projectId: string, documentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (chunkId: string) => {
+      const { error, response } = await api.DELETE(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag",
+        {
+          params: {
+            path: { organisation_id: organisationId, project_id: projectId, document_id: documentId, chunk_id: chunkId },
+          },
+        },
+      );
+      if (!response.ok) throw failed(response, error);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentsKey(organisationId, projectId) }),
+  });
+}
+
+export const CLEAR_FLAG_FAILED = "The flag could not be cleared. Try again shortly.";
+
+/** What to tell the Editor about a failed clear: the API's reason, or a retry hint. */
+export function clearFlagFailure(error: Error | null): string | undefined {
+  if (error === null) return undefined;
+  // Every failed clear is a ProjectRequestError (see `failed`).
+  return (error as ProjectRequestError).detail ?? CLEAR_FLAG_FAILED;
+}

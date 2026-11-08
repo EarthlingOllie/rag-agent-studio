@@ -112,6 +112,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "get"),
         "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
         "deleteDocument": (f"{_PROJECT}/documents/{{document_id}}", "delete"),
+        "clearChunkFlag": (
+            f"{_PROJECT}/documents/{{document_id}}/chunks/{{chunk_id}}/flag",
+            "delete",
+        ),
         "replaceDocument": (f"{_PROJECT}/documents/{{document_id}}/editions", "post"),
         "listTags": (f"{_PROJECT}/tags", "get"),
         "createTag": (f"{_PROJECT}/tags", "post"),
