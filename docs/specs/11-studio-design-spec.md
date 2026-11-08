@@ -156,9 +156,7 @@ The approved mockups are on the design canvas: https://claude.ai/artifact/FmHzJQ
 - **Scale.** At the time of writing: 30 routes, 47 UI files, about 11,200 lines, 590 palette uses, 47 unit test files and 50 end-to-end specs. Effort splits roughly 25% colour, 50% structure, 25% tests and checks.
 - **Branch.** The reskin happens on `candidate-reskin`, created from `candidate`. Each ticket branches from `candidate-reskin` and merges back into it; feature work carries on in `candidate`. `candidate` is merged into `candidate-reskin` at the start of `11-01` (so every feature built so far is reskinned), immediately before `11-04` lands (so navigation tests for every feature move to the helpers), and at the start of `11-13` (so features that landed meanwhile get reskinned). Once `11-13` is done, `candidate-reskin` merges into `candidate` and the ratchet keeps the old look out.
 - **Concurrency.** `11-01` to `11-04` run one at a time. `11-04` touches nearly every page and test, so it runs while no other design slice is open. `11-05` to `11-12` touch mostly separate files and can run two or three at a time.
-- **Pending sign-off.** The round 1 direction is approved. Round 2 (the *Patterns & new views* page) awaits sign-off on three choices:
-  - the Agent view switcher as an extra crumb;
-  - the `on-danger` and `chart-1` tokens;
-  - Analytics as a Project section.
-
-  Confirm or change them before tickets `11-01` and `11-08`.
+- **Signed off.** Both design rounds are approved (the canvas pages *Direction*, *Tab row* and *Patterns & new views*). The user confirmed the three round-2 choices:
+  - **Agent views in the breadcrumb.** Playground, Versions, Embed & limits and Conversations are an extra switcher crumb after the Agent.
+  - **Two new tokens.** `on-danger` is the text on filled danger buttons: white in light, near-black in dark. `chart-1` is the chart teal (`#00897B` light, `#1FA393` dark), because the UI accent reads too grey as a data mark. The accent stays for UI; `chart-1` is used only for data.
+  - **Analytics is a Project section** with an Agent filter, as it is built today. Each Agent's views link to it pre-filtered to that Agent.
