@@ -1,9 +1,9 @@
 # Sandbox `make images` and `make e2e` for 10-03 (compose project rag1003-e2e), then cleanup.
 set -u
 S=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad
-C=$S/wt1003; L=$S/ev1003-logs; mkdir -p $L; E=docs/tickets/10-seed-showcase/10-03-evidence
+C=${C:-$S/wt1003}; L=${L:-$S/ev1003-logs}; mkdir -p $L; E=docs/tickets/10-seed-showcase/10-03-evidence
 cd $C; SHA=$(git rev-parse --short HEAD)
-H="@ $SHA (ticket/10-03-demo-host-pages, clean tree: $(git status --porcelain | wc -l) changes)"
+H="@ $SHA (ticket/10-03-demo-host-pages in $(basename $C), clean tree: $(git status --porcelain | wc -l) changes)"
 df -h / | tail -1 > $L/df-before-images
 # SKIP_BUILD=1 reuses images this script built for the same commit (kept after a failed run).
 if [ "${SKIP_BUILD:-0}" != 1 ]; then

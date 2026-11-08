@@ -2,9 +2,10 @@
 # copied into this folder. Backend services and the e2e stack are this ticket's own (rag1003-*).
 set -u
 S=/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad
-C=$S/wt1003; L=$S/ev1003-logs; mkdir -p $L; E=docs/tickets/10-seed-showcase/10-03-evidence
+C=${C:-$S/wt1003}; L=${L:-$S/ev1003-logs}; mkdir -p $L; E=docs/tickets/10-seed-showcase/10-03-evidence
+export C L
 cd $C; SHA=$(git rev-parse --short HEAD); echo $SHA > $L/sha
-H="@ $SHA (ticket/10-03-demo-host-pages, clean tree: $(git status --porcelain | wc -l) changes)"
+H="@ $SHA (ticket/10-03-demo-host-pages in $(basename $C), clean tree: $(git status --porcelain | wc -l) changes)"
 export TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:48752/studio_test
 export TEST_REDIS_URL=redis://localhost:48779/15
 export TEST_OBJECT_STORE_URL=http://localhost:48791
