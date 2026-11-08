@@ -1,0 +1,38 @@
+$ make test-frontend @ 008db18 (clean tree: 0 changes)
+cd frontend && pnpm test && pnpm check-embed-size
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend
+      Coverage enabled with v8
+
+
+ Test Files  59 passed (59)
+      Tests  799 passed (799)
+   Start at  20:22:31
+   Duration  501.62s (tests 68%, environment 14%, import 10%, setup 6%, transform 2%, worker 1%)
+
+    Isolate  59 workers spawned · ~3.94s startup each (spawn + environment, per file)
+             at least ~73.52s faster with isolate: false — reuses workers across files instead of one per file
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |     100 |    99.96 |     100 |     100 |                   
+ ...o/src/settings |     100 |    99.77 |     100 |     100 |                   
+  ...ionWindow.tsx |     100 |    93.75 |     100 |     100 | 53                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 3885/3885 )
+Branches     : 99.96% ( 2580/2581 )
+Functions    : 100% ( 1400/1400 )
+Lines        : 100% ( 3433/3433 )
+================================================================================
+ERROR: Coverage for branches (99.96%) does not meet global threshold (100%)
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:42: test-frontend] Error 1
+exit 2

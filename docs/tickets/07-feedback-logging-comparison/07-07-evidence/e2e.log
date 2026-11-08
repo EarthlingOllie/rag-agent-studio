@@ -1,0 +1,218 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml' @ ce86a0e (ticket/07-07-retention-tombstones, clean tree: 0 changes) (CI settings: one retry)
+docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0707-e2e_default Creating 
+ Volume rag0707-e2e_postgres-data Creating 
+ Volume rag0707-e2e_postgres-data Creating 
+ Network rag0707-e2e_default Creating 
+ Volume rag0707-e2e_rustfs-data Creating 
+ Volume rag0707-e2e_rustfs-data Creating 
+ Volume rag0707-e2e_postgres-data Created 
+ Volume rag0707-e2e_postgres-data Created 
+ Volume rag0707-e2e_rustfs-data Created 
+ Volume rag0707-e2e_rustfs-data Created 
+ Network rag0707-e2e_default Created 
+ Network rag0707-e2e_default Created 
+ Container rag0707-e2e-host-1 Creating 
+ Container rag0707-e2e-postgres-1 Creating 
+ Container rag0707-e2e-widget-1 Creating 
+ Container rag0707-e2e-rustfs-1 Creating 
+ Container rag0707-e2e-redis-1 Creating 
+ Container rag0707-e2e-mailpit-1 Creating 
+ Container rag0707-e2e-mailpit-1 Created 
+ Container rag0707-e2e-host-1 Created 
+ Container rag0707-e2e-widget-1 Created 
+ Container rag0707-e2e-rustfs-1 Created 
+ Container rag0707-e2e-postgres-1 Created 
+ Container rag0707-e2e-redis-1 Created 
+ Container rag0707-e2e-beat-1 Creating 
+ Container rag0707-e2e-worker-1 Creating 
+ Container rag0707-e2e-api-1 Creating 
+ Container rag0707-e2e-api-1 Created 
+ Container rag0707-e2e-studio-1 Creating 
+ Container rag0707-e2e-worker-1 Created 
+ Container rag0707-e2e-beat-1 Created 
+ Container rag0707-e2e-studio-1 Created 
+ Container rag0707-e2e-mailpit-1 Starting 
+ Container rag0707-e2e-postgres-1 Starting 
+ Container rag0707-e2e-redis-1 Starting 
+ Container rag0707-e2e-rustfs-1 Starting 
+ Container rag0707-e2e-host-1 Starting 
+ Container rag0707-e2e-widget-1 Starting 
+ Container rag0707-e2e-mailpit-1 Started 
+ Container rag0707-e2e-postgres-1 Started 
+ Container rag0707-e2e-redis-1 Started 
+ Container rag0707-e2e-rustfs-1 Started 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-host-1 Started 
+ Container rag0707-e2e-widget-1 Started 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-postgres-1 Healthy 
+ Container rag0707-e2e-postgres-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-postgres-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-worker-1 Starting 
+ Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-beat-1 Starting 
+ Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-api-1 Starting 
+ Container rag0707-e2e-worker-1 Started 
+ Container rag0707-e2e-beat-1 Started 
+ Container rag0707-e2e-api-1 Started 
+ Container rag0707-e2e-widget-1 Waiting 
+ Container rag0707-e2e-api-1 Waiting 
+ Container rag0707-e2e-widget-1 Healthy 
+ Container rag0707-e2e-api-1 Healthy 
+ Container rag0707-e2e-studio-1 Starting 
+ Container rag0707-e2e-studio-1 Started 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-beat-1 Waiting 
+ Container rag0707-e2e-host-1 Waiting 
+ Container rag0707-e2e-widget-1 Waiting 
+ Container rag0707-e2e-mailpit-1 Waiting 
+ Container rag0707-e2e-api-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-studio-1 Waiting 
+ Container rag0707-e2e-worker-1 Waiting 
+ Container rag0707-e2e-postgres-1 Healthy 
+ Container rag0707-e2e-host-1 Healthy 
+ Container rag0707-e2e-beat-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-worker-1 Healthy 
+ Container rag0707-e2e-widget-1 Healthy 
+ Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-mailpit-1 Healthy 
+ Container rag0707-e2e-api-1 Healthy 
+ Container rag0707-e2e-studio-1 Healthy 
+make seed
+make[1]: Entering directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707'
+docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag0707-e2e-api-run-4820c576645e Creating 
+ Container rag0707-e2e-api-run-4820c576645e Created 
+2026-11-08 20:38:34.095570802 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+/app/app/main.py:163: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+_state": "[]"}, "kind": "SpanKind.CLIENT", "parent_id": "0xe7468832b922fd49", "start_time": "2026-11-08T20:39:42.270704Z", "end_time": "2026-11-08T20:39:42.290321Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "SELECT chunks.org\u2026) AS share FROM chunks JOIN documents ON \u2026 WHERE \u2026", "net.peer.name": "postgres", "net.peer.port": 5432, "db.name": "studio", "db.user": "studio", "db.statement": "SELECT chunks.organisation_id, chunks.project_id, chunks.document_id, chunks.edition, chunks.ordinal, chunks.text, chunks.heading_path, chunks.page_start, chunks.page_end, chunks.embedding, chunks.embedding_model_id, chunks.search_vector, chunks.guardrail_label, chunks.guardrail_score, chunks.guardrail_reason, chunks.id, chunks.created_at, documents.name, (CAST($1::INTEGER AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $2::VARCHAR)) THEN $3::INTEGER ELSE $4::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $5::VARCHAR)) THEN $6::INTEGER ELSE $7::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $8::VARCHAR)) THEN $9::INTEGER ELSE $10::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $11::VARCHAR)) THEN $12::INTEGER ELSE $13::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $14::VARCHAR)) THEN $15::INTEGER ELSE $16::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $17::VARCHAR)) THEN $18::INTEGER ELSE $19::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $20::VARCHAR)) THEN $21::INTEGER ELSE $22::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $23::VARCHAR)) THEN $24::INTEGER ELSE $25::INTEGER END AS FLOAT)) / CAST($26::INTEGER AS NUMERIC) AS share \nFROM chunks JOIN documents ON documents.id = chunks.document_id \nWHERE chunks.project_id = $27::UUID AND chunks.embedding_model_id = $28::VARCHAR AND chunks.edition = documents.edition AND documents.project_id = $29::UUID AND documents.status = $30::VARCHAR AND documents.id IN (SELECT document_tags.document_id \nFROM document_tags \nWHERE document_tags.tag_id IN ($48::UUID)) AND (chunks.search_vector @@ (((((((plainto_tsquery('simple'::regconfig, $31::VARCHAR) || plainto_tsquery('simple'::regconfig, $32::VARCHAR)) || plainto_tsquery('simple'::regconfig, $33::VARCHAR)) || plainto_tsquery('simple'::regconfig, $34::VARCHAR)) || plainto_tsquery('simple'::regconfig, $35::VARCHAR)) || plainto_tsquery('simple'::regconfig, $36::VARCHAR)) || plainto_tsquery('simple'::regconfig, $37::VARCHAR)) || plainto_tsquery('simple'::regconfig, $38::VARCHAR))) ORDER BY share DESC, ts_rank_cd(chunks.search_vector, ((((((plainto_tsquery('simple'::regconfig, $39::VARCHAR) || plainto_tsquery('simple'::regconfig, $40::VARCHAR)) || plainto_tsquery('simple'::regconfig, $41::VARCHAR)) || plainto_tsquery('simple'::regconfig, $42::VARCHAR)) || plainto_tsquery('simple'::regconfig, $43::VARCHAR)) || plainto_tsquery('simple'::regconfig, $44::VARCHAR)) || plainto_tsquery('simple'::regconfig, $45::VARCHAR)) || plainto_tsquery('simple'::regconfig, $46::VARCHAR)) DESC, chunks.id \n LIMIT $47::INTEGER", "db.system": "postgresql", "db.operation": "SELECT"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "41a73a7993a5", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "874209fb-559e-457a-ab6b-720460a79d24", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
+ublic_id}/messages", "context": {"trace_id": "0x01a1bce3bb8939d5b998e92cf8b82fb9", "span_id": "0x86d87cec54f6db3e", "trace_state": "[]"}, "kind": "SpanKind.SERVER", "parent_id": null, "start_time": "2026-11-08T20:40:03.721823Z", "end_time": "2026-11-08T20:40:04.131927Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "POST /api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.scheme": "https", "http.host": "seed.internal:None", "http.flavor": "1.1", "http.target": "/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.url": "https://seed.internal/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.method": "POST", "http.server_name": "seed.internal", "http.user_agent": "python-httpx/0.28.1", "net.peer.ip": "127.0.0.1", "net.peer.port": 123, "http.route": "/api/widget/agents/{public_id}/messages", "http.request.header.host": ["seed.internal"], "http.request.header.accept": ["*/*"], "http.request.header.accept_encoding": ["gzip, deflate"], "http.request.header.connection": ["keep-alive"], "http.request.header.user_agent": ["python-httpx/0.28.1"], "http.request.header.authorization": ["[Scrubbed due to 'auth']"], "http.request.header.content_length": ["42"], "http.request.header.content_type": ["application/json"], "fastapi.route.name": "send_message", "fastapi.route.operation_id": "sendWidgetMessage", "fastapi.arguments.start_timestamp": "2026-11-08T20:40:03.725097Z", "fastapi.arguments.end_timestamp": "2026-11-08T20:40:03.726816Z", "fastapi.arguments.values": "{\"db\": \"[Scrubbed due to 'session']\", \"signer\": \"<app.embed.tokens.TokenSigner object at 0x7f0ea2e106e0>\", \"clock\": \"<app.seed.history.ShiftedClock object at 0x7f0ea1f74440>\", \"admission\": \"<app.embed.admission.Admission object at 0x7f0e9aa2a810>\", \"ip\": \"127.0.0.1\", \"public_id\": \"agt_1y2hMbiF9XpaPd5f0lmsdooH\", \"authorization\": \"[Scrubbed due to 'auth']\", \"body\": {\"content\": \"[Scrubbed due to 'content']\"}}", "fastapi.arguments.errors": "[]", "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"fastapi.route.name\":{},\"fastapi.route.operation_id\":{},\"fastapi.arguments.values\":{\"type\":\"object\",\"properties\":{\"db\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"signer\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"clock\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"admission\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"body\":{\"type\":\"object\",\"title\":\"WidgetMessageRequest\",\"x-python-datatype\":\"PydanticModel\"}}},\"fastapi.arguments.errors\":{\"type\":\"array\"}}}", "fastapi.endpoint_function.start_timestamp": "2026-11-08T20:40:03.727129Z", "fastapi.endpoint_function.end_timestamp": "2026-11-08T20:40:03.762953Z", "http.response.header.cache_control": ["no-cache"], "http.response.header.x_accel_buffering": ["no"], "http.response.header.content_type": ["text/event-stream; charset=utf-8"], "http.status_code": 200, "logfire.scrubbed": "[{\"path\": [\"attributes\", \"http.request.header.authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"db\"], \"matched_substring\": \"session\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"body\", \"content\"], \"matched_substring\": \"content\"}]"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "41a73a7993a5", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "874209fb-559e-457a-ab6b-720460a79d24", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
+ublic_id}/messages", "context": {"trace_id": "0x01a1bce4169c80eadbd74cb9ded77deb", "span_id": "0xb71e70ccdfce3f1f", "trace_state": "[]"}, "kind": "SpanKind.SERVER", "parent_id": null, "start_time": "2026-11-08T20:40:27.036635Z", "end_time": "2026-11-08T20:40:27.507051Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "POST /api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.scheme": "https", "http.host": "seed.internal:None", "http.flavor": "1.1", "http.target": "/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.url": "https://seed.internal/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.method": "POST", "http.server_name": "seed.internal", "http.user_agent": "python-httpx/0.28.1", "net.peer.ip": "127.0.0.1", "net.peer.port": 123, "http.route": "/api/widget/agents/{public_id}/messages", "http.request.header.host": ["seed.internal"], "http.request.header.accept": ["*/*"], "http.request.header.accept_encoding": ["gzip, deflate"], "http.request.header.connection": ["keep-alive"], "http.request.header.user_agent": ["python-httpx/0.28.1"], "http.request.header.authorization": ["[Scrubbed due to 'auth']"], "http.request.header.content_length": ["39"], "http.request.header.content_type": ["application/json"], "fastapi.route.name": "send_message", "fastapi.route.operation_id": "sendWidgetMessage", "fastapi.arguments.start_timestamp": "2026-11-08T20:40:27.037282Z", "fastapi.arguments.end_timestamp": "2026-11-08T20:40:27.061854Z", "fastapi.arguments.values": "{\"db\": \"[Scrubbed due to 'session']\", \"signer\": \"<app.embed.tokens.TokenSigner object at 0x7f0ea2e106e0>\", \"clock\": \"<app.seed.history.ShiftedClock object at 0x7f0ea1f74440>\", \"admission\": \"<app.embed.admission.Admission object at 0x7f0e9aaaf0b0>\", \"ip\": \"127.0.0.1\", \"public_id\": \"agt_1y2hMbiF9XpaPd5f0lmsdooH\", \"authorization\": \"[Scrubbed due to 'auth']\", \"body\": {\"content\": \"[Scrubbed due to 'content']\"}}", "fastapi.arguments.errors": "[]", "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"fastapi.route.name\":{},\"fastapi.route.operation_id\":{},\"fastapi.arguments.values\":{\"type\":\"object\",\"properties\":{\"db\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"signer\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"clock\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"admission\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"body\":{\"type\":\"object\",\"title\":\"WidgetMessageRequest\",\"x-python-datatype\":\"PydanticModel\"}}},\"fastapi.arguments.errors\":{\"type\":\"array\"}}}", "fastapi.endpoint_function.start_timestamp": "2026-11-08T20:40:27.062286Z", "fastapi.endpoint_function.end_timestamp": "2026-11-08T20:40:27.117512Z", "http.response.header.cache_control": ["no-cache"], "http.response.header.x_accel_buffering": ["no"], "http.response.header.content_type": ["text/event-stream; charset=utf-8"], "http.status_code": 200, "logfire.scrubbed": "[{\"path\": [\"attributes\", \"http.request.header.authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"db\"], \"matched_substring\": \"session\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"body\", \"content\"], \"matched_substring\": \"content\"}]"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "41a73a7993a5", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "874209fb-559e-457a-ab6b-720460a79d24", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:47783/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:47775/demo/
+make[1]: Leaving directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707'
+cd frontend && pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend
+> playwright test
+
+
+Running 91 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (883ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (388ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (324ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (462ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (2.1s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (217ms)
+  ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.5s)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (230ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (216ms)
+  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (17.4s)
+  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (19.4s)
+  ✓  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (38.3s)
+  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (15.8s)
+  ✓  15 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (19.5s)
+  ✓  16 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (6.4s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (7.0s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (6.1s)
+  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (15.5s)
+  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (5.0s)
+  ✓  22 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (4.0s)
+  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (4.5s)
+  ✓  21 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (14.8s)
+  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (5.3s)
+  ✓  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (17.6s)
+  ✓  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (22.4s)
+  ✓  27 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (12.8s)
+  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (8.5s)
+  ✓  29 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (5.0s)
+  ✓  31 [studio] › e2e/tests/demo-pages.spec.ts:36:3 › Demo host pages › the help-centre page shows the same Agent inline (2.5s)
+  ✓  32 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (2.6s)
+  ✓  30 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (11.2s)
+  ✓  33 [studio] › e2e/tests/demo-pages.spec.ts:69:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (8.6s)
+  ✓  34 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (13.1s)
+  ✓  35 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (10.3s)
+  ✓  36 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (14.1s)
+  ✓  37 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (11.8s)
+  ✓  38 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (14.4s)
+  ✓  39 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (15.0s)
+  ✓  41 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (11.9s)
+  ✓  40 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (16.4s)
+  ✓  42 [studio] › e2e/tests/instructions-versions.spec.ts:4:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (11.5s)
+  ✓  43 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (13.7s)
+  ✓  44 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (19.7s)
+  ✓  45 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (23.5s)
+  ✓  46 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (14.6s)
+  ✓  47 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (21.1s)
+  ✓  48 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (16.2s)
+  ✓  49 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (16.5s)
+  ✓  50 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (22.0s)
+  ✓  52 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (6.2s)
+  ✓  51 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (16.8s)
+  ✓  54 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (11.8s)
+  ✓  53 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (16.5s)
+  ✓  56 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (11.7s)
+  ✓  55 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (20.3s)
+  ✓  57 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (11.9s)
+  ✓  59 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (5.0s)
+  ✓  60 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.9s)
+  ✓  61 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (5.5s)
+  ✓  58 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (26.0s)
+  ✓  62 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (15.7s)
+  ✓  64 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (9.6s)
+  ✓  65 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (9.1s)
+  ✓  63 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (33.9s)
+  ✓  66 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (11.0s)
+  ✓  67 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (16.3s)
+  ✓  68 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (16.5s)
+  ✓  69 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (20.1s)
+  ✓  70 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (18.3s)
+  ✓  72 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (6.3s)
+  ✓  71 [studio] › e2e/tests/retention.spec.ts:8:3 › Retention and tombstones › an Owner sets the Retention Window, and the change is audited (9.8s)
+  ✓  73 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (5.0s)
+  ✓  75 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (3.1s)
+  ✓  76 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (4.0s)
+  ✓  74 [studio] › e2e/tests/retention.spec.ts:32:3 › Retention and tombstones › a Trace keeps a deleted Document's name as a tombstone, and an Owner deletes a Conversation on request (20.0s)
+  ✓  78 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (13.5s)
+  ✓  77 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (24.2s)
+  ✓  79 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (10.9s)
+  ✓  81 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (8.8s)
+  ✓  80 [studio] › e2e/tests/time-series.spec.ts:13:3 › Time series › the Editor sees a Visitor's Conversation over time, markers where the Live Version changed, and a confounder note once a Document is added (21.9s)
+  ✓  82 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (15.3s)
+  ✓  84 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (13.6s)
+  ✓  83 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (24.9s)
+  ✓  86 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (15.4s)
+  ✓  85 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (16.9s)
+  ✓  88 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (13.1s)
+  ✓  87 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (14.9s)
+  ✓  89 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (6.1s)
+  ✓  90 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (12.1s)
+  ✓  91 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (6.5s)
+
+  91 passed (9.3m)
+exit 0
+(telemetry JSON lines printed by the seed step are dropped from this copy: 19559 lines)
