@@ -186,8 +186,8 @@ export function VersionComparison({
   }
 
   return (
-    <section aria-labelledby="compare-heading" className="mt-8">
-      <h3 id="compare-heading" className="text-base font-semibold">
+    <section className="mt-8">
+      <h3 className="text-base font-semibold">
         Compare two Versions
       </h3>
       {body}
