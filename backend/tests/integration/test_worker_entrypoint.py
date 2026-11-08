@@ -30,11 +30,17 @@ def test_worker_entrypoint_points_celery_at_the_configured_broker(
     assert "documents.ingest" in entrypoint.app.tasks
 
 
-def test_beat_schedules_the_worker_health_check(settings_env: pytest.MonkeyPatch) -> None:
+def test_beat_schedules_the_worker_health_check_and_the_usage_rollup(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
     entrypoint = _import_worker_entrypoint()
 
     schedule = entrypoint.app.conf.beat_schedule
-    assert [entry["task"] for entry in schedule.values()] == ["worker.health_check"]
+    assert [entry["task"] for entry in schedule.values()] == [
+        "worker.health_check",
+        "analytics.roll_up_usage",
+    ]
+    assert "app.analytics.tasks" in entrypoint.app.conf.include
 
 
 def test_worker_entrypoint_fails_fast_naming_a_missing_setting(

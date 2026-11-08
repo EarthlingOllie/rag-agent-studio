@@ -597,3 +597,19 @@ _Avoid_: Survey, popup
 **Rating change log**:
 The append-only record of a Conversation's Conversation Ratings: the first rating and each change, with the score before it, the Agent Version it was attributed to and when. Giving the same score again isn't a change.
 _Avoid_: Rating history
+
+**Version KPIs**:
+An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics tab: volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text) and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
+_Avoid_: Stats, dashboard numbers
+
+**Usage rollup**:
+The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
+_Avoid_: Aggregate, summary table
+
+**Wilson interval**:
+The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from its counts when the Version KPIs are read; shown with the sample size so a few lucky votes don't look like a winner.
+_Avoid_: Error bars, margin
+
+**Low confidence**:
+The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.
+_Avoid_: Insufficient data, greyed out

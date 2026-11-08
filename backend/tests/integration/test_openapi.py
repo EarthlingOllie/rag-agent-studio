@@ -170,6 +170,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
             f"{_PROJECT}/conversations/{{conversation_id}}/messages/{{message_id}}/trace",
             "get",
         ),
+        "getVersionMetrics": (f"{_PROJECT}/agents/{{agent_id}}/metrics", "get"),
     }
 
 

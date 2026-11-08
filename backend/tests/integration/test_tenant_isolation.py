@@ -602,6 +602,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
+    ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
     ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
     ScopedRoute(
