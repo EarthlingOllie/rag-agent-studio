@@ -4,18 +4,18 @@
 # on the same Docker daemon. Everything else is docker-compose.yml.
 services:
   postgres:
-    ports: !override ["47642:5432"]
+    ports: !override ["47842:5432"]
   redis:
-    ports: !override ["47689:6379"]
+    ports: !override ["47889:6379"]
   rustfs:
-    ports: !override ["47610:9000", "47611:9001"]
+    ports: !override ["47810:9000", "47811:9001"]
   mailpit:
-    ports: !override ["47625:1025", "47685:8025"]
+    ports: !override ["47825:1025", "47885:8025"]
   api:
     image: rag-agent-studio/api:0706
     build: !reset null
     pull_policy: never
-    ports: !override ["47680:8000"]
+    ports: !override ["47880:8000"]
   worker:
     image: rag-agent-studio/api:0706
     build: !reset null
@@ -28,7 +28,7 @@ services:
     image: rag-agent-studio/studio:0706
     build: !reset null
     pull_policy: never
-    ports: !override ["47683:5173"]
+    ports: !override ["47883:5173"]
   widget:
     image: rag-agent-studio/studio:0706
     build: !reset null
@@ -37,4 +37,4 @@ services:
     image: rag-agent-studio/studio:0706
     build: !reset null
     pull_policy: never
-    ports: !override ["47675:5175", "47676:5176"]
+    ports: !override ["47875:5175", "47876:5176"]
