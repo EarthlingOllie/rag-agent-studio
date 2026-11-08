@@ -8,7 +8,7 @@
 - [10-02: Seeded history](02-seeded-history.md)
 - [09-06: Demo environment and deploy workflow](../09-terraform-deploy/06-demo-env-deploy.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A workflow dispatch runs the seed as a one-off ECS task
 - [ ] Running it again is idempotent
