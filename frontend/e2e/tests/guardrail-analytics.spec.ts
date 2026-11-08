@@ -60,6 +60,8 @@ test.describe("Guardrail analytics", () => {
     await expect(calmWidget.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "HR helper" })).toHaveCount(1, {
       timeout: 15_000,
     });
+    // The reply is saved once its stream ends, when Send is enabled again.
+    await expect(calmWidget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
     await calm.close();
 
     // The Editor reads the Live Version's block rate: one of its three replies was a refusal.

@@ -19,10 +19,15 @@ def attack() -> None:
     r = owner.post("/api/auth/sign-up", json={"name": "Spike Owner", "email": email,
                    "password": f"correct horse battery {suffix}", "organisation_name": f"Spike {suffix}"})
     r.raise_for_status()
+    # The session cookie is Secure; this plain-HTTP client inside the container sends it by hand.
+    owner.headers["Cookie"] = "; ".join(f"{k}={v}" for k, v in r.cookies.items())
+    owner.cookies.clear()
     org = r.json()["organisations"][0]["id"]
     base = f"/api/organisations/{org}"
-    cred = owner.post(f"{base}/credentials", json={"name": "Fake", "provider": "anthropic",
-                      "api_key": "sk-ant-e2e-test-only-not-a-real-key-e806"}).json()["id"]
+    r = owner.post(f"{base}/credentials", json={"name": "Fake", "provider": "anthropic",
+                   "api_key": "sk-ant-e2e-test-only-not-a-real-key-e806"})
+    r.raise_for_status()
+    cred = r.json()["id"]
     owner.put(f"{base}/default-model", json={"credential_id": cred, "model": "claude-haiku-4-5"}).raise_for_status()
     project = owner.post(f"{base}/projects", json={"name": "Spike HR"}).json()["id"]
     agent = owner.post(f"{base}/projects/{project}/agents", json={"name": "Spike helper"}).json()
