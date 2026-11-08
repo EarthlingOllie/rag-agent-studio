@@ -1,0 +1,7 @@
+$ pytest tests/integration/test_canary.py --no-cov, 5 runs @ 5e873e0
+4 passed in 4.69s
+4 passed in 3.93s
+4 passed in 3.92s
+4 passed in 3.94s
+4 passed in 3.86s
+exit 0

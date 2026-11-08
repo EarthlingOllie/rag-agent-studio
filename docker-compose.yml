@@ -46,9 +46,10 @@ x-backend: &backend
     # them. EMBEDDER=fake in .env uses the deterministic embedder instead (no model download).
     DOCUMENT_CONVERTER: ${DOCUMENT_CONVERTER:-docling}
     EMBEDDER: ${EMBEDDER:-local}
-    # The ingestion scan flags Chunks that look like instructions to an AI with the heuristic
-    # classifier (spec 08 adds the ONNX one).
-    INJECTION_CLASSIFIER: ${INJECTION_CLASSIFIER:-heuristic}
+    # The ingestion scan flags Chunks that look like instructions to an AI with the same local
+    # ONNX prompt-injection model as the input Guardrail (bundled in the image). A stack built with
+    # BUNDLE_MODELS=false sets INJECTION_CLASSIFIER=heuristic in .env.
+    INJECTION_CLASSIFIER: ${INJECTION_CLASSIFIER:-local}
     # The input Guardrail checks every Visitor message with the local ONNX prompt-injection model
     # bundled in the image. A stack built with BUNDLE_MODELS=false sets INPUT_CLASSIFIER=heuristic
     # in .env (or the API downloads the model from Hugging Face on the first message).

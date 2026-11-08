@@ -122,6 +122,9 @@ def _service_env() -> dict[str, str]:
         REDIS_URL=TEST_REDIS_URL,
         LOCAL_KEY_WRAPPER_KEY=TEST_LOCAL_KEY_WRAPPER_KEY,
         OBJECT_STORE="memory",
+        # A worker process loads the ingestion scan's model as it starts; the rule-driven fake
+        # has none to download.
+        INJECTION_CLASSIFIER="fake",
         PYTHONUNBUFFERED="1",
     )
     return env

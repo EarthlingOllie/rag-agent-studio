@@ -137,9 +137,12 @@ class Settings(BaseSettings):
     # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
     # deterministic hash-based fake (tests, and stacks that can't download the model).
     embedder: Literal["local", "fake"] = "local"
-    # Scans Chunks for instructions aimed at an AI during ingestion: the heuristic baseline, or
-    # the rule-driven fake (tests). Spec 08 adds the local ONNX classifier.
-    injection_classifier: Literal["heuristic", "fake"] = "heuristic"
+    # Scans Chunks for instructions aimed at an AI during ingestion (the ingestion Guardrail
+    # scan): the local ONNX prompt-injection model (the input Guardrail's, shared with it), the
+    # heuristic baseline (stacks built without the model), or the rule-driven fake (tests).
+    injection_classifier: Literal["local", "heuristic", "fake"] = "local"
+    # The local model's score, from 0 to 1, at or above which a Chunk is flagged.
+    injection_classifier_threshold: float = Field(default=0.5, gt=0, le=1)
     # Checks every Visitor message before the model sees it (the input Guardrail): the local
     # ONNX prompt-injection model (bundled in the API image), the heuristic patterns (stacks
     # built without the model), or the rule-driven fake (tests).

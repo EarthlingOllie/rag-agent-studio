@@ -275,16 +275,20 @@ A retrievable passage of a Document.
 _Avoid_: Segment, passage, node
 
 **Ingestion scan**:
-The Guardrail check ingestion runs on every Chunk: the injection classifier looks for instructions aimed at an AI (an indirect prompt injection hidden in a Document). A Chunk it flags keeps a Guardrail flag; nothing is blocked, and a flagged Chunk is still retrievable.
+The Guardrail check ingestion runs on every Chunk: the injection classifier (the local classifier, the same model as the input Guardrail) looks for instructions aimed at an AI (an indirect prompt injection hidden in a Document). A Chunk it flags keeps a Guardrail flag. Nothing is blocked at upload; whether a flagged Chunk is still retrievable is the Project's Flagged Chunk mode.
 _Avoid_: Document scan, content filter, malware scan
 
 **Injection classifier**:
-The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07, still used by the ingestion scan), the local classifier (the input Guardrail's default), the rule-driven fake in tests, and the LLM classifier (an Agent's optional second check on Visitor messages).
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the local classifier (the default for both the input Guardrail and the ingestion scan), the heuristic classifier (pattern rules, the baseline from ticket 03-07, for stacks built without the model), the rule-driven fake in tests, and the LLM classifier (an Agent's optional second check on Visitor messages).
 _Avoid_: Detector, filter, moderation model
 
 **Guardrail flag**:
-What the injection classifier records on a Chunk it flags: a label (such as `prompt_injection`), a score from 0 to 1, and a reason an Editor can read. The Document viewer shows it on the Chunk, and the Document list counts a Document's flagged Chunks.
+What the injection classifier records on a Chunk it flags: a label (such as `prompt_injection`), a score from 0 to 1, and a reason an Editor can read. The Document viewer shows it on the Chunk, and the Document list counts a Document's flagged Chunks. An Editor can clear a flag they judge a false positive (clearing a flag); that is recorded as an Audit Event (`chunk.flag_cleared`, with the flag it had) and the Chunk is retrieved like any other from then on, until a new edition or retry scans it again.
 _Avoid_: Warning, alert, violation
+
+**Flagged Chunk mode**:
+A Project setting for what retrieval does with Chunks that carry a Guardrail flag: mark (the default: they are retrieved like any other, and marked in the Document viewer) or exclude (they are never retrieval candidates and are never sent to a reranker; the Trace lists any that were found as excluded by the ingestion scan). Retrieval follows a change at once, with no reprocessing.
+_Avoid_: Quarantine setting, scan mode
 
 **Project Instructions**:
 Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents: each Project has one Draft of them, numbered Instructions Versions published from it with a note, and a Current Version.
@@ -529,7 +533,7 @@ The extra system text the input Guardrail's warn mode adds to the prompt, after 
 _Avoid_: Warning prompt, safety prefix
 
 **Local classifier**:
-The input Guardrail's default injection classifier: a DeBERTa-v3 prompt-injection model (ONNX) run on the API's CPU, bundled in the API image and loaded once per process. A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
+The default injection classifier of the input Guardrail and the ingestion scan: a DeBERTa-v3 prompt-injection model (ONNX) run on the CPU, bundled in the API image and loaded once per process (the API and the worker each share one copy between the two). A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
 
 **LLM classifier**:
 An Agent's optional second injection classifier for the input Guardrail: a chat model of one of the Organisation's Provider Credentials (a Credential reference), chosen in the Agent's Guardrails settings and versioned with it. Each message the local classifier passes is also judged by it, through the model gateway, with a fixed classifier prompt and a structured answer (label, score, reason); the message is shown to it as delimited, untrusted data. Its fail mode decides what happens when it can't judge.

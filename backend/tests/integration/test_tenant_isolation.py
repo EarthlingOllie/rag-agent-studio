@@ -27,6 +27,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.core.db import Base
+from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
@@ -242,6 +243,16 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     project_id = await _make_project(owner)
     document = await documents.upload(documents.app_of(owner), owner, project_id, "a.md", b"abc")
     return {"project_id": project_id, "document_id": document["id"]}, None
+
+
+async def _a_flagged_chunk(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    app = documents.app_of(owner)
+    app.state.ingestion.classifier.rules = [FakeRule("abc", "prompt_injection", 0.9, "Test")]
+    document = await documents.upload(app, owner, project_id, "a.md", b"abc")
+    app.state.ingestion.classifier.rules = []
+    (chunk,) = await documents.chunks(owner, project_id, document["id"])
+    return {"project_id": project_id, "document_id": document["id"], "chunk_id": chunk["id"]}, None
 
 
 async def _a_failed_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
@@ -530,6 +541,12 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}/embedding-model", EDITOR, _a_project),
     ScopedRoute("POST", PROJECTS + "/{project_id}/retrieval-probe", EDITOR, _a_probe),
     ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
+    ScopedRoute(
+        "DELETE",
+        PROJECTS + "/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag",
+        EDITOR,
+        _a_flagged_chunk,
+    ),
     ScopedRoute(
         "POST",
         PROJECTS + "/{project_id}/documents/{document_id}/editions",

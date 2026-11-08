@@ -17,6 +17,7 @@ from app.gateway.fakes import FakeModelAdapters
 from app.gateway.live import LiveModelAdapters
 from app.guardrails.fake import RuleDrivenClassifier
 from app.guardrails.heuristic import HeuristicClassifier
+from app.guardrails.local import LocalClassifier
 from app.storage.memory import InMemoryObjectStore
 from app.storage.s3 import S3ObjectStore
 from tests.conftest import TEST_LOCAL_KEY_WRAPPER_KEY
@@ -33,10 +34,16 @@ def _settings(**values: str) -> Settings:
     )
 
 
-def test_production_uses_s3_docling_the_local_embedding_model_and_the_heuristic_scan(
+def test_production_uses_s3_docling_the_local_embedding_model_and_the_local_classifier_scan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for name in ("OBJECT_STORE", "DOCUMENT_CONVERTER", "EMBEDDER", "INJECTION_CLASSIFIER"):
+    for name in (
+        "OBJECT_STORE",
+        "DOCUMENT_CONVERTER",
+        "EMBEDDER",
+        "INJECTION_CLASSIFIER",
+        "INJECTION_CLASSIFIER_THRESHOLD",
+    ):
         monkeypatch.delenv(name, raising=False)
 
     chosen = ports.build_ports(_settings(object_store_endpoint_url="http://rustfs:9000"), ENVELOPE)
@@ -45,7 +52,23 @@ def test_production_uses_s3_docling_the_local_embedding_model_and_the_heuristic_
     assert isinstance(chosen.converter, DoclingConverter)
     assert list(chosen.embedders) == ["multilingual-e5-small"]
     assert isinstance(chosen.embedders["multilingual-e5-small"], LocalEmbedder)
-    assert isinstance(chosen.classifier, HeuristicClassifier)
+    # The ingestion scan reads Chunks with the local ONNX model (loaded on first use, so not
+    # here), at the same default threshold as the input Guardrail, and says it judged a Chunk.
+    assert isinstance(chosen.classifier, LocalClassifier)
+    assert (chosen.classifier.threshold, chosen.classifier.subject) == (0.5, "Chunk")
+
+
+def test_the_settings_tune_the_scans_threshold_or_choose_the_heuristic_baseline() -> None:
+    tuned = ports.build_ports(
+        _settings(object_store="memory", injection_classifier_threshold="0.9"), ENVELOPE
+    )
+    heuristic = ports.build_ports(
+        _settings(object_store="memory", injection_classifier="heuristic"), ENVELOPE
+    )
+
+    assert isinstance(tuned.classifier, LocalClassifier)
+    assert tuned.classifier.threshold == 0.9
+    assert isinstance(heuristic.classifier, HeuristicClassifier)
 
 
 async def test_ingestion_calls_provider_models_through_the_gateway_the_settings_choose() -> None:

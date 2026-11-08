@@ -1,0 +1,151 @@
++ overlay rag-agent-studio/api:0805 on rag-agent-studio/api:0702 (sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 201B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/rag-agent-studio/api:0702
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241
+#4 resolve docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241 0.0s done
+#4 DONE 0.2s
+
+#5 [internal] load build context
+#5 transferring context: 932.88kB 0.1s done
+#5 DONE 0.1s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241
+#4 extracting sha256:7d53da9ee498c4982659b75c4eae503dfffaeaf66172bfbdd03e35669dd1f948 0.0s done
+#4 extracting sha256:b067a7f3cc1b532ea1c57f897c5908e3f1b0796713ae3ee3796eb81dee1ea090 0.0s done
+#4 extracting sha256:b7058f0810dcd2d956589cf27c98373af485e4368dc19104eeb66ddd8b820e86 0.1s done
+#4 extracting sha256:4e1f3c99a31718d97c96269d280bacc6fddb8b9a1b23dfc0dcc97f29b4b8a16a
+#4 extracting sha256:4e1f3c99a31718d97c96269d280bacc6fddb8b9a1b23dfc0dcc97f29b4b8a16a 10.7s done
+#4 extracting sha256:88f56d4c93478c1bb9fd205d9e413e7479c99772b00284fb90ec0609cdee271e
+#4 extracting sha256:88f56d4c93478c1bb9fd205d9e413e7479c99772b00284fb90ec0609cdee271e 0.1s done
+#4 extracting sha256:8d5a1f9051a2b0b4785ed66b1b7ac010c081fa471ab625db0ced79de63183de7
+#4 extracting sha256:8d5a1f9051a2b0b4785ed66b1b7ac010c081fa471ab625db0ced79de63183de7 0.0s done
+#4 extracting sha256:bbf38e25692e5aee8fa591c5cedb7e9b7a8ddf05f29ce2751d3c249b288b87d0 0.1s done
+#4 DONE 11.4s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/api:0702@sha256:34bf82beb30bbf6b374a285c17ae57247c114972816351086f4a738fb4564241
+#4 extracting sha256:cd5fe304a9d492877535729ea53e9bb0f294e05de64d6d0d01ed86ed603da9d2 0.0s done
+#4 extracting sha256:0a50784e4ebe73d3896ed20c5704ee016c53c09dbcb13601b272f6a2f4e20cc0
+#4 extracting sha256:0a50784e4ebe73d3896ed20c5704ee016c53c09dbcb13601b272f6a2f4e20cc0 20.4s done
+#4 extracting sha256:ce5240197c91bfb5e43c974c9b8ddc3711e7f90d507815550a9e2d1f794d6154
+#4 extracting sha256:ce5240197c91bfb5e43c974c9b8ddc3711e7f90d507815550a9e2d1f794d6154 0.0s done
+#4 DONE 31.9s
+
+#6 [2/5] RUN rm -rf /app/app /app/migrations
+#6 DONE 2.2s
+
+#7 [3/5] COPY alembic.ini /app/
+#7 DONE 0.0s
+
+#8 [4/5] COPY app /app/app
+#8 DONE 0.1s
+
+#9 [5/5] COPY migrations /app/migrations
+#9 DONE 0.1s
+
+#10 exporting to image
+#10 exporting layers
+#10 exporting layers 0.3s done
+#10 exporting manifest sha256:f59658e792e9fe325c10c83103009523d533b172f11430250d279fbfb17a2b89
+#10 exporting manifest sha256:f59658e792e9fe325c10c83103009523d533b172f11430250d279fbfb17a2b89 0.0s done
+#10 exporting config sha256:572f10f9ea5f35133c15af5f457991a3e9e332888d027b9b37945fdf6df94aef 0.0s done
+#10 exporting attestation manifest sha256:b27f65e5e809a4fcf53e427ebac506943c43128131e5999770fb3361fdb13e8f done
+#10 exporting manifest list sha256:773e854409c0bb471a9a3bdf2a376e0a808c18507b4fb31982de72a7b66abb00 done
+#10 naming to docker.io/rag-agent-studio/api:0805 done
+#10 unpacking to docker.io/rag-agent-studio/api:0805 0.1s done
+#10 DONE 0.6s
++ docker run: the bundled classifier loads with no network; the ingestion scan uses it
+[0;93m2026-11-07 17:11:22.040150109 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+attack: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the message 1.00 as a prompt injection.')]
+benign: [None]
+ingestion scan adapter: LocalClassifier Chunk shares the model: True
+planted Chunk: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the Chunk 1.00 as a prompt injection.')]
+policy Chunk: [None]
++ overlay rag-agent-studio/studio:0805 on rag-agent-studio/studio:0702 (sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 301B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/rag-agent-studio/studio:0702
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05
+#4 resolve docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 2.40MB 0.3s done
+#5 DONE 0.3s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05
+#4 extracting sha256:5e243d4d1d1ea074060558421aec8046c785db64e082381425a8f9a987de4d24 0.1s done
+#4 extracting sha256:b38d66f295a0641ae73494df8f1276494aca6761c61dc6d7a58318ec3d9df3c7 0.0s done
+#4 extracting sha256:b81b9d505583c0faa3e23e88241ee14bd4802a08ab7e85dc7dfaac7b4254cb01 0.0s done
+#4 extracting sha256:11b3e041c39b65bb419a734f063b12aef6f73510defbb18f3e08c54e0fb9dc64
+#4 extracting sha256:11b3e041c39b65bb419a734f063b12aef6f73510defbb18f3e08c54e0fb9dc64 5.0s done
+#4 DONE 5.3s
+
+#4 [1/5] FROM docker.io/rag-agent-studio/studio:0702@sha256:697a44b5776b1da1ce0e62de6476ad4cfe24d2e2a79350cfae5ffb2116042f05
+#4 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 done
+#4 DONE 5.3s
+
+#6 [2/5] COPY --chown=node:node src/ /app/
+#6 DONE 0.7s
+
+#7 [3/5] WORKDIR /app/apps/widget
+#7 DONE 0.2s
+
+#8 [4/5] RUN rm -rf dist && node /app/node_modules/vite/bin/vite.js build && node /app/node_modules/vite/bin/vite.js build --config vite.embed.config.ts
+#8 1.893 vite v8.3.5 building client environment for production...
+#8 1.958 transforming...
+#8 2.503 ✓ 76 modules transformed.
+#8 2.944 rendering chunks...
+#8 3.929 computing gzip size...
+#8 3.945 dist/widget/assets/widget.js  642.28 kB │ gzip: 202.53 kB
+#8 3.945 
+#8 3.945 ✓ built in 2.04s
+#8 3.945 [plugin builtin:vite-reporter] 
+#8 3.945 (!) Some chunks are larger than 500 kB after minification. Consider:
+#8 3.945 - Using dynamic import() to code-split the application
+#8 3.945 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#8 3.945 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#8 4.570 vite v8.3.5 building client environment for production...
+#8 4.621 transforming...
+#8 4.621 ✓ 3 modules transformed.
+#8 4.628 rendering chunks...
+#8 4.632 computing gzip size...
+#8 4.632 dist/embed.js  1.36 kB │ gzip: 0.77 kB
+#8 4.632 
+#8 4.633 ✓ built in 57ms
+#8 DONE 4.8s
+
+#9 [5/5] WORKDIR /app/apps/studio
+#9 DONE 0.1s
+
+#10 exporting to image
+#10 exporting layers
+#10 exporting layers 0.4s done
+#10 exporting manifest sha256:7f7870f984ba91e4d0f112344e37b99d67d12b4c88f10a46427b9b56580faf3c 0.0s done
+#10 exporting config sha256:c97c00360671ee5f58a49b356d5fd47e25119b4d3bd76da7a608d774886f7022 0.1s done
+#10 exporting attestation manifest sha256:eb80f7b98f09c8a888795101a11bcbd7516b5a40cd3a6db3707e472cb0553cd8 done
+#10 exporting manifest list sha256:f63bd5f592e6619bd953956c704b4ae888384210796930058317c67c82a46b64 0.1s done
+#10 naming to docker.io/rag-agent-studio/studio:0805 done
+#10 unpacking to docker.io/rag-agent-studio/studio:0805
+#10 unpacking to docker.io/rag-agent-studio/studio:0805 0.2s done
+#10 DONE 1.0s

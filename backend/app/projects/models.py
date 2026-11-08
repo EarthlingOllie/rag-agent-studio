@@ -1,9 +1,20 @@
 """The Project table. Every Project belongs to one Organisation; nothing crosses a Project."""
 
+import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, false
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
@@ -20,8 +31,20 @@ NOTE_MAX = 500
 DEFAULT_DOCUMENT_QUOTA = 500
 
 
+class FlaggedChunkMode(enum.StrEnum):
+    """What retrieval does with the Chunks the ingestion Guardrail scan flags."""
+
+    # They are retrieved as usual, and marked in the Document viewer.
+    MARK = "mark"
+    # They are never retrieval candidates; the Trace lists them as left out by the scan.
+    EXCLUDE = "exclude"
+
+
 class Project(IdMixin, Base):
     __tablename__ = "projects"
+    __table_args__ = (
+        CheckConstraint("flagged_chunk_mode IN ('mark', 'exclude')", name="flagged_chunk_mode"),
+    )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organisations.id", ondelete="CASCADE"), index=True
@@ -39,6 +62,12 @@ class Project(IdMixin, Base):
     # Whether ingestion runs OCR, so scanned PDFs become readable. Off by default: OCR is slow,
     # and most Projects' files carry their own text.
     ocr_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # The Flagged Chunk mode: whether Chunks the ingestion Guardrail scan flags are only marked,
+    # or excluded from retrieval. Marked by default, so a false positive doesn't silently hide
+    # content; an Editor chooses to quarantine.
+    flagged_chunk_mode: Mapped[str] = mapped_column(
+        String(10), default=FlaggedChunkMode.MARK, server_default=FlaggedChunkMode.MARK
+    )
     # The Provider Credential a provider Embedding Model is called through; None for the local
     # model. Registered as a reference, so the credential can't be deleted while it is in use;
     # the foreign key backs that up.
