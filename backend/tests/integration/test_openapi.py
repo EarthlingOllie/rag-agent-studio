@@ -10,6 +10,7 @@ _THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
 _AGENT = f"{_PROJECT}/agents/{{agent_id}}"
 _PLAYGROUND = f"{_AGENT}/playground/conversations"
 _FEEDBACK = "/api/widget/agents/{public_id}/messages/{message_id}/feedback"
+_RATING = "/api/widget/agents/{public_id}/conversation/rating"
 
 
 def test_openapi_document_describes_every_endpoint() -> None:
@@ -149,6 +150,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "endWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "delete"),
         "giveMessageFeedback": (_FEEDBACK, "put"),
         "removeMessageFeedback": (_FEEDBACK, "delete"),
+        "rateConversation": (_RATING, "put"),
+        "dismissRatingPrompt": (f"{_RATING}/dismissal", "post"),
         "bulkPublishAgents": (f"{_PROJECT}/agents/bulk-publish", "post"),
         "bulkRevertAgents": (f"{_PROJECT}/agents/bulk-revert", "post"),
         "getInstructionsRollout": (f"{_PROJECT}/instructions/rollout", "get"),

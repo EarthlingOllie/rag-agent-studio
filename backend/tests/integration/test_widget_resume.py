@@ -99,7 +99,10 @@ async def test_a_new_conversation_has_no_messages_yet(
     response = await resume(visitor, agent["public_id"], token)
 
     assert response.status_code == 200, response.text
-    assert response.json() == {"messages": []}
+    assert response.json() == {
+        "messages": [],
+        "rating": {"score": None, "prompt_dismissed": False},
+    }
 
 
 async def test_resume_works_within_24_hours_and_slides_the_window(
@@ -193,7 +196,7 @@ async def test_a_visitor_ends_their_conversation_and_its_token_is_refused_after(
     assert (await end(visitor, public_id, token)).status_code == 401
     # A new Conversation starts as usual.
     fresh = await conversation_token(visitor, public_id)
-    assert (await resume(visitor, public_id, fresh)).json() == {"messages": []}
+    assert (await resume(visitor, public_id, fresh)).json()["messages"] == []
 
 
 async def test_a_conversation_can_be_ended_after_its_agent_is_retired(

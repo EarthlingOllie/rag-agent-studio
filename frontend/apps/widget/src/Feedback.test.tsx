@@ -17,6 +17,7 @@ const boot: Boot = {
   starter_questions: [],
   ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
   citations: true,
+  rating_prompt_after: 0,
 };
 
 const STORED = "rag-widget:conversation:agt_hr";
@@ -48,7 +49,7 @@ function fakeWidgetApi({ history, refuse }: { history?: unknown[]; refuse?: numb
     http.post("*/api/widget/agents/agt_hr/conversations", () =>
       HttpResponse.json({ conversation_token: "wc1.token" }, { status: 201 }),
     ),
-    http.get("*/api/widget/agents/agt_hr/conversation", () => HttpResponse.json({ messages: history ?? [] })),
+    http.get("*/api/widget/agents/agt_hr/conversation", () => HttpResponse.json({ messages: history ?? [], rating: { score: null, prompt_dismissed: false } })),
     http.post("*/api/widget/agents/agt_hr/messages", async ({ request }) => {
       const { content } = (await request.json()) as { content: string };
       replies += 1;

@@ -1,0 +1,10 @@
+$ make test-backend @ c234a51 (fresh rag0703 Postgres/pgvector :47032, Redis :47033, RustFS :47034; OpenTelemetry span and JSON log lines filtered out)
+(trimmed to the failure and the summary)
+tests/integration/test_conversation_rating.py ..............F..          [ 12%]
+E       AssertionError: assert {'score': None, 'agent_version_number': None, 'rated_at': None, 'prompt_dismissed_at': '2026-11-05T09:00:00Z', ...} is None
+tests/integration/test_conversation_rating.py:319: AssertionError
+TOTAL                                  9891      0   1134      0   100%
+Required test coverage of 100.0% reached. Total coverage: 100.00%
+FAILED tests/integration/test_conversation_rating.py::test_the_detail_shows_a_dismissal_without_a_rating_and_nothing_when_untouched
+========== 1 failed, 2190 passed, 22 deselected in 2426.05s (0:40:26) ==========
+exit 2

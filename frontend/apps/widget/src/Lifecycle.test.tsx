@@ -9,6 +9,7 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "../../studio/src/test/server";
 import type { Boot } from "./chat";
+import { UNRATED } from "./Rating";
 import { Widget } from "./Widget";
 
 const boot: Boot = {
@@ -22,6 +23,7 @@ const boot: Boot = {
   starter_questions: [],
   ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
   citations: true,
+  rating_prompt_after: 0,
 };
 const STORED = "rag-widget:conversation:agt_hr";
 const RETIRED = "This assistant is no longer available.";
@@ -37,7 +39,7 @@ function sse(text: string): Response {
 
 /** The widget API with one Conversation per exchange; `history` is what a resume returns. */
 function fakeWidgetApi({
-  history = () => HttpResponse.json({ messages: [] }),
+  history = () => HttpResponse.json({ messages: [], rating: UNRATED }),
   answer = (question: string) => sse(`Re: ${question}`),
   ended = () => new HttpResponse(null, { status: 204 }),
 }: {
@@ -56,6 +58,10 @@ function fakeWidgetApi({
     http.get("*/api/widget/agents/agt_hr/conversation", ({ request }) => {
       seen.push({ route: "resume", authorization: request.headers.get("Authorization") });
       return history();
+    }),
+    http.post("*/api/widget/agents/agt_hr/conversation/rating/dismissal", ({ request }) => {
+      seen.push({ route: "dismiss", authorization: request.headers.get("Authorization") });
+      return new HttpResponse(null, { status: 204 });
     }),
     http.delete("*/api/widget/agents/agt_hr/conversation", ({ request }) => {
       seen.push({ route: "end", authorization: request.headers.get("Authorization") });
@@ -110,6 +116,7 @@ test("a Visitor who reloads gets their Conversation back, sources included, and 
             ],
           },
         ],
+        rating: UNRATED,
       }),
   });
   render(<Widget boot={boot} />);
@@ -245,12 +252,17 @@ test("a Visitor ends the chat, and can start another one afterwards", async () =
   expect(await screen.findByText("Re: Hello")).toBeInTheDocument();
 
   await user.click(screen.getByRole("button", { name: "End chat" }));
+  // Not rated yet, so they are asked first.
+  await user.click(screen.getByRole("button", { name: "End without rating" }));
 
   expect(await screen.findByRole("status")).toHaveTextContent("You ended the chat.");
   expect(screen.queryByText("Re: Hello")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
   expect(localStorage.getItem(STORED)).toBeNull();
-  expect(seen.at(-1)).toEqual({ route: "end", authorization: "Bearer wc1.token1" });
+  expect(seen.slice(-2)).toEqual([
+    { route: "dismiss", authorization: "Bearer wc1.token1" },
+    { route: "end", authorization: "Bearer wc1.token1" },
+  ]);
 
   await user.click(screen.getByRole("button", { name: "Start a new chat" }));
   expect(screen.getByLabelText("Message")).toHaveFocus();

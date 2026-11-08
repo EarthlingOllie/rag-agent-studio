@@ -123,6 +123,7 @@ EXPERIENCE = {
         "rate_conversation": "How did Hana do?",
         "unavailable_message": "Hana is on a break. Try again soon.",
     },
+    "rating_prompt_after": 5,
 }
 
 
@@ -147,6 +148,7 @@ async def test_greeting_starter_questions_ui_text_and_citations_come_from_the_li
     assert data["greeting"] == "Hi! Ask me about leave, pay or benefits."
     assert data["starter_questions"] == ["How much leave do I get?", "When is payday?"]
     assert data["ui_text"] == EXPERIENCE["ui_text"]
+    assert data["rating_prompt_after"] == 5
     assert data["citations"] is False
 
     await published(owner, project_id, agent["id"])
@@ -172,6 +174,7 @@ async def test_an_agent_with_the_default_experience_shows_its_name_and_built_in_
         "rate_conversation": None,
         "unavailable_message": None,
     }
+    assert data["rating_prompt_after"] == 3
     assert data["citations"] is True
     assert data["logo_url"] is None
     assert data["avatar_url"] is None

@@ -2114,8 +2114,9 @@ export interface paths {
         /**
          * Get Conversation
          * @description The token's Conversation, for a Visitor who comes back to the page: its Messages in
-         *     order, each answer with its sources. Coming back counts as activity, so the token's
-         *     24-hour window slides on; after 24 hours without activity the token is refused.
+         *     order, each answer with its sources and feedback, and its Conversation Rating. Coming back
+         *     counts as activity, so the token's 24-hour window slides on; after 24 hours without
+         *     activity the token is refused.
          */
         get: operations["getWidgetConversation"];
         put?: never;
@@ -2126,6 +2127,49 @@ export interface paths {
          *     question starts a new Conversation.
          */
         delete: operations["endWidgetConversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Rate Conversation
+         * @description Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and
+         *     each change are kept in a change log. The rating belongs to the Agent Version of the last
+         *     reply before it. Refused until the Agent has replied.
+         */
+        put: operations["rateConversation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/rating/dismissal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Rating Prompt
+         * @description Saves that the Visitor dismissed the rating prompt, so the widget doesn't show it again
+         *     in this Conversation (it still asks when they end the chat without a rating).
+         */
+        post: operations["dismissRatingPrompt"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2654,6 +2698,7 @@ export interface components {
             last_activity_at: string;
             /** Messages */
             messages: components["schemas"]["ConversationMessageOut"][];
+            rating: components["schemas"]["ConversationRatingRead"] | null;
         };
         /** ConversationMessageOut */
         ConversationMessageOut: {
@@ -2739,6 +2784,31 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** ConversationRatingIn */
+        ConversationRatingIn: {
+            /** Score */
+            score: number;
+        };
+        /** ConversationRatingOut */
+        ConversationRatingOut: {
+            /** Prompt Dismissed */
+            prompt_dismissed: boolean;
+            /** Score */
+            score: number;
+        };
+        /** ConversationRatingRead */
+        ConversationRatingRead: {
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /** Changes */
+            changes: components["schemas"]["RatingChangeRead"][];
+            /** Prompt Dismissed At */
+            prompt_dismissed_at: string | null;
+            /** Rated At */
+            rated_at: string | null;
+            /** Score */
+            score: number | null;
+        };
         /** ConversationSummaryOut */
         ConversationSummaryOut: {
             /**
@@ -2769,6 +2839,8 @@ export interface components {
             message_count: number;
             /** Preview */
             preview: string | null;
+            /** Rating */
+            rating: number | null;
             /** Thumbs Down */
             thumbs_down: number;
             /** Thumbs Up */
@@ -3997,6 +4069,27 @@ export interface components {
             /** Note */
             note: string;
         };
+        /** RatingChangeRead */
+        RatingChangeRead: {
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+            /** Previous Score */
+            previous_score: number | null;
+            /** Score */
+            score: number;
+        };
+        /**
+         * RatingFilter
+         * @description Which Conversations to keep by their Conversation Rating: one score (1 to 5), rated
+         *     (any score), or not rated.
+         * @enum {string}
+         */
+        RatingFilter: "1" | "2" | "3" | "4" | "5" | "any" | "none";
         /**
          * ReEmbedOut
          * @description A re-embed job: the Knowledge Base moving from one Embedding Model to another.
@@ -4620,6 +4713,7 @@ export interface components {
         WidgetConversationOut: {
             /** Messages */
             messages: components["schemas"]["WidgetMessageOut"][];
+            rating: components["schemas"]["WidgetRatingOut"];
         };
         /** WidgetFeedbackOut */
         WidgetFeedbackOut: {
@@ -4653,6 +4747,13 @@ export interface components {
         WidgetMessageRequest: {
             /** Content */
             content: string;
+        };
+        /** WidgetRatingOut */
+        WidgetRatingOut: {
+            /** Prompt Dismissed */
+            prompt_dismissed: boolean;
+            /** Score */
+            score: number | null;
         };
         /** WorkerHealthResponse */
         WorkerHealthResponse: {
@@ -8733,6 +8834,8 @@ export interface operations {
                 playground?: boolean | null;
                 /** @description Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`) */
                 feedback?: components["schemas"]["FeedbackFilter"] | null;
+                /** @description Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`) */
+                rating?: components["schemas"]["RatingFilter"] | null;
                 page?: number;
                 page_size?: number;
             };
@@ -10813,6 +10916,103 @@ export interface operations {
         };
     };
     endWidgetConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rateConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationRatingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRatingOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is nothing to rate yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismissRatingPrompt: {
         parameters: {
             query?: never;
             header?: {

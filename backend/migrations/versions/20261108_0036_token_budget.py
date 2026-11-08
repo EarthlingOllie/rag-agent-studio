@@ -1,8 +1,8 @@
 """The Token Budget: how many tokens an Agent's Visitor replies may use per UTC date
 (Operational Settings), and the alert flag raised when it runs out.
 
-Revision ID: 0035_token_budget
-Revises: 0034_rate_limits
+Revision ID: 0036_token_budget
+Revises: 0035_conversation_ratings
 Create Date: 2026-11-08
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0035_token_budget"
-down_revision: str | None = "0034_rate_limits"
+revision: str = "0036_token_budget"
+down_revision: str | None = "0035_conversation_ratings"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -1,0 +1,27 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0703-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-03-evidence/compose.sandbox.yml' @ c234a51 (CI settings: one retry)
+(trimmed: the run was stopped by hand at disk 3.1 GB free / load from other tickets; failures and the rating spec's error)
+  ✘  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (26.4s)
+  ✘  29 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (retry #1) (23.0s)
+  ✘  46 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (30.2s)
+  ✘  47 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (32.6s)
+  ✘  48 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (retry #1) (31.9s)
+  ✘  49 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (retry #1) (34.1s)
+  ✘  50 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (36.2s)
+  ✘  51 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (30.3s)
+  ✘  53 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (retry #1) (32.9s)
+  ✘  52 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (retry #1) (39.9s)
+  ✘  56 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (30.7s)
+  ✘  57 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (17.3s)
+  ✘  58 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (retry #1) (35.4s)
+  ✘  59 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (retry #1) (29.1s)
+
+--- conversation-rating.spec.ts error-context ---
+# Error details
+
+```
+Error: expect(page).toHaveURL(expected) failed
+
+Expected pattern: /rating=1/
+Received string:  "http://localhost:47383/organisations/5d4b5e09-dbd5-466a-bde6-16ca8acba99e/projects/2aad0f83-3abd-4c39-adf0-0fbfbf1df129/conversations?rating=%221%22"
+Timeout: 5000ms
+
