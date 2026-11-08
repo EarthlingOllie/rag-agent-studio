@@ -3,7 +3,17 @@ import { useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { type ChunkPage, type DocumentDetail, CHUNK_PAGE_SIZE, downloadPath, useChunkPage, useDocument } from "./documents";
+import { FormError } from "../auth/AuthLayout";
+import {
+  type ChunkPage,
+  type DocumentDetail,
+  CHUNK_PAGE_SIZE,
+  clearFlagFailure,
+  downloadPath,
+  useChunkPage,
+  useClearChunkFlag,
+  useDocument,
+} from "./documents";
 import { STATUS_LABELS } from "./DocumentsTab";
 import { BUTTON } from "./ProjectsPage";
 
@@ -20,16 +30,40 @@ function pageLabel({ page_start: start, page_end: end }: Chunk): string | null {
 /** How the Studio names the injection classifier's labels; any other label shows as given. */
 const FLAG_LABELS: Record<string, string> = { prompt_injection: "Prompt injection" };
 
-/** Why the ingestion Guardrail scan flagged the Chunk as instructions aimed at an AI. */
-function FlagNote({ flag }: { flag: NonNullable<Chunk["flag"]> }) {
+interface DocumentRef {
+  organisationId: string;
+  projectId: string;
+  documentId: string;
+}
+
+/**
+ * Why the ingestion Guardrail scan flagged the Chunk as instructions aimed at an AI, and a button
+ * to clear the flag when it is a false positive (audited; the Chunk is then retrieved again).
+ */
+function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk: Chunk; at: DocumentRef }) {
+  const clear = useClearChunkFlag(at.organisationId, at.projectId, at.documentId);
   return (
-    <p role="note" aria-label="Guardrail flag" className="rounded bg-amber-50 p-2 text-amber-900">
-      <strong>Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
-    </p>
+    <div className="space-y-2 rounded bg-amber-50 p-2 text-amber-900">
+      <p role="note" aria-label="Guardrail flag">
+        <strong>Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
+      </p>
+      <FormError message={clearFlagFailure(clear.error)} />
+      <button
+        type="button"
+        className={BUTTON}
+        aria-label={`Clear flag on Chunk ${String(chunk.ordinal + 1)}`}
+        disabled={clear.isPending}
+        onClick={() => {
+          clear.mutate(chunk.id);
+        }}
+      >
+        Clear flag
+      </button>
+    </div>
   );
 }
 
-function ChunkItem({ chunk }: { chunk: Chunk }) {
+function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
   const pages = pageLabel(chunk);
   const border = chunk.flag ? "border-amber-500" : "border-slate-200";
   return (
@@ -37,7 +71,7 @@ function ChunkItem({ chunk }: { chunk: Chunk }) {
       <p className="text-xs font-medium text-slate-700">Chunk {chunk.ordinal + 1}</p>
       {chunk.heading_path.length > 0 && <p className="font-medium text-slate-900">{chunk.heading_path.join(" › ")}</p>}
       {pages && <p className="text-xs text-slate-700">{pages}</p>}
-      {chunk.flag && <FlagNote flag={chunk.flag} />}
+      {chunk.flag && <FlagNote flag={chunk.flag} chunk={chunk} at={at} />}
       <p className="whitespace-pre-wrap text-slate-900">{chunk.text}</p>
     </li>
   );
@@ -64,7 +98,7 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
         </p>
         <ol className="space-y-2">
           {items.map((chunk) => (
-            <ChunkItem key={chunk.id} chunk={chunk} />
+            <ChunkItem key={chunk.id} chunk={chunk} at={{ organisationId, projectId, documentId }} />
           ))}
         </ol>
         {pageCount > 1 && (

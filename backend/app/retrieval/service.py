@@ -31,6 +31,12 @@ fused on their own; the best ``top_k`` of those are excluded (``outside_tags``).
 of Tags searches every Document. A Tag ID no Document carries (say a Tag deleted after a
 Version was published) simply matches nothing. Out-of-scope Chunks are never sent to the reranker.
 
+Flagged Chunks: when the Project's Flagged Chunk mode is ``exclude``, Chunks the ingestion
+Guardrail scan flagged are taken out of the ranking before the reranker, the minimum score and
+``top_k``: they are never candidates, take no place among them and are never sent to the
+reranker. So that the Trace can show what the scan kept out, they are excluded
+(``guardrail_flagged``) with their fused score. With ``mark`` they are retrieved like any other.
+
 The fused score depends only on ranks, so it says nothing about whether anything relevant was
 found; the relevance does, which is why the minimum applies to it.
 """
@@ -59,7 +65,7 @@ from app.documents.models import Chunk, Document, DocumentStatus
 from app.embeddings.port import Embedder
 from app.embeddings.registry import EMBEDDING_MODELS
 from app.gateway.ports import Reranker
-from app.projects.models import Project
+from app.projects.models import FlaggedChunkMode, Project
 from app.tags.models import DocumentTag
 
 # How many Chunks each search contributes to the fusion.
@@ -72,7 +78,7 @@ MAX_QUERY_TERMS = 64
 # Chunks are indexed with the 'simple' text search configuration, so queries are parsed with it.
 _SIMPLE: ColumnElement[str] = literal_column("'simple'::regconfig")
 
-ExcludedReason = Literal["below_min_score", "outside_top_k", "outside_tags"]
+ExcludedReason = Literal["below_min_score", "outside_top_k", "outside_tags", "guardrail_flagged"]
 
 
 @dataclass(frozen=True)
@@ -303,7 +309,8 @@ async def retrieve(
 ) -> RetrievalResult:
     """The Project's Chunks most relevant to ``query``, best first, at most ``top_k``, and the
     Chunks found but left out. With Tag scoping, only Documents with one of the Tags are
-    searched for candidates. With a ``reranker``, every candidate Chunk found is reranked before
+    searched for candidates. Flagged Chunks are left out when the Project excludes them. With
+    a ``reranker``, every candidate Chunk found is reranked before
     the minimum score and ``top_k`` are applied."""
     embedder = embedders.get(project.embedding_model_id)
     if embedder is None:
@@ -312,11 +319,18 @@ async def retrieve(
     tag_ids = settings.tag_ids
     scope = _tag_scope(tag_ids, inside=True) if tag_ids else None
     ranked = await searches.ranked(query, scope)
+    excluded: list[Excluded] = []
+    if project.flagged_chunk_mode == FlaggedChunkMode.EXCLUDE:
+        excluded.extend(
+            _excluded(entry, "guardrail_flagged")
+            for entry in ranked
+            if entry.chunk.guardrail_label is not None
+        )
+        ranked = [entry for entry in ranked if entry.chunk.guardrail_label is None]
 
     if reranker is not None and ranked:
         ranked = await _rerank(reranker, query, ranked)
     candidates: list[Candidate] = []
-    excluded: list[Excluded] = []
     for entry in ranked:
         reason: ExcludedReason | None = None
         if entry.relevance < settings.min_score:

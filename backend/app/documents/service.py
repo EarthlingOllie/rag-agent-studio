@@ -11,6 +11,9 @@
 ``retry_document`` sends a Ready or Failed Document through ingestion again, with the
 Project's current settings (its OCR flag, for one).
 
+``clear_chunk_flag`` clears the ingestion Guardrail scan's flag on a Chunk an Editor judges a
+false positive, and audits it.
+
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
 through ``active_project``, so an archived Project takes none. A Failed Document (or a Failed
 newer edition of one) can be retried, which queues it for ingestion again.
@@ -25,7 +28,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from redis.asyncio import Redis
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import ScalarSelect
 
@@ -66,6 +69,14 @@ class ContentHashMismatchError(Exception):
 
 class DocumentNotFoundError(Exception):
     """No Document with that ID in the Project."""
+
+
+class ChunkNotFoundError(Exception):
+    """No Chunk with that ID in the Document's current edition."""
+
+
+class ChunkNotFlaggedError(Exception):
+    """The Chunk has no Guardrail flag to clear."""
 
 
 class QuotaReachedError(Exception):
@@ -497,6 +508,68 @@ async def list_chunks(
         select(Chunk).where(*current).order_by(Chunk.ordinal).offset(offset).limit(limit)
     )
     return ChunkPage(list(chunks), total or 0)
+
+
+async def clear_chunk_flag(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    chunk_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> None:
+    """Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition
+    (an Editor judging it a false positive), so it is retrieved again even where the Project
+    excludes flagged Chunks, and records ``chunk.flag_cleared`` with the flag it had. The flag
+    goes from every Embedding Model's copy of the Chunk (a re-embed in progress keeps one per
+    model). Archived Projects are refused."""
+    project = await projects.active_project(session, scope, project_id)
+    document = await session.scalar(
+        select(Document).where(Document.id == document_id, Document.project_id == project.id)
+    )
+    if document is None:
+        raise DocumentNotFoundError
+    chunk = await session.scalar(
+        select(Chunk)
+        .where(
+            Chunk.id == chunk_id,
+            Chunk.document_id == document.id,
+            Chunk.edition == document.edition,
+        )
+        .with_for_update()
+    )
+    if chunk is None:
+        raise ChunkNotFoundError
+    if chunk.guardrail_label is None:
+        raise ChunkNotFlaggedError
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action="chunk.flag_cleared",
+        target=audit.AuditTarget("chunk", chunk.id),
+        before={
+            "project_id": str(project.id),
+            "document_id": str(document.id),
+            "document_name": document.name,
+            "label": chunk.guardrail_label,
+            "score": chunk.guardrail_score,
+            "reason": chunk.guardrail_reason,
+        },
+        after={"flag": None},
+        occurred_at=now,
+    )
+    await session.execute(
+        update(Chunk)
+        .where(
+            Chunk.document_id == document.id,
+            Chunk.edition == chunk.edition,
+            Chunk.ordinal == chunk.ordinal,
+        )
+        .values(guardrail_label=None, guardrail_score=None, guardrail_reason=None)
+    )
+    await session.commit()
 
 
 async def delete_document(

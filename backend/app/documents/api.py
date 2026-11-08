@@ -612,6 +612,40 @@ async def list_chunks(
     )
 
 
+CHUNK_NOT_FLAGGED = "This Chunk isn't flagged."
+
+
+@router.delete(
+    "/documents/{document_id}/chunks/{chunk_id}/flag",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="clearChunkFlag",
+    responses=_errors(
+        _NOT_FOUND, (409, f"{PROJECT_ARCHIVED} Or the Chunk isn't flagged: {CHUNK_NOT_FLAGGED}")
+    ),
+)
+async def clear_chunk_flag(
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    chunk_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> None:
+    """Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,
+    for a false positive: the Chunk is retrieved again at once, even in a Project that excludes
+    flagged Chunks. Records ``chunk.flag_cleared`` with the flag it had."""
+    try:
+        await service.clear_chunk_flag(
+            db, scope, project_id, document_id, chunk_id, now=clock.now()
+        )
+    except (ProjectNotFoundError, service.DocumentNotFoundError, service.ChunkNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except ProjectArchivedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
+    except service.ChunkNotFlaggedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, CHUNK_NOT_FLAGGED) from None
+
+
 @router.delete(
     "/documents/{document_id}",
     status_code=status.HTTP_204_NO_CONTENT,

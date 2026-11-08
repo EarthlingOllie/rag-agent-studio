@@ -1,0 +1,220 @@
+$ build.sh (clean clone of 66d36c8)
++ docker build -t rag-agent-studio/api:0805 backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 DONE 0.0s
+
+#2 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#2 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#2 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 3.77kB done
+#1 DONE 0.0s
+
+#3 [context sandboxca] load .dockerignore
+#3 transferring sandboxca: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/python:3.13-slim
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 125B done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 186.71kB done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.73MB 0.0s done
+#7 DONE 0.1s
+
+#8 [stage-1  7/11] COPY alembic.ini ./
+#8 CACHED
+
+#9 [stage-1  7/11] COPY alembic.ini ./
+#9 CACHED
+
+#10 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#10 CACHED
+
+#11 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#11 CACHED
+
+#12 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#12 CACHED
+
+#13 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#13 CACHED
+
+#14 [stage-1  6/11] WORKDIR /app
+#14 CACHED
+
+#15 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#15 CACHED
+
+#16 [build 4/6] WORKDIR /app
+#16 CACHED
+
+#17 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
+#17 CACHED
+
+#18 [build 5/6] COPY pyproject.toml uv.lock ./
+#18 CACHED
+
+#19 [stage-1  8/11] COPY app ./app
+#19 DONE 0.7s
+
+#20 [stage-1  9/11] COPY migrations ./migrations
+#20 DONE 0.0s
+
+#21 [stage-1 10/11] RUN mkdir -p /opt/models/docling     && if [ "true" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && python -c "from app.guardrails import onnx_model; onnx_model.load()"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
+#21 3.410 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#21 3.556 Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  6.85it/s]Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  4.20it/s]Fetching 5 files:  80%|████████  | 4/5 [00:00<00:00,  3.88it/s]Fetching 5 files: 100%|██████████| 5/5 [00:03<00:00,  1.14it/s]Fetching 5 files: 100%|██████████| 5/5 [00:03<00:00,  1.54it/s]
+#21 14.23 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#21 DONE 21.9s
+
+#22 [stage-1 11/11] RUN useradd --system --uid 10001 studio
+#22 0.140 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#22 DONE 0.2s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 58.8s done
+#23 exporting manifest sha256:3d6db11331deebe03d4453b0d93fc81c159566fa5c9b6f1058d400a0a49c04f0 done
+#23 exporting config sha256:707d0671aee2d05ac3314604f3201386b42a54e99312a0877955572b4fdefb31 done
+#23 exporting attestation manifest sha256:44d85636759de4f47db59dcca6f1138c34d048f0331950cd5443154375a819d6 done
+#23 exporting manifest list sha256:8ba18238c50effee545695300d517166eb4c187d92046da9db8094858629ddaf done
+#23 naming to docker.io/rag-agent-studio/api:0805 done
+#23 unpacking to docker.io/rag-agent-studio/api:0805
+#23 unpacking to docker.io/rag-agent-studio/api:0805 19.2s done
+#23 DONE 78.1s
++ docker run: the bundled classifier loads with no network and flags an attack
+[0;93m2026-11-07 23:01:37.814231605 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+attack: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the message 1.00 as a prompt injection.')]
+benign: [None]
+ingestion scan adapter: LocalClassifier Chunk
+ingestion scan, planted Chunk: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the Chunk 1.00 as a prompt injection.')]
+api image size: 3427577718 bytes
++ docker build -t rag-agent-studio/studio:0805 frontend (sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [install  1/12] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#1 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
+#1 DONE 0.0s
+
+#2 [install 10/12] RUN pnpm install --frozen-lockfile
+#2 CACHED
+
+#3 [stage-1 4/6] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#3 CACHED
+
+#4 [internal] load build definition from Dockerfile.frontend
+#4 transferring dockerfile: 2.31kB done
+#4 DONE 0.0s
+
+#5 [context sandboxca] load .dockerignore
+#5 transferring sandboxca: 2B done
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/node:22-slim
+#6 DONE 0.0s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 104B done
+#7 DONE 0.0s
+
+#8 [context sandboxca] load from client
+#8 transferring sandboxca: 186.71kB 0.0s done
+#8 DONE 0.0s
+
+#9 [internal] load build context
+#9 transferring context: 2.43MB 0.0s done
+#9 DONE 0.1s
+
+#10 [install  7/12] COPY apps/widget/package.json apps/widget/
+#10 CACHED
+
+#11 [install 10/12] RUN pnpm install --frozen-lockfile
+#11 CACHED
+
+#12 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#12 CACHED
+
+#13 [install  9/12] COPY packages/ui/package.json packages/ui/
+#13 CACHED
+
+#14 [install  2/12] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#14 CACHED
+
+#15 [install  4/12] WORKDIR /app
+#15 CACHED
+
+#16 [install  5/12] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#16 CACHED
+
+#17 [install  3/12] RUN corepack enable
+#17 CACHED
+
+#18 [install  6/12] COPY apps/studio/package.json apps/studio/
+#18 CACHED
+
+#19 [install 11/12] COPY . .
+#19 DONE 0.0s
+
+#20 [install 12/12] RUN pnpm --filter @studio/widget build
+#20 0.391 
+#20 0.391 > @studio/widget@ build /app/apps/widget
+#20 0.391 > vite build && vite build --config vite.embed.config.ts
+#20 0.391 
+#20 0.689 vite v8.3.5 building client environment for production...
+#20 0.705 transforming...
+#20 0.843 ✓ 76 modules transformed.
+#20 0.896 rendering chunks...
+#20 1.066 computing gzip size...
+#20 1.080 dist/widget/assets/widget.js  643.84 kB │ gzip: 203.10 kB
+#20 1.080 
+#20 1.081 [plugin builtin:vite-reporter] 
+#20 1.081 (!) Some chunks are larger than 500 kB after minification. Consider:
+#20 1.081 - Using dynamic import() to code-split the application
+#20 1.081 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#20 1.081 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#20 1.081 ✓ built in 391ms
+#20 1.269 vite v8.3.5 building client environment for production...
+#20 1.282 transforming...
+#20 1.285 ✓ 3 modules transformed.
+#20 1.291 rendering chunks...
+#20 1.296 computing gzip size...
+#20 1.296 dist/embed.js  1.36 kB │ gzip: 0.77 kB
+#20 1.296 
+#20 1.297 ✓ built in 27ms
+#20 DONE 1.3s
+
+#21 [stage-1 3/6] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#21 CACHED
+
+#22 [stage-1 4/6] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#22 CACHED
+
+#23 [stage-1 5/6] COPY --from=install --chown=node:node /app /app
+#23 DONE 1.7s
+
+#24 [stage-1 6/6] WORKDIR /app/apps/studio
+#24 DONE 0.1s
+
+#25 exporting to image
+#25 exporting layers
+#25 exporting layers 11.0s done
+#25 exporting manifest sha256:dfef222f09ec5b780160c16d1592bec43f5a7c3b3a0d04561c8449f96f18efa7 0.0s done
+#25 exporting config sha256:389637591abd3299e22228fb11514d9704ac31eb9e7394eb5f48751e7446827b 0.0s done
+#25 exporting attestation manifest sha256:f7861ca2e238458de703beb83048eb3e9f8a484dec8db93bb3aa3d98ca2c6d6e 0.0s done
+#25 exporting manifest list sha256:a2258bd2b62d427a3b98d0e7877dab9eba810d4997d3a7b31ffdf72b6520d9cf
+#25 exporting manifest list sha256:a2258bd2b62d427a3b98d0e7877dab9eba810d4997d3a7b31ffdf72b6520d9cf done
+#25 naming to docker.io/rag-agent-studio/studio:0805 done
+#25 unpacking to docker.io/rag-agent-studio/studio:0805
+#25 unpacking to docker.io/rag-agent-studio/studio:0805 3.5s done
+#25 DONE 14.6s
+exit 0

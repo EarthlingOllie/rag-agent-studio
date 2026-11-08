@@ -860,8 +860,9 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Renames the Project, edits its description or turns OCR on or off. An archived Project
-         *     is refused.
+         * @description Renames the Project, edits its description, turns OCR on or off or sets whether Chunks
+         *     the ingestion Guardrail scan flags are marked or excluded from retrieval. An archived
+         *     Project is refused.
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -1576,6 +1577,28 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Clear Chunk Flag
+         * @description Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,
+         *     for a false positive: the Chunk is retrieved again at once, even in a Project that excludes
+         *     flagged Chunks. Records ``chunk.flag_cleared`` with the flag it had.
+         */
+        delete: operations["clearChunkFlag"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3200,6 +3223,12 @@ export interface components {
             removed: components["schemas"]["JsonValue"][] | null;
         };
         /**
+         * FlaggedChunkMode
+         * @description What retrieval does with the Chunks the ingestion Guardrail scan flags.
+         * @enum {string}
+         */
+        FlaggedChunkMode: "mark" | "exclude";
+        /**
          * Font
          * @enum {string}
          */
@@ -3892,6 +3921,7 @@ export interface components {
             embedding_credential_id: string | null;
             /** Embedding Model Id */
             embedding_model_id: string;
+            flagged_chunk_mode: components["schemas"]["FlaggedChunkMode"];
             /**
              * Id
              * Format: uuid
@@ -4417,7 +4447,7 @@ export interface components {
             /** Document Name */
             document_name: string | null;
             /** Excluded Reason */
-            excluded_reason: ("below_min_score" | "outside_top_k" | "outside_tags") | null;
+            excluded_reason: ("below_min_score" | "outside_top_k" | "outside_tags" | "guardrail_flagged") | null;
             /** Rank */
             rank: number | null;
             /** Relevance */
@@ -4463,6 +4493,7 @@ export interface components {
         UpdateProjectRequest: {
             /** Description */
             description?: string | null;
+            flagged_chunk_mode?: components["schemas"]["FlaggedChunkMode"] | null;
             /** Name */
             name?: string | null;
             /** Ocr Enabled */
@@ -9105,6 +9136,56 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clearChunkFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                chunk_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or the Chunk isn't flagged: This Chunk isn't flagged. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

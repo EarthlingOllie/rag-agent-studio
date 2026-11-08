@@ -77,6 +77,16 @@ def test_a_short_text_is_one_window_wrapped_in_the_models_special_tokens() -> No
     assert INJECTION_PROBABILITY == 0.982
 
 
+def test_the_reason_names_what_was_classified() -> None:
+    model = LoadedModel(StubSession(), numbers, CLS, SEP, 1, 6)
+    chunks = LocalClassifier(lambda: model, threshold=0.5, subject="Chunk")
+
+    (flag,) = chunks.classify([text(ATTACK)])
+
+    assert flag is not None
+    assert flag.reason == "The local classifier scored the Chunk 0.98 as a prompt injection."
+
+
 def test_a_long_text_is_split_into_overlapping_windows_that_cover_every_token() -> None:
     session = StubSession()
     # 4 tokens per window (6 less the two special tokens), overlapping by 1.
