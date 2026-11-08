@@ -7,8 +7,6 @@
 **Blocked by:**
 - None
 
-**Before starting:** the round-2 design choices in spec 11's *Pending sign-off* note must be confirmed by the user.
-
 **Status:** ready-for-agent
 
 - [ ] The latest `candidate` is merged into `candidate-reskin` before any other change, and every check passes on the merge; the merged commit is named in the evidence

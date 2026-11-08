@@ -7,8 +7,6 @@
 **Blocked by:**
 - [11-05: Project frame](05-project-frame.md)
 
-**Before starting:** the round-2 design choices in spec 11's *Pending sign-off* note must be confirmed by the user.
-
 **Status:** ready-for-agent
 
 - [ ] The Agent crumb switches Agent; a view crumb switches between Playground, Versions, Embed & limits and Conversations

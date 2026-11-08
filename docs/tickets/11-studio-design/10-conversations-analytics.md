@@ -14,6 +14,7 @@
 - [ ] Transcripts badge guardrail blocks, show the answering Version, rating and feedback, and fold the Trace under each answer
 - [ ] The Agent's Conversations view is the same list filtered to that Agent
 - [ ] Analytics: KPI cards with 95% intervals and n, low samples drawn dashed with a Low sample badge
+- [ ] Analytics stays a Project section with an Agent filter; each Agent's views offer an "Analytics for this Agent" link that opens it pre-filtered
 - [ ] The chart uses `chart-1`, a 2px line with area fill, Live markers as labelled dashed rules, the Documents-changed band and note, a crosshair tooltip, and a Table view; never two y-axes
 - [ ] Behaviour is unchanged apart from what this ticket names; moved actions are listed in the PR
 - [ ] The palette ratchet baseline is lowered to the new count
