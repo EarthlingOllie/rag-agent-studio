@@ -37,24 +37,21 @@ From the [shared test seams](../../../specs/README.md#shared-test-seams) and spe
 
 ## Results
 
-All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results), in the branch's worktree with a clean committed tree; each log's first line names its command and commit. [run-checks.sh](run-checks.sh) is the sequence (install, lint, client drift, frontend, backend with fresh `rag1003-pg/redis/rustfs` containers, infra, security), [run-e2e.sh](run-e2e.sh) the images and e2e (compose project `rag1003-e2e`). Images, containers and volumes were removed afterwards.
-
-**Every check below ran at `aafb62b`**; later commits change only this folder and the ticket file.
+All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results). **Every check below ran from a fresh `git clone` of the pushed branch at `9de95bb`** (`clean1003`, no prior build output, `git status` empty before and after); each log's first line names its command, commit and checkout. [run-checks.sh](run-checks.sh) is the sequence (install, lint, client drift, frontend, backend with fresh `rag1003-pg/redis/rustfs` containers, infra, security, then [run-e2e.sh](run-e2e.sh): images and e2e in compose project `rag1003-e2e`), run as `C=<clone> L=<logs> bash run-checks.sh`. Images, containers and volumes were removed afterwards. `9de95bb` differs from the code commit `aafb62b` only in this folder and the ticket file; later commits change only this folder.
 
 | Check | Command | Result | Log |
 |---|---|---|---|
 | Install | `make install` | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
-| API client drift | `make check-client` | "API client is up to date.", `git status` empty (the demo routes are not in the OpenAPI document) | [client-drift.log](client-drift.log) |
-| Frontend tests + coverage gate + loader budget | `make test-frontend` | **56 files, 771 tests**; 100% statements, branches, functions, lines; `embed.js` 1367 B / 778 gzipped | [frontend-tests.log](frontend-tests.log) |
-| Backend tests + coverage gate | `make test-backend` | **2336 passed, 1 failed** (unrelated flake, below), 24 deselected (live); **100.00%** lines and branches (10682 statements, 1280 branches) | [backend-tests.log](backend-tests.log) |
-| Backend flake rerun | `tests/integration/test_canary.py` 20 times | 4 passed every time | [backend-tests-rerun-canary.log](backend-tests-rerun-canary.log) |
-| Infra | `make infra-check` (fmt, deploy-script tests, CloudFront function tests with the 100% gate, `terraform validate`/`test` on every root, tflint, Checkov) | exit 0; ecs module 54 runs, demo env 7; Checkov 288 passed, 0 failed | [infra-check.log](infra-check.log) |
-| Security | gitleaks (`origin/candidate..HEAD`), `make audit` | no leaks; no known vulnerabilities | [security.log](security.log) |
-| Images | [build.sh](build.sh) (sandbox `make images`: `WITH_PDF=false`, `BUNDLE_MODELS=true`) | `rag-agent-studio/api:1003` and `studio:1003` built | [images.log](images.log) |
+| API client drift | `make check-client` | exit 0, "API client is up to date.", `git status` empty (the demo routes are not in the OpenAPI document) | [client-drift.log](client-drift.log) |
+| Frontend tests + coverage gate + loader budget | `make test-frontend` | exit 0: **56 files, 771 tests**; 100% statements, branches, functions, lines; `embed.js` 1367 B / 778 gzipped | [frontend-tests.log](frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` | **exit 0: 2337 passed**, 24 deselected (live); **100.00%** lines and branches (10682 statements, 1280 branches) | [backend-tests.log](backend-tests.log) |
+| Infra | `make infra-check` (fmt, deploy-script tests, CloudFront function tests with the 100% gate, `terraform validate`/`test` on every root, tflint, Checkov) | exit 0; Checkov 288 passed, 0 failed | [infra-check.log](infra-check.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` | exit 0 both: no leaks; no known vulnerabilities | [security.log](security.log) |
+| Images | [build.sh](build.sh) (sandbox `make images`: `WITH_PDF=false`, `BUNDLE_MODELS=true`) | exit 0: `rag-agent-studio/api:1003` and `studio:1003` built | [images.log](images.log) |
 | End-to-end | `make e2e`'s steps (stack up, `make seed`, Playwright) with [compose.sandbox.yml](compose.sandbox.yml) and [e2e.env](e2e.env), limited to `demo-pages`, `seed`, `embed`, `token-budget`, `operational-settings`, `widget-lifecycle`, `widget-accessibility`, `branded-widget`, `smoke`, `auth` (CI settings: one retry) | **exit 0: 24 passed**, none flaky | [e2e.log](e2e.log) |
 
-**The one backend failure** is `test_canary.py::test_a_canary_leaked_across_chunks_is_cut_off_and_replaced_with_the_fallback` (08-04, untouched here): it checks that no 3-character piece of a random hex canary appears anywhere in the response's events, and the `done` event carries a random UUID, so roughly one run in a hundred finds the 3 hex characters there by chance. It passed in 20 reruns at the same commit. Left as is (another ticket's test); worth widening the fragment or excluding the message ID there.
+**Earlier backend run, kept:** [backend-tests-aafb62b-canary-flake.log](backend-tests-aafb62b-canary-flake.log), the previous round's run in the worktree at `aafb62b`: 2336 passed, 1 failed, `test_canary.py::test_a_canary_leaked_across_chunks_is_cut_off_and_replaced_with_the_fallback` (08-04, untouched here). That test checks that no 3-character piece of a random hex canary appears anywhere in the response's events, and the `done` event carries a random UUID, so now and then it finds the 3 hex characters there by chance. The full suite above, on the same code, passed. Not fixed here (another ticket's test); worth widening the fragment or excluding the message ID, under its own ticket.
 
 ## Gaps and best guesses
 
