@@ -8,7 +8,7 @@
 - [07-04: Rollups and Version KPIs](04-rollups-version-kpis.md)
 - [05-04: Diffs and Draft management](../05-versioning-project-instructions/04-diffs-draft-management.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Any two Versions can be picked and shown side by side, with differences highlighted
 - [ ] The config diff is shown alongside the metrics
