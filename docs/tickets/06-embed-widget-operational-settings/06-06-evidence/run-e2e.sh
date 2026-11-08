@@ -11,7 +11,7 @@ if [ "${SKIP_BUILD:-0}" != 1 ]; then
 fi
 set -a; . $E/e2e.env; set +a
 COMPOSE="docker compose -p rag0606-e2e -f docker-compose.yml -f $E/compose.sandbox.yml"
-SPECS="tests/token-budget.spec.ts tests/rate-limits.spec.ts tests/embed.spec.ts tests/operational-settings.spec.ts tests/widget-lifecycle.spec.ts tests/widget-accessibility.spec.ts tests/branded-widget.spec.ts tests/playground.spec.ts tests/agent-publish.spec.ts tests/agent-archive.spec.ts tests/message-feedback.spec.ts tests/auth.spec.ts tests/smoke.spec.ts"
+SPECS="tests/token-budget.spec.ts tests/rate-limits.spec.ts tests/embed.spec.ts tests/operational-settings.spec.ts tests/widget-lifecycle.spec.ts tests/widget-accessibility.spec.ts tests/branded-widget.spec.ts tests/playground.spec.ts tests/agent-publish.spec.ts tests/agent-archive.spec.ts tests/message-feedback.spec.ts tests/conversation-rating.spec.ts tests/auth.spec.ts tests/smoke.spec.ts"
 (echo "\$ (env from e2e.env) CI=1: $COMPOSE up -d --build --wait; make seed COMPOSE=...; cd frontend && pnpm e2e $SPECS $H (CI settings: one retry)"
  $COMPOSE up -d --build --wait 2>&1 && make seed COMPOSE="$COMPOSE" 2>&1 && (cd frontend && CI=1 timeout 3600 pnpm e2e $SPECS 2>&1); echo "exit $?") > $L/e2e.log
 $COMPOSE logs --no-color api worker beat > $S/e2e0606-services.log 2>&1
