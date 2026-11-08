@@ -9,7 +9,7 @@
 - [08-04: Canary token](04-canary-token.md)
 - [08-05: Classifier-based ingestion scan](05-classifier-ingestion-scan.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A case-file schema covers the attack categories and benign controls
 - [ ] The runner drives the real pipeline with a naive `FunctionModel` that would comply with injected instructions
