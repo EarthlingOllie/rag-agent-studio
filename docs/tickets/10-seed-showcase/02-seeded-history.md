@@ -9,12 +9,12 @@
 - [05-05: Bulk publish, bulk revert and Instructions rollout](../05-versioning-project-instructions/05-bulk-publish-revert.md)
 - [07-04: Rollups and Version KPIs](../07-feedback-logging-comparison/04-rollups-version-kpis.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] There's an HR Agent and a FAQ Agent with Tag scoping; HR has v1 to v3, with v2 reverted
-- [ ] Instructions have v1 and v2, with one Agent behind
-- [ ] Weeks of Conversations are generated through the runtime with a `FunctionModel`, timestamps are backfilled, and feedback and ratings come from a fixed random seed that makes v2 worse; one Version has a small sample
-- [ ] Rollups run for every historical day, and Audit Events are present
-- [ ] An API-level test asserts what an interviewer would see
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] There's an HR Agent and a FAQ Agent with Tag scoping; HR has v1 to v3, with v2 reverted
+- [x] Instructions have v1 and v2, with one Agent behind
+- [x] Weeks of Conversations are generated through the runtime with a `FunctionModel`, timestamps are backfilled, and feedback and ratings come from a fixed random seed that makes v2 worse; one Version has a small sample
+- [x] Rollups run for every historical day, and Audit Events are present
+- [x] An API-level test asserts what an interviewer would see
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
