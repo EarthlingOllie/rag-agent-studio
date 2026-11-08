@@ -1,0 +1,11 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml' @ 156de87 (ticket/07-05-version-comparison, code clean: 0 changes) (CI settings: one retry)
+docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0705-e2e_default Creating 
+[...]
+  ✘  83 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (13.5s)
+  ✘  86 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (retry #1) (14.7s)
+    Error: element(s) not found
+    Error: element(s) not found
+  1 failed
+  88 passed (7.0m)
+exit 2
