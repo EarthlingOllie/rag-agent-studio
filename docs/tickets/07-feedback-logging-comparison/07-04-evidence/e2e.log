@@ -1,9 +1,9 @@
-$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0704-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-04-evidence/compose.sandbox.yml' @ 18d9e09 (CI settings: one retry; images from build.sh at b9e473e, whose image inputs are unchanged)
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0704-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-04-evidence/compose.sandbox.yml' @ 87d418a (CI settings: one retry)
 docker compose -p rag0704-e2e -f docker-compose.yml -f /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0704/docs/tickets/07-feedback-logging-comparison/07-04-evidence/compose.sandbox.yml up -d --build --wait
- Volume rag0704-e2e_rustfs-data Creating 
- Volume rag0704-e2e_postgres-data Creating 
  Network rag0704-e2e_default Creating 
  Volume rag0704-e2e_postgres-data Creating 
+ Volume rag0704-e2e_postgres-data Creating 
+ Volume rag0704-e2e_rustfs-data Creating 
  Volume rag0704-e2e_rustfs-data Creating 
  Network rag0704-e2e_default Creating 
  Volume rag0704-e2e_rustfs-data Created 
@@ -12,136 +12,136 @@ docker compose -p rag0704-e2e -f docker-compose.yml -f /tmp/claude-0/-home-user-
  Volume rag0704-e2e_postgres-data Created 
  Network rag0704-e2e_default Created 
  Network rag0704-e2e_default Created 
+ Container rag0704-e2e-postgres-1 Creating 
+ Container rag0704-e2e-rustfs-1 Creating 
  Container rag0704-e2e-mailpit-1 Creating 
  Container rag0704-e2e-host-1 Creating 
- Container rag0704-e2e-redis-1 Creating 
- Container rag0704-e2e-rustfs-1 Creating 
  Container rag0704-e2e-widget-1 Creating 
- Container rag0704-e2e-postgres-1 Creating 
+ Container rag0704-e2e-redis-1 Creating 
  Container rag0704-e2e-mailpit-1 Created 
  Container rag0704-e2e-host-1 Created 
- Container rag0704-e2e-rustfs-1 Created 
  Container rag0704-e2e-widget-1 Created 
+ Container rag0704-e2e-rustfs-1 Created 
  Container rag0704-e2e-postgres-1 Created 
  Container rag0704-e2e-redis-1 Created 
- Container rag0704-e2e-worker-1 Creating 
  Container rag0704-e2e-api-1 Creating 
+ Container rag0704-e2e-worker-1 Creating 
  Container rag0704-e2e-beat-1 Creating 
- Container rag0704-e2e-worker-1 Created 
  Container rag0704-e2e-beat-1 Created 
+ Container rag0704-e2e-worker-1 Created 
  Container rag0704-e2e-api-1 Created 
  Container rag0704-e2e-studio-1 Creating 
  Container rag0704-e2e-studio-1 Created 
- Container rag0704-e2e-host-1 Starting 
- Container rag0704-e2e-mailpit-1 Starting 
  Container rag0704-e2e-redis-1 Starting 
- Container rag0704-e2e-rustfs-1 Starting 
+ Container rag0704-e2e-mailpit-1 Starting 
+ Container rag0704-e2e-host-1 Starting 
  Container rag0704-e2e-widget-1 Starting 
  Container rag0704-e2e-postgres-1 Starting 
- Container rag0704-e2e-host-1 Started 
- Container rag0704-e2e-mailpit-1 Started 
+ Container rag0704-e2e-rustfs-1 Starting 
  Container rag0704-e2e-redis-1 Started 
- Container rag0704-e2e-rustfs-1 Started 
+ Container rag0704-e2e-mailpit-1 Started 
+ Container rag0704-e2e-host-1 Started 
  Container rag0704-e2e-widget-1 Started 
  Container rag0704-e2e-postgres-1 Started 
- Container rag0704-e2e-redis-1 Waiting 
- Container rag0704-e2e-rustfs-1 Waiting 
- Container rag0704-e2e-postgres-1 Waiting 
- Container rag0704-e2e-postgres-1 Waiting 
- Container rag0704-e2e-redis-1 Waiting 
- Container rag0704-e2e-rustfs-1 Waiting 
+ Container rag0704-e2e-rustfs-1 Started 
  Container rag0704-e2e-rustfs-1 Waiting 
  Container rag0704-e2e-postgres-1 Waiting 
  Container rag0704-e2e-redis-1 Waiting 
+ Container rag0704-e2e-postgres-1 Waiting 
+ Container rag0704-e2e-redis-1 Waiting 
+ Container rag0704-e2e-rustfs-1 Waiting 
+ Container rag0704-e2e-redis-1 Waiting 
+ Container rag0704-e2e-rustfs-1 Waiting 
+ Container rag0704-e2e-postgres-1 Waiting 
  Container rag0704-e2e-redis-1 Healthy 
  Container rag0704-e2e-redis-1 Healthy 
- Container rag0704-e2e-rustfs-1 Healthy 
  Container rag0704-e2e-redis-1 Healthy 
- Container rag0704-e2e-rustfs-1 Healthy 
- Container rag0704-e2e-rustfs-1 Healthy 
  Container rag0704-e2e-postgres-1 Healthy 
- Container rag0704-e2e-worker-1 Starting 
  Container rag0704-e2e-postgres-1 Healthy 
+ Container rag0704-e2e-postgres-1 Healthy 
+ Container rag0704-e2e-rustfs-1 Healthy 
  Container rag0704-e2e-beat-1 Starting 
- Container rag0704-e2e-postgres-1 Healthy 
+ Container rag0704-e2e-rustfs-1 Healthy 
  Container rag0704-e2e-api-1 Starting 
- Container rag0704-e2e-worker-1 Started 
+ Container rag0704-e2e-rustfs-1 Healthy 
+ Container rag0704-e2e-worker-1 Starting 
  Container rag0704-e2e-beat-1 Started 
  Container rag0704-e2e-api-1 Started 
  Container rag0704-e2e-widget-1 Waiting 
  Container rag0704-e2e-api-1 Waiting 
+ Container rag0704-e2e-worker-1 Started 
  Container rag0704-e2e-widget-1 Healthy 
  Container rag0704-e2e-api-1 Healthy 
  Container rag0704-e2e-studio-1 Starting 
  Container rag0704-e2e-studio-1 Started 
- Container rag0704-e2e-mailpit-1 Waiting 
  Container rag0704-e2e-studio-1 Waiting 
- Container rag0704-e2e-host-1 Waiting 
- Container rag0704-e2e-postgres-1 Waiting 
- Container rag0704-e2e-beat-1 Waiting 
- Container rag0704-e2e-widget-1 Waiting 
- Container rag0704-e2e-worker-1 Waiting 
  Container rag0704-e2e-redis-1 Waiting 
- Container rag0704-e2e-rustfs-1 Waiting 
+ Container rag0704-e2e-worker-1 Waiting 
+ Container rag0704-e2e-postgres-1 Waiting 
  Container rag0704-e2e-api-1 Waiting 
+ Container rag0704-e2e-host-1 Waiting 
+ Container rag0704-e2e-rustfs-1 Waiting 
+ Container rag0704-e2e-widget-1 Waiting 
+ Container rag0704-e2e-beat-1 Waiting 
+ Container rag0704-e2e-mailpit-1 Waiting 
  Container rag0704-e2e-worker-1 Healthy 
- Container rag0704-e2e-widget-1 Healthy 
  Container rag0704-e2e-postgres-1 Healthy 
- Container rag0704-e2e-mailpit-1 Healthy 
  Container rag0704-e2e-host-1 Healthy 
- Container rag0704-e2e-rustfs-1 Healthy 
- Container rag0704-e2e-beat-1 Healthy 
- Container rag0704-e2e-api-1 Healthy 
+ Container rag0704-e2e-widget-1 Healthy 
  Container rag0704-e2e-redis-1 Healthy 
+ Container rag0704-e2e-beat-1 Healthy 
+ Container rag0704-e2e-rustfs-1 Healthy 
+ Container rag0704-e2e-api-1 Healthy 
+ Container rag0704-e2e-mailpit-1 Healthy 
  Container rag0704-e2e-studio-1 Healthy 
 make seed
 make[1]: Entering directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0704'
 docker compose -p rag0704-e2e -f docker-compose.yml -f /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0704/docs/tickets/07-feedback-logging-comparison/07-04-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0704/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
- Container rag0704-e2e-api-run-bc9292aea5b4 Creating 
- Container rag0704-e2e-api-run-bc9292aea5b4 Created 
-{"timestamp": "2026-11-08T07:02:05.319021+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl PostgresqlImpl.", "service": "migrations"}
-{"timestamp": "2026-11-08T07:02:05.319339+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume transactional DDL.", "service": "migrations"}
-[0;93m2026-11-08 07:02:11.849134996 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+ Container rag0704-e2e-api-run-45e02379511a Creating 
+ Container rag0704-e2e-api-run-45e02379511a Created 
+{"timestamp": "2026-11-08T08:59:20.289157+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Context impl PostgresqlImpl.", "service": "migrations"}
+{"timestamp": "2026-11-08T08:59:20.289458+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "message": "Will assume transactional DDL.", "service": "migrations"}
+[0;93m2026-11-08 08:59:26.891277147 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
 /app/app/main.py:159: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
   logfire.instrument_fastapi(app, capture_headers=True)
-{"timestamp": "2026-11-08T07:02:12.673759+00:00", "level": "INFO", "logger": "app.main", "message": "API started", "service": "api", "environment": "local"}
-{"timestamp": "2026-11-08T07:02:12.852612+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/auth/sign-up \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:12.907666+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/members \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:12.927068+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/invites \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.027741+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/invites/sign-up \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.068905+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/credentials \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.085672+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/credentials \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.103369+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/default-model \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.123461+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/default-model \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.156815+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/theme \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.175438+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/theme \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.212859+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.239541+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.311556+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/tags \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.330968+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/tags \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.343991+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/tags \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.367344+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.387329+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.414295+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/23d5b5dd-b4f1-42fc-a014-63078695957d?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T070213Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=8120e5b73dcb9d9cdf5c74d3aa081dc9352f29f173b3ce86d0cdc3819284fc85 \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.865967+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.895419+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents/11e73716-b2fa-4282-8861-e5f65c9dc75b/tags \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.914507+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.946496+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/567862eb-73c5-4770-8fc6-26b421fad33d?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T070213Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=529af9c4b7182935f5207d5aa2d8668590bec938b7255ff95298cc70c9cb89fe \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:13.984952+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.019734+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents/38328fbb-3ec3-4e4d-ab3b-273af47f959f/tags \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.036066+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.066257+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/d5ece216-fb2c-4013-9efc-4580d2d204fe?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T070214Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=6a3732e07df528e1f6903e6440fadde2a3a7cf2a1469e317f382079ee7173f62 \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.109202+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.129243+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents/e5b2ef9f-3de1-4bb6-a060-8c07f60cf017/tags \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.143557+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.166649+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/5aad23a5-0e1c-4f0c-a737-af42b2f44554?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T070214Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=42a665825c1684176b9efb6774173f78dbfd5b5f3e6ab6e4c34393df4cf0572b \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.197220+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.213384+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/documents/9076b8b7-a61f-48f8-9a54-7e5f70685ae9/tags \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.243845+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/agents \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.267074+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/agents \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.290564+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/agents/f3f690b0-ec8c-46f7-b85e-babcaa0c0fb9/draft \"HTTP/1.1 200 OK\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.307527+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/agents \"HTTP/1.1 201 Created\"", "service": "api"}
-{"timestamp": "2026-11-08T07:02:14.326125+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/0df7a6b4-8a35-44be-9a32-1be3ca1200e4/projects/60eb15f2-edbb-4845-b10a-b99652a3df0d/agents/be5d3059-7f57-4793-bbeb-f8db06d087c1/draft \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:27.907320+00:00", "level": "INFO", "logger": "app.main", "message": "API started", "service": "api", "environment": "local"}
+{"timestamp": "2026-11-08T08:59:28.182196+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/auth/sign-up \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.252223+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/members \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.270984+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/invites \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.379403+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/invites/sign-up \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.425026+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/credentials \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.445576+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/credentials \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.465037+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/default-model \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.484982+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/default-model \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.523076+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/theme \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.543027+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/theme \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.577169+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.602813+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.681093+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/tags \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.697673+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/tags \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.715199+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/tags \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.738628+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.756777+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:28.783145+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/55fc4d3d-cd47-4a31-915f-fbc2d7350ccf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T085928Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=41c7ea50519fbc1c53a8bd8ed15436b75be61273faa66657430b697c25f4755c \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.257539+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.283127+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents/2ce444c1-8e5f-484a-96e0-cbd30c68cb44/tags \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.297149+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.322851+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/50886b7e-a7d7-48e0-823d-48668fc96858?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T085929Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=d78920d8bf81c8a9e1c86babe0d64f98f79f1d9a122dacc45cbeba04b578bfd3 \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.355698+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.380254+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents/afd73e88-8d9d-4d53-b8dc-11d50f92c03b/tags \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.397807+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.422468+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/07dbd83a-3671-41a9-a3a9-5fde551b5e4b?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T085929Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=2ca98d17f97f832ca756644dc15cf4581138bd6dbea165d59097f3ade2f6b1e3 \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.456876+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.478539+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents/576fd72d-647b-4620-818e-a0e94147add2/tags \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.492627+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/uploads \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.512920+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://rustfs:9000/studio-documents/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/71820a2b-f951-4118-939f-dec3a4a57f0d?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=studio%2F20261108%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261108T085929Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=d94541d764a9a17508b9a2c8fd50364207a593375921c0159f54a4a3a9c66a46 \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.565822+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.610669+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/documents/64b4d47c-82e1-4674-a03c-64e171cf9be8/tags \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.654539+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/agents \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.685468+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/agents \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.717555+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/agents/8287419a-44a2-480e-b10f-40ca8c53c8e5/draft \"HTTP/1.1 200 OK\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.743220+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/agents \"HTTP/1.1 201 Created\"", "service": "api"}
+{"timestamp": "2026-11-08T08:59:29.773941+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT https://seed.internal/api/organisations/668af368-840d-4899-bae9-09f680aa2374/projects/80473ef7-f215-4409-a67d-e6d5e9e7bc41/agents/2748f063-ff4f-481a-b704-b38c41ca5776/draft \"HTTP/1.1 200 OK\"", "service": "api"}
 Seeded the demo Organisation 'Northwind Traders'.
 Studio: http://localhost:47483/
   Owner:  owner@northwind.example  password: northwind-owner-demo
@@ -152,89 +152,90 @@ make[1]: Leaving directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5
 cd frontend && pnpm e2e
 > rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0704/frontend
 > playwright test
-Running 83 tests using 2 workers
-  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (504ms)
-  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (277ms)
-  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (321ms)
-  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.4s)
-  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (233ms)
-  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (6ms)
-  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.0s)
-  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (121ms)
-  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (217ms)
-  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (206ms)
-  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (8.6s)
-  ✓  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (18.5s)
-  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (11.2s)
-  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (7.8s)
-  ✓  16 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (3.0s)
-  ✓  15 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (9.9s)
-  ✓  17 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (3.9s)
-  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (2.5s)
-  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (7.9s)
-  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (1.7s)
-  ✓  22 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.2s)
-  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.4s)
-  ✓  21 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (7.8s)
-  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (3.3s)
-  ✓  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (11.7s)
-  ✓  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (15.6s)
-  ✓  27 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (6.5s)
-  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (4.5s)
-  ✓  30 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (5.1s)
-  ✓  29 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (10.3s)
-  ✓  31 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (6.4s)
-  ✓  32 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (8.9s)
-  ✓  33 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (6.4s)
-  ✓  34 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (7.7s)
-  ✓  35 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (7.8s)
-  ✓  36 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (8.9s)
-  ✓  37 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (8.6s)
+Running 84 tests using 2 workers
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (543ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (393ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (307ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (208ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.4s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (107ms)
+  ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.0s)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (214ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (205ms)
+  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (9.8s)
+  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (11.5s)
+  ✓  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (21.9s)
+  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (9.6s)
+  ✓  15 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (12.2s)
+  ✓  16 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (3.6s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (3.7s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (2.9s)
+  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (8.4s)
+  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.1s)
+  ✓  22 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.8s)
+  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.9s)
+  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (3.1s)
+  ✓  21 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (9.2s)
+  ✓  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (12.3s)
+  ✓  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (15.9s)
+  ✓  27 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (7.2s)
+  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (5.2s)
+  ✓  30 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (5.6s)
+  ✓  29 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (11.0s)
+  ✓  31 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (6.3s)
+  ✓  33 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (6.6s)
+  ✓  32 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (11.5s)
+  ✓  34 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (8.8s)
+  ✓  35 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (8.7s)
+  ✓  36 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (5.0s)
   ✓  38 [studio] › e2e/tests/instructions-versions.spec.ts:4:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (5.8s)
-  ✓  39 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (7.8s)
-  ✓  40 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (10.0s)
-  ✓  41 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (12.9s)
-  ✓  42 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (5.9s)
-  ✓  44 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (9.3s)
-  ✓  43 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (10.1s)
-  ✓  46 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (7.7s)
-  ✓  45 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (10.3s)
-  ✓  48 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (3.2s)
-  ✓  47 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (6.8s)
-  ✓  50 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (6.9s)
-  ✓  49 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (9.2s)
-  ✓  52 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (5.1s)
-  ✓  51 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (10.7s)
-  ✓  53 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (5.4s)
-  ✓  55 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.5s)
-  ✓  56 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (2.3s)
-  ✓  57 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (2.7s)
-  ✓  54 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (13.3s)
-  ✓  58 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (9.4s)
-  ✓  60 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (5.9s)
-  ✓  61 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (6.7s)
-  ✓  59 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (21.1s)
-  ✓  62 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (6.5s)
-  ✓  63 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (9.5s)
-  ✓  64 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (9.4s)
-  ✓  65 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (10.0s)
+  ✓  37 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (10.0s)
+  ✓  39 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (8.2s)
+  ✓  40 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (11.4s)
+  ✓  42 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (6.8s)
+  ✓  41 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (14.7s)
+  ✓  43 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (11.9s)
+  ✓  44 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (10.3s)
+  ✓  45 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (8.0s)
+  ✓  46 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (10.2s)
+  ✓  47 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (7.2s)
+  ✓  48 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (3.3s)
+  ✓  50 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (8.5s)
+  ✓  49 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (10.1s)
+  ✓  52 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (4.9s)
+  ✓  53 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (5.6s)
+  ✓  51 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (11.9s)
+  ✓  54 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.5s)
+  ✓  56 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (2.7s)
+  ✓  57 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (3.3s)
+  ✓  55 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (14.2s)
+  ✓  58 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (10.7s)
+  ✓  60 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (7.2s)
+  ✓  61 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (7.1s)
+  ✓  59 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (24.6s)
+  ✓  62 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (8.4s)
+  ✓  63 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (9.3s)
+  ✓  64 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (10.0s)
+  ✓  65 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (10.7s)
   ✓  67 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (3.5s)
-  ✓  66 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (11.3s)
+  ✓  66 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (12.5s)
+  ✓  68 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (3.2s)
   ✓  69 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.9s)
-  ✓  68 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (3.6s)
-  ✓  70 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (2.2s)
-  ✓  72 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (10.1s)
-  ✓  71 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (14.4s)
-  ✓  73 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (5.9s)
-  ✓  75 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (4.6s)
-  ✓  74 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (7.1s)
-  ✓  76 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (6.8s)
-  ✓  77 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (8.2s)
-  ✓  78 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (6.6s)
-  ✓  79 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (8.4s)
-  ✓  80 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (6.5s)
-  ✓  82 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (2.6s)
-  ✓  81 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (7.2s)
-  ✓  83 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (3.3s)
-  83 passed (4.6m)
+  ✓  71 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (2.7s)
+  ✓  70 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (13.6s)
+  ✓  72 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (9.8s)
+  ✓  73 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (6.3s)
+  ✓  75 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (4.7s)
+  ✓  74 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (14.8s)
+  ✓  76 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (7.0s)
+  ✓  77 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (7.3s)
+  ✓  78 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (7.2s)
+  ✓  79 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (8.0s)
+  ✓  80 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (6.7s)
+  ✓  82 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (2.4s)
+  ✓  81 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (8.3s)
+  ✓  83 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (4.1s)
+  ✓  84 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (6.4s)
+  84 passed (5.2m)
 make exit 0
