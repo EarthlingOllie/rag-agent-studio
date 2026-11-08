@@ -38,8 +38,8 @@ export type Citation = { label: string; document_name: string | null; passage?: 
 /**
  * Something the Visitor should be told instead of an answer; `status` is the API's, if any.
  * `unavailable` marks the Agent being temporarily unable to answer (a 503, a provider failure
- * mid-answer, or an `unavailable` event when a rate limit refuses the message), which the
- * Agent's own text may replace.
+ * mid-answer, or an `unavailable` event when a rate limit or the spent Token Budget refuses the
+ * message), which the Agent's own text may replace.
  */
 export class ChatError extends Error {
   constructor(

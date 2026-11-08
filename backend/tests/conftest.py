@@ -77,10 +77,10 @@ def settings_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 async def app(settings_env: pytest.MonkeyPatch, database_schema: None) -> AsyncIterator[FastAPI]:
     application = create_app()
     async with LifespanManager(application):
-        # Sign-in failure counters and the widget's rate-limit windows live in the shared test
-        # Redis; each test starts without any.
+        # Sign-in failure counters, the widget's rate-limit windows and the Token Budget
+        # counters live in the shared test Redis; each test starts without any.
         redis = application.state.redis
-        for pattern in ("sign-in-failures:*", "widget-rate:*"):
+        for pattern in ("sign-in-failures:*", "widget-rate:*", "widget-budget:*"):
             async for key in redis.scan_iter(match=pattern):
                 await redis.delete(key)
         yield application

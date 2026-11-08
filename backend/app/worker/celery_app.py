@@ -1,10 +1,12 @@
 """The Celery application shared by the API (to enqueue), the worker and Beat."""
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.settings import Settings
 
 HEALTH_CHECK_TASK = "worker.health_check"
+CLEAR_BUDGET_ALERTS_TASK = "embed.clear_budget_alerts"
 
 celery_app = Celery(
     "rag_agent_studio",
@@ -13,8 +15,11 @@ celery_app = Celery(
         "app.documents.tasks",
         "app.projects.tasks",
         "app.re_embedding.tasks",
+        "app.embed.tasks",
     ],
 )
+# Schedules are in UTC: the Token Budget's day is the UTC date.
+celery_app.conf.update(timezone="UTC", enable_utc=True)
 
 
 def configure_celery(settings: Settings) -> Celery:
@@ -28,6 +33,11 @@ def configure_celery(settings: Settings) -> Celery:
         broker_connection_retry_on_startup=True,
         beat_schedule={
             "worker-health-check": {"task": HEALTH_CHECK_TASK, "schedule": 300.0},
+            # A new UTC date starts a new Token Budget; its alert flags go too.
+            "clear-token-budget-alerts": {
+                "task": CLEAR_BUDGET_ALERTS_TASK,
+                "schedule": crontab(minute="0", hour="0"),
+            },
         },
     )
     return celery_app

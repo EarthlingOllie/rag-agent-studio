@@ -75,6 +75,9 @@ class AgentOut(BaseModel):
     live_version: LiveVersionOut | None
     # Whether the Draft differs from the Live Version; false while the Agent is not live.
     has_unpublished_changes: bool
+    # The budget alert: the Agent's daily Token Budget ran out, so Visitors get its unavailable
+    # text. Cleared at midnight UTC, when a new day's budget starts.
+    budget_exhausted: bool
 
 
 class DraftConflictOut(BaseModel):
@@ -121,6 +124,7 @@ def agent_out(found: service.AgentWithDraft) -> AgentOut:
         live_version=found.live_version
         and LiveVersionOut(id=found.live_version.id, number=found.live_version.number),
         has_unpublished_changes=found.has_unpublished_changes,
+        budget_exhausted=agent.budget_exhausted_at is not None,
     )
 
 
