@@ -30,6 +30,7 @@ from tests.integration.test_conversations import (
 )
 from tests.integration.test_document_editions import audit_events
 from tests.integration.test_embed import send
+from tests.integration.test_input_guardrail import ATTACK, REASON, guard
 from tests.integration.test_projects import archive as archive_project
 from tests.integration.test_version_metrics import (
     chat,
@@ -244,6 +245,28 @@ async def test_messages_older_than_the_window_lose_their_text_and_comments_and_m
     assert texts(new) == ["", "", "", ""]
     assert comments(new) == [None, None]
     assert await all_metrics(owner, agent) == before
+
+
+async def test_guardrail_reasons_are_purged_with_the_text_and_verdicts_stay(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    # A classifier's reason can quote or paraphrase the Visitor's message.
+    guard(app)
+    agent = await live_agent(app, owner)
+    project_id = agent["project_id"]
+    await chat(visitor, agent, ATTACK)
+    (row,) = (await listed(owner, project_id))["items"]
+    reply = (await opened(owner, project_id, row["id"]))["messages"][1]
+    path = trace_of(owner, project_id, row["id"], reply["id"])
+    (before,) = (await owner.client.get(path)).json()["guardrail_outcomes"]
+    assert before["reason"] == REASON
+    clock.advance(timedelta(days=91))
+    await roll_up(clock.now())
+
+    await purge(clock.now())
+
+    (after,) = (await owner.client.get(path)).json()["guardrail_outcomes"]
+    assert after == before | {"reason": ""}
 
 
 async def test_the_purge_waits_until_the_rollup_of_the_day_is_final(

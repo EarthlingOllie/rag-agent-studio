@@ -620,7 +620,7 @@ The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from it
 _Avoid_: Error bars, margin
 
 **Purge**:
-Clearing a Message's text and the comment of any Message Feedback on it, and stamping it purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
+Clearing a Message's text, the reasons in its Guardrail outcomes and the comment of any Message Feedback on it, and stamping it purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, each Guardrail outcome's verdict) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
 _Avoid_: Deletion, cleanup, expiry
 
 **Deleting a Conversation**:

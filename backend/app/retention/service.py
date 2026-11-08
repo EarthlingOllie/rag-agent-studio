@@ -1,8 +1,8 @@
 """Retention: the Organisation's Retention Window, the daily purge of Message text and feedback
 comments older than it, and Conversations an Owner deletes on request.
 
-Purging clears a Message's ``content`` and the comment of any Message Feedback on it, and sets
-``purged_at``; every number and attribution (tokens, cost, latency, Agent Version, thumbs,
+Purging clears a Message's ``content``, the reasons in its Guardrail outcomes and the comment of
+any Message Feedback on it, and sets ``purged_at``; every number and attribution (tokens, cost, latency, Agent Version, thumbs,
 ratings, retrievals) stays, so the metrics are the same before and after. The daily purge and a
 deletion go through the same ``purge_messages``.
 
@@ -13,7 +13,7 @@ day that wasn't already counted."""
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import ColumnElement, or_, select, update
+from sqlalchemy import ColumnElement, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import audit
@@ -36,8 +36,8 @@ CONVERSATION_DELETED = "conversation.deleted"
 async def purge_messages(
     session: AsyncSession, *conditions: ColumnElement[bool], now: datetime
 ) -> int:
-    """Purges the Messages matching ``conditions`` that aren't purged yet: their text and the
-    comments of their feedback are cleared, and ``purged_at`` set to ``now``. Returns how many
+    """Purges the Messages matching ``conditions`` that aren't purged yet: their text, their
+    Guardrail outcomes' reasons and the comments of their feedback are cleared, and ``purged_at`` set to ``now``. Returns how many
     Messages were purged."""
     found = select(Message.id).where(Message.purged_at.is_(None), *conditions)
     await session.execute(
@@ -45,8 +45,22 @@ async def purge_messages(
         .where(MessageFeedback.message_id.in_(found), MessageFeedback.comment.is_not(None))
         .values(comment=None)
     )
+    # A Guardrail's reason can quote or paraphrase the message; its verdict and action stay.
+    outcome = func.jsonb_array_elements(Message.guardrail_outcomes).table_valued("value")
+    without_reasons = (
+        select(
+            func.coalesce(
+                func.jsonb_agg(outcome.c.value.op("||")(text("""'{"reason": ""}'::jsonb"""))),
+                text("'[]'::jsonb"),
+            )
+        )
+        .select_from(outcome)
+        .scalar_subquery()
+    )
     purged = await session.execute(
-        update(Message).where(Message.id.in_(found)).values(content="", purged_at=now)
+        update(Message)
+        .where(Message.id.in_(found))
+        .values(content="", purged_at=now, guardrail_outcomes=without_reasons)
     )
     return int(purged.rowcount)  # type: ignore[attr-defined]
 
