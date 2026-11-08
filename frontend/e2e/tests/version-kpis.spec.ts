@@ -69,7 +69,7 @@ test.describe("Version KPIs", () => {
     // The Editor reads the Live Version's KPIs, today's partial day included.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
     await expect(page.getByLabel("Agent")).toHaveValue(agentId);
-    await expect(page.getByLabel("Version", { exact: true })).toHaveText("v1 (Live)");
+    await expect(page.getByLabel("Version")).toHaveText("v1 (Live)");
     const card = (name: string) => page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name });
     await expect(card("Volume")).toContainText("1 Conversation", { timeout: 15_000 });
     await expect(card("Volume")).toContainText("2 replies");
