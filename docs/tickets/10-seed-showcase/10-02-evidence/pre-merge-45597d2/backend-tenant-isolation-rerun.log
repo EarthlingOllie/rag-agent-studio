@@ -1,0 +1,5 @@
+$ uv run pytest --no-cov tests/integration/test_tenant_isolation.py (the test that errored at setup with a Redis connect timeout in backend-tests.log; fresh rag1002-pg/redis) @ 45597d2
+........................................................................ [ 96%]
+.......................                                                  [100%]
+671 passed in 793.23s (0:13:13)
+exit 0
