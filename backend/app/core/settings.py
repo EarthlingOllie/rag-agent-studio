@@ -101,6 +101,14 @@ class Settings(BaseSettings):
     invite_ttl_seconds: int = Field(default=7 * 24 * 60 * 60, gt=0)
     # The Studio's public address; links in emails point here.
     studio_url: HttpUrl = HttpUrl("http://localhost:5173")
+    # The demo pages (ticket 10-03): the fictional shop pages ask `GET /api/demo/agents` which of
+    # the Demo Organisation's Agents to embed, and the low-budget page's button spends that
+    # Agent's Token Budget. Off, those routes answer 404; on in `docker compose` and the AWS demo.
+    demo_pages: bool = False
+    # The origin the shop pages are served from, which the seed puts in the shop Agents' Allowed
+    # Origins: `docker compose` serves them on http://localhost:5175. Unset, the Studio's own
+    # origin, as in AWS, where they are under /demo/ on the Studio's address.
+    demo_shop_origin: HttpUrl | None = None
     # Which mailer adapter sends email: in-memory outbox (tests), SMTP (Mailpit) or AWS SES.
     mailer: Literal["outbox", "smtp", "ses"] = "outbox"
     mail_from: str = "RAG Agent Studio <no-reply@rag-agent-studio.invalid>"

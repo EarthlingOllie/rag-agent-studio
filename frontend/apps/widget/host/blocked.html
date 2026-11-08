@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not an allowed site</title>
+<style>
+:root{--olive:#3f5f2a;--saffron:#9a4508;--paper:#fbf8f1;--ink:#1f2419;--muted:#4b5142}
+*{box-sizing:border-box}
+body{font:16px/1.5 Georgia,"Times New Roman",serif;margin:0;background:var(--paper);color:var(--ink)}
+header{background:var(--olive);color:#fff;padding:16px 24px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline}
+header a{color:#fff}
+header .brand{font-size:1.5rem;font-weight:bold;margin:0}
+nav ul{display:flex;flex-wrap:wrap;gap:16px;list-style:none;margin:0;padding:0}
+main{max-width:880px;margin:0 auto;padding:24px}
+.notice{border-left:4px solid var(--saffron);background:#fff;padding:12px 16px}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:0;list-style:none}
+.products li{background:#fff;border:1px solid #d9d4c5;border-radius:6px;padding:16px}
+.products h3{margin-top:0;color:var(--olive)}
+button{font:inherit;background:var(--saffron);color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
+footer{max-width:880px;margin:0 auto;padding:24px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<header><p class="brand">Some other site</p></header>
+<main>
+<h1>This site may not show the chat</h1>
+<p class="notice">This page is on <strong id="origin"></strong>, which is not in the Product FAQ Agent's Allowed Origins. It pastes the same Embed Snippet as the shop, but the widget's <code>Content-Security-Policy: frame-ancestors</code> names only the allowed sites, so the browser refuses to show the chat below.</p>
+<p id="demo-status" role="status"></p>
+<section id="chat" aria-label="Blocked chat" style="border:3px dashed #b91c1c;padding:8px;min-height:120px">
+<p><strong>Blocked:</strong> the browser refused to show the widget here.</p>
+</section>
+</main>
+<script>document.getElementById("origin").textContent = location.origin;</script>
+<script>
+// Ask the API which of the Demo Organisation's Agents to embed and where its loader is, then
+// paste that Agent's Embed Snippet, as a customer would paste the one the Studio shows.
+(async () => {
+  const status = document.getElementById("demo-status");
+  try {
+    const response = await fetch("/api/demo/agents");
+    const demo = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(demo.detail || "The demo isn't available.");
+    const agent = demo.shop;
+    const snippet = document.createElement("script");
+    snippet.src = demo.widget_url + "/embed.js";
+    snippet.dataset.agent = agent.public_id;
+    snippet.dataset.launcher = "inline";
+    snippet.dataset.target = "#chat";
+    snippet.async = true;
+    document.body.append(snippet);
+    
+  } catch (error) {
+    status.textContent = "The demo isn't ready: " + error.message;
+  }
+})();
+</script>
+</body>
+</html>

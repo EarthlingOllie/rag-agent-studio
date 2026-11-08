@@ -31,6 +31,9 @@ echo 'studio' >"$work/studio/assets/index-abc123.js"
 echo 'loader' >"$work/widget/embed.js"
 echo 'widget' >"$work/widget/widget/assets/widget.js"
 echo 'chunk' >"$work/widget/widget/assets/chunk-def456.js"
+# The demo pages (ticket 10-03), static HTML uploaded under /demo/.
+mkdir -p "$work/demo"
+for page in index inline budget; do echo "<h1>$page</h1>" >"$work/demo/$page.html"; done
 
 deploy_json() {
   jq -n --arg url "$1" '{
@@ -64,7 +67,7 @@ run() {
   deploy_json "$site_url" >"$dir/deploy.json"
   out=$(env PATH="$here/stubs:$PATH" STUB_CALLS="$dir/calls" STUB_DEPLOY_JSON="$dir/deploy.json" STUB_UPLOADED="$dir/uploaded" \
     TF_STATE_BUCKET=rag-agent-studio-tfstate-123456789012 AWS_REGION=eu-west-2 \
-    STUDIO_DIST="$work/studio" WIDGET_DIST="$work/widget" SMOKE_ATTEMPTS=1 SMOKE_DELAY_SECONDS=0 \
+    STUDIO_DIST="$work/studio" WIDGET_DIST="$work/widget" DEMO_DIST="$work/demo" SMOKE_ATTEMPTS=1 SMOKE_DELAY_SECONDS=0 \
     GITHUB_STEP_SUMMARY="$dir/summary.md" "$@" "$deploy" "$tag" 2>&1)
   status=$?
   calls=$(cat "$dir/calls")
@@ -123,15 +126,15 @@ for svc in api beat worker; do
 done
 [ $ok = 1 ] && echo "ok   $name"
 
-name=uploads_the_studio_and_widget_builds_and_invalidates_html_and_the_loader
+name=uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader
 ok=1
 uploaded=$(cd "$work/deploys_in_order_at_the_given_tag/uploaded" && find . -type f | sort | tr '\n' ' ')
-[ "$uploaded" = "./assets/index-abc123.js ./embed.js ./index.html ./widget/assets/chunk-def456.js ./widget/assets/widget.js " ] || { fail $name "uploaded: $uploaded"; ok=0; }
-grep -qE '^aws s3 sync .* s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js$' <<<"$calls" || { fail $name "sync was: $(grep 's3 sync' <<<"$calls")"; ok=0; }
-for f in index.html embed.js widget/assets/widget.js; do
+[ "$uploaded" = "./assets/index-abc123.js ./demo/budget.html ./demo/index.html ./demo/inline.html ./embed.js ./index.html ./widget/assets/chunk-def456.js ./widget/assets/widget.js " ] || { fail $name "uploaded: $uploaded"; ok=0; }
+grep -qE '^aws s3 sync .* s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js --exclude demo/budget.html --exclude demo/index.html --exclude demo/inline.html$' <<<"$calls" || { fail $name "sync was: $(grep 's3 sync' <<<"$calls")"; ok=0; }
+for f in index.html embed.js widget/assets/widget.js demo/budget.html demo/index.html demo/inline.html; do
   grep -qE "^aws s3 cp .*/$f s3://studio-demo-static-123456789012/$f --cache-control no-cache$" <<<"$calls" || { fail $name "no no-cache upload of $f"; ok=0; }
 done
-grep -qxF 'aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html /embed.js /widget/assets/widget.js --query Invalidation.Id --output text' <<<"$calls" || { fail $name "invalidation was: $(grep 'create-invalidation' <<<"$calls")"; ok=0; }
+grep -qxF 'aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html /embed.js /widget/assets/widget.js /demo/* --query Invalidation.Id --output text' <<<"$calls" || { fail $name "invalidation was: $(grep 'create-invalidation' <<<"$calls")"; ok=0; }
 [ $ok = 1 ] && echo "ok   $name"
 
 name=prints_the_cloudfront_url_in_the_job_summary
@@ -224,7 +227,7 @@ run "$name" 0123abc STUB_IMAGE_IN_ECR=0
 deploy_json "http://127.0.0.1:9" >"$dir/deploy.json"
 out=$(env PATH="$here/stubs:$PATH" STUB_CALLS="$dir/calls" STUB_DEPLOY_JSON="$dir/deploy.json" STUB_UPLOADED="$dir/uploaded" \
   TF_STATE_BUCKET=rag-agent-studio-tfstate-123456789012 AWS_REGION=eu-west-2 STUB_IMAGE_IN_ECR=0 \
-  STUDIO_DIST="$work/studio" WIDGET_DIST="$work/widget" SMOKE_ATTEMPTS=1 SMOKE_DELAY_SECONDS=0 "$deploy" 0123abc 2>&1)
+  STUDIO_DIST="$work/studio" WIDGET_DIST="$work/widget" DEMO_DIST="$work/demo" SMOKE_ATTEMPTS=1 SMOKE_DELAY_SECONDS=0 "$deploy" 0123abc 2>&1)
 status=$?
 ok=1
 expect_status $name 1 || ok=0
@@ -262,6 +265,14 @@ run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUDIO_DIST="$work/nowhere"
 ok=1
 expect_status $name 2 || ok=0
 expect_output $name "pnpm build" || ok=0
+[ -z "$calls" ] || { fail $name "calls were made"; ok=0; }
+[ $ok = 1 ] && echo "ok   $name"
+
+name=requires_the_demo_pages
+run "$name" 0123abc STUB_IMAGE_IN_ECR=0 DEMO_DIST="$work/nowhere"
+ok=1
+expect_status $name 2 || ok=0
+expect_output $name "DEMO_DIST must hold the demo pages" || ok=0
 [ -z "$calls" ] || { fail $name "calls were made"; ok=0; }
 [ $ok = 1 ] && echo "ok   $name"
 

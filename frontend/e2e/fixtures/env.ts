@@ -9,3 +9,6 @@ export const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://localhost:8025
 
 /** The demo host page: a separate origin that pastes an Agent's Embed Snippet (`?agent=agt_…`). */
 export const HOST_URL = process.env.E2E_HOST_URL ?? "http://localhost:5175";
+
+/** The demo host's second origin, which no Agent allows: its page tries to embed the Product FAQ and is refused. */
+export const BLOCKED_HOST_URL = process.env.E2E_BLOCKED_HOST_URL ?? "http://localhost:5176";
