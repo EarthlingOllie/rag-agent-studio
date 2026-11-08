@@ -62,7 +62,8 @@ test.describe("Version KPIs", () => {
     await expect(thumbs(1).getByRole("button", { name: "Not helpful" })).toHaveAttribute("aria-pressed", "true");
     await widget.getByRole("button", { name: "End chat" }).click();
     await widget.getByRole("group", { name: /Before you go/ }).getByRole("button", { name: "2 out of 5" }).click();
-    await expect(widget.getByRole("status")).toHaveText("You ended the chat.");
+    // The thumbs leave their own "Thanks for your feedback." notices beside the end's.
+    await expect(widget.getByRole("status").filter({ hasText: "You ended the chat." })).toHaveCount(1);
     await visitor.close();
 
     // The Editor reads the Live Version's KPIs, today's partial day included.
@@ -79,8 +80,10 @@ test.describe("Version KPIs", () => {
     await expect(card("Thumbs-up rate")).toContainText("Low confidence (fewer than 30 votes)");
     await expect(card("Mean rating")).toContainText("2.0 of 5");
     await expect(card("Mean rating")).toContainText("n = 1 rating");
-    await expect(card("Fallback rate")).toContainText("0 of 2 replies were the fallback text");
-    await expect(card("Tokens per reply")).toContainText("n = 2 replies that asked a model");
+    // The Project has no Documents, so every reply is the fallback text and asks no model.
+    await expect(card("Fallback rate")).toContainText("100%");
+    await expect(card("Fallback rate")).toContainText("2 of 2 replies were the fallback text");
+    await expect(card("Tokens per reply")).toContainText("n = 0 replies that asked a model");
     await expect(card("p95 latency")).toContainText("n = 2 replies");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
