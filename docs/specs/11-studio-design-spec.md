@@ -135,29 +135,29 @@ The approved mockups are on the design canvas: https://claude.ai/artifact/FmHzJQ
 
 ## Further Notes
 
-- **Slices** (to be split into tickets under `docs/tickets/11-studio-design/`):
+- **Tickets:** [`docs/tickets/11-studio-design/`](../tickets/README.md#11-studio-design-system-and-reskin).
 
-  | # | Slice | Blocked by |
+  | Ticket | Slice | Blocked by |
   | --- | --- | --- |
-  | 00 | Ratchet + design system round 2 | – |
-  | 01 | Foundation: tokens, fonts, Appearance | 00 |
-  | 02 | Colour codemod | 01 |
-  | 03 | Shell, breadcrumb and navigation test helpers | 02 |
-  | 04 | Project frame | 03 |
-  | 05 | Documents and Document viewer | 04 |
-  | 06 | Instructions, Versions and rollout dialog | 04 |
-  | 07 | Agent page and its four views | 04 |
-  | 08 | Agents list and bulk actions | 04 |
-  | 09 | Conversations and Analytics | 04 |
-  | 10 | Organisation settings | 03 |
-  | 11 | Signed-out pages, profile, security, status | 03 |
-  | 12 | Polish: narrow screens, dark-mode axe, screenshots | 05–11 |
+  | `11-01` | Palette ratchet + design system round 2 | – |
+  | `11-02` | Foundation: tokens, fonts, Appearance | 11-01 |
+  | `11-03` | Colour codemod | 11-02 |
+  | `11-04` | Shell, breadcrumb and navigation test helpers | 11-03 |
+  | `11-05` | Project frame | 11-04 |
+  | `11-06` | Documents and Document viewer | 11-05 |
+  | `11-07` | Instructions, Versions and rollout dialog | 11-05 |
+  | `11-08` | Agent page and its four views | 11-05 |
+  | `11-09` | Agents list and bulk actions | 11-05 |
+  | `11-10` | Conversations and Analytics | 11-05, 11-08 |
+  | `11-11` | Organisation settings | 11-04 |
+  | `11-12` | Signed-out pages, profile, security, status | 11-04 |
+  | `11-13` | Polish: narrow screens, dark-mode axe, screenshots | 11-06 to 11-12 |
 
 - **Scale.** At the time of writing: 30 routes, 47 UI files, about 11,200 lines, 590 palette uses, 47 unit test files and 50 end-to-end specs. Effort splits roughly 25% colour, 50% structure, 25% tests and checks.
-- **Concurrency.** Slices 00–03 run one at a time. Slice 03 touches nearly every page and test, so it runs while no other design slice is open, and it merges `candidate` immediately before landing. Slices 04–11 touch mostly separate files and can run two or three at a time.
+- **Concurrency.** `11-01` to `11-04` run one at a time. `11-04` touches nearly every page and test, so it runs while no other design slice is open, and it merges `candidate` immediately before landing. `11-05` to `11-12` touch mostly separate files and can run two or three at a time.
 - **Pending sign-off.** The round 1 direction is approved. Round 2 (the *Patterns & new views* page) awaits sign-off on three choices:
   - the Agent view switcher as an extra crumb;
   - the `on-danger` and `chart-1` tokens;
   - Analytics as a Project section.
 
-  Confirm or change them before tickets 00 and 07.
+  Confirm or change them before tickets `11-01` and `11-08`.

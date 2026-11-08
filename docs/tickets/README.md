@@ -1,7 +1,7 @@
 # Tickets
 
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
-Work the **frontier**: any ticket whose blockers are all done. `01-01` is the only ticket with no blockers.
+Work the **frontier**: any ticket whose blockers are all done. `01-01` and `11-01` are the only tickets with no blockers.
 
 ## 01: Skeleton, CI, auth and tenancy
 
@@ -130,3 +130,21 @@ Work the **frontier**: any ticket whose blockers are all done. `01-01` is the on
 | `10-04` | [Attack panel](./10-seed-showcase/04-attack-panel.md) | 10-02, 08-01, 08-04 |
 | `10-05` | [Seed in AWS](./10-seed-showcase/05-seed-in-aws.md) | 10-02, 09-06 |
 | `10-06` | [README and automated demo](./10-seed-showcase/06-readme-demo.md) | 10-03, 10-04 |
+
+## 11: Studio design system and reskin
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `11-01` | [Palette ratchet and design system round 2](./11-studio-design/01-ratchet-design-system-round-2.md) | none |
+| `11-02` | [Foundation: tokens, fonts and Appearance](./11-studio-design/02-foundation.md) | 11-01 |
+| `11-03` | [Colour codemod](./11-studio-design/03-colour-codemod.md) | 11-02 |
+| `11-04` | [Shell, breadcrumb and navigation test helpers](./11-studio-design/04-shell-navigation.md) | 11-03 |
+| `11-05` | [Project frame](./11-studio-design/05-project-frame.md) | 11-04 |
+| `11-06` | [Documents and Document viewer](./11-studio-design/06-documents.md) | 11-05 |
+| `11-07` | [Instructions, Versions and rollout dialog](./11-studio-design/07-instructions-versions-rollout.md) | 11-05 |
+| `11-08` | [Agent page and its four views](./11-studio-design/08-agent-views.md) | 11-05 |
+| `11-09` | [Agents list and bulk actions](./11-studio-design/09-agents-list-bulk.md) | 11-05 |
+| `11-10` | [Conversations and Analytics](./11-studio-design/10-conversations-analytics.md) | 11-05, 11-08 |
+| `11-11` | [Organisation settings](./11-studio-design/11-organisation-settings.md) | 11-04 |
+| `11-12` | [Signed-out pages, profile, security and status](./11-studio-design/12-signed-out-account-pages.md) | 11-04 |
+| `11-13` | [Polish: narrow screens, accessibility and screenshots](./11-studio-design/13-polish.md) | 11-06, 11-07, 11-08, 11-09, 11-10, 11-11, 11-12 |
