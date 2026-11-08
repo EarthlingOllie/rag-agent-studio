@@ -174,6 +174,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "get",
         ),
         "getVersionMetrics": (f"{_PROJECT}/agents/{{agent_id}}/metrics", "get"),
+        "getTimeSeries": (f"{_PROJECT}/agents/{{agent_id}}/time-series", "get"),
     }
 
 

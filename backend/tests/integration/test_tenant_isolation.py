@@ -604,6 +604,9 @@ PROJECT_SCOPED_ROUTES = [
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
+    ScopedRoute(
+        "GET", _AGENT + "/time-series", EDITOR, _a_live_agent, query={"metric": "conversations"}
+    ),
     ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
     ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
     ScopedRoute("DELETE", _CONVERSATIONS + "/{conversation_id}", OWNER, _a_playground_conversation),
