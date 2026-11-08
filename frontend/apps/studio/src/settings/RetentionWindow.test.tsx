@@ -16,7 +16,8 @@ const retention = () => screen.getByRole("region", { name: "Retention" });
 
 test("an Owner sees the default Retention Window and changes it", async () => {
   fakeAuthApi({ signedInAs: adaSession });
-  const api = fakeRetentionApi();
+  let answerSave = () => {};
+  const api = fakeRetentionApi({ saveGate: new Promise((resolve) => (answerSave = resolve)) });
   renderStudio(settingsPath);
 
   expect(
@@ -31,6 +32,9 @@ test("an Owner sees the default Retention Window and changes it", async () => {
   await userEvent.type(days, "30");
   await userEvent.click(within(retention()).getByRole("button", { name: "Save" }));
 
+  // While the save is under way the button says so and can't be pressed again.
+  expect(await within(retention()).findByRole("button", { name: "Saving…" })).toBeDisabled();
+  answerSave();
   expect(await within(retention()).findByRole("status")).toHaveTextContent("Saved.");
   expect(
     within(retention()).getByText(
