@@ -2,8 +2,9 @@
 comments older than it, and Conversations an Owner deletes on request.
 
 Purging clears a Message's ``content``, the reasons in its Guardrail outcomes and the comment of
-any Message Feedback on it, and sets ``purged_at``; every number and attribution (tokens, cost, latency, Agent Version, thumbs,
-ratings, retrievals) stays, so the metrics are the same before and after. The daily purge and a
+any Message Feedback on it, and sets ``purged_at``; every number and attribution (tokens, cost,
+latency, Agent Version, thumbs, ratings, retrievals, verdicts) stays, so the metrics are the same
+before and after. The daily purge and a
 deletion go through the same ``purge_messages``.
 
 Rollups come first: the daily purge clears a Visitor reply only once the ``usage_daily`` rollup
@@ -37,8 +38,8 @@ async def purge_messages(
     session: AsyncSession, *conditions: ColumnElement[bool], now: datetime
 ) -> int:
     """Purges the Messages matching ``conditions`` that aren't purged yet: their text, their
-    Guardrail outcomes' reasons and the comments of their feedback are cleared, and ``purged_at`` set to ``now``. Returns how many
-    Messages were purged."""
+    Guardrail outcomes' reasons and the comments of their feedback are cleared, and
+    ``purged_at`` set to ``now``. Returns how many Messages were purged."""
     found = select(Message.id).where(Message.purged_at.is_(None), *conditions)
     await session.execute(
         update(MessageFeedback)
