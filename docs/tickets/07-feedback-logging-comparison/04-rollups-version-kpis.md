@@ -7,7 +7,7 @@
 **Blocked by:**
 - [07-03: Conversation Rating](03-conversation-rating.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] `usage_daily` rollups run hourly for the current day and are finalised daily, idempotently, with histograms
 - [ ] The `version_metrics` query includes the live partial day and excludes the Playground
