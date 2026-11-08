@@ -1,6 +1,6 @@
 # Evidence: ticket 07-05, Version comparison
 
-Branch `ticket/07-05-version-comparison`, from `origin/candidate` at `527d5d6` (07-04, Rollups and Version KPIs, merged). The claim commit (`2d08735`), the first on the branch, set Status `in-progress`. The feature is `08506e7`. `156de87` and `5b5b9dd` fix what the first clean e2e run found: 07-04's `version-kpis.spec.ts` locates the Version picker with `getByLabel("Version")`, which also matched the new section while it was a landmark named "Compare two Versions"; the section is now a plain section (its heading stays), and 07-04's spec is unchanged. `origin/candidate` had not moved when the checks ran (no merge needed; this ticket adds **no migration**). The logs in Results come from one run, one check at a time, on the clean branch worktree; each log's first line names the commit.
+Branch `ticket/07-05-version-comparison`, from `origin/candidate` at `527d5d6` (07-04, Rollups and Version KPIs, merged). The claim commit (`2d08735`), the first on the branch, set Status `in-progress`. The feature is `08506e7`. `156de87` and `5b5b9dd` fix what the first clean e2e run found: 07-04's `version-kpis.spec.ts` locates the Version picker with `getByLabel("Version")`, which also matched the new section while it was a landmark named "Compare two Versions"; the section is now a plain section (its heading stays), and 07-04's spec is unchanged. This ticket adds **no migration**. `origin/candidate` later moved and was merged (`71cfbcd`, see below). The logs in Results come from one run, one check at a time, on the clean branch worktree; each log's first line names the commit.
 
 **Status: done.** Every criterion is met and evidenced below. Gaps and judgement calls are listed at the end.
 
@@ -35,6 +35,27 @@ The [shared test seams](../../../specs/README.md#shared-test-seams) and the spec
 | 4 | A date range can be chosen | **API:** `test_the_date_range_chooses_the_days_compared` (Thursday only: 1 and 1 replies; Friday only: 0 and 2; from Thursday to today (a rolled-up day plus the live partial day): 1 and 4; by default the last 30 days to today, the same numbers); bad ranges refused (`test_the_same_version_twice_or_a_missing_side_is_refused`).<br>**Studio:** "the chosen date range applies to the comparison" (the From/To days are sent with `a` and `b`); the CSV link carries them.<br>**E2E:** a range with no Visitor use shows "0 / 0 / Same"; clearing it shows today's use again. |
 | 5 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams as above. Backend ([backend-tests.log](backend-tests.log)): **2416 passed** (at `08506e7`; later commits change only the Studio component and an e2e spec), 100.00% lines and branches (11213 statements, 1338 branches). Frontend ([frontend-tests.log](frontend-tests.log)): **57 files, 786 tests** at `5b5b9dd`, 100% statements (3819), branches (2554), functions and lines. E2E ([e2e.log](e2e.log)): **89 passed** at `5b5b9dd`, 0 failed, 0 flaky. No coverage exclusions or pragmas added. |
 | 6 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | `GLOSSARY.md` (Conversations): **Version comparison**, **Better side**. No ADR decision changed. |
+
+## Merge with candidate and final clean-clone run (head `71cfbcd`)
+
+After the first round, `origin/candidate` moved to `3711453` (07-06 Time series, 10-02 Seeded history). `71cfbcd` merges it. Seven files conflicted because 07-06 and this ticket both add to the Analytics routes and tab; every conflict was resolved by keeping both features: `GLOSSARY.md` (both sets of terms), `backend/app/analytics/api.py` (one module docstring; one range helper `_range` with the `StartQuery`/`EndQuery` aliases, used by `/metrics`, `/time-series`, `/comparison` and `/comparison.csv`), `test_openapi.py` and `test_tenant_isolation.py` (all routes listed), and in the Studio `AnalyticsTab.tsx` (the comparison, then the time-series chart), `analytics.ts` and `src/test/analytics.ts` (both hooks and fakes). The generated API client was regenerated. Neither side adds a migration.
+
+Every check then ran, one stage after another, from a **fresh clone of the pushed branch at `71cfbcd`** by [clean-clone-71cfbcd/run.sh](clean-clone-71cfbcd/run.sh) (the evaluator's script, plus a wait until at most three other backend suites run on the shared machine). All stages exit 0:
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` | exit 0 | [install.log](clean-clone-71cfbcd/install.log) |
+| `make lint` (ruff, ruff format, mypy --strict, eslint, tsc) | exit 0 | [lint.log](clean-clone-71cfbcd/lint.log) |
+| `make check-client`, then a clean tree | exit 0, tree clean | [client.log](clean-clone-71cfbcd/client.log) |
+| gitleaks (`origin/candidate..HEAD`), `make audit` | exit 0, exit 0 | [sec.log](clean-clone-71cfbcd/sec.log) |
+| `make test-frontend` | **58 files, 796 tests**; 100% statements (3873), branches (2590), functions (1395), lines (3420) | [fe.log](clean-clone-71cfbcd/fe.log) |
+| `make test-backend` (fresh rag0705-* Postgres/Redis/RustFS) | **2451 passed**, 24 deselected, 69 min under load; 100.00% (11554 statements, 1398 branches) | [be.log](clean-clone-71cfbcd/be.log) |
+| `build.sh` (images) | exit 0 | [images.log](clean-clone-71cfbcd/images.log) |
+| `CI=1 make e2e` (sandbox override) | **90 passed** (8.8 min), 0 failed, 0 flaky, including `version-comparison.spec.ts` and 07-06's time-series spec | [e2e.log](clean-clone-71cfbcd/e2e.log) (OpenTelemetry span lines dropped) |
+
+The same script had also passed every stage on a clean clone of the pre-merge head `c74ed01` (backend 2416 passed, e2e 89 passed). The tables below are the first round's runs, kept for the record.
+
+While the run above finished, `origin/candidate` moved again to `1b56f68` (chore-test-sharding: pytest-xdist). `git merge-tree` shows it merges into `71cfbcd` with **no conflict** and it adds **no migration**; it is not merged here, so the re-merge before the PR merges should re-run the backend suite (now sharded).
 
 ## Results
 
