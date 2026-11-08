@@ -27,8 +27,13 @@ install: ## Install backend and frontend dependencies
 
 test: test-backend test-frontend ## Run every test suite with the 100% coverage gate
 
-test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`)
-	cd backend && uv run pytest
+# TEST_WORKERS=N runs the backend suite on N pytest-xdist workers (`auto`: one per CPU), each
+# with its own Postgres database (studio_test_gwN, created on first use) and Redis database.
+# Unset runs serially against studio_test and Redis database 15, as before.
+TEST_WORKERS ?=
+
+test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`); TEST_WORKERS=N runs them in parallel
+	cd backend && uv run pytest $(if $(TEST_WORKERS),-n $(TEST_WORKERS))
 
 test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
 	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live

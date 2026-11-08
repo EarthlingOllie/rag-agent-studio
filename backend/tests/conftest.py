@@ -23,11 +23,17 @@ from app.core.clock import Clock
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
 from tests.fakes.clock import ControllableClock
+from tests.worker_resources import worker_database_url, worker_redis_url
 
-TEST_DATABASE_URL = os.environ.get(
+BASE_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
 )
-TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+BASE_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+# Under pytest-xdist (`pytest -n N`) each worker gets its own Postgres database
+# (studio_test_gw0, ...) and Redis database (14, 13, ...); a serial run uses the names above.
+WORKER_ID = os.environ.get("PYTEST_XDIST_WORKER")
+TEST_DATABASE_URL = worker_database_url(BASE_DATABASE_URL, WORKER_ID)
+TEST_REDIS_URL = worker_redis_url(BASE_REDIS_URL, WORKER_ID)
 # 32 bytes, base64: the local static-key wrapper's key for the test run.
 TEST_LOCAL_KEY_WRAPPER_KEY = base64.b64encode(b"test-only-local-key-wrapper-key!").decode()
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -58,7 +64,7 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(scope="session")
 def database_schema() -> None:
-    """Migrate the test database to head once per run."""
+    """Migrate the test database to head once per run (once per worker under xdist)."""
     with pytest.MonkeyPatch.context() as monkeypatch:
         _set_test_environment(monkeypatch)
         config = Config(str(BACKEND_ROOT / "alembic.ini"))
@@ -78,7 +84,8 @@ async def app(settings_env: pytest.MonkeyPatch, database_schema: None) -> AsyncI
     application = create_app()
     async with LifespanManager(application):
         # Sign-in failure counters, the widget's rate-limit windows and the Token Budget
-        # counters live in the shared test Redis; each test starts without any.
+        # counters live in the test Redis (this worker's database under xdist); each test starts
+        # without any.
         redis = application.state.redis
         for pattern in ("sign-in-failures:*", "widget-rate:*", "widget-budget:*"):
             async for key in redis.scan_iter(match=pattern):
