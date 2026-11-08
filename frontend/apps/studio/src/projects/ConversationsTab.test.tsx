@@ -385,6 +385,7 @@ test.each([
   ["?rating=4", "4"],
   ["?rating=any", "any"],
   ["?rating=9", ""],
+  ['?rating="2"', "2"],
   ["?rating=great", ""],
 ])("a rating filter in the URL (%s) is kept when it is one", async (search, kept) => {
   const { queries } = setUp();

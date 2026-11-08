@@ -186,7 +186,7 @@ function Filters({
         Rating
         <select
           className={INPUT}
-          value={filters.rating ?? ""}
+          value={String(filters.rating ?? "")}
           onChange={(event) => {
             set({ rating: event.currentTarget.value });
           }}
