@@ -7,12 +7,12 @@
 **Blocked by:**
 - [06-05: Rate limits](05-rate-limits.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] A daily counter per Agent per UTC date is incremented with actual usage
-- [ ] An exhausted budget makes the Agent unavailable, shows an alert badge and sends one deduplicated email to Owners
-- [ ] A Beat task clears alert flags at midnight UTC
-- [ ] The Studio shows a budget meter, and the Playground is exempt
-- [ ] End-to-end: exhausting a tiny budget shows the unavailable message
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A daily counter per Agent per UTC date is incremented with actual usage
+- [x] An exhausted budget makes the Agent unavailable, shows an alert badge and sends one deduplicated email to Owners
+- [x] A Beat task clears alert flags at midnight UTC
+- [x] The Studio shows a budget meter, and the Playground is exempt
+- [x] End-to-end: exhausting a tiny budget shows the unavailable message
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
