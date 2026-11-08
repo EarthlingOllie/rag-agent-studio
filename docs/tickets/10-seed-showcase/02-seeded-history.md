@@ -9,7 +9,7 @@
 - [05-05: Bulk publish, bulk revert and Instructions rollout](../05-versioning-project-instructions/05-bulk-publish-revert.md)
 - [07-04: Rollups and Version KPIs](../07-feedback-logging-comparison/04-rollups-version-kpis.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] There's an HR Agent and a FAQ Agent with Tag scoping; HR has v1 to v3, with v2 reverted
 - [ ] Instructions have v1 and v2, with one Agent behind
