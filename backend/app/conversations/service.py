@@ -1,6 +1,7 @@
 """Reading a Project's Conversations for the Studio's Conversations viewer: Visitor
 Conversations (from the widget) and Playground ones (flagged), filtered by Agent, start date,
-Agent Version and Playground, and one Conversation's Messages and each reply's Trace.
+Agent Version, Playground, Message Feedback, Conversation Rating and Guardrail outcome, and
+one Conversation's Messages and each reply's Trace.
 
 Everything is found through the Project, which is found through the Organisation scope, so a
 Conversation of another Project or Organisation is simply not found.
@@ -70,6 +71,33 @@ def _rated(score: int | None = None) -> ColumnElement[bool]:
     return Conversation.id.in_(rated)
 
 
+class GuardrailFilter(enum.StrEnum):
+    """Which Conversations to keep by their replies' Guardrail outcomes: with a reply whose
+    Guardrail took this action (blocked, flagged, logged, replaced or allowed), with any
+    Guardrail outcome, or with none."""
+
+    BLOCKED = "blocked"
+    FLAGGED = "flagged"
+    LOGGED = "logged"
+    REPLACED = "replaced"
+    ALLOWED = "allowed"
+    ANY = "any"
+    NONE = "none"
+
+
+def _has_guardrail_outcome() -> ColumnElement[bool]:
+    return func.jsonb_array_length(Message.guardrail_outcomes) > 0
+
+
+def _with_guardrail_outcome(action: str | None = None) -> ColumnElement[bool]:
+    condition = (
+        _has_guardrail_outcome()
+        if action is None
+        else Message.guardrail_outcomes.contains([{"action": action}])
+    )
+    return Conversation.id.in_(select(Message.conversation_id).where(condition))
+
+
 class ConversationNotFoundError(Exception):
     """No Conversation with that ID in the Project."""
 
@@ -84,7 +112,7 @@ class ConversationFilter:
     (``end`` exclusive); ``version_id`` keeps those with a reply from that Agent Version;
     ``playground`` keeps only Playground (True) or only Visitor (False) Conversations;
     ``feedback`` keeps them by their Message Feedback; ``rating`` by their current
-    Conversation Rating."""
+    Conversation Rating; ``guardrail`` by their replies' Guardrail outcomes."""
 
     agent_id: uuid.UUID | None = None
     version_id: uuid.UUID | None = None
@@ -93,6 +121,7 @@ class ConversationFilter:
     playground: bool | None = None
     feedback: FeedbackFilter | None = None
     rating: RatingFilter | None = None
+    guardrail: GuardrailFilter | None = None
 
     def conditions(self) -> list[ColumnElement[bool]]:
         found: list[ColumnElement[bool]] = []
@@ -124,6 +153,12 @@ class ConversationFilter:
             found.append(~_rated())
         elif self.rating is not None:
             found.append(_rated(int(self.rating.value)))
+        if self.guardrail is GuardrailFilter.ANY:
+            found.append(_with_guardrail_outcome())
+        elif self.guardrail is GuardrailFilter.NONE:
+            found.append(~_with_guardrail_outcome())
+        elif self.guardrail is not None:
+            found.append(_with_guardrail_outcome(self.guardrail.value))
         return found
 
 
@@ -141,6 +176,8 @@ class ConversationSummary:
     thumbs_down: int
     # Its current Conversation Rating; None when the Visitor hasn't rated it.
     rating: int | None
+    # How many of its replies have a Guardrail outcome.
+    guardrail_events: int
 
 
 @dataclass(frozen=True)
@@ -227,6 +264,15 @@ async def list_conversations(
             )
         ).all()
     )
+    guardrail_events: dict[uuid.UUID, int] = dict(
+        (
+            await session.execute(
+                select(Message.conversation_id, func.count())
+                .where(Message.conversation_id.in_(ids), _has_guardrail_outcome())
+                .group_by(Message.conversation_id)
+            )
+        ).all()
+    )
     return ConversationPage(
         rows=[
             ConversationSummary(
@@ -238,6 +284,7 @@ async def list_conversations(
                 thumbs_up=thumbs.get((conversation.id, Thumb.UP), 0),
                 thumbs_down=thumbs.get((conversation.id, Thumb.DOWN), 0),
                 rating=ratings.get(conversation.id),
+                guardrail_events=guardrail_events.get(conversation.id, 0),
             )
             for conversation, agent_name in found
         ],

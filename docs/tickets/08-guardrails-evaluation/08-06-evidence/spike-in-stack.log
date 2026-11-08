@@ -1,0 +1,25 @@
+$ spike_in_stack.py in the stack's API container @ f04c793 (clean tree: 0 changes)
+visitor messages (question, first SSE line):
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('How many days of ann', 'event: token')
+block_rate_alert before the rollup: False
+worker ran analytics.roll_up_usage -> SUCCESS
+block_rate_alert after the rollup: True
+v1 messages: 7 guardrail_blocks: {'count': 6, 'rate': 0.8571428571428571}
+Mailpit: Spike helper is blocking an unusual share of messages -> spike-ae95da8c@example.test
+Hello Spike Owner,
+
+The input Guardrail of the Agent Spike helper blocked 6 of the last hour's 7 Visitor messages (86%), against 0% over the week before. Someone may be attacking it.
+
+Review the blocked Conversations in the Studio:
+
+http://localhost:49683/organisations/ad692a3a-08cc-4709-a0e2-0b9f3bd7f973/projects/17893e78-4927-40f7-b765-073a81037124/conversations?agent=4f07872f-c1c0-4946-b32c-a2e8b9f28e7c&guardrail=blocked
+
+The Agent shows a "Block rate spike" badge until an hour's block rate is back to normal. You get this email once per spike.
+
+exit 0

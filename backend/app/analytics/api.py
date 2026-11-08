@@ -70,6 +70,13 @@ class FallbackOut(BaseModel):
     rate: float | None
 
 
+class GuardrailBlocksOut(BaseModel):
+    # Replies that were the refusal text because the input Guardrail blocked the question.
+    count: int
+    # The block rate: their share of the replies; null without a reply.
+    rate: float | None
+
+
 class LatencyOut(BaseModel):
     n: int
     # p95 milliseconds to the first token, and to the whole reply.
@@ -91,6 +98,7 @@ class VersionKpisOut(BaseModel):
     thumbs_up: ThumbsUpOut
     rating: RatingOut
     fallback: FallbackOut
+    guardrail_blocks: GuardrailBlocksOut
     latency: LatencyOut
 
 
@@ -133,6 +141,7 @@ def _out(kpis: service.VersionKpis) -> VersionKpisOut:
             low_confidence=service.low_confidence(usage.rating_count),
         ),
         fallback=FallbackOut(count=usage.fallback_count, rate=kpis.fallback_rate),
+        guardrail_blocks=GuardrailBlocksOut(count=usage.guardrail_blocks, rate=kpis.block_rate),
         latency=LatencyOut(
             n=usage.latency_histogram.count,
             first_token_p95_ms=usage.first_token_histogram.percentile(0.95),

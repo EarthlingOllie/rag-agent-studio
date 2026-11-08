@@ -1,0 +1,6 @@
+1e242a8
+   × the Playground can't be reset while an answer streams in 1125ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  apps/studio/src/projects/AgentPage.test.tsx > the Playground can't be reset while an answer streams in
+      Tests  1 failed | 793 passed (794)
+exit 2

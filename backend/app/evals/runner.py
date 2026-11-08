@@ -35,8 +35,8 @@ from app.evals.suite import (
     InputOutcome,
     Suite,
 )
-from app.guardrails.outcomes import GuardrailOutcome
-from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent, blocked
+from app.guardrails.outcomes import GuardrailOutcome, blocked
+from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent
 from app.projects.models import FlaggedChunkMode
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.errors import ErrorEvent

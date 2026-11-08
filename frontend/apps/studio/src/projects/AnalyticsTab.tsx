@@ -11,6 +11,9 @@ const ROUTE = "/signed-in/organisations/$organisationId/projects/$projectId/anal
 
 const percent = (rate: number) => `${String(Math.round(rate * 100))}%`;
 
+/** A rate under one percent (but not none) keeps one decimal, so it doesn't read as 0% or 1%. */
+const finePercent = (rate: number) => (rate > 0 && rate < 0.01 ? `${(rate * 100).toFixed(1)}%` : percent(rate));
+
 const cents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fractionOfACent = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumSignificantDigits: 2 });
 
@@ -69,7 +72,7 @@ function KpiCard({
 }
 
 function Kpis({ kpis }: { kpis: VersionKpis }) {
-  const { tokens, cost, thumbs_up: thumbs, rating, fallback, latency } = kpis;
+  const { tokens, cost, thumbs_up: thumbs, rating, fallback, guardrail_blocks: blocks, latency } = kpis;
   return (
     <ul aria-label={`Key numbers for v${String(kpis.number)}`} className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <KpiCard
@@ -117,6 +120,13 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
         title="Fallback rate"
         value={fallback.rate === null ? "No replies yet" : percent(fallback.rate)}
         details={<p>{`${String(fallback.count)} of ${plural(kpis.messages, "reply", "replies")} were the fallback text`}</p>}
+      />
+      <KpiCard
+        title="Guardrail block rate"
+        value={blocks.rate === null ? "No replies yet" : finePercent(blocks.rate)}
+        details={
+          <p>{`${String(blocks.count)} of ${plural(kpis.messages, "reply was", "replies were")} blocked by the input Guardrail`}</p>
+        }
       />
       <KpiCard
         title="p95 latency"

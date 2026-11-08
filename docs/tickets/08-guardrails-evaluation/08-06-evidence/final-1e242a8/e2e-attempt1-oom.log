@@ -1,0 +1,3 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0806-e2e -f docker-compose.yml -f docs/tickets/08-guardrails-evaluation/08-06-evidence/compose.sandbox.yml' @ 1e242a8 (clean tree: 0 changes) (CI settings: one retry)
+(trimmed) api container exited 137 (OOM-killed under shared-machine load) mid-run; every later spec failed in 0ms; run stopped and repeated
+92

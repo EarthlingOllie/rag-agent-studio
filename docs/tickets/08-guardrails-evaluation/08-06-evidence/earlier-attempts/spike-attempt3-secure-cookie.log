@@ -1,0 +1,12 @@
+$ spike_in_stack.py in the stack's API container @ bc813fe (clean tree: 0 changes)
+Traceback (most recent call last):
+  File "/tmp/spike_in_stack.py", line 69, in <module>
+    attack()
+    ~~~~~~^^
+  File "/tmp/spike_in_stack.py", line 24, in attack
+    cred = owner.post(f"{base}/credentials", json={"name": "Fake", "provider": "anthropic",
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                      "api_key": "sk-ant-e2e-test-only-not-a-real-key-e806"}).json()["id"]
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+KeyError: 'id'
+exit 1

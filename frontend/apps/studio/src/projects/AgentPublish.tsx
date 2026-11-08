@@ -7,8 +7,8 @@ import { useInstructionsVersions } from "./instructions";
 import { BUTTON, INPUT } from "./ProjectsPage";
 import { useTags } from "./tags";
 
-/** "Live v3", or "Not live" for an Agent that has never been published; and "Unpublished
- * changes" while its Draft differs from the Live Version. */
+/** "Live v3", or "Not live" for an Agent that has never been published; "Unpublished
+ * changes" while its Draft differs from the Live Version; and its alert badges. */
 export function LiveStatus({ agent }: { agent: Agent }) {
   return (
     <>
@@ -28,6 +28,14 @@ export function LiveStatus({ agent }: { agent: Agent }) {
           className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
         >
           Budget exhausted
+        </span>
+      )}
+      {agent.block_rate_alert && (
+        <span
+          title="In the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations."
+          className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
+        >
+          Block rate spike
         </span>
       )}
     </>

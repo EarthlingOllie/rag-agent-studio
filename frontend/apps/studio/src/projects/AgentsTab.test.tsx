@@ -170,3 +170,25 @@ test("an Agent whose Token Budget is spent shows an alert badge in the list and 
   expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.getByText("Budget exhausted")).toBeInTheDocument();
 });
+
+test("an Agent whose Guardrail block rate spiked shows an alert badge in the list and on its page", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const attacked = { ...hrHelper, block_rate_alert: true };
+  const other = { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Benefits FAQ" };
+  fakeAgentsApi({ agents: [attacked, other] });
+  renderStudio(agentsTab(hrProject.id));
+
+  const list = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
+  const [first, second] = within(list).getAllByRole("listitem");
+  expect(within(first as HTMLElement).getByText("Block rate spike")).toHaveAttribute(
+    "title",
+    "In the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations.",
+  );
+  expect(within(second as HTMLElement).queryByText("Block rate spike")).not.toBeInTheDocument();
+
+  await userEvent.click(within(list).getByRole("link", { name: "HR helper" }));
+
+  expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByText("Block rate spike")).toBeInTheDocument();
+});

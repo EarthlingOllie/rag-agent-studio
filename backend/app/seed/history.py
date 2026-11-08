@@ -319,6 +319,11 @@ async def generate(
                 await story.visit(name)
     for day in range(content.HISTORY_DAYS, 0, -1):
         # Just after midnight, as Beat's hourly run would: it finalises the day before.
-        await roll_up(app.state.sessionmaker, _at(today - timedelta(days=day - 1), time(0, 5)))
+        await roll_up(
+            app.state.sessionmaker,
+            _at(today - timedelta(days=day - 1), time(0, 5)),
+            mailer=app.state.mailer,
+            studio_url=str(app.state.settings.studio_url),
+        )
     async with app.state.sessionmaker() as session, session.begin():
         await _backfill_foundation(session, uuid.UUID(owner.organisation), start)

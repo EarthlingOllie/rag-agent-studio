@@ -1,0 +1,122 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0806-e2e -f docker-compose.yml -f docs/tickets/08-guardrails-evaluation/08-06-evidence/compose.sandbox.yml' @ bc813fe (clean tree: 0 changes) (CI settings: one retry)
+[... first lines cut: the last 120 lines of the run follow ...]
+  ✓  49 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (12.8s)
+  ✓  50 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (11.8s)
+  ✓  51 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (8.6s)
+  ✓  53 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (7.6s)
+  ✓  52 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (12.4s)
+  ✓  55 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (3.6s)
+  ✓  54 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (10.5s)
+  ✓  56 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (9.8s)
+  ✓  58 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (6.4s)
+  ✓  57 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (13.5s)
+  ✓  59 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (6.2s)
+  ✓  61 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.7s)
+  ✓  62 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.0s)
+  ✓  63 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (3.7s)
+  ✓  60 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (14.5s)
+  ✓  64 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (10.6s)
+  ✓  66 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (7.6s)
+  ✓  67 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (8.1s)
+  ✓  65 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (25.8s)
+  ✓  68 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (9.0s)
+  ✓  69 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (12.6s)
+  ✓  70 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (11.8s)
+  ✓  71 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (14.2s)
+  ✓  73 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (4.8s)
+  ✓  72 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (13.9s)
+  ✓  75 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.1s)
+  ✓  74 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (3.9s)
+  ✓  76 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.1s)
+  ✓  78 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (11.9s)
+  ✓  77 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (16.5s)
+  ✓  79 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (7.3s)
+  ✓  81 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (5.5s)
+  ✓  80 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (17.3s)
+  ✓  82 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (8.8s)
+  ✓  83 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (9.7s)
+  ✓  84 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (8.0s)
+  ✓  86 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (8.2s)
+  ✓  85 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (10.6s)
+  ✓  87 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (3.4s)
+  ✓  89 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (4.5s)
+  ✓  88 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (10.0s)
+  ✓  90 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (8.0s)
+
+
+  1) [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Key numbers for v1' }).getByRole('listitem', { name: 'Guardrail block rate' })
+    Expected substring: "33%"
+    Received string:    "Guardrail block rate50%1 of 2 replies were blocked by the input Guardrail"
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Key numbers for v1' }).getByRole('listitem', { name: 'Guardrail block rate' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Key numbers for v1' }).getByRole('listitem', { name: 'Guardrail block rate' })
+        34 × locator resolved to <li aria-labelledby="kpi-guardrail-block-rate" class="rounded border border-slate-200 bg-white p-4 text-slate-900">…</li>
+           - unexpected value "Guardrail block rate50%1 of 2 replies were blocked by the input Guardrail"
+
+
+      67 |     await expect(page.getByLabel("Version")).toHaveText("v1 (Live)");
+      68 |     const card = page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name: "Guardrail block rate" });
+    > 69 |     await expect(card).toContainText("33%", { timeout: 15_000 });
+         |                        ^
+      70 |     await expect(card).toContainText("1 of 3 replies were blocked by the input Guardrail");
+      71 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+      72 |
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/e2e/tests/guardrail-analytics.spec.ts:69:24
+
+    Error Context: test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('list', { name: 'Key numbers for v1' }).getByRole('listitem', { name: 'Guardrail block rate' })
+    Expected substring: "33%"
+    Received string:    "Guardrail block rate50%1 of 2 replies were blocked by the input Guardrail"
+    Timeout: 15000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('list', { name: 'Key numbers for v1' }).getByRole('listitem', { name: 'Guardrail block rate' }) with timeout 15000ms
+      - waiting for getByRole('list', { name: 'Key numbers for v1' }).getByRole('listitem', { name: 'Guardrail block rate' })
+        33 × locator resolved to <li aria-labelledby="kpi-guardrail-block-rate" class="rounded border border-slate-200 bg-white p-4 text-slate-900">…</li>
+           - unexpected value "Guardrail block rate50%1 of 2 replies were blocked by the input Guardrail"
+
+
+      67 |     await expect(page.getByLabel("Version")).toHaveText("v1 (Live)");
+      68 |     const card = page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name: "Guardrail block rate" });
+    > 69 |     await expect(card).toContainText("33%", { timeout: 15_000 });
+         |                        ^
+      70 |     await expect(card).toContainText("1 of 3 replies were blocked by the input Guardrail");
+      71 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+      72 |
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/e2e/tests/guardrail-analytics.spec.ts:69:24
+
+    Error Context: test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome 
+  88 passed (6.8m)
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:125: e2e] Error 1
+exit 2
