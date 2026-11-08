@@ -7,7 +7,7 @@
 **Blocked by:**
 - [07-04: Rollups and Version KPIs](04-rollups-version-kpis.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The `org_cost` query groups by Project or Agent for a period, with Playground usage in a separate column
 - [ ] There's an Owner-only cost page
