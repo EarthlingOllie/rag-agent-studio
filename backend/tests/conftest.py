@@ -226,3 +226,12 @@ async def join_organisation(owner: SignedUpMember, member: SignedUpMember, role:
     token = invited.json()["link"].split("token=", 1)[1]
     accepted = await member.client.post("/api/invites/accept", json={"token": token})
     assert accepted.status_code == 200, accepted.text
+
+
+@pytest.fixture
+def quiet_seed_history(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The demo seed makes its history's Versions, Instructions and rollups but no Visitor
+    Conversations, for tests about something else (ticket 10-02's tests seed them)."""
+    from app.seed import content
+
+    monkeypatch.setattr(content, "HISTORY", content.History(conversations_per_day={}))
