@@ -1,0 +1,5 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0703-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-03-evidence/compose.sandbox.yml' @ 25b73a8 (CI settings: one retry)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (288ms)
+  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (6.0s)
+  81 passed (6.3m)
+exit 0
