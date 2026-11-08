@@ -7,11 +7,11 @@
 **Blocked by:**
 - [07-02: Message Feedback](02-message-feedback.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] The prompt appears after the Nth reply (a Live Version setting) and on end if no rating has been given; a dismissal is saved
-- [ ] Changing a rating is recorded in a change log
-- [ ] A rating is attributed to the Version of the last Agent Message before it
-- [ ] The viewer shows ratings and can filter by them
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The prompt appears after the Nth reply (a Live Version setting) and on end if no rating has been given; a dismissal is saved
+- [x] Changing a rating is recorded in a change log
+- [x] A rating is attributed to the Version of the last Agent Message before it
+- [x] The viewer shows ratings and can filter by them
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
