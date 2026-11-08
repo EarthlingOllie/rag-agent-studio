@@ -4,6 +4,8 @@ import { http, HttpResponse } from "msw";
 import { server } from "./server";
 
 type VersionKpis = Schemas["VersionKpisOut"];
+type TimeSeries = Schemas["TimeSeriesOut"];
+type Marker = TimeSeries["markers"][number];
 
 /** A Version's KPIs with nothing measured; override what a test needs. */
 export function versionKpis(number: number, overrides: Partial<VersionKpis> = {}): VersionKpis {
@@ -53,6 +55,7 @@ export const largeSample = versionKpis(1, {
 /** Answers the Version metrics endpoint with each Agent's Versions (oldest first), recording queries. */
 export function fakeMetricsApi(options: { versions?: Record<string, VersionKpis[]>; status?: number } = {}) {
   const queries: { agentId: string; query: URLSearchParams }[] = [];
+  fakeTimeSeriesApi();
   server.use(
     http.get("*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/metrics", ({ params, request }) => {
       const query = new URL(request.url).searchParams;
@@ -63,6 +66,60 @@ export function fakeMetricsApi(options: { versions?: Record<string, VersionKpis[
       const end = query.get("end") ?? "2026-11-06";
       if (start > end) return HttpResponse.json({ detail: "The start must not be after the end." }, { status: 422 });
       return HttpResponse.json({ agent_id: agentId, start, end, versions: options.versions?.[agentId] ?? [] });
+    }),
+  );
+  return { queries };
+}
+
+/** A Live History marker on the day given (and the point starting then, unless given). */
+export function marker(day: string, from: number | null, to: number, action = "publish", pointStart = day): Marker {
+  const version = (number: number) => ({ id: `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`, number });
+  return {
+    occurred_at: `${day}T10:00:00Z`,
+    day,
+    point_start: pointStart,
+    action,
+    from_version: from === null ? null : version(from),
+    to_version: version(to),
+  };
+}
+
+/** Points of a series, from [start, end, value, n]. */
+export function seriesPoints(...points: [string, string, number | null, number][]): TimeSeries["points"] {
+  return points.map(([start, end, value, n]) => ({ start, end, value, n }));
+}
+
+/**
+ * Answers the time series endpoint, recording queries. ``respond`` builds each answer from the
+ * query (the metric, granularity and range asked for); by default four empty days.
+ */
+export function fakeTimeSeriesApi(
+  options: { respond?: (query: URLSearchParams) => Partial<TimeSeries>; status?: number } = {},
+) {
+  const queries: { agentId: string; query: URLSearchParams }[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/time-series", ({ params, request }) => {
+      const query = new URL(request.url).searchParams;
+      const agentId = String(params.agentId);
+      queries.push({ agentId, query });
+      if (options.status) return HttpResponse.json({ detail: "Failed" }, { status: options.status });
+      const series: TimeSeries = {
+        agent_id: agentId,
+        metric: (query.get("metric") ?? "conversations") as TimeSeries["metric"],
+        granularity: (query.get("granularity") ?? "day") as TimeSeries["granularity"],
+        start: query.get("start") ?? "2026-11-03",
+        end: query.get("end") ?? "2026-11-06",
+        points: seriesPoints(
+          ["2026-11-03", "2026-11-03", 0, 0],
+          ["2026-11-04", "2026-11-04", 0, 0],
+          ["2026-11-05", "2026-11-05", 0, 0],
+          ["2026-11-06", "2026-11-06", 0, 0],
+        ),
+        markers: [],
+        document_changes: { changed: 0, deleted: 0 },
+        ...options.respond?.(query),
+      };
+      return HttpResponse.json(series);
     }),
   );
   return { queries };

@@ -1341,6 +1341,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Time Series
+         * @description One metric of the Agent (every Version together) per period of the UTC days `start` to
+         *     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
+         *     Live Version changed and the Project's Document changes during the range. Only Visitor
+         *     Conversations count.
+         */
+        get: operations["getTimeSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage": {
         parameters: {
             query?: never;
@@ -3097,6 +3120,13 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** DocumentChangesOut */
+        DocumentChangesOut: {
+            /** Changed */
+            changed: number;
+            /** Deleted */
+            deleted: number;
+        };
         /** DocumentDetailOut */
         DocumentDetailOut: {
             /** Attempt Count */
@@ -3689,8 +3719,43 @@ export interface components {
             occurred_at: string;
             to_version: components["schemas"]["VersionNumberOut"];
         };
+        /**
+         * LiveHistoryMarkerOut
+         * @description A change of the Live Version during the range: one Live History entry.
+         */
+        LiveHistoryMarkerOut: {
+            /** Action */
+            action: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            from_version: components["schemas"]["MarkerVersionOut"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Point Start
+             * Format: date
+             */
+            point_start: string;
+            to_version: components["schemas"]["MarkerVersionOut"];
+        };
         /** LiveVersionOut */
         LiveVersionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+        };
+        /** MarkerVersionOut */
+        MarkerVersionOut: {
             /**
              * Id
              * Format: uuid
@@ -4586,6 +4651,59 @@ export interface components {
             rate: number | null;
             /** Up */
             up: number;
+        };
+        /**
+         * TimeSeriesGranularity
+         * @enum {string}
+         */
+        TimeSeriesGranularity: "day" | "week" | "month";
+        /**
+         * TimeSeriesMetric
+         * @description What a time series measures, over each of its periods.
+         * @enum {string}
+         */
+        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms";
+        /** TimeSeriesOut */
+        TimeSeriesOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            document_changes: components["schemas"]["DocumentChangesOut"];
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            granularity: components["schemas"]["TimeSeriesGranularity"];
+            /** Markers */
+            markers: components["schemas"]["LiveHistoryMarkerOut"][];
+            metric: components["schemas"]["TimeSeriesMetric"];
+            /** Points */
+            points: components["schemas"]["TimeSeriesPointOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+        };
+        /** TimeSeriesPointOut */
+        TimeSeriesPointOut: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** N */
+            n: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Value */
+            value: number | null;
         };
         /** TokenUsageOut */
         TokenUsageOut: {
@@ -8741,6 +8859,57 @@ export interface operations {
             };
             /** @description Upload a PNG, JPEG or WebP image. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getTimeSeries: {
+        parameters: {
+            query: {
+                /** @description What to measure */
+                metric: components["schemas"]["TimeSeriesMetric"];
+                /** @description One point per day, ISO week or month */
+                granularity?: components["schemas"]["TimeSeriesGranularity"];
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeSeriesOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

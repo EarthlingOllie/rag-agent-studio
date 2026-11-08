@@ -5,6 +5,7 @@ import { useAgents } from "./agents";
 import { type MetricsRange, type VersionKpis, useVersionMetrics } from "./analytics";
 import { ProjectRequestError } from "./projects";
 import { INPUT, useOrganisationRole } from "./ProjectsPage";
+import { TimeSeriesChart } from "./TimeSeriesChart";
 
 const ROUTE = "/signed-in/organisations/$organisationId/projects/$projectId/analytics";
 
@@ -163,6 +164,7 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
           {`${metrics.data.start} to ${metrics.data.end} (UTC days), including today so far. Visitor Conversations only: the Playground is left out.`}
         </p>
         <Kpis kpis={shown} />
+        <TimeSeriesChart organisationId={organisationId} projectId={projectId} agentId={agentId} range={range} />
       </>
     );
   }
@@ -202,7 +204,7 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
   );
 }
 
-/** The Analytics tab: an Agent Version's KPI cards, with intervals, sample sizes and small samples marked. */
+/** The Analytics tab: an Agent Version's KPI cards, with intervals, sample sizes and small samples marked, and the Agent's time series. */
 export function AnalyticsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useParams({ from: ROUTE });
