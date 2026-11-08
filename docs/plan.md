@@ -273,6 +273,12 @@ Each slice has a detailed spec in [`docs/specs/`](./specs/README.md). Each slice
 - README: pitch, architecture diagram, a five-minute demo script, the ADR index, how to run locally and how to deploy.
 - **Done when:** a fresh clone, then `make dev && make seed`, gives the full interview demo in under five minutes.
 
+### Slice 11: Studio design system and reskin
+- The Tidepool design system ([`docs/design/README.md`](./design/README.md), ADR-0013): tokens with a light and dark Appearance, class recipes and shared components.
+- A palette ratchet in CI, a colour-only codemod, then breadcrumb navigation replacing the side menu and tab rows.
+- One reskin slice per area (Documents, Agent views, Versions, Conversations and Analytics, settings, signed-out pages), with no behaviour change.
+- **Done when:** no Tailwind palette classes remain in the Studio, every page matches the approved mockups in both Appearances, and axe passes in light and dark.
+
 ---
 
 ## 8. Open items
