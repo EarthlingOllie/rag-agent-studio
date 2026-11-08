@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
@@ -57,7 +57,11 @@ test("every configuration group is shown with the Draft's settings", async () =>
   expect(within(experience).getByLabelText(/Rating prompt after/)).toHaveValue(3);
   const guardrails = group("Guardrails");
   expect(within(guardrails).getByLabelText("Input Guardrail mode")).toHaveValue("block");
-  expect(within(guardrails).getByText(/enforced in a later release/)).toBeInTheDocument();
+  expect(
+    within(guardrails).getByText(
+      "Every message is checked by the built-in classifier. Block refuses a flagged message, warn answers it with a caution to the model and flags it, and log only records the verdict. The LLM classifier is enforced in block mode.",
+    ),
+  ).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "Draft status" })).toHaveTextContent("All changes saved");
 });
 
@@ -380,8 +384,9 @@ test("a change still waiting to be saved is saved when the Editor leaves the pag
   const { requests } = setUp();
   await openEditor();
 
-  await userEvent.type(within(group("Experience")).getByLabelText("Greeting"), "Hi");
-  await userEvent.click(screen.getByRole("link", { name: "All Agents" }));
+  // Change and leave in the same tick, so the autosave timer can't fire first however slow the machine.
+  fireEvent.change(within(group("Experience")).getByLabelText("Greeting"), { target: { value: "Hi" } });
+  fireEvent.click(screen.getByRole("link", { name: "All Agents" }));
 
   await screen.findByRole("heading", { name: "Agents" }, { timeout: 5000 });
   await vi.waitFor(() => {

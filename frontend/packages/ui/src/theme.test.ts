@@ -75,3 +75,23 @@ test("allowlisted fonts load from Google Fonts by family name", () => {
     "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap",
   );
 });
+
+// The API's widget shell writes the same stylesheet in Python (`app/theme/resolve.py`); its
+// test (`test_branded_widget.py`) checks the same literals, so the shell and the Studio agree.
+const SHELL_LIGHT =
+  "#root{color-scheme:light;--theme-primary:#4f46e5;--theme-on-primary:#ffffff;" +
+  "--theme-surface:#ffffff;--theme-on-surface:#111827;--theme-accent:#0f766e;" +
+  "--theme-muted:#4b5563;--theme-radius:12px;" +
+  '--theme-font-family:"Inter", ui-sans-serif, system-ui, sans-serif;}';
+
+test("the widget shell's stylesheet for the default Theme matches the API's", () => {
+  expect(themeStylesheet(DEFAULT_THEME, "#root")).toBe(SHELL_LIGHT);
+  expect(themeStylesheet({ ...DEFAULT_THEME, mode: "auto" }, "#root")).toBe(
+    SHELL_LIGHT +
+      "@media (prefers-color-scheme: dark){" +
+      "#root{color-scheme:dark;--theme-primary:#818cf8;--theme-on-primary:#111827;" +
+      "--theme-surface:#111827;--theme-on-surface:#f9fafb;--theme-accent:#2dd4bf;" +
+      "--theme-muted:#9ca3af;--theme-radius:12px;" +
+      '--theme-font-family:"Inter", ui-sans-serif, system-ui, sans-serif;}}',
+  );
+});

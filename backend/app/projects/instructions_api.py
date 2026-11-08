@@ -5,22 +5,25 @@ Versions are immutable, so there is no route that changes or deletes one."""
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, StringConstraints
+from fastapi import APIRouter, HTTPException, Query, status
+from pydantic import BaseModel, Field, StringConstraints
 
+from app.agents import bulk
 from app.auth.api import Db, ErrorResponse
 from app.projects import instructions, service
 from app.projects.api import PROJECT_ARCHIVED, ClockDep
 from app.projects.models import NOTE_MAX
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, Scope
+from app.versioning.api import DiffLineOut, lines_out
 
 router = APIRouter(prefix=ORGANISATION_PREFIX, tags=["project-instructions"])
 
 NOTHING_TO_PUBLISH = "The Draft is the same as the Current Version, so there's nothing to publish."
 NOTHING_TO_REVERT = "There's no earlier Version to revert to."
+NO_CURRENT_VERSION = "The Instructions have never been published, so there's no Current Version."
 
 _PATH = "/projects/{project_id}/instructions"
 
@@ -53,6 +56,25 @@ class InstructionsHistoryOut(BaseModel):
     current_version_id: uuid.UUID | None
     # Newest first.
     versions: list[InstructionsVersionOut]
+
+
+class VersionNumberOut(BaseModel):
+    id: uuid.UUID
+    number: int
+
+
+class BulkRevertCandidateOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    live_version: VersionNumberOut
+
+
+class InstructionsRevertOut(InstructionsVersionOut):
+    # The Version that was Current until this revert.
+    reverted_from: VersionNumberOut
+    # The active Agents whose Live Version pins the Version that was just reverted, oldest
+    # first: the Studio offers to bulk-revert them.
+    bulk_revert_candidates: list[BulkRevertCandidateOut]
 
 
 class PublishInstructionsRequest(BaseModel):
@@ -126,15 +148,86 @@ async def publish_instructions(
 )
 async def revert_instructions(
     project_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
-) -> InstructionsVersionOut:
+) -> InstructionsRevertOut:
     """Moves the Current Version back to the Version that was Current before it, and returns
-    it. The Draft is unchanged. Records ``project.instructions_reverted``."""
+    it with the Agents still pinned to the reverted Version, so they can be bulk-reverted. The
+    Draft is unchanged. Records ``project.instructions_reverted``."""
     try:
-        view = await instructions.revert(db, scope, project_id, now=clock.now())
+        reverted = await instructions.revert(db, scope, project_id, now=clock.now())
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
     except instructions.NothingToRevertError:
         raise HTTPException(status.HTTP_409_CONFLICT, NOTHING_TO_REVERT) from None
-    return _out(view)
+    reverted_from = reverted.reverted_from
+    candidates = await bulk.pinned_to(db, project_id, reverted_from.id)
+    return InstructionsRevertOut(
+        **_out(reverted.view).model_dump(),
+        reverted_from=VersionNumberOut(id=reverted_from.id, number=reverted_from.number),
+        bulk_revert_candidates=[
+            BulkRevertCandidateOut(
+                id=agent.id,
+                name=agent.name,
+                live_version=VersionNumberOut(id=live.id, number=live.number),
+            )
+            for agent, live in candidates
+        ],
+    )
+
+
+class InstructionsVersionNumberOut(BaseModel):
+    id: uuid.UUID
+    number: int
+
+
+class InstructionsDiffSideOut(BaseModel):
+    kind: Literal["draft", "version"]
+    # Null for the Draft.
+    version: InstructionsVersionNumberOut | None
+
+
+class InstructionsDiffOut(BaseModel):
+    from_: InstructionsDiffSideOut = Field(alias="from")
+    to: InstructionsDiffSideOut
+    # The line diff of the two texts.
+    lines: list[DiffLineOut]
+
+
+def _side_out(side: instructions.DiffSide) -> InstructionsDiffSideOut:
+    if side.version is None:
+        return InstructionsDiffSideOut(kind="draft", version=None)
+    version = InstructionsVersionNumberOut(id=side.version.id, number=side.version.number)
+    return InstructionsDiffSideOut(kind="version", version=version)
+
+
+SIDE_HELP = "The Draft (draft), the Current Version (current), or a Version's ID."
+
+
+@router.get(
+    f"{_PATH}/diff",
+    operation_id="diffProjectInstructions",
+    responses=_errors((404, NOT_FOUND), (409, NO_CURRENT_VERSION)),
+)
+async def diff_instructions(
+    project_id: uuid.UUID,
+    source: Annotated[instructions.Side, Query(alias="from", description=SIDE_HELP)],
+    target: Annotated[instructions.Side, Query(alias="to", description=SIDE_HELP)],
+    scope: Scope,
+    db: Db,
+) -> InstructionsDiffOut:
+    """The line diff of the Project Instructions from one side to the other.
+    ``from=current&to=draft`` shows what publishing the Draft would change."""
+    try:
+        found = await instructions.diff(db, scope, project_id, source, target)
+    except (service.ProjectNotFoundError, instructions.InstructionsVersionNotFoundError):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except instructions.NoCurrentVersionError:
+        raise HTTPException(status.HTTP_409_CONFLICT, NO_CURRENT_VERSION) from None
+    return InstructionsDiffOut.model_validate(
+        {
+            "from": _side_out(found.source),
+            "to": _side_out(found.target),
+            "lines": lines_out(found.lines),
+        }
+    )

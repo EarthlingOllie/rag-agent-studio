@@ -1,6 +1,7 @@
 # Demo environment (ticket 01-02 stub; ticket 09-02 adds the AWS provider and the real network module;
 # ticket 09-03 adds the real database, cache, storage and kms modules; ticket 09-04 adds ecr and the real ecs module;
-# ticket 09-05 adds the real cdn module). State is in S3 (backend.tf).
+# ticket 09-05 adds the real cdn module; ticket 09-06 adds the migration task and the deploy output that
+# scripts/deploy/deploy.sh reads). State is in S3 (backend.tf).
 # The GitHub OIDC deploy role is not here: infra/bootstrap creates it once, before this environment can be planned.
 locals {
   name_prefix = "studio-${var.environment}"
@@ -23,15 +24,18 @@ module "network" {
   availability_zones = ["${var.aws_region}a", "${var.aws_region}b"]
 }
 
-# Only the API and worker connect to Postgres; Beat only needs Redis.
+# Only the API, the worker and the one-off migration task connect to Postgres; Beat only needs Redis.
 module "database" {
-  source                    = "../../modules/database"
-  name_prefix               = local.name_prefix
-  tags                      = local.tags
-  vpc_id                    = module.network.vpc_id
-  subnet_ids                = module.network.private_subnet_ids
-  kms_key_arn               = module.kms.data_key_arn
-  client_security_group_ids = { for k in ["api", "worker"] : k => module.ecs.service_security_group_ids[k] }
+  source      = "../../modules/database"
+  name_prefix = local.name_prefix
+  tags        = local.tags
+  vpc_id      = module.network.vpc_id
+  subnet_ids  = module.network.private_subnet_ids
+  kms_key_arn = module.kms.data_key_arn
+  client_security_group_ids = merge(
+    { for k in ["api", "worker"] : k => module.ecs.service_security_group_ids[k] },
+    { migrate = module.ecs.migration_security_group_id },
+  )
 }
 
 module "cache" {
@@ -77,6 +81,7 @@ module "ecs" {
   name_prefix          = local.name_prefix
   tags                 = local.tags
   vpc_id               = module.network.vpc_id
+  vpc_cidr             = module.network.vpc_cidr
   public_subnet_ids    = module.network.public_subnet_ids
   private_subnet_ids   = module.network.private_subnet_ids
   image_repository_url = module.ecr.repository_urls["rag-agent-studio/api"]
@@ -85,6 +90,9 @@ module "ecs" {
   documents_bucket_arn = module.storage.documents_bucket_arn
   credentials_key_arn  = module.kms.credentials_key_arn
   data_key_arn         = module.kms.data_key_arn
+  studio_url           = module.cdn.url
+  # The demo pages under /demo/ (ticket 10-03) ask the API which seeded Agents to embed.
+  demo_pages = true
 
   database = {
     address             = module.database.address

@@ -12,12 +12,15 @@ from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
 from app.agents import api as agents_api
+from app.agents import bulk_api
 from app.agents import versions_api as agent_versions_api
 from app.agents.validation import agent_references
+from app.analytics import api as analytics_api
 from app.api import health
 from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
 from app.auth import api as auth_api
+from app.conversations import api as conversations_api
 from app.core.clock import SystemClock
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
@@ -31,13 +34,19 @@ from app.default_model import api as default_model_api
 from app.default_model.service import default_model_references
 from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
+from app.embed import api as embed_api
+from app.embed import branding_api
+from app.embed.tokens import TokenSigner
+from app.feedback import api as feedback_api
 from app.gateway.adapters import build_model_gateway
+from app.guardrails.pipeline import build_pipeline
 from app.mail.factory import build_mailer
 from app.playground import api as playground_api
 from app.pricing import api as pricing_api
 from app.projects import api as projects_api
 from app.projects import embedding_api, instructions_api
 from app.projects.embedding import project_embedding_references
+from app.seed import demo_pages
 from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
@@ -71,7 +80,17 @@ ROUTERS: Sequence[APIRouter] = (
     tags_api.router,
     agents_api.router,
     agent_versions_api.router,
+    bulk_api.router,
     playground_api.router,
+    conversations_api.router,
+    analytics_api.router,
+    embed_api.settings_router,
+    branding_api.router,
+    embed_api.widget_router,
+    feedback_api.widget_router,
+    feedback_api.rating_router,
+    embed_api.shell_router,
+    demo_pages.router,
 )
 
 
@@ -86,6 +105,7 @@ def _lifespan(
         app.state.settings = settings
         app.state.clock = SystemClock()
         app.state.envelope = build_envelope(settings)
+        app.state.widget_tokens = TokenSigner(settings.local_key_wrapper_key.get_secret_value())
         configure_celery(settings)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)
@@ -108,6 +128,8 @@ def _lifespan(
         # this process and use these same adapters.
         app.state.ingestion = build_ports(settings, app.state.envelope)
         install_ports(app.state.ingestion)
+        # The Guardrails around the Agent runtime: the input classifier checks every message.
+        app.state.guardrails = build_pipeline(settings)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})

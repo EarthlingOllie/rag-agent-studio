@@ -6,13 +6,13 @@ COMPOSE ?= docker compose
 API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
-	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval \
+	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
 	seed seed-reset
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
-dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio)
+dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio, widget, demo host page)
 	$(COMPOSE) up --build
 
 down: ## Stop the stack
@@ -27,14 +27,19 @@ install: ## Install backend and frontend dependencies
 
 test: test-backend test-frontend ## Run every test suite with the 100% coverage gate
 
-test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`)
-	cd backend && uv run pytest
+# TEST_WORKERS=N runs the backend suite on N pytest-xdist workers (`auto`: one per CPU), each
+# with its own Postgres database (studio_test_gwN, created on first use) and Redis database.
+# Unset runs serially against studio_test and Redis database 15, as before.
+TEST_WORKERS ?=
+
+test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`); TEST_WORKERS=N runs them in parallel
+	cd backend && uv run pytest $(if $(TEST_WORKERS),-n $(TEST_WORKERS))
 
 test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
 	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
 
-test-frontend: ## Studio and API client tests
-	cd frontend && pnpm test
+test-frontend: ## Studio, widget and API client tests, then the embed loader's size budget
+	cd frontend && pnpm test && pnpm check-embed-size
 
 lint: lint-backend lint-frontend ## Lint and type-check backend and frontend
 
@@ -74,12 +79,18 @@ seed-reset: ## Erase the demo Organisation (only that one) and seed it again
 
 TF_ROOTS := $(sort $(dir $(wildcard infra/bootstrap/main.tf infra/modules/*/main.tf infra/envs/*/main.tf)))
 IMAGE_TAG ?= local
+# Empty builds for this machine's architecture. The deploy workflow sets linux/arm64: the ECS tasks run on ARM64.
+IMAGE_PLATFORM ?=
 TRIVY_SEVERITY ?= HIGH,CRITICAL
 AUDIT_REQUIREMENTS ?= $(or $(RUNNER_TEMP),/tmp)/requirements-audit.txt
 
-infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on the bootstrap, every module and environment
+infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on the bootstrap, every module and environment, plus the deploy scripts' tests
 	terraform fmt -check -recursive -diff infra
 	infra/tests/backend.test.sh
+	infra/tests/compose.test.sh
+	scripts/deploy/tests/smoke.test.sh
+	scripts/deploy/tests/deploy.test.sh
+	scripts/deploy/tests/destroy.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
 		$(wildcard infra/modules/*/functions/*.test.mjs)
 	scripts/ci/tests/plan-gate.test.sh
@@ -92,9 +103,9 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	cd infra && tflint --init && tflint --recursive --config "$$PWD/.tflint.hcl"
 	cd infra && checkov --config-file .checkov.yaml
 
-images: ## Build the API (also used by the worker and Beat) and Studio images
-	docker build -t rag-agent-studio/api:$(IMAGE_TAG) backend
-	docker build -t rag-agent-studio/studio:$(IMAGE_TAG) frontend
+images: ## Build the API (also used by the worker and Beat) and Studio images; IMAGE_PLATFORM=linux/arm64 builds for Fargate
+	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) -t rag-agent-studio/api:$(IMAGE_TAG) backend
+	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) -t rag-agent-studio/studio:$(IMAGE_TAG) frontend
 
 security: secret-scan audit image-scan ## Every security gate: gitleaks, pip-audit, pnpm audit and Trivy
 
@@ -118,5 +129,15 @@ e2e: ## Start the stack, wait for health checks, seed the demo and run the Playw
 	$(MAKE) seed
 	cd frontend && pnpm e2e
 
-eval: ## Guardrail attack evaluation suite (placeholder until ticket 08-07)
-	@echo "Guardrail evaluation: no attack prompts yet. The suite arrives with ticket 08-07; passing as a placeholder."
+# The attack evaluation suite (backend/evals/attack_suite.json) through the real Guardrail
+# pipeline with the local classifier (fetched from Hugging Face on first use). Reports go to
+# EVAL_OUT as attack-eval-report.json and attack-eval-report.md.
+EVAL_OUT ?= $(CURDIR)/backend/eval-report
+EVAL_MIN_PASS_RATE ?= 0.85
+
+eval: ## Guardrail attack evaluation suite against the naive mocked model; fails on any unexpected outcome
+	cd backend && uv run python -m app.evals --mode mocked --out "$(EVAL_OUT)"
+
+eval-live: ## The suite against a real model (EVAL_PROVIDER, EVAL_MODEL, EVAL_API_KEY); fails below EVAL_MIN_PASS_RATE
+	cd backend && uv run python -m app.evals --mode live --provider "$(EVAL_PROVIDER)" \
+		--model "$(EVAL_MODEL)" --min-pass-rate "$(EVAL_MIN_PASS_RATE)" --out "$(EVAL_OUT)"

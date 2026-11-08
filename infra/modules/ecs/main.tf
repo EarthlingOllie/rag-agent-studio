@@ -135,6 +135,10 @@ resource "aws_ecs_cluster" "this" {
 locals {
   documents_bucket = split(":::", var.documents_bucket_arn)[1]
 
+  # Names match backend/app/core/settings.py. The settings build DATABASE_URL and REDIS_URL from the parts, adding
+  # the password and AUTH token ECS injects from Secrets Manager. Every process loads the same settings, so Beat
+  # and the migration task are given the parts they never connect to as well (but not the credentials).
+  # infra/modules/ecs/tests/task-settings.json records the result; the backend test suite loads it into Settings.
   common_environment = {
     ENVIRONMENT = var.tags["Environment"]
     AWS_REGION  = local.region
@@ -144,39 +148,58 @@ locals {
     DATABASE_PORT = tostring(var.database.port)
     DATABASE_NAME = var.database.name
     DATABASE_USER = var.database.username
+    DATABASE_TLS  = "true" # The parameter group sets rds.force_ssl.
   }
   cache_environment = {
     REDIS_HOST = var.cache.address
     REDIS_PORT = tostring(var.cache.port)
     REDIS_TLS  = "true"
   }
+  # What the API and worker need beyond the data stores: Documents in S3, credential envelopes sealed by KMS, and
+  # the Studio's public address for links in emails.
+  app_environment = {
+    OBJECT_STORE        = "s3"
+    OBJECT_STORE_BUCKET = local.documents_bucket
+    OBJECT_STORE_REGION = local.region
+    KEY_WRAPPER         = "kms"
+    KMS_KEY_ID          = var.credentials_key_arn
+    STUDIO_URL          = var.studio_url
+  }
+  # The proxies whose X-Forwarded-For entries the API believes when finding a Visitor's IP for per-IP rate limits
+  # (spec 06; backend/app/core/client_ip.py): the ALB, which connects from inside the VPC, and CloudFront's
+  # origin-facing servers, the only addresses the ALB admits. CloudFront appends the viewer's address and the ALB
+  # appends CloudFront's, so the first untrusted address from the right is the Visitor's.
+  trusted_proxies = join(",", concat([var.vpc_cidr], sort([for e in data.aws_ec2_managed_prefix_list.cloudfront.entries : e.cidr])))
+
+  base_environment = merge(local.common_environment, local.database_environment, local.cache_environment)
   environment = {
-    api = merge(local.common_environment, local.database_environment, local.cache_environment, {
-      DOCUMENTS_BUCKET        = local.documents_bucket
-      CREDENTIALS_KMS_KEY_ARN = var.credentials_key_arn
-    })
-    worker = merge(local.common_environment, local.database_environment, local.cache_environment, {
-      DOCUMENTS_BUCKET        = local.documents_bucket
-      CREDENTIALS_KMS_KEY_ARN = var.credentials_key_arn
-    })
-    beat = merge(local.common_environment, local.cache_environment)
+    # The API's task role is the principal Organisations trust in their Bedrock roles (spec 09 story 13).
+    # The demo pages' routes (ticket 10-03) are the API's alone, and only in a demo environment.
+    api = merge(local.base_environment, local.app_environment, {
+      BEDROCK_PLATFORM_PRINCIPAL = aws_iam_role.task["api"].arn
+      TRUSTED_PROXIES            = local.trusted_proxies
+    }, var.demo_pages ? { DEMO_PAGES = "true" } : {})
+    worker = merge(local.base_environment, local.app_environment)
+    beat   = local.base_environment
   }
 
   # Each service gets only the secrets it uses. ECS reads them at task start with the execution role.
-  logfire_secret = var.logfire_token_secret_arn == null ? {} : { LOGFIRE_TOKEN = var.logfire_token_secret_arn }
+  # LOCAL_KEY_WRAPPER_KEY signs widget tokens; every process's settings require it.
+  logfire_secret     = var.logfire_token_secret_arn == null ? {} : { LOGFIRE_TOKEN = var.logfire_token_secret_arn }
+  key_wrapper_secret = { LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn }
   secrets = {
     api = merge({
       DATABASE_PASSWORD = var.database.password_secret_arn
       REDIS_AUTH_TOKEN  = var.cache.auth_token_secret_arn
       SESSION_SECRET    = aws_secretsmanager_secret.platform["session"].arn
-    }, local.logfire_secret)
+    }, local.key_wrapper_secret, local.logfire_secret)
     worker = merge({
       DATABASE_PASSWORD = var.database.password_secret_arn
       REDIS_AUTH_TOKEN  = var.cache.auth_token_secret_arn
-    }, local.logfire_secret)
+    }, local.key_wrapper_secret, local.logfire_secret)
     beat = merge({
       REDIS_AUTH_TOKEN = var.cache.auth_token_secret_arn
-    }, local.logfire_secret)
+    }, local.key_wrapper_secret, local.logfire_secret)
   }
 }
 
@@ -468,14 +491,22 @@ resource "aws_vpc_security_group_ingress_rule" "api_from_alb" {
   tags = merge(local.tags, { Name = "${local.name}-api-from-alb" })
 }
 
-# --- Platform secrets created here: the origin header secret and the session-signing secret ------------------------
+# --- Platform secrets created here: the origin header secret, the session-signing secret and the local key ---------
+
+locals {
+  platform_secret_descriptions = {
+    origin-header = "Secret origin header value CloudFront sends to the ALB (ADR-0011)."
+    session       = "Session-signing secret of ${local.name}, injected into the API."
+    key-wrapper   = "LOCAL_KEY_WRAPPER_KEY of ${local.name}: signs widget tokens. Injected into every task."
+  }
+}
 
 resource "aws_secretsmanager_secret" "platform" {
   #checkov:skip=CKV2_AWS_57:Rotation needs a rotation Lambda; the version inputs regenerate each secret instead (short-lived demo, spec 09).
-  for_each = toset(["origin-header", "session"])
+  for_each = local.platform_secret_descriptions
 
   name                    = "${local.name}/${each.key}"
-  description             = each.key == "session" ? "Session-signing secret of ${local.name}, injected into the API." : "Secret origin header value CloudFront sends to the ALB (ADR-0011)."
+  description             = each.value
   kms_key_id              = var.data_key_arn
   recovery_window_in_days = 0
 
@@ -493,6 +524,16 @@ resource "aws_secretsmanager_secret_version" "session" {
   secret_id                = aws_secretsmanager_secret.platform["session"].id
   secret_string_wo         = replace("${uuid()}${uuid()}", "-", "")
   secret_string_wo_version = var.session_secret_version
+}
+
+# LOCAL_KEY_WRAPPER_KEY must be 32 bytes, base64-encoded. Hex digits are base64 characters, so 43 of them and one
+# padding character decode to 32 bytes; the 43 come from two version-4 UUIDs (crypto/rand), about 166 random bits.
+# Written only through a write-only argument, like the session secret. Bump key_wrapper_secret_version for a new one;
+# widget tokens signed with the old key stop working.
+resource "aws_secretsmanager_secret_version" "key_wrapper" {
+  secret_id                = aws_secretsmanager_secret.platform["key-wrapper"].id
+  secret_string_wo         = "${substr(replace("${uuid()}${uuid()}", "-", ""), 0, 43)}="
+  secret_string_wo_version = var.key_wrapper_secret_version
 }
 
 resource "aws_ecs_service" "this" {
@@ -533,4 +574,11 @@ resource "aws_ecs_service" "this" {
   }
 
   tags = merge(local.tags, { Name = "${local.name}-${each.key}" })
+
+  # An apply at a new image tag registers new task definitions but does not roll the services: the deploy
+  # workflow first runs the migration task, then points each service at its new task definition and waits for
+  # it to stabilise (spec 09 story 26). Terraform still sets the task definition when it creates a service.
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }

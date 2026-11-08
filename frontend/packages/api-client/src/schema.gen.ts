@@ -860,8 +860,9 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Renames the Project, edits its description or turns OCR on or off. An archived Project
-         *     is refused.
+         * @description Renames the Project, edits its description, turns OCR on or off or sets whether Chunks
+         *     the ingestion Guardrail scan flags are marked or excluded from retrieval. An archived
+         *     Project is refused.
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -884,6 +885,51 @@ export interface paths {
          * @description Creates an Agent with a default Draft; records ``agent.created``.
          */
         post: operations["createAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Publish Agents
+         * @description Publishes a new Version of each Agent from its Live configuration (never its Draft)
+         *     pinning the chosen Instructions Version, and makes it Live. Each Agent is processed in its
+         *     own transaction; never-published Agents and Agents already on that Version are skipped.
+         *     Records ``agent.bulk_published`` per Agent and ``project.agents_bulk_published``.
+         */
+        post: operations["bulkPublishAgents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Revert Agents
+         * @description Moves each Agent's Live Version back one step in its Live History. Each Agent is
+         *     processed in its own transaction; Agents with nothing to revert to are skipped. Records
+         *     ``agent.bulk_reverted`` per Agent and ``project.agents_bulk_reverted``.
+         */
+        post: operations["bulkRevertAgents"];
         delete?: never;
         options?: never;
         head?: never;
@@ -937,6 +983,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diff Agent
+         * @description What changes from one side to the other: a structural diff of every AgentConfig setting,
+         *     with a line diff for markdown, and between two Versions the change of pinned Project
+         *     Instructions. ``from=live&to=draft`` shows the Draft's unpublished changes.
+         */
+        get: operations["diffAgent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft": {
         parameters: {
             query?: never;
@@ -950,10 +1018,55 @@ export interface paths {
          * @description Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each
          *     credential must offer the chosen model for its setting's capability and each Tag must be
          *     the Project's; every problem is reported in one 422, located like a validation error. An
-         *     archived Agent's Draft can't be changed.
+         *     archived Agent's Draft can't be changed. With ``base_revision``, a Draft someone has changed
+         *     since is refused with 409 and the latest Draft.
          */
         put: operations["saveAgentDraft"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Agent Draft
+         * @description Discards the Draft's unpublished changes: the Live Version's configuration goes back in
+         *     the Draft. Refused with 409 while the Agent has never been published. Records
+         *     ``agent.draft_discarded``.
+         */
+        post: operations["discardAgentDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/from-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Agent Draft From Version
+         * @description Starts the Draft from one of the Agent's Versions: its configuration replaces the Draft,
+         *     and nothing is published. Its settings are checked like a save (422), since a credential an
+         *     older Version names may have been deleted. Records ``agent.draft_started_from_version``.
+         */
+        post: operations["startAgentDraftFromVersion"];
         delete?: never;
         options?: never;
         head?: never;
@@ -979,6 +1092,52 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Version Metrics
+         * @description Each chosen Agent Version's KPIs over the UTC days `start` to `end` (both inclusive, at
+         *     most 366 days), including today's so far. Only Visitor Conversations count.
+         */
+        get: operations["getVersionMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/operational-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Operational Settings
+         * @description The Agent's Operational Settings: not part of its Draft or Versions.
+         */
+        get: operations["getOperationalSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Operational Settings
+         * @description Changes the settings given. The next request uses them, without publishing, and the
+         *     change is recorded as an Audit Event with the before and after values.
+         */
+        patch: operations["changeOperationalSettings"];
         trace?: never;
     };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations": {
@@ -1033,8 +1192,9 @@ export interface paths {
         put?: never;
         /**
          * Send Message
-         * @description Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An
-         *     archived Agent answers no more questions; its Conversations can still be read.
+         * @description Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions
+         *     Version; the answer streams back as Server-Sent Events. An archived Agent answers no more
+         *     questions; its Conversations can still be read.
          */
         post: operations["sendPlaygroundMessage"];
         delete?: never;
@@ -1077,6 +1237,147 @@ export interface paths {
          * @description Restores an archived Agent to the Agents list (Owners only). Records ``agent.restored``.
          */
         post: operations["restoreAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revert Agent
+         * @description Moves the Live Version back one step in the Live History, to the Version that was Live
+         *     before the current one was published, restoring its configuration and pinned Instructions.
+         *     Returns that Version. The Draft is unchanged. Records ``agent.reverted`` and a Live History
+         *     entry.
+         */
+        post: operations["revertAgent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/theme-override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Theme Override
+         * @description The Agent's Theme override. Any Member can read it.
+         */
+        get: operations["getThemeOverride"];
+        /**
+         * Set Theme Override Colours
+         * @description Replaces the colour tokens the Agent overrides (an empty map follows the Theme). It
+         *     applies to the widget at once, without publishing.
+         */
+        put: operations["setThemeOverrideColours"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/theme-override/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Avatar
+         * @description The Agent's avatar itself. Any Member can fetch it.
+         */
+        get: operations["getAgentAvatar"];
+        /**
+         * Confirm Avatar Upload
+         * @description Checks the uploaded image and makes it the Agent's avatar, replacing the one it had. It
+         *     applies to the widget at once.
+         */
+        put: operations["confirmAgentAvatarUpload"];
+        post?: never;
+        /**
+         * Remove Avatar
+         * @description Removes the Agent's avatar and deletes its file.
+         */
+        delete: operations["removeAgentAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/theme-override/avatar/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Avatar Upload
+         * @description Checks the image type (PNG, JPEG or WebP) and size, then answers with a presigned URL to
+         *     PUT the Agent's avatar to.
+         */
+        post: operations["startAgentAvatarUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Time Series
+         * @description One metric of the Agent (every Version together) per period of the UTC days `start` to
+         *     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
+         *     Live Version changed and the Project's Document changes during the range. Only Visitor
+         *     Conversations count.
+         */
+        get: operations["getTimeSeries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Token Usage
+         * @description Today's (UTC) Visitor usage against the Agent's Token Budget, for the Studio's meter.
+         */
+        get: operations["getTokenUsage"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1144,6 +1445,67 @@ export interface paths {
          *     ``project.archived``.
          */
         post: operations["archiveProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Conversations
+         * @description The Project's Conversations, Visitors' and the Playground's, newest first.
+         */
+        get: operations["listConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Conversation
+         * @description The Conversation and its Messages, oldest first, with the Agent Version of each
+         *     answer.
+         */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}/messages/{message_id}/trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trace
+         * @description The Trace of one of the Agent's answers in the Conversation.
+         */
+        get: operations["getConversationTrace"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1284,6 +1646,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Clear Chunk Flag
+         * @description Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,
+         *     for a false positive: the Chunk is retrieved again at once, even in a Project that excludes
+         *     flagged Chunks. Records ``chunk.flag_cleared`` with the flag it had.
+         */
+        delete: operations["clearChunkFlag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/download": {
         parameters: {
             query?: never;
@@ -1415,9 +1799,31 @@ export interface paths {
         /**
          * Save Project Instructions
          * @description Replaces the Project Instructions; records ``project.instructions_updated`` when they
-         *     change. An archived Project is refused.
+         *     change. An archived Project is refused. With ``base_revision``, a Draft someone has changed
+         *     since is refused with 409 and the latest Draft.
          */
         put: operations["saveProjectInstructions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diff Instructions
+         * @description The line diff of the Project Instructions from one side to the other.
+         *     ``from=current&to=draft`` shows what publishing the Draft would change.
+         */
+        get: operations["diffProjectInstructions"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1437,9 +1843,31 @@ export interface paths {
         /**
          * Revert Instructions
          * @description Moves the Current Version back to the Version that was Current before it, and returns
-         *     it. The Draft is unchanged. Records ``project.instructions_reverted``.
+         *     it with the Agents still pinned to the reverted Version, so they can be bulk-reverted. The
+         *     Draft is unchanged. Records ``project.instructions_reverted``.
          */
         post: operations["revertProjectInstructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/rollout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Instructions Rollout
+         * @description Which Instructions Version each active Agent's Live Version pins, whether its Draft has
+         *     unpublished changes, and how many Agents are behind the Current Version.
+         */
+        get: operations["getInstructionsRollout"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1720,6 +2148,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/widget/agents/{public_id}/conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Conversation
+         * @description The token's Conversation, for a Visitor who comes back to the page: its Messages in
+         *     order, each answer with its sources and feedback, and its Conversation Rating. Coming back
+         *     counts as activity, so the token's 24-hour window slides on; after 24 hours without
+         *     activity the token is refused.
+         */
+        get: operations["getWidgetConversation"];
+        put?: never;
+        post?: never;
+        /**
+         * End Conversation
+         * @description Ends the token's Conversation: the token is refused from then on. The Visitor's next
+         *     question starts a new Conversation.
+         */
+        delete: operations["endWidgetConversation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/rating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Rate Conversation
+         * @description Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and
+         *     each change are kept in a change log. The rating belongs to the Agent Version of the last
+         *     reply before it. Refused until the Agent has replied.
+         */
+        put: operations["rateConversation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/rating/dismissal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Rating Prompt
+         * @description Saves that the Visitor dismissed the rating prompt, so the widget doesn't show it again
+         *     in this Conversation (it still asks when they end the chat without a rating).
+         */
+        post: operations["dismissRatingPrompt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Conversation
+         * @description Exchanges the shell's bootstrap token for a new Conversation and its Conversation
+         *     token.
+         */
+        post: operations["startWidgetConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Message
+         * @description Asks the Agent's Live Version a question in the token's Conversation. The answer is
+         *     recorded against the Version that was Live when it was generated, and the tokens it used
+         *     count against the Agent's daily Token Budget. Messages over the Agent's rate limits, per
+         *     Conversation and per IP address, or once the day's budget is spent, get its unavailable
+         *     text; the first refusal or reply that finds the budget spent raises the Agent's alert and
+         *     emails its Owners, once per day.
+         */
+        post: operations["sendWidgetMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/messages/{message_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give Feedback
+         * @description Gives a thumbs up or down, with an optional comment, on one of the Agent's replies in the
+         *     token's Conversation; giving it again replaces it. The feedback belongs to the Agent Version
+         *     that gave the reply.
+         */
+        put: operations["giveMessageFeedback"];
+        post?: never;
+        /**
+         * Remove Feedback
+         * @description Removes the Visitor's feedback on one of the Agent's replies in the token's
+         *     Conversation (nothing happens when there is none).
+         */
+        delete: operations["removeMessageFeedback"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1743,21 +2315,35 @@ export interface components {
             guardrails: components["schemas"]["Guardrails-Output"];
             retrieval: components["schemas"]["Retrieval-Output"];
         };
+        /** AgentDiffOut */
+        AgentDiffOut: {
+            /** Changes */
+            changes: components["schemas"]["FieldChangeOut"][];
+            from: components["schemas"]["DiffSideOut"];
+            instructions: components["schemas"]["InstructionsChangeOut"] | null;
+            to: components["schemas"]["DiffSideOut"];
+        };
         /** AgentOut */
         AgentOut: {
             /** Archived At */
             archived_at: string | null;
+            /** Budget Exhausted */
+            budget_exhausted: boolean;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
             draft: components["schemas"]["AgentConfig-Output"];
+            /** Draft Revision */
+            draft_revision: number;
             /**
              * Draft Updated At
              * Format: date-time
              */
             draft_updated_at: string;
+            /** Has Unpublished Changes */
+            has_unpublished_changes: boolean;
             /**
              * Id
              * Format: uuid
@@ -1940,6 +2526,63 @@ export interface components {
              */
             temperature: number;
         };
+        /** BulkOutcomeOut */
+        BulkOutcomeOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            instructions_version: components["schemas"]["VersionNumberOut"] | null;
+            live_version: components["schemas"]["VersionNumberOut"] | null;
+            /** Name */
+            name: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "skipped" | "failed";
+        };
+        /** BulkPublishRequest */
+        BulkPublishRequest: {
+            /** Agent Ids */
+            agent_ids: string[];
+            /**
+             * Instructions Version Id
+             * Format: uuid
+             */
+            instructions_version_id: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** BulkResultOut */
+        BulkResultOut: {
+            /**
+             * Bulk Operation Id
+             * Format: uuid
+             */
+            bulk_operation_id: string;
+            /** Results */
+            results: components["schemas"]["BulkOutcomeOut"][];
+        };
+        /** BulkRevertCandidateOut */
+        BulkRevertCandidateOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            live_version: components["schemas"]["VersionNumberOut"];
+            /** Name */
+            name: string;
+        };
+        /** BulkRevertRequest */
+        BulkRevertRequest: {
+            /** Agent Ids */
+            agent_ids: string[];
+        };
         /** BulkTagRequest */
         BulkTagRequest: {
             /** Add */
@@ -2021,6 +2664,16 @@ export interface components {
             code: string;
         };
         /**
+         * ColourOverride
+         * @description The colour tokens an Agent overrides; the rest follow the Organisation's Theme.
+         */
+        ColourOverride: {
+            /** Colours */
+            colours: {
+                [key: string]: components["schemas"]["OverrideColour"];
+            };
+        };
+        /**
          * ColourToken
          * @description A colour token's light-mode value and its dark-mode value.
          */
@@ -2061,6 +2714,82 @@ export interface components {
              */
             upload_id: string;
         };
+        /** ConversationDetailOut */
+        ConversationDetailOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Agent Name */
+            agent_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Playground */
+            is_playground: boolean;
+            /**
+             * Last Activity At
+             * Format: date-time
+             */
+            last_activity_at: string;
+            /** Messages */
+            messages: components["schemas"]["ConversationMessageOut"][];
+            rating: components["schemas"]["ConversationRatingRead"] | null;
+        };
+        /** ConversationMessageOut */
+        ConversationMessageOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /** Config Source */
+            config_source: string | null;
+            /** Content */
+            content: string;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Fallback */
+            fallback: boolean;
+            feedback: components["schemas"]["MessageFeedbackRead"] | null;
+            /** First Token Ms */
+            first_token_ms: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Role */
+            role: string;
+        };
         /** ConversationOut */
         ConversationOut: {
             /**
@@ -2087,6 +2816,93 @@ export interface components {
             last_activity_at: string;
             /** Messages */
             messages: components["schemas"]["MessageOut"][];
+        };
+        /** ConversationPageOut */
+        ConversationPageOut: {
+            /** Items */
+            items: components["schemas"]["ConversationSummaryOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** ConversationRatingIn */
+        ConversationRatingIn: {
+            /** Score */
+            score: number;
+        };
+        /** ConversationRatingOut */
+        ConversationRatingOut: {
+            /** Prompt Dismissed */
+            prompt_dismissed: boolean;
+            /** Score */
+            score: number;
+        };
+        /** ConversationRatingRead */
+        ConversationRatingRead: {
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /** Changes */
+            changes: components["schemas"]["RatingChangeRead"][];
+            /** Prompt Dismissed At */
+            prompt_dismissed_at: string | null;
+            /** Rated At */
+            rated_at: string | null;
+            /** Score */
+            score: number | null;
+        };
+        /** ConversationSummaryOut */
+        ConversationSummaryOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Agent Name */
+            agent_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Playground */
+            is_playground: boolean;
+            /**
+             * Last Activity At
+             * Format: date-time
+             */
+            last_activity_at: string;
+            /** Message Count */
+            message_count: number;
+            /** Preview */
+            preview: string | null;
+            /** Rating */
+            rating: number | null;
+            /** Thumbs Down */
+            thumbs_down: number;
+            /** Thumbs Up */
+            thumbs_up: number;
+            /** Version Numbers */
+            version_numbers: number[];
+        };
+        /** ConversationTokenOut */
+        ConversationTokenOut: {
+            /** Conversation Token */
+            conversation_token: string;
+        };
+        /** CostOut */
+        CostOut: {
+            /** Per Conversation Usd */
+            per_conversation_usd: string | null;
+            /** Total Usd */
+            total_usd: string;
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
@@ -2278,12 +3094,38 @@ export interface components {
             /** Confirm Name */
             confirm_name: string;
         };
+        /** DiffLineOut */
+        DiffLineOut: {
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "equal" | "delete" | "insert";
+            /** Text */
+            text: string;
+        };
+        /** DiffSideOut */
+        DiffSideOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft" | "version";
+            version: components["schemas"]["VersionNumberOut"] | null;
+        };
         /** DisableRequest */
         DisableRequest: {
             /** Code */
             code: string;
             /** Password */
             password: string;
+        };
+        /** DocumentChangesOut */
+        DocumentChangesOut: {
+            /** Changed */
+            changed: number;
+            /** Deleted */
+            deleted: number;
         };
         /** DocumentDetailOut */
         DocumentDetailOut: {
@@ -2398,6 +3240,12 @@ export interface components {
             /** Tag Ids */
             tag_ids: string[];
         };
+        /** DraftConflictOut */
+        DraftConflictOut: {
+            /** Detail */
+            detail: string;
+            latest?: components["schemas"]["AgentOut"] | null;
+        };
         /**
          * EmbeddingModelChoiceOut
          * @description An Embedding Model the Organisation can choose, and the credential it is called
@@ -2510,6 +3358,39 @@ export interface components {
          * @enum {string}
          */
         FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        /** FallbackOut */
+        FallbackOut: {
+            /** Count */
+            count: number;
+            /** Rate */
+            rate: number | null;
+        };
+        /**
+         * FeedbackFilter
+         * @description Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs
+         *     down, with any feedback, or with none.
+         * @enum {string}
+         */
+        FeedbackFilter: "up" | "down" | "any" | "none";
+        /** FieldChangeOut */
+        FieldChangeOut: {
+            /** Added */
+            added: components["schemas"]["JsonValue"][] | null;
+            after: components["schemas"]["JsonValue"];
+            before: components["schemas"]["JsonValue"];
+            /** Lines */
+            lines: components["schemas"]["DiffLineOut"][] | null;
+            /** Path */
+            path: string;
+            /** Removed */
+            removed: components["schemas"]["JsonValue"][] | null;
+        };
+        /**
+         * FlaggedChunkMode
+         * @description What retrieval does with the Chunks the ingestion Guardrail scan flags.
+         * @enum {string}
+         */
+        FlaggedChunkMode: "mark" | "exclude";
         /**
          * Font
          * @enum {string}
@@ -2546,19 +3427,21 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "replaced" | "flagged";
+            action: "blocked" | "replaced" | "flagged" | "logged" | "allowed";
             /**
              * Layer
-             * @constant
+             * @enum {string}
              */
-            layer: "canary";
+            layer: "input" | "canary";
             /** Reason */
             reason: string;
+            /** Score */
+            score?: number | null;
             /**
              * Verdict
-             * @constant
+             * @enum {string}
              */
-            verdict: "leak";
+            verdict: "injection" | "leak" | "unchecked";
         };
         /**
          * Guardrails
@@ -2625,12 +3508,84 @@ export interface components {
          * @enum {string}
          */
         InputMode: "block" | "warn" | "log";
+        /** InstructionsChangeOut */
+        InstructionsChangeOut: {
+            after: components["schemas"]["VersionNumberOut"] | null;
+            before: components["schemas"]["VersionNumberOut"] | null;
+            /** Lines */
+            lines: components["schemas"]["DiffLineOut"][];
+        };
+        /** InstructionsConflictOut */
+        InstructionsConflictOut: {
+            /** Detail */
+            detail: string;
+            latest?: components["schemas"]["ProjectInstructionsOut"] | null;
+        };
+        /** InstructionsDiffOut */
+        InstructionsDiffOut: {
+            from: components["schemas"]["InstructionsDiffSideOut"];
+            /** Lines */
+            lines: components["schemas"]["DiffLineOut"][];
+            to: components["schemas"]["InstructionsDiffSideOut"];
+        };
+        /** InstructionsDiffSideOut */
+        InstructionsDiffSideOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft" | "version";
+            version: components["schemas"]["InstructionsVersionNumberOut"] | null;
+        };
         /** InstructionsHistoryOut */
         InstructionsHistoryOut: {
             /** Current Version Id */
             current_version_id: string | null;
             /** Versions */
             versions: components["schemas"]["InstructionsVersionOut"][];
+        };
+        /** InstructionsRevertOut */
+        InstructionsRevertOut: {
+            author: components["schemas"]["VersionAuthor"] | null;
+            /** Bulk Revert Candidates */
+            bulk_revert_candidates: components["schemas"]["BulkRevertCandidateOut"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Markdown */
+            markdown: string;
+            /** Note */
+            note: string;
+            /** Number */
+            number: number;
+            /** Previous Version Id */
+            previous_version_id: string | null;
+            reverted_from: components["schemas"]["VersionNumberOut"];
+        };
+        /** InstructionsRolloutOut */
+        InstructionsRolloutOut: {
+            /** Agents */
+            agents: components["schemas"]["RolloutAgentOut"][];
+            /** Behind */
+            behind: number;
+            current_version: components["schemas"]["VersionNumberOut"] | null;
+        };
+        /** InstructionsVersionNumberOut */
+        InstructionsVersionNumberOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
         };
         /** InstructionsVersionOut */
         InstructionsVersionOut: {
@@ -2729,6 +3684,16 @@ export interface components {
             /** Link */
             link: string;
         };
+        JsonValue: unknown;
+        /** LatencyOut */
+        LatencyOut: {
+            /** First Token P95 Ms */
+            first_token_p95_ms: number | null;
+            /** N */
+            n: number;
+            /** Total P95 Ms */
+            total_p95_ms: number | null;
+        };
         /**
          * LauncherPosition
          * @enum {string}
@@ -2754,8 +3719,43 @@ export interface components {
             occurred_at: string;
             to_version: components["schemas"]["VersionNumberOut"];
         };
+        /**
+         * LiveHistoryMarkerOut
+         * @description A change of the Live Version during the range: one Live History entry.
+         */
+        LiveHistoryMarkerOut: {
+            /** Action */
+            action: string;
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            from_version: components["schemas"]["MarkerVersionOut"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Point Start
+             * Format: date
+             */
+            point_start: string;
+            to_version: components["schemas"]["MarkerVersionOut"];
+        };
         /** LiveVersionOut */
         LiveVersionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+        };
+        /** MarkerVersionOut */
+        MarkerVersionOut: {
             /**
              * Id
              * Format: uuid
@@ -2798,6 +3798,43 @@ export interface components {
             name: string;
             role: components["schemas"]["Role"];
         };
+        /** MessageFeedbackIn */
+        MessageFeedbackIn: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+        };
+        /** MessageFeedbackOut */
+        MessageFeedbackOut: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+        };
+        /** MessageFeedbackRead */
+        MessageFeedbackRead: {
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** MessageOut */
         MessageOut: {
             /** Agent Version Id */
@@ -2822,6 +3859,12 @@ export interface components {
             id: string;
             /** Input Tokens */
             input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
             /** Latency Ms */
             latency_ms: number | null;
             /** Model Name */
@@ -2885,6 +3928,35 @@ export interface components {
             override: components["schemas"]["OptionalPricesOut"] | null;
             platform: components["schemas"]["PricesOut"] | null;
         };
+        /**
+         * OperationalSettingsChange
+         * @description The settings to change; one left out stays as it is.
+         */
+        OperationalSettingsChange: {
+            /** Allowed Origins */
+            allowed_origins?: string[] | null;
+            /** Conversation Messages Per Minute */
+            conversation_messages_per_minute?: number | null;
+            /** Daily Token Budget */
+            daily_token_budget?: number | null;
+            /** Ip Messages Per Minute */
+            ip_messages_per_minute?: number | null;
+            /** Unavailable Text */
+            unavailable_text?: string | null;
+        };
+        /** OperationalSettingsOut */
+        OperationalSettingsOut: {
+            /** Allowed Origins */
+            allowed_origins: string[];
+            /** Conversation Messages Per Minute */
+            conversation_messages_per_minute: number;
+            /** Daily Token Budget */
+            daily_token_budget: number;
+            /** Ip Messages Per Minute */
+            ip_messages_per_minute: number;
+            /** Unavailable Text */
+            unavailable_text: string;
+        };
         /** OptionalPricesOut */
         OptionalPricesOut: {
             /** Cached Input */
@@ -2927,6 +3999,22 @@ export interface components {
              */
             require_mfa: boolean;
             role: components["schemas"]["Role"];
+        };
+        /**
+         * OverrideColour
+         * @description A colour token's light-mode and dark-mode value for one Agent.
+         */
+        OverrideColour: {
+            /**
+             * Dark
+             * @example #4f46e5
+             */
+            dark: string;
+            /**
+             * Light
+             * @example #4f46e5
+             */
+            light: string;
         };
         /**
          * OverridePricesRequest
@@ -3026,6 +4114,13 @@ export interface components {
             /** Markdown */
             markdown: string;
         };
+        /** ProjectInstructionsOut */
+        ProjectInstructionsOut: {
+            /** Markdown */
+            markdown: string;
+            /** Revision */
+            revision: number;
+        };
         /** ProjectOut */
         ProjectOut: {
             /** Agent Count */
@@ -3045,6 +4140,7 @@ export interface components {
             embedding_credential_id: string | null;
             /** Embedding Model Id */
             embedding_model_id: string;
+            flagged_chunk_mode: components["schemas"]["FlaggedChunkMode"];
             /**
              * Id
              * Format: uuid
@@ -3081,6 +4177,36 @@ export interface components {
         PublishInstructionsRequest: {
             /** Note */
             note: string;
+        };
+        /** RatingChangeRead */
+        RatingChangeRead: {
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /**
+             * Changed At
+             * Format: date-time
+             */
+            changed_at: string;
+            /** Previous Score */
+            previous_score: number | null;
+            /** Score */
+            score: number;
+        };
+        /**
+         * RatingFilter
+         * @description Which Conversations to keep by their Conversation Rating: one score (1 to 5), rated
+         *     (any score), or not rated.
+         * @enum {string}
+         */
+        RatingFilter: "1" | "2" | "3" | "4" | "5" | "any" | "none";
+        /** RatingOut */
+        RatingOut: {
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** Mean */
+            mean: number | null;
+            /** N */
+            n: number;
         };
         /**
          * ReEmbedOut
@@ -3204,6 +4330,22 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "editor";
+        /** RolloutAgentOut */
+        RolloutAgentOut: {
+            /** Behind */
+            behind: boolean;
+            /** Has Draft Changes */
+            has_draft_changes: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            instructions_version: components["schemas"]["VersionNumberOut"] | null;
+            live_version: components["schemas"]["VersionNumberOut"] | null;
+            /** Name */
+            name: string;
+        };
         /** RotateCredentialRequest */
         RotateCredentialRequest: {
             /**
@@ -3229,6 +4371,8 @@ export interface components {
         SendMessageRequest: {
             /** Content */
             content: string;
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
         };
         /** SessionResponse */
         SessionResponse: {
@@ -3280,6 +4424,19 @@ export interface components {
             organisation_name: string;
             /** Password */
             password: string;
+        };
+        /** StartConversationRequest */
+        StartConversationRequest: {
+            /** Bootstrap Token */
+            bootstrap_token: string;
+        };
+        /** StartDraftRequest */
+        StartDraftRequest: {
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
         };
         /** StartImageUploadRequest */
         StartImageUploadRequest: {
@@ -3439,6 +4596,14 @@ export interface components {
             /** Updated At */
             updated_at: string | null;
         };
+        /** ThemeOverrideOut */
+        ThemeOverrideOut: {
+            avatar: components["schemas"]["ThemeImageOut"] | null;
+            /** Colours */
+            colours: {
+                [key: string]: components["schemas"]["ColourToken"];
+            };
+        };
         /**
          * ThemeSettings
          * @description Everything an Owner sets on the Theme.
@@ -3470,6 +4635,104 @@ export interface components {
              */
             retry_after_seconds: number;
         };
+        /** ThumbsUpOut */
+        ThumbsUpOut: {
+            /** Down */
+            down: number;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** N */
+            n: number;
+            /** Rate */
+            rate: number | null;
+            /** Up */
+            up: number;
+        };
+        /**
+         * TimeSeriesGranularity
+         * @enum {string}
+         */
+        TimeSeriesGranularity: "day" | "week" | "month";
+        /**
+         * TimeSeriesMetric
+         * @description What a time series measures, over each of its periods.
+         * @enum {string}
+         */
+        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms";
+        /** TimeSeriesOut */
+        TimeSeriesOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            document_changes: components["schemas"]["DocumentChangesOut"];
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            granularity: components["schemas"]["TimeSeriesGranularity"];
+            /** Markers */
+            markers: components["schemas"]["LiveHistoryMarkerOut"][];
+            metric: components["schemas"]["TimeSeriesMetric"];
+            /** Points */
+            points: components["schemas"]["TimeSeriesPointOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+        };
+        /** TimeSeriesPointOut */
+        TimeSeriesPointOut: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** N */
+            n: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Value */
+            value: number | null;
+        };
+        /** TokenUsageOut */
+        TokenUsageOut: {
+            /** Daily Token Budget */
+            daily_token_budget: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Exhausted */
+            exhausted: boolean;
+            /**
+             * Resets At
+             * Format: date-time
+             */
+            resets_at: string;
+            /** Tokens Used */
+            tokens_used: number;
+        };
+        /** TokensOut */
+        TokensOut: {
+            /** Mean */
+            mean: number | null;
+            /** N */
+            n: number;
+            /** P95 */
+            p95: number | null;
+        };
         /**
          * TraceOut
          * @description Why an answer came out as it did: the model, its usage, cost and latency, and every
@@ -3478,6 +4741,8 @@ export interface components {
         TraceOut: {
             /** Agent Version Id */
             agent_version_id: string | null;
+            /** Agent Version Number */
+            agent_version_number: number | null;
             /** Chunks */
             chunks: components["schemas"]["TracedChunkOut"][];
             /** Config Source */
@@ -3492,6 +4757,12 @@ export interface components {
             guardrail_outcomes: components["schemas"]["GuardrailOutcomeOut"][];
             /** Input Tokens */
             input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
             /** Latency Ms */
             latency_ms: number | null;
             /**
@@ -3523,7 +4794,7 @@ export interface components {
             /** Document Name */
             document_name: string | null;
             /** Excluded Reason */
-            excluded_reason: ("below_min_score" | "outside_top_k" | "outside_tags") | null;
+            excluded_reason: ("below_min_score" | "outside_top_k" | "outside_tags" | "guardrail_flagged") | null;
             /** Rank */
             rank: number | null;
             /** Relevance */
@@ -3569,6 +4840,7 @@ export interface components {
         UpdateProjectRequest: {
             /** Description */
             description?: string | null;
+            flagged_chunk_mode?: components["schemas"]["FlaggedChunkMode"] | null;
             /** Name */
             name?: string | null;
             /** Ocr Enabled */
@@ -3617,6 +4889,50 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** VersionKpisOut */
+        VersionKpisOut: {
+            /** Conversations */
+            conversations: number;
+            cost: components["schemas"]["CostOut"];
+            fallback: components["schemas"]["FallbackOut"];
+            /** Is Live */
+            is_live: boolean;
+            latency: components["schemas"]["LatencyOut"];
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** Messages */
+            messages: number;
+            /** Number */
+            number: number;
+            rating: components["schemas"]["RatingOut"];
+            thumbs_up: components["schemas"]["ThumbsUpOut"];
+            tokens: components["schemas"]["TokensOut"];
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
+        /** VersionMetricsOut */
+        VersionMetricsOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Versions */
+            versions: components["schemas"]["VersionKpisOut"][];
+        };
         /** VersionNumberOut */
         VersionNumberOut: {
             /**
@@ -3626,6 +4942,59 @@ export interface components {
             id: string;
             /** Number */
             number: number;
+        };
+        /** WidgetCitationOut */
+        WidgetCitationOut: {
+            /** Document Name */
+            document_name: string | null;
+            /** Label */
+            label: string;
+        };
+        /** WidgetConversationOut */
+        WidgetConversationOut: {
+            /** Messages */
+            messages: components["schemas"]["WidgetMessageOut"][];
+            rating: components["schemas"]["WidgetRatingOut"];
+        };
+        /** WidgetFeedbackOut */
+        WidgetFeedbackOut: {
+            /** Comment */
+            comment: string | null;
+            /**
+             * Rating
+             * @enum {string}
+             */
+            rating: "up" | "down";
+        };
+        /** WidgetMessageOut */
+        WidgetMessageOut: {
+            /** Citations */
+            citations: components["schemas"]["WidgetCitationOut"][];
+            /** Content */
+            content: string;
+            feedback: components["schemas"]["WidgetFeedbackOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+        };
+        /** WidgetMessageRequest */
+        WidgetMessageRequest: {
+            /** Content */
+            content: string;
+        };
+        /** WidgetRatingOut */
+        WidgetRatingOut: {
+            /** Prompt Dismissed */
+            prompt_dismissed: boolean;
+            /** Score */
+            score: number | null;
         };
         /** WorkerHealthResponse */
         WorkerHealthResponse: {
@@ -6199,6 +7568,114 @@ export interface operations {
             };
         };
     };
+    bulkPublishAgents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkPublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkResultOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description That Instructions Version isn't one of this Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulkRevertAgents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRevertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkResultOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getAgent: {
         parameters: {
             query?: never;
@@ -6363,9 +7840,68 @@ export interface operations {
             };
         };
     };
+    diffAgent: {
+        parameters: {
+            query: {
+                /** @description The Draft (draft), the Live Version (live), or a Version's ID. */
+                from: ("draft" | "live") | string;
+                /** @description The Draft (draft), the Live Version (live), or a Version's ID. */
+                to: ("draft" | "live") | string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDiffOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Agent has never been published, so it has no Live Version. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     saveAgentDraft: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced. */
+                base_revision?: number | null;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -6398,13 +7934,125 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            /** @description Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["DraftConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discardAgentDraft: {
+        parameters: {
+            query?: {
+                /** @description The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced. */
+                base_revision?: number | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startAgentDraftFromVersion: {
+        parameters: {
+            query?: {
+                /** @description The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced. */
+                base_revision?: number | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftConflictOut"];
                 };
             };
             /** @description Validation Error */
@@ -6438,6 +8086,143 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LiveHistoryEntryOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getVersionMetrics: {
+        parameters: {
+            query?: {
+                /** @description The Agent Versions to show (repeat it for several); every one if left out */
+                version?: string[] | null;
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionMetricsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getOperationalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalSettingsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    changeOperationalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperationalSettingsChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationalSettingsOut"];
                 };
             };
             /** @description Not found */
@@ -6572,7 +8357,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
+            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6599,14 +8384,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description The question is empty or too long, or the Instructions Version isn't one of the Project's. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6696,6 +8479,479 @@ export interface operations {
             };
             /** @description This Agent isn't archived. Or: This Project is archived. An Owner can restore it. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revertAgent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentVersionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There's no earlier Live Version to revert to. Or: The Version that was Live before uses a Provider Credential or model that is no longer available, so it can't be made Live again. Publish a fixed Version instead. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getThemeOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOverrideOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setThemeOverrideColours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ColourOverride"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOverrideOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getAgentAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The image. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                    "image/png": unknown;
+                    "image/webp": unknown;
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirmAgentAvatarUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmImageUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOverrideOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The image hasn't reached storage yet. Upload it, then save. / This upload wasn't found or has expired. Start the upload again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The stored file isn't an image of the declared type, or is too large. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeAgentAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeOverrideOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startAgentAvatarUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartImageUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartImageUploadResponse"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The image is larger than the Theme image limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Upload a PNG, JPEG or WebP image. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getTimeSeries: {
+        parameters: {
+            query: {
+                /** @description What to measure */
+                metric: components["schemas"]["TimeSeriesMetric"];
+                /** @description One point per day, ISO week or month */
+                granularity?: components["schemas"]["TimeSeriesGranularity"];
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeSeriesOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getTokenUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenUsageOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6886,6 +9142,149 @@ export interface operations {
             };
             /** @description This Project is archived. An Owner can restore it. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listConversations: {
+        parameters: {
+            query?: {
+                /** @description Only this Agent's */
+                agent_id?: string | null;
+                /** @description Only those with a reply from this Agent Version */
+                version_id?: string | null;
+                /** @description Only those started at or after this time */
+                start?: string | null;
+                /** @description Only those started before this time */
+                end?: string | null;
+                /** @description true: only Playground Conversations; false: only Visitors' */
+                playground?: boolean | null;
+                /** @description Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`) */
+                feedback?: components["schemas"]["FeedbackFilter"] | null;
+                /** @description Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`) */
+                rating?: components["schemas"]["RatingFilter"] | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationPageOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetailOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getConversationTrace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                conversation_id: string;
+                message_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7298,6 +9697,56 @@ export interface operations {
             };
         };
     };
+    clearChunkFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                chunk_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or the Chunk isn't flagged: This Chunk isn't flagged. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     downloadDocument: {
         parameters: {
             query?: never;
@@ -7621,7 +10070,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectInstructions"];
+                    "application/json": components["schemas"]["ProjectInstructionsOut"];
                 };
             };
             /** @description Not found */
@@ -7646,7 +10095,10 @@ export interface operations {
     };
     saveProjectInstructions: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The Draft revision the save was made on. When the Draft has moved on since, the save is refused with 409 and the latest Draft. Left out, it is replaced. */
+                base_revision?: number | null;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -7666,7 +10118,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProjectInstructions"];
+                    "application/json": components["schemas"]["ProjectInstructionsOut"];
                 };
             };
             /** @description Not found */
@@ -7678,7 +10130,62 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. */
+            /** @description Someone else saved these Instructions after you opened them. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    diffProjectInstructions: {
+        parameters: {
+            query: {
+                /** @description The Draft (draft), the Current Version (current), or a Version's ID. */
+                from: ("draft" | "current") | string;
+                /** @description The Draft (draft), the Current Version (current), or a Version's ID. */
+                to: ("draft" | "current") | string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsDiffOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Instructions have never been published, so there's no Current Version. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7716,7 +10223,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InstructionsVersionOut"];
+                    "application/json": components["schemas"]["InstructionsRevertOut"];
                 };
             };
             /** @description Not found */
@@ -7730,6 +10237,47 @@ export interface operations {
             };
             /** @description This Project is archived. An Owner can restore it. Or: There's no earlier Version to revert to. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getInstructionsRollout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstructionsRolloutOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8652,6 +11200,422 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FontOut"][];
+                };
+            };
+        };
+    };
+    getWidgetConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WidgetConversationOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    endWidgetConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rateConversation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationRatingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRatingOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is nothing to rate yet. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismissRatingPrompt: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startWidgetConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartConversationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationTokenOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sendWidgetMessage: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WidgetMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The Agent's unavailable text: it has no model to answer with. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    giveMessageFeedback: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessageFeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageFeedbackOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is no such reply in this chat. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    removeMessageFeedback: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+                message_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description There is no such reply in this chat. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

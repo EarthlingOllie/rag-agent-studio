@@ -1,0 +1,8 @@
+commit b9e473e
+ Test Files  57 passed (57)
+      Tests  771 passed (771)
+Statements   : 100% ( 3734/3734 )
+Branches     : 100% ( 2485/2485 )
+Functions    : 100% ( 1346/1346 )
+Lines        : 100% ( 3304/3304 )
+make exit 0

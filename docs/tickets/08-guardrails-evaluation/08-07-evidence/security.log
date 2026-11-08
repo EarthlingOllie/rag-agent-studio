@@ -1,0 +1,17 @@
+$ gitleaks git --log-opts=origin/candidate..HEAD . (in the ticket worktree) @ a1b2548
+2:47AM INF 2 commits scanned.
+2:47AM INF scanned ~98293 bytes (98.29 KB) in 261ms
+2:47AM INF no leaks found
+exit 0
+$ gitleaks dir backend/app/evals
+2:47AM INF scanned ~84526 bytes (84.53 KB) in 19.2ms
+2:47AM INF no leaks found
+exit 0
+$ gitleaks dir backend/evals
+2:47AM INF scanned ~29499 bytes (29.50 KB) in 8.69ms
+2:47AM INF no leaks found
+exit 0
+$ gitleaks dir backend/tests/fixtures/evals
+2:47AM INF scanned ~6192 bytes (6.19 KB) in 9.81ms
+2:47AM INF no leaks found
+exit 0

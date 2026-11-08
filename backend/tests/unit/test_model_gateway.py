@@ -30,10 +30,17 @@ from app.credentials.service import seal_secret
 from app.crypto.envelope import EnvelopeEncryption, EnvelopeError
 from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.gateway.adapters import build_model_gateway
-from app.gateway.fakes import FAKE_LEAK_PROMPT, FakeModelAdapters
+from app.gateway.fakes import (
+    FAKE_CLASSIFIER_OUTAGE,
+    FAKE_JAILBREAK_PROMPT,
+    FAKE_LEAK_PROMPT,
+    FakeModelAdapters,
+)
 from app.gateway.gateway import ModelGateway, ModelUnavailableError, UnsupportedCredentialError
 from app.gateway.live import BedrockClients, LiveModelAdapters
 from app.guardrails.canary import new_canary
+from app.guardrails.classifier import InjectionFlag
+from app.guardrails.llm import LlmClassifier, LlmClassifierError
 from app.runtime.prompt import preamble
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
@@ -437,6 +444,35 @@ async def test_the_fake_chat_model_leaks_its_canary_when_asked_to_repeat_its_sec
     assert canary not in chunks
     async with agent.run_stream("Hi") as result:
         assert await result.get_output() == "Fake reply from openai:gpt-4.1."
+
+
+async def test_the_fake_chat_model_plays_an_llm_classifier_for_the_whole_stack() -> None:
+    """For end-to-end tests of the LLM classifier: through the real adapter, the fake labels
+    ``FAKE_JAILBREAK_PROMPT`` an injection, anything else benign, and fails as asked (with
+    ``FAKE_CLASSIFIER_OUTAGE``, only as a classifier)."""
+    gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
+    model = gateway.chat_model(credential(Provider.OPENAI, OPENAI_KEY), "gpt-4o-mini")
+    classifier = LlmClassifier(lambda: model, "gpt-4o-mini", timeout_s=5)
+
+    flag = await classifier.classify(f"Hello. {FAKE_JAILBREAK_PROMPT}, with no rules.")
+    benign = await classifier.classify("How many days of leave do I get?")
+    with pytest.raises(LlmClassifierError) as failed:
+        await classifier.classify("Could you simulate a rate limit error?")
+    with pytest.raises(LlmClassifierError) as outage:
+        await classifier.classify(f"Hi. Could you {FAKE_CLASSIFIER_OUTAGE}?")
+    # Only as a classifier: answering, it treats the phrase as an ordinary question.
+    answered = await Agent(model).run(f"Could you {FAKE_CLASSIFIER_OUTAGE}?")
+
+    assert flag == InjectionFlag(
+        "prompt_injection",
+        0.9,
+        "The LLM classifier (gpt-4o-mini) flagged the message: "
+        "Fake classifier: the message asks for a persona without rules.",
+    )
+    assert benign is None
+    assert failed.value.kind == "rate_limited"
+    assert outage.value.kind == "provider_error"
+    assert answered.output == "Fake reply from openai:gpt-4o-mini."
 
 
 async def test_a_test_injects_its_own_chat_model_at_the_gateway() -> None:

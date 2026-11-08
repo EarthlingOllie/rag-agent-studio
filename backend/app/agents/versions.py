@@ -11,12 +11,41 @@ Live Version pointer, which is None until the first publish (the Agent is then "
   inside the lock, so concurrent publishes get consecutive, unique numbers. The new Version
   becomes the Live Version, a Live History entry records the move (from-Version, to-Version,
   ``publish``, actor, time), and ``agent.published`` is audited, all in one transaction.
+- **Revert** moves the Live Version back one step in the Agent's **Live History**, restoring
+  the configuration and the pinned Instructions it ran with. The rule: the target is the
+  from-Version of the entry that moved Live onto the current Live Version by a *publish* (or
+  bulk publish). Revert entries are not followed, so publish → revert → revert walks further
+  back instead of toggling between two Versions. This works as a stack: every publish pushes a
+  new Version (each Version is pushed exactly once, when it's created) and every revert pops
+  one. For example, with v1, v2, v3 published in turn, revert gives v2 then v1; and after
+  v1, v2, revert (v1), publish v3, revert gives v1, skipping v2, which was already reverted.
+  When that entry has no from-Version (the first publish) or the Agent is not live, there is
+  nothing to revert to and the revert is refused. The Agent row is locked as for publish, the
+  move is written to the Live History as ``revert``, and ``agent.reverted`` is audited. The
+  Draft is left alone. A Version whose credentials have since been deleted can't be made Live
+  again.
+- **Bulk publish and bulk revert** (``app.agents.bulk``) make the same moves through
+  ``make_live`` and ``step_back``, one Agent per transaction, writing ``bulk_publish`` or
+  ``bulk_revert`` entries and ``agent.bulk_published`` or ``agent.bulk_reverted`` events that
+  carry the bulk operation ID.
 - **Versions are immutable.** No route changes or deletes one, and migration
   ``0026_agent_versions`` adds a trigger refusing every UPDATE to Versions and Live History
   entries. They go only with their Agent.
 - **Serving.** ``served`` resolves what a Visitor gets: the Live Version's AgentConfig and its
   pinned Instructions text. Messages it answers record the Version (``config_source`` is
   ``version``); Playground answers record the Draft marker and no Version.
+
+- **Diff.** ``diff`` compares two sides, each the Draft, the Live Version or any Version of the
+  Agent, as a structural diff of their AgentConfigs (``app.versioning.diff``). Between two
+  Versions it also shows the change of pinned Instructions as a line diff of their text; the
+  Draft pins no Instructions until it is published, so a side that is the Draft shows none.
+
+- **Draft management.** ``discard_draft`` puts the Live Version's configuration back in the
+  Draft (refused with ``NotLiveError`` while the Agent is not live), and ``start_draft_from``
+  puts any of its Versions' in. Neither publishes. Both are Draft changes: they move it to its
+  next revision, honour ``base_revision`` like a save (``StaleDraftError``), check the settings
+  like a save (a Version's credential may have been deleted since), and are audited as
+  ``agent.draft_discarded`` and ``agent.draft_started_from_version``.
 
 Every operation goes through the Project and Agent lookups, so another Organisation's Agent is
 "not found", and an archived Project or Agent can't be published.
@@ -25,6 +54,7 @@ Every operation goes through the Project and Agent lookups, so another Organisat
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,14 +63,39 @@ from sqlalchemy.orm import aliased
 from app import audit
 from app.agents.config import AgentConfig
 from app.agents.models import Agent, AgentDraft, AgentVersion, LiveHistoryEntry
-from app.agents.service import active_agent, get_agent
+from app.agents.service import AgentWithDraft, active_agent, get_agent, replace_draft, with_draft
+from app.agents.validation import DraftProblem, credential_problems
 from app.projects.models import InstructionsVersion
 from app.projects.service import active_project
 from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
+from app.versioning.diff import FieldChange, Line, diff_configs, diff_text
 
 PUBLISHED = "agent.published"
+REVERTED = "agent.reverted"
+BULK_PUBLISHED = "agent.bulk_published"
+BULK_REVERTED = "agent.bulk_reverted"
 PUBLISH = "publish"
+DRAFT_DISCARDED = "agent.draft_discarded"
+DRAFT_STARTED_FROM_VERSION = "agent.draft_started_from_version"
+REVERT = "revert"
+BULK_PUBLISH = "bulk_publish"
+BULK_REVERT = "bulk_revert"
+# The Live History actions that put a new Version Live; reverts follow these back.
+_PUSHES = (PUBLISH, BULK_PUBLISH)
+_AUDIT_ACTIONS = {
+    PUBLISH: PUBLISHED,
+    REVERT: REVERTED,
+    BULK_PUBLISH: BULK_PUBLISHED,
+    BULK_REVERT: BULK_REVERTED,
+}
+
+
+NOTHING_TO_REVERT = "There's no earlier Live Version to revert to."
+REVERT_TARGET_INVALID = (
+    "The Version that was Live before uses a Provider Credential or model that is no longer "
+    "available, so it can't be made Live again. Publish a fixed Version instead."
+)
 
 
 class InstructionsVersionNotFoundError(Exception):
@@ -49,6 +104,21 @@ class InstructionsVersionNotFoundError(Exception):
 
 class AgentVersionNotFoundError(Exception):
     """No Version with that ID for the Agent."""
+
+
+class NotLiveError(Exception):
+    """The Agent has never been published, so it has no Live Version."""
+
+
+class NothingToRevertError(Exception):
+    """The Agent is not live, or its Live Version was its first."""
+
+
+class RevertTargetInvalidError(Exception):
+    """The Version a revert would make Live names something that no longer exists."""
+
+    def __init__(self, problems: list[DraftProblem]) -> None:
+        self.problems = problems
 
 
 @dataclass(frozen=True)
@@ -127,18 +197,62 @@ async def publish(
     project = await active_project(session, scope, project_id)
     # Lock the Agent row: publishes of one Agent queue here, so numbers never collide.
     found = await active_agent(session, scope, project_id, agent_id, lock=True)
-    agent = found.agent
     pinned_id = project.current_instructions_version_id
     if instructions_version_id is not None:
-        pinned_id = await session.scalar(
-            select(InstructionsVersion.id).where(
-                InstructionsVersion.id == instructions_version_id,
-                InstructionsVersion.project_id == project.id,
-            )
+        pinned_id = await project_instructions_version(session, project.id, instructions_version_id)
+    draft = await session.get_one(AgentDraft, found.agent.id)
+    view = await make_live(
+        session, scope, found.agent, draft.config, pinned_id, note, Move(PUBLISH), now=now
+    )
+    await session.commit()
+    return view
+
+
+async def project_instructions_version(
+    session: AsyncSession, project_id: uuid.UUID, version_id: uuid.UUID
+) -> uuid.UUID:
+    """``version_id`` when it is one of the Project's Instructions Versions."""
+    found = await session.scalar(
+        select(InstructionsVersion.id).where(
+            InstructionsVersion.id == version_id, InstructionsVersion.project_id == project_id
         )
-        if pinned_id is None:
-            raise InstructionsVersionNotFoundError
-    draft = await session.get_one(AgentDraft, agent.id)
+    )
+    if found is None:
+        raise InstructionsVersionNotFoundError
+    return found
+
+
+@dataclass(frozen=True)
+class Move:
+    """How the Live Version moves: the Live History action and, for a bulk action, its ID."""
+
+    action: str
+    bulk_operation_id: uuid.UUID | None = None
+
+    @property
+    def audit_action(self) -> str:
+        return _AUDIT_ACTIONS[self.action]
+
+    def audited(self, after: dict[str, object]) -> dict[str, object]:
+        if self.bulk_operation_id is None:
+            return after
+        return {**after, "bulk_operation_id": str(self.bulk_operation_id)}
+
+
+async def make_live(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    agent: Agent,
+    config: dict[str, Any],
+    pinned_id: uuid.UUID | None,
+    note: str,
+    move: Move,
+    *,
+    now: datetime,
+) -> VersionView:
+    """Adds the Agent's next Version (``config`` pinning ``pinned_id``) and makes it Live,
+    writing the Live History entry and the Audit Event. The caller holds the Agent row lock and
+    commits."""
     latest = await session.scalar(
         select(func.max(AgentVersion.number)).where(AgentVersion.agent_id == agent.id)
     )
@@ -147,7 +261,7 @@ async def publish(
         organisation_id=scope.organisation_id,
         agent_id=agent.id,
         number=(latest or 0) + 1,
-        config=draft.config,
+        config=config,
         instructions_version_id=pinned_id,
         note=note,
         author_id=scope.member_id,
@@ -156,40 +270,108 @@ async def publish(
     session.add(version)
     await session.flush()
     agent.live_version_id = version.id
+    _write_history(session, scope, agent, previous, version, move, now)
+    view = await _view(session, version)
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=move.audit_action,
+        target=audit.AuditTarget("agent", agent.id),
+        before={"live_version": _summary(previous)},
+        after=move.audited(
+            {"live_version": {**(_summary(version) or {}), "note": note, **_pinned(view)}}
+        ),
+        occurred_at=now,
+    )
+    return view
+
+
+def _write_history(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    agent: Agent,
+    previous: AgentVersion | None,
+    version: AgentVersion,
+    move: Move,
+    now: datetime,
+) -> None:
     session.add(
         LiveHistoryEntry(
             organisation_id=scope.organisation_id,
             agent_id=agent.id,
             from_version_id=previous and previous.id,
             to_version_id=version.id,
-            action=PUBLISH,
+            action=move.action,
             actor_id=scope.member_id,
             occurred_at=now,
+            bulk_operation_id=move.bulk_operation_id,
         )
     )
-    view = await _view(session, version)
+
+
+async def revert(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> VersionView:
+    """Moves the Live Version back one step in the Live History (see the module docstring for
+    the rule) and returns the Version that is Live again."""
+    await active_project(session, scope, project_id)
+    agent = (await active_agent(session, scope, project_id, agent_id, lock=True)).agent
+    view = await step_back(session, scope, agent, Move(REVERT), now=now)
+    await session.commit()
+    return view
+
+
+async def step_back(
+    session: AsyncSession, scope: OrganisationScope, agent: Agent, move: Move, *, now: datetime
+) -> VersionView:
+    """Moves the Agent's Live Version back by the revert rule, writing the Live History entry
+    and the Audit Event. The caller holds the Agent row lock and commits."""
+    current = await _version(session, agent.live_version_id)
+    target = None
+    if current is not None:
+        target_id = await session.scalar(
+            select(LiveHistoryEntry.from_version_id)
+            .where(
+                LiveHistoryEntry.agent_id == agent.id,
+                LiveHistoryEntry.to_version_id == current.id,
+                LiveHistoryEntry.action.in_(_PUSHES),
+            )
+            .order_by(LiveHistoryEntry.seq.desc())
+            .limit(1)
+        )
+        target = await _version(session, target_id)
+    if current is None or target is None:
+        raise NothingToRevertError
+    problems = await credential_problems(session, scope, AgentConfig.model_validate(target.config))
+    if problems:
+        raise RevertTargetInvalidError(problems)
+    agent.live_version_id = target.id
+    _write_history(session, scope, agent, current, target, move, now)
+    view = await _view(session, target)
     await audit.record(
         session,
         organisation_id=scope.organisation_id,
         actor_id=scope.member_id,
-        action=PUBLISHED,
+        action=move.audit_action,
         target=audit.AuditTarget("agent", agent.id),
-        before={"live_version": _summary(previous)},
-        after={
-            "live_version": {
-                **(_summary(version) or {}),
-                "note": note,
-                "instructions_version": view.instructions
-                and {
-                    "version_id": str(view.instructions.id),
-                    "number": view.instructions.number,
-                },
-            }
-        },
+        before={"live_version": _summary(current)},
+        after=move.audited({"live_version": {**(_summary(target) or {}), **_pinned(view)}}),
         occurred_at=now,
     )
-    await session.commit()
     return view
+
+
+def _pinned(view: VersionView) -> dict[str, object]:
+    pinned = view.instructions
+    return {
+        "instructions_version": pinned and {"version_id": str(pinned.id), "number": pinned.number}
+    }
 
 
 async def _version(session: AsyncSession, version_id: uuid.UUID | None) -> AgentVersion | None:
@@ -273,3 +455,171 @@ async def _version_instructions(session: AsyncSession, version_id: uuid.UUID | N
     if version_id is None:
         return ""
     return (await session.get_one(InstructionsVersion, version_id)).markdown
+
+
+# A side of a diff: the Draft, the Live Version, or a Version by ID.
+Side = Literal["draft", "live"] | uuid.UUID
+
+
+@dataclass(frozen=True)
+class DiffSide:
+    # None for the Draft.
+    version: VersionNumber | None
+    config: AgentConfig
+    instructions_version_id: uuid.UUID | None
+
+
+@dataclass(frozen=True)
+class InstructionsChange:
+    before: PinnedInstructions | None
+    after: PinnedInstructions | None
+    lines: list[Line]
+
+
+@dataclass(frozen=True)
+class ConfigDiff:
+    source: DiffSide
+    target: DiffSide
+    changes: list[FieldChange]
+    # Set when both sides are Versions pinning different Instructions Versions.
+    instructions: InstructionsChange | None
+
+
+async def _side(session: AsyncSession, agent: Agent, side: Side) -> DiffSide:
+    if side == "draft":
+        draft = await session.get_one(AgentDraft, agent.id)
+        return DiffSide(None, AgentConfig.model_validate(draft.config), None)
+    if side == "live":
+        if agent.live_version_id is None:
+            raise NotLiveError
+        side = agent.live_version_id
+    version = await session.scalar(
+        select(AgentVersion).where(AgentVersion.id == side, AgentVersion.agent_id == agent.id)
+    )
+    if version is None:
+        raise AgentVersionNotFoundError
+    return DiffSide(
+        VersionNumber(version.id, version.number),
+        AgentConfig.model_validate(version.config),
+        version.instructions_version_id,
+    )
+
+
+async def _pinned_text(
+    session: AsyncSession, version_id: uuid.UUID | None
+) -> tuple[PinnedInstructions | None, str]:
+    if version_id is None:
+        return None, ""
+    found = await session.get_one(InstructionsVersion, version_id)
+    return PinnedInstructions(found.id, found.number), found.markdown
+
+
+async def diff(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    source: Side,
+    target: Side,
+) -> ConfigDiff:
+    """What changes from ``source`` to ``target``. Archived Agents can be compared."""
+    agent = (await get_agent(session, scope, project_id, agent_id)).agent
+    before = await _side(session, agent, source)
+    after = await _side(session, agent, target)
+    instructions = None
+    both_versions = before.version is not None and after.version is not None
+    if both_versions and before.instructions_version_id != after.instructions_version_id:
+        old, old_text = await _pinned_text(session, before.instructions_version_id)
+        new, new_text = await _pinned_text(session, after.instructions_version_id)
+        instructions = InstructionsChange(old, new, diff_text(old_text, new_text))
+    return ConfigDiff(before, after, diff_configs(before.config, after.config), instructions)
+
+
+async def _restore_draft(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID | Literal["live"],
+    *,
+    action: str,
+    base_revision: int | None,
+    now: datetime,
+) -> AgentWithDraft:
+    project = await active_project(session, scope, project_id)
+    agent = (await active_agent(session, scope, project_id, agent_id)).agent
+    if version_id == "live":
+        if agent.live_version_id is None:
+            raise NotLiveError
+        version_id = agent.live_version_id
+    version = await session.scalar(
+        select(AgentVersion).where(AgentVersion.id == version_id, AgentVersion.agent_id == agent.id)
+    )
+    if version is None:
+        raise AgentVersionNotFoundError
+    draft = await replace_draft(
+        session,
+        scope,
+        project,
+        agent,
+        AgentConfig.model_validate(version.config),
+        base_revision=base_revision,
+        now=now,
+    )
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=action,
+        target=audit.AuditTarget("agent", agent.id),
+        before={"draft_revision": draft.revision - 1},
+        after={"draft_revision": draft.revision, "version": _summary(version)},
+        occurred_at=now,
+    )
+    await session.commit()
+    return await with_draft(session, agent)
+
+
+async def discard_draft(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    base_revision: int | None = None,
+    now: datetime,
+) -> AgentWithDraft:
+    """Puts the Live Version's configuration back in the Draft."""
+    return await _restore_draft(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        "live",
+        action=DRAFT_DISCARDED,
+        base_revision=base_revision,
+        now=now,
+    )
+
+
+async def start_draft_from(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID,
+    *,
+    base_revision: int | None = None,
+    now: datetime,
+) -> AgentWithDraft:
+    """Puts one of the Agent's Versions' configuration in the Draft, publishing nothing."""
+    return await _restore_draft(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        version_id,
+        action=DRAFT_STARTED_FROM_VERSION,
+        base_revision=base_revision,
+        now=now,
+    )

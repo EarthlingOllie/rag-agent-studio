@@ -8,13 +8,13 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.datastructures import Address
 
 from app.auth import service
 from app.auth.mfa import Mfa, mfa_enabled
 from app.auth.mfa_pending import MFA_PENDING_COOKIE, PendingSignIns
 from app.auth.sessions import SESSION_COOKIE, SessionStore
 from app.auth.throttle import SignInThrottle
+from app.core.client_ip import request_ip
 from app.core.clock import Clock, get_clock
 from app.core.deps import get_db
 from app.core.settings import Settings
@@ -27,7 +27,6 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 SIGN_IN_FAILED = "Email or password is incorrect"
 SIGN_IN_THROTTLED = "Too many failed sign-in attempts"
 # ASGI servers may leave the client unset (a Unix socket, for example); they share one counter.
-_UNKNOWN_CLIENT = Address("unknown", 0)
 NOT_SIGNED_IN = "Not signed in"
 
 # Deliberately loose: one @, no spaces, a dot in the domain. Delivery is the real check.
@@ -245,7 +244,7 @@ async def sign_in(
             clock,
             email=body.email,
             password=body.password,
-            ip=(request.client or _UNKNOWN_CLIENT).host,
+            ip=request_ip(request),
         )
     except service.SignInThrottledError as throttled:
         refusal = throttled.refusal

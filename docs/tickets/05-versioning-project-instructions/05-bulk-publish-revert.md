@@ -7,14 +7,14 @@
 **Blocked by:**
 - [05-03: Revert via Live History](03-revert-live-history.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Bulk publish uses Live config plus the chosen Instructions Version, never the Draft, and skips Agents that have never been published
-- [ ] Each Agent is processed in its own transaction, with a result per Agent
-- [ ] Agents with Draft changes are badged in the dialog
-- [ ] Publishing Instructions opens the dialog with Agents pre-selected, and "N Agents behind" is shown
-- [ ] Reverting Instructions offers a bulk revert of the Agents pinned to the reverted Version
-- [ ] The Agent list supports multi-select bulk revert
-- [ ] A bulk operation ID is recorded on Live History and Audit Events
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Bulk publish uses Live config plus the chosen Instructions Version, never the Draft, and skips Agents that have never been published
+- [x] Each Agent is processed in its own transaction, with a result per Agent
+- [x] Agents with Draft changes are badged in the dialog
+- [x] Publishing Instructions opens the dialog with Agents pre-selected, and "N Agents behind" is shown
+- [x] Reverting Instructions offers a bulk revert of the Agents pinned to the reverted Version
+- [x] The Agent list supports multi-select bulk revert
+- [x] A bulk operation ID is recorded on Live History and Audit Events
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

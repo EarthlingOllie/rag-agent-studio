@@ -30,6 +30,8 @@ def settings_env(settings_env: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
     settings_env.setenv("SIGN_IN_LOCKOUT_SECONDS", str(LOCKOUT_SECONDS))
     settings_env.setenv("SIGN_IN_IP_DELAY_AFTER_FAILURES", str(IP_DELAY_AFTER))
     settings_env.setenv("SIGN_IN_IP_LOCKOUT_AFTER_FAILURES", str(IP_LOCKOUT_AFTER))
+    # The load balancers, whose X-Forwarded-For is believed (spec 06: trusted-proxy configuration).
+    settings_env.setenv("TRUSTED_PROXIES", "10.0.0.0/16")
     return settings_env
 
 
@@ -226,6 +228,40 @@ async def test_an_ip_waits_progressively_longer_after_its_free_failures(
         "locked": False,
         "retry_after_seconds": 1,
     }
+
+
+async def _guess_as(client: httpx.AsyncClient, forwarded_for: str) -> int:
+    """A failed sign-in carrying the given X-Forwarded-For; returns the status."""
+    response = await client.post(
+        "/api/auth/sign-in",
+        json={"email": _unknown_email(), "password": "guess"},
+        headers={"X-Forwarded-For": forwarded_for},
+    )
+    return response.status_code
+
+
+async def test_failures_through_a_trusted_proxy_count_per_forwarded_address(
+    client_from: IpClientFactory, clock: ControllableClock
+) -> None:
+    balancer = await client_from(f"10.0.{uuid.uuid4().int % 256}.{uuid.uuid4().int % 254 + 1}")
+    attacker = _unique_ip()
+    # Whatever a client writes on the left is its own claim; the balancer saw the right-hand one.
+    neighbour = f"{attacker}, {_unique_ip()}"
+    for _ in range(IP_DELAY_AFTER):
+        assert await _guess_as(balancer, attacker) == 401
+
+    assert await _guess_as(balancer, attacker) == 429
+    assert await _guess_as(balancer, neighbour) == 401
+
+
+async def test_a_client_connecting_directly_cannot_pose_as_another_address(
+    client_from: IpClientFactory, clock: ControllableClock
+) -> None:
+    attacker = await client_from(_unique_ip())
+    for _ in range(IP_DELAY_AFTER):
+        assert await _guess_as(attacker, _unique_ip()) == 401
+
+    assert await _guess_as(attacker, _unique_ip()) == 429
 
 
 def _observable(response: httpx.Response) -> tuple[int, bytes, tuple[tuple[str, str], ...]]:

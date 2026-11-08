@@ -1,0 +1,13 @@
+commit 8e2562d
+__________________ test_no_response_schema_has_a_secret_field __________________
+    def test_no_response_schema_has_a_secret_field() -> None:
+E       AssertionError: assert {('Behaviour-...tokens'), ...} == {('Behaviour-...tokens'), ...}
+E         
+E         Extra items in the left set:
+E         ('VersionKpisOut', 'tokens')
+E         Use -v to get more diff
+TOTAL                                 10868      0   1302      0   100%
+Required test coverage of 100.0% reached. Total coverage: 100.00%
+FAILED tests/integration/test_no_secret_in_responses.py::test_no_response_schema_has_a_secret_field
+========== 1 failed, 2353 passed, 24 deselected in 2536.86s (0:42:16) ==========
+make exit 2

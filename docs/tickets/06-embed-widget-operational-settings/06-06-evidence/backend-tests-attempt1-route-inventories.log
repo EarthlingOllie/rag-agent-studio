@@ -1,0 +1,564 @@
+$ make test-backend (TEST_* -> fresh rag0606-pg/redis/rustfs) @ e994eb9 (ticket/06-06-token-budget, clean tree: 0 changes)
+cd backend && uv run pytest
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0606/backend
+configfile: pyproject.toml
+testpaths: tests
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 2286 items / 24 deselected / 2262 selected
+
+tests/integration/test_agent_archive.py ................                 [  0%]
+tests/integration/test_agent_config.py ................................. [  2%]
+..........                                                               [  2%]
+tests/integration/test_agent_diffs.py ........                           [  2%]
+tests/integration/test_agent_draft_management.py ...............         [  3%]
+tests/integration/test_agent_revert.py ..................                [  4%]
+tests/integration/test_agent_versions.py ............................    [  5%]
+tests/integration/test_agents.py .....................                   [  6%]
+tests/integration/test_audit_events.py ...................               [  7%]
+tests/integration/test_bedrock_credentials.py .......................... [  8%]
+............                                                             [  9%]
+tests/integration/test_branded_widget.py ....................            [  9%]
+tests/integration/test_bulk_versions.py ...................              [ 10%]
+tests/integration/test_canary.py ....                                    [ 11%]
+tests/integration/test_chunk_storage.py ..........                       [ 11%]
+tests/integration/test_citations_trace.py ........                       [ 11%]
+tests/integration/test_conversations.py ...............                  [ 12%]
+tests/integration/test_default_model.py ....................             [ 13%]
+tests/integration/test_document_editions.py ................             [ 14%]
+tests/integration/test_document_viewer.py .....                          [ 14%]
+tests/integration/test_documents.py .....................                [ 15%]
+tests/integration/test_embed.py ....................                     [ 16%]
+tests/integration/test_embedding_models.py ............................. [ 17%]
+.........                                                                [ 17%]
+tests/integration/test_flagged_chunks.py .........                       [ 18%]
+tests/integration/test_health.py ...                                     [ 18%]
+tests/integration/test_ingestion_failures.py ........................... [ 19%]
+.........                                                                [ 19%]
+tests/integration/test_ingestion_scan.py .....                           [ 20%]
+tests/integration/test_input_guardrail.py .....                          [ 20%]
+tests/integration/test_input_guardrail_modes.py .........                [ 20%]
+tests/integration/test_invites.py ..............................         [ 22%]
+tests/integration/test_llm_classifier.py ............................    [ 23%]
+tests/integration/test_logging.py ........                               [ 23%]
+tests/integration/test_mailer.py ........                                [ 24%]
+tests/integration/test_members.py ...............                        [ 24%]
+tests/integration/test_message_feedback.py ................              [ 25%]
+tests/integration/test_mfa.py .....................................      [ 27%]
+tests/integration/test_migrations.py ..                                  [ 27%]
+tests/integration/test_no_secret_in_responses.py ....                    [ 27%]
+tests/integration/test_object_store.py ..............                    [ 27%]
+tests/integration/test_ocr.py ............                               [ 28%]
+tests/integration/test_openapi.py F..                                    [ 28%]
+tests/integration/test_operational_settings.py ......................... [ 29%]
+..........................                                               [ 30%]
+tests/integration/test_organisation_switcher.py .......                  [ 31%]
+tests/integration/test_password_audit_events.py ..                       [ 31%]
+tests/integration/test_password_reset.py ...........                     [ 31%]
+tests/integration/test_playground.py ...............                     [ 32%]
+tests/integration/test_playground_errors.py .......................      [ 33%]
+tests/integration/test_playground_instructions.py ........               [ 33%]
+tests/integration/test_prices.py ...................................     [ 35%]
+tests/integration/test_profile.py .......                                [ 35%]
+tests/integration/test_project_deletion.py ..............                [ 36%]
+tests/integration/test_project_instructions.py .........                 [ 36%]
+tests/integration/test_project_instructions_diffs.py ....                [ 36%]
+tests/integration/test_project_instructions_draft.py ...                 [ 36%]
+tests/integration/test_project_instructions_versions.py ................ [ 37%]
+............                                                             [ 38%]
+tests/integration/test_projects.py ....................                  [ 39%]
+tests/integration/test_provider_credentials.py ......................... [ 40%]
+...........                                                              [ 40%]
+tests/integration/test_rate_limits.py .................                  [ 41%]
+tests/integration/test_re_embedding.py ..........................        [ 42%]
+tests/integration/test_require_mfa.py .................................. [ 44%]
+........................................................................ [ 47%]
+.......                                                                  [ 47%]
+tests/integration/test_retrieval.py .................                    [ 48%]
+tests/integration/test_retrieval_probe_index.py ..                       [ 48%]
+tests/integration/test_seed.py ..........................                [ 49%]
+tests/integration/test_settings.py .....                                 [ 49%]
+tests/integration/test_sign_in_and_out.py ........                       [ 50%]
+tests/integration/test_sign_in_throttling.py .............               [ 50%]
+tests/integration/test_sign_up.py ............                           [ 51%]
+tests/integration/test_tag_scoping.py ..                                 [ 51%]
+tests/integration/test_tags.py .............                             [ 51%]
+tests/integration/test_telemetry.py ........                             [ 52%]
+tests/integration/test_tenant_isolation.py ............................. [ 53%]
+........................................................................ [ 56%]
+........................................................................ [ 59%]
+........................................................................ [ 63%]
+..........................................................F............. [ 66%]
+........................................................................ [ 69%]
+........................................................................ [ 72%]
+........................................................................ [ 75%]
+....................................................F................... [ 78%]
+..................................................F.                     [ 81%]
+tests/integration/test_theme.py ......................                   [ 82%]
+tests/integration/test_theme_images.py ................................. [ 83%]
+                                                                         [ 83%]
+tests/integration/test_token_budget.py ..................                [ 84%]
+tests/integration/test_widget_resume.py ........                         [ 84%]
+tests/integration/test_worker_entrypoint.py ......                       [ 85%]
+tests/integration/test_worker_health.py ....                             [ 85%]
+tests/unit/test_aws_task_settings.py ............                        [ 85%]
+tests/unit/test_bedrock_embedder.py ................                     [ 86%]
+tests/unit/test_bedrock_verifier.py ...............................      [ 87%]
+tests/unit/test_canary.py .............................................. [ 89%]
+.............                                                            [ 90%]
+tests/unit/test_chunking.py ......                                       [ 90%]
+tests/unit/test_client_ip.py ............................                [ 91%]
+tests/unit/test_config_diff.py ..........                                [ 92%]
+tests/unit/test_cost.py .........                                        [ 92%]
+tests/unit/test_docling_converter.py .....                               [ 93%]
+tests/unit/test_embedding_registry.py ..........                         [ 93%]
+tests/unit/test_envelope_encryption.py .................                 [ 94%]
+tests/unit/test_heuristic_injection_classifier.py .................      [ 95%]
+tests/unit/test_http_credential_verifier.py ............................ [ 96%]
+..                                                                       [ 96%]
+tests/unit/test_ingestion_ports.py .....                                 [ 96%]
+tests/unit/test_kms_key_wrapper.py ........                              [ 96%]
+tests/unit/test_local_injection_classifier.py ........................   [ 97%]
+tests/unit/test_model_gateway.py ..................................      [ 99%]
+tests/unit/test_prompt_assembly.py ....                                  [ 99%]
+tests/unit/test_retry_backoff.py .                                       [ 99%]
+tests/unit/test_settings_from_parts.py .......                           [100%]
+
+=================================== FAILURES ===================================
+________________ test_openapi_document_describes_every_endpoint ________________
+
+    def test_openapi_document_describes_every_endpoint() -> None:
+        document = json.loads(render_openapi())
+    
+        operations = {
+            operation["operationId"]: (path, method)
+            for path, methods in document["paths"].items()
+            for method, operation in methods.items()
+        }
+>       assert operations == {
+            "getHealth": ("/api/health", "get"),
+            "getWorkerHealth": ("/api/health/worker", "get"),
+            "signUp": ("/api/auth/sign-up", "post"),
+            "signIn": ("/api/auth/sign-in", "post"),
+            "signOut": ("/api/auth/sign-out", "post"),
+            "getMe": ("/api/auth/me", "get"),
+            "getMfaStatus": ("/api/auth/mfa", "get"),
+            "startMfaEnrolment": ("/api/auth/mfa/enrolment", "post"),
+            "confirmMfaEnrolment": ("/api/auth/mfa/enrolment/confirm", "post"),
+            "verifyMfa": ("/api/auth/mfa/verify", "post"),
+            "replaceRecoveryCodes": ("/api/auth/mfa/recovery-codes", "post"),
+            "disableMfa": ("/api/auth/mfa/disable", "post"),
+            "updateProfile": ("/api/auth/me", "patch"),
+            "changePassword": ("/api/auth/me/password", "post"),
+            "switchOrganisation": ("/api/auth/me/active-organisation", "put"),
+            "requestPasswordReset": ("/api/auth/password-reset", "post"),
+            "completePasswordReset": ("/api/auth/password-reset/complete", "post"),
+            "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
+            "setMfaPolicy": ("/api/organisations/{organisation_id}/mfa-policy", "put"),
+            "listAuditEvents": ("/api/organisations/{organisation_id}/audit-events", "get"),
+            "getAuditFacets": ("/api/organisations/{organisation_id}/audit-events/facets", "get"),
+            "listInvites": ("/api/organisations/{organisation_id}/invites", "get"),
+            "createInvite": ("/api/organisations/{organisation_id}/invites", "post"),
+            "revokeInvite": ("/api/organisations/{organisation_id}/invites/{invite_id}", "delete"),
+            "renewInvite": ("/api/organisations/{organisation_id}/invites/{invite_id}/renew", "post"),
+            "lookUpInvite": ("/api/invites/lookup", "post"),
+            "acceptInvite": ("/api/invites/accept", "post"),
+            "signUpWithInvite": ("/api/invites/sign-up", "post"),
+            "listMembers": ("/api/organisations/{organisation_id}/members", "get"),
+            "changeMemberRole": ("/api/organisations/{organisation_id}/members/{member_id}", "patch"),
+            "removeMember": ("/api/organisations/{organisation_id}/members/{member_id}", "delete"),
+            "leaveOrganisation": ("/api/organisations/{organisation_id}/leave", "post"),
+            "listCredentials": ("/api/organisations/{organisation_id}/credentials", "get"),
+            "createCredential": ("/api/organisations/{organisation_id}/credentials", "post"),
+            "getCredential": (_CREDENTIAL, "get"),
+            "deleteCredential": (_CREDENTIAL, "delete"),
+            "checkCredential": (f"{_CREDENTIAL}/check", "post"),
+            "rotateCredential": (f"{_CREDENTIAL}/rotate", "post"),
+            "createBedrockCredential": (
+                "/api/organisations/{organisation_id}/credentials/bedrock",
+                "post",
+            ),
+            "getBedrockSetup": ("/api/organisations/{organisation_id}/bedrock-setup", "get"),
+            "listCredentialModels": (f"{_CREDENTIAL}/models/{{capability}}", "get"),
+            "listCredentialPrices": (f"{_CREDENTIAL}/prices", "get"),
+            "overrideCredentialPrices": (f"{_CREDENTIAL}/prices", "put"),
+            "listProviders": ("/api/providers", "get"),
+            "getDefaultModel": ("/api/organisations/{organisation_id}/default-model", "get"),
+            "setDefaultModel": ("/api/organisations/{organisation_id}/default-model", "put"),
+            "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
+            "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
+            "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),
+            "confirmThemeImageUpload": (_THEME_IMAGE, "put"),
+            "removeThemeImage": (_THEME_IMAGE, "delete"),
+            "getThemeImage": (_THEME_IMAGE, "get"),
+            "listThemeFonts": ("/api/themes/fonts", "get"),
+            "listProjects": ("/api/organisations/{organisation_id}/projects", "get"),
+            "createProject": ("/api/organisations/{organisation_id}/projects", "post"),
+            "getProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "get"),
+            "updateProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "patch"),
+            "archiveProject": (
+                "/api/organisations/{organisation_id}/projects/{project_id}/archive",
+                "post",
+            ),
+            "deleteProject": ("/api/organisations/{organisation_id}/projects/{project_id}", "delete"),
+            "restoreProject": (
+                "/api/organisations/{organisation_id}/projects/{project_id}/restore",
+                "post",
+            ),
+            "getProjectInstructions": (f"{_PROJECT}/instructions", "get"),
+            "saveProjectInstructions": (f"{_PROJECT}/instructions", "put"),
+            "listProjectInstructionsVersions": (f"{_PROJECT}/instructions/versions", "get"),
+            "publishProjectInstructions": (f"{_PROJECT}/instructions/versions", "post"),
+            "revertProjectInstructions": (f"{_PROJECT}/instructions/revert", "post"),
+            "diffProjectInstructions": (f"{_PROJECT}/instructions/diff", "get"),
+            "startDocumentUpload": (f"{_PROJECT}/uploads", "post"),
+            "confirmDocumentUpload": (f"{_PROJECT}/documents", "post"),
+            "listDocuments": (f"{_PROJECT}/documents", "get"),
+            "listDocumentStatuses": (f"{_PROJECT}/documents/statuses", "get"),
+            "getDocument": (f"{_PROJECT}/documents/{{document_id}}", "get"),
+            "downloadDocument": (f"{_PROJECT}/documents/{{document_id}}/download", "get"),
+            "listChunks": (f"{_PROJECT}/documents/{{document_id}}/chunks", "get"),
+            "getUploadLimits": (f"{_PROJECT}/uploads/limits", "get"),
+            "setDocumentQuota": (f"{_PROJECT}/document-quota", "put"),
+            "retryDocument": (f"{_PROJECT}/documents/{{document_id}}/retry", "post"),
+            "listEmbeddingModels": ("/api/organisations/{organisation_id}/embedding-models", "get"),
+            "setProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "put"),
+            "getProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "get"),
+            "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
+            "deleteDocument": (f"{_PROJECT}/documents/{{document_id}}", "delete"),
+            "clearChunkFlag": (
+                f"{_PROJECT}/documents/{{document_id}}/chunks/{{chunk_id}}/flag",
+                "delete",
+            ),
+            "replaceDocument": (f"{_PROJECT}/documents/{{document_id}}/editions", "post"),
+            "listTags": (f"{_PROJECT}/tags", "get"),
+            "createTag": (f"{_PROJECT}/tags", "post"),
+            "renameTag": (f"{_PROJECT}/tags/{{tag_id}}", "patch"),
+            "deleteTag": (f"{_PROJECT}/tags/{{tag_id}}", "delete"),
+            "setDocumentTags": (f"{_PROJECT}/documents/{{document_id}}/tags", "put"),
+            "bulkTagDocuments": (f"{_PROJECT}/documents/tags", "post"),
+            "listAgents": (f"{_PROJECT}/agents", "get"),
+            "createAgent": (f"{_PROJECT}/agents", "post"),
+            "getAgent": (f"{_AGENT}", "get"),
+            "saveAgentDraft": (f"{_AGENT}/draft", "put"),
+            "archiveAgent": (f"{_AGENT}/archive", "post"),
+            "restoreAgent": (f"{_AGENT}/restore", "post"),
+            "deleteAgent": (f"{_AGENT}", "delete"),
+            "publishAgent": (f"{_AGENT}/versions", "post"),
+            "revertAgent": (f"{_AGENT}/revert", "post"),
+            "listAgentVersions": (f"{_AGENT}/versions", "get"),
+            "getAgentVersion": (f"{_AGENT}/versions/{{version_id}}", "get"),
+            "listAgentLiveHistory": (f"{_AGENT}/live-history", "get"),
+            "getOperationalSettings": (f"{_AGENT}/operational-settings", "get"),
+            "changeOperationalSettings": (f"{_AGENT}/operational-settings", "patch"),
+            "getThemeOverride": (f"{_AGENT}/theme-override", "get"),
+            "setThemeOverrideColours": (f"{_AGENT}/theme-override", "put"),
+            "startAgentAvatarUpload": (f"{_AGENT}/theme-override/avatar/uploads", "post"),
+            "confirmAgentAvatarUpload": (f"{_AGENT}/theme-override/avatar", "put"),
+            "removeAgentAvatar": (f"{_AGENT}/theme-override/avatar", "delete"),
+            "getAgentAvatar": (f"{_AGENT}/theme-override/avatar", "get"),
+            "startWidgetConversation": ("/api/widget/agents/{public_id}/conversations", "post"),
+            "sendWidgetMessage": ("/api/widget/agents/{public_id}/messages", "post"),
+            "getWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "get"),
+            "endWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "delete"),
+            "giveMessageFeedback": (_FEEDBACK, "put"),
+            "removeMessageFeedback": (_FEEDBACK, "delete"),
+            "bulkPublishAgents": (f"{_PROJECT}/agents/bulk-publish", "post"),
+            "bulkRevertAgents": (f"{_PROJECT}/agents/bulk-revert", "post"),
+            "getInstructionsRollout": (f"{_PROJECT}/instructions/rollout", "get"),
+            "diffAgent": (f"{_AGENT}/diff", "get"),
+            "discardAgentDraft": (f"{_AGENT}/draft/discard", "post"),
+            "startAgentDraftFromVersion": (f"{_AGENT}/draft/from-version", "post"),
+            "startPlaygroundConversation": (f"{_PLAYGROUND}", "post"),
+            "getPlaygroundConversation": (f"{_PLAYGROUND}/{{conversation_id}}", "get"),
+            "sendPlaygroundMessage": (f"{_PLAYGROUND}/{{conversation_id}}/messages", "post"),
+            "getPlaygroundTrace": (
+                f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
+                "get",
+            ),
+            "listConversations": (f"{_PROJECT}/conversations", "get"),
+            "getConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "get"),
+            "getConversationTrace": (
+                f"{_PROJECT}/conversations/{{conversation_id}}/messages/{{message_id}}/trace",
+                "get",
+            ),
+        }
+E       AssertionError: assert {'getMe': ('/... 'post'), ...} == {'getHealth':... 'post'), ...}
+E         
+E         Omitting 128 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'getTokenUsage': ('/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage',
+E                            'get')}
+E         Use -v to get more diff
+
+tests/integration/test_openapi.py:23: AssertionError
+____ test_each_organisation_scoped_route_declares_its_role_with_one_policy _____
+
+    def test_each_organisation_scoped_route_declares_its_role_with_one_policy() -> None:
+        """The listed role is the one the route's single RequireRole dependency enforces."""
+        listed = {(r.method, r.path): r.role for r in ORGANISATION_SCOPED_ROUTES}
+    
+        declared = {
+            (method, route.path): [policy.role for policy in _policies(route.dependant)]
+            for router in ROUTERS
+            for route in router.routes
+            if isinstance(route, APIRoute) and "{organisation_id}" in route.path
+            for method in route.methods or ()
+        }
+    
+>       assert declared == {key: [role] for key, role in listed.items()}
+E       AssertionError: assert {('GET', '/ap...owner'>], ...} == {('GET', '/ap...ditor'>], ...}
+E         
+E         Omitting 100 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {('GET', '/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage'): [<Role.EDITOR: 'editor'>]}
+E         Use -v to get more diff
+
+tests/integration/test_tenant_isolation.py:765: AssertionError
+________ test_every_organisation_scoped_route_is_in_the_isolation_test _________
+
+    def test_every_organisation_scoped_route_is_in_the_isolation_test() -> None:
+        """New Organisation-scoped routes must be added to ORGANISATION_SCOPED_ROUTES."""
+        listed = {(r.method, r.path) for r in ORGANISATION_SCOPED_ROUTES}
+    
+        found = {
+            (method.upper(), path)
+            for path, operations in create_app().openapi()["paths"].items()
+            if "{organisation_id}" in path
+            for method in operations
+        }
+    
+>       assert found == listed
+E       AssertionError: assert {('DELETE', '...avatar'), ...} == {('DELETE', '...avatar'), ...}
+E         
+E         Extra items in the left set:
+E         ('GET', '/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage')
+E         Use -v to get more diff
+
+tests/integration/test_tenant_isolation.py:890: AssertionError
+__________ test_every_project_route_is_in_the_project_isolation_test ___________
+
+    def test_every_project_route_is_in_the_project_isolation_test() -> None:
+        """New routes under a Project must be added to PROJECT_SCOPED_ROUTES."""
+        listed = {(r.method, r.path) for r in PROJECT_SCOPED_ROUTES}
+    
+        found = {
+            (method.upper(), path)
+            for path, operations in create_app().openapi()["paths"].items()
+            if "{project_id}" in path
+            for method in operations
+        }
+    
+>       assert found == listed
+E       AssertionError: assert {('DELETE', '...ag_id}'), ...} == {('DELETE', '...ag_id}'), ...}
+E         
+E         Extra items in the left set:
+E         ('GET', '/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage')
+E         Use -v to get more diff
+
+tests/integration/test_tenant_isolation.py:959: AssertionError
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.18-final-0 _______________
+
+Name                                  Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------
+app/__init__.py                           2      0      0      0   100%
+app/agents/__init__.py                    0      0      0      0   100%
+app/agents/api.py                       138      0      0      0   100%
+app/agents/bulk.py                      136      0     12      0   100%
+app/agents/bulk_api.py                   73      0      0      0   100%
+app/agents/config.py                     75      0      0      0   100%
+app/agents/models.py                     64      0      0      0   100%
+app/agents/service.py                   115      0     14      0   100%
+app/agents/serving.py                    39      0      6      0   100%
+app/agents/validation.py                 69      0     14      0   100%
+app/agents/versions.py                  237      0     40      0   100%
+app/agents/versions_api.py              167      0      2      0   100%
+app/api/__init__.py                       0      0      0      0   100%
+app/api/health.py                        69      0      8      0   100%
+app/audit/__init__.py                     2      0      0      0   100%
+app/audit/api.py                         47      0      0      0   100%
+app/audit/models.py                      19      0      0      0   100%
+app/audit/service.py                     77      0     16      0   100%
+app/auth/__init__.py                      0      0      0      0   100%
+app/auth/account_api.py                  59      0      0      0   100%
+app/auth/api.py                         132      0     14      0   100%
+app/auth/mfa.py                         164      0     34      0   100%
+app/auth/mfa_api.py                      97      0      6      0   100%
+app/auth/mfa_pending.py                  30      0      2      0   100%
+app/auth/models.py                       24      0      0      0   100%
+app/auth/passwords.py                    12      0      0      0   100%
+app/auth/service.py                      94      0     18      0   100%
+app/auth/sessions.py                     34      0      0      0   100%
+app/auth/throttle.py                     76      0     18      0   100%
+app/conversations/__init__.py             0      0      0      0   100%
+app/conversations/api.py                 77      0      2      0   100%
+app/conversations/models.py              56      0      0      0   100%
+app/conversations/service.py            123      0     24      0   100%
+app/core/__init__.py                      0      0      0      0   100%
+app/core/client_ip.py                    41      0     14      0   100%
+app/core/clock.py                        11      0      0      0   100%
+app/core/db.py                           16      0      0      0   100%
+app/core/deps.py                          7      0      0      0   100%
+app/core/logs.py                         59      0     18      0   100%
+app/core/settings.py                    125      0     12      0   100%
+app/core/telemetry.py                    73      0     10      0   100%
+app/credentials/__init__.py               0      0      0      0   100%
+app/credentials/adapters.py              24      0      2      0   100%
+app/credentials/api.py                  202      0      6      0   100%
+app/credentials/bedrock_verifier.py      91      0     10      0   100%
+app/credentials/http_verifier.py         34      0     16      0   100%
+app/credentials/models.py                28      0      0      0   100%
+app/credentials/references.py            23      0      2      0   100%
+app/credentials/registry.py              35      0      2      0   100%
+app/credentials/service.py              206      0     26      0   100%
+app/credentials/verifier.py              51      0      8      0   100%
+app/crypto/__init__.py                    0      0      0      0   100%
+app/crypto/adapters.py                   12      0      2      0   100%
+app/crypto/envelope.py                   43      0      2      0   100%
+app/crypto/kms_key_wrapper.py            23      0      2      0   100%
+app/crypto/local_key_wrapper.py          31      0      4      0   100%
+app/default_model/__init__.py             0      0      0      0   100%
+app/default_model/api.py                 43      0      0      0   100%
+app/default_model/models.py              11      0      0      0   100%
+app/default_model/service.py             60      0     10      0   100%
+app/documents/__init__.py                 0      0      0      0   100%
+app/documents/api.py                    309      0      6      0   100%
+app/documents/chunking.py                23      0      2      0   100%
+app/documents/converter.py               61      0     18      0   100%
+app/documents/limits.py                  59      0      6      0   100%
+app/documents/models.py                  92      0      2      0   100%
+app/documents/pipeline.py               215      0     44      0   100%
+app/documents/ports.py                   50      0     10      0   100%
+app/documents/service.py                270      0     52      0   100%
+app/documents/tasks.py                   34      0      4      0   100%
+app/embed/__init__.py                     0      0      0      0   100%
+app/embed/admission.py                   50      0      2      0   100%
+app/embed/api.py                        242      0     26      0   100%
+app/embed/branding.py                    67      0      6      0   100%
+app/embed/branding_api.py                84      0      0      0   100%
+app/embed/service.py                    224      0     44      0   100%
+app/embed/tasks.py                       16      0      0      0   100%
+app/embed/tokens.py                      47      0     10      0   100%
+app/embeddings/__init__.py                0      0      0      0   100%
+app/embeddings/fake.py                   41      0      4      0   100%
+app/embeddings/port.py                    8      0      0      0   100%
+app/embeddings/provider.py               51      0      8      0   100%
+app/embeddings/registry.py               23      0      0      0   100%
+app/feedback/__init__.py                  0      0      0      0   100%
+app/feedback/api.py                      41      0      0      0   100%
+app/feedback/models.py                   19      0      0      0   100%
+app/feedback/service.py                  32      0      2      0   100%
+app/gateway/__init__.py                   2      0      0      0   100%
+app/gateway/adapters.py                  18      0      2      0   100%
+app/gateway/demo.py                      26      0      4      0   100%
+app/gateway/fakes.py                    110      0     20      0   100%
+app/gateway/gateway.py                   46      0     10      0   100%
+app/gateway/live.py                     135      0     20      0   100%
+app/gateway/ports.py                     20      0      0      0   100%
+app/guardrails/__init__.py                0      0      0      0   100%
+app/guardrails/canary.py                 57      0     20      0   100%
+app/guardrails/classifier.py             11      0      0      0   100%
+app/guardrails/fake.py                   22      0      6      0   100%
+app/guardrails/heuristic.py              29      0      4      0   100%
+app/guardrails/llm.py                    42      0      2      0   100%
+app/guardrails/local.py                  51      0      4      0   100%
+app/guardrails/outcomes.py               14      0      0      0   100%
+app/guardrails/pipeline.py               68      0     20      0   100%
+app/mail/__init__.py                      0      0      0      0   100%
+app/mail/factory.py                      12      0      4      0   100%
+app/mail/outbox.py                        6      0      0      0   100%
+app/mail/port.py                          9      0      0      0   100%
+app/mail/ses.py                          11      0      0      0   100%
+app/mail/smtp.py                         22      0      0      0   100%
+app/mail/templates.py                    23      0      2      0   100%
+app/main.py                              96      0      4      0   100%
+app/openapi.py                            6      0      0      0   100%
+app/playground/__init__.py                0      0      0      0   100%
+app/playground/api.py                   165      0     12      0   100%
+app/playground/service.py               165      0     20      0   100%
+app/pricing/__init__.py                   0      0      0      0   100%
+app/pricing/api.py                       70      0      0      0   100%
+app/pricing/models.py                    26      0      0      0   100%
+app/pricing/service.py                   58      0      6      0   100%
+app/pricing/sync.py                      13      0      4      0   100%
+app/pricing/table.py                     82      0     16      0   100%
+app/projects/__init__.py                  0      0      0      0   100%
+app/projects/api.py                     134      0      0      0   100%
+app/projects/embedding.py                93      0     24      0   100%
+app/projects/embedding_api.py           125      0      2      0   100%
+app/projects/instructions.py            111      0     24      0   100%
+app/projects/instructions_api.py        106      0      2      0   100%
+app/projects/models.py                   40      0      0      0   100%
+app/projects/service.py                 116      0     26      0   100%
+app/projects/tasks.py                    22      0      2      0   100%
+app/re_embedding/__init__.py              0      0      0      0   100%
+app/re_embedding/job.py                 108      0     16      0   100%
+app/re_embedding/models.py               28      0      0      0   100%
+app/re_embedding/service.py              48      0      4      0   100%
+app/re_embedding/tasks.py                25      0      2      0   100%
+app/retrieval/__init__.py                 0      0      0      0   100%
+app/retrieval/probe.py                   18      0      0      0   100%
+app/retrieval/service.py                155      0     36      0   100%
+app/runtime/__init__.py                   0      0      0      0   100%
+app/runtime/citations.py                 19      0      4      0   100%
+app/runtime/errors.py                    34      0      8      0   100%
+app/runtime/prompt.py                    35      0      6      0   100%
+app/runtime/runtime.py                  114      0     24      0   100%
+app/seed/__init__.py                      0      0      0      0   100%
+app/seed/__main__.py                     26      0      0      0   100%
+app/seed/content.py                      33      0      0      0   100%
+app/seed/runner.py                      174      0     50      0   100%
+app/serve.py                              0      0      0      0   100%
+app/storage/__init__.py                   2      0      0      0   100%
+app/storage/factory.py                   11      0      2      0   100%
+app/storage/memory.py                    32      0      4      0   100%
+app/storage/port.py                      14      0      0      0   100%
+app/storage/s3.py                        57      0     10      0   100%
+app/tags/__init__.py                      0      0      0      0   100%
+app/tags/api.py                         108      0      0      0   100%
+app/tags/models.py                       19      0      0      0   100%
+app/tags/service.py                     121      0     20      0   100%
+app/tenancy/__init__.py                   0      0      0      0   100%
+app/tenancy/active.py                    18      0      2      0   100%
+app/tenancy/api.py                       34      0      0      0   100%
+app/tenancy/erasure.py                   26      0      4      0   100%
+app/tenancy/invites.py                  117      0      8      0   100%
+app/tenancy/invites_api.py              137      0      2      0   100%
+app/tenancy/members.py                   52      0     10      0   100%
+app/tenancy/members_api.py               53      0      0      0   100%
+app/tenancy/mfa_policy.py                20      0      4      0   100%
+app/tenancy/models.py                    39      0      0      0   100%
+app/tenancy/policy.py                    30      0      6      0   100%
+app/tenancy/repository.py                36      0      2      0   100%
+app/tenancy/switcher_api.py              17      0      2      0   100%
+app/theme/__init__.py                     0      0      0      0   100%
+app/theme/api.py                        112      0      2      0   100%
+app/theme/fonts.py                       32      0      4      0   100%
+app/theme/images.py                     105      0     20      0   100%
+app/theme/models.py                      19      0      0      0   100%
+app/theme/resolve.py                     24      0      6      0   100%
+app/theme/schema.py                      37      0      0      0   100%
+app/theme/service.py                    116      0     16      0   100%
+app/versioning/__init__.py                0      0      0      0   100%
+app/versioning/api.py                     8      0      0      0   100%
+app/versioning/diff.py                   48      0     14      0   100%
+app/worker/__init__.py                    0      0      0      0   100%
+app/worker/celery_app.py                 11      0      0      0   100%
+app/worker/main.py                       20      0      0      0   100%
+app/worker/tasks.py                       4      0      0      0   100%
+---------------------------------------------------------------------------------
+TOTAL                                 10072      0   1170      0   100%
+Coverage XML written to file coverage.xml
+Required test coverage of 100.0% reached. Total coverage: 100.00%
+=========================== short test summary info ============================
+FAILED tests/integration/test_openapi.py::test_openapi_document_describes_every_endpoint
+FAILED tests/integration/test_tenant_isolation.py::test_each_organisation_scoped_route_declares_its_role_with_one_policy
+FAILED tests/integration/test_tenant_isolation.py::test_every_organisation_scoped_route_is_in_the_isolation_test
+FAILED tests/integration/test_tenant_isolation.py::test_every_project_route_is_in_the_project_isolation_test
+========== 4 failed, 2258 passed, 24 deselected in 2809.86s (0:46:49) ==========
+make: *** [Makefile:31: test-backend] Error 1
+exit 2

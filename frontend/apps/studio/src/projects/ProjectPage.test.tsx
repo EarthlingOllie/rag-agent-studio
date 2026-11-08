@@ -14,7 +14,7 @@ const editorSession: Session = {
   organisations: adaSession.organisations.map((organisation) => ({ ...organisation, role: "editor" as const })),
 };
 
-test("a Project page has a tab for each area, with placeholders until each feature arrives", async () => {
+test("a Project page has a tab for each area, each saying what it holds while it is empty", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));
@@ -38,7 +38,7 @@ test("a Project page has a tab for each area, with placeholders until each featu
     ["Instructions", /the shared rules every Agent in this Project follows/],
     ["Agents", /No Agents yet/],
     ["Conversations", /No Conversations yet/],
-    ["Analytics", /Analytics for this Project's Agents/],
+    ["Analytics", /No Agents to measure yet/],
     ["Documents", /No Documents yet\. Upload files/],
   ];
   for (const [tab, placeholder] of placeholders) {

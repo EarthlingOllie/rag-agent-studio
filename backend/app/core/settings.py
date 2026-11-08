@@ -2,7 +2,8 @@
 
 import base64
 import binascii
-from typing import Literal
+from typing import Annotated, Any, Literal
+from urllib.parse import quote
 
 from pydantic import (
     Field,
@@ -14,7 +15,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from app.core.client_ip import Network, trusted_networks
 
 
 class SettingsError(RuntimeError):
@@ -28,6 +31,19 @@ class Settings(BaseSettings):
     environment: Literal["local", "test", "demo", "production"] = "local"
     database_url: PostgresDsn
     redis_url: RedisDsn
+    # In AWS the URLs arrive in parts: ECS injects the password and AUTH token from Secrets
+    # Manager as their own variables (ticket 09-06). Unset DATABASE_URL or REDIS_URL is then
+    # built from these; a whole URL always wins.
+    database_host: str | None = None
+    database_port: int = Field(default=5432, gt=0, lt=65536)
+    database_name: str | None = None
+    database_user: str | None = None
+    database_password: SecretStr | None = None
+    database_tls: bool = False
+    redis_host: str | None = None
+    redis_port: int = Field(default=6379, gt=0, lt=65536)
+    redis_tls: bool = False
+    redis_auth_token: SecretStr | None = None
     celery_task_always_eager: bool = False
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
     # How long a Studio session lasts without signing in again.
@@ -44,6 +60,11 @@ class Settings(BaseSettings):
     sign_in_delay_base_seconds: int = Field(default=1, gt=0)
     sign_in_delay_max_seconds: int = Field(default=30, gt=0)
     sign_in_lockout_seconds: int = Field(default=15 * 60, gt=0)
+    # The proxies whose X-Forwarded-For entries are believed when finding a client's IP address
+    # for per-IP limits (widget rate limits, sign-in protection): comma-separated networks or
+    # addresses, such as the VPC's CIDR (the ALB) and CloudFront's origin-facing ranges (the ecs
+    # module sets both). Empty: the connection's peer is the client.
+    trusted_proxies: Annotated[list[Network], NoDecode] = []
     # How long a password-checked sign-in waits for its MFA code.
     mfa_pending_ttl_seconds: int = Field(default=5 * 60, gt=0)
     # Wraps the data keys of envelope-encrypted secrets (TOTP secrets, Provider Credentials):
@@ -80,6 +101,14 @@ class Settings(BaseSettings):
     invite_ttl_seconds: int = Field(default=7 * 24 * 60 * 60, gt=0)
     # The Studio's public address; links in emails point here.
     studio_url: HttpUrl = HttpUrl("http://localhost:5173")
+    # The demo pages (ticket 10-03): the fictional shop pages ask `GET /api/demo/agents` which of
+    # the Demo Organisation's Agents to embed, and the low-budget page's button spends that
+    # Agent's Token Budget. Off, those routes answer 404; on in `docker compose` and the AWS demo.
+    demo_pages: bool = False
+    # The origin the shop pages are served from, which the seed puts in the shop Agents' Allowed
+    # Origins: `docker compose` serves them on http://localhost:5175. Unset, the Studio's own
+    # origin, as in AWS, where they are under /demo/ on the Studio's address.
+    demo_shop_origin: HttpUrl | None = None
     # Which mailer adapter sends email: in-memory outbox (tests), SMTP (Mailpit) or AWS SES.
     mailer: Literal["outbox", "smtp", "ses"] = "outbox"
     mail_from: str = "RAG Agent Studio <no-reply@rag-agent-studio.invalid>"
@@ -116,9 +145,21 @@ class Settings(BaseSettings):
     # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
     # deterministic hash-based fake (tests, and stacks that can't download the model).
     embedder: Literal["local", "fake"] = "local"
-    # Scans Chunks for instructions aimed at an AI during ingestion: the heuristic baseline, or
-    # the rule-driven fake (tests). Spec 08 adds the local ONNX classifier.
-    injection_classifier: Literal["heuristic", "fake"] = "heuristic"
+    # Scans Chunks for instructions aimed at an AI during ingestion (the ingestion Guardrail
+    # scan): the local ONNX prompt-injection model (the input Guardrail's, shared with it), the
+    # heuristic baseline (stacks built without the model), or the rule-driven fake (tests).
+    injection_classifier: Literal["local", "heuristic", "fake"] = "local"
+    # The local model's score, from 0 to 1, at or above which a Chunk is flagged.
+    injection_classifier_threshold: float = Field(default=0.5, gt=0, le=1)
+    # Checks every Visitor message before the model sees it (the input Guardrail): the local
+    # ONNX prompt-injection model (bundled in the API image), the heuristic patterns (stacks
+    # built without the model), or the rule-driven fake (tests).
+    input_classifier: Literal["local", "heuristic", "fake"] = "local"
+    # The local model's score, from 0 to 1, at or above which a message is flagged.
+    input_classifier_threshold: float = Field(default=0.5, gt=0, le=1)
+    # How long an Agent's LLM classifier may take, in seconds, before it counts as a provider
+    # error (and the Agent's fail mode applies).
+    llm_classifier_timeout_s: float = Field(default=10, gt=0)
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
     # Transient ingestion failures (the Embedding Model's provider failing) are retried
@@ -134,6 +175,41 @@ class Settings(BaseSettings):
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.
     logfire_base_url: HttpUrl | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _urls_from_parts(cls, data: dict[str, Any]) -> dict[str, Any]:
+        # Runs on the raw values from the environment, before any are parsed.
+        if not data.get("database_url") and data.get("database_host"):
+            if not (data.get("database_name") and data.get("database_user")):
+                raise ValueError(
+                    "DATABASE_HOST is set, so DATABASE_NAME and DATABASE_USER are required"
+                )
+            data["database_url"] = _url(
+                "postgresql+asyncpg",
+                _credentials(data["database_user"], data.get("database_password")),
+                data["database_host"],
+                data.get("database_port", 5432),
+                data["database_name"],
+                "ssl=require" if _true(data.get("database_tls")) else "",
+            )
+        if not data.get("redis_url") and data.get("redis_host"):
+            tls = _true(data.get("redis_tls"))
+            data["redis_url"] = _url(
+                "rediss" if tls else "redis",
+                _credentials("", data.get("redis_auth_token")),
+                data["redis_host"],
+                data.get("redis_port", 6379),
+                "0",
+                # redis-py and Celery both refuse a rediss:// URL that does not say how to verify.
+                "ssl_cert_reqs=required" if tls else "",
+            )
+        return data
+
+    @field_validator("trusted_proxies", mode="before")
+    @classmethod
+    def _networks(cls, value: Any) -> Any:
+        return trusted_networks(value.split(",")) if isinstance(value, str) else value
 
     @field_validator("local_key_wrapper_key")
     @classmethod
@@ -151,6 +227,20 @@ class Settings(BaseSettings):
         if self.key_wrapper == "kms" and not self.kms_key_id:
             raise ValueError("KMS_KEY_ID is required when KEY_WRAPPER is kms")
         return self
+
+
+def _true(value: Any) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _credentials(user: str, secret: Any) -> str:
+    if secret is None:
+        return f"{quote(user, safe='')}@" if user else ""
+    return f"{quote(user, safe='')}:{quote(str(secret), safe='')}@"
+
+
+def _url(scheme: str, credentials: str, host: str, port: Any, path: str, query: str) -> str:
+    return f"{scheme}://{credentials}{host}:{port}/{path}" + (f"?{query}" if query else "")
 
 
 def load_settings() -> Settings:

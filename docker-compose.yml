@@ -24,9 +24,10 @@ x-backend: &backend
     MODEL_GATEWAY: ${MODEL_GATEWAY:-fake}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
-    # Trust X-Forwarded-For from the Studio's dev proxy, so sign-in limits count per browser IP.
-    # Local only: a deployment lists just its load balancers here.
-    FORWARDED_ALLOW_IPS: "*"
+    # X-Forwarded-For is believed only from TRUSTED_PROXIES (app/core/client_ip.py); uvicorn's own
+    # proxy-header handling is off. Unset locally, so the connection's peer is the client and no
+    # one can pick their own address with the header; AWS lists the VPC and CloudFront there.
+    TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
     # Email goes to Mailpit; read it at http://localhost:8025.
     MAILER: smtp
     SMTP_HOST: mailpit
@@ -45,9 +46,18 @@ x-backend: &backend
     # them. EMBEDDER=fake in .env uses the deterministic embedder instead (no model download).
     DOCUMENT_CONVERTER: ${DOCUMENT_CONVERTER:-docling}
     EMBEDDER: ${EMBEDDER:-local}
-    # The ingestion scan flags Chunks that look like instructions to an AI with the heuristic
-    # classifier (spec 08 adds the ONNX one).
-    INJECTION_CLASSIFIER: ${INJECTION_CLASSIFIER:-heuristic}
+    # The ingestion scan flags Chunks that look like instructions to an AI with the same local
+    # ONNX prompt-injection model as the input Guardrail (bundled in the image). A stack built with
+    # BUNDLE_MODELS=false sets INJECTION_CLASSIFIER=heuristic in .env.
+    INJECTION_CLASSIFIER: ${INJECTION_CLASSIFIER:-local}
+    # The input Guardrail checks every Visitor message with the local ONNX prompt-injection model
+    # bundled in the image. A stack built with BUNDLE_MODELS=false sets INPUT_CLASSIFIER=heuristic
+    # in .env (or the API downloads the model from Hugging Face on the first message).
+    INPUT_CLASSIFIER: ${INPUT_CLASSIFIER:-local}
+    # The demo pages (the `host` service): the API tells them which seeded Agents to embed, and
+    # the seed allows the shop origin in those Agents' Allowed Origins.
+    DEMO_PAGES: "true"
+    DEMO_SHOP_ORIGIN: ${DEMO_SHOP_ORIGIN:-http://localhost:5175}
   depends_on:
     postgres:
       condition: service_healthy
@@ -127,6 +137,7 @@ services:
     environment:
       API_PROXY_TARGET: http://api:8000
       OBJECT_STORE_PROXY_TARGET: http://rustfs:9000
+      WIDGET_PROXY_TARGET: http://widget:5174
     ports: ["5173:5173"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
@@ -136,6 +147,45 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      widget:
+        condition: service_healthy
+
+  # The widget app and the Embed Snippet's loader (`embed.js`), built into the frontend image.
+  # The Studio proxies /embed.js and /widget/assets here, so the widget shares the API's origin.
+  widget:
+    build:
+      context: ./frontend
+    working_dir: /app/apps/widget
+    command: ["node", "/app/node_modules/vite/bin/vite.js", "preview", "--host", "0.0.0.0", "--port", "5174", "--strictPort"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5174/embed.js').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # The demo host (frontend/apps/widget/host/serve.mjs), on two origins of its own. After
+  # `make seed`: http://localhost:5175/demo/ is Northwind's shop with the Product FAQ as a bubble
+  # (inline.html: the inline layout; budget.html: the Low-budget helper and a button that spends
+  # its Token Budget), all on the allowed shop origin; http://localhost:5176/ tries to embed the
+  # Product FAQ from an origin no Agent allows, and the browser refuses. Also
+  # http://localhost:5175/?agent=agt_… for any Agent that allows http://localhost:5175.
+  host:
+    build:
+      context: ./frontend
+    command: ["node", "/app/apps/widget/host/serve.mjs"]
+    environment:
+      PORT: "5175"
+      BLOCKED_PORT: "5176"
+      # Where browsers load embed.js from: the Studio's origin.
+      WIDGET_URL: ${STUDIO_URL:-http://localhost:5173}
+      # Where /api/demo/ is proxied, as CloudFront sends /api/* to the API in AWS.
+      API_URL: http://api:8000
+    ports: ["5175:5175", "5176:5176"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5175/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
 
 volumes:
   postgres-data:

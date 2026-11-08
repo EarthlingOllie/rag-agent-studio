@@ -57,6 +57,7 @@ dev = [
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
     "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.17.3",
 ]
 
@@ -83,9 +84,10 @@ branch = true
 # SQLAlchemy's async layer runs ORM code in greenlets; without this those lines go unmeasured.
 concurrency = ["greenlet", "thread"]
 source = ["app"]
-# The local Embedding Model needs its model downloaded from Hugging Face, so its adapter is
-# exercised by the live suite (tests/live) instead, as the spec's live suite intends.
-omit = ["migrations/*", "app/embeddings/local.py"]
+# The local Embedding Model and the local injection classifier's model need their models
+# downloaded from Hugging Face, so their adapters are exercised by the live suite (tests/live)
+# instead, as the spec's live suite intends.
+omit = ["migrations/*", "app/embeddings/local.py", "app/guardrails/onnx_model.py"]
 
 [tool.coverage.report]
 fail_under = 100
@@ -109,6 +111,11 @@ strict = true
 python_version = "3.13"
 plugins = ["pydantic.mypy"]
 files = ["app", "tests", "migrations"]
+
+[[tool.mypy.overrides]]
+# ONNX Runtime ships no type information.
+module = ["onnxruntime"]
+ignore_missing_imports = true
 
 [tool.logfire]
 # Instrumentation is attached when the app is built; it records once `configure_telemetry`

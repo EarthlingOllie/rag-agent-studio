@@ -22,12 +22,26 @@ export type Citation = {
 /** The `done` event that ends a streamed Playground answer. */
 export type AnswerDone = {
   message_id: string;
+  /** The Project Instructions the answer ran with: the Draft, or a Version. */
+  instructions_source: "draft" | "version";
+  instructions_version_id: string | null;
+  instructions_version_number: number | null;
   input_tokens: number;
   output_tokens: number;
   first_token_ms: number;
   latency_ms: number;
   chunks: { chunk_id: string; score: number; rank: number }[];
 };
+
+/** "Draft" or "v2": the Project Instructions an answer ran with. */
+export function instructionsUsed(used: {
+  instructions_source: string | null;
+  instructions_version_number: number | null;
+}): string {
+  return used.instructions_source === "version"
+    ? `v${String(used.instructions_version_number)}`
+    : "Draft";
+}
 
 /** Why the model provider failed, from a Playground stream's `error` event. */
 export type ProviderErrorCode =
@@ -59,10 +73,11 @@ function failed(response: Response, error: unknown): ProjectRequestError {
 export function agentFailure(error: Error | null): string | undefined {
   if (error === null) return undefined;
   if (error instanceof ProviderError) return error.message;
+  // A 409, or a 422 with one reason (an Instructions Version not in the Project), says why.
   if (
     error instanceof ProjectRequestError &&
     error.detail &&
-    error.status === 409
+    (error.status === 409 || error.status === 422)
   )
     return error.detail;
   if (error instanceof ProjectRequestError && error.status === 422)
@@ -125,7 +140,8 @@ export function useAgent(
   });
 }
 
-function useStoreAgent(organisationId: string, projectId: string) {
+/** Puts an Agent the API returned into the cache, and refreshes the lists that show it. */
+export function useStoreAgent(organisationId: string, projectId: string) {
   const queryClient = useQueryClient();
   return async (agent: Agent) => {
     queryClient.setQueryData(
@@ -161,6 +177,25 @@ export function useCreateAgent(organisationId: string, projectId: string) {
   });
 }
 
+/**
+ * A Draft change refused because someone else changed the Draft after the revision it was
+ * made on. Carries their latest Draft, so the Editor can load it or save over it.
+ */
+export class StaleDraftError extends Error {
+  constructor(readonly latest: Agent) {
+    super("Someone else changed this Draft.");
+    this.name = "StaleDraftError";
+  }
+}
+
+function staleOr(error: unknown): Agent | undefined {
+  return (error as { latest?: Agent | null } | undefined)?.latest ?? undefined;
+}
+
+/**
+ * Saves the Draft made on revision `baseRevision`. A Draft someone has changed since is
+ * refused with a `StaleDraftError` instead of being overwritten.
+ */
 export function useSaveDraft(
   organisationId: string,
   projectId: string,
@@ -168,7 +203,13 @@ export function useSaveDraft(
 ) {
   const store = useStoreAgent(organisationId, projectId);
   return useMutation({
-    mutationFn: async (draft: AgentDraft): Promise<Agent> => {
+    mutationFn: async ({
+      draft,
+      baseRevision,
+    }: {
+      draft: AgentDraft;
+      baseRevision: number;
+    }): Promise<Agent> => {
       const { data, error, response } = await api.PUT(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft",
         {
@@ -178,10 +219,13 @@ export function useSaveDraft(
               project_id: projectId,
               agent_id: agentId,
             },
+            query: { base_revision: baseRevision },
           },
           body: draft,
         },
       );
+      const latest = staleOr(error);
+      if (latest) throw new StaleDraftError(latest);
       if (!data) throw draftFailed(response, error);
       return data;
     },
@@ -293,20 +337,28 @@ function parseEvent(block: string): StreamEvent {
 /**
  * Asks the Agent's Draft a question. `onToken` receives the answer as it streams in, and
  * `onCitation` each Chunk it cites; `onReplace` the text that replaces everything streamed so
- * far when the answer leaked the Canary token. The returned promise resolves with the `done`
+ * far when the answer leaked the Canary token; `onRefusal` the Agent's refusal text, the whole
+ * reply, when the input Guardrail blocked the question. The returned promise resolves with the `done`
  * event once the answer is complete and saved, or rejects with a `ProviderError` when the
  * stream ends with an `error` event because the model provider failed.
  */
 export async function askPlayground(
   path: AgentPath & { conversation_id: string },
   question: string,
+  /** The Instructions Version to answer with; null for the Instructions Draft. */
+  instructionsVersionId: string | null,
   onToken: (text: string) => void,
   onCitation: (citation: Citation) => void,
   onReplace: (text: string) => void,
+  onRefusal: (text: string) => void,
 ): Promise<AnswerDone> {
   const { data, error, response } = await api.POST(
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages",
-    { params: { path }, body: { content: question }, parseAs: "stream" },
+    {
+      params: { path },
+      body: { content: question, instructions_version_id: instructionsVersionId },
+      parseAs: "stream",
+    },
   );
   if (!response.ok) throw failed(response, error);
   const reader = (data as ReadableStream<Uint8Array>).getReader();
@@ -326,6 +378,8 @@ export async function askPlayground(
       if (event.event === "citation") onCitation(event.data as Citation);
       if (event.event === "replace")
         onReplace((event.data as { text: string }).text);
+      if (event.event === "refusal")
+        onRefusal((event.data as { text: string }).text);
       if (event.event === "done") return event.data as AnswerDone;
       if (event.event === "error") {
         const { code, message } = event.data as {
@@ -397,6 +451,206 @@ export function usePublishAgent(
       return data;
     },
     onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: agentsKey(organisationId, projectId),
+      }),
+  });
+}
+
+export type AgentDiff = Schemas["AgentDiffOut"];
+/** A side of a diff: the Draft, the Live Version, or a Version's ID. */
+export type DiffSide = "draft" | "live" | (string & {});
+
+/**
+ * What changes from one side to the other. `revision` is the Draft revision it was made on, so
+ * a diff involving the Draft is fetched again once the Draft changes.
+ */
+export function useAgentDiff(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+  sides: { from: DiffSide; to: DiffSide; revision: number },
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: [...agentsKey(organisationId, projectId), agentId, "diff", sides],
+    enabled,
+    queryFn: async (): Promise<AgentDiff> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+            query: { from: sides.from, to: sides.to },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** The Agent's Versions, newest first, and which is Live. */
+/** The Agent's Versions; with `enabled` false, nothing is fetched (no Agent chosen yet). */
+export function useAgentVersions(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+  enabled = true,
+) {
+  return useQuery({
+    enabled,
+    queryKey: [...agentsKey(organisationId, projectId), agentId, "versions"],
+    queryFn: async (): Promise<Schemas["AgentVersionsOut"]> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** What to tell the Editor about a refused Draft change: discarding it or starting it again. */
+export function draftChangeFailure(error: Error | null): string | undefined {
+  if (error instanceof StaleDraftError)
+    return "Someone else changed this Draft since you opened it. Their changes are shown now: review them and try again.";
+  if (error instanceof ProjectRequestError && error.status === 422)
+    return "That Version names a credential or Tag that no longer exists, so it can't start the Draft.";
+  return agentFailure(error);
+}
+
+/**
+ * Replaces the Draft made on revision `baseRevision`: with the Live Version's configuration
+ * (`discard`), or with a Version's (`versionId`). Nothing is published.
+ */
+export function useReplaceDraft(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  const store = useStoreAgent(organisationId, projectId);
+  return useMutation({
+    mutationFn: async ({
+      versionId,
+      baseRevision,
+    }: {
+      versionId: "live" | (string & {});
+      baseRevision: number;
+    }): Promise<Agent> => {
+      const path = {
+        organisation_id: organisationId,
+        project_id: projectId,
+        agent_id: agentId,
+      };
+      const query = { base_revision: baseRevision };
+      const { data, error, response } =
+        versionId === "live"
+          ? await api.POST(
+              "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/discard",
+              { params: { path, query } },
+            )
+          : await api.POST(
+              "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/from-version",
+              { params: { path, query }, body: { version_id: versionId } },
+            );
+      const latest = staleOr(error);
+      if (latest) {
+        await store(latest);
+        throw new StaleDraftError(latest);
+      }
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: store,
+  });
+}
+
+export type LiveHistoryEntry = Schemas["LiveHistoryEntryOut"];
+
+/** Every change of the Agent's Live Version, newest first. */
+export function useLiveHistory(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  return useQuery({
+    queryKey: [...agentsKey(organisationId, projectId), agentId, "live-history"],
+    queryFn: async (): Promise<LiveHistoryEntry[]> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/live-history",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/**
+ * The Version a revert would make Live again: the one Live when the present Live Version was
+ * published. Reverts aren't followed, so reverting twice walks further back. The API applies
+ * the same rule and has the final say.
+ */
+export function revertTarget(
+  liveVersionId: string,
+  history: LiveHistoryEntry[],
+): LiveHistoryEntry["from_version"] {
+  const pushed = history.find(
+    (entry) =>
+      entry.to_version.id === liveVersionId &&
+      (entry.action === "publish" || entry.action === "bulk_publish"),
+  );
+  return pushed?.from_version ?? null;
+}
+
+/** Moves the Live Version back one step in the Live History and returns the Version now Live. */
+export function useRevertAgent(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<AgentVersion> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/revert",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              agent_id: agentId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSettled: () =>
       queryClient.invalidateQueries({
         queryKey: agentsKey(organisationId, projectId),
       }),

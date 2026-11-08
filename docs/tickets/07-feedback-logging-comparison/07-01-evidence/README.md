@@ -1,0 +1,110 @@
+# Evidence: ticket 07-01, Conversations viewer
+
+Branch `ticket/07-01-conversations-viewer`, from `origin/candidate` at `e77f204` (06-01, Embed tracer, merged). The claim commit `1ad15b7`, the first on the branch, set Status `in-progress`. The feature is `93b5120`. Every check below ran on `93b5120` with no uncommitted code changes (only this folder and the ticket file were written afterwards); each log's first line names the commit.
+
+**Status: done.** Every criterion is met and evidenced below. Gaps and judgement calls are listed at the end.
+
+## What was built
+
+- **Service** (`backend/app/conversations/service.py`, new): a Project's Conversations found through the Organisation scope and the Project (`Agent.project_id` and `Conversation.organisation_id` both checked):
+  - `list_conversations` with a `ConversationFilter` (Agent, Agent Version: Conversations with at least one reply from it, start/end on when the Conversation started, end exclusive, Playground only / Visitors only), newest first, paged, each row with the Agent's name, Message count, a 120-character preview of the first question and the Agent Version numbers that answered.
+  - `get_conversation` (Messages oldest first, with each answering Version's number) and `get_trace` (one reply's Trace; a question, another Conversation's reply or an unknown ID is not found).
+  - The Trace's Chunk loading (`traced_chunks`, `answer_in`) moved here from the Playground service, which now uses it, so both Traces are built the same way.
+- **API** (`backend/app/conversations/api.py`, new; Editors and Owners, one `RequireRole` policy each):
+  - `GET …/projects/{project_id}/conversations` (`listConversations`): query `agent_id`, `version_id`, `start`, `end` (timezone-aware), `playground` (bool), `page`, `page_size` (≤100); returns `{items, page, page_size, total}`; each item has `is_playground`.
+  - `GET …/conversations/{conversation_id}` (`getConversation`): the Conversation (`is_playground`, Agent name, times) and its Messages, each reply with `agent_version_number` and `fallback` besides the Playground's Message fields.
+  - `GET …/conversations/{conversation_id}/messages/{message_id}/trace` (`getConversationTrace`): the same `TraceOut` as the Playground's, which gains `agent_version_number`.
+- **Conversation start time**: Visitor and Playground Conversations now take `created_at` from the app's Clock (`app/agents/serving.py`, `app/playground/service.py`), so the date filter follows the same clock as everything else (and is testable with the controllable clock).
+- **Studio**:
+  - `ConversationsTab.tsx` and `conversations.ts` replace the Conversations placeholder: filters (Agent, including archived Agents; Version, enabled once an Agent is chosen and cleared when it changes; From/To UTC days, both inclusive; Show: Visitors and Playground / Visitors only / Playground only) kept in the URL search, a table (Started, Agent, With: "Visitor" or a "Playground" badge whose description says it was tried by an Editor and is left out of analytics, Answered by: "v1, v2" or "Draft", Messages, First question linking to the Conversation), and pages of 25.
+  - The Conversation page (`/projects/$projectId/conversations/$conversationId`): heading "Conversation with <Agent>", "Visitor Conversation" or "Playground Conversation · tried in the Playground by an Editor; left out of analytics", start and last activity, the Messages (Visitor or Editor, then the Agent with "Agent Version vN" or "Draft" and "fallback reply"), a **Trace** button on each reply opening the Trace drawer, and an "All Conversations" link back with the list's filters.
+  - `TraceDrawer.tsx`: the drawer frame now takes any Trace query (`TraceDrawerFrame`), used by the Playground and the Conversation page; the Trace shows **Answered by** (Agent Version vN or Draft), and an Agent Version's answer shows its Instructions as "Pinned by Agent Version vN" (before, it would have said "Draft").
+  - The Agent page links to "Conversations with this Agent" (the list filtered to it), so Conversations can be browsed per Agent as well as per Project.
+- **Generated API client** regenerated (`make gen-client`). **Glossary**: new **Conversations viewer**; **Trace** updated.
+
+## Test seams
+
+The [shared test seams](../../../specs/README.md#shared-test-seams) and the spec's Testing Decisions. They were not confirmed with a human (no human is available in this run); they are the ones the spec names.
+
+- **API seam:** `backend/tests/integration/test_conversations.py` (12 tests, 15 cases): Visitor Conversations are made through the widget API by a client with no Studio session, Playground ones through the Playground API, answers come from a `FunctionModel`, the date filter uses the controllable clock. Assertions are on HTTP responses only.
+- **Tenant isolation:** `backend/tests/integration/test_tenant_isolation.py` (see criterion 4).
+- `test_openapi.py` lists the three operations; `test_no_secret_in_responses.py` lists `ConversationMessageOut`'s token counts as counts.
+- **Network seam:** `frontend/apps/studio/src/projects/ConversationsTab.test.tsx` (13 tests) with `fakeConversationsApi` (`src/test/conversations.ts`), MSW handlers typed with the generated client.
+- **End-to-end seam:** `frontend/e2e/tests/conversations.spec.ts`, Playwright against the compose stack with the fake chat model, with axe.
+
+## Acceptance criteria
+
+| # | Criterion | Evidence |
+|---|---|---|
+| 1 | The list can be filtered by date, Version and Playground | **API** (`test_conversations.py`):<br>• `test_the_list_is_filtered_by_agent_date_version_and_playground`: over three clock days, two Agents, v2 published mid-Conversation and a Playground Conversation: unfiltered order and Version numbers (`[[2], [1], [1, 2], [], [1]]`); by Agent; by v2 (both Conversations v2 answered in, including the one that started on v1); by Agent + v1; a day window (`start` inclusive, `end` exclusive), from a day, before a day; `playground=true` (only the Playground one); `playground=false` with an Agent<br>• `test_the_list_holds_visitor_and_playground_conversations_flagged`, `test_the_list_comes_in_pages`, `test_a_conversation_with_nothing_asked_has_no_preview`, `test_a_long_first_question_is_cut_in_the_preview`, `test_the_list_holds_only_the_projects_conversations` (another Project's Agent as a filter finds nothing), `test_an_unknown_project_has_no_conversations`, `test_bad_filters_are_refused` (page 0, page size 101, a naive datetime, a non-boolean `playground`: 422)<br>**Studio** (`ConversationsTab.test.tsx`): "the list is filtered by Agent, Version, dates and Playground" (the exact query sent: `agent_id`, `version_id`, `start` `2026-11-06T00:00:00.000Z`, `end` the next midnight for an inclusive To day, `playground=true`, then `false`; the Version is disabled until an Agent is chosen and cleared when the Agent changes); "an Agent's Conversations open from the list already filtered to it"; "an Agent page links to that Agent's Conversations"; paging ("a long list comes in pages": a new filter goes back to page 1), empty and error states<br>**E2E** (`conversations.spec.ts`): from the Agent page's link, the list filtered to the Agent; Show "Visitors only" hides the Playground row, Version v1 keeps the Visitor's, the filters are in the URL and survive opening a Conversation and coming back. |
+| 2 | The detail view shows Messages with a Trace drawer | **API:**<br>• `test_an_editor_reads_a_visitor_conversation_with_each_replys_version`: an Editor reads a Visitor Conversation: Messages in order, roles and text, `agent_version_number` `[None, 1, None, 2]` across a publish mid-Conversation, `config_source`, model, tokens, `fallback`<br>• `test_a_visitor_replys_trace_shows_its_version_and_the_chunks_it_cited`: the Trace through the Conversations route: Version `v1`, no Instructions of its own, model, the cited Chunk with `leave.txt`, its text, rank 1, `cited`<br>• `test_a_playground_conversation_opens_flagged_with_its_draft_traces`<br>• `test_conversations_and_traces_are_found_only_in_their_project`: another Project, an unknown Conversation or Project, a question (no Trace), an unknown Message, and a reply asked for through another Conversation are all 404<br>**Studio:** "an Editor opens a Visitor Conversation and reads each reply's Trace in the drawer" (Messages labelled Visitor / HR helper, "Agent Version v1", "Agent Version v2 · fallback reply", no Trace on questions; the drawer shows Answered by "Agent Version v1", Instructions "Pinned by Agent Version v1", the Retrieved Chunks table; the Trace route read; Close; back to the list with its filters); "a Trace that can't be loaded says so"; "a Conversation that doesn't exist says so"<br>**Playground regression:** the Playground's Trace drawer tests (`AgentPage.test.tsx`, `PlaygroundInstructions.test.tsx`, `test_citations_trace.py`, `test_playground*.py`) pass unchanged after the shared drawer and Trace loading.<br>**E2E:** the Editor opens the Visitor's Conversation, sees "Agent Version v1" on the reply, opens its Trace (Answered by, "Pinned by Agent Version v1"), axe clean with the drawer open. |
+| 3 | Playground Conversations are clearly flagged | **API:** `is_playground` on every list item and on the detail (`test_the_list_holds_visitor_and_playground_conversations_flagged`, `test_a_playground_conversation_opens_flagged_with_its_draft_traces`); `playground=true/false` filters on it.<br>**Studio:** "the Conversations tab lists Visitor and Playground Conversations, Playground ones flagged": the With column says "Visitor" or shows a "Playground" badge whose accessible description is "Tried in the Playground by an Editor; left out of analytics."; their Answered by is "Draft". "a Playground Conversation is flagged, and its replies' Traces say the Draft answered": "Playground Conversation · tried in the Playground by an Editor; left out of analytics · started …", the asker is "Editor", and the Trace says Answered by "Draft".<br>**E2E:** the Playground row's With cell is "Playground", the Visitor's "Visitor". |
+| 4 | Tenant isolation tests are extended | `test_tenant_isolation.py`:<br>• The three routes are in `PROJECT_SCOPED_ROUTES` (so also `ORGANISATION_SCOPED_ROUTES`), so each is checked for: another Organisation's Member gets the same 404 as for a missing Organisation; unauthenticated 401; Editors allowed; a Member of two Organisations can't reach a third, and can't reach one Organisation's Conversation through the other's path whichever is active; the Project is not found through the other Organisation of the same Member, and an unknown Project answers the same; the single `RequireRole` policy; the guards that every Organisation- and Project-scoped route is listed.<br>• New `test_each_organisation_lists_only_its_own_conversations_for_a_member_of_both`: each Organisation's list holds only its own Conversation, and filtering one Organisation's list by the other's Agent or Agent Version finds nothing.<br>Results in [backend-tests.log](backend-tests.log). |
+| 5 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams as above. [backend-tests.log](backend-tests.log): **1961 passed**, 7 deselected (live); 100.00% lines and branches (9060 statements, 1024 branches). [frontend-tests.log](frontend-tests.log): **51 files, 630 tests**, 100% statements (3181), branches (1982), functions and lines. No coverage exclusions or pragmas were added. |
+| 6 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | `GLOSSARY.md`: new **Conversations viewer** (what it lists, its filters, the Playground flag, the detail and Trace drawer, the per-Agent link); **Trace** now says it shows the Agent Version (or Draft) and, for a Version's answer, the Instructions it pins, and where the drawer appears. No ADR decision changed. |
+
+## Results
+
+All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results), driven by one script. The backend used fresh `rag0701-*` containers (Postgres/pgvector :47012, Redis :47013, RustFS :47014). The e2e stack was compose project `rag0701-e2e` on host ports 47110–47189 ([compose.sandbox.yml](compose.sandbox.yml), [e2e.env](e2e.env)), with images built by [build.sh](build.sh) (the committed Dockerfiles plus the sandbox's egress CA, PDF extras and bundled models off).
+
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Install | `make install` | exit 0 | [install.log](install.log) |
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) | exit 0 | [lint.log](lint.log) |
+| API client drift | `make check-client` | "API client is up to date." | [client-drift.log](client-drift.log) |
+| Backend tests + coverage gate | `make test-backend` | **1961 passed**, 7 deselected (live); 100.00% lines and branches (9060 statements, 1024 branches) | [backend-tests.log](backend-tests.log) |
+| Frontend tests + coverage gate + loader budget | `make test-frontend` | **51 files, 630 tests**; 100% on every metric; `embed.js` 417 B / 315 B gzipped | [frontend-tests.log](frontend-tests.log) |
+| Images | `build.sh` (sandbox `make images`) | `rag-agent-studio/api:0701` and `studio:0701` built | [images.log](images.log) |
+| End-to-end | `make e2e` with the sandbox override (project `rag0701-e2e`) | **70 passed** (5.8 min), including `conversations.spec.ts` | [e2e.log](e2e.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` | no leaks; no known vulnerabilities | [security.log](security.log) |
+| Infra | terraform checks | not run: this ticket changes no infra | n/a |
+
+### Clean-checkout rerun
+
+Every check was run again from a fresh clone of the pushed branch (`scratchpad/ev0701`), one at a time, on a machine shared with five other tickets. The logs are in [clean-checkout/](clean-checkout/).
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` @ 186c718 | exit 0 | [install.log](clean-checkout/install.log) |
+| `make lint` @ 186c718 | exit 0 | [lint.log](clean-checkout/lint.log) |
+| `make check-client` @ 186c718 | "API client is up to date.", no diff | [client-drift.log](clean-checkout/client-drift.log) |
+| `make test-frontend` @ 186c718 | 51 files, 630 tests; 100% on every metric | [frontend-tests.log](clean-checkout/frontend-tests.log) |
+| `make test-backend` @ 8840273 | 1961 passed, 7 deselected; 100.00% lines and branches | [backend-tests.log](clean-checkout/backend-tests.log) |
+| Images (`build.sh`) @ 186c718 | exit 0 | [images.log](clean-checkout/images.log) |
+| `make e2e` @ 186c718 | **70 passed** (5.4 min), no retries needed | [e2e.log](clean-checkout/e2e.log) |
+
+The first clean-checkout pass at 8840273 found two problems, both outside this ticket's code:
+
+- **Frontend coverage gate failed** at 99.96% statements / 99.94% branches ([log](clean-checkout/frontend-tests-8840273-flaky.log)). All 630 tests passed. The cause was a timing race in 05-04's `DraftEditor.test.tsx`, "a change still waiting to be saved is saved when the Editor leaves the page". At load average ~11, the 600 ms autosave timer sometimes fired between typing and clicking away, so the unmount flush (`DraftEditor.tsx:467`) was not run. Commit 186c718 makes the test change the field and leave in the same tick, so the result no longer depends on machine speed. It is a test-only change and has no effect on the backend, so the backend run at 8840273 still applies to 186c718.
+- **Two e2e specs failed** at load average 17–20 with the disk 98% full ([log](clean-checkout/e2e-8840273-under-load.log)): `agent-revert.spec.ts` and `bulk-rollout.spec.ts`, both from other tickets. Both hit the 30 s Playwright test timeout on the first try and on the retry. The other 68 specs passed, including `conversations.spec.ts`. Both specs passed in the original run and in the clean rerun at 186c718, so this was the overloaded machine and not a defect. Neither spec was changed.
+
+### Rerun after merging the latest candidate
+
+Before the merge, `origin/candidate` (`4ebc317`, which adds 06-04, 06-03 and 09-06) was merged into the branch with no conflicts (merge commit `0b715aa`). Every check was then run again in the branch's worktree, one at a time. The logs are in [merged-candidate/](merged-candidate/).
+
+| Check | Result | Log |
+|---|---|---|
+| `make install` @ 0b715aa | exit 0 | [install.log](merged-candidate/install.log) |
+| `make lint` @ 0b715aa (ruff, ruff format, mypy --strict, eslint, tsc) | exit 0 | [lint.log](merged-candidate/lint.log) |
+| `make check-client` @ 0b715aa | "API client is up to date.", no diff | [client.log](merged-candidate/client.log) |
+| `make test-frontend` @ 0b715aa | 53 files, 689 tests; 100% on every metric; `embed.js` 1367 B / 778 B gzipped, within budget | [fe.log](merged-candidate/fe.log) |
+| `make test-backend` @ 0b715aa | **2056 passed**, 7 deselected (live); 100.00% lines and branches (9381 statements, 1058 branches) | [be.log](merged-candidate/be.log) |
+| Images (`build.sh`) @ 0b715aa | exit 0 | [images.log](merged-candidate/images.log) |
+| `make e2e` @ 0b715aa | **74 passed** (5.2 min), including `conversations.spec.ts` | [e2e.log](merged-candidate/e2e.log) |
+| gitleaks + `make audit` @ 0b715aa | no leaks; no known vulnerabilities | [security.log](merged-candidate/security.log) |
+| Infra | not run: this ticket changes no infra (09-06's infra came from candidate and was checked in its own PR) | n/a |
+
+An earlier pass on the first merge (`a11e8cb`, candidate `fa78cf9`) had every unit, lint and backend check green. Its e2e run, at load average 17–18, had one failure and one flaky test, both in other tickets' specs: `bulk-rollout.spec.ts` failed twice and `members.spec.ts` passed on retry ([log](merged-candidate/e2e-a11e8cb-under-load.log)). `bulk-rollout.spec.ts` had failed the same way under load in the clean-checkout pass above. Candidate then moved, and the run above, after the second merge, passed all 74 specs on the first try. A first `make lint` at `0b715aa` failed only because eslint read a `playwright-report/` folder left in the worktree by that failed e2e run. The folder is untracked and git-ignored, so a clean checkout never has it. The folder was deleted and lint passed.
+
+## Gaps and judgement calls
+
+- **Seams not confirmed with a human.** The TDD skill asks for the seams to be agreed first; no human is reachable in this run, so the spec's own seams (API, network, end-to-end) were used.
+- **Filters beyond this ticket.** The spec's list also filters by feedback, rating and Guardrail outcome; those arrive with 07-02, 07-03 and spec 08, which add the data. This ticket's criteria name date, Version and Playground (plus Agent, for "per Agent").
+- **Tombstones** ("Chunk from deleted Document <name>") are ticket 07-07; the drawer still shows the existing "Deleted Document" text for a Chunk whose Document is gone.
+- **"Date" means when the Conversation started**, in UTC days (as the Audit tab's filter), with To inclusive. Best guess: the spec doesn't say whether start or last activity; start is stable while a Conversation continues.
+- **Per Agent** is the Project list filtered by Agent (with a link from each Agent page), not a second list route; one route serves both views.
+- **The Version filter** keeps Conversations with at least one reply from that Version, so a Conversation that spans a publish appears under both Versions.
+- **Archived Agents' Conversations** are listed (archiving keeps Conversations, per the glossary), and archived Agents are offered in the Agent filter marked "(archived)".
+- **Conversation `created_at`** now comes from the app's Clock rather than the database's `now()`; in production both are the system clock.
+- **E2E without a Document:** the e2e Project holds no Document (set up through the API to keep the test short), so its Trace has no Chunks; the e2e test checks the drawer and the Version attribution. Chunk-level Trace content through the Conversations route is covered at the API seam (`test_a_visitor_replys_trace_shows_its_version_and_the_chunks_it_cited`).
+- **Out-of-ticket test fix:** 186c718 edits one test in 05-04's `DraftEditor.test.tsx` to stop it failing the coverage gate under load (see Clean-checkout rerun). The component is unchanged.

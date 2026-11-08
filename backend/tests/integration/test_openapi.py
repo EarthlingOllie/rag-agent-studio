@@ -9,6 +9,8 @@ _PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
 _THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
 _AGENT = f"{_PROJECT}/agents/{{agent_id}}"
 _PLAYGROUND = f"{_AGENT}/playground/conversations"
+_FEEDBACK = "/api/widget/agents/{public_id}/messages/{message_id}/feedback"
+_RATING = "/api/widget/agents/{public_id}/conversation/rating"
 
 
 def test_openapi_document_describes_every_endpoint() -> None:
@@ -94,6 +96,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listProjectInstructionsVersions": (f"{_PROJECT}/instructions/versions", "get"),
         "publishProjectInstructions": (f"{_PROJECT}/instructions/versions", "post"),
         "revertProjectInstructions": (f"{_PROJECT}/instructions/revert", "post"),
+        "diffProjectInstructions": (f"{_PROJECT}/instructions/diff", "get"),
         "startDocumentUpload": (f"{_PROJECT}/uploads", "post"),
         "confirmDocumentUpload": (f"{_PROJECT}/documents", "post"),
         "listDocuments": (f"{_PROJECT}/documents", "get"),
@@ -109,6 +112,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "get"),
         "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
         "deleteDocument": (f"{_PROJECT}/documents/{{document_id}}", "delete"),
+        "clearChunkFlag": (
+            f"{_PROJECT}/documents/{{document_id}}/chunks/{{chunk_id}}/flag",
+            "delete",
+        ),
         "replaceDocument": (f"{_PROJECT}/documents/{{document_id}}/editions", "post"),
         "listTags": (f"{_PROJECT}/tags", "get"),
         "createTag": (f"{_PROJECT}/tags", "post"),
@@ -124,9 +131,33 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "restoreAgent": (f"{_AGENT}/restore", "post"),
         "deleteAgent": (f"{_AGENT}", "delete"),
         "publishAgent": (f"{_AGENT}/versions", "post"),
+        "revertAgent": (f"{_AGENT}/revert", "post"),
         "listAgentVersions": (f"{_AGENT}/versions", "get"),
         "getAgentVersion": (f"{_AGENT}/versions/{{version_id}}", "get"),
         "listAgentLiveHistory": (f"{_AGENT}/live-history", "get"),
+        "getOperationalSettings": (f"{_AGENT}/operational-settings", "get"),
+        "changeOperationalSettings": (f"{_AGENT}/operational-settings", "patch"),
+        "getTokenUsage": (f"{_AGENT}/token-usage", "get"),
+        "getThemeOverride": (f"{_AGENT}/theme-override", "get"),
+        "setThemeOverrideColours": (f"{_AGENT}/theme-override", "put"),
+        "startAgentAvatarUpload": (f"{_AGENT}/theme-override/avatar/uploads", "post"),
+        "confirmAgentAvatarUpload": (f"{_AGENT}/theme-override/avatar", "put"),
+        "removeAgentAvatar": (f"{_AGENT}/theme-override/avatar", "delete"),
+        "getAgentAvatar": (f"{_AGENT}/theme-override/avatar", "get"),
+        "startWidgetConversation": ("/api/widget/agents/{public_id}/conversations", "post"),
+        "sendWidgetMessage": ("/api/widget/agents/{public_id}/messages", "post"),
+        "getWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "get"),
+        "endWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "delete"),
+        "giveMessageFeedback": (_FEEDBACK, "put"),
+        "removeMessageFeedback": (_FEEDBACK, "delete"),
+        "rateConversation": (_RATING, "put"),
+        "dismissRatingPrompt": (f"{_RATING}/dismissal", "post"),
+        "bulkPublishAgents": (f"{_PROJECT}/agents/bulk-publish", "post"),
+        "bulkRevertAgents": (f"{_PROJECT}/agents/bulk-revert", "post"),
+        "getInstructionsRollout": (f"{_PROJECT}/instructions/rollout", "get"),
+        "diffAgent": (f"{_AGENT}/diff", "get"),
+        "discardAgentDraft": (f"{_AGENT}/draft/discard", "post"),
+        "startAgentDraftFromVersion": (f"{_AGENT}/draft/from-version", "post"),
         "startPlaygroundConversation": (f"{_PLAYGROUND}", "post"),
         "getPlaygroundConversation": (f"{_PLAYGROUND}/{{conversation_id}}", "get"),
         "sendPlaygroundMessage": (f"{_PLAYGROUND}/{{conversation_id}}/messages", "post"),
@@ -134,6 +165,14 @@ def test_openapi_document_describes_every_endpoint() -> None:
             f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
             "get",
         ),
+        "listConversations": (f"{_PROJECT}/conversations", "get"),
+        "getConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "get"),
+        "getConversationTrace": (
+            f"{_PROJECT}/conversations/{{conversation_id}}/messages/{{message_id}}/trace",
+            "get",
+        ),
+        "getVersionMetrics": (f"{_PROJECT}/agents/{{agent_id}}/metrics", "get"),
+        "getTimeSeries": (f"{_PROJECT}/agents/{{agent_id}}/time-series", "get"),
     }
 
 

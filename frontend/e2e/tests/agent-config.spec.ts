@@ -13,7 +13,7 @@ const OPENAI_KEY = "sk-proj-e2e-test-only-not-a-real-key-0000000000-r7t1";
 
 /** Waits for the next Draft save and checks the API accepted it. */
 async function nextSave(page: Page, status = 200) {
-  const response = await page.waitForResponse((r) => r.url().endsWith("/draft") && r.request().method() === "PUT");
+  const response = await page.waitForResponse((r) => new URL(r.url()).pathname.endsWith("/draft") && r.request().method() === "PUT");
   expect(response.status()).toBe(status);
 }
 

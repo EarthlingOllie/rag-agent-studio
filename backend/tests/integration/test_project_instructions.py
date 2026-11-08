@@ -27,7 +27,7 @@ async def test_a_new_projects_instructions_are_empty(owner: SignedUpMember) -> N
     response = await owner.client.get(instructions_path(owner, project_id))
 
     assert response.status_code == 200, response.text
-    assert response.json() == {"markdown": ""}
+    assert response.json()["markdown"] == ""
 
 
 async def test_an_editor_saves_the_instructions_and_they_read_back_exactly(
@@ -41,9 +41,9 @@ async def test_an_editor_saves_the_instructions_and_they_read_back_exactly(
     )
 
     assert saved.status_code == 200, saved.text
-    assert saved.json() == {"markdown": INSTRUCTIONS}
+    assert saved.json()["markdown"] == INSTRUCTIONS
     fetched = await owner.client.get(instructions_path(owner, project_id))
-    assert fetched.json() == {"markdown": INSTRUCTIONS}
+    assert fetched.json()["markdown"] == INSTRUCTIONS
 
 
 async def test_instructions_edits_are_recorded_as_audit_events(
@@ -75,7 +75,7 @@ async def test_instructions_can_be_cleared(owner: SignedUpMember) -> None:
 
     cleared = await owner.client.put(path, json={"markdown": ""})
 
-    assert cleared.json() == {"markdown": ""}
+    assert cleared.json()["markdown"] == ""
 
 
 @pytest.mark.parametrize("body", [{"markdown": "x" * 20_001}, {}, {"markdown": 3}])
@@ -100,7 +100,7 @@ async def test_an_archived_projects_instructions_are_read_only(owner: SignedUpMe
 
     assert saved.status_code == 409
     assert saved.json() == {"detail": "This Project is archived. An Owner can restore it."}
-    assert (await owner.client.get(path)).json() == {"markdown": INSTRUCTIONS}
+    assert (await owner.client.get(path)).json()["markdown"] == INSTRUCTIONS
 
 
 async def test_instructions_are_not_found_outside_their_organisation(
@@ -121,4 +121,4 @@ async def test_instructions_are_not_found_outside_their_organisation(
     # The stranger can't reach the Owner's Organisation at all.
     response = await stranger.client.get(instructions_path(owner, project_id))
     assert response.status_code == 404
-    assert (await owner.client.get(instructions_path(owner, project_id))).json() == {"markdown": ""}
+    assert (await owner.client.get(instructions_path(owner, project_id))).json()["markdown"] == ""

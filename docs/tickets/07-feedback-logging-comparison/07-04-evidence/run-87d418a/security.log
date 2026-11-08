@@ -1,0 +1,13 @@
+commit 87d418a
+$ gitleaks git --redact --no-banner --log-opts=origin/candidate..HEAD .
+8:02AM INF 5 commits scanned.
+8:02AM INF scanned ~206142 bytes (206.14 KB) in 267ms
+8:02AM INF no leaks found
+gitleaks exit 0
+$ make audit
+cd backend && uv export --frozen --no-emit-project --quiet -o "/tmp/requirements-audit.txt" \
+	&& uvx pip-audit==2.10.0 --strict --disable-pip --require-hashes -r "/tmp/requirements-audit.txt"
+No known vulnerabilities found
+cd frontend && pnpm audit --audit-level low
+No known vulnerabilities found
+audit exit 0

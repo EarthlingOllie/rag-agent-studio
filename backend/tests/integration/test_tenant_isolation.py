@@ -27,6 +27,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.core.db import Base
+from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
@@ -50,6 +51,8 @@ class ScopedRoute:
     # The lowest role allowed: Editor (any Member) or Owner.
     role: Role
     prepare: Prepare = field(default=_nothing_to_prepare)
+    # Query parameters the route requires.
+    query: dict[str, str] = field(default_factory=dict)
 
     def __str__(self) -> str:
         return f"{self.method} {self.path}"
@@ -242,6 +245,16 @@ async def _a_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepa
     return {"project_id": project_id, "document_id": document["id"]}, None
 
 
+async def _a_flagged_chunk(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    project_id = await _make_project(owner)
+    app = documents.app_of(owner)
+    app.state.ingestion.classifier.rules = [FakeRule("abc", "prompt_injection", 0.9, "Test")]
+    document = await documents.upload(app, owner, project_id, "a.md", b"abc")
+    app.state.ingestion.classifier.rules = []
+    (chunk,) = await documents.chunks(owner, project_id, document["id"])
+    return {"project_id": project_id, "document_id": document["id"], "chunk_id": chunk["id"]}, None
+
+
 async def _a_failed_document(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     project_id = await _make_project(owner)
     app = documents.app_of(owner)
@@ -336,6 +349,73 @@ async def _an_agent_to_publish(owner: SignedUpMember, add_member: MemberFactory)
     return params, {"note": "First release"}
 
 
+async def _operational_settings(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"allowed_origins": ["https://www.example.com"], "unavailable_text": "Soon."}
+
+
+def _override_path(owner: SignedUpMember, params: dict[str, str]) -> str:
+    return (
+        PROJECTS.format(organisation_id=owner.organisation_id)
+        + f"/{params['project_id']}/agents/{params['agent_id']}/theme-override"
+    )
+
+
+async def _a_colour_override(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"colours": {"primary": {"light": "#111111", "dark": "#eeeeee"}}}
+
+
+async def _an_agent_avatar_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    return params, {"filename": "avatar.png", "size_bytes": 10}
+
+
+async def _an_uploaded_agent_avatar(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    data = theme_images.png()
+    started = await owner.client.post(
+        _override_path(owner, params) + "/avatar/uploads",
+        json={"filename": "avatar.png", "size_bytes": len(data)},
+    )
+    assert started.status_code == 201, started.text
+    await theme_images.put_file(owner, started.json(), data)
+    return params, {"upload_id": started.json()["upload_id"]}
+
+
+async def _an_agent_avatar(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _an_uploaded_agent_avatar(owner, add_member)
+    confirmed = await owner.client.put(_override_path(owner, params) + "/avatar", json=body)
+    assert confirmed.status_code == 200, confirmed.text
+    return params, None
+
+
+async def _an_agent_to_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _an_agent_to_publish(owner, add_member)
+    for _ in range(2):
+        published = await owner.client.post(
+            _AGENT.format(organisation_id=owner.organisation_id, **params) + "/versions", json=body
+        )
+        assert published.status_code == 201, published.text
+    return params, None
+
+
+async def _agents_to_bulk_publish(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_to_revert(owner, add_member)
+    path = PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}"
+    saved = await owner.client.put(f"{path}/instructions", json={"markdown": "# Rules"})
+    assert saved.status_code == 200, saved.text
+    rules = await owner.client.post(f"{path}/instructions/versions", json={"note": "Rules"})
+    assert rules.status_code == 201, rules.text
+    body = {"agent_ids": [params["agent_id"]], "instructions_version_id": rules.json()["id"]}
+    return {"project_id": params["project_id"]}, body
+
+
+async def _agents_to_bulk_revert(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_to_revert(owner, add_member)
+    return {"project_id": params["project_id"]}, {"agent_ids": [params["agent_id"]]}
+
+
 async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, body = await _an_agent_to_publish(owner, add_member)
     published = await owner.client.post(
@@ -343,6 +423,16 @@ async def _an_agent_version(owner: SignedUpMember, add_member: MemberFactory) ->
     )
     assert published.status_code == 201, published.text
     return params | {"version_id": published.json()["id"]}, None
+
+
+async def _a_live_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    return params, None
+
+
+async def _a_version_to_start_from(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    return params, {"version_id": params["version_id"]}
 
 
 async def _an_archived_agent(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
@@ -396,6 +486,8 @@ async def _a_playground_answer(owner: SignedUpMember, add_member: MemberFactory)
 
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
+# The Conversations viewer: every Conversation of the Project, Visitors' and the Playground's.
+_CONVERSATIONS = PROJECTS + "/{project_id}/conversations"
 
 
 # Routes that act on one Project. They are also checked at the Project level below.
@@ -408,6 +500,13 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions", EDITOR, _a_project),
     ScopedRoute("PUT", PROJECTS + "/{project_id}/instructions", EDITOR, _instructions_to_save),
     ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _a_project),
+    ScopedRoute(
+        "GET",
+        PROJECTS + "/{project_id}/instructions/diff",
+        EDITOR,
+        _a_project,
+        {"from": "draft", "to": "draft"},
+    ),
     ScopedRoute(
         "POST", PROJECTS + "/{project_id}/instructions/versions", EDITOR, _instructions_to_publish
     ),
@@ -443,6 +542,12 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", PROJECTS + "/{project_id}/retrieval-probe", EDITOR, _a_probe),
     ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
     ScopedRoute(
+        "DELETE",
+        PROJECTS + "/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag",
+        EDITOR,
+        _a_flagged_chunk,
+    ),
+    ScopedRoute(
         "POST",
         PROJECTS + "/{project_id}/documents/{document_id}/editions",
         EDITOR,
@@ -468,13 +573,47 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("DELETE", _AGENT, OWNER, _an_archived_agent_to_delete),
     ScopedRoute("POST", _AGENT + "/versions", EDITOR, _an_agent_to_publish),
     ScopedRoute("GET", _AGENT + "/versions", EDITOR, _an_agent),
+    ScopedRoute("POST", _AGENT + "/revert", EDITOR, _an_agent_to_revert),
     ScopedRoute("GET", _AGENT + "/versions/{version_id}", EDITOR, _an_agent_version),
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/operational-settings", EDITOR, _an_agent),
+    ScopedRoute("PATCH", _AGENT + "/operational-settings", EDITOR, _operational_settings),
+    ScopedRoute("GET", _AGENT + "/token-usage", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/theme-override", EDITOR, _an_agent),
+    ScopedRoute("PUT", _AGENT + "/theme-override", OWNER, _a_colour_override),
+    ScopedRoute(
+        "POST", _AGENT + "/theme-override/avatar/uploads", OWNER, _an_agent_avatar_to_start
+    ),
+    ScopedRoute("PUT", _AGENT + "/theme-override/avatar", OWNER, _an_uploaded_agent_avatar),
+    ScopedRoute("DELETE", _AGENT + "/theme-override/avatar", OWNER, _an_agent_avatar),
+    ScopedRoute("GET", _AGENT + "/theme-override/avatar", EDITOR, _an_agent_avatar),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/agents/bulk-publish", EDITOR, _agents_to_bulk_publish
+    ),
+    ScopedRoute(
+        "POST", PROJECTS + "/{project_id}/agents/bulk-revert", EDITOR, _agents_to_bulk_revert
+    ),
+    ScopedRoute("GET", PROJECTS + "/{project_id}/instructions/rollout", EDITOR, _a_project),
+    ScopedRoute("GET", _AGENT + "/diff", EDITOR, _an_agent, {"from": "draft", "to": "draft"}),
+    ScopedRoute("POST", _AGENT + "/draft/discard", EDITOR, _a_live_agent),
+    ScopedRoute("POST", _AGENT + "/draft/from-version", EDITOR, _a_version_to_start_from),
     ScopedRoute("POST", _AGENT + "/playground/conversations", EDITOR, _an_agent),
     ScopedRoute("GET", _CONVERSATION, EDITOR, _a_playground_conversation),
     ScopedRoute("POST", _CONVERSATION + "/messages", EDITOR, _a_playground_question),
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
+    ),
+    ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
+    ScopedRoute(
+        "GET", _AGENT + "/time-series", EDITOR, _a_live_agent, query={"metric": "conversations"}
+    ),
+    ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
+    ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
+    ScopedRoute(
+        "GET",
+        _CONVERSATIONS + "/{conversation_id}/messages/{message_id}/trace",
+        EDITOR,
+        _a_playground_answer,
     ),
 ]
 
@@ -546,7 +685,7 @@ async def _call(
 ) -> httpx.Response:
     params, body = prepared
     path = route.path.format(organisation_id=organisation_id, **params)
-    return await client.request(route.method, path, json=body)
+    return await client.request(route.method, path, params=route.query, json=body)
 
 
 @pytest.mark.parametrize("route", ORGANISATION_SCOPED_ROUTES, ids=str)
@@ -823,3 +962,27 @@ def test_every_project_route_is_in_the_project_isolation_test() -> None:
     }
 
     assert found == listed
+
+
+async def test_each_organisation_lists_only_its_own_conversations_for_a_member_of_both(
+    two_organisations: TwoOrganisations, member_factory: MemberFactory
+) -> None:
+    """The Conversations list holds only the Conversations of the Project in the path, and
+    filtering it by another Organisation's Agent or Agent Version finds nothing."""
+    member, other = two_organisations.member, two_organisations.other
+    own, _ = await _a_playground_answer(member, member_factory)
+    others, _ = await _a_playground_answer(other, member_factory)
+    others_version, _ = await _an_agent_version(other, member_factory)
+    own_path = _CONVERSATIONS.format(organisation_id=member.organisation_id, **own)
+    others_path = _CONVERSATIONS.format(organisation_id=other.organisation_id, **others)
+
+    async def listed(path: str, **query: str) -> list[str]:
+        response = await member.client.get(path, params=query)
+        assert response.status_code == 200, response.text
+        return [item["id"] for item in response.json()["items"]]
+
+    assert await listed(own_path) == [own["conversation_id"]]
+    assert await listed(others_path) == [others["conversation_id"]]
+    assert await listed(own_path, agent_id=others["agent_id"]) == []
+    assert await listed(own_path, version_id=others_version["version_id"]) == []
+    assert await listed(others_path, agent_id=own["agent_id"]) == []

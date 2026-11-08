@@ -69,3 +69,27 @@ def invite(
             "If you weren't expecting this, you can ignore this email.\n"
         ),
     )
+
+
+def agent_link(studio_url: str, organisation_id: str, project_id: str, agent_id: str) -> str:
+    """The Agent's page in the Studio."""
+    return (
+        f"{studio_url.rstrip('/')}/organisations/{organisation_id}/projects/{project_id}"
+        f"/agents/{agent_id}"
+    )
+
+
+def token_budget_exhausted(*, to: str, name: str, agent_name: str, budget: int, link: str) -> Email:
+    return Email(
+        to=to,
+        subject=f"{agent_name} has used its daily Token Budget",
+        text=(
+            f"Hello {name},\n\n"
+            f"The Agent {agent_name} has used today's Token Budget of {budget:,} tokens, so "
+            "Visitors on your website now see its unavailable text instead of answers. "
+            "The budget resets at midnight UTC.\n\n"
+            "To raise the budget, open the Agent's Operational Settings in the Studio:\n\n"
+            f"{link}\n\n"
+            "You get this email once per Agent per day.\n"
+        ),
+    )

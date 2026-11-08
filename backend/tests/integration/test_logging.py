@@ -122,6 +122,9 @@ def _service_env() -> dict[str, str]:
         REDIS_URL=TEST_REDIS_URL,
         LOCAL_KEY_WRAPPER_KEY=TEST_LOCAL_KEY_WRAPPER_KEY,
         OBJECT_STORE="memory",
+        # A worker process loads the ingestion scan's model as it starts; the rule-driven fake
+        # has none to download.
+        INJECTION_CLASSIFIER="fake",
         PYTHONUNBUFFERED="1",
     )
     return env
@@ -207,6 +210,32 @@ def test_the_api_server_writes_only_json_lines() -> None:
     request = next(span for span in spans if span["name"] == "GET /api/health")
     assert request["resource"]["attributes"]["service.name"] == "api"
     assert access["trace_id"] == request["context"]["trace_id"].removeprefix("0x")
+
+
+def test_the_api_server_leaves_forwarding_headers_to_the_app(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """uvicorn doesn't rewrite the client address from X-Forwarded-For, even for a peer it would
+    trust by default (127.0.0.1) or that FORWARDED_ALLOW_IPS names: the app's TRUSTED_PROXIES
+    is the one place forwarding headers are believed (``app/core/client_ip.py``)."""
+    monkeypatch.setenv("FORWARDED_ALLOW_IPS", "*")
+    port = _free_port()
+    service = _Service(sys.executable, "-m", "app.serve", str(port))
+    try:
+        service.wait_for("Application startup complete")
+        httpx.get(
+            f"http://127.0.0.1:{port}/api/health",
+            headers={"X-Forwarded-For": "203.0.113.7"},
+            timeout=10,
+        )
+        service.wait_for("/api/health")
+    finally:
+        output = service.stop()
+
+    logs = _assert_every_line_is_json_from(output, "api")
+    access = next(entry for entry in logs if entry["logger"] == "uvicorn.access")
+    assert access["message"].startswith("127.0.0.1:")
+    assert "203.0.113.7" not in access["message"]
 
 
 def test_the_worker_writes_only_json_lines(empty_broker: None) -> None:

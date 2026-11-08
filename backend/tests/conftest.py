@@ -23,11 +23,17 @@ from app.core.clock import Clock
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
 from tests.fakes.clock import ControllableClock
+from tests.worker_resources import worker_database_url, worker_redis_url
 
-TEST_DATABASE_URL = os.environ.get(
+BASE_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
 )
-TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+BASE_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+# Under pytest-xdist (`pytest -n N`) each worker gets its own Postgres database
+# (studio_test_gw0, ...) and Redis database (14, 13, ...); a serial run uses the names above.
+WORKER_ID = os.environ.get("PYTEST_XDIST_WORKER")
+TEST_DATABASE_URL = worker_database_url(BASE_DATABASE_URL, WORKER_ID)
+TEST_REDIS_URL = worker_redis_url(BASE_REDIS_URL, WORKER_ID)
 # 32 bytes, base64: the local static-key wrapper's key for the test run.
 TEST_LOCAL_KEY_WRAPPER_KEY = base64.b64encode(b"test-only-local-key-wrapper-key!").decode()
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -52,12 +58,13 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DOCUMENT_CONVERTER", "fake")
     monkeypatch.setenv("EMBEDDER", "fake")
     monkeypatch.setenv("INJECTION_CLASSIFIER", "fake")
+    monkeypatch.setenv("INPUT_CLASSIFIER", "fake")
     monkeypatch.setenv("MODEL_GATEWAY", "fake")
 
 
 @pytest.fixture(scope="session")
 def database_schema() -> None:
-    """Migrate the test database to head once per run."""
+    """Migrate the test database to head once per run (once per worker under xdist)."""
     with pytest.MonkeyPatch.context() as monkeypatch:
         _set_test_environment(monkeypatch)
         config = Config(str(BACKEND_ROOT / "alembic.ini"))
@@ -76,10 +83,13 @@ def settings_env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
 async def app(settings_env: pytest.MonkeyPatch, database_schema: None) -> AsyncIterator[FastAPI]:
     application = create_app()
     async with LifespanManager(application):
-        # Sign-in failure counters live in the shared test Redis; each test starts without any.
+        # Sign-in failure counters, the widget's rate-limit windows and the Token Budget
+        # counters live in the test Redis (this worker's database under xdist); each test starts
+        # without any.
         redis = application.state.redis
-        async for key in redis.scan_iter(match="sign-in-failures:*"):
-            await redis.delete(key)
+        for pattern in ("sign-in-failures:*", "widget-rate:*", "widget-budget:*"):
+            async for key in redis.scan_iter(match=pattern):
+                await redis.delete(key)
         yield application
 
 
@@ -216,3 +226,12 @@ async def join_organisation(owner: SignedUpMember, member: SignedUpMember, role:
     token = invited.json()["link"].split("token=", 1)[1]
     accepted = await member.client.post("/api/invites/accept", json={"token": token})
     assert accepted.status_code == 200, accepted.text
+
+
+@pytest.fixture
+def quiet_seed_history(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The demo seed makes its history's Versions, Instructions and rollups but no Visitor
+    Conversations, for tests about something else (ticket 10-02's tests seed them)."""
+    from app.seed import content
+
+    monkeypatch.setattr(content, "HISTORY", content.History(conversations_per_day={}))

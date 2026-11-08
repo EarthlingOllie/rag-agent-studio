@@ -29,8 +29,12 @@ Whether the Studio itself shows light, dark, or follows the system setting. A Me
 _Avoid_: Theme, Theme Mode, dark mode
 
 **Launcher**:
-How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat, or an inline container that shows it in place.
+How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
 _Avoid_: Chat button, trigger
+
+**Reply announcement**:
+What a screen reader hears when an Agent's reply is complete: the Agent's name and the whole reply, read once from the widget's polite status region. The Conversation log itself stays silent, so a streamed reply is never read out token by token; a failed reply is announced by its error instead.
+_Avoid_: Live update, toast
 
 **Theme Image**:
 One of the two images a Theme can have: the **logo**, shown in the widget's header, and the **default Agent avatar**, shown beside the Agent's name for every Agent without an avatar of its own. Each is a PNG, JPEG or WebP image of at most 1 MB, uploaded straight to object storage, and applies as soon as it is uploaded; Owners replace or remove it.
@@ -105,8 +109,16 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ and the Low-budget helper), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
 _Avoid_: Sample org, test tenant, sandbox
+
+**Seeded history**:
+The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
+_Avoid_: Fake data, sample history, fixtures
+
+**Demo pages**:
+Static pages that show an Agent the way a Visitor meets it: Northwind's fictional shop with the Product FAQ as a bubble, a help-centre page with it inline, and a page with the Low-budget helper, whose tiny daily Token Budget a button spends in one click (the widget then shows its Unavailable text and the Studio its Budget alert). They are on the shop origin, which the seed allows: `http://localhost:5175/demo/` in `docker compose`, `/demo/` on the Studio's own address in AWS. A fourth page, on an origin no Agent allows (`http://localhost:5176`, local only), pastes the same Embed Snippet and is refused by the browser. The pages ask the API which seeded Agents to embed; those routes exist only when the stack runs with `DEMO_PAGES` on.
+_Avoid_: Demo host page (for the shop), test page
 
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. An archived Agent leaves the Agents list, its Draft can't be changed and the Playground starts no Conversation with it. Any Member can archive. Permanent deletion is a separate action.
@@ -275,16 +287,20 @@ A retrievable passage of a Document.
 _Avoid_: Segment, passage, node
 
 **Ingestion scan**:
-The Guardrail check ingestion runs on every Chunk: the injection classifier looks for instructions aimed at an AI (an indirect prompt injection hidden in a Document). A Chunk it flags keeps a Guardrail flag; nothing is blocked, and a flagged Chunk is still retrievable.
+The Guardrail check ingestion runs on every Chunk: the injection classifier (the local classifier, the same model as the input Guardrail) looks for instructions aimed at an AI (an indirect prompt injection hidden in a Document). A Chunk it flags keeps a Guardrail flag. Nothing is blocked at upload; whether a flagged Chunk is still retrievable is the Project's Flagged Chunk mode.
 _Avoid_: Document scan, content filter, malware scan
 
 **Injection classifier**:
-The port that judges whether text looks like instructions aimed at an AI. Its adapters are the heuristic classifier (pattern rules, the baseline from ticket 03-07), the rule-driven fake in tests, and later the local ONNX model and the LLM classifier (spec 08).
+The port that judges whether text looks like instructions aimed at an AI. Its adapters are the local classifier (the default for both the input Guardrail and the ingestion scan), the heuristic classifier (pattern rules, the baseline from ticket 03-07, for stacks built without the model), the rule-driven fake in tests, and the LLM classifier (an Agent's optional second check on Visitor messages).
 _Avoid_: Detector, filter, moderation model
 
 **Guardrail flag**:
-What the injection classifier records on a Chunk it flags: a label (such as `prompt_injection`), a score from 0 to 1, and a reason an Editor can read. The Document viewer shows it on the Chunk, and the Document list counts a Document's flagged Chunks.
+What the injection classifier records on a Chunk it flags: a label (such as `prompt_injection`), a score from 0 to 1, and a reason an Editor can read. The Document viewer shows it on the Chunk, and the Document list counts a Document's flagged Chunks. An Editor can clear a flag they judge a false positive (clearing a flag); that is recorded as an Audit Event (`chunk.flag_cleared`, with the flag it had) and the Chunk is retrieved like any other from then on, until a new edition or retry scans it again.
 _Avoid_: Warning, alert, violation
+
+**Flagged Chunk mode**:
+A Project setting for what retrieval does with Chunks that carry a Guardrail flag: mark (the default: they are retrieved like any other, and marked in the Document viewer) or exclude (they are never retrieval candidates and are never sent to a reranker; the Trace lists any that were found as excluded by the ingestion scan). Retrieval follows a change at once, with no reprocessing.
+_Avoid_: Quarantine setting, scan mode
 
 **Project Instructions**:
 Markdown injected into every Agent in a Project, after the platform preamble and before the Agent's system prompt. Versioned the same way as Agents: each Project has one Draft of them, numbered Instructions Versions published from it with a note, and a Current Version.
@@ -298,6 +314,25 @@ _Avoid_: Bot, chatbot, assistant
 
 **Draft**:
 The single editable, unpublished configuration of an Agent or of Project Instructions.
+
+**Draft revision**:
+A counter on a Draft that moves on with every change to it. A change names the Draft revision it was made on, and if someone has changed the Draft since, the change is refused (a stale Draft) with their latest Draft. The Editor then loads their Draft or saves theirs over it on purpose, so nobody silently overwrites a colleague's edits. It is a concurrency token, not a Version.
+_Avoid_: Draft version, ETag
+
+**Unpublished changes**:
+An Agent's Draft that differs from its Live Version's AgentConfig. The Studio badges the Agent with "Unpublished changes". An Agent that has never been published has none: it is "Not live".
+_Avoid_: Dirty, pending changes
+
+**Discard the Draft**:
+To put the Live Version's AgentConfig back in an Agent's Draft, losing its Unpublished changes. Nothing is published. An Agent that is not live has nothing to discard to.
+
+**Start a Draft from a Version**:
+To replace an Agent's Draft with the AgentConfig of any of its Versions, to build on an earlier configuration without reverting. Nothing is published, and the Live Version is unchanged. The Version's settings are checked like a save, since a credential it names may have been deleted since.
+_Avoid_: Restore, check out
+
+**Diff**:
+What changes from one side to another. For an Agent, each side is the Draft or a Version (the Live Version or any other), and the diff lists every AgentConfig setting that differs by its path (such as Retrieval › Top k), with the items added and removed for lists (Tags, starter questions), a line diff for markdown (the system prompt), and, between two Versions, the change of pinned Instructions Version with a line diff of their text. For Project Instructions, each side is the Draft or an Instructions Version, compared line by line. The publish form shows the Draft-to-Live diff.
+_Avoid_: Changeset, delta
 
 **AgentConfig**:
 Everything in an Agent's Draft or Version that shapes how it answers: its Behaviour (system prompt and model settings), Retrieval (top-k and search settings), Experience and Guardrails settings. Operational Settings and the Theme are not part of it.
@@ -391,18 +426,40 @@ The Project Instructions Version that newly published Agent Versions pin by defa
 _Avoid_: Live (for Project Instructions), latest
 
 **Live History**:
-The ordered, append-only record of an Agent's Live Version changes. Each entry has the from-Version (none for the first publish), the to-Version, the action (publish, revert, bulk publish or bulk revert), who and when, and the bulk operation that made it, if any. Reverting steps back one entry.
+The ordered, append-only record of an Agent's Live Version changes. Each entry has the from-Version (none for the first publish), the to-Version, the action (publish, revert, bulk publish or bulk revert), who and when, and the bulk operation that made it, if any. The Studio shows it as the Live History timeline on the Agent page. Reverting follows it back: the Agent returns to the Version that was Live when its present Live Version was published, so publishing v1, v2 and v3 and then reverting twice gives v2 and then v1, never v3 again.
 _Avoid_: Changelog, deployments
 
 **Publish**:
 To freeze a Draft into a new Version and make it the Live Version for an Agent, or the Current Version for Project Instructions.
 
 **Revert**:
-To move the Live Version (Agents) or the Current Version (Project Instructions) back one step in its history. It never edits a Version or the Draft.
+To move the Live Version (Agents) or the Current Version (Project Instructions) back one step in its history. For an Agent this restores both the configuration and the Instructions Version it was pinned to, and is refused when there's nothing to revert to (the Agent is not live, or its Live Version was its first) or the earlier Version's Provider Credential is gone. Reverting never creates, edits or deletes a Version, and it never changes the Draft.
 _Avoid_: Rollback, undo
+
+**Bulk publish**:
+To publish a new Version of several Agents at once, each built from that Agent's **Live** configuration plus a chosen Project Instructions Version, never from its Draft (ADR-0003). Agents that have never been published are skipped (their first Version must be reviewed on their own page), and so are Agents already Live with that Instructions Version. Publishing Project Instructions opens the **rollout dialog**, which offers the new Version to the Project's Agents with every Agent that can take it pre-selected and Agents with unpublished Draft changes badged, since those edits aren't included.
+_Avoid_: Mass deploy, publish all
+
+**Bulk revert**:
+To revert several Agents at once, each one step back in its own Live History. Editors start one from the Agent list (multi-select) or from the offer shown after reverting Project Instructions, which lists the Agents still Live with the reverted Instructions Version.
+_Avoid_: Mass rollback
+
+**Bulk operation**:
+One bulk publish or bulk revert. Each Agent in it is processed in its own transaction, so a failure on one Agent never leaves another half-updated, and the result reports every Agent as succeeded, skipped (with the reason) or failed (with the reason). Its **bulk operation ID** is recorded on each Live History entry and Audit Event it makes.
+
+**Behind**:
+An Agent is behind when it is live but its Live Version doesn't pin the Current Instructions Version. The Project Instructions page shows "N Agents behind" and which Instructions Version each Agent pins, so partial rollouts are visible. An Agent that has never been published is not live, so it is never behind.
+_Avoid_: Outdated, stale
 
 **Playground**:
 The place in the Studio where Members chat with a Draft. Its Conversations are excluded from metrics.
+
+**Instructions picker**:
+The Playground's choice of which Project Instructions the Agent's Draft answers with: the Instructions Draft (the default) or any Instructions Version, Current or not. It lets Editors test new Instructions with an Agent before publishing either. Each answer records its choice: the Instructions Version, or the Draft marker.
+_Avoid_: Instructions selector, Instructions override
+
+**Draft marker**:
+What a Playground answer records in place of a Version when it ran with a Draft: `draft` for the Agent's configuration, and `draft` for the Project Instructions when the Instructions picker was left on the Instructions Draft.
 
 **Playground Conversation**:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
@@ -416,17 +473,63 @@ A model provider's failure while answering, reported at the end of the answer's 
 _Avoid_: Model error, API error, crash
 
 **Embed Snippet**:
-The code an Organisation pastes into its site to show an Agent.
+The code an Organisation pastes into its site to show an Agent: one `<script>` tag that loads the platform's small loader with the Agent's Public ID, and optionally `data-launcher` and `data-target` to choose the Launcher. The loader injects an iframe for the Agent's Widget shell and sizes it as the widget asks, taking those layout messages only from the widget's own frame and origin. The Studio shows it, with a copy button, only once the Agent has a Live Version.
 _Avoid_: Embed link, widget code
 
+**Widget shell**:
+The HTML page the Embed Snippet's iframe loads, served by the API for each request. Its `frame-ancestors` policy lets only the Agent's Allowed Origins show it, and it hands the widget a Bootstrap token. It inlines the Theme, with the Agent's Theme override, as CSS custom properties, and the Live Version's public Experience: name, avatar, greeting, starter questions, UI text overrides and whether citations show. An archived, unknown or not-live Agent gets the "no longer available" shell instead.
+_Avoid_: Widget page, iframe HTML
+
+**Bootstrap token**:
+A short-lived (15 minutes), signed token the Widget shell gives the widget, bound to the Agent. The widget exchanges it for a Conversation token, which starts the Visitor's Conversation.
+
+**Conversation token**:
+The signed, opaque token that is a Visitor's only credential: bound to one Visitor Conversation and its Agent, and expiring 24 hours after the Conversation's last activity (each message and each Resume slides the window on). Only its hash is stored. Each answer it gets comes from the Agent's Live Version at that moment. The widget keeps it in the iframe's local storage, which browsers partition per top-level site; where that storage is blocked, the widget keeps it in memory only and a reload starts a new Conversation. Once its Conversation is ended it is refused.
+_Avoid_: Session, visitor token
+
+**Resume**:
+Getting a Visitor's Conversation back when they reload or move to another page of the same site within 24 hours of its last activity: the widget sends its kept Conversation token and shows the earlier Messages with their sources, and the next question continues that Conversation. After 24 hours without activity the token is refused and the widget silently starts afresh.
+_Avoid_: Restore, reconnect
+
+**Ending a Conversation**:
+A Visitor closing their Conversation from the widget (End chat), or leaving it to start another (New chat). The Conversation and its Messages are kept for the Studio; only its Conversation token stops working, and the Visitor's next question starts a new Conversation.
+_Avoid_: Delete, close session
+
+**No longer available shell**:
+What a Visitor sees in place of the chat when the Agent is archived, in an archived Project, unknown or has never been published: "This assistant is no longer available." The Widget shell serves it on page load, and the widget switches to it if the Agent is retired mid-Conversation or before a Resume.
+_Avoid_: Error page, 404
+
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Version: Allowed Origins, rate limits and Token Budget.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins, the Unavailable text, the rate limits and the Token Budget are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+
+**Unavailable text**:
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+_Avoid_: Error message, offline message
+
+**Theme override**:
+An Agent's own colours and avatar in its widget, replacing the Theme's for that Agent only: any of the Colour Tokens (each with its light and dark value) and an avatar image. The other tokens, the font, radius, mode and Launcher still follow the Theme. Like the Theme, only Owners change it; it is an Operational Setting, so it isn't versioned and applies at once. The widget's avatar is the Agent's own, else the Live Version's avatar URL, else the Theme's default avatar.
+_Avoid_: Agent theme, sub-brand theme
+
+**Rate limits**:
+How many Visitor messages an Agent admits in any one minute, per Conversation (its Conversation token; 10 by default) and per IP address (30 by default), counted in sliding windows. Part of the Operational Settings. A message over a limit isn't answered or saved: the widget gets an `unavailable` event and shows the Unavailable text, and the refused message doesn't count, so waiting always works. The Playground has none.
+_Avoid_: Throttling (that is sign-in protection), quota
+
+**Admission control**:
+The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: first the Agent's Token Budget, then its Rate limits. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
+
+**Trusted proxies**:
+The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
 
 **Token Budget**:
-The maximum tokens an Agent may consume per day before it stops answering Visitors.
+The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by default) before it stops answering Visitors. Part of the Operational Settings. Each reply adds the input and output tokens it actually used to the Agent's counter for that date; once the day's usage reaches the budget, Admission control refuses Visitor messages with the Unavailable text (`unavailable` event, reason `budget_exhausted`), the Agent gets its Budget alert and the Owners are emailed. A new UTC date starts a new counter, so the budget resets at midnight UTC; raising it applies at once. The Playground doesn't count and is never refused. The Studio's budget meter shows today's usage against it.
+_Avoid_: Quota, spend limit (cost is tracked separately)
+
+**Budget alert**:
+The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
+_Avoid_: Budget warning, alarm
 
 **Allowed Origins**:
-The sites permitted to display an Agent through its Embed Snippet.
+The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). A host may start with a subdomain wildcard over a named site (`https://*.example.com` is every subdomain of example.com, but not example.com itself, and never a bare `*.com`), and localhost (`localhost`, `127.0.0.1`, `[::1]`) may take any port as `http://localhost:*`, for development. The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Part of the Operational Settings: changes apply to the next page load, without publishing, and are audited.
 
 **Guardrail**:
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
@@ -435,8 +538,45 @@ A check on Visitor input, Agent output or a Document that can flag or block cont
 A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
 _Avoid_: Canary, honeytoken, tripwire
 
+**Input Guardrail**:
+The Guardrail that checks every Visitor message (and every Playground question) with the injection classifier before the Agent runtime sees it. By default it is the local classifier, with no setup; an Agent can add an LLM classifier (block mode only, for now). What it does with a message it flags is the Agent's Input mode.
+
+**Input mode**:
+What the input Guardrail does with a message it flags, chosen per Agent in its Guardrails settings and versioned with the AgentConfig (a Visitor gets the Live Version's mode, the Playground the Draft's). **Block** (the default): the message never reaches retrieval or the model; the Visitor gets the Agent's refusal text. **Warn**: the message is answered, but the prompt carries a Caution block and the answer Message is flagged. **Log**: the message is answered exactly as an unflagged one would be, and the verdict is only recorded. In every mode the Guardrail outcome is saved on the Message and shown in its Trace; an unflagged message leaves none.
+_Avoid_: Guardrail level, enforcement mode
+
+**Caution block**:
+The extra system text the input Guardrail's warn mode adds to the prompt, after the Agent's system prompt, for the flagged turn only: it tells the model the message was flagged as a possible prompt injection, not to follow instructions in it or change role, not to reveal its instructions or the Canary token, and to answer only a genuine question the excerpts answer.
+_Avoid_: Warning prompt, safety prefix
+
+**Local classifier**:
+The default injection classifier of the input Guardrail and the ingestion scan: a DeBERTa-v3 prompt-injection model (ONNX) run on the CPU, bundled in the API image and loaded once per process (the API and the worker each share one copy between the two). A message longer than the model reads at once is scored in overlapping windows and the highest score counts; a score at or above the threshold (0.5 by default) flags it.
+
+**LLM classifier**:
+An Agent's optional second injection classifier for the input Guardrail: a chat model of one of the Organisation's Provider Credentials (a Credential reference), chosen in the Agent's Guardrails settings and versioned with it. Each message the local classifier passes is also judged by it, through the model gateway, with a fixed classifier prompt and a structured answer (label, score, reason); the message is shown to it as delimited, untrusted data. Its fail mode decides what happens when it can't judge.
+_Avoid_: AI classifier, judge model
+
+**Fail mode**:
+What the input Guardrail does when the LLM classifier can't judge a message (its provider errors, it answers off the schema, or it doesn't answer within `LLM_CLASSIFIER_TIMEOUT_S`). Closed (the default) treats the message as flagged, so in block mode the Visitor gets the refusal text; open answers it without that check. Either way the Trace records an `unchecked` Guardrail outcome saying why.
+_Avoid_: Fail-safe, fallback mode
+
+**Refusal text**:
+What the Agent replies, in place of an answer, to a message the input Guardrail blocked. Set per Agent in its Guardrails settings and versioned with it; the default is "Sorry, I can't help with that request."
+_Avoid_: Block message, rejection text
+
 **Guardrail outcome**:
-What one Guardrail layer decided about an answer: its layer, verdict, action (such as replaced or flagged) and reason. Saved on the Message and shown in its Trace.
+What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak, or unchecked when the LLM classifier couldn't judge), action (blocked, flagged, logged, replaced or allowed: the input Guardrail blocks, flags or logs by its Input mode; the Canary token replaces a leak, or flags an encoded one found after sending; allowed when an Agent failing open let an unchecked message through), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
+
+**Attack evaluation suite**:
+The versioned set of attack and benign cases (`backend/evals/attack_suite.json`) run through the real Guardrail pipeline to show the defences work: each case declares its expected outcome per layer (ingestion scan, input Guardrail, Canary token, and whether the answer stayed harmless). It runs on every PR against the Naive model, where any unexpected outcome fails, and nightly against a real model, where it fails below the configured pass rate.
+_Avoid_: Red-team suite, jailbreak tests
+
+**Naive model**:
+The mocked chat model the Attack evaluation suite runs against in CI: it obeys whatever instructions it finds (in the Visitor's message, the history or a retrieved Chunk, disguised or not), so the suite tests the Guardrails rather than a model's own refusals.
+_Avoid_: Dumb model, evil model
+
+**Pass rate**:
+In an Attack evaluation suite report, the share of cases defended: an attack got none of its markers into a reply and sent no encoded Canary token; a benign question was answered without being blocked, flagged or cut off.
 
 ## Conversations
 
@@ -449,16 +589,56 @@ One Visitor's thread of Messages with an Agent.
 _Avoid_: Session, chat, thread
 
 **Message**:
-One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution).
+One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
+
+**Conversations viewer**:
+The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), and by Conversation Rating (one score from 1 to 5, rated, or not rated); each row shows its thumbs-up and thumbs-down counts and its current Conversation Rating. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
+_Avoid_: Chat log, transcript list
 
 **Message Feedback**:
-A Visitor's thumbs-up or thumbs-down, with an optional comment, on one Agent Message.
+A Visitor's thumbs-up or thumbs-down, with an optional comment (up to 1000 characters), on one Agent Message in their own Conversation; at most one per Message. The Visitor gives it from the widget, authenticated by the Conversation token, and can change it (giving it again replaces it) or remove it (pressing the chosen thumb again). It belongs to the Agent Version of the Message it is on, stored when it is written, so a later publish or revert never moves it.
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes and Version. Shown in the Playground's Trace drawer.
+The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown in the Trace drawer, in the Playground and in the Conversations viewer.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:
-A Visitor's 1–5 score for a whole Conversation.
+A Visitor's 1–5 score for a whole Visitor Conversation, given from the widget's Rating prompt (authenticated by the Conversation token) once the Agent has replied; one current score per Conversation, which the Visitor can change. It belongs to the Agent Version of the last Agent Message before the rating, or before its latest change, stored when written, so a later publish or revert never moves it. The first rating and every change are kept in the Rating change log.
 _Avoid_: CSAT, review
+
+**Rating prompt**:
+The widget's card asking the Visitor to rate the Conversation from 1 to 5. It appears after the Live Version's Nth Agent reply (the Experience setting "rating prompt reply count"; 0 asks only at the end), until the Visitor rates or dismisses it ("Not now"); the dismissal is saved, so it isn't shown again in that Conversation. On "End chat" a Visitor who hasn't rated is asked once more ("Before you go"), and can rate or end without rating. The Experience's UI text can reword its question.
+_Avoid_: Survey, popup
+
+**Rating change log**:
+The append-only record of a Conversation's Conversation Ratings: the first rating and each change, with the score before it, the Agent Version it was attributed to and when. Giving the same score again isn't a change.
+_Avoid_: Rating history
+
+**Version KPIs**:
+An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics tab: volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text) and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
+_Avoid_: Stats, dashboard numbers
+
+**Usage rollup**:
+The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
+_Avoid_: Aggregate, summary table
+
+**Wilson interval**:
+The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from its counts when the Version KPIs are read; shown with the sample size so a few lucky votes don't look like a winner.
+_Avoid_: Error bars, margin
+
+**Low confidence**:
+The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.
+_Avoid_: Insufficient data, greyed out
+
+**Time series**:
+One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate or p95 latency) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown as a chart in the Project's Analytics tab with each point's sample size. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
+_Avoid_: Trend graph, history chart
+
+**Live History marker**:
+A mark on the Time series at a Live History entry made during its range: the day, the action (publish, revert, bulk publish or bulk revert) and the Versions from and to, so an Editor can see the effect of each release.
+_Avoid_: Release line, annotation
+
+**Confounder note**:
+The warning under the Time series when the Project's Knowledge Base changed during its range: how many Documents were added, replaced or processed again, and how many were deleted. Documents aren't versioned (ADR-0003), so answers can change without the Live Version changing, and a difference across a marker may be the Documents' doing.
+_Avoid_: Disclaimer, KB warning

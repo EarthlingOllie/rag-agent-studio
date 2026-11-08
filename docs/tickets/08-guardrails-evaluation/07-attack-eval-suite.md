@@ -9,12 +9,12 @@
 - [08-04: Canary token](04-canary-token.md)
 - [08-05: Classifier-based ingestion scan](05-classifier-ingestion-scan.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A case-file schema covers the attack categories and benign controls
-- [ ] The runner drives the real pipeline with a naive `FunctionModel` that would comply with injected instructions
-- [ ] Reports are produced as JSON and a markdown summary
-- [ ] The Guardrail evaluation CI job fails on any unexpected outcome
-- [ ] The nightly live job publishes its report and fails below the configured pass rate
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A case-file schema covers the attack categories and benign controls
+- [x] The runner drives the real pipeline with a naive `FunctionModel` that would comply with injected instructions
+- [x] Reports are produced as JSON and a markdown summary
+- [x] The Guardrail evaluation CI job fails on any unexpected outcome
+- [x] The nightly live job publishes its report and fails below the configured pass rate
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

@@ -25,6 +25,16 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "The VPC's IPv4 CIDR. The ALB connects to the API from inside it, so the API trusts X-Forwarded-For from it."
+  type        = string
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0)) && strcontains(var.vpc_cidr, "/")
+    error_message = "vpc_cidr must be a CIDR block, such as 10.0.0.0/16."
+  }
+}
+
 variable "public_subnet_ids" {
   description = "Public subnets, in two AZs, for the ALB. CloudFront reaches it over the internet (ADR-0011)."
   type        = list(string)
@@ -243,8 +253,55 @@ variable "session_secret_version" {
   }
 }
 
+variable "key_wrapper_secret_version" {
+  description = "Bump to generate a new LOCAL_KEY_WRAPPER_KEY, which signs widget tokens. Bumping it invalidates every issued widget token."
+  type        = number
+  default     = 1
+
+  validation {
+    condition     = var.key_wrapper_secret_version >= 1 && floor(var.key_wrapper_secret_version) == var.key_wrapper_secret_version
+    error_message = "key_wrapper_secret_version must be a positive whole number."
+  }
+}
+
+variable "demo_pages" {
+  description = "Turn on the API's demo page routes (DEMO_PAGES, ticket 10-03): the demo pages under /demo/ ask them which seeded Agents to embed. Only for a demo environment."
+  type        = bool
+  default     = false
+}
+
+variable "studio_url" {
+  description = "The Studio's public HTTPS address (the cdn module's url). The API and worker put it in links in emails."
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://[a-z0-9.-]+$", var.studio_url))
+    error_message = "studio_url must be an https:// origin with no path, for example https://d111111abcdef8.cloudfront.net."
+  }
+}
+
 variable "alb_deletion_protection" {
   description = "Block deletion of the ALB. Off for the demo so it can be destroyed in one run (spec 09 story 27)."
   type        = bool
   default     = false
+}
+
+variable "migration_task_size" {
+  description = "Fargate CPU units and memory (MiB) of the one-off migration task (ticket 09-06)."
+  type = object({
+    cpu    = number
+    memory = number
+  })
+  default = { cpu = 256, memory = 512 }
+
+  # Fargate's allowed pairs up to 1 vCPU: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html
+  validation {
+    condition = (
+      var.migration_task_size.cpu == 256 ? contains([512, 1024, 2048], var.migration_task_size.memory) :
+      var.migration_task_size.cpu == 512 ? var.migration_task_size.memory >= 1024 && var.migration_task_size.memory <= 4096 && var.migration_task_size.memory % 1024 == 0 :
+      var.migration_task_size.cpu == 1024 ? var.migration_task_size.memory >= 2048 && var.migration_task_size.memory <= 8192 && var.migration_task_size.memory % 1024 == 0 :
+      false
+    )
+    error_message = "migration_task_size must be a Fargate CPU and memory pair of at most 1 vCPU, such as 256 and 512."
+  }
 }

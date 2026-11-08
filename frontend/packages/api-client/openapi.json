@@ -60,6 +60,41 @@
         "title": "AgentConfig",
         "type": "object"
       },
+      "AgentDiffOut": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "from": {
+            "$ref": "#/components/schemas/DiffSideOut"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstructionsChangeOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to": {
+            "$ref": "#/components/schemas/DiffSideOut"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "changes",
+          "instructions"
+        ],
+        "title": "AgentDiffOut",
+        "type": "object"
+      },
       "AgentOut": {
         "properties": {
           "archived_at": {
@@ -74,6 +109,10 @@
             ],
             "title": "Archived At"
           },
+          "budget_exhausted": {
+            "title": "Budget Exhausted",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -82,10 +121,18 @@
           "draft": {
             "$ref": "#/components/schemas/AgentConfig-Output"
           },
+          "draft_revision": {
+            "title": "Draft Revision",
+            "type": "integer"
+          },
           "draft_updated_at": {
             "format": "date-time",
             "title": "Draft Updated At",
             "type": "string"
+          },
+          "has_unpublished_changes": {
+            "title": "Has Unpublished Changes",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -125,7 +172,10 @@
           "archived_at",
           "draft",
           "draft_updated_at",
-          "live_version"
+          "draft_revision",
+          "live_version",
+          "has_unpublished_changes",
+          "budget_exhausted"
         ],
         "title": "AgentOut",
         "type": "object"
@@ -526,6 +576,178 @@
         "title": "Behaviour",
         "type": "object"
       },
+      "BulkOutcomeOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "instructions_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "live_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "succeeded",
+              "skipped",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "status",
+          "reason",
+          "live_version",
+          "instructions_version"
+        ],
+        "title": "BulkOutcomeOut",
+        "type": "object"
+      },
+      "BulkPublishRequest": {
+        "properties": {
+          "agent_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Agent Ids",
+            "type": "array"
+          },
+          "instructions_version_id": {
+            "format": "uuid",
+            "title": "Instructions Version Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "required": [
+          "agent_ids",
+          "instructions_version_id"
+        ],
+        "title": "BulkPublishRequest",
+        "type": "object"
+      },
+      "BulkResultOut": {
+        "properties": {
+          "bulk_operation_id": {
+            "format": "uuid",
+            "title": "Bulk Operation Id",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BulkOutcomeOut"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "bulk_operation_id",
+          "results"
+        ],
+        "title": "BulkResultOut",
+        "type": "object"
+      },
+      "BulkRevertCandidateOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "live_version": {
+            "$ref": "#/components/schemas/VersionNumberOut"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "live_version"
+        ],
+        "title": "BulkRevertCandidateOut",
+        "type": "object"
+      },
+      "BulkRevertRequest": {
+        "properties": {
+          "agent_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Agent Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_ids"
+        ],
+        "title": "BulkRevertRequest",
+        "type": "object"
+      },
       "BulkTagRequest": {
         "properties": {
           "add": {
@@ -773,6 +995,34 @@
         "title": "CodeRequest",
         "type": "object"
       },
+      "ColourOverride": {
+        "additionalProperties": false,
+        "description": "The colour tokens an Agent overrides; the rest follow the Organisation's Theme.",
+        "properties": {
+          "colours": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/OverrideColour"
+            },
+            "propertyNames": {
+              "enum": [
+                "primary",
+                "on_primary",
+                "surface",
+                "on_surface",
+                "accent",
+                "muted"
+              ]
+            },
+            "title": "Colours",
+            "type": "object"
+          }
+        },
+        "required": [
+          "colours"
+        ],
+        "title": "ColourOverride",
+        "type": "object"
+      },
       "ColourToken": {
         "description": "A colour token's light-mode value and its dark-mode value.",
         "properties": {
@@ -862,6 +1112,275 @@
         "title": "ConfirmUploadRequest",
         "type": "object"
       },
+      "ConversationDetailOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_playground": {
+            "title": "Is Playground",
+            "type": "boolean"
+          },
+          "last_activity_at": {
+            "format": "date-time",
+            "title": "Last Activity At",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationMessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConversationRatingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "agent_id",
+          "agent_name",
+          "is_playground",
+          "created_at",
+          "last_activity_at",
+          "messages",
+          "rating"
+        ],
+        "title": "ConversationDetailOut",
+        "type": "object"
+      },
+      "ConversationMessageOut": {
+        "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "config_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Source"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageFeedbackRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_token_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token Ms"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Provider"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at",
+          "config_source",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
+          "agent_version_id",
+          "model_provider",
+          "model_name",
+          "input_tokens",
+          "output_tokens",
+          "first_token_ms",
+          "latency_ms",
+          "cost_usd",
+          "agent_version_number",
+          "fallback",
+          "feedback"
+        ],
+        "title": "ConversationMessageOut",
+        "type": "object"
+      },
       "ConversationOut": {
         "properties": {
           "agent_id": {
@@ -905,6 +1424,263 @@
           "messages"
         ],
         "title": "ConversationOut",
+        "type": "object"
+      },
+      "ConversationPageOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationSummaryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "title": "ConversationPageOut",
+        "type": "object"
+      },
+      "ConversationRatingIn": {
+        "properties": {
+          "score": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score"
+        ],
+        "title": "ConversationRatingIn",
+        "type": "object"
+      },
+      "ConversationRatingOut": {
+        "properties": {
+          "prompt_dismissed": {
+            "title": "Prompt Dismissed",
+            "type": "boolean"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "prompt_dismissed"
+        ],
+        "title": "ConversationRatingOut",
+        "type": "object"
+      },
+      "ConversationRatingRead": {
+        "properties": {
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/RatingChangeRead"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "prompt_dismissed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Dismissed At"
+          },
+          "rated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rated At"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "score",
+          "agent_version_number",
+          "rated_at",
+          "prompt_dismissed_at",
+          "changes"
+        ],
+        "title": "ConversationRatingRead",
+        "type": "object"
+      },
+      "ConversationSummaryOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_playground": {
+            "title": "Is Playground",
+            "type": "boolean"
+          },
+          "last_activity_at": {
+            "format": "date-time",
+            "title": "Last Activity At",
+            "type": "string"
+          },
+          "message_count": {
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "thumbs_down": {
+            "title": "Thumbs Down",
+            "type": "integer"
+          },
+          "thumbs_up": {
+            "title": "Thumbs Up",
+            "type": "integer"
+          },
+          "version_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Version Numbers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "agent_id",
+          "agent_name",
+          "is_playground",
+          "created_at",
+          "last_activity_at",
+          "message_count",
+          "preview",
+          "version_numbers",
+          "thumbs_up",
+          "thumbs_down",
+          "rating"
+        ],
+        "title": "ConversationSummaryOut",
+        "type": "object"
+      },
+      "ConversationTokenOut": {
+        "properties": {
+          "conversation_token": {
+            "title": "Conversation Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_token"
+        ],
+        "title": "ConversationTokenOut",
+        "type": "object"
+      },
+      "CostOut": {
+        "properties": {
+          "per_conversation_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Conversation Usd"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total_usd",
+          "per_conversation_usd"
+        ],
+        "title": "CostOut",
         "type": "object"
       },
       "CreateAgentRequest": {
@@ -1366,6 +2142,57 @@
         "title": "DeleteProjectRequest",
         "type": "object"
       },
+      "DiffLineOut": {
+        "properties": {
+          "op": {
+            "enum": [
+              "equal",
+              "delete",
+              "insert"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "text"
+        ],
+        "title": "DiffLineOut",
+        "type": "object"
+      },
+      "DiffSideOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "draft",
+              "version"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "version"
+        ],
+        "title": "DiffSideOut",
+        "type": "object"
+      },
       "DisableRequest": {
         "properties": {
           "code": {
@@ -1385,6 +2212,24 @@
           "code"
         ],
         "title": "DisableRequest",
+        "type": "object"
+      },
+      "DocumentChangesOut": {
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changed",
+          "deleted"
+        ],
+        "title": "DocumentChangesOut",
         "type": "object"
       },
       "DocumentDetailOut": {
@@ -1718,6 +2563,29 @@
         "title": "DocumentTagsRequest",
         "type": "object"
       },
+      "DraftConflictOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "DraftConflictOut",
+        "type": "object"
+      },
       "EmbeddingModelChoiceOut": {
         "description": "An Embedding Model the Organisation can choose, and the credential it is called\nthrough (none for the built-in local model).",
         "properties": {
@@ -2015,6 +2883,117 @@
         "title": "FailureCategory",
         "type": "string"
       },
+      "FallbackOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "count",
+          "rate"
+        ],
+        "title": "FallbackOut",
+        "type": "object"
+      },
+      "FeedbackFilter": {
+        "description": "Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs\ndown, with any feedback, or with none.",
+        "enum": [
+          "up",
+          "down",
+          "any",
+          "none"
+        ],
+        "title": "FeedbackFilter",
+        "type": "string"
+      },
+      "FieldChangeOut": {
+        "properties": {
+          "added": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "after": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "before": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DiffLineOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed"
+          }
+        },
+        "required": [
+          "path",
+          "before",
+          "after",
+          "added",
+          "removed",
+          "lines"
+        ],
+        "title": "FieldChangeOut",
+        "type": "object"
+      },
+      "FlaggedChunkMode": {
+        "description": "What retrieval does with the Chunks the ingestion Guardrail scan flags.",
+        "enum": [
+          "mark",
+          "exclude"
+        ],
+        "title": "FlaggedChunkMode",
+        "type": "string"
+      },
       "Font": {
         "enum": [
           "Inter",
@@ -2087,14 +3066,20 @@
         "properties": {
           "action": {
             "enum": [
+              "blocked",
               "replaced",
-              "flagged"
+              "flagged",
+              "logged",
+              "allowed"
             ],
             "title": "Action",
             "type": "string"
           },
           "layer": {
-            "const": "canary",
+            "enum": [
+              "input",
+              "canary"
+            ],
             "title": "Layer",
             "type": "string"
           },
@@ -2102,8 +3087,23 @@
             "title": "Reason",
             "type": "string"
           },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
           "verdict": {
-            "const": "leak",
+            "enum": [
+              "injection",
+              "leak",
+              "unchecked"
+            ],
             "title": "Verdict",
             "type": "string"
           }
@@ -2259,6 +3259,119 @@
         "title": "InputMode",
         "type": "string"
       },
+      "InstructionsChangeOut": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "before",
+          "after",
+          "lines"
+        ],
+        "title": "InstructionsChangeOut",
+        "type": "object"
+      },
+      "InstructionsConflictOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectInstructionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "InstructionsConflictOut",
+        "type": "object"
+      },
+      "InstructionsDiffOut": {
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/InstructionsDiffSideOut"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "to": {
+            "$ref": "#/components/schemas/InstructionsDiffSideOut"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "lines"
+        ],
+        "title": "InstructionsDiffOut",
+        "type": "object"
+      },
+      "InstructionsDiffSideOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "draft",
+              "version"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstructionsVersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "version"
+        ],
+        "title": "InstructionsDiffSideOut",
+        "type": "object"
+      },
       "InstructionsHistoryOut": {
         "properties": {
           "current_version_id": {
@@ -2286,6 +3399,128 @@
           "versions"
         ],
         "title": "InstructionsHistoryOut",
+        "type": "object"
+      },
+      "InstructionsRevertOut": {
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionAuthor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulk_revert_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/BulkRevertCandidateOut"
+            },
+            "title": "Bulk Revert Candidates",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "previous_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Version Id"
+          },
+          "reverted_from": {
+            "$ref": "#/components/schemas/VersionNumberOut"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "markdown",
+          "note",
+          "author",
+          "created_at",
+          "previous_version_id",
+          "reverted_from",
+          "bulk_revert_candidates"
+        ],
+        "title": "InstructionsRevertOut",
+        "type": "object"
+      },
+      "InstructionsRolloutOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "behind": {
+            "title": "Behind",
+            "type": "integer"
+          },
+          "current_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "current_version",
+          "behind",
+          "agents"
+        ],
+        "title": "InstructionsRolloutOut",
+        "type": "object"
+      },
+      "InstructionsVersionNumberOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "title": "InstructionsVersionNumberOut",
         "type": "object"
       },
       "InstructionsVersionOut": {
@@ -2519,6 +3754,44 @@
         "title": "IssuedInviteOut",
         "type": "object"
       },
+      "JsonValue": {},
+      "LatencyOut": {
+        "properties": {
+          "first_token_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token P95 Ms"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "total_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total P95 Ms"
+          }
+        },
+        "required": [
+          "n",
+          "first_token_p95_ms",
+          "total_p95_ms"
+        ],
+        "title": "LatencyOut",
+        "type": "object"
+      },
       "LauncherPosition": {
         "enum": [
           "bottom-right",
@@ -2586,6 +3859,53 @@
         "title": "LiveHistoryEntryOut",
         "type": "object"
       },
+      "LiveHistoryMarkerOut": {
+        "description": "A change of the Live Version during the range: one Live History entry.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "from_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarkerVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "point_start": {
+            "format": "date",
+            "title": "Point Start",
+            "type": "string"
+          },
+          "to_version": {
+            "$ref": "#/components/schemas/MarkerVersionOut"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "day",
+          "point_start",
+          "action",
+          "from_version",
+          "to_version"
+        ],
+        "title": "LiveHistoryMarkerOut",
+        "type": "object"
+      },
       "LiveVersionOut": {
         "properties": {
           "id": {
@@ -2603,6 +3923,25 @@
           "number"
         ],
         "title": "LiveVersionOut",
+        "type": "object"
+      },
+      "MarkerVersionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "title": "MarkerVersionOut",
         "type": "object"
       },
       "MemberOut": {
@@ -2663,6 +4002,111 @@
           "mfa_required"
         ],
         "title": "MembershipOut",
+        "type": "object"
+      },
+      "MessageFeedbackIn": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating"
+        ],
+        "title": "MessageFeedbackIn",
+        "type": "object"
+      },
+      "MessageFeedbackOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating",
+          "comment"
+        ],
+        "title": "MessageFeedbackOut",
+        "type": "object"
+      },
+      "MessageFeedbackRead": {
+        "properties": {
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating",
+          "comment",
+          "agent_version_number",
+          "updated_at"
+        ],
+        "title": "MessageFeedbackRead",
         "type": "object"
       },
       "MessageOut": {
@@ -2737,6 +4181,44 @@
             ],
             "title": "Input Tokens"
           },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
           "latency_ms": {
             "anyOf": [
               {
@@ -2792,6 +4274,9 @@
           "content",
           "created_at",
           "config_source",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
           "agent_version_id",
           "model_provider",
           "model_name",
@@ -2936,6 +4421,116 @@
         "title": "ModelPricesOut",
         "type": "object"
       },
+      "OperationalSettingsChange": {
+        "description": "The settings to change; one left out stays as it is.",
+        "properties": {
+          "allowed_origins": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 510,
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Origins"
+          },
+          "conversation_messages_per_minute": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Messages Per Minute"
+          },
+          "daily_token_budget": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Token Budget"
+          },
+          "ip_messages_per_minute": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Messages Per Minute"
+          },
+          "unavailable_text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Text"
+          }
+        },
+        "title": "OperationalSettingsChange",
+        "type": "object"
+      },
+      "OperationalSettingsOut": {
+        "properties": {
+          "allowed_origins": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Origins",
+            "type": "array"
+          },
+          "conversation_messages_per_minute": {
+            "title": "Conversation Messages Per Minute",
+            "type": "integer"
+          },
+          "daily_token_budget": {
+            "title": "Daily Token Budget",
+            "type": "integer"
+          },
+          "ip_messages_per_minute": {
+            "title": "Ip Messages Per Minute",
+            "type": "integer"
+          },
+          "unavailable_text": {
+            "title": "Unavailable Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowed_origins",
+          "unavailable_text",
+          "conversation_messages_per_minute",
+          "ip_messages_per_minute",
+          "daily_token_budget"
+        ],
+        "title": "OperationalSettingsOut",
+        "type": "object"
+      },
       "OptionalPricesOut": {
         "properties": {
           "cached_input": {
@@ -3041,6 +4636,34 @@
           "require_mfa"
         ],
         "title": "OrganisationOut",
+        "type": "object"
+      },
+      "OverrideColour": {
+        "additionalProperties": false,
+        "description": "A colour token's light-mode and dark-mode value for one Agent.",
+        "properties": {
+          "dark": {
+            "examples": [
+              "#4f46e5"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Dark",
+            "type": "string"
+          },
+          "light": {
+            "examples": [
+              "#4f46e5"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Light",
+            "type": "string"
+          }
+        },
+        "required": [
+          "light",
+          "dark"
+        ],
+        "title": "OverrideColour",
         "type": "object"
       },
       "OverridePricesRequest": {
@@ -3308,6 +4931,24 @@
         "title": "ProjectInstructions",
         "type": "object"
       },
+      "ProjectInstructionsOut": {
+        "properties": {
+          "markdown": {
+            "title": "Markdown",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "markdown",
+          "revision"
+        ],
+        "title": "ProjectInstructionsOut",
+        "type": "object"
+      },
       "ProjectOut": {
         "properties": {
           "agent_count": {
@@ -3355,6 +4996,9 @@
             "title": "Embedding Model Id",
             "type": "string"
           },
+          "flagged_chunk_mode": {
+            "$ref": "#/components/schemas/FlaggedChunkMode"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3379,7 +5023,8 @@
           "agent_count",
           "embedding_model_id",
           "ocr_enabled",
-          "embedding_credential_id"
+          "embedding_credential_id",
+          "flagged_chunk_mode"
         ],
         "title": "ProjectOut",
         "type": "object"
@@ -3468,6 +5113,93 @@
           "note"
         ],
         "title": "PublishInstructionsRequest",
+        "type": "object"
+      },
+      "RatingChangeRead": {
+        "properties": {
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "previous_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "previous_score",
+          "agent_version_number",
+          "changed_at"
+        ],
+        "title": "RatingChangeRead",
+        "type": "object"
+      },
+      "RatingFilter": {
+        "description": "Which Conversations to keep by their Conversation Rating: one score (1 to 5), rated\n(any score), or not rated.",
+        "enum": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "any",
+          "none"
+        ],
+        "title": "RatingFilter",
+        "type": "string"
+      },
+      "RatingOut": {
+        "properties": {
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "mean",
+          "low_confidence"
+        ],
+        "title": "RatingOut",
         "type": "object"
       },
       "ReEmbedOut": {
@@ -3756,6 +5488,57 @@
         "title": "Role",
         "type": "string"
       },
+      "RolloutAgentOut": {
+        "properties": {
+          "behind": {
+            "title": "Behind",
+            "type": "boolean"
+          },
+          "has_draft_changes": {
+            "title": "Has Draft Changes",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "instructions_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "live_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionNumberOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "live_version",
+          "instructions_version",
+          "has_draft_changes",
+          "behind"
+        ],
+        "title": "RolloutAgentOut",
+        "type": "object"
+      },
       "RotateCredentialRequest": {
         "properties": {
           "api_key": {
@@ -3798,6 +5581,18 @@
             "minLength": 1,
             "title": "Content",
             "type": "string"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
           }
         },
         "required": [
@@ -3954,6 +5749,34 @@
           "organisation_name"
         ],
         "title": "SignUpRequest",
+        "type": "object"
+      },
+      "StartConversationRequest": {
+        "properties": {
+          "bootstrap_token": {
+            "maxLength": 1000,
+            "title": "Bootstrap Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bootstrap_token"
+        ],
+        "title": "StartConversationRequest",
+        "type": "object"
+      },
+      "StartDraftRequest": {
+        "properties": {
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id"
+        ],
+        "title": "StartDraftRequest",
         "type": "object"
       },
       "StartImageUploadRequest": {
@@ -4318,6 +6141,33 @@
         "title": "ThemeOut",
         "type": "object"
       },
+      "ThemeOverrideOut": {
+        "properties": {
+          "avatar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThemeImageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "colours": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ColourToken"
+            },
+            "title": "Colours",
+            "type": "object"
+          }
+        },
+        "required": [
+          "colours",
+          "avatar"
+        ],
+        "title": "ThemeOverrideOut",
+        "type": "object"
+      },
       "ThemeSettings": {
         "description": "Everything an Owner sets on the Theme.",
         "properties": {
@@ -4380,6 +6230,257 @@
         "title": "ThrottledResponse",
         "type": "object"
       },
+      "ThumbsUpOut": {
+        "properties": {
+          "down": {
+            "title": "Down",
+            "type": "integer"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "up": {
+            "title": "Up",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "up",
+          "down",
+          "n",
+          "rate",
+          "low",
+          "high",
+          "low_confidence"
+        ],
+        "title": "ThumbsUpOut",
+        "type": "object"
+      },
+      "TimeSeriesGranularity": {
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ],
+        "title": "TimeSeriesGranularity",
+        "type": "string"
+      },
+      "TimeSeriesMetric": {
+        "description": "What a time series measures, over each of its periods.",
+        "enum": [
+          "conversations",
+          "replies",
+          "cost_usd",
+          "mean_tokens",
+          "thumbs_up_rate",
+          "mean_rating",
+          "fallback_rate",
+          "p95_latency_ms"
+        ],
+        "title": "TimeSeriesMetric",
+        "type": "string"
+      },
+      "TimeSeriesOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "document_changes": {
+            "$ref": "#/components/schemas/DocumentChangesOut"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/TimeSeriesGranularity"
+          },
+          "markers": {
+            "items": {
+              "$ref": "#/components/schemas/LiveHistoryMarkerOut"
+            },
+            "title": "Markers",
+            "type": "array"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/TimeSeriesMetric"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "metric",
+          "granularity",
+          "start",
+          "end",
+          "points",
+          "markers",
+          "document_changes"
+        ],
+        "title": "TimeSeriesOut",
+        "type": "object"
+      },
+      "TimeSeriesPointOut": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "value",
+          "n"
+        ],
+        "title": "TimeSeriesPointOut",
+        "type": "object"
+      },
+      "TokenUsageOut": {
+        "properties": {
+          "daily_token_budget": {
+            "title": "Daily Token Budget",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "exhausted": {
+            "title": "Exhausted",
+            "type": "boolean"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          },
+          "tokens_used": {
+            "title": "Tokens Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "tokens_used",
+          "daily_token_budget",
+          "exhausted",
+          "resets_at"
+        ],
+        "title": "TokenUsageOut",
+        "type": "object"
+      },
+      "TokensOut": {
+        "properties": {
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95"
+          }
+        },
+        "required": [
+          "n",
+          "mean",
+          "p95"
+        ],
+        "title": "TokensOut",
+        "type": "object"
+      },
       "TraceOut": {
         "description": "Why an answer came out as it did: the model, its usage, cost and latency, and every\nChunk retrieval found, given to the model (cited or not) or left out with the reason.",
         "properties": {
@@ -4394,6 +6495,17 @@
               }
             ],
             "title": "Agent Version Id"
+          },
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
           },
           "chunks": {
             "items": {
@@ -4457,6 +6569,44 @@
             ],
             "title": "Input Tokens"
           },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
           "latency_ms": {
             "anyOf": [
               {
@@ -4510,6 +6660,10 @@
         "required": [
           "message_id",
           "config_source",
+          "agent_version_number",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
           "agent_version_id",
           "model_provider",
           "model_name",
@@ -4558,7 +6712,8 @@
                 "enum": [
                   "below_min_score",
                   "outside_top_k",
-                  "outside_tags"
+                  "outside_tags",
+                  "guardrail_flagged"
                 ],
                 "type": "string"
               },
@@ -4742,6 +6897,16 @@
             ],
             "title": "Description"
           },
+          "flagged_chunk_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlaggedChunkMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "anyOf": [
               {
@@ -4896,6 +7061,103 @@
         "title": "VersionAuthor",
         "type": "object"
       },
+      "VersionKpisOut": {
+        "properties": {
+          "conversations": {
+            "title": "Conversations",
+            "type": "integer"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/CostOut"
+          },
+          "fallback": {
+            "$ref": "#/components/schemas/FallbackOut"
+          },
+          "is_live": {
+            "title": "Is Live",
+            "type": "boolean"
+          },
+          "latency": {
+            "$ref": "#/components/schemas/LatencyOut"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/RatingOut"
+          },
+          "thumbs_up": {
+            "$ref": "#/components/schemas/ThumbsUpOut"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/TokensOut"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "number",
+          "is_live",
+          "conversations",
+          "messages",
+          "low_confidence",
+          "tokens",
+          "cost",
+          "thumbs_up",
+          "rating",
+          "fallback",
+          "latency"
+        ],
+        "title": "VersionKpisOut",
+        "type": "object"
+      },
+      "VersionMetricsOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/VersionKpisOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_id",
+          "start",
+          "end",
+          "versions"
+        ],
+        "title": "VersionMetricsOut",
+        "type": "object"
+      },
       "VersionNumberOut": {
         "properties": {
           "id": {
@@ -4913,6 +7175,167 @@
           "number"
         ],
         "title": "VersionNumberOut",
+        "type": "object"
+      },
+      "WidgetCitationOut": {
+        "properties": {
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "document_name"
+        ],
+        "title": "WidgetCitationOut",
+        "type": "object"
+      },
+      "WidgetConversationOut": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/WidgetMessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/WidgetRatingOut"
+          }
+        },
+        "required": [
+          "messages",
+          "rating"
+        ],
+        "title": "WidgetConversationOut",
+        "type": "object"
+      },
+      "WidgetFeedbackOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "rating": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rating",
+          "comment"
+        ],
+        "title": "WidgetFeedbackOut",
+        "type": "object"
+      },
+      "WidgetMessageOut": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/WidgetCitationOut"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WidgetFeedbackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "citations",
+          "feedback"
+        ],
+        "title": "WidgetMessageOut",
+        "type": "object"
+      },
+      "WidgetMessageRequest": {
+        "properties": {
+          "content": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "WidgetMessageRequest",
+        "type": "object"
+      },
+      "WidgetRatingOut": {
+        "properties": {
+          "prompt_dismissed": {
+            "title": "Prompt Dismissed",
+            "type": "boolean"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "score",
+          "prompt_dismissed"
+        ],
+        "title": "WidgetRatingOut",
         "type": "object"
       },
       "WorkerHealthResponse": {
@@ -8239,7 +10662,7 @@
         ]
       },
       "patch": {
-        "description": "Renames the Project, edits its description or turns OCR on or off. An archived Project\nis refused.",
+        "description": "Renames the Project, edits its description, turns OCR on or off or sets whether Chunks\nthe ingestion Guardrail scan flags are marked or excluded from retrieval. An archived\nProject is refused.",
         "operationId": "updateProject",
         "parameters": [
           {
@@ -8480,6 +10903,174 @@
         "summary": "Create Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-publish": {
+      "post": {
+        "description": "Publishes a new Version of each Agent from its Live configuration (never its Draft)\npinning the chosen Instructions Version, and makes it Live. Each Agent is processed in its\nown transaction; never-published Agents and Agents already on that Version are skipped.\nRecords ``agent.bulk_published`` per Agent and ``project.agents_bulk_published``.",
+        "operationId": "bulkPublishAgents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkPublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "That Instructions Version isn't one of this Project's."
+          }
+        },
+        "summary": "Bulk Publish Agents",
+        "tags": [
+          "agent-bulk"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/bulk-revert": {
+      "post": {
+        "description": "Moves each Agent's Live Version back one step in its Live History. Each Agent is\nprocessed in its own transaction; Agents with nothing to revert to are skipped. Records\n``agent.bulk_reverted`` per Agent and ``project.agents_bulk_reverted``.",
+        "operationId": "bulkRevertAgents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkRevertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bulk Revert Agents",
+        "tags": [
+          "agent-bulk"
         ]
       }
     },
@@ -8746,9 +11337,139 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff": {
+      "get": {
+        "description": "What changes from one side to the other: a structural diff of every AgentConfig setting,\nwith a line diff for markdown, and between two Versions the change of pinned Project\nInstructions. ``from=live&to=draft`` shows the Draft's unpublished changes.",
+        "operationId": "diffAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "live"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "live"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Live Version (live), or a Version's ID.",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDiffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Agent has never been published, so it has no Live Version."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Diff Agent",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft": {
       "put": {
-        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error. An\narchived Agent's Draft can't be changed.",
+        "description": "Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each\ncredential must offer the chosen model for its setting's capability and each Tag must be\nthe Project's; every problem is reported in one 422, located like a validation error. An\narchived Agent's Draft can't be changed. With ``base_revision``, a Draft someone has changed\nsince is refused with 409 and the latest Draft.",
         "operationId": "saveAgentDraft",
         "parameters": [
           {
@@ -8779,6 +11500,24 @@
               "format": "uuid",
               "title": "Organisation Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+              "title": "Base Revision"
             }
           }
         ],
@@ -8817,11 +11556,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/DraftConflictOut"
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+            "description": "Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
           },
           "422": {
             "content": {
@@ -8837,6 +11576,220 @@
         "summary": "Save Agent Draft",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/discard": {
+      "post": {
+        "description": "Discards the Draft's unpublished changes: the Live Version's configuration goes back in\nthe Draft. Refused with 409 while the Agent has never been published. Records\n``agent.draft_discarded``.",
+        "operationId": "discardAgentDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+              "title": "Base Revision"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftConflictOut"
+                }
+              }
+            },
+            "description": "Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discard Agent Draft",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/draft/from-version": {
+      "post": {
+        "description": "Starts the Draft from one of the Agent's Versions: its configuration replaces the Draft,\nand nothing is published. Its settings are checked like a save (422), since a credential an\nolder Version names may have been deleted. Records ``agent.draft_started_from_version``.",
+        "operationId": "startAgentDraftFromVersion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the change was made on. When the Draft has moved on since, the change is refused with 409 and the latest Draft. Left out, the Draft is replaced.",
+              "title": "Base Revision"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftConflictOut"
+                }
+              }
+            },
+            "description": "Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Agent Draft From Version",
+        "tags": [
+          "agent-versions"
         ]
       }
     },
@@ -8915,6 +11868,296 @@
         "summary": "List Agent Live History",
         "tags": [
           "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/metrics": {
+      "get": {
+        "description": "Each chosen Agent Version's KPIs over the UTC days `start` to `end` (both inclusive, at\nmost 366 days), including today's so far. Only Visitor Conversations count.",
+        "operationId": "getVersionMetrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Agent Versions to show (repeat it for several); every one if left out",
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Agent Versions to show (repeat it for several); every one if left out",
+              "title": "Version"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionMetricsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Version Metrics",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/operational-settings": {
+      "get": {
+        "description": "The Agent's Operational Settings: not part of its Draft or Versions.",
+        "operationId": "getOperationalSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Operational Settings",
+        "tags": [
+          "embed"
+        ]
+      },
+      "patch": {
+        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values.",
+        "operationId": "changeOperationalSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperationalSettingsChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationalSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Operational Settings",
+        "tags": [
+          "embed"
         ]
       }
     },
@@ -9088,7 +12331,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "Asks the Agent's Draft a question; the answer streams back as Server-Sent Events. An\narchived Agent answers no more questions; its Conversations can still be read.",
+        "description": "Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions\nVersion; the answer streams back as Server-Sent Events. An archived Agent answers no more\nquestions; its Conversations can still be read.",
         "operationId": "sendPlaygroundMessage",
         "parameters": [
           {
@@ -9151,7 +12394,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`)."
+            "description": "Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`)."
           },
           "404": {
             "content": {
@@ -9174,14 +12417,7 @@
             "description": "The Project or Agent is archived, or there is no Default Model."
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "The question is empty or too long, or the Instructions Version isn't one of the Project's."
           }
         },
         "summary": "Send Message",
@@ -9375,6 +12611,833 @@
         "summary": "Restore Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/revert": {
+      "post": {
+        "description": "Moves the Live Version back one step in the Live History, to the Version that was Live\nbefore the current one was published, restoring its configuration and pinned Instructions.\nReturns that Version. The Draft is unchanged. Records ``agent.reverted`` and a Live History\nentry.",
+        "operationId": "revertAgent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There's no earlier Live Version to revert to. Or: The Version that was Live before uses a Provider Credential or model that is no longer available, so it can't be made Live again. Publish a fixed Version instead. Or: This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revert Agent",
+        "tags": [
+          "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/theme-override": {
+      "get": {
+        "description": "The Agent's Theme override. Any Member can read it.",
+        "operationId": "getThemeOverride",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOverrideOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Theme Override",
+        "tags": [
+          "embed"
+        ]
+      },
+      "put": {
+        "description": "Replaces the colour tokens the Agent overrides (an empty map follows the Theme). It\napplies to the widget at once, without publishing.",
+        "operationId": "setThemeOverrideColours",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColourOverride"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOverrideOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Theme Override Colours",
+        "tags": [
+          "embed"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/theme-override/avatar": {
+      "delete": {
+        "description": "Removes the Agent's avatar and deletes its file.",
+        "operationId": "removeAgentAvatar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOverrideOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Avatar",
+        "tags": [
+          "embed"
+        ]
+      },
+      "get": {
+        "description": "The Agent's avatar itself. Any Member can fetch it.",
+        "operationId": "getAgentAvatar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {},
+              "image/png": {},
+              "image/webp": {}
+            },
+            "description": "The image."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Avatar",
+        "tags": [
+          "embed"
+        ]
+      },
+      "put": {
+        "description": "Checks the uploaded image and makes it the Agent's avatar, replacing the one it had. It\napplies to the widget at once.",
+        "operationId": "confirmAgentAvatarUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeOverrideOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The image hasn't reached storage yet. Upload it, then save. / This upload wasn't found or has expired. Start the upload again."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The stored file isn't an image of the declared type, or is too large."
+          }
+        },
+        "summary": "Confirm Avatar Upload",
+        "tags": [
+          "embed"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/theme-override/avatar/uploads": {
+      "post": {
+        "description": "Checks the image type (PNG, JPEG or WebP) and size, then answers with a presigned URL to\nPUT the Agent's avatar to.",
+        "operationId": "startAgentAvatarUpload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartImageUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The image is larger than the Theme image limit."
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Upload a PNG, JPEG or WebP image."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Avatar Upload",
+        "tags": [
+          "embed"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
+      "get": {
+        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed and the Project's Document changes during the range. Only Visitor\nConversations count.",
+        "operationId": "getTimeSeries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "What to measure",
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TimeSeriesMetric",
+              "description": "What to measure"
+            }
+          },
+          {
+            "description": "One point per day, ISO week or month",
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimeSeriesGranularity",
+              "default": "day",
+              "description": "One point per day, ISO week or month"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeSeriesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Time Series",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage": {
+      "get": {
+        "description": "Today's (UTC) Visitor usage against the Agent's Token Budget, for the Studio's meter.",
+        "operationId": "getTokenUsage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenUsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Token Usage",
+        "tags": [
+          "embed"
         ]
       }
     },
@@ -9699,6 +13762,381 @@
         "summary": "Archive Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/conversations": {
+      "get": {
+        "description": "The Project's Conversations, Visitors' and the Playground's, newest first.",
+        "operationId": "listConversations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this Agent's",
+            "in": "query",
+            "name": "agent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this Agent's",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "description": "Only those with a reply from this Agent Version",
+            "in": "query",
+            "name": "version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those with a reply from this Agent Version",
+              "title": "Version Id"
+            }
+          },
+          {
+            "description": "Only those started at or after this time",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those started at or after this time",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "Only those started before this time",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those started before this time",
+              "title": "End"
+            }
+          },
+          {
+            "description": "true: only Playground Conversations; false: only Visitors'",
+            "in": "query",
+            "name": "playground",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: only Playground Conversations; false: only Visitors'",
+              "title": "Playground"
+            }
+          },
+          {
+            "description": "Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`)",
+            "in": "query",
+            "name": "feedback",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FeedbackFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those with a reply given a thumbs up (`up`) or down (`down`), with any Message Feedback (`any`), or with none (`none`)",
+              "title": "Feedback"
+            }
+          },
+          {
+            "description": "Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`)",
+            "in": "query",
+            "name": "rating",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RatingFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`)",
+              "title": "Rating"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Conversations",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}": {
+      "get": {
+        "description": "The Conversation and its Messages, oldest first, with the Agent Version of each\nanswer.",
+        "operationId": "getConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conversation",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}/messages/{message_id}/trace": {
+      "get": {
+        "description": "The Trace of one of the Agent's answers in the Conversation.",
+        "operationId": "getConversationTrace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trace",
+        "tags": [
+          "conversations"
         ]
       }
     },
@@ -10399,6 +14837,93 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag": {
+      "delete": {
+        "description": "Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,\nfor a false positive: the Chunk is retrieved again at once, even in a Project that excludes\nflagged Chunks. Records ``chunk.flag_cleared`` with the flag it had.",
+        "operationId": "clearChunkFlag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chunk_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chunk Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or the Chunk isn't flagged: This Chunk isn't flagged."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Chunk Flag",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/download": {
       "get": {
         "description": "Downloads the original file: a redirect to a presigned GET on the object store, which\nserves it as an attachment under the Document's name. A link to this route is enough.",
@@ -10929,7 +15454,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectInstructions"
+                  "$ref": "#/components/schemas/ProjectInstructionsOut"
                 }
               }
             },
@@ -10962,7 +15487,7 @@
         ]
       },
       "put": {
-        "description": "Replaces the Project Instructions; records ``project.instructions_updated`` when they\nchange. An archived Project is refused.",
+        "description": "Replaces the Project Instructions; records ``project.instructions_updated`` when they\nchange. An archived Project is refused. With ``base_revision``, a Draft someone has changed\nsince is refused with 409 and the latest Draft.",
         "operationId": "saveProjectInstructions",
         "parameters": [
           {
@@ -10984,6 +15509,24 @@
               "title": "Organisation Id",
               "type": "string"
             }
+          },
+          {
+            "description": "The Draft revision the save was made on. When the Draft has moved on since, the save is refused with 409 and the latest Draft. Left out, it is replaced.",
+            "in": "query",
+            "name": "base_revision",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Draft revision the save was made on. When the Draft has moved on since, the save is refused with 409 and the latest Draft. Left out, it is replaced.",
+              "title": "Base Revision"
+            }
           }
         ],
         "requestBody": {
@@ -11001,7 +15544,127 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectInstructions"
+                  "$ref": "#/components/schemas/ProjectInstructionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsConflictOut"
+                }
+              }
+            },
+            "description": "Someone else saved these Instructions after you opened them. Load their changes, or save yours over them. Or: This Project is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Project Instructions",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/diff": {
+      "get": {
+        "description": "The line diff of the Project Instructions from one side to the other.\n``from=current&to=draft`` shows what publishing the Draft would change.",
+        "operationId": "diffProjectInstructions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "current"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "draft",
+                    "current"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              ],
+              "description": "The Draft (draft), the Current Version (current), or a Version's ID.",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsDiffOut"
                 }
               }
             },
@@ -11025,7 +15688,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it."
+            "description": "The Instructions have never been published, so there's no Current Version."
           },
           "422": {
             "content": {
@@ -11038,15 +15701,15 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Save Project Instructions",
+        "summary": "Diff Instructions",
         "tags": [
-          "projects"
+          "project-instructions"
         ]
       }
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/instructions/revert": {
       "post": {
-        "description": "Moves the Current Version back to the Version that was Current before it, and returns\nit. The Draft is unchanged. Records ``project.instructions_reverted``.",
+        "description": "Moves the Current Version back to the Version that was Current before it, and returns\nit with the Agents still pinned to the reverted Version, so they can be bulk-reverted. The\nDraft is unchanged. Records ``project.instructions_reverted``.",
         "operationId": "revertProjectInstructions",
         "parameters": [
           {
@@ -11075,7 +15738,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InstructionsVersionOut"
+                  "$ref": "#/components/schemas/InstructionsRevertOut"
                 }
               }
             },
@@ -11115,6 +15778,70 @@
         "summary": "Revert Instructions",
         "tags": [
           "project-instructions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/rollout": {
+      "get": {
+        "description": "Which Instructions Version each active Agent's Live Version pins, whether its Draft has\nunpublished changes, and how many Agents are behind the Current Version.",
+        "operationId": "getInstructionsRollout",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionsRolloutOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instructions Rollout",
+        "tags": [
+          "agent-bulk"
         ]
       }
     },
@@ -12446,6 +17173,619 @@
         "summary": "List Fonts",
         "tags": [
           "theme"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation": {
+      "delete": {
+        "description": "Ends the token's Conversation: the token is refused from then on. The Visitor's next\nquestion starts a new Conversation.",
+        "operationId": "endWidgetConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Conversation",
+        "tags": [
+          "widget"
+        ]
+      },
+      "get": {
+        "description": "The token's Conversation, for a Visitor who comes back to the page: its Messages in\norder, each answer with its sources and feedback, and its Conversation Rating. Coming back\ncounts as activity, so the token's 24-hour window slides on; after 24 hours without\nactivity the token is refused.",
+        "operationId": "getWidgetConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetConversationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/rating": {
+      "put": {
+        "description": "Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and\neach change are kept in a change log. The rating belongs to the Agent Version of the last\nreply before it. Refused until the Agent has replied.",
+        "operationId": "rateConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationRatingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRatingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There is nothing to rate yet."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rate Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/rating/dismissal": {
+      "post": {
+        "description": "Saves that the Visitor dismissed the rating prompt, so the widget doesn't show it again\nin this Conversation (it still asks when they end the chat without a rating).",
+        "operationId": "dismissRatingPrompt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Rating Prompt",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversations": {
+      "post": {
+        "description": "Exchanges the shell's bootstrap token for a new Conversation and its Conversation\ntoken.",
+        "operationId": "startWidgetConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationTokenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/messages": {
+      "post": {
+        "description": "Asks the Agent's Live Version a question in the token's Conversation. The answer is\nrecorded against the Version that was Live when it was generated, and the tokens it used\ncount against the Agent's daily Token Budget. Messages over the Agent's rate limits, per\nConversation and per IP address, or once the day's budget is spent, get its unavailable\ntext; the first refusal or reply that finds the budget spent raises the Agent's alert and\nemails its Owners, once per day.",
+        "operationId": "sendWidgetMessage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential)."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Agent's unavailable text: it has no model to answer with."
+          }
+        },
+        "summary": "Send Message",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/messages/{message_id}/feedback": {
+      "delete": {
+        "description": "Removes the Visitor's feedback on one of the Agent's replies in the token's\nConversation (nothing happens when there is none).",
+        "operationId": "removeMessageFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There is no such reply in this chat."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Feedback",
+        "tags": [
+          "widget"
+        ]
+      },
+      "put": {
+        "description": "Gives a thumbs up or down, with an optional comment, on one of the Agent's replies in the\ntoken's Conversation; giving it again replaces it. The feedback belongs to the Agent Version\nthat gave the reply.",
+        "operationId": "giveMessageFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageFeedbackIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageFeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "There is no such reply in this chat."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Give Feedback",
+        "tags": [
+          "widget"
         ]
       }
     }

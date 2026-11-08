@@ -7,13 +7,19 @@ import {
   type Citation,
   agentFailure,
   askPlayground,
+  instructionsUsed,
   startConversation,
   useAgent,
   useArchiveOrRestoreAgent,
   useDeleteAgent,
 } from "./agents";
+import { AgentBranding } from "./AgentBranding";
+import { AgentEmbed } from "./AgentEmbed";
+import { LiveHistory } from "./AgentLiveHistory";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
+import { AgentVersions, DiscardDraft } from "./AgentVersions";
 import { DraftEditor } from "./DraftEditor";
+import { useInstructionsVersions } from "./instructions";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 import { TraceDrawer } from "./TraceDrawer";
 
@@ -27,9 +33,13 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   usage?: string;
+  // Which Project Instructions the answer ran with, once it is saved.
+  instructions?: string;
   citations?: Citation[];
   // Set once the answer is saved, so its Trace can be opened.
   messageId?: string;
+  // The input Guardrail blocked the question: the content is the Agent's refusal text.
+  refused?: boolean;
 };
 
 /** Where a citation chip leads: the cited Chunk in the Document viewer. */
@@ -67,6 +77,59 @@ function Sources({
   );
 }
 
+/** Chooses the Project Instructions the Playground answers with: the Instructions Draft (the
+ * default) or any Instructions Version, so either can be tried before it is published. */
+function InstructionsPicker({
+  organisationId,
+  projectId,
+  value,
+  onChange,
+}: {
+  organisationId: string;
+  projectId: string;
+  value: string;
+  onChange: (versionId: string) => void;
+}) {
+  const history = useInstructionsVersions(organisationId, projectId);
+  let hint =
+    "Answers follow the Instructions Draft unless you choose a Version.";
+  if (history.isError)
+    hint =
+      "The Instructions Versions could not be loaded, so answers follow the Instructions Draft.";
+  else if (history.data?.versions.length === 0)
+    hint =
+      "No Instructions Versions are published yet, so answers follow the Instructions Draft.";
+  return (
+    <div className="space-y-1">
+      <label
+        htmlFor="playground-instructions"
+        className="block text-sm font-medium"
+      >
+        Instructions
+      </label>
+      <select
+        id="playground-instructions"
+        aria-describedby="playground-instructions-hint"
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+        className={INPUT}
+      >
+        <option value="">Instructions Draft</option>
+        {history.data?.versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            {`v${String(version.number)}${version.id === history.data.current_version_id ? " (Current)" : ""} · ${version.note}`}
+          </option>
+        ))}
+      </select>
+      <p id="playground-instructions-hint" className="text-xs text-slate-700">
+        {hint}
+      </p>
+    </div>
+  );
+}
+
 /** Chat with the Agent's Draft. The answer streams in token by token. */
 function Playground({
   agent,
@@ -80,6 +143,8 @@ function Playground({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [question, setQuestion] = useState("");
+  // The Instructions Version questions are asked with; "" for the Instructions Draft.
+  const [instructionsVersionId, setInstructionsVersionId] = useState("");
   const [tracing, setTracing] = useState<string | null>(null);
   // Set when a reset has started a new Conversation, until the next question.
   const [wasReset, setWasReset] = useState(false);
@@ -114,6 +179,7 @@ function Playground({
       const done = await askPlayground(
         { ...path, conversation_id: conversation },
         question,
+        instructionsVersionId || null,
         (text) => {
           appendToAnswer((answer) => ({
             ...answer,
@@ -130,10 +196,15 @@ function Playground({
           // The answer leaked the Canary token: what streamed is replaced by the fallback text.
           appendToAnswer((answer) => ({ ...answer, content: text }));
         },
+        (text) => {
+          // The input Guardrail blocked the question: the refusal text is the whole reply.
+          appendToAnswer((answer) => ({ ...answer, content: text, refused: true }));
+        },
       );
       appendToAnswer((answer) => ({
         ...answer,
         messageId: done.message_id,
+        instructions: `Instructions: ${instructionsUsed(done)}`,
         usage: `${String(done.input_tokens)} input and ${String(done.output_tokens)} output tokens · ${String(done.latency_ms)} ms`,
       }));
     } catch (failure) {
@@ -180,6 +251,12 @@ function Playground({
         Chat with this Draft. Playground Conversations are recorded but kept out
         of metrics.
       </p>
+      <InstructionsPicker
+        organisationId={organisationId}
+        projectId={agent.project_id}
+        value={instructionsVersionId}
+        onChange={setInstructionsVersionId}
+      />
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -207,6 +284,11 @@ function Playground({
             className={`rounded px-3 py-2 text-sm ${message.role === "user" ? "bg-slate-100" : "border border-slate-200 bg-white"}`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
+            {message.refused && (
+              <p className="mt-1 text-xs font-medium text-amber-900">
+                Blocked by the input Guardrail: the model wasn&apos;t asked.
+              </p>
+            )}
             {message.citations && (
               <Sources
                 citations={message.citations}
@@ -216,6 +298,9 @@ function Playground({
             )}
             {message.usage && (
               <p className="mt-1 text-xs text-slate-700">{message.usage}</p>
+            )}
+            {message.instructions && (
+              <p className="text-xs text-slate-700">{message.instructions}</p>
             )}
             {message.messageId && (
               <button
@@ -479,6 +564,12 @@ export function AgentPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   const { projectId, agentId } = useAgentParams();
   const agent = useAgent(organisationId, projectId, agentId);
+  // Moves on whenever the Draft is replaced (discarded, started from a Version, or someone
+  // else's loaded), so the editor starts again from the new Draft.
+  const [generation, setGeneration] = useState(0);
+  const replaced = useCallback(() => {
+    setGeneration((current) => current + 1);
+  }, []);
 
   let body;
   if (agent.isPending) {
@@ -505,11 +596,27 @@ export function AgentPage() {
             <ArchiveAgent agent={agent.data} organisationId={organisationId} />
           )}
         </div>
+        {!archived && <DiscardDraft agent={agent.data} organisationId={organisationId} onReplaced={replaced} />}
         {!archived && (
           <PublishAgent
             key={`publish-${agent.data.id}`}
             agent={agent.data}
             organisationId={organisationId}
+          />
+        )}
+        {!archived && (
+          <AgentEmbed
+            key={`embed-${agent.data.id}`}
+            agent={agent.data}
+            organisationId={organisationId}
+          />
+        )}
+        {!archived && (
+          <AgentBranding
+            key={`branding-${agent.data.id}`}
+            agent={agent.data}
+            organisationId={organisationId}
+            isOwner={isOwner}
           />
         )}
         {archived && (
@@ -519,11 +626,18 @@ export function AgentPage() {
             isOwner={isOwner}
           />
         )}
+        <LiveHistory
+          key={`live-history-${agent.data.id}`}
+          agent={agent.data}
+          organisationId={organisationId}
+          archived={archived}
+        />
         <div className="grid gap-8 lg:grid-cols-2">
           <DraftEditor
-            key={`${agent.data.id}-${String(archived)}`}
+            key={`${agent.data.id}-${String(archived)}-${String(generation)}`}
             agent={agent.data}
             organisationId={organisationId}
+            onReplaced={replaced}
           />
           {!archived && (
             <Playground
@@ -533,6 +647,7 @@ export function AgentPage() {
             />
           )}
         </div>
+        <AgentVersions agent={agent.data} organisationId={organisationId} onReplaced={replaced} />
       </>
     );
   }
@@ -547,6 +662,14 @@ export function AgentPage() {
         All Agents
       </Link>
       {body}
+      <Link
+        to="/organisations/$organisationId/projects/$projectId/conversations"
+        params={{ organisationId, projectId }}
+        search={{ agent: agentId }}
+        className="block text-sm text-slate-700 underline"
+      >
+        Conversations with this Agent
+      </Link>
     </section>
   );
 }

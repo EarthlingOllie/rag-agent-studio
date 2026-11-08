@@ -20,7 +20,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app import audit
 from app.agents.models import Agent
 from app.documents.models import Document
-from app.projects.models import Project
+from app.projects.models import FlaggedChunkMode, Project
 from app.tenancy.repository import OrganisationScope
 
 
@@ -34,6 +34,13 @@ class ProjectArchivedError(Exception):
 
 class ProjectNotArchivedError(Exception):
     """Only an archived Project can be restored or permanently deleted."""
+
+
+class StaleInstructionsError(Exception):
+    """The Instructions Draft has moved on since the revision the save was made on."""
+
+    def __init__(self, latest: Project) -> None:
+        self.latest = latest
 
 
 class ProjectNameMismatchError(Exception):
@@ -155,9 +162,10 @@ async def update_project(
     name: str | None,
     description: str | None,
     ocr_enabled: bool | None = None,
+    flagged_chunk_mode: FlaggedChunkMode | None = None,
 ) -> Project:
-    """Renames the Project, replaces its description and/or turns OCR on or off. Archived
-    Projects are refused."""
+    """Renames the Project, replaces its description, turns OCR on or off and/or sets its
+    Flagged Chunk mode. Archived Projects are refused."""
     project = await active_project(session, scope, project_id, lock=True)
     if name is not None:
         project.name = name
@@ -165,6 +173,8 @@ async def update_project(
         project.description = description
     if ocr_enabled is not None:
         project.ocr_enabled = ocr_enabled
+    if flagged_chunk_mode is not None:
+        project.flagged_chunk_mode = flagged_chunk_mode
     await session.commit()
     return project
 
@@ -217,12 +227,18 @@ async def save_instructions(
     project_id: uuid.UUID,
     markdown: str,
     *,
+    base_revision: int | None = None,
     now: datetime,
 ) -> Project:
     """Replaces the Project Instructions and records ``project.instructions_updated`` when
-    the text changed. Archived Projects are refused."""
+    the text changed, moving the Draft to its next revision. Archived Projects are refused.
+    With ``base_revision``, a Draft that has moved on from it is refused with
+    ``StaleInstructionsError``, so nobody silently overwrites a colleague's edits."""
     project = await active_project(session, scope, project_id, lock=True)
+    if base_revision is not None and base_revision != project.instructions_revision:
+        raise StaleInstructionsError(project)
     if project.instructions != markdown:
+        project.instructions_revision += 1
         await audit.record(
             session,
             organisation_id=scope.organisation_id,

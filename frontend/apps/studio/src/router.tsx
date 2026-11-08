@@ -24,7 +24,10 @@ import {
 } from "./settings/OrganisationSettings";
 import { AgentPage } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
-import { AnalyticsTab, ConversationsTab, ProjectLayout } from "./projects/ProjectPage";
+import { AnalyticsTab } from "./projects/AnalyticsTab";
+import { ProjectLayout } from "./projects/ProjectPage";
+import { ConversationPage, ConversationsTab } from "./projects/ConversationsTab";
+import { conversationFilters } from "./projects/conversations";
 import { DocumentsTab } from "./projects/DocumentsTab";
 import { ProjectSettingsTab } from "./projects/ProjectSettingsTab";
 import { DocumentViewer } from "./projects/DocumentViewer";
@@ -125,7 +128,16 @@ const agentRoute = createRoute({ getParentRoute: () => projectRoute, path: "/age
 const conversationsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/conversations",
+  // The list's filters, so opening a Conversation and coming back keeps them.
+  validateSearch: conversationFilters,
   component: ConversationsTab,
+});
+const conversationRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/conversations/$conversationId",
+  // The list's filters, carried to the way back.
+  validateSearch: conversationFilters,
+  component: ConversationPage,
 });
 const analyticsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/analytics", component: AnalyticsTab });
 const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });
@@ -175,6 +187,7 @@ const routeTree = rootRoute.addChildren([
         agentsTabRoute,
         agentRoute,
         conversationsTabRoute,
+        conversationRoute,
         analyticsTabRoute,
         projectSettingsTabRoute,
       ]),

@@ -8,6 +8,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, StringConstraints
 
 from app.agents import service
@@ -32,6 +33,10 @@ AGENT_ARCHIVED = "This Agent is archived. An Owner can restore it."
 AGENT_NOT_ARCHIVED = "This Agent isn't archived."
 ARCHIVE_BEFORE_DELETING = "Only an archived Agent can be deleted. Archive it first."
 NAME_MISMATCH = "Type the Agent's name exactly to delete it."
+STALE_DRAFT = (
+    "Someone else saved this Draft after you opened it. Load their changes, or save yours over "
+    "them."
+)
 
 NOT_FOUND_RESPONSE: dict[int | str, dict[str, Any]] = {
     404: {"model": ErrorResponse, "description": NOT_FOUND}
@@ -62,16 +67,49 @@ class AgentOut(BaseModel):
     archived_at: datetime | None
     draft: AgentConfig
     draft_updated_at: datetime
+    # Moves on with every change of the Draft. Send it as ``base_revision`` with a change so
+    # that a Draft someone has changed since is not overwritten.
+    draft_revision: int
     # The Version Visitors are served; null while the Agent has never been published, so it
     # is not live.
     live_version: LiveVersionOut | None
+    # Whether the Draft differs from the Live Version; false while the Agent is not live.
+    has_unpublished_changes: bool
+    # The budget alert: the Agent's daily Token Budget ran out, so Visitors get its unavailable
+    # text. Cleared at midnight UTC, when a new day's budget starts.
+    budget_exhausted: bool
+
+
+class DraftConflictOut(BaseModel):
+    detail: str
+    # The latest Draft, when the change was refused because the Draft had moved on from the
+    # revision it was made on.
+    latest: AgentOut | None = None
+
+
+BaseRevision = Annotated[
+    int | None,
+    Query(
+        description=(
+            "The Draft revision the change was made on. When the Draft has moved on since, the "
+            "change is refused with 409 and the latest Draft. Left out, the Draft is replaced."
+        )
+    ),
+]
+
+STALE_DRAFT_RESPONSE: dict[int | str, dict[str, Any]] = {
+    409: {
+        "model": DraftConflictOut,
+        "description": f"{STALE_DRAFT} Or: {PROJECT_ARCHIVED} Or: {AGENT_ARCHIVED}",
+    }
+}
 
 
 class CreateAgentRequest(BaseModel):
     name: AgentName
 
 
-def _out(found: service.AgentWithDraft) -> AgentOut:
+def agent_out(found: service.AgentWithDraft) -> AgentOut:
     agent = found.agent
     return AgentOut(
         id=agent.id,
@@ -82,9 +120,18 @@ def _out(found: service.AgentWithDraft) -> AgentOut:
         archived_at=agent.archived_at,
         draft=found.draft,
         draft_updated_at=found.draft_updated_at,
+        draft_revision=found.draft_revision,
         live_version=found.live_version
         and LiveVersionOut(id=found.live_version.id, number=found.live_version.number),
+        has_unpublished_changes=found.has_unpublished_changes,
+        budget_exhausted=agent.budget_exhausted_at is not None,
     )
+
+
+def stale_draft(error: service.StaleDraftError) -> JSONResponse:
+    """The 409 for a Draft change made on a revision the Draft has moved on from."""
+    conflict = DraftConflictOut(detail=STALE_DRAFT, latest=agent_out(error.latest))
+    return JSONResponse(conflict.model_dump(mode="json"), status.HTTP_409_CONFLICT)
 
 
 def not_found() -> HTTPException:
@@ -111,7 +158,7 @@ async def list_agents(
         found = await service.list_agents(db, scope, project_id, archived=archived)
     except ProjectNotFoundError:
         raise not_found() from None
-    return [_out(agent) for agent in found]
+    return [agent_out(agent) for agent in found]
 
 
 @router.post(
@@ -130,14 +177,14 @@ async def create_agent(
         raise not_found() from None
     except ProjectArchivedError:
         raise archived() from None
-    return _out(found)
+    return agent_out(found)
 
 
 @router.get("/agents/{agent_id}", operation_id="getAgent", responses=NOT_FOUND_RESPONSE)
 async def get_agent(project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db) -> AgentOut:
     """The Agent, archived or not."""
     try:
-        return _out(await service.get_agent(db, scope, project_id, agent_id))
+        return agent_out(await service.get_agent(db, scope, project_id, agent_id))
     except (ProjectNotFoundError, service.AgentNotFoundError):
         raise not_found() from None
 
@@ -145,7 +192,8 @@ async def get_agent(project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db
 @router.put(
     "/agents/{agent_id}/draft",
     operation_id="saveAgentDraft",
-    responses={**NOT_FOUND_RESPONSE, **AGENT_ARCHIVED_RESPONSE},
+    response_model=AgentOut,
+    responses={**NOT_FOUND_RESPONSE, **STALE_DRAFT_RESPONSE},
 )
 async def save_agent_draft(
     project_id: uuid.UUID,
@@ -154,22 +202,28 @@ async def save_agent_draft(
     scope: Scope,
     db: Db,
     clock: ClockDep,
-) -> AgentOut:
+    base_revision: BaseRevision = None,
+) -> AgentOut | JSONResponse:
     """Replaces the Agent's Draft with a valid AgentConfig. Besides shapes and ranges, each
     credential must offer the chosen model for its setting's capability and each Tag must be
     the Project's; every problem is reported in one 422, located like a validation error. An
-    archived Agent's Draft can't be changed."""
+    archived Agent's Draft can't be changed. With ``base_revision``, a Draft someone has changed
+    since is refused with 409 and the latest Draft."""
     try:
-        found = await service.save_draft(db, scope, project_id, agent_id, body, now=clock.now())
+        found = await service.save_draft(
+            db, scope, project_id, agent_id, body, base_revision=base_revision, now=clock.now()
+        )
     except (ProjectNotFoundError, service.AgentNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
         raise archived() from None
     except service.AgentArchivedError:
         raise agent_archived() from None
+    except service.StaleDraftError as error:
+        return stale_draft(error)
     except InvalidDraftError as error:
         raise RequestValidationError([p.as_error() for p in error.problems]) from None
-    return _out(found)
+    return agent_out(found)
 
 
 @router.post(
@@ -190,7 +244,7 @@ async def archive_agent(
         raise archived() from None
     except service.AgentArchivedError:
         raise agent_archived() from None
-    return _out(found)
+    return agent_out(found)
 
 
 @router.post(
@@ -217,7 +271,7 @@ async def restore_agent(
         raise archived() from None
     except service.AgentNotArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, AGENT_NOT_ARCHIVED) from None
-    return _out(found)
+    return agent_out(found)
 
 
 class DeleteAgentRequest(BaseModel):

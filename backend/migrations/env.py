@@ -6,6 +6,7 @@ from alembic import context
 from sqlalchemy.engine import Connection
 
 from app.agents import models as agent_models
+from app.analytics import models as analytics_models
 from app.audit import models as audit_models
 from app.auth import models as auth_models
 from app.conversations import models as conversation_models
@@ -15,6 +16,7 @@ from app.core.settings import load_settings
 from app.credentials import models as credential_models
 from app.default_model import models as default_model_models
 from app.documents import models as document_models
+from app.feedback import models as feedback_models
 from app.pricing import models as pricing_models
 from app.pricing.sync import sync_price_table
 from app.projects import models as project_models
@@ -30,6 +32,7 @@ if config.attributes.get("configure_logger", True):
 # Every model registers its table on Base.metadata; importing the modules is enough.
 _MODEL_MODULES = (
     agent_models,
+    analytics_models,
     conversation_models,
     tenancy_models,
     audit_models,
@@ -37,6 +40,7 @@ _MODEL_MODULES = (
     credential_models,
     default_model_models,
     document_models,
+    feedback_models,
     tag_models,
     pricing_models,
     project_models,

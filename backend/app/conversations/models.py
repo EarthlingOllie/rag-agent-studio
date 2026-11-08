@@ -41,6 +41,14 @@ DRAFT = "draft"
 VERSION = "version"
 
 
+class InstructionsSource(enum.StrEnum):
+    """Which Project Instructions an answer ran with: the Instructions Draft (the Playground's
+    default) or a chosen Instructions Version (named by ``instructions_version_id``)."""
+
+    DRAFT = "draft"
+    VERSION = "version"
+
+
 class Conversation(IdMixin, Base):
     __tablename__ = "conversations"
 
@@ -54,6 +62,9 @@ class Conversation(IdMixin, Base):
     last_activity_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # A Visitor Conversation's Conversation token, as its SHA-256 hex digest; the token itself is
+    # only ever held by the Visitor's widget. None for Playground Conversations.
+    token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
 
 
 class Message(IdMixin, Base):
@@ -71,6 +82,16 @@ class Message(IdMixin, Base):
     content: Mapped[str] = mapped_column(Text)
     # Set on assistant Messages only.
     config_source: Mapped[str | None] = mapped_column(String(40))
+    # The Project Instructions the answer ran with: an ``InstructionsSource``, and the Version
+    # when it was one. Versions only go with their Project, which takes its Messages with it.
+    instructions_source: Mapped[str | None] = mapped_column(String(20))
+    instructions_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "project_instructions_versions.id",
+            name="fk_messages_instructions_version",
+            ondelete="CASCADE",
+        )
+    )
     # The Agent Version that answered; None for a Draft answer (and for questions).
     agent_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("agent_versions.id"))
     model_provider: Mapped[str | None] = mapped_column(String(40))
@@ -85,8 +106,9 @@ class Message(IdMixin, Base):
     # True when no Chunk reached the minimum score, so the answer is the fallback text and no
     # model was asked (its model is then null).
     fallback: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
-    # What the Guardrails decided about the answer: a list of {layer, verdict, action, reason}.
-    guardrail_outcomes: Mapped[list[dict[str, str]]] = mapped_column(
+    # What the Guardrails decided about the answer: a list of
+    # {layer, verdict, action, reason, score}.
+    guardrail_outcomes: Mapped[list[dict[str, str | float | None]]] = mapped_column(
         JSONB, default=list, server_default=text("'[]'::jsonb")
     )
 

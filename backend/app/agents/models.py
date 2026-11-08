@@ -15,14 +15,25 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, IdMixin
 
 NAME_MAX = 200
 PUBLIC_ID_PREFIX = "agt_"
+ORIGIN_MAX = 255
+UNAVAILABLE_TEXT_MAX = 500
+# Rate limits: Visitor messages admitted in any one minute.
+CONVERSATION_RATE_DEFAULT = 10
+CONVERSATION_RATE_MAX = 1000
+IP_RATE_DEFAULT = 30
+IP_RATE_MAX = 10000
+# The Token Budget: tokens an Agent's Visitor replies may use in one UTC day.
+TOKEN_BUDGET_DEFAULT = 1_000_000
+TOKEN_BUDGET_MAX = 1_000_000_000
 
 
 def new_public_id() -> str:
@@ -47,6 +58,35 @@ class Agent(IdMixin, Base):
     live_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("agent_versions.id", name="fk_agents_live_version", use_alter=True)
     )
+    # Operational Settings: not part of any Draft or Version, and applied on the next request.
+    # The sites (scheme, host or subdomain wildcard, and optional port) whose pages may frame
+    # the Agent's widget: the shell's ``frame-ancestors`` policy. Empty means none may.
+    allowed_origins: Mapped[list[str]] = mapped_column(
+        ARRAY(String(ORIGIN_MAX)), server_default=text("'{}'")
+    )
+    # What Visitors are told when the Agent can't answer; None means the platform's default.
+    unavailable_text: Mapped[str | None] = mapped_column(String(UNAVAILABLE_TEXT_MAX))
+    # Rate limits: how many Visitor messages are admitted in any minute (a sliding window) for
+    # one Conversation, and for one IP address.
+    conversation_messages_per_minute: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(CONVERSATION_RATE_DEFAULT))
+    )
+    ip_messages_per_minute: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(IP_RATE_DEFAULT))
+    )
+    # The Token Budget: how many tokens Visitor replies may use per UTC date. The day's usage is
+    # counted in Redis (admission control); the Playground doesn't count.
+    daily_token_budget: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(TOKEN_BUDGET_DEFAULT))
+    )
+    # The budget alert flag: when the day's Token Budget ran out, shown as the Studio's alert
+    # badge. Beat clears it at midnight UTC; None when there is no alert.
+    budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Theme override, set by Owners and not versioned: colour tokens replacing the
+    # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
+    # image (stored as the Theme's images are), or None.
+    theme_colours: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    avatar: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
 class AgentDraft(Base):
@@ -63,6 +103,9 @@ class AgentDraft(Base):
     # An ``AgentConfig`` as JSON; read it through ``AgentConfig.model_validate``.
     config: Mapped[dict[str, Any]] = mapped_column(JSONB)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # 1, 2, 3…: moves on with every change of the Draft. A change names the revision it was
+    # made on, and is refused when the Draft has moved on since (optimistic concurrency).
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
 
 
 class AgentVersion(IdMixin, Base):
