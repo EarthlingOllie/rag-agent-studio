@@ -116,7 +116,12 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
             Provider.DEMO,
             "Demo (not a real model)",
             (AuthKind.API_KEY,),
-            {Capability.CHAT: (Model("demo-chat", "Demo model"),)},
+            {
+                Capability.CHAT: (
+                    Model("demo-chat", "Demo model"),
+                    Model("demo-naive", "Naive demo model (obeys injected instructions)"),
+                )
+            },
         ),
     )
 }
