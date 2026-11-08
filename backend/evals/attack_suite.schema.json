@@ -1,0 +1,257 @@
+{
+  "$defs": {
+    "AnswerOutcome": {
+      "description": "Whether any reply the Visitor received carries one of the case's markers.",
+      "enum": [
+        "harmless",
+        "compromised"
+      ],
+      "title": "AnswerOutcome",
+      "type": "string"
+    },
+    "CanaryOutcome": {
+      "description": "What the Canary token caught, at its strongest over the case's turns.",
+      "enum": [
+        "replaced",
+        "flagged",
+        "quiet"
+      ],
+      "title": "CanaryOutcome",
+      "type": "string"
+    },
+    "Case": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "turns": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Turns",
+          "type": "array"
+        },
+        "document": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document"
+        },
+        "input_mode": {
+          "$ref": "#/$defs/InputMode",
+          "default": "block"
+        },
+        "flagged_chunk_mode": {
+          "$ref": "#/$defs/FlaggedChunkMode",
+          "default": "mark"
+        },
+        "markers": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Markers",
+          "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "expected": {
+          "$ref": "#/$defs/Expected"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "description",
+        "turns",
+        "expected"
+      ],
+      "title": "Case",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "instruction_override",
+        "system_prompt_extraction",
+        "roleplay_jailbreak",
+        "indirect_injection",
+        "encoding_base64",
+        "encoding_homoglyph",
+        "encoding_translation",
+        "multi_turn_escalation",
+        "benign"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Expected": {
+      "additionalProperties": false,
+      "description": "What each layer should do. ``ingestion`` is given exactly when the case has a Document.",
+      "properties": {
+        "ingestion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IngestionOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "input": {
+          "$ref": "#/$defs/InputOutcome"
+        },
+        "canary": {
+          "$ref": "#/$defs/CanaryOutcome"
+        },
+        "answer": {
+          "$ref": "#/$defs/AnswerOutcome"
+        }
+      },
+      "required": [
+        "input",
+        "canary",
+        "answer"
+      ],
+      "title": "Expected",
+      "type": "object"
+    },
+    "FlaggedChunkMode": {
+      "description": "What retrieval does with the Chunks the ingestion Guardrail scan flags.",
+      "enum": [
+        "mark",
+        "exclude"
+      ],
+      "title": "FlaggedChunkMode",
+      "type": "string"
+    },
+    "IngestionOutcome": {
+      "description": "What the ingestion scan did with the case's Document.",
+      "enum": [
+        "flagged",
+        "excluded",
+        "passed"
+      ],
+      "title": "IngestionOutcome",
+      "type": "string"
+    },
+    "InputMode": {
+      "description": "What the input Guardrail does when it flags a Visitor message (enforced in spec 08).",
+      "enum": [
+        "block",
+        "warn",
+        "log"
+      ],
+      "title": "InputMode",
+      "type": "string"
+    },
+    "InputOutcome": {
+      "description": "What the input Guardrail did, at its strongest over the case's turns.",
+      "enum": [
+        "blocked",
+        "flagged",
+        "logged",
+        "passed"
+      ],
+      "title": "InputOutcome",
+      "type": "string"
+    },
+    "KnowledgeChunk": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "minLength": 1,
+          "title": "Document",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "text"
+      ],
+      "title": "KnowledgeChunk",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "suite_version": {
+      "minLength": 1,
+      "title": "Suite Version",
+      "type": "string"
+    },
+    "system_prompt": {
+      "minLength": 1,
+      "title": "System Prompt",
+      "type": "string"
+    },
+    "knowledge_base": {
+      "items": {
+        "$ref": "#/$defs/KnowledgeChunk"
+      },
+      "minItems": 1,
+      "title": "Knowledge Base",
+      "type": "array"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/Case"
+      },
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "suite_version",
+    "system_prompt",
+    "knowledge_base",
+    "cases"
+  ],
+  "title": "Suite",
+  "type": "object",
+  "$id": "attack_suite.schema.v1.json"
+}

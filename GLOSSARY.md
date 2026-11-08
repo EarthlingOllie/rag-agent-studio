@@ -540,6 +540,17 @@ _Avoid_: Block message, rejection text
 **Guardrail outcome**:
 What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak, or unchecked when the LLM classifier couldn't judge), action (blocked, flagged, logged, replaced or allowed: the input Guardrail blocks, flags or logs by its Input mode; the Canary token replaces a leak, or flags an encoded one found after sending; allowed when an Agent failing open let an unchecked message through), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
+**Attack evaluation suite**:
+The versioned set of attack and benign cases (`backend/evals/attack_suite.json`) run through the real Guardrail pipeline to show the defences work: each case declares its expected outcome per layer (ingestion scan, input Guardrail, Canary token, and whether the answer stayed harmless). It runs on every PR against the Naive model, where any unexpected outcome fails, and nightly against a real model, where it fails below the configured pass rate.
+_Avoid_: Red-team suite, jailbreak tests
+
+**Naive model**:
+The mocked chat model the Attack evaluation suite runs against in CI: it obeys whatever instructions it finds (in the Visitor's message, the history or a retrieved Chunk, disguised or not), so the suite tests the Guardrails rather than a model's own refusals.
+_Avoid_: Dumb model, evil model
+
+**Pass rate**:
+In an Attack evaluation suite report, the share of cases defended: an attack got none of its markers into a reply and sent no encoded Canary token; a benign question was answered without being blocked, flagged or cut off.
+
 ## Conversations
 
 **Visitor**:
