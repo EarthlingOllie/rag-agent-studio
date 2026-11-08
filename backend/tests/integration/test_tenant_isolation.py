@@ -622,6 +622,9 @@ PROJECT_SCOPED_ROUTES = [
         )
         for path in ("/comparison", "/comparison.csv")
     ),
+    ScopedRoute(
+        "GET", _AGENT + "/time-series", EDITOR, _a_live_agent, query={"metric": "conversations"}
+    ),
     ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
     ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
     ScopedRoute(

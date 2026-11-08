@@ -1,9 +1,10 @@
-"""Studio routes for Version KPIs and Version comparison: an Agent's Versions' key numbers over a
-range of UTC days, and two Versions side by side (also as CSV). Editors and Owners may read
-them. Playground Conversations never count."""
+"""Studio routes for Version KPIs (an Agent's Versions' key numbers over a range of UTC days),
+Version comparison (two Versions side by side, also as CSV) and the time series (one metric of
+the Agent per day, week or month, with Live History markers and a confounder note's Document
+changes). Editors and Owners may read them. Playground Conversations never count."""
 
 import uuid
-from datetime import UTC, date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 
 from app.agents import versions
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
+from app.agents.models import AgentVersion
 from app.agents.service import AgentNotFoundError
 from app.agents.versions_api import AgentDiffOut, diff_out
 from app.analytics import comparison, service
@@ -151,7 +153,9 @@ StartQuery = Annotated[
 EndQuery = Annotated[date | None, Query(description="The last UTC day; today if left out")]
 
 
-def _days(start: date | None, end: date | None, today: date) -> tuple[date, date]:
+def _range(start: date | None, end: date | None, today: date) -> tuple[date, date]:
+    """The UTC days asked for, defaulting to the last 30 days to today; refuses a range that
+    runs backwards or is longer than ``MAX_DAYS``."""
     last = end or today
     first = start or last - timedelta(days=DEFAULT_DAYS - 1)
     if first > last:
@@ -180,7 +184,7 @@ async def get_version_metrics(
     """Each chosen Agent Version's KPIs over the UTC days `start` to `end` (both inclusive, at
     most 366 days), including today's so far. Only Visitor Conversations count."""
     today = clock.now().astimezone(UTC).date()
-    first, last = _days(start, end, today)
+    first, last = _range(start, end, today)
     try:
         kpis = await service.version_metrics(
             db, scope, project_id, agent_id, version or [], first, last, today
@@ -189,6 +193,115 @@ async def get_version_metrics(
         raise not_found() from None
     return VersionMetricsOut(
         agent_id=agent_id, start=first, end=last, versions=[_out(k) for k in kpis]
+    )
+
+
+class TimeSeriesPointOut(BaseModel):
+    # The period's first and last UTC day (a whole day, ISO week or month, clipped to the range).
+    start: date
+    end: date
+    # The metric over the period; null when it has no sample (no votes for a rate, say).
+    value: float | None
+    # The sample size: Conversations, replies, votes or ratings, as the metric counts them.
+    n: int
+
+
+class MarkerVersionOut(BaseModel):
+    id: uuid.UUID
+    number: int
+
+
+class LiveHistoryMarkerOut(BaseModel):
+    """A change of the Live Version during the range: one Live History entry."""
+
+    occurred_at: datetime
+    # The UTC day it happened on, and the start of the point (period) that day is in.
+    day: date
+    point_start: date
+    # publish, revert, bulk_publish or bulk_revert.
+    action: str
+    # Null for the first publish.
+    from_version: MarkerVersionOut | None
+    to_version: MarkerVersionOut
+
+
+class DocumentChangesOut(BaseModel):
+    # Documents of the Project added, replaced or processed again during the range.
+    changed: int
+    # Documents of the Project deleted during the range.
+    deleted: int
+
+
+class TimeSeriesOut(BaseModel):
+    agent_id: uuid.UUID
+    metric: service.TimeSeriesMetric
+    granularity: service.TimeSeriesGranularity
+    # The UTC days covered, both inclusive.
+    start: date
+    end: date
+    points: list[TimeSeriesPointOut]
+    markers: list[LiveHistoryMarkerOut]
+    # The Knowledge Base isn't versioned: changes during the range may confound the series.
+    document_changes: DocumentChangesOut
+
+
+def _version(version: AgentVersion) -> MarkerVersionOut:
+    return MarkerVersionOut(id=version.id, number=version.number)
+
+
+def _point_start(points: list[service.Point], day: date) -> date:
+    return max(point.start for point in points if point.start <= day)
+
+
+@router.get("/time-series", operation_id="getTimeSeries", responses=NOT_FOUND_RESPONSE)
+async def get_time_series(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    metric: Annotated[service.TimeSeriesMetric, Query(description="What to measure")],
+    granularity: Annotated[
+        service.TimeSeriesGranularity, Query(description="One point per day, ISO week or month")
+    ] = service.TimeSeriesGranularity.DAY,
+    start: StartQuery = None,
+    end: EndQuery = None,
+) -> TimeSeriesOut:
+    """One metric of the Agent (every Version together) per period of the UTC days `start` to
+    `end` (both inclusive, at most 366 days), including today's so far; with markers where the
+    Live Version changed and the Project's Document changes during the range. Only Visitor
+    Conversations count."""
+    today = clock.now().astimezone(UTC).date()
+    first, last = _range(start, end, today)
+    try:
+        found = await service.time_series(
+            db, scope, project_id, agent_id, metric, granularity, first, last, today
+        )
+    except (ProjectNotFoundError, AgentNotFoundError):
+        raise not_found() from None
+    return TimeSeriesOut(
+        agent_id=agent_id,
+        metric=metric,
+        granularity=granularity,
+        start=first,
+        end=last,
+        points=[
+            TimeSeriesPointOut(start=p.start, end=p.end, value=p.value, n=p.n) for p in found.points
+        ],
+        markers=[
+            LiveHistoryMarkerOut(
+                occurred_at=m.occurred_at,
+                day=m.occurred_at.astimezone(UTC).date(),
+                point_start=_point_start(found.points, m.occurred_at.astimezone(UTC).date()),
+                action=m.action,
+                from_version=None if m.from_version is None else _version(m.from_version),
+                to_version=_version(m.to_version),
+            )
+            for m in found.markers
+        ],
+        document_changes=DocumentChangesOut(
+            changed=found.document_changes.changed, deleted=found.document_changes.deleted
+        ),
     )
 
 
@@ -255,7 +368,7 @@ async def _compared(
     end: EndQuery = None,
 ) -> tuple[date, date, comparison.Comparison, versions.ConfigDiff]:
     today = clock.now().astimezone(UTC).date()
-    first, last = _days(start, end, today)
+    first, last = _range(start, end, today)
     if a == b:
         raise _bad_range("Pick two different Versions to compare.")
     try:

@@ -6,6 +6,7 @@ import { type MetricsRange, type VersionKpis, useVersionMetrics } from "./analyt
 import { dollars, duration } from "./format";
 import { ProjectRequestError } from "./projects";
 import { INPUT, useOrganisationRole } from "./ProjectsPage";
+import { TimeSeriesChart } from "./TimeSeriesChart";
 import { VersionComparison } from "./VersionComparison";
 
 const ROUTE = "/signed-in/organisations/$organisationId/projects/$projectId/analytics";
@@ -152,6 +153,7 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
         </p>
         <Kpis kpis={shown} />
         <VersionComparison organisationId={organisationId} projectId={projectId} agentId={agentId} versions={versions} range={range} />
+        <TimeSeriesChart organisationId={organisationId} projectId={projectId} agentId={agentId} range={range} />
       </>
     );
   }
@@ -191,7 +193,7 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
   );
 }
 
-/** The Analytics tab: an Agent Version's KPI cards, with intervals, sample sizes and small samples marked. */
+/** The Analytics tab: an Agent Version's KPI cards, with intervals, sample sizes and small samples marked, and the Agent's time series. */
 export function AnalyticsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useParams({ from: ROUTE });

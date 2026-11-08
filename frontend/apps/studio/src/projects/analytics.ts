@@ -77,3 +77,32 @@ export function comparisonCsvUrl(
   const query = new URLSearchParams(comparisonQuery(sides.a, sides.b, range));
   return `/api/organisations/${organisationId}/projects/${projectId}/agents/${agentId}/comparison.csv?${query.toString()}`;
 }
+
+export type TimeSeries = Schemas["TimeSeriesOut"];
+export type TimeSeriesMetric = Schemas["TimeSeriesMetric"];
+export type TimeSeriesGranularity = Schemas["TimeSeriesGranularity"];
+
+/** One metric of the Agent (every Version together) per day, week or month over the range, with Live History markers. */
+export function useTimeSeries(
+  organisationId: string,
+  projectId: string,
+  agentId: string,
+  metric: TimeSeriesMetric,
+  granularity: TimeSeriesGranularity,
+  range: MetricsRange,
+) {
+  return useQuery({
+    queryKey: ["time-series", organisationId, projectId, agentId, metric, granularity, range],
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<TimeSeries> => {
+      const { data, response } = await api.GET("/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series", {
+        params: {
+          path: { organisation_id: organisationId, project_id: projectId, agent_id: agentId },
+          query: { metric, granularity, ...(range.from && { start: range.from }), ...(range.to && { end: range.to }) },
+        },
+      });
+      if (!data) throw new ProjectRequestError(response.status);
+      return data;
+    },
+  });
+}
