@@ -1,0 +1,20 @@
+$ make install @ 02deb2b (ticket/06-05-rate-limits, clean tree: 0 changes)
+cd backend && uv sync --frozen
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Checked 172 packages in 1ms
+cd frontend && pnpm install --frozen-lockfile
+Scope: all 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.28.0 → 12.18.0.   │
+   │   Changelog: https://pnpm.io/v/12.18.0   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+
+Done in 940ms using pnpm v10.28.0
+exit 0

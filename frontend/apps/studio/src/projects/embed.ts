@@ -30,7 +30,7 @@ export class OperationalSettingsError extends Error {}
 
 type Path = { organisation_id: string; project_id: string; agent_id: string };
 
-/** An Agent's Allowed Origins and unavailable text: not part of its Draft or Versions. */
+/** An Agent's Allowed Origins, unavailable text and rate limits: not part of its Draft or Versions. */
 export type OperationalSettings = Schemas["OperationalSettingsOut"];
 
 const PATH =

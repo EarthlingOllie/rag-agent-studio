@@ -200,8 +200,98 @@ function UnavailableText({ path }: { path: SettingsPath }) {
   );
 }
 
+type Limits = { conversation: string; ip: string };
+
+function RateLimits({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const save = useChangeOperationalSettings(path);
+  const [edited, setEdited] = useState<Limits | null>(null);
+  const loaded = settings.isSuccess;
+  const limits: Limits = edited ?? {
+    conversation: String(settings.data?.conversation_messages_per_minute ?? ""),
+    ip: String(settings.data?.ip_messages_per_minute ?? ""),
+  };
+
+  function edit(change: Partial<Limits>) {
+    save.reset();
+    setEdited({ ...limits, ...change });
+  }
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save.mutate(
+      {
+        conversation_messages_per_minute: Number(limits.conversation),
+        ip_messages_per_minute: Number(limits.ip),
+      },
+      {
+        onSuccess: () => {
+          setEdited(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-2">
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Rate limits</legend>
+        <p id="rate-limits-hint" className="text-sm text-slate-700">
+          How many messages Visitors may send in any one minute. Messages over a limit get the
+          unavailable text instead of an answer. The Playground has no limits.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <div>
+            <label htmlFor="conversation-rate" className="block text-sm">
+              Messages per minute per Conversation
+            </label>
+            <input
+              id="conversation-rate"
+              type="number"
+              min={1}
+              aria-describedby="rate-limits-hint"
+              className={INPUT}
+              disabled={!loaded}
+              value={limits.conversation}
+              onChange={(event) => {
+                edit({ conversation: event.target.value });
+              }}
+            />
+          </div>
+          <div>
+            <label htmlFor="ip-rate" className="block text-sm">
+              Messages per minute per IP address
+            </label>
+            <input
+              id="ip-rate"
+              type="number"
+              min={1}
+              aria-describedby="rate-limits-hint"
+              className={INPUT}
+              disabled={!loaded}
+              value={limits.ip}
+              onChange={(event) => {
+                edit({ ip: event.target.value });
+              }}
+            />
+          </div>
+        </div>
+      </fieldset>
+      <FormError message={save.error?.message} />
+      <div className="flex items-center gap-3">
+        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
+          Save rate limits
+        </button>
+        <p role="status" className="text-sm text-slate-700">
+          {save.isSuccess ? "Saved. Messages over a limit get the unavailable text from now on." : ""}
+        </p>
+      </div>
+    </form>
+  );
+}
+
 /** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings: the
- * sites allowed to show it and what Visitors see when it can't answer. They apply at once,
+ * sites allowed to show it, what Visitors see when it can't answer, and its rate limits. They apply at once,
  * without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
@@ -222,6 +312,7 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
       </p>
       <AllowedOrigins path={path} />
       <UnavailableText path={path} />
+      <RateLimits path={path} />
     </section>
   );
 }
