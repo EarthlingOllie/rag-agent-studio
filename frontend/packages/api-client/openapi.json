@@ -109,6 +109,10 @@
             ],
             "title": "Archived At"
           },
+          "budget_exhausted": {
+            "title": "Budget Exhausted",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -170,7 +174,8 @@
           "draft_updated_at",
           "draft_revision",
           "live_version",
-          "has_unpublished_changes"
+          "has_unpublished_changes",
+          "budget_exhausted"
         ],
         "title": "AgentOut",
         "type": "object"
@@ -4155,6 +4160,19 @@
             ],
             "title": "Conversation Messages Per Minute"
           },
+          "daily_token_budget": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Token Budget"
+          },
           "ip_messages_per_minute": {
             "anyOf": [
               {
@@ -4197,6 +4215,10 @@
             "title": "Conversation Messages Per Minute",
             "type": "integer"
           },
+          "daily_token_budget": {
+            "title": "Daily Token Budget",
+            "type": "integer"
+          },
           "ip_messages_per_minute": {
             "title": "Ip Messages Per Minute",
             "type": "integer"
@@ -4210,7 +4232,8 @@
           "allowed_origins",
           "unavailable_text",
           "conversation_messages_per_minute",
-          "ip_messages_per_minute"
+          "ip_messages_per_minute",
+          "daily_token_budget"
         ],
         "title": "OperationalSettingsOut",
         "type": "object"
@@ -5825,6 +5848,41 @@
           "retry_after_seconds"
         ],
         "title": "ThrottledResponse",
+        "type": "object"
+      },
+      "TokenUsageOut": {
+        "properties": {
+          "daily_token_budget": {
+            "title": "Daily Token Budget",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "exhausted": {
+            "title": "Exhausted",
+            "type": "boolean"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          },
+          "tokens_used": {
+            "title": "Tokens Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "tokens_used",
+          "daily_token_budget",
+          "exhausted",
+          "resets_at"
+        ],
+        "title": "TokenUsageOut",
         "type": "object"
       },
       "TraceOut": {
@@ -12320,6 +12378,80 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage": {
+      "get": {
+        "description": "Today's (UTC) Visitor usage against the Agent's Token Budget, for the Studio's meter.",
+        "operationId": "getTokenUsage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenUsageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Token Usage",
+        "tags": [
+          "embed"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions": {
       "get": {
         "description": "The Agent's Versions, newest first, and which is the Live Version.",
@@ -16243,7 +16375,7 @@
     },
     "/api/widget/agents/{public_id}/messages": {
       "post": {
-        "description": "Asks the Agent's Live Version a question in the token's Conversation. The answer is\nrecorded against the Version that was Live when it was generated. Messages over the\nAgent's rate limits, per Conversation and per IP address, get its unavailable text.",
+        "description": "Asks the Agent's Live Version a question in the token's Conversation. The answer is\nrecorded against the Version that was Live when it was generated, and the tokens it used\ncount against the Agent's daily Token Budget. Messages over the Agent's rate limits, per\nConversation and per IP address, or once the day's budget is spent, get its unavailable\ntext; the first refusal or reply that finds the budget spent raises the Agent's alert and\nemails its Owners, once per day.",
         "operationId": "sendWidgetMessage",
         "parameters": [
           {
@@ -16287,7 +16419,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events. When admission control refuses the message (the Conversation or the Visitor's IP address is over the Agent's rate limit), one `unavailable` event (`reason`: `rate_limited`, and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential)."
+            "description": "Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential)."
           },
           "401": {
             "content": {

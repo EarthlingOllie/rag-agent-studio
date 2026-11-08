@@ -2,7 +2,13 @@ import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import type { Agent } from "./agents";
-import { embedSnippet, type SnippetLayout, useChangeOperationalSettings, useOperationalSettings } from "./embed";
+import {
+  embedSnippet,
+  type SnippetLayout,
+  useChangeOperationalSettings,
+  useOperationalSettings,
+  useTokenUsage,
+} from "./embed";
 import { BUTTON, INPUT } from "./ProjectsPage";
 
 function Snippet({ agent }: { agent: Agent }) {
@@ -290,9 +296,106 @@ function RateLimits({ path }: { path: SettingsPath }) {
   );
 }
 
+const tokens = new Intl.NumberFormat("en-GB");
+
+/** Today's usage against the Token Budget. */
+function BudgetMeter({ path }: { path: SettingsPath }) {
+  const usage = useTokenUsage(path);
+  if (usage.isError) return <p className="text-sm text-slate-700">Today&apos;s usage could not be loaded.</p>;
+  if (!usage.data) return null;
+  const { tokens_used: used, daily_token_budget: budget, exhausted } = usage.data;
+  const shown = Math.min(used, budget);
+  const percent = Math.floor((shown / budget) * 100);
+  return (
+    <div className="space-y-1">
+      <div
+        role="progressbar"
+        aria-label="Tokens used today"
+        aria-valuemin={0}
+        aria-valuemax={budget}
+        aria-valuenow={shown}
+        className="h-2 w-full max-w-md overflow-hidden rounded bg-slate-200"
+      >
+        <div
+          className={`h-full ${exhausted ? "bg-red-700" : "bg-slate-700"}`}
+          style={{ width: `${String(percent)}%` }}
+        />
+      </div>
+      <p className="text-sm text-slate-700">
+        {`${tokens.format(used)} of ${tokens.format(budget)} tokens used today (${String(percent)}%).`}
+      </p>
+      {exhausted && (
+        <p className="text-sm font-medium text-red-800">
+          Today&apos;s Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you
+          raise the budget.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TokenBudget({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const save = useChangeOperationalSettings(path);
+  const [edited, setEdited] = useState<string | null>(null);
+  const loaded = settings.isSuccess;
+  const budget = edited ?? String(settings.data?.daily_token_budget ?? "");
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save.mutate(
+      { daily_token_budget: Number(budget) },
+      {
+        onSuccess: () => {
+          setEdited(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-2">
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Token Budget</legend>
+        <p id="token-budget-hint" className="text-sm text-slate-700">
+          The budget resets at midnight UTC. The Playground doesn&apos;t count.
+        </p>
+        <BudgetMeter path={path} />
+        <div>
+          <label htmlFor="token-budget" className="block text-sm">
+            Tokens per day
+          </label>
+          <input
+            id="token-budget"
+            type="number"
+            min={1}
+            aria-describedby="token-budget-hint"
+            className={INPUT}
+            disabled={!loaded}
+            value={budget}
+            onChange={(event) => {
+              save.reset();
+              setEdited(event.target.value);
+            }}
+          />
+        </div>
+      </fieldset>
+      <FormError message={save.error?.message} />
+      <div className="flex items-center gap-3">
+        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
+          Save Token Budget
+        </button>
+        <p role="status" className="text-sm text-slate-700">
+          {save.isSuccess ? "Saved. The new budget applies to the next message." : ""}
+        </p>
+      </div>
+    </form>
+  );
+}
+
 /** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings: the
- * sites allowed to show it, what Visitors see when it can't answer, and its rate limits. They apply at once,
- * without publishing. */
+ * sites allowed to show it, what Visitors see when it can't answer, its rate limits and its daily
+ * Token Budget, with today's usage. They apply at once, without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   return (
@@ -313,6 +416,7 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
       <AllowedOrigins path={path} />
       <UnavailableText path={path} />
       <RateLimits path={path} />
+      <TokenBudget path={path} />
     </section>
   );
 }

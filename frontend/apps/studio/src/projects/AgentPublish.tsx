@@ -22,6 +22,14 @@ export function LiveStatus({ agent }: { agent: Agent }) {
       {agent.has_unpublished_changes && (
         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-medium text-amber-950">Unpublished changes</span>
       )}
+      {agent.budget_exhausted && (
+        <span
+          title="Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC."
+          className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
+        >
+          Budget exhausted
+        </span>
+      )}
     </>
   );
 }

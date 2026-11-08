@@ -1320,6 +1320,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Token Usage
+         * @description Today's (UTC) Visitor usage against the Agent's Token Budget, for the Studio's meter.
+         */
+        get: operations["getTokenUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/versions": {
         parameters: {
             query?: never;
@@ -2144,8 +2164,11 @@ export interface paths {
         /**
          * Send Message
          * @description Asks the Agent's Live Version a question in the token's Conversation. The answer is
-         *     recorded against the Version that was Live when it was generated. Messages over the
-         *     Agent's rate limits, per Conversation and per IP address, get its unavailable text.
+         *     recorded against the Version that was Live when it was generated, and the tokens it used
+         *     count against the Agent's daily Token Budget. Messages over the Agent's rate limits, per
+         *     Conversation and per IP address, or once the day's budget is spent, get its unavailable
+         *     text; the first refusal or reply that finds the budget spent raises the Agent's alert and
+         *     emails its Owners, once per day.
          */
         post: operations["sendWidgetMessage"];
         delete?: never;
@@ -2216,6 +2239,8 @@ export interface components {
         AgentOut: {
             /** Archived At */
             archived_at: string | null;
+            /** Budget Exhausted */
+            budget_exhausted: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3731,6 +3756,8 @@ export interface components {
             allowed_origins?: string[] | null;
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute?: number | null;
+            /** Daily Token Budget */
+            daily_token_budget?: number | null;
             /** Ip Messages Per Minute */
             ip_messages_per_minute?: number | null;
             /** Unavailable Text */
@@ -3742,6 +3769,8 @@ export interface components {
             allowed_origins: string[];
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute: number;
+            /** Daily Token Budget */
+            daily_token_budget: number;
             /** Ip Messages Per Minute */
             ip_messages_per_minute: number;
             /** Unavailable Text */
@@ -4394,6 +4423,25 @@ export interface components {
              * @description Seconds until sign-in can be tried again
              */
             retry_after_seconds: number;
+        };
+        /** TokenUsageOut */
+        TokenUsageOut: {
+            /** Daily Token Budget */
+            daily_token_budget: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Exhausted */
+            exhausted: boolean;
+            /**
+             * Resets At
+             * Format: date-time
+             */
+            resets_at: string;
+            /** Tokens Used */
+            tokens_used: number;
         };
         /**
          * TraceOut
@@ -8438,6 +8486,48 @@ export interface operations {
             };
         };
     };
+    getTokenUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenUsageOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listAgentVersions: {
         parameters: {
             query?: never;
@@ -10834,7 +10924,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events. When admission control refuses the message (the Conversation or the Visitor's IP address is over the Agent's rate limit), one `unavailable` event (`reason`: `rate_limited`, and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
+            /** @description Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;

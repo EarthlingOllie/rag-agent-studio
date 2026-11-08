@@ -1,7 +1,6 @@
-"""Embedding rules: an Agent's Operational Settings (its Allowed Origins, unavailable text and
-rate limits),
-the shell's framing policy, and Visitors' Conversations, which are reached only through their
-Conversation token.
+"""Embedding rules: an Agent's Operational Settings (its Allowed Origins, unavailable text, rate
+limits and Token Budget), the Token Budget's alert, the shell's framing policy, and Visitors'
+Conversations, which are reached only through their Conversation token.
 
 Operational Settings are not part of any Draft or Version (ADR-0009): they are edited here, apply
 on the next request without publishing, and every change is an Audit Event with the before and
@@ -11,10 +10,11 @@ after values of the settings it changed.
 import re
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import UTC, datetime, time, timedelta
+from datetime import date as date_type
 from typing import cast
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
@@ -24,13 +24,16 @@ from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
 from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
-from app.embed.admission import Admission, Limits, Refusal
+from app.embed.admission import Admission, Limits, Refusal, utc_date
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.feedback.models import MessageFeedback
 from app.feedback.service import feedback_on
+from app.mail import templates
+from app.mail.port import Mailer
 from app.playground.service import PreparedTurn
 from app.runtime.prompt import chunk_label
+from app.tenancy.models import Member, Membership, Role
 from app.tenancy.repository import OrganisationScope
 from app.theme.resolve import with_colours
 from app.theme.schema import ThemeSettings
@@ -100,6 +103,8 @@ class OperationalSettings:
     # Rate limits: Visitor messages admitted in any minute per Conversation and per IP address.
     conversation_messages_per_minute: int
     ip_messages_per_minute: int
+    # Tokens the Agent's Visitor replies may use per UTC date.
+    daily_token_budget: int
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
@@ -108,6 +113,7 @@ def _settings_of(agent: Agent) -> OperationalSettings:
         unavailable_text=agent.unavailable_text or DEFAULT_UNAVAILABLE_TEXT,
         conversation_messages_per_minute=agent.conversation_messages_per_minute,
         ip_messages_per_minute=agent.ip_messages_per_minute,
+        daily_token_budget=agent.daily_token_budget,
     )
 
 
@@ -127,6 +133,7 @@ async def change_operational_settings(
     unavailable_text: str | None = None,
     conversation_messages_per_minute: int | None = None,
     ip_messages_per_minute: int | None = None,
+    daily_token_budget: int | None = None,
     now: datetime,
 ) -> OperationalSettings:
     """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
@@ -144,6 +151,8 @@ async def change_operational_settings(
         agent.conversation_messages_per_minute = conversation_messages_per_minute
     if ip_messages_per_minute is not None:
         agent.ip_messages_per_minute = ip_messages_per_minute
+    if daily_token_budget is not None:
+        agent.daily_token_budget = daily_token_budget
     after = asdict(_settings_of(agent))
     changed = [key for key in before if before[key] != after[key]]
     if changed:
@@ -253,9 +262,20 @@ async def start_conversation(
 class NotAdmittedError(Exception):
     """Admission control refused the message: the Visitor gets the unavailable text."""
 
-    def __init__(self, reason: Refusal) -> None:
+    def __init__(self, reason: Refusal, agent_id: uuid.UUID) -> None:
         super().__init__(reason)
         self.reason = reason
+        self.agent_id = agent_id
+
+
+@dataclass(frozen=True)
+class AdmittedTurn:
+    """A Visitor's question admitted and saved, ready for the Live Version to answer."""
+
+    turn: PreparedTurn
+    agent_id: uuid.UUID
+    # The limits it was admitted under; the reply's usage counts against the Token Budget.
+    limits: Limits
 
 
 async def prepare_turn(
@@ -268,22 +288,130 @@ async def prepare_turn(
     admission: Admission,
     ip: str,
     now: datetime,
-) -> PreparedTurn:
+) -> AdmittedTurn:
     """Saves the Visitor's question in the token's Conversation, to be answered by the Agent's
     Live Version at this moment. A valid token's message first goes through admission control
-    with the Agent's current rate limits; a refused one raises ``NotAdmittedError`` and nothing
-    is saved."""
+    with the Agent's current Token Budget and rate limits; a refused one raises
+    ``NotAdmittedError`` and nothing is saved."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
     agent = await session.get_one(Agent, conversation.agent_id)
     limits = Limits(
         public_id=agent.public_id,
         conversation_messages_per_minute=agent.conversation_messages_per_minute,
         ip_messages_per_minute=agent.ip_messages_per_minute,
+        daily_token_budget=agent.daily_token_budget,
     )
     refusal = await admission.admit(limits, token, ip)
     if refusal is not None:
-        raise NotAdmittedError(refusal)
-    return await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
+        raise NotAdmittedError(refusal, agent.id)
+    turn = await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
+    return AdmittedTurn(turn, agent.id, limits)
+
+
+# The Token Budget
+
+
+@dataclass(frozen=True)
+class TokenUsage:
+    # The UTC date counted, today's.
+    date: date_type
+    tokens_used: int
+    daily_token_budget: int
+    exhausted: bool
+    # Midnight UTC, when the next day's budget starts.
+    resets_at: datetime
+
+
+def _midnight_after(now: datetime) -> datetime:
+    return datetime.combine(utc_date(now) + timedelta(days=1), time(), tzinfo=UTC)
+
+
+def _start_of_day(now: datetime) -> datetime:
+    return datetime.combine(utc_date(now), time(), tzinfo=UTC)
+
+
+async def token_usage(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    admission: Admission,
+    now: datetime,
+) -> TokenUsage:
+    """Today's (UTC) Visitor usage against the Agent's Token Budget."""
+    agent = (await get_agent(session, scope, project_id, agent_id)).agent
+    today = utc_date(now)
+    used = await admission.tokens_used(agent.public_id, today)
+    return TokenUsage(
+        date=today,
+        tokens_used=used,
+        daily_token_budget=agent.daily_token_budget,
+        exhausted=used >= agent.daily_token_budget,
+        resets_at=_midnight_after(now),
+    )
+
+
+async def budget_exhausted(
+    session: AsyncSession,
+    agent_id: uuid.UUID,
+    *,
+    mailer: Mailer,
+    studio_url: str,
+    now: datetime,
+) -> None:
+    """Raises the Agent's budget alert flag for today and emails every Owner of its
+    Organisation, once per Agent per UTC date: only the call that raises today's flag sends,
+    so concurrent replies and refusals can't send twice. A flag left from an earlier day counts
+    as no flag."""
+    raised = await session.scalar(
+        update(Agent)
+        .where(
+            Agent.id == agent_id,
+            or_(
+                Agent.budget_exhausted_at.is_(None), Agent.budget_exhausted_at < _start_of_day(now)
+            ),
+        )
+        .values(budget_exhausted_at=now)
+        .returning(Agent.id)
+    )
+    await session.commit()
+    if raised is None:
+        return
+    agent = await session.get_one(Agent, agent_id)
+    owners = await session.execute(
+        select(Member.name, Member.email)
+        .join(Membership, Membership.member_id == Member.id)
+        .where(Membership.organisation_id == agent.organisation_id, Membership.role == Role.OWNER)
+        .order_by(Member.email)
+    )
+    link = templates.agent_link(
+        studio_url, str(agent.organisation_id), str(agent.project_id), str(agent.id)
+    )
+    for name, email in owners:
+        await mailer.send(
+            templates.token_budget_exhausted(
+                to=email,
+                name=name,
+                agent_name=agent.name,
+                budget=agent.daily_token_budget,
+                link=link,
+            )
+        )
+
+
+async def clear_budget_alerts(session: AsyncSession, *, now: datetime) -> int:
+    """Clears the budget alert flags raised before today (UTC), for Beat at midnight; returns
+    how many it cleared. A flag raised today stays: today's budget is still spent."""
+    cleared = await session.execute(
+        update(Agent)
+        .where(Agent.budget_exhausted_at < _start_of_day(now))
+        .values(budget_exhausted_at=None)
+        .returning(Agent.id)
+    )
+    count = len(cleared.all())
+    await session.commit()
+    return count
 
 
 async def _conversation(

@@ -148,3 +148,25 @@ test("archived Agents and an archived Project's Agents can't be selected", async
   expect(await screen.findByRole("link", { name: "Old helper" })).toBeInTheDocument();
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 });
+
+test("an Agent whose Token Budget is spent shows an alert badge in the list and on its page", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const spent = { ...hrHelper, budget_exhausted: true };
+  const other = { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Benefits FAQ" };
+  fakeAgentsApi({ agents: [spent, other] });
+  renderStudio(agentsTab(hrProject.id));
+
+  const list = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
+  const [first, second] = within(list).getAllByRole("listitem");
+  expect(within(first as HTMLElement).getByText("Budget exhausted")).toHaveAttribute(
+    "title",
+    "Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC.",
+  );
+  expect(within(second as HTMLElement).queryByText("Budget exhausted")).not.toBeInTheDocument();
+
+  await userEvent.click(within(list).getByRole("link", { name: "HR helper" }));
+
+  expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByText("Budget exhausted")).toBeInTheDocument();
+});

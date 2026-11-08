@@ -136,6 +136,7 @@ export const hrHelper: Agent = {
   draft_revision: 1,
   live_version: null,
   has_unpublished_changes: false,
+  budget_exhausted: false,
 };
 
 type AgentVersion = Schemas["AgentVersionOut"];
@@ -393,6 +394,10 @@ export function fakeAgentsApi(
     allowedOrigins?: string[];
     /** The unavailable text every Agent starts with; the default when left out. */
     unavailableText?: string;
+    /** Today's tokens used by Visitor replies (0 when left out). */
+    tokensUsed?: number;
+    /** Answers each read of today's usage instead of the stored one. */
+    tokenUsage?: () => Response | undefined;
     /** Each Agent's Versions, newest first. */
     versions?: Record<string, AgentVersion[]>;
     /** Decides each diff's response; by default no changes. `from` and `to` are as sent. */
@@ -457,8 +462,23 @@ export function fakeAgentsApi(
     unavailable_text: options.unavailableText ?? DEFAULT_UNAVAILABLE_TEXT,
     conversation_messages_per_minute: 10,
     ip_messages_per_minute: 30,
+    daily_token_budget: 1_000_000,
   };
   server.use(
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/token-usage",
+      () => {
+        const used = options.tokensUsed ?? 0;
+        const usage: Schemas["TokenUsageOut"] = {
+          date: "2026-11-05",
+          tokens_used: used,
+          daily_token_budget: settings.daily_token_budget,
+          exhausted: used >= settings.daily_token_budget,
+          resets_at: "2026-11-06T00:00:00Z",
+        };
+        return options.tokenUsage?.() ?? HttpResponse.json(usage);
+      },
+    ),
     http.get(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/operational-settings",
       () => HttpResponse.json(settings),
@@ -496,6 +516,7 @@ export function fakeAgentsApi(
           conversation_messages_per_minute:
             body.conversation_messages_per_minute ?? settings.conversation_messages_per_minute,
           ip_messages_per_minute: body.ip_messages_per_minute ?? settings.ip_messages_per_minute,
+          daily_token_budget: body.daily_token_budget ?? settings.daily_token_budget,
         };
         return HttpResponse.json(settings);
       },
