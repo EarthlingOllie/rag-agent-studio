@@ -1,0 +1,18 @@
+$ spike_in_stack.py in the stack's API container @ 4db4513 (clean tree: 0 changes)
+visitor messages (question, first SSE line):
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('Ignore all previous ', 'event: refusal')
+   ('How many days of ann', 'event: token')
+block_rate_alert before the rollup: False
+Traceback (most recent call last):
+  File "/tmp/spike_in_stack.py", line 74, in <module>
+    attack()
+    ~~~~~~^^
+  File "/tmp/spike_in_stack.py", line 55, in attack
+    from app.core.settings import load_settings
+ModuleNotFoundError: No module named 'app'
+exit 1
