@@ -4205,6 +4205,99 @@
         "title": "MessageOut",
         "type": "object"
       },
+      "MetricRowOut": {
+        "properties": {
+          "a": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A"
+          },
+          "b": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B"
+          },
+          "better": {
+            "anyOf": [
+              {
+                "enum": [
+                  "a",
+                  "b"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Better"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "difference": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difference"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "count",
+              "tokens",
+              "usd",
+              "rate",
+              "rating",
+              "ms"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "label",
+          "unit",
+          "a",
+          "b",
+          "difference",
+          "changed",
+          "better",
+          "low_confidence"
+        ],
+        "title": "MetricRowOut",
+        "type": "object"
+      },
       "MfaChallengeResponse": {
         "properties": {
           "mfa_required": {
@@ -6860,6 +6953,52 @@
           "name"
         ],
         "title": "VersionAuthor",
+        "type": "object"
+      },
+      "VersionComparisonOut": {
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/VersionKpisOut"
+          },
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "b": {
+            "$ref": "#/components/schemas/VersionKpisOut"
+          },
+          "config_diff": {
+            "$ref": "#/components/schemas/AgentDiffOut"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/MetricRowOut"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "start",
+          "end",
+          "a",
+          "b",
+          "metrics",
+          "config_diff"
+        ],
+        "title": "VersionComparisonOut",
         "type": "object"
       },
       "VersionKpisOut": {
@@ -11135,6 +11274,278 @@
         "summary": "Archive Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
+      "get": {
+        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, and the configuration diff from `a` to `b`. Only Visitor\nConversations count.",
+        "operationId": "compareVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "One of the Agent's Versions: the first side",
+            "in": "query",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "description": "One of the Agent's Versions: the first side",
+              "format": "uuid",
+              "title": "A",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Another of the Agent's Versions: the second side",
+            "in": "query",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "description": "Another of the Agent's Versions: the second side",
+              "format": "uuid",
+              "title": "B",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionComparisonOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Versions",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison.csv": {
+      "get": {
+        "description": "The comparison of Versions `a` and `b` as a CSV download: a row per metric with both\nVersions' values, the difference and the Version it favours.",
+        "operationId": "exportVersionComparison",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "One of the Agent's Versions: the first side",
+            "in": "query",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "description": "One of the Agent's Versions: the first side",
+              "format": "uuid",
+              "title": "A",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Another of the Agent's Versions: the second side",
+            "in": "query",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "description": "Another of the Agent's Versions: the second side",
+              "format": "uuid",
+              "title": "B",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "CSV"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Version Comparison",
+        "tags": [
+          "analytics"
         ]
       }
     },

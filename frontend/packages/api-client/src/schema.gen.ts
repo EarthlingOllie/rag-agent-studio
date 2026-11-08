@@ -983,6 +983,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Versions
+         * @description Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
+         *     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
+         *     the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
+         *     Conversations count.
+         */
+        get: operations["compareVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Version Comparison
+         * @description The comparison of Versions `a` and `b` as a CSV download: a row per metric with both
+         *     Versions' values, the difference and the Version it favours.
+         */
+        get: operations["exportVersionComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff": {
         parameters: {
             query?: never;
@@ -3811,6 +3855,30 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** MetricRowOut */
+        MetricRowOut: {
+            /** A */
+            a: number | null;
+            /** B */
+            b: number | null;
+            /** Better */
+            better: ("a" | "b") | null;
+            /** Changed */
+            changed: boolean;
+            /** Difference */
+            difference: number | null;
+            /** Label */
+            label: string;
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** Metric */
+            metric: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "count" | "tokens" | "usd" | "rate" | "rating" | "ms";
+        };
         /** MfaChallengeResponse */
         MfaChallengeResponse: {
             /**
@@ -4770,6 +4838,29 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** VersionComparisonOut */
+        VersionComparisonOut: {
+            a: components["schemas"]["VersionKpisOut"];
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            b: components["schemas"]["VersionKpisOut"];
+            config_diff: components["schemas"]["AgentDiffOut"];
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Metrics */
+            metrics: components["schemas"]["MetricRowOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
         };
         /** VersionKpisOut */
         VersionKpisOut: {
@@ -7704,6 +7795,108 @@ export interface operations {
             };
             /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compareVersions: {
+        parameters: {
+            query: {
+                /** @description One of the Agent's Versions: the first side */
+                a: string;
+                /** @description Another of the Agent's Versions: the second side */
+                b: string;
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                agent_id: string;
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionComparisonOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exportVersionComparison: {
+        parameters: {
+            query: {
+                /** @description One of the Agent's Versions: the first side */
+                a: string;
+                /** @description Another of the Agent's Versions: the second side */
+                b: string;
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

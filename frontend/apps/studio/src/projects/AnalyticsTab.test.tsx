@@ -3,7 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
 import { fakeAgentsApi, hrHelper } from "../test/agents";
-import { fakeMetricsApi, largeSample, smallSample, versionKpis } from "../test/analytics";
+import {
+  fakeComparisonApi,
+  fakeMetricsApi,
+  largeSample,
+  smallSample,
+  v1AgainstV2Metrics,
+  v1ToV2Diff,
+  versionComparison,
+  versionKpis,
+} from "../test/analytics";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -21,6 +30,7 @@ function setUp(options: Parameters<typeof fakeMetricsApi>[0] = { versions: { [hr
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();
   fakeAgentsApi({ agents: [hrHelper, payHelper] });
+  fakeComparisonApi();
   return fakeMetricsApi(options);
 }
 
@@ -168,4 +178,219 @@ test("the tab says so while the Agents load and when they can't be loaded", asyn
 
   expect(await screen.findByText("Loading the Agents…")).toBeInTheDocument();
   expect(await screen.findByRole("alert")).toHaveTextContent("The Agents could not be loaded. Try again shortly.");
+});
+
+// Version comparison
+
+/** A comparison table row's cells after its metric, as the Editor reads them. */
+function compared(metric: string): string[] {
+  const header = within(screen.getByRole("table", { name: /compared with/ })).getByRole("rowheader", { name: metric });
+  return within(header.closest("tr") as HTMLElement)
+    .getAllByRole("cell")
+    .map((cell) => cell.textContent);
+}
+
+const rowOf = (metric: string) => screen.getByRole("rowheader", { name: metric }).closest("tr") as HTMLElement;
+
+test("an Editor compares two Versions side by side, with the differences highlighted", async () => {
+  setUp();
+  const { queries } = fakeComparisonApi();
+  renderStudio(analyticsTab);
+
+  const table = await screen.findByRole("table", { name: "v1 compared with v2" });
+  expect(screen.getByRole("heading", { level: 3, name: "Compare two Versions" })).toBeInTheDocument();
+  // The Live Version against the newest other one, by default.
+  expect(screen.getByLabelText("First Version")).toHaveDisplayValue("v1");
+  expect(screen.getByLabelText("Second Version")).toHaveDisplayValue("v2 (Live)");
+  expect(within(table).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+    "Metric",
+    "v1",
+    "v2",
+    "Difference (v2 − v1)",
+    "Better",
+  ]);
+  expect(within(table).getAllByRole("rowheader").map((c) => c.textContent)).toEqual([
+    "Conversations (small sample)",
+    "Replies (small sample)",
+    "Mean tokens per reply",
+    "p95 tokens per reply",
+    "Cost per Conversation (USD)",
+    "Total cost (USD)",
+    "Thumbs-up rate (small sample)",
+    "Thumbs-up rate, 95% interval low (small sample)",
+    "Thumbs-up rate, 95% interval high (small sample)",
+    "Votes (small sample)",
+    "Mean rating (small sample)",
+    "Ratings (small sample)",
+    "Fallback rate",
+    "p95 time to first token (ms)",
+    "p95 total latency (ms)",
+  ]);
+  expect(compared("Conversations (small sample)")).toEqual(["120", "3", "−117", ""]);
+  expect(compared("Mean tokens per reply")).toEqual(["512", "120", "−392", "v2"]);
+  expect(compared("Cost per Conversation (USD)")).toEqual(["$1.25", "$0.0012", "−$1.25", "v2"]);
+  expect(compared("Total cost (USD)")).toEqual(["$150.00", "$0.0036", "−$150.00", ""]);
+  expect(compared("Thumbs-up rate (small sample)")).toEqual(["80%", "67%", "−13 pts", "v1"]);
+  expect(compared("Mean rating (small sample)")).toEqual(["4.25", "3.50", "−0.75", "v1"]);
+  expect(compared("Fallback rate")).toEqual(["0%", "25%", "+25 pts", "v1"]);
+  expect(compared("p95 time to first token (ms)")).toEqual(["950 ms", "320 ms", "−630 ms", "v2"]);
+  expect(compared("p95 total latency (ms)")).toEqual(["2.4 s", "1.5 s", "−920 ms", "v2"]);
+  // Rows that differ are highlighted; the Version a metric favours is named in words too.
+  expect(rowOf("Mean tokens per reply")).toHaveClass("bg-amber-50");
+  expect(queries.map((q) => q.toString())).toEqual([`a=${largeSample.version_id}&b=${smallSample.version_id}`]);
+});
+
+test("the configuration diff between the two Versions is shown alongside", async () => {
+  setUp();
+  renderStudio(analyticsTab);
+
+  const changes = await screen.findByRole("region", { name: "Configuration changes" });
+  expect(within(changes).getByRole("list", { name: "Changes from v1 to v2" })).toBeInTheDocument();
+  expect(within(changes).getByText("Behaviour › System prompt")).toBeInTheDocument();
+  expect(within(changes).getByRole("list", { name: "Behaviour › System prompt changes" })).toHaveTextContent(
+    "Removed: − Answer fully.Added: + Answer in one sentence.",
+  );
+});
+
+test("the comparison is exported as CSV for the chosen Versions and days", async () => {
+  setUp();
+  renderStudio(analyticsTab);
+  await screen.findByRole("table", { name: "v1 compared with v2" });
+
+  const base = `/api/organisations/${organisationId}/projects/${hrProject.id}/agents/${hrHelper.id}/comparison.csv`;
+  const link = screen.getByRole("link", { name: "Export as CSV" });
+  expect(link).toHaveAttribute("href", `${base}?a=${largeSample.version_id}&b=${smallSample.version_id}`);
+  expect(link).toHaveAttribute("download");
+
+  await userEvent.type(screen.getByLabelText("From (UTC)"), "2026-11-01");
+  await userEvent.type(screen.getByLabelText("To (UTC)"), "2026-11-03");
+
+  await screen.findByText(/2026-11-01 to 2026-11-03 \(UTC days\)/);
+  expect(screen.getByRole("link", { name: "Export as CSV" })).toHaveAttribute(
+    "href",
+    `${base}?a=${largeSample.version_id}&b=${smallSample.version_id}&start=2026-11-01&end=2026-11-03`,
+  );
+});
+
+test("the chosen date range applies to the comparison", async () => {
+  setUp();
+  const { queries } = fakeComparisonApi();
+  renderStudio(analyticsTab);
+  await screen.findByRole("table", { name: "v1 compared with v2" });
+
+  await userEvent.type(screen.getByLabelText("From (UTC)"), "2026-11-01");
+  await userEvent.type(screen.getByLabelText("To (UTC)"), "2026-11-03");
+
+  await screen.findByText(/2026-11-01 to 2026-11-03 \(UTC days\)/);
+  expect(queries.at(-1)?.get("start")).toBe("2026-11-01");
+  expect(queries.at(-1)?.get("end")).toBe("2026-11-03");
+});
+
+test("the Editor picks any two Versions; the same one twice is not compared", async () => {
+  const v3 = versionKpis(3, { conversations: 5, messages: 5 });
+  setUp({ versions: { [hrHelper.id]: [largeSample, { ...smallSample, is_live: false }, v3] } });
+  const rows = [
+    {
+      metric: "conversations",
+      label: "Conversations",
+      unit: "count" as const,
+      a: 5,
+      b: 120,
+      difference: 115,
+      changed: true,
+      better: null,
+      low_confidence: true,
+    },
+    {
+      metric: "rating_mean",
+      label: "Mean rating",
+      unit: "rating" as const,
+      a: null,
+      b: 4.25,
+      difference: null,
+      changed: true,
+      better: null,
+      low_confidence: true,
+    },
+    {
+      metric: "fallback_rate",
+      label: "Fallback rate",
+      unit: "rate" as const,
+      a: null,
+      b: null,
+      difference: null,
+      changed: false,
+      better: null,
+      low_confidence: false,
+    },
+    {
+      metric: "messages",
+      label: "Replies",
+      unit: "count" as const,
+      a: 5,
+      b: 5,
+      difference: 0,
+      changed: false,
+      better: null,
+      low_confidence: false,
+    },
+  ];
+  const same = {
+    from: { kind: "version" as const, version: { id: v3.version_id, number: 3 } },
+    to: v1ToV2Diff.from,
+    changes: [],
+    instructions: null,
+  };
+  const { queries } = fakeComparisonApi({
+    comparisons: [
+      versionComparison(largeSample, smallSample, v1AgainstV2Metrics, v1ToV2Diff),
+      versionComparison(v3, largeSample, rows, same),
+    ],
+  });
+  renderStudio(analyticsTab);
+  // Nothing is Live: the newest against the one before it.
+  await screen.findByRole("list", { name: "Key numbers for v3" });
+  expect(screen.getByLabelText("First Version")).toHaveDisplayValue("v2");
+  expect(screen.getByLabelText("Second Version")).toHaveDisplayValue("v3");
+  expect(await screen.findByRole("alert")).toHaveTextContent("The comparison could not be loaded. Try again shortly.");
+
+  await userEvent.selectOptions(screen.getByLabelText("First Version"), "v3");
+  await userEvent.selectOptions(screen.getByLabelText("Second Version"), "v3");
+
+  expect(await screen.findByText("Pick two different Versions to compare.")).toBeInTheDocument();
+  expect(screen.queryByRole("table", { name: /compared with/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Export as CSV" })).not.toBeInTheDocument();
+
+  await userEvent.selectOptions(screen.getByLabelText("Second Version"), "v1");
+
+  expect(await screen.findByRole("table", { name: "v3 compared with v1" })).toBeInTheDocument();
+  expect(compared("Conversations (small sample)")).toEqual(["5", "120", "+115", ""]);
+  // A side with no value has no difference; nothing on either side is the same.
+  expect(compared("Mean rating (small sample)")).toEqual(["—", "4.25", "—", ""]);
+  expect(rowOf("Mean rating (small sample)")).toHaveClass("bg-amber-50");
+  expect(compared("Fallback rate")).toEqual(["—", "—", "Same", ""]);
+  expect(compared("Replies")).toEqual(["5", "5", "Same", ""]);
+  expect(rowOf("Replies")).not.toHaveClass("bg-amber-50");
+  expect(screen.getByText("No differences: v3 and v1 have the same settings.")).toBeInTheDocument();
+  // The pair asked for each time; never the same Version twice.
+  expect(queries.map((q) => [q.get("a"), q.get("b")])).toEqual([
+    [smallSample.version_id, v3.version_id],
+    [v3.version_id, largeSample.version_id],
+  ]);
+});
+
+test("an Agent with one Version has nothing to compare yet", async () => {
+  setUp({ versions: { [hrHelper.id]: [versionKpis(1, { is_live: true })] } });
+  renderStudio(analyticsTab);
+
+  expect(await screen.findByText("Publish another Version of this Agent to compare two.")).toBeInTheDocument();
+  expect(screen.queryByLabelText("First Version")).not.toBeInTheDocument();
+});
+
+test("the comparison says so while it loads", async () => {
+  setUp();
+  renderStudio(analyticsTab);
+
+  expect(await screen.findByText("Comparing the Versions…")).toBeInTheDocument();
+  expect(await screen.findByRole("table", { name: "v1 compared with v2" })).toBeInTheDocument();
 });

@@ -622,3 +622,11 @@ _Avoid_: Error bars, margin
 **Low confidence**:
 The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.
 _Avoid_: Insufficient data, greyed out
+
+**Version comparison**:
+Any two Versions of an Agent (the first and the second) side by side over a chosen range of UTC days, in the Analytics tab: every Version KPI for each, the difference (second minus first; rates in percentage points), and the Version a metric favours. Rows whose values differ are highlighted, and a metric whose sample is small on either side is marked "(small sample)". The configuration diff from the first Version to the second (the Agent diff, pinned Project Instructions included) is shown alongside, and the comparison can be exported as CSV. By default the Live Version (else the newest) is compared with the newest other one. Only Visitor Conversations count.
+_Avoid_: A/B test, benchmark
+
+**Better side**:
+The Version a compared metric favours. A higher thumbs-up rate or mean rating is better; fewer tokens per reply, a lower cost per Conversation, a lower fallback rate and lower latency are better. Volumes, totals and the Wilson interval's bounds favour neither, nor do level values or a metric only one side has. It says which value is preferable, not that the difference is significant: read it with the sample sizes and intervals.
+_Avoid_: Winner

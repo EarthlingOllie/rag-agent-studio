@@ -172,6 +172,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "get",
         ),
         "getVersionMetrics": (f"{_PROJECT}/agents/{{agent_id}}/metrics", "get"),
+        "compareVersions": (f"{_PROJECT}/agents/{{agent_id}}/comparison", "get"),
+        "exportVersionComparison": (f"{_PROJECT}/agents/{{agent_id}}/comparison.csv", "get"),
     }
 
 
