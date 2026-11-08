@@ -29,7 +29,7 @@ test.describe("Demo host pages", () => {
     await widget.getByLabel("Message").fill("Can I return a jar of honey?");
     await widget.getByRole("button", { name: "Send" }).click();
     const log = widget.getByRole("log", { name: "Conversation" });
-    await expect(log.getByRole("listitem", { name: "Product FAQ" })).toContainText(DEMO_ANSWER, { timeout: 30_000 });
+    await expect(log.getByRole("listitem", { name: "Product FAQ", exact: true })).toContainText(DEMO_ANSWER, { timeout: 30_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
