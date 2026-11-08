@@ -7,7 +7,7 @@ Branch `ticket/07-05-version-comparison`, from `origin/candidate` at `527d5d6` (
 ## What was built
 
 - **Comparison** (`backend/app/analytics/comparison.py`), on top of 07-04's `version_metrics`:
-  - `compare(a, b)`: the two Versions' KPIs metric by metric (`METRICS`, 15 rows: Conversations, Replies, mean and p95 tokens per reply, cost per Conversation, total cost, thumbs-up rate and its Wilson 95% bounds, votes, mean rating, ratings, fallback rate, p95 time to first token, p95 total latency). Each row has both values, the **difference** (b − a; dollars stay exact `Decimal`), **changed** (the values differ, one side having none counts), the **better** side (fixed per metric: higher thumbs-up rate and rating; fewer tokens, lower cost per Conversation, fallback rate and latency; volumes, totals and interval bounds favour neither), and **low_confidence** (either side's sample for that metric is under 30).
+  - `compare(a, b)`: the two Versions' KPIs metric by metric (`METRICS`, 16 rows: Conversations, Replies, mean and p95 tokens per reply, cost per Conversation, total cost, thumbs-up rate and its Wilson 95% bounds, votes, mean rating, ratings, fallback rate, Guardrail block rate (added on merging 08-06, see below), p95 time to first token, p95 total latency). Each row has both values, the **difference** (b − a; dollars stay exact `Decimal`), **changed** (the values differ, one side having none counts), the **better** side (fixed per metric: higher thumbs-up rate and rating; fewer tokens, lower cost per Conversation, fallback rate, Guardrail block rate and latency; volumes, totals and interval bounds favour neither), and **low_confidence** (either side's sample for that metric is under 30).
   - `to_csv(comparison)`: `Metric, vA, vB, Difference (vB - vA), Better`, one row per metric; counts whole, dollars to the nano-dollar as the API gives them, rates to 4 places, ratings 2, tokens and ms 1; empty cells where there is no value.
 - **API** (`backend/app/analytics/api.py`, Editors and Owners, Visitor Conversations only):
   - `GET /api/organisations/{org}/projects/{project}/agents/{agent}/comparison?a=&b=&start=&end=` (`compareVersions`): `a` and `b` (each `VersionKpisOut`, exactly as `getVersionMetrics` gives them), `metrics` (the rows), and `config_diff`: the Agent diff from `a` to `b` (`AgentDiffOut`, spec 05's diff, pinned Project Instructions included; `diff_out` is now shared with `GET …/diff`).
@@ -55,7 +55,19 @@ Every check then ran, one stage after another, from a **fresh clone of the pushe
 
 The same script had also passed every stage on a clean clone of the pre-merge head `c74ed01` (backend 2416 passed, e2e 89 passed). The tables below are the first round's runs, kept for the record.
 
-While the run above finished, `origin/candidate` moved again to `1b56f68` (chore-test-sharding: pytest-xdist). `git merge-tree` shows it merges into `71cfbcd` with **no conflict** and it adds **no migration**; it is not merged here, so the re-merge before the PR merges should re-run the backend suite (now sharded).
+While the run above finished, `origin/candidate` moved again to `1b56f68` (chore-test-sharding: pytest-xdist). `git merge-tree` shows it merges into `71cfbcd` with **no conflict** and it adds **no migration**; it is not merged here, `d9e9484` merged it. Before that merge had finished its clean-clone run, candidate moved again; see the next section.
+
+## Second merge with candidate (08-06 Guardrail analytics) and final clean-clone run
+
+`d9e9484` (the merge of `1b56f68`) passed every stage from a fresh clone ([earlier-runs/clean-clone-d9e9484/](earlier-runs/clean-clone-d9e9484/)): install, lint, client drift, gitleaks and audit exit 0; frontend 58 files, 796 tests; backend **2462 passed** on 2 xdist workers (69.5 min under load), 100.00% (11554 statements, 1398 branches); images (the studio build first hit "no space left on device" on the shared disk, `images.log`, and was rebuilt alone once space was freed, `images2.log`); e2e **90 passed** (8.2 min).
+
+Meanwhile `origin/candidate` moved to `6a9decd` (08-06 Guardrail analytics and alerts, which adds migration `0038_guardrail_analytics` and a `guardrail_blocks` KPI to the Version KPIs). The merge commit after `d9e9484` merges it. One file conflicted: `AnalyticsTab.tsx`, where 08-06 added `finePercent` next to the `dollars`/`duration` helpers this ticket had moved to `format.ts`; the resolution keeps `finePercent` in the tab and the helpers in `format.ts` only (08-06's Guardrail block rate card uses `finePercent` and `duration` from `format.ts`). `GLOSSARY.md`, `backend/app/analytics/api.py`, `src/test/analytics.ts`, `AnalyticsTab.test.tsx` and the generated client auto-merged. This ticket still adds no migration, so there is no clash with `0038`.
+
+Because 08-06 made the Guardrail block rate a Version KPI, the comparison now has it as a row (test first: `test_the_version_whose_input_guardrail_blocked_a_smaller_share_is_favoured` (v1 refused 2 of 3 questions, v2 1 of 4: 0.6667 against 0.25, changed, better v2) failed, then one `METRICS` entry made it pass; the side-by-side test lists the row and asserts it level at 0 when nothing was blocked).
+
+The merge touched files this ticket touches and changed backend code, so the whole pipeline ran again from a fresh clone of the pushed head:
+
+FINAL_RUN_PLACEHOLDER
 
 ## Results
 
@@ -88,7 +100,7 @@ Backend code is identical at `08506e7` and `5b5b9dd` (`git diff 08506e7 5b5b9dd 
 - **"Better" is a direction, not significance.** The spec puts significance testing out of scope; the better side only says which value is preferable for that metric. Small samples are marked "(small sample)" (fewer than 30 votes, ratings or Conversations on either side) and the Wilson bounds are rows of their own, so overlapping intervals can be read off. Volumes, totals and the bounds favour neither side.
 - **Highlighting** marks every row whose values differ (amber background, bold difference), with the difference and the better Version also in words, so it doesn't rely on colour alone.
 - **The CSV holds the metrics only**, not the configuration diff (a structural diff with line diffs doesn't fit one table; the diff is in the Studio beside it). Values are machine-readable (no currency signs or percent), rates as fractions.
-- **Guardrail block rate** is not a row: 07-04's Version KPIs don't have it yet (08-06 adds it); adding a row is one entry in `METRICS`.
+- **Guardrail block rate** became a row (lower is better) when 08-06 added it to the Version KPIs; see the second merge section. Its Studio row needs no new code (the table renders every row the API gives, rates as percentages), so no Studio test was added for it.
 - **The confounder note** (Documents changed in the window) is ticket 07-06's criterion, not this one's.
 - **The CSV downloads by a plain link** to the same-origin API (the session cookie goes with it), so no blob handling is needed in the Studio.
 - **Default pair:** the Live Version (else the newest) as the second side against the newest other Version as the first, so "Difference" reads as what the latest release changed.

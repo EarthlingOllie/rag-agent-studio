@@ -2,8 +2,9 @@
 metric's difference (b minus a) and which side it favours, and the comparison as CSV.
 
 Whether a metric is better higher or lower is fixed per metric: a higher thumbs-up rate or mean
-rating is better; fewer tokens per reply, a cheaper Conversation, a lower fallback rate and lower
-latency are better; volumes, totals and interval bounds favour neither side."""
+rating is better; fewer tokens per reply, a cheaper Conversation, a lower fallback rate, a lower
+Guardrail block rate and lower latency are better; volumes, totals and interval bounds favour
+neither side."""
 
 import csv
 import io
@@ -74,6 +75,8 @@ METRICS = [
            _few_ratings),
     Metric("ratings", "Ratings", "count", None, lambda k: k.usage.rating_count, _few_ratings),
     Metric("fallback_rate", "Fallback rate", "rate", "lower", lambda k: k.fallback_rate),
+    Metric("guardrail_block_rate", "Guardrail block rate", "rate", "lower",
+           lambda k: k.block_rate),
     Metric("first_token_p95_ms", "p95 time to first token (ms)", "ms", "lower",
            lambda k: k.usage.first_token_histogram.percentile(0.95)),
     Metric("total_p95_ms", "p95 total latency (ms)", "ms", "lower",

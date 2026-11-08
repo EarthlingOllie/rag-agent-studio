@@ -21,6 +21,7 @@ export function versionKpis(number: number, overrides: Partial<VersionKpis> = {}
     thumbs_up: { up: 0, down: 0, n: 0, rate: null, low: null, high: null, low_confidence: true },
     rating: { n: 0, mean: null, low_confidence: true },
     fallback: { count: 0, rate: null },
+    guardrail_blocks: { count: 0, rate: null },
     latency: { n: 0, first_token_p95_ms: null, total_p95_ms: null },
     ...overrides,
   };
@@ -36,6 +37,7 @@ export const smallSample = versionKpis(2, {
   thumbs_up: { up: 2, down: 1, n: 3, rate: 2 / 3, low: 0.2076596, high: 0.9385081, low_confidence: true },
   rating: { n: 2, mean: 3.5, low_confidence: true },
   fallback: { count: 1, rate: 0.25 },
+  guardrail_blocks: { count: 2, rate: 0.5 },
   latency: { n: 4, first_token_p95_ms: 320.4, total_p95_ms: 1480 },
 });
 
@@ -49,6 +51,7 @@ export const largeSample = versionKpis(1, {
   thumbs_up: { up: 24, down: 6, n: 30, rate: 0.8, low: 0.626943, high: 0.9049489, low_confidence: false },
   rating: { n: 40, mean: 4.25, low_confidence: false },
   fallback: { count: 0, rate: 0 },
+  guardrail_blocks: { count: 3, rate: 0.0075 },
   latency: { n: 400, first_token_p95_ms: 950, total_p95_ms: 2400 },
 });
 

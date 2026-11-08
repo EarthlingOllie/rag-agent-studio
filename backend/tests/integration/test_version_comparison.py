@@ -22,6 +22,8 @@ from tests.documents import project_path
 from tests.fakes.clock import ControllableClock
 from tests.integration.test_agent_versions import published
 from tests.integration.test_conversations import playground_chat
+from tests.integration.test_guardrail_analytics import BENIGN, ask_all, guarded_agent
+from tests.integration.test_input_guardrail import ATTACK
 from tests.integration.test_version_metrics import (
     chat,
     live_agent,
@@ -121,6 +123,7 @@ async def test_two_versions_are_compared_side_by_side_with_each_difference(
         "rating_mean",
         "ratings",
         "fallback_rate",
+        "guardrail_block_rate",
         "first_token_p95_ms",
         "total_p95_ms",
     ]
@@ -183,9 +186,41 @@ async def test_two_versions_are_compared_side_by_side_with_each_difference(
         "better": None,
         "low_confidence": False,
     }
+    # The input Guardrail blocked no question; a lower block rate is better.
+    assert found["guardrail_block_rate"] | {"low_confidence": False} == {
+        "metric": "guardrail_block_rate",
+        "label": "Guardrail block rate",
+        "unit": "rate",
+        "a": 0.0,
+        "b": 0.0,
+        "difference": 0.0,
+        "changed": False,
+        "better": None,
+        "low_confidence": False,
+    }
     assert found["total_p95_ms"]["a"] == v1_kpis["latency"]["total_p95_ms"]
     assert found["first_token_p95_ms"]["b"] == v2_kpis["latency"]["first_token_p95_ms"]
     assert found["total_p95_ms"]["unit"] == "ms"
+
+
+async def test_the_version_whose_input_guardrail_blocked_a_smaller_share_is_favoured(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+) -> None:
+    agent = await guarded_agent(app, owner)
+    # v1 refused 2 of 3 questions; v2 refused 1 of 4.
+    await ask_all(visitor, clock, agent, ATTACK, ATTACK, BENIGN)
+    v2 = await publish_next(owner, agent, "Be brief.")
+    await ask_all(visitor, clock, agent, BENIGN, BENIGN, BENIGN, ATTACK)
+
+    found = rows(await comparison(owner, agent, agent["v1"], v2, **DAY))
+
+    row = found["guardrail_block_rate"]
+    assert (row["a"], row["b"]) == (pytest.approx(2 / 3), 0.25)
+    assert row["difference"] == pytest.approx(0.25 - 2 / 3)
+    assert (row["changed"], row["better"]) == (True, "b")
 
 
 async def test_the_config_diff_between_the_two_versions_comes_alongside(
