@@ -54,7 +54,10 @@ async def purge(at: datetime) -> None:
     """Runs the purge Beat task as Beat would at ``at`` (in a thread: the task runs its own
     event loop)."""
     result = await asyncio.to_thread(purge_expired.apply, kwargs={"at": at.isoformat()})
-    result.get()
+    # disable_sync_subtasks=False: this test isn't inside a task, but Celery's "inside a task" guard
+    # is a process-wide flag that eager tasks run concurrently in other threads (by earlier tests
+    # in the same xdist worker) can leave set.
+    result.get(disable_sync_subtasks=False)
 
 
 def organisation_path(member: SignedUpMember) -> str:
@@ -312,7 +315,10 @@ async def test_without_a_time_the_purge_runs_as_of_now(owner: SignedUpMember) ->
     result = await asyncio.to_thread(purge_expired.apply)
 
     # An Organisation with no Messages has nothing to purge.
-    assert result.get() == 0
+    # disable_sync_subtasks=False: this test isn't inside a task, but Celery's "inside a task" guard
+    # is a process-wide flag that eager tasks run concurrently in other threads (by earlier tests
+    # in the same xdist worker) can leave set.
+    assert result.get(disable_sync_subtasks=False) == 0
 
 
 async def test_archived_agents_and_projects_are_purged_too(
