@@ -51,6 +51,23 @@ Earlier e2e attempts, kept (trimmed to their summaries) in [earlier-attempts/](e
 - **Attempts 2 and 4** (load average 44 to 83 on the shared machine from other tickets' suites): 6 to 16 unrelated specs timed out (auth, audit, credentials, agent-*); `guardrail-analytics.spec.ts` passed in attempt 4.
 - **Attempt 3**: `guardrail-analytics.spec.ts` read the block rate as 1 of 2: the spec closed the second Visitor's browser as soon as the reply appeared, before its stream ended and the reply was saved. The spec now waits for Send to be enabled again (as `version-kpis.spec.ts` does). The in-stack script failed on its own client (the Secure session cookie over plain HTTP in attempt 3; `app` not on the path in attempt 4); both fixed in the script, not the product.
 
+## Final run before merge (after merging `origin/candidate` at `1b56f68`)
+
+Candidate moved three times while this PR waited (07-06 Time series, 10-02 Seeded history, chore-test-sharding). After each merge every check was rerun; the last full run is at **`1e242a8`** (branch merged with `origin/candidate` `1b56f68`), from a fresh clone, one suite at a time. Migration chain checked: `0038_guardrail_analytics` is still the only `0038`, one Alembic head.
+
+One semantic conflict was fixed (`7fbca43`): 10-02's seeded history calls `roll_up`, which this ticket gave required `mailer` and `studio_url` arguments (mypy caught it); the seed now passes the app's mailer and Studio URL, as the demo pages do.
+
+| Check | Result @ 1e242a8 | Log |
+|---|---|---|
+| `make install` | exit 0 | [install.log](final-1e242a8/install.log) |
+| `make lint` (ruff, format, mypy --strict, eslint, tsc) | exit 0 | [lint.log](final-1e242a8/lint.log) |
+| `make check-client` | exit 0 | [client-drift.log](final-1e242a8/client-drift.log) |
+| `make test-backend` | **2445 passed**, 24 deselected; **100.00%** lines and branches (1 h 20 min, serial) | [backend.log](final-1e242a8/backend.log) |
+| `make test-frontend` | exit 0, 100% coverage, loader budget met. First attempt: 1 timing failure in `AgentPage.test.tsx` ("the Playground can't be reset while an answer streams in", file untouched by this branch, load average 10+) — [first attempt](final-1e242a8/frontend-tests-first-attempt.log); rerun green | [frontend-tests.log](final-1e242a8/frontend-tests.log) |
+| `CI=1 make e2e` (sandbox override) | **90 passed** (6.7 min), 0 failed, 0 flaky, incl. `guardrail-analytics.spec.ts`. First attempt: the API container was OOM-killed (exit 137) on the shared machine mid-run — [note](final-1e242a8/e2e-attempt1-oom.log); repeated with the same images | [e2e.log](final-1e242a8/e2e.log) |
+| `spike_in_stack.py` | flag raised by the worker's rollup task, Mailpit email | [spike-in-stack.log](final-1e242a8/spike-in-stack.log) |
+| Infra (terraform) | not run: no infra change | n/a |
+
 ## Gaps and judgement calls
 
 - **Seams not confirmed by a human** (none available); the spec's shared seams were used.
@@ -60,5 +77,5 @@ Earlier e2e attempts, kept (trimmed to their summaries) in [earlier-attempts/](e
 - **Email to Owners**: the spec asks for the badge "using the same badge mechanism as spec 06"; spec 06's alert also emails Owners, so this one does too, once per spike. Delivery is through the configured mailer: the outbox double in tests, Mailpit (the local mail sink) in compose. No real email was sent.
 - **The spike badge is not driven end to end in Playwright**: that would need an hour of traffic or a hook to run Beat from the browser test. It is covered at the API/task seam, the network seam, and in the running stack by `spike_in_stack.py` (real widget API, the real worker running the Beat task, the real API flag and the Mailpit email).
 - GitHub Actions is down; all checks ran locally, one at a time (the user authorised merging on local results).
-- **Migration numbering:** `origin/candidate` was still `527d5d6` when this branch was finished (rechecked after the last run), so `0038_guardrail_analytics` follows `0037_usage_daily` with one Alembic head. Sibling tickets running in parallel may add their own `0038`; whoever merges second must renumber and rerun the checks. Not merged here (this step's instructions: no PR, no merge).
+- **Migration numbering:** `origin/candidate` was still `527d5d6` when this branch was finished (rechecked after the last run), so `0038_guardrail_analytics` follows `0037_usage_daily` with one Alembic head. Rechecked before merge at `1b56f68`: still the only `0038`.
 - **The Editor in the spike test** is created but not asserted on: the emails are filtered to the Owners' addresses (the shared test database holds other tests' Agents). The recipients query is the Budget alert's (Owners only).
