@@ -8,7 +8,7 @@
 - [07-04: Rollups and Version KPIs](04-rollups-version-kpis.md)
 - [03-05: Dedupe, delete and replace edition](../03-projects-knowledge-base/05-dedupe-delete-replace.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Retention Window setting defaults to 90 days and changes are audited
 - [ ] A daily purge clears Message text and comments older than the window, only after the rollups for those days are final; metrics are identical before and after
