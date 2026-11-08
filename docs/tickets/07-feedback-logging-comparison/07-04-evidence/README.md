@@ -64,13 +64,13 @@ All runs are local and one at a time (GitHub Actions is down; the user authorise
 | Check | Command | Result | Log |
 |---|---|---|---|
 | Install | `make install` @ 87d418a | exit 0 | [install.log](install.log) |
-| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) @ 87d418a | exit 0 | [lint.log](lint.log) |
-| API client drift | `make check-client` @ 87d418a | "API client is up to date." | [client-drift.log](client-drift.log) |
-| Security | gitleaks (`origin/candidate..HEAD`), `make audit` @ 87d418a | no leaks; no known vulnerabilities | [security.log](security.log) |
-| Frontend tests + coverage gate + loader budget | `make test-frontend` @ 87d418a | **57 files, 779 tests**; 100% statements (3763), branches (2505), functions (1354), lines (3329); `embed.js` 1367 B / 778 B gzipped | [frontend-tests.log](frontend-tests.log) |
-| Backend tests + coverage gate | `make test-backend` @ 87d418a | **2380 passed**, 24 deselected (live), 49.4 min; 100.00% lines and branches (11003 statements, 1316 branches); includes `test_migrations.py` (up/down round trip, models match migrations) with `0037` | [backend-tests.log](backend-tests.log) |
-| Images | `build.sh` @ 87d418a | `api:0704` (bundled classifier flags the attack, passes the benign question) and `studio:0704` built | [images.log](images.log) |
-| End-to-end | `CI=1 make e2e` with the sandbox override @ 87d418a | **84 passed** (5.2 min), 0 failed, 0 flaky, including `version-kpis.spec.ts` and 06-06's specs | [e2e.log](e2e.log) |
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) @ 87d418a | exit 0 | [lint.log](run-87d418a/lint.log) |
+| API client drift | `make check-client` @ 87d418a | "API client is up to date." | [client-drift.log](run-87d418a/client-drift.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` @ 87d418a | no leaks; no known vulnerabilities | [security.log](run-87d418a/security.log) |
+| Frontend tests + coverage gate + loader budget | `make test-frontend` @ 87d418a | **57 files, 779 tests**; 100% statements (3763), branches (2505), functions (1354), lines (3329); `embed.js` 1367 B / 778 B gzipped | [frontend-tests.log](run-87d418a/frontend-tests.log) |
+| Backend tests + coverage gate | `make test-backend` @ 87d418a | **2380 passed**, 24 deselected (live), 49.4 min; 100.00% lines and branches (11003 statements, 1316 branches); includes `test_migrations.py` (up/down round trip, models match migrations) with `0037` | [backend-tests.log](run-87d418a/backend-tests.log) |
+| Images | `build.sh` @ 87d418a | `api:0704` (bundled classifier flags the attack, passes the benign question) and `studio:0704` built | [images.log](run-87d418a/images.log) |
+| End-to-end | `CI=1 make e2e` with the sandbox override @ 87d418a | **84 passed** (5.2 min), 0 failed, 0 flaky, including `version-kpis.spec.ts` and 06-06's specs | [e2e.log](run-87d418a/e2e.log) |
 | Rollup in the stack | `celery inspect registered`, Beat's schedule, `celery call analytics.roll_up_usage` @ 87d418a | registered, scheduled `5 * * * *` beside 06-06's midnight reset, succeeded, rows written | [rollup-in-compose.log](rollup-in-compose.log) |
 | Infra | terraform checks | not run: this ticket changes no infra | n/a |
 
