@@ -37,6 +37,8 @@ ALLOWED = {
     # Spec 07: the Conversations viewer's Messages, as the Playground's; counts again.
     ("ConversationMessageOut", "input_tokens"): "the number of input tokens a model call used",
     ("ConversationMessageOut", "output_tokens"): "the number of output tokens a model call used",
+    # Spec 07: a Version's KPIs; the mean and p95 tokens per reply, counts again.
+    ("VersionKpisOut", "tokens"): "tokens per reply (mean, p95 and sample size) of a Version",
     # Spec 04: an Agent's limit on how long an answer may be; a count, not an access token.
     ("Behaviour-Output", "max_output_tokens"): "the most tokens an Agent's answer may use",
     # Spec 06: a Visitor's widget is given its own new Conversation token once, in exchange for
