@@ -51,6 +51,8 @@ test.describe("Time series", () => {
     await expect(widget.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "HR helper" })).toHaveCount(1, {
       timeout: 15_000,
     });
+    // The reply is saved once it has finished streaming.
+    await expect(widget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
     await visitor.close();
 
     // The Editor reads the time series: today's Conversation, the three changes marked, no confounder yet.
