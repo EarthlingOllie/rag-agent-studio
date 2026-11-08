@@ -37,4 +37,4 @@ services:
     image: rag-agent-studio/studio:0704
     build: !reset null
     pull_policy: never
-    ports: !override ["47475:5175"]
+    ports: !override ["47475:5175", "47476:5176"]
