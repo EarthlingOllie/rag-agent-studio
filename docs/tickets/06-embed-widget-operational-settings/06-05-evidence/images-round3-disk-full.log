@@ -1,0 +1,203 @@
+$ docs/tickets/06-embed-widget-operational-settings/06-05-evidence/build.sh (sandbox make images) @ 7cb46e0 (ticket/06-05-rate-limits, clean tree: 0 changes)
++ docker build -t rag-agent-studio/api:0605 backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 3.77kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.78MB 0.2s done
+#7 DONE 0.2s
+
+#8 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#8 CACHED
+
+#9 [stage-1  5/11] COPY --from=build /opt/venv /opt/venv
+#9 CACHED
+
+#10 [stage-1  3/11] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#10 CACHED
+
+#11 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#11 CACHED
+
+#12 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#12 CACHED
+
+#13 [stage-1  6/11] WORKDIR /app
+#13 CACHED
+
+#14 [stage-1  4/11] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#14 CACHED
+
+#15 [build 4/6] WORKDIR /app
+#15 CACHED
+
+#16 [build 5/6] COPY pyproject.toml uv.lock ./
+#16 CACHED
+
+#17 [stage-1  7/11] COPY alembic.ini ./
+#17 CACHED
+
+#18 [stage-1  8/11] COPY app ./app
+#18 DONE 0.1s
+
+#19 [stage-1  9/11] COPY migrations ./migrations
+#19 DONE 0.1s
+
+#20 [stage-1 10/11] RUN mkdir -p /opt/models/docling     && if [ "true" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && python -c "from app.guardrails import onnx_model; onnx_model.load()"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
+#20 3.638 Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  6.66it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 3.991 Fetching 5 files:  40%|████      | 2/5 [00:00<00:00,  5.52it/s]Fetching 5 files:  80%|████████  | 4/5 [00:01<00:00,  3.51it/s]Fetching 5 files: 100%|██████████| 5/5 [00:03<00:00,  1.00it/s]Fetching 5 files: 100%|██████████| 5/5 [00:03<00:00,  1.37it/s]
+#20 15.79 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+#20 DONE 62.1s
+
+#21 [stage-1 11/11] RUN useradd --system --uid 10001 studio
+#21 0.217 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.3s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 55.3s done
+#22 exporting manifest sha256:34a5b15513378c8eb9a5d51c541be4f1213a7d7e20e28506ae7508819728cf3a
+#22 exporting manifest sha256:34a5b15513378c8eb9a5d51c541be4f1213a7d7e20e28506ae7508819728cf3a done
+#22 exporting config sha256:e02144df4a845c8731ebf7575d406f412661845aa7938f636c3cc7b0c3b560e4 done
+#22 exporting attestation manifest sha256:d46327c9f475d239ae8a771a5120ddefb3fd410583f4b9830d1d45cfc5914ff9 done
+#22 exporting manifest list sha256:8e7ecb6e2bbb0c99938e3eac66d3c9c6c0acc07cbeec3aa09191d7a94fb1db72 done
+#22 naming to docker.io/rag-agent-studio/api:0605 done
+#22 unpacking to docker.io/rag-agent-studio/api:0605
+#22 unpacking to docker.io/rag-agent-studio/api:0605 16.1s done
+#22 DONE 71.5s
++ docker run: the bundled classifier loads with no network and flags an attack
+[0;93m2026-11-08 00:22:13.775307297 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+attack: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the message 1.00 as a prompt injection.')]
+benign: [None]
+api image size: 3427684997 bytes
++ docker build -t rag-agent-studio/studio:0605 frontend (sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 transferring dockerfile: 2.31kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 104B done
+#4 DONE 0.0s
+
+#5 [install  1/12] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d 0.0s done
+#5 DONE 0.0s
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 36B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.48MB 0.2s done
+#7 DONE 0.2s
+
+#8 [install  4/12] WORKDIR /app
+#8 CACHED
+
+#9 [install  9/12] COPY packages/ui/package.json packages/ui/
+#9 CACHED
+
+#10 [install  2/12] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#10 CACHED
+
+#11 [install  5/12] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#11 CACHED
+
+#12 [install  6/12] COPY apps/studio/package.json apps/studio/
+#12 CACHED
+
+#13 [install  7/12] COPY apps/widget/package.json apps/widget/
+#13 CACHED
+
+#14 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#14 CACHED
+
+#15 [install  3/12] RUN corepack enable
+#15 CACHED
+
+#16 [install 10/12] RUN pnpm install --frozen-lockfile
+#16 CACHED
+
+#17 [install 11/12] COPY . .
+#17 DONE 0.1s
+
+#18 [install 12/12] RUN pnpm --filter @studio/widget build
+#18 0.906 
+#18 0.906 > @studio/widget@ build /app/apps/widget
+#18 0.906 > vite build && vite build --config vite.embed.config.ts
+#18 0.906 
+#18 1.360 vite v8.3.5 building client environment for production...
+#18 1.377 transforming...
+#18 1.696 ✓ 77 modules transformed.
+#18 1.809 rendering chunks...
+#18 2.101 computing gzip size...
+#18 2.121 dist/widget/assets/widget.js  647.93 kB │ gzip: 204.14 kB
+#18 2.121 
+#18 2.123 [plugin builtin:vite-reporter] 
+#18 2.123 (!) Some chunks are larger than 500 kB after minification. Consider:
+#18 2.123 - Using dynamic import() to code-split the application
+#18 2.123 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#18 2.123 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#18 2.125 ✓ built in 764ms
+#18 2.365 vite v8.3.5 building client environment for production...
+#18 2.379 transforming...
+#18 2.414 ✓ 3 modules transformed.
+#18 2.420 rendering chunks...
+#18 2.425 computing gzip size...
+#18 2.426 dist/embed.js  1.36 kB │ gzip: 0.77 kB
+#18 2.426 
+#18 2.427 ✓ built in 60ms
+#18 DONE 2.6s
+
+#19 [stage-1 3/6] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#19 CACHED
+
+#20 [stage-1 4/6] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#20 CACHED
+
+#21 [stage-1 5/6] COPY --from=install --chown=node:node /app /app
+#21 DONE 1.9s
+
+#22 [stage-1 6/6] WORKDIR /app/apps/studio
+#22 DONE 0.3s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 13.1s done
+#23 ERROR: mount callback failed on /var/lib/docker/containerd/daemon/tmpmounts/containerd-mount3402618145: mount callback failed on /var/lib/docker/containerd/daemon/tmpmounts/containerd-mount2435272058: failed to write compressed diff: failed to create diff tar stream: failed to copy: /var/lib/docker/containerd/daemon/tmpmounts/containerd-mount2435272058/app/node_modules/.pnpm/eslint@10.14.0_jiti@2.7.0/node_modules/eslint/lib/rules/no-var.js: write /var/lib/docker/containerd/daemon/io.containerd.content.v1.content/ingest/24511446589f6a0642b967719e210aa2bca99224ea739853d67e1c0b3b51b300/data: no space left on device
+------
+ > exporting to image:
+------
+ERROR: failed to build: failed to solve: mount callback failed on /var/lib/docker/containerd/daemon/tmpmounts/containerd-mount3402618145: mount callback failed on /var/lib/docker/containerd/daemon/tmpmounts/containerd-mount2435272058: failed to write compressed diff: failed to create diff tar stream: failed to copy: /var/lib/docker/containerd/daemon/tmpmounts/containerd-mount2435272058/app/node_modules/.pnpm/eslint@10.14.0_jiti@2.7.0/node_modules/eslint/lib/rules/no-var.js: write /var/lib/docker/containerd/daemon/io.containerd.content.v1.content/ingest/24511446589f6a0642b967719e210aa2bca99224ea739853d67e1c0b3b51b300/data: no space left on device
+exit 1
