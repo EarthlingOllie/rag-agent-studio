@@ -1,0 +1,8 @@
+$ make lint-frontend @ f04c793 (after removing the e2e run's ignored playwright-report/ and test-results/)
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend
+> tsc
+
+exit 0

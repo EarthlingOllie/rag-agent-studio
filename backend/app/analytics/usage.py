@@ -4,7 +4,7 @@ current (partial) day out the same way.
 
 Only Visitor Conversations count: Playground Conversations (and Draft answers) never do. Each
 number belongs to a day by a time that doesn't move once it exists:
-- replies, their tokens, cost, latency and fallbacks: when the reply was made;
+- replies, their tokens, cost, latency, fallbacks and Guardrail blocks: when the reply was made;
 - Message Feedback: when the reply it is on was made;
 - a Conversation: when this Version first replied in it (so it counts once per Version);
 - a Conversation Rating: when the Conversation's first reply was made.
@@ -24,6 +24,7 @@ from app.analytics.models import UsageDaily, UsageRollupState
 from app.analytics.stats import Histogram
 from app.conversations.models import Conversation, Message, MessageRole
 from app.feedback.models import ConversationRating, MessageFeedback, Thumb
+from app.guardrails.outcomes import blocked
 
 DOLLARS = Decimal("0.000000001")
 
@@ -44,6 +45,7 @@ class Usage:
     rating_sum: int = 0
     rating_count: int = 0
     fallback_count: int = 0
+    guardrail_blocks: int = 0
     first_token_histogram: Histogram = field(default_factory=Histogram)
     latency_histogram: Histogram = field(default_factory=Histogram)
 
@@ -59,6 +61,7 @@ class Usage:
         self.rating_sum += other.rating_sum
         self.rating_count += other.rating_count
         self.fallback_count += other.fallback_count
+        self.guardrail_blocks += other.guardrail_blocks
         self.first_token_histogram = self.first_token_histogram.merged(other.first_token_histogram)
         self.latency_histogram = self.latency_histogram.merged(other.latency_histogram)
 
@@ -76,6 +79,7 @@ class Usage:
             rating_sum=row.rating_sum,
             rating_count=row.rating_count,
             fallback_count=row.fallback_count,
+            guardrail_blocks=row.guardrail_blocks,
             first_token_histogram=Histogram.from_stored(row.first_token_histogram),
             latency_histogram=Histogram.from_stored(row.latency_histogram),
         )
@@ -99,6 +103,7 @@ class Usage:
             rating_sum=self.rating_sum,
             rating_count=self.rating_count,
             fallback_count=self.fallback_count,
+            guardrail_blocks=self.guardrail_blocks,
             first_token_histogram=self.first_token_histogram.stored(),
             latency_histogram=self.latency_histogram.stored(),
         )
@@ -198,6 +203,7 @@ async def usage_on(session: AsyncSession, day: date, only: Only) -> dict[uuid.UU
             Message.fallback,
             Message.first_token_ms,
             Message.latency_ms,
+            Message.guardrail_outcomes,
         )
         .join(Conversation, Conversation.id == Message.conversation_id)
         .where(*_visitor_replies(day, only))
@@ -213,6 +219,7 @@ async def usage_on(session: AsyncSession, day: date, only: Only) -> dict[uuid.UU
             usage.tokens_histogram.add(tokens)
         usage.cost_usd += reply.cost_usd or 0
         usage.fallback_count += reply.fallback
+        usage.guardrail_blocks += blocked(reply.guardrail_outcomes)
         usage.first_token_histogram.add(reply.first_token_ms or 0)
         usage.latency_histogram.add(reply.latency_ms or 0)
 
