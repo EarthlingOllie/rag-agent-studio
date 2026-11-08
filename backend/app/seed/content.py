@@ -108,14 +108,15 @@ AGENTS = (
     ),
 )
 
-# Northwind's brand: olive green with a saffron accent, set in a serif.
+# Northwind's brand: olive green with a saffron accent, set in a serif. The accent is dark enough
+# (5.5:1 on the widget's answer bubbles) for citations to meet WCAG 2.2 AA on the demo pages.
 THEME = ThemeSettings(
     colours=ThemeColours(
         primary=ColourToken(light="#3f5f2a", dark="#a3c585"),
         on_primary=ColourToken(light="#ffffff", dark="#1b2612"),
         surface=ColourToken(light="#fbf8f1", dark="#1c1f17"),
         on_surface=ColourToken(light="#1f2419", dark="#f2efe6"),
-        accent=ColourToken(light="#b45309", dark="#f6ad55"),
+        accent=ColourToken(light="#9a4508", dark="#f6ad55"),
         muted=ColourToken(light="#5b6152", dark="#a8ad9e"),
     ),
     radius=6,
