@@ -1658,6 +1658,31 @@
         "title": "ConversationTokenOut",
         "type": "object"
       },
+      "CostOut": {
+        "properties": {
+          "per_conversation_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Conversation Usd"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total_usd",
+          "per_conversation_usd"
+        ],
+        "title": "CostOut",
+        "type": "object"
+      },
       "CreateAgentRequest": {
         "properties": {
           "name": {
@@ -2840,6 +2865,31 @@
         "title": "FailureCategory",
         "type": "string"
       },
+      "FallbackOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "count",
+          "rate"
+        ],
+        "title": "FallbackOut",
+        "type": "object"
+      },
       "FeedbackFilter": {
         "description": "Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs\ndown, with any feedback, or with none.",
         "enum": [
@@ -3687,6 +3737,43 @@
         "type": "object"
       },
       "JsonValue": {},
+      "LatencyOut": {
+        "properties": {
+          "first_token_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token P95 Ms"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "total_p95_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total P95 Ms"
+          }
+        },
+        "required": [
+          "n",
+          "first_token_p95_ms",
+          "total_p95_ms"
+        ],
+        "title": "LatencyOut",
+        "type": "object"
+      },
       "LauncherPosition": {
         "enum": [
           "bottom-right",
@@ -5001,6 +5088,36 @@
         "title": "RatingFilter",
         "type": "string"
       },
+      "RatingOut": {
+        "properties": {
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "mean",
+          "low_confidence"
+        ],
+        "title": "RatingOut",
+        "type": "object"
+      },
       "ReEmbedOut": {
         "description": "A re-embed job: the Knowledge Base moving from one Embedding Model to another.",
         "properties": {
@@ -6029,6 +6146,70 @@
         "title": "ThrottledResponse",
         "type": "object"
       },
+      "ThumbsUpOut": {
+        "properties": {
+          "down": {
+            "title": "Down",
+            "type": "integer"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "up": {
+            "title": "Up",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "up",
+          "down",
+          "n",
+          "rate",
+          "low",
+          "high",
+          "low_confidence"
+        ],
+        "title": "ThumbsUpOut",
+        "type": "object"
+      },
       "TokenUsageOut": {
         "properties": {
           "daily_token_budget": {
@@ -6062,6 +6243,43 @@
           "resets_at"
         ],
         "title": "TokenUsageOut",
+        "type": "object"
+      },
+      "TokensOut": {
+        "properties": {
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P95"
+          }
+        },
+        "required": [
+          "n",
+          "mean",
+          "p95"
+        ],
+        "title": "TokensOut",
         "type": "object"
       },
       "TraceOut": {
@@ -6642,6 +6860,103 @@
           "name"
         ],
         "title": "VersionAuthor",
+        "type": "object"
+      },
+      "VersionKpisOut": {
+        "properties": {
+          "conversations": {
+            "title": "Conversations",
+            "type": "integer"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/CostOut"
+          },
+          "fallback": {
+            "$ref": "#/components/schemas/FallbackOut"
+          },
+          "is_live": {
+            "title": "Is Live",
+            "type": "boolean"
+          },
+          "latency": {
+            "$ref": "#/components/schemas/LatencyOut"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/RatingOut"
+          },
+          "thumbs_up": {
+            "$ref": "#/components/schemas/ThumbsUpOut"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/TokensOut"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "number",
+          "is_live",
+          "conversations",
+          "messages",
+          "low_confidence",
+          "tokens",
+          "cost",
+          "thumbs_up",
+          "rating",
+          "fallback",
+          "latency"
+        ],
+        "title": "VersionKpisOut",
+        "type": "object"
+      },
+      "VersionMetricsOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/VersionKpisOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_id",
+          "start",
+          "end",
+          "versions"
+        ],
+        "title": "VersionMetricsOut",
         "type": "object"
       },
       "VersionNumberOut": {
@@ -11354,6 +11669,140 @@
         "summary": "List Agent Live History",
         "tags": [
           "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/metrics": {
+      "get": {
+        "description": "Each chosen Agent Version's KPIs over the UTC days `start` to `end` (both inclusive, at\nmost 366 days), including today's so far. Only Visitor Conversations count.",
+        "operationId": "getVersionMetrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The Agent Versions to show (repeat it for several); every one if left out",
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The Agent Versions to show (repeat it for several); every one if left out",
+              "title": "Version"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionMetricsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Version Metrics",
+        "tags": [
+          "analytics"
         ]
       }
     },

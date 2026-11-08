@@ -24,7 +24,8 @@ import {
 } from "./settings/OrganisationSettings";
 import { AgentPage } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
-import { AnalyticsTab, ProjectLayout } from "./projects/ProjectPage";
+import { AnalyticsTab } from "./projects/AnalyticsTab";
+import { ProjectLayout } from "./projects/ProjectPage";
 import { ConversationPage, ConversationsTab } from "./projects/ConversationsTab";
 import { conversationFilters } from "./projects/conversations";
 import { DocumentsTab } from "./projects/DocumentsTab";

@@ -263,6 +263,8 @@ async def save_question(
             conversation_id=conversation.id,
             role=MessageRole.USER,
             content=question,
+            # By the app's clock, as the answer is: usage rollups (spec 07) go by it.
+            created_at=now,
         )
     )
     conversation.last_activity_at = now
@@ -422,6 +424,8 @@ async def answer(
                 conversation_id=prepared.conversation_id,
                 role=MessageRole.ASSISTANT,
                 content=event.answer,
+                # When it was made, by the app's clock: the usage rollups count it on this day.
+                created_at=now,
                 config_source=DRAFT if prepared.agent_version_id is None else VERSION,
                 agent_version_id=prepared.agent_version_id,
                 # An Agent Version's answer records no Instructions: its pinned Instructions

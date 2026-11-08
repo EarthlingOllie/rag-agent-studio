@@ -1,0 +1,5 @@
+commit 18d9e09 (fresh rag0704-* Postgres :47042, Redis :47043, RustFS :47044)
+TOTAL                                 10868      0   1302      0   100%
+Required test coverage of 100.0% reached. Total coverage: 100.00%
+=============== 2354 passed, 24 deselected in 2814.50s (0:46:54) ===============
+make exit 0

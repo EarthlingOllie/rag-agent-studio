@@ -300,18 +300,3 @@ export function ProjectLayout() {
     </section>
   );
 }
-
-function TabPlaceholder({ title, children }: { title: string; children: string }) {
-  return (
-    <section aria-labelledby="tab-heading">
-      <h2 id="tab-heading" className="text-lg font-semibold">
-        {title}
-      </h2>
-      <p className="mt-2 text-slate-700">{children}</p>
-    </section>
-  );
-}
-
-export function AnalyticsTab() {
-  return <TabPlaceholder title="Analytics">Analytics for this Project's Agents arrive in a later release.</TabPlaceholder>;
-}

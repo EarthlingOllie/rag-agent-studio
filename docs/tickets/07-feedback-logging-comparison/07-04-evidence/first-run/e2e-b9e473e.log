@@ -1,0 +1,61 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0704-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-04-evidence/compose.sandbox.yml' @ b9e473e (CI settings: one retry)
+  1) [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('status')
+    Expected: "You ended the chat."
+    Error: strict mode violation: getByRole('status') resolved to 3 elements:
+        1) <p role="status" class="feedback-notice">Thanks for your feedback.</p> aka getByText('Thanks for your feedback.').first()
+        2) <p role="status" class="feedback-notice">Thanks for your feedback.</p> aka getByText('Thanks for your feedback.').nth(1)
+        3) <div role="status" aria-live="polite" aria-label="Announcements">…</div> aka getByRole('status', { name: 'Announcements' })
+
+    Call log:
+      - Expect "toHaveText" locator('iframe[title="Chat"]').contentFrame().getByRole('status') with timeout 5000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('status')
+
+
+      63 |     await widget.getByRole("button", { name: "End chat" }).click();
+      64 |     await widget.getByRole("group", { name: /Before you go/ }).getByRole("button", { name: "2 out of 5" }).click();
+    > 65 |     await expect(widget.getByRole("status")).toHaveText("You ended the chat.");
+         |                                              ^
+      66 |     await visitor.close();
+      67 |
+      68 |     // The Editor reads the Live Version's KPIs, today's partial day included.
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0704/frontend/e2e/tests/version-kpis.spec.ts:65:46
+
+    Error Context: test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: locator('iframe[title="Chat"]').contentFrame().getByRole('status')
+    Expected: "You ended the chat."
+    Error: strict mode violation: getByRole('status') resolved to 3 elements:
+        1) <p role="status" class="feedback-notice">Thanks for your feedback.</p> aka getByText('Thanks for your feedback.').first()
+        2) <p role="status" class="feedback-notice">Thanks for your feedback.</p> aka getByText('Thanks for your feedback.').nth(1)
+        3) <div role="status" aria-live="polite" aria-label="Announcements">…</div> aka getByRole('status', { name: 'Announcements' })
+
+    Call log:
+      - Expect "toHaveText" locator('iframe[title="Chat"]').contentFrame().getByRole('status') with timeout 5000ms
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByRole('status')
+
+
+      63 |     await widget.getByRole("button", { name: "End chat" }).click();
+      64 |     await widget.getByRole("group", { name: /Before you go/ }).getByRole("button", { name: "2 out of 5" }).click();
+    > 65 |     await expect(widget.getByRole("status")).toHaveText("You ended the chat.");
+         |                                              ^
+      66 |     await visitor.close();
+      67 |
+      68 |     // The Editor reads the Live Version's KPIs, today's partial day included.
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/eval0704/frontend/e2e/tests/version-kpis.spec.ts:65:46
+

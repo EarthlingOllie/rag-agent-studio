@@ -1094,6 +1094,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Version Metrics
+         * @description Each chosen Agent Version's KPIs over the UTC days `start` to `end` (both inclusive, at
+         *     most 366 days), including today's so far. Only Visitor Conversations count.
+         */
+        get: operations["getVersionMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/operational-settings": {
         parameters: {
             query?: never;
@@ -2853,6 +2874,13 @@ export interface components {
             /** Conversation Token */
             conversation_token: string;
         };
+        /** CostOut */
+        CostOut: {
+            /** Per Conversation Usd */
+            per_conversation_usd: string | null;
+            /** Total Usd */
+            total_usd: string;
+        };
         /** CreateAgentRequest */
         CreateAgentRequest: {
             /** Name */
@@ -3300,6 +3328,13 @@ export interface components {
          * @enum {string}
          */
         FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        /** FallbackOut */
+        FallbackOut: {
+            /** Count */
+            count: number;
+            /** Rate */
+            rate: number | null;
+        };
         /**
          * FeedbackFilter
          * @description Which Conversations to keep by their Message Feedback: with a thumbs up, with a thumbs
@@ -3620,6 +3655,15 @@ export interface components {
             link: string;
         };
         JsonValue: unknown;
+        /** LatencyOut */
+        LatencyOut: {
+            /** First Token P95 Ms */
+            first_token_p95_ms: number | null;
+            /** N */
+            n: number;
+            /** Total P95 Ms */
+            total_p95_ms: number | null;
+        };
         /**
          * LauncherPosition
          * @enum {string}
@@ -4090,6 +4134,15 @@ export interface components {
          * @enum {string}
          */
         RatingFilter: "1" | "2" | "3" | "4" | "5" | "any" | "none";
+        /** RatingOut */
+        RatingOut: {
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** Mean */
+            mean: number | null;
+            /** N */
+            n: number;
+        };
         /**
          * ReEmbedOut
          * @description A re-embed job: the Knowledge Base moving from one Embedding Model to another.
@@ -4517,6 +4570,23 @@ export interface components {
              */
             retry_after_seconds: number;
         };
+        /** ThumbsUpOut */
+        ThumbsUpOut: {
+            /** Down */
+            down: number;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** N */
+            n: number;
+            /** Rate */
+            rate: number | null;
+            /** Up */
+            up: number;
+        };
         /** TokenUsageOut */
         TokenUsageOut: {
             /** Daily Token Budget */
@@ -4535,6 +4605,15 @@ export interface components {
             resets_at: string;
             /** Tokens Used */
             tokens_used: number;
+        };
+        /** TokensOut */
+        TokensOut: {
+            /** Mean */
+            mean: number | null;
+            /** N */
+            n: number;
+            /** P95 */
+            p95: number | null;
         };
         /**
          * TraceOut
@@ -4691,6 +4770,50 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** VersionKpisOut */
+        VersionKpisOut: {
+            /** Conversations */
+            conversations: number;
+            cost: components["schemas"]["CostOut"];
+            fallback: components["schemas"]["FallbackOut"];
+            /** Is Live */
+            is_live: boolean;
+            latency: components["schemas"]["LatencyOut"];
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** Messages */
+            messages: number;
+            /** Number */
+            number: number;
+            rating: components["schemas"]["RatingOut"];
+            thumbs_up: components["schemas"]["ThumbsUpOut"];
+            tokens: components["schemas"]["TokensOut"];
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
+        /** VersionMetricsOut */
+        VersionMetricsOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Versions */
+            versions: components["schemas"]["VersionKpisOut"][];
         };
         /** VersionNumberOut */
         VersionNumberOut: {
@@ -7845,6 +7968,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LiveHistoryEntryOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getVersionMetrics: {
+        parameters: {
+            query?: {
+                /** @description The Agent Versions to show (repeat it for several); every one if left out */
+                version?: string[] | null;
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionMetricsOut"];
                 };
             };
             /** @description Not found */

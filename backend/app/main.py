@@ -15,6 +15,7 @@ from app.agents import api as agents_api
 from app.agents import bulk_api
 from app.agents import versions_api as agent_versions_api
 from app.agents.validation import agent_references
+from app.analytics import api as analytics_api
 from app.api import health
 from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
@@ -82,6 +83,7 @@ ROUTERS: Sequence[APIRouter] = (
     bulk_api.router,
     playground_api.router,
     conversations_api.router,
+    analytics_api.router,
     embed_api.settings_router,
     branding_api.router,
     embed_api.widget_router,
