@@ -1,0 +1,10 @@
+$ each database's alembic revision and Organisation count on ragshard Postgres after both runs at b93406e (serial first, then -n 3)
+studio_test: 0037_usage_daily, organisations=2277
+studio_test_gw0: 0037_usage_daily, organisations=563
+studio_test_gw1: 0037_usage_daily, organisations=966
+studio_test_gw2: 0037_usage_daily, organisations=1200
+
+$ redis-cli info keyspace
+# Keyspace
+db12:keys=2242,expires=2090,avg_ttl=1203927933,subexpiry=0
+db13:keys=2614,expires=2473,avg_ttl=1203703480,subexpiry=0

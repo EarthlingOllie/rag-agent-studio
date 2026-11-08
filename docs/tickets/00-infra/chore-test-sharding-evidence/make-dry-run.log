@@ -1,0 +1,7 @@
+$ make -n test-backend @ b93406e
+-- TEST_WORKERS=
+cd backend && uv run pytest 
+-- TEST_WORKERS=3
+cd backend && uv run pytest -n 3
+-- TEST_WORKERS=auto
+cd backend && uv run pytest -n auto

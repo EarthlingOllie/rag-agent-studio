@@ -46,5 +46,6 @@ jobs:
       - name: Type check (mypy --strict)
         run: uv run mypy
       - name: Tests, Alembic round trip and 100% line + branch coverage gate
-        # fail_under = 100 with branch coverage is set in pyproject.toml (ADR-0008).
-        run: uv run pytest
+        # fail_under = 100 with branch coverage is set in pyproject.toml (ADR-0008). One
+        # pytest-xdist worker per CPU, each on its own database; pytest-cov combines their coverage.
+        run: uv run pytest -n auto
