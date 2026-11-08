@@ -91,6 +91,8 @@ module "ecs" {
   credentials_key_arn  = module.kms.credentials_key_arn
   data_key_arn         = module.kms.data_key_arn
   studio_url           = module.cdn.url
+  # The demo pages under /demo/ (ticket 10-03) ask the API which seeded Agents to embed.
+  demo_pages = true
 
   database = {
     address             = module.database.address

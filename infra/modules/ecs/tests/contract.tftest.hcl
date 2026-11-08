@@ -1262,6 +1262,21 @@ run "task_settings_match_the_recorded_contract" {
   }
 }
 
+run "demo_pages_turn_on_the_apis_demo_routes_only" {
+  command = apply
+
+  variables {
+    demo_pages = true
+  }
+
+  assert {
+    condition = { for k, t in aws_ecs_task_definition.this : k => contains(
+      [for e in jsondecode(t.container_definitions)[0].environment : "${e.name}=${e.value}"], "DEMO_PAGES=true"
+    ) } == { api = true, beat = false, worker = false }
+    error_message = "demo_pages must set DEMO_PAGES=true on the API only (ticket 10-03); without it no container has it (task-settings.json)."
+  }
+}
+
 run "rejects_a_studio_url_that_is_not_an_https_origin" {
   command = plan
 

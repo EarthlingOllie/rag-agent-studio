@@ -174,10 +174,11 @@ locals {
   base_environment = merge(local.common_environment, local.database_environment, local.cache_environment)
   environment = {
     # The API's task role is the principal Organisations trust in their Bedrock roles (spec 09 story 13).
+    # The demo pages' routes (ticket 10-03) are the API's alone, and only in a demo environment.
     api = merge(local.base_environment, local.app_environment, {
       BEDROCK_PLATFORM_PRINCIPAL = aws_iam_role.task["api"].arn
       TRUSTED_PROXIES            = local.trusted_proxies
-    })
+    }, var.demo_pages ? { DEMO_PAGES = "true" } : {})
     worker = merge(local.base_environment, local.app_environment)
     beat   = local.base_environment
   }
