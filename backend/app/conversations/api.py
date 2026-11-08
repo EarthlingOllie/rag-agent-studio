@@ -48,6 +48,8 @@ class ConversationSummaryOut(BaseModel):
     # How many of its replies the Visitor gave a thumbs up, and a thumbs down.
     thumbs_up: int
     thumbs_down: int
+    # Its current Conversation Rating, 1 to 5; null when the Visitor hasn't rated it.
+    rating: int | None
 
 
 class ConversationPageOut(BaseModel):
@@ -85,6 +87,15 @@ async def list_conversations(
             )
         ),
     ] = None,
+    rating: Annotated[
+        service.RatingFilter | None,
+        Query(
+            description=(
+                "Only those whose Conversation Rating is this score (`1` to `5`), rated with "
+                "any score (`any`), or not rated (`none`)"
+            )
+        ),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
@@ -96,6 +107,7 @@ async def list_conversations(
         end=end,
         playground=playground,
         feedback=feedback,
+        rating=rating,
     )
     try:
         result = await service.list_conversations(
@@ -117,6 +129,7 @@ async def list_conversations(
                 version_numbers=row.version_numbers,
                 thumbs_up=row.thumbs_up,
                 thumbs_down=row.thumbs_down,
+                rating=row.rating,
             )
             for row in result.rows
         ],
@@ -144,6 +157,29 @@ class ConversationMessageOut(MessageOut):
     feedback: MessageFeedbackRead | None
 
 
+class RatingChangeRead(BaseModel):
+    score: int
+    # The score before; null for the first rating.
+    previous_score: int | None
+    # The Agent Version of the last reply before this change, stored when it was made.
+    agent_version_number: int | None
+    changed_at: datetime
+
+
+class ConversationRatingRead(BaseModel):
+    # The current score, 1 to 5; null when the Visitor only dismissed the prompt.
+    score: int | None
+    # The Agent Version the rating is attributed to: that of the last reply before the rating
+    # or its latest change.
+    agent_version_number: int | None
+    # When the Visitor rated, or last changed the rating.
+    rated_at: datetime | None
+    # When the Visitor dismissed the rating prompt; null when they never did.
+    prompt_dismissed_at: datetime | None
+    # Every rating given, oldest first: the first rating, then each change.
+    changes: list[RatingChangeRead]
+
+
 class ConversationDetailOut(BaseModel):
     id: uuid.UUID
     agent_id: uuid.UUID
@@ -152,6 +188,33 @@ class ConversationDetailOut(BaseModel):
     created_at: datetime
     last_activity_at: datetime
     messages: list[ConversationMessageOut]
+    # The Visitor's Conversation Rating; null when they neither rated nor dismissed the prompt.
+    rating: ConversationRatingRead | None
+
+
+def _number(version_id: uuid.UUID | None, numbers: dict[uuid.UUID, int]) -> int | None:
+    return None if version_id is None else numbers[version_id]
+
+
+def _rating_read(read: service.ConversationRead) -> ConversationRatingRead | None:
+    rating = read.rating
+    if rating is None:
+        return None
+    return ConversationRatingRead(
+        score=rating.score,
+        agent_version_number=_number(rating.agent_version_id, read.version_numbers),
+        rated_at=rating.rated_at,
+        prompt_dismissed_at=rating.prompt_dismissed_at,
+        changes=[
+            RatingChangeRead(
+                score=change.score,
+                previous_score=change.previous_score,
+                agent_version_number=_number(change.agent_version_id, read.version_numbers),
+                changed_at=change.changed_at,
+            )
+            for change in read.rating_changes
+        ],
+    )
 
 
 def _feedback_read(
@@ -205,6 +268,7 @@ async def get_conversation(
             )
             for m in read.messages
         ],
+        rating=_rating_read(read),
     )
 
 

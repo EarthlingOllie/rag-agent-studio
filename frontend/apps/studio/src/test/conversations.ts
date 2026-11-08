@@ -27,6 +27,7 @@ export const visitorConversation: Summary = {
   version_numbers: [1, 2],
   thumbs_up: 1,
   thumbs_down: 1,
+  rating: 4,
 };
 
 /** An Editor trying HR helper's Draft in the Playground. */
@@ -42,6 +43,7 @@ export const playgroundConversation: Summary = {
   version_numbers: [],
   thumbs_up: 0,
   thumbs_down: 0,
+  rating: null,
 };
 
 const unanswered = {
@@ -111,6 +113,17 @@ export const visitorDetail: Detail = {
       },
     },
   ],
+  // Rated 2 after v1's reply, dismissed the prompt, then changed it to 4 after v2's.
+  rating: {
+    score: 4,
+    agent_version_number: 2,
+    rated_at: "2026-11-06T10:22:00Z",
+    prompt_dismissed_at: "2026-11-06T10:17:00Z",
+    changes: [
+      { score: 2, previous_score: null, agent_version_number: 1, changed_at: "2026-11-06T10:16:30Z" },
+      { score: 4, previous_score: 2, agent_version_number: 2, changed_at: "2026-11-06T10:22:00Z" },
+    ],
+  },
 };
 
 export const playgroundDetail: Detail = {
@@ -123,6 +136,7 @@ export const playgroundDetail: Detail = {
     question("e7000000-0000-4000-8000-000000000011", "Testing leave", "2026-11-07T08:00:00Z"),
     reply(PLAYGROUND_REPLY_ID, "Twenty-five days.", "2026-11-07T08:00:02Z", null),
   ],
+  rating: null,
 };
 
 /** The Trace of the Visitor's first reply: answered by Agent Version v1. */
@@ -139,7 +153,7 @@ export const visitorTrace: Trace = {
 
 /**
  * Serves the Conversations viewer's routes from these Conversations. The list keeps those of the
- * Agent asked for and the Playground and feedback filters, like the API; other filters are only
+ * Agent asked for and the Playground, feedback and rating filters, like the API; other filters are only
  * recorded. Every
  * list query is recorded, as are Trace reads.
  */
@@ -168,6 +182,13 @@ export function fakeConversationsApi(
       const agentId = query.get("agent_id");
       const playground = query.get("playground");
       const feedback = query.get("feedback");
+      const rating = query.get("rating");
+      const rated = ({ rating: score }: Summary) => {
+        if (rating === null) return true;
+        if (rating === "any") return score !== null;
+        if (rating === "none") return score === null;
+        return String(score) === rating;
+      };
       const given = (conversation: Summary) => {
         const { thumbs_up: up, thumbs_down: down } = conversation;
         if (feedback === "up") return up > 0;
@@ -179,7 +200,8 @@ export function fakeConversationsApi(
         (conversation) =>
           (agentId === null || conversation.agent_id === agentId) &&
           (playground === null || String(conversation.is_playground) === playground) &&
-          given(conversation),
+          given(conversation) &&
+          rated(conversation),
       );
       return HttpResponse.json({
         items,

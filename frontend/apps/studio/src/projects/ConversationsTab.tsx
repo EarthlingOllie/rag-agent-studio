@@ -7,6 +7,7 @@ import {
   conversationFilters,
   type ConversationFilters,
   type ConversationMessage,
+  type ConversationDetail,
   type ConversationPage,
   type ConversationPath,
   type ConversationSummary,
@@ -31,6 +32,11 @@ function useListParams() {
 function thumbsText({ thumbs_up: up, thumbs_down: down }: ConversationSummary): string {
   const counts = [up > 0 && `${String(up)} up`, down > 0 && `${String(down)} down`].filter(Boolean);
   return counts.length === 0 ? "None" : counts.join(" · ");
+}
+
+/** A Conversation's Conversation Rating, such as "4 of 5", or "Not rated". */
+function ratingText(rating: number | null): string {
+  return rating === null ? "Not rated" : `${String(rating)} of 5`;
 }
 
 const versionsText = (conversation: ConversationSummary) =>
@@ -176,6 +182,25 @@ function Filters({
           <option value="none">Without feedback</option>
         </select>
       </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Rating
+        <select
+          className={INPUT}
+          value={String(filters.rating ?? "")}
+          onChange={(event) => {
+            set({ rating: event.currentTarget.value });
+          }}
+        >
+          <option value="">Rated or not</option>
+          {["5", "4", "3", "2", "1"].map((score) => (
+            <option key={score} value={score}>
+              {`${score} of 5`}
+            </option>
+          ))}
+          <option value="any">Rated</option>
+          <option value="none">Not rated</option>
+        </select>
+      </label>
     </fieldset>
   );
 }
@@ -203,6 +228,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
             <th scope="col" className="py-2 pr-4 font-medium">Answered by</th>
             <th scope="col" className="py-2 pr-4 font-medium">Messages</th>
             <th scope="col" className="py-2 pr-4 font-medium">Feedback</th>
+            <th scope="col" className="py-2 pr-4 font-medium">Rating</th>
             <th scope="col" className="py-2 font-medium">First question</th>
           </tr>
         </thead>
@@ -217,6 +243,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
               <td className="py-2 pr-4">{versionsText(conversation)}</td>
               <td className="py-2 pr-4">{conversation.message_count}</td>
               <td className="whitespace-nowrap py-2 pr-4">{thumbsText(conversation)}</td>
+              <td className="whitespace-nowrap py-2 pr-4">{ratingText(conversation.rating)}</td>
               <td className="py-2">
                 <Link
                   to="/organisations/$organisationId/projects/$projectId/conversations/$conversationId"
@@ -310,7 +337,7 @@ function FeedbackNote({ message, visitor }: { message: ConversationMessage; visi
   if (feedback === null) {
     return visitor ? <p className="mt-2 text-xs text-slate-700">No feedback</p> : null;
   }
-  const version = feedback.agent_version_number === null ? "the Draft" : `Agent Version v${String(feedback.agent_version_number)}`;
+  const version = versionText(feedback.agent_version_number);
   return (
     <div role="group" aria-label="Visitor feedback" className="mt-2 rounded bg-slate-50 p-2 text-sm">
       <p>
@@ -323,6 +350,46 @@ function FeedbackNote({ message, visitor }: { message: ConversationMessage; visi
         <blockquote className="mt-1 whitespace-pre-wrap border-l-2 border-slate-300 pl-2 text-slate-800">{feedback.comment}</blockquote>
       )}
     </div>
+  );
+}
+
+const versionText = (number: number | null) => (number === null ? "the Draft" : `Agent Version v${String(number)}`);
+
+/**
+ * The Visitor's Conversation Rating: the score, the Version it counts for (the last reply's
+ * before it), when, whether they dismissed the prompt, and the change log.
+ */
+function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
+  return (
+    <section aria-label="Conversation Rating" className="rounded border border-slate-200 p-3 text-sm">
+      <h3 className="font-medium">Conversation Rating</h3>
+      {rating?.score == null ? (
+        <p>Not rated</p>
+      ) : (
+        <p>
+          <span className="font-medium">{`Rated ${String(rating.score)} of 5`}</span>
+          {` · for ${versionText(rating.agent_version_number)} · ${formatTime(rating.rated_at as string)}`}
+        </p>
+      )}
+      {rating?.prompt_dismissed_at != null && (
+        <p className="text-slate-700">{`The Visitor dismissed the rating prompt · ${formatTime(rating.prompt_dismissed_at)}`}</p>
+      )}
+      {rating !== null && rating.changes.length > 0 && (
+        <>
+          <h4 className="mt-2 font-medium">Changes</h4>
+          <ol aria-label="Rating changes" className="list-inside list-decimal">
+            {rating.changes.map((change) => (
+              <li key={change.changed_at + String(change.score)}>
+                {change.previous_score === null
+                  ? `Rated ${String(change.score)}`
+                  : `Changed from ${String(change.previous_score)} to ${String(change.score)}`}
+                {` · for ${versionText(change.agent_version_number)} · ${formatTime(change.changed_at)}`}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -398,6 +465,7 @@ export function ConversationPage() {
             />
           ))}
         </ol>
+        {!data.is_playground && <RatingNote rating={data.rating} />}
         {traced !== null && (
           <ConversationTrace
             key={traced}

@@ -16,7 +16,8 @@ export const PAGE_SIZE = 25;
  * The Conversations list's filters, kept in the tab's URL so they survive opening a
  * Conversation: an Agent, one of its Versions, `YYYY-MM-DD` UTC days (both inclusive), which
  * Conversations to show (Visitors' or the Playground's; both when left out), their Message
- * Feedback (a reply with a thumbs up or down, any feedback, or none) and the page.
+ * Feedback (a reply with a thumbs up or down, any feedback, or none), their Conversation Rating
+ * (one score, rated, or not rated) and the page.
  */
 export interface ConversationFilters {
   agent?: string;
@@ -25,11 +26,16 @@ export interface ConversationFilters {
   to?: string;
   show?: "visitors" | "playground";
   feedback?: FeedbackFilter;
+  rating?: RatingFilter;
   page?: number;
 }
 
 export type FeedbackFilter = "up" | "down" | "any" | "none";
 const FEEDBACK_FILTERS: readonly unknown[] = ["up", "down", "any", "none"] satisfies FeedbackFilter[];
+
+/** A score is kept as a number, so the URL reads `?rating=4` (the router quotes a numeric string). */
+export type RatingFilter = 1 | 2 | 3 | 4 | 5 | "any" | "none";
+const RATING_FILTERS: readonly unknown[] = [1, 2, 3, 4, 5, "any", "none"] satisfies RatingFilter[];
 
 /** The filters in a URL's search (or any record), leaving out anything that isn't one, an empty
  * value, and the first page. */
@@ -41,6 +47,9 @@ export function conversationFilters(search: Record<string, unknown>): Conversati
   }
   if (search.show === "visitors" || search.show === "playground") filters.show = search.show;
   if (FEEDBACK_FILTERS.includes(search.feedback)) filters.feedback = search.feedback as FeedbackFilter;
+  // A score comes as a number from the URL, or as a string from the filter's select.
+  const rating = typeof search.rating === "string" && /^[1-5]$/.test(search.rating) ? Number(search.rating) : search.rating;
+  if (RATING_FILTERS.includes(rating)) filters.rating = rating as RatingFilter;
   const page = Number(search.page);
   if (Number.isInteger(page) && page > 1) filters.page = page;
   return filters;
@@ -62,6 +71,7 @@ function listQuery(filters: ConversationFilters) {
     ...(filters.to && { end: startOfUtcDay(filters.to, 1) }),
     ...(filters.show && { playground: filters.show === "playground" }),
     ...(filters.feedback && { feedback: filters.feedback }),
+    ...(filters.rating && { rating: String(filters.rating) as Schemas["RatingFilter"] }),
   };
 }
 

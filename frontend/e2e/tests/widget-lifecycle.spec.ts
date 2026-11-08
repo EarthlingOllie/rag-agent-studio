@@ -100,6 +100,8 @@ test.describe("Widget Conversation lifecycle", () => {
     await expect(reply).toHaveCount(1, { timeout: 15_000 });
     await expect(widget.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
     await widget.getByRole("button", { name: "End chat" }).click();
+    // Not rated yet, so the Visitor is asked first (Conversation Rating).
+    await widget.getByRole("button", { name: "End without rating" }).click();
     await expect(widget.getByRole("status")).toHaveText("You ended the chat.");
     await expect(widget.getByLabel("Message")).toHaveCount(0);
     await host.reload();

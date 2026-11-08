@@ -1,0 +1,3 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0703-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-03-evidence/compose.sandbox.yml' @ 1e8de72 (CI settings: one retry)
+  82 passed (5.5m)
+exit 0
