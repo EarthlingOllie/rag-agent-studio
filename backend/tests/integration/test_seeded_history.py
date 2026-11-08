@@ -11,7 +11,6 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from pydantic_ai.exceptions import ModelHTTPError, ModelRateLimitError
 from sqlalchemy import func, select
 
 from app.analytics.models import UsageDaily, UsageRollupState
@@ -20,9 +19,7 @@ from app.core.clock import SystemClock
 from app.credentials.registry import Provider
 from app.seed import content
 from app.seed.runner import RealCredential, SeedError, erase_demo, seed
-from tests.agents import answer_with
 from tests.conftest import ClientFactory, SignedUpMember
-from tests.integration.test_playground_errors import failing
 from tests.integration.test_seed import ASSETS, demo_project, get, signed_in
 
 LIGHT = content.History(conversations_per_day={content.HR_AGENT: 1, content.SHOP_AGENT: 1})
@@ -224,7 +221,7 @@ async def history_counts(app: FastAPI, owner: SignedUpMember) -> dict[str, Any]:
     live = {}
     for name, agent in agents.items():
         entries = await get(owner, "projects", project, "agents", agent["id"], "live-history")
-        live[name] = [e["id"] for e in entries]
+        live[name] = [(e["action"], e["occurred_at"]) for e in entries]
     async with app.state.sessionmaker() as session:
         audit_events = await session.scalar(
             select(func.count())
@@ -298,10 +295,13 @@ async def test_the_seed_will_not_complete_a_demo_organisation_without_its_histor
     assert isinstance(app.state.clock, SystemClock)
 
 
-async def test_the_seed_stops_when_a_visitor_gets_no_reply(app: FastAPI) -> None:
+async def test_the_seed_stops_when_a_visitor_gets_no_reply(
+    app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
     await erase_demo(app)
-    error = ModelHTTPError.for_category(ModelRateLimitError, status_code=429, model_name="m")
-    answer_with(app, failing(error))
+    # A question the widget API refuses (longer than a Visitor may ask) gets no reply.
+    too_long = "Why? " * 1000
+    monkeypatch.setattr(content, "QUESTIONS", {name: (too_long,) for name in content.QUESTIONS})
 
     with pytest.raises(SeedError, match="gave a Visitor no reply"):
         await seed(app, ASSETS, history=LIGHT)
