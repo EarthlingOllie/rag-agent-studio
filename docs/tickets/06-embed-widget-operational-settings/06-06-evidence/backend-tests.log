@@ -1,4 +1,4 @@
-$ make test-backend (TEST_* -> fresh rag0606-pg/redis/rustfs) @ f1cad81 (ticket/06-06-token-budget, clean tree: 0 changes)
+$ make test-backend (TEST_* -> fresh rag0606-pg/redis/rustfs) @ 93b6e40 (ticket/06-06-token-budget, clean tree: 0 changes)
 cd backend && uv run pytest
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -8,7 +8,7 @@ configfile: pyproject.toml
 testpaths: tests
 plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
-collected 2336 items / 24 deselected / 2312 selected
+collected 2353 items / 24 deselected / 2329 selected
 
 tests/integration/test_agent_archive.py ................                 [  0%]
 tests/integration/test_agent_config.py ................................. [  2%]
@@ -26,73 +26,74 @@ tests/integration/test_bulk_versions.py ...................              [ 10%]
 tests/integration/test_canary.py ....                                    [ 10%]
 tests/integration/test_chunk_storage.py ..........                       [ 11%]
 tests/integration/test_citations_trace.py ........                       [ 11%]
+tests/integration/test_conversation_rating.py .................          [ 12%]
 tests/integration/test_conversations.py ...............                  [ 12%]
 tests/integration/test_default_model.py ....................             [ 13%]
-tests/integration/test_document_editions.py ................             [ 13%]
-tests/integration/test_document_viewer.py .....                          [ 13%]
-tests/integration/test_documents.py .....................                [ 14%]
-tests/integration/test_embed.py ....................                     [ 15%]
-tests/integration/test_embedding_models.py ............................. [ 16%]
+tests/integration/test_document_editions.py ................             [ 14%]
+tests/integration/test_document_viewer.py .....                          [ 14%]
+tests/integration/test_documents.py .....................                [ 15%]
+tests/integration/test_embed.py ....................                     [ 16%]
+tests/integration/test_embedding_models.py ............................. [ 17%]
 .........                                                                [ 17%]
-tests/integration/test_flagged_chunks.py .........                       [ 17%]
-tests/integration/test_health.py ...                                     [ 17%]
+tests/integration/test_flagged_chunks.py .........                       [ 18%]
+tests/integration/test_health.py ...                                     [ 18%]
 tests/integration/test_ingestion_failures.py ........................... [ 19%]
-.........                                                                [ 19%]
-tests/integration/test_ingestion_scan.py .....                           [ 19%]
-tests/integration/test_input_guardrail.py .....                          [ 19%]
+.........                                                                [ 20%]
+tests/integration/test_ingestion_scan.py .....                           [ 20%]
+tests/integration/test_input_guardrail.py .....                          [ 20%]
 tests/integration/test_input_guardrail_modes.py .........                [ 20%]
-tests/integration/test_invites.py ..............................         [ 21%]
-tests/integration/test_llm_classifier.py ............................    [ 22%]
+tests/integration/test_invites.py ..............................         [ 22%]
+tests/integration/test_llm_classifier.py ............................    [ 23%]
 tests/integration/test_logging.py ........                               [ 23%]
-tests/integration/test_mailer.py ........                                [ 23%]
+tests/integration/test_mailer.py ........                                [ 24%]
 tests/integration/test_members.py ...............                        [ 24%]
-tests/integration/test_message_feedback.py ................              [ 24%]
+tests/integration/test_message_feedback.py ................              [ 25%]
 tests/integration/test_mfa.py .....................................      [ 26%]
-tests/integration/test_migrations.py ..                                  [ 26%]
-tests/integration/test_no_secret_in_responses.py ....                    [ 26%]
+tests/integration/test_migrations.py ..                                  [ 27%]
+tests/integration/test_no_secret_in_responses.py ....                    [ 27%]
 tests/integration/test_object_store.py ..............                    [ 27%]
-tests/integration/test_ocr.py ............                               [ 27%]
-tests/integration/test_openapi.py ...                                    [ 27%]
+tests/integration/test_ocr.py ............                               [ 28%]
+tests/integration/test_openapi.py ...                                    [ 28%]
 tests/integration/test_operational_settings.py ......................... [ 29%]
 ..........................                                               [ 30%]
 tests/integration/test_organisation_switcher.py .......                  [ 30%]
-tests/integration/test_password_audit_events.py ..                       [ 30%]
+tests/integration/test_password_audit_events.py ..                       [ 31%]
 tests/integration/test_password_reset.py ...........                     [ 31%]
-tests/integration/test_playground.py ...............                     [ 31%]
-tests/integration/test_playground_errors.py .......................      [ 32%]
+tests/integration/test_playground.py ...............                     [ 32%]
+tests/integration/test_playground_errors.py .......................      [ 33%]
 tests/integration/test_playground_instructions.py ........               [ 33%]
 tests/integration/test_prices.py ...................................     [ 34%]
-tests/integration/test_profile.py .......                                [ 34%]
+tests/integration/test_profile.py .......                                [ 35%]
 tests/integration/test_project_deletion.py ..............                [ 35%]
-tests/integration/test_project_instructions.py .........                 [ 35%]
-tests/integration/test_project_instructions_diffs.py ....                [ 35%]
+tests/integration/test_project_instructions.py .........                 [ 36%]
+tests/integration/test_project_instructions_diffs.py ....                [ 36%]
 tests/integration/test_project_instructions_draft.py ...                 [ 36%]
-tests/integration/test_project_instructions_versions.py ................ [ 36%]
+tests/integration/test_project_instructions_versions.py ................ [ 37%]
 ............                                                             [ 37%]
 tests/integration/test_projects.py ....................                  [ 38%]
 tests/integration/test_provider_credentials.py ......................... [ 39%]
-...........                                                              [ 39%]
+...........                                                              [ 40%]
 tests/integration/test_rate_limits.py .................                  [ 40%]
-tests/integration/test_re_embedding.py ..........................        [ 41%]
+tests/integration/test_re_embedding.py ..........................        [ 42%]
 tests/integration/test_require_mfa.py .................................. [ 43%]
 ........................................................................ [ 46%]
 ........                                                                 [ 46%]
 tests/integration/test_retrieval.py .................                    [ 47%]
 tests/integration/test_retrieval_probe_index.py ..                       [ 47%]
 tests/integration/test_seed.py ..........................                [ 48%]
-tests/integration/test_settings.py .....                                 [ 48%]
+tests/integration/test_settings.py .....                                 [ 49%]
 tests/integration/test_sign_in_and_out.py ........                       [ 49%]
 tests/integration/test_sign_in_throttling.py .............               [ 49%]
 tests/integration/test_sign_up.py ............                           [ 50%]
 tests/integration/test_tag_scoping.py ..                                 [ 50%]
-tests/integration/test_tags.py .............                             [ 50%]
+tests/integration/test_tags.py .............                             [ 51%]
 tests/integration/test_telemetry.py ........                             [ 51%]
 tests/integration/test_tenant_isolation.py ............................. [ 52%]
 ........................................................................ [ 55%]
 ........................................................................ [ 58%]
-........................................................................ [ 61%]
-........................................................................ [ 64%]
-........................................................................ [ 67%]
+........................................................................ [ 62%]
+........................................................................ [ 65%]
+........................................................................ [ 68%]
 ........................................................................ [ 71%]
 ........................................................................ [ 74%]
 ........................................................................ [ 77%]
@@ -117,7 +118,7 @@ tests/unit/test_chunking.py ......                                       [ 90%]
 tests/unit/test_client_ip.py ............................                [ 91%]
 tests/unit/test_config_diff.py ..........                                [ 92%]
 tests/unit/test_cost.py .........                                        [ 92%]
-tests/unit/test_docling_converter.py .....                               [ 92%]
+tests/unit/test_docling_converter.py .....                               [ 93%]
 tests/unit/test_embedding_registry.py ..........                         [ 93%]
 tests/unit/test_envelope_encryption.py .................                 [ 94%]
 tests/unit/test_heuristic_injection_classifier.py .................      [ 94%]
@@ -167,9 +168,9 @@ app/auth/service.py                      94      0     18      0   100%
 app/auth/sessions.py                     34      0      0      0   100%
 app/auth/throttle.py                     76      0     18      0   100%
 app/conversations/__init__.py             0      0      0      0   100%
-app/conversations/api.py                 77      0      2      0   100%
+app/conversations/api.py                 97      0      4      0   100%
 app/conversations/models.py              56      0      0      0   100%
-app/conversations/service.py            123      0     24      0   100%
+app/conversations/service.py            149      0     32      0   100%
 app/core/__init__.py                      0      0      0      0   100%
 app/core/client_ip.py                    41      0     14      0   100%
 app/core/clock.py                        11      0      0      0   100%
@@ -209,10 +210,10 @@ app/documents/service.py                270      0     52      0   100%
 app/documents/tasks.py                   34      0      4      0   100%
 app/embed/__init__.py                     0      0      0      0   100%
 app/embed/admission.py                   50      0      2      0   100%
-app/embed/api.py                        242      0     26      0   100%
+app/embed/api.py                        246      0     26      0   100%
 app/embed/branding.py                    67      0      6      0   100%
 app/embed/branding_api.py                84      0      0      0   100%
-app/embed/service.py                    224      0     44      0   100%
+app/embed/service.py                    228      0     44      0   100%
 app/embed/tasks.py                       16      0      0      0   100%
 app/embed/tokens.py                      47      0     10      0   100%
 app/embeddings/__init__.py                0      0      0      0   100%
@@ -228,9 +229,9 @@ app/evals/runner.py                     105      0     30      0   100%
 app/evals/schema.py                       4      0      0      0   100%
 app/evals/suite.py                       91      0      8      0   100%
 app/feedback/__init__.py                  0      0      0      0   100%
-app/feedback/api.py                      41      0      0      0   100%
-app/feedback/models.py                   19      0      0      0   100%
-app/feedback/service.py                  32      0      2      0   100%
+app/feedback/api.py                      67      0      0      0   100%
+app/feedback/models.py                   39      0      0      0   100%
+app/feedback/service.py                  64      0      8      0   100%
 app/gateway/__init__.py                   2      0      0      0   100%
 app/gateway/adapters.py                  18      0      2      0   100%
 app/gateway/demo.py                      26      0      4      0   100%
@@ -330,8 +331,8 @@ app/worker/celery_app.py                 11      0      0      0   100%
 app/worker/main.py                       20      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                 10469      0   1250      0   100%
+TOTAL                                 10601      0   1266      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-=============== 2312 passed, 24 deselected in 2608.17s (0:43:28) ===============
+=============== 2329 passed, 24 deselected in 2651.59s (0:44:11) ===============
 exit 0
