@@ -105,8 +105,12 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ and the Low-budget helper), published with the shop origin as their Allowed Origin. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
 _Avoid_: Sample org, test tenant, sandbox
+
+**Demo pages**:
+Static pages that show an Agent the way a Visitor meets it: Northwind's fictional shop with the Product FAQ as a bubble, a help-centre page with it inline, and a page with the Low-budget helper, whose tiny daily Token Budget a button spends in one click (the widget then shows its Unavailable text and the Studio its Budget alert). They are on the shop origin, which the seed allows: `http://localhost:5175/demo/` in `docker compose`, `/demo/` on the Studio's own address in AWS. A fourth page, on an origin no Agent allows (`http://localhost:5176`, local only), pastes the same Embed Snippet and is refused by the browser. The pages ask the API which seeded Agents to embed; those routes exist only when the stack runs with `DEMO_PAGES` on.
+_Avoid_: Demo host page (for the shop), test page
 
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. An archived Agent leaves the Agents list, its Draft can't be changed and the Playground starts no Conversation with it. Any Member can archive. Permanent deletion is a separate action.

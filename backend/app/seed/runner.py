@@ -2,9 +2,10 @@
 
 ``seed`` drives the FastAPI app in process, over HTTP: it signs up the demo Owner, invites and
 signs up the Editor, adds the demo model's credential (and a real one, if given), sets the
-Default Model and the Theme, creates the Project, its Tags, Documents and Agents. So the seeded
-data is valid by construction. Files go to the object store through presigned URLs, as a
-browser's do, and ingestion runs wherever the app sends it (the worker, or eagerly in tests).
+Default Model and the Theme, creates the Project, its Tags, Documents and Agents, and publishes
+the Agents the demo pages embed with the shop origin in their Allowed Origins (ticket 10-03).
+So the seeded data is valid by construction. Files go to the object store through presigned URLs,
+as a browser's do, and ingestion runs wherever the app sends it (the worker, or eagerly in tests).
 
 It is idempotent: it finds the demo Organisation through the demo Owner's account and only
 adds what is missing or changes what differs, so running it again changes nothing.
@@ -72,6 +73,7 @@ class SeedReport:
     studio_url: str
     default_model: str
     documents: int
+    demo_pages_url: str
 
     def lines(self) -> list[str]:
         return [
@@ -82,6 +84,7 @@ class SeedReport:
             f"Project {content.PROJECT_NAME!r}: {self.documents} Documents "
             "(ingestion may take a minute).",
             f"Default Model: {self.default_model}",
+            f"Demo pages: {self.demo_pages_url}",
         ]
 
 
@@ -261,7 +264,34 @@ async def _documents(
     return len(content.DOCUMENTS)
 
 
-async def _agents(api: _Api, project: str, tags: dict[str, str]) -> None:
+def shop_origin(app: FastAPI) -> str:
+    """The origin the demo pages are served from: ``DEMO_SHOP_ORIGIN``, else the Studio's."""
+    settings = app.state.settings
+    url = urlsplit(str(settings.demo_shop_origin or settings.studio_url))
+    return f"{url.scheme}://{url.netloc}"
+
+
+async def _embedding(
+    api: _Api, agent_path: str, agent: Any, embedding: content.Embedding, origin: str
+) -> None:
+    """Publishes the Agent if it isn't Live, and sets what the demo pages need of its
+    Operational Settings."""
+    if agent["live_version"] is None:
+        await api.call(
+            "POST", f"{agent_path}/versions", expect=201, body={"note": content.PUBLISH_NOTE}
+        )
+    settings_path = f"{agent_path}/operational-settings"
+    current = await api.call("GET", settings_path)
+    wanted: dict[str, Any] = {
+        "allowed_origins": [origin],
+        "daily_token_budget": embedding.daily_token_budget,
+        "unavailable_text": embedding.unavailable_text,
+    }
+    if {key: current[key] for key in wanted} != wanted:
+        await api.call("PATCH", settings_path, body=wanted)
+
+
+async def _agents(api: _Api, project: str, tags: dict[str, str], origin: str) -> None:
     agents = api.path("projects", project, "agents")
     existing = {a["name"]: a for a in await api.call("GET", agents)}
     for wanted in content.AGENTS:
@@ -280,6 +310,8 @@ async def _agents(api: _Api, project: str, tags: dict[str, str]) -> None:
         }
         if changed != draft:
             await api.call("PUT", f"{agents}/{agent['id']}/draft", body=changed)
+        if wanted.embedding is not None:
+            await _embedding(api, f"{agents}/{agent['id']}", agent, wanted.embedding, origin)
 
 
 def _client(app: FastAPI) -> httpx.AsyncClient:
@@ -297,12 +329,14 @@ async def seed(app: FastAPI, assets: Path, real: RealCredential | None = None) -
         project = await _project(api)
         tags = await _tags(api, project)
         documents = await _documents(app, api, project, assets, tags)
-        await _agents(api, project, tags)
+        origin = shop_origin(app)
+        await _agents(api, project, tags, origin)
     return SeedReport(
         organisation_id=api.organisation,
         studio_url=str(app.state.settings.studio_url),
         default_model=default_model,
         documents=documents,
+        demo_pages_url=f"{origin}/demo/",
     )
 
 

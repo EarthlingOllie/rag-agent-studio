@@ -2,7 +2,9 @@
 
 from dataclasses import dataclass
 
+from app.agents.models import TOKEN_BUDGET_DEFAULT
 from app.credentials.registry import Provider
+from app.embed.service import DEFAULT_UNAVAILABLE_TEXT
 from app.theme.fonts import Font
 from app.theme.schema import (
     ColourToken,
@@ -55,12 +57,31 @@ INJECTED_DOCUMENT = "northwind-returns-policy.md"
 
 
 @dataclass(frozen=True)
+class Embedding:
+    """An Agent the demo pages embed: published once, its Allowed Origins the shop origin."""
+
+    daily_token_budget: int = TOKEN_BUDGET_DEFAULT
+    unavailable_text: str = DEFAULT_UNAVAILABLE_TEXT
+
+
+@dataclass(frozen=True)
 class SeedAgent:
     name: str
     tags: tuple[str, ...]
     system_prompt: str
     greeting: str
+    # Set for the Agents the demo pages embed (ticket 10-03).
+    embedding: Embedding | None = None
 
+
+# The Agents the demo pages embed: the shop pages (bubble and inline) and the low-budget page.
+SHOP_AGENT = "Product FAQ"
+BUDGET_AGENT = "Low-budget helper"
+BUDGET_TOKENS = 2000
+BUDGET_UNAVAILABLE = (
+    "Northwind's low-budget helper has used today's budget. Please come back tomorrow."
+)
+PUBLISH_NOTE = "First release, for the demo pages"
 
 AGENTS = (
     SeedAgent(
@@ -70,10 +91,20 @@ AGENTS = (
         "Hi! Ask me about leave, expenses or working from home.",
     ),
     SeedAgent(
-        "Product FAQ",
+        SHOP_AGENT,
         (PRODUCTS,),
         "You answer customers' questions about Northwind Traders products, orders and returns.",
         "Hello! Ask me about our products, delivery or returns.",
+        Embedding(),
+    ),
+    # The low-budget page's Agent: a tiny daily Token Budget that the page's button spends, so
+    # the unavailable state and the Studio's alert can be shown in one click.
+    SeedAgent(
+        BUDGET_AGENT,
+        (PRODUCTS,),
+        "You answer customers' questions about Northwind Traders products, orders and returns.",
+        "Hello! I have a very small daily budget. Ask me something quickly!",
+        Embedding(daily_token_budget=BUDGET_TOKENS, unavailable_text=BUDGET_UNAVAILABLE),
     ),
 )
 

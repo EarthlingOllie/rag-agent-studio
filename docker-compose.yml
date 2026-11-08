@@ -54,6 +54,10 @@ x-backend: &backend
     # bundled in the image. A stack built with BUNDLE_MODELS=false sets INPUT_CLASSIFIER=heuristic
     # in .env (or the API downloads the model from Hugging Face on the first message).
     INPUT_CLASSIFIER: ${INPUT_CLASSIFIER:-local}
+    # The demo pages (the `host` service): the API tells them which seeded Agents to embed, and
+    # the seed allows the shop origin in those Agents' Allowed Origins.
+    DEMO_PAGES: "true"
+    DEMO_SHOP_ORIGIN: ${DEMO_SHOP_ORIGIN:-http://localhost:5175}
   depends_on:
     postgres:
       condition: service_healthy
@@ -159,17 +163,24 @@ services:
       timeout: 3s
       retries: 30
 
-  # A demo host page on its own origin, embedding an Agent: http://localhost:5175/?agent=agt_…
-  # Add http://localhost:5175 to the Agent's Allowed Origins to let it show the widget.
+  # The demo host (frontend/apps/widget/host/serve.mjs), on two origins of its own. After
+  # `make seed`: http://localhost:5175/demo/ is Northwind's shop with the Product FAQ as a bubble
+  # (inline.html: the inline layout; budget.html: the Low-budget helper and a button that spends
+  # its Token Budget), all on the allowed shop origin; http://localhost:5176/ tries to embed the
+  # Product FAQ from an origin no Agent allows, and the browser refuses. Also
+  # http://localhost:5175/?agent=agt_… for any Agent that allows http://localhost:5175.
   host:
     build:
       context: ./frontend
     command: ["node", "/app/apps/widget/host/serve.mjs"]
     environment:
       PORT: "5175"
+      BLOCKED_PORT: "5176"
       # Where browsers load embed.js from: the Studio's origin.
       WIDGET_URL: ${STUDIO_URL:-http://localhost:5173}
-    ports: ["5175:5175"]
+      # Where /api/demo/ is proxied, as CloudFront sends /api/* to the API in AWS.
+      API_URL: http://api:8000
+    ports: ["5175:5175", "5176:5176"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5175/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 3s

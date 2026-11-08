@@ -264,6 +264,12 @@ variable "key_wrapper_secret_version" {
   }
 }
 
+variable "demo_pages" {
+  description = "Turn on the API's demo page routes (DEMO_PAGES, ticket 10-03): the demo pages under /demo/ ask them which seeded Agents to embed. Only for a demo environment."
+  type        = bool
+  default     = false
+}
+
 variable "studio_url" {
   description = "The Studio's public HTTPS address (the cdn module's url). The API and worker put it in links in emails."
   type        = string

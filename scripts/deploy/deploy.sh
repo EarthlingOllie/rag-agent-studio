@@ -7,11 +7,13 @@
 #      themselves do not roll on apply; see the ecs module)
 #   4. run the migration task (`alembic upgrade head`) and wait for it; anything but exit 0 stops the deploy here
 #   5. point each service at its new task definition and wait until all of them are stable
-#   6. upload the Studio and widget builds to the static bucket; HTML, embed.js and the unhashed widget.js no-cache
+#   6. upload the Studio and widget builds and the demo pages (under /demo/) to the static bucket; HTML, embed.js and
+#      the unhashed widget.js no-cache
 #   7. invalidate those paths in CloudFront and wait for the invalidation
 #   8. smoke check the CloudFront URL (scripts/deploy/smoke.sh) and print it
 # Usage: TF_STATE_BUCKET=... AWS_REGION=... scripts/deploy/deploy.sh <image tag>
-# Optional: DEPLOY_ROOT (default infra/envs/demo), STUDIO_DIST and WIDGET_DIST (the `pnpm build` outputs),
+# Optional: DEPLOY_ROOT (default infra/envs/demo), STUDIO_DIST and WIDGET_DIST (the `pnpm build` outputs), DEMO_DIST
+# (the demo pages, default frontend/apps/widget/host/demo; the disallowed-origin page beside it is local-only),
 # SMOKE_AGENT_ID (a live Agent's public ID for the widget shell check), SMOKE_ATTEMPTS, SMOKE_DELAY_SECONDS.
 set -euo pipefail
 
@@ -27,9 +29,11 @@ tag=$1
 root=${DEPLOY_ROOT:-$repo/infra/envs/demo}
 studio_dist=${STUDIO_DIST:-$repo/frontend/apps/studio/dist}
 widget_dist=${WIDGET_DIST:-$repo/frontend/apps/widget/dist}
+demo_dist=${DEMO_DIST:-$repo/frontend/apps/widget/host/demo}
 for f in "$studio_dist/index.html" "$widget_dist/embed.js" "$widget_dist/widget/assets/widget.js"; do
   [ -f "$f" ] || { echo "$f is missing: run \`pnpm build\` in frontend/ first." >&2; exit 2; }
 done
+[ -f "$demo_dist/index.html" ] || { echo "$demo_dist/index.html is missing: DEMO_DIST must hold the demo pages." >&2; exit 2; }
 
 step() { echo "==> $*"; }
 work=$(mktemp -d)
@@ -105,12 +109,15 @@ fi
 
 # --- 6. Static assets ------------------------------------------------------------------------------------------------
 bucket=$(out .static_bucket_name)
-step "Uploading the Studio and widget builds to $bucket"
-mkdir -p "$work/static"
+step "Uploading the Studio and widget builds and the demo pages to $bucket"
+mkdir -p "$work/static/demo"
 cp -R "$studio_dist/." "$work/static/"
 cp -R "$widget_dist/." "$work/static/"
-# Unhashed entry points are revalidated on every load; everything else is content-hashed and cached for a year.
+cp -R "$demo_dist/." "$work/static/demo/"
+# Unhashed entry points (and the demo pages) are revalidated on every load; everything else is content-hashed and
+# cached for a year.
 no_cache=(index.html embed.js widget/assets/widget.js)
+for f in "$work/static/demo/"*.html; do no_cache+=("demo/$(basename "$f")"); done
 excludes=()
 for f in "${no_cache[@]}"; do excludes+=(--exclude "$f"); done
 aws s3 sync "$work/static" "s3://$bucket" --delete --cache-control public,max-age=31536000,immutable "${excludes[@]}"
@@ -120,9 +127,9 @@ done
 
 # --- 7. Invalidate ---------------------------------------------------------------------------------------------------
 distribution=$(out .cloudfront_distribution_id)
-step "Invalidating the HTML and the loader in $distribution"
+step "Invalidating the HTML, the loader and the demo pages in $distribution"
 invalidation=$(aws cloudfront create-invalidation --distribution-id "$distribution" \
-  --paths / /index.html /embed.js /widget/assets/widget.js --query Invalidation.Id --output text)
+  --paths / /index.html /embed.js /widget/assets/widget.js '/demo/*' --query Invalidation.Id --output text)
 aws cloudfront wait invalidation-completed --distribution-id "$distribution" --id "$invalidation"
 
 # --- 8. Smoke check --------------------------------------------------------------------------------------------------
