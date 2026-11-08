@@ -1,0 +1,141 @@
+$ (env from e2e.env) CI=1: docker compose -p rag1004-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-04-evidence/compose.sandbox.yml up -d --build --wait; make seed COMPOSE=...; cd frontend && pnpm e2e tests/attack-panel.spec.ts tests/demo-pages.spec.ts tests/seed.spec.ts tests/embed.spec.ts tests/token-budget.spec.ts tests/llm-classifier.spec.ts tests/playground.spec.ts tests/widget-accessibility.spec.ts tests/smoke.spec.ts @ e46d11d (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes) (CI settings: one retry)
+ Network rag1004-e2e_default Creating 
+ Network rag1004-e2e_default Creating 
+ Volume rag1004-e2e_postgres-data Creating 
+ Volume rag1004-e2e_postgres-data Creating 
+ Volume rag1004-e2e_rustfs-data Creating 
+ Volume rag1004-e2e_rustfs-data Creating 
+ Volume rag1004-e2e_postgres-data Created 
+ Volume rag1004-e2e_postgres-data Created 
+ Volume rag1004-e2e_rustfs-data Created 
+ Volume rag1004-e2e_rustfs-data Created 
+ Network rag1004-e2e_default Created 
+ Network rag1004-e2e_default Created 
+ Container rag1004-e2e-widget-1 Creating 
+ Container rag1004-e2e-redis-1 Creating 
+ Container rag1004-e2e-postgres-1 Creating 
+ Container rag1004-e2e-mailpit-1 Creating 
+ Container rag1004-e2e-host-1 Creating 
+ Container rag1004-e2e-rustfs-1 Creating 
+ Container rag1004-e2e-mailpit-1 Created 
+ Container rag1004-e2e-host-1 Created 
+ Container rag1004-e2e-rustfs-1 Created 
+ Container rag1004-e2e-postgres-1 Created 
+ Container rag1004-e2e-widget-1 Created 
+ Container rag1004-e2e-redis-1 Created 
+ Container rag1004-e2e-worker-1 Creating 
+ Container rag1004-e2e-api-1 Creating 
+ Container rag1004-e2e-beat-1 Creating 
+ Container rag1004-e2e-api-1 Created 
+ Container rag1004-e2e-studio-1 Creating 
+ Container rag1004-e2e-worker-1 Created 
+ Container rag1004-e2e-beat-1 Created 
+ Container rag1004-e2e-studio-1 Created 
+ Container rag1004-e2e-widget-1 Starting 
+ Container rag1004-e2e-host-1 Starting 
+ Container rag1004-e2e-rustfs-1 Starting 
+ Container rag1004-e2e-postgres-1 Starting 
+ Container rag1004-e2e-mailpit-1 Starting 
+ Container rag1004-e2e-redis-1 Starting 
+ Container rag1004-e2e-widget-1 Started 
+ Container rag1004-e2e-host-1 Started 
+ Container rag1004-e2e-rustfs-1 Started 
+ Container rag1004-e2e-postgres-1 Started 
+ Container rag1004-e2e-mailpit-1 Started 
+ Container rag1004-e2e-redis-1 Started 
+ Container rag1004-e2e-postgres-1 Waiting 
+ Container rag1004-e2e-redis-1 Waiting 
+ Container rag1004-e2e-rustfs-1 Waiting 
+ Container rag1004-e2e-postgres-1 Waiting 
+ Container rag1004-e2e-redis-1 Waiting 
+ Container rag1004-e2e-rustfs-1 Waiting 
+ Container rag1004-e2e-postgres-1 Waiting 
+ Container rag1004-e2e-redis-1 Waiting 
+ Container rag1004-e2e-rustfs-1 Waiting 
+ Container rag1004-e2e-rustfs-1 Healthy 
+ Container rag1004-e2e-rustfs-1 Healthy 
+ Container rag1004-e2e-rustfs-1 Healthy 
+ Container rag1004-e2e-postgres-1 Healthy 
+ Container rag1004-e2e-postgres-1 Healthy 
+ Container rag1004-e2e-postgres-1 Healthy 
+ Container rag1004-e2e-redis-1 Healthy 
+ Container rag1004-e2e-worker-1 Starting 
+ Container rag1004-e2e-redis-1 Healthy 
+ Container rag1004-e2e-api-1 Starting 
+ Container rag1004-e2e-redis-1 Healthy 
+ Container rag1004-e2e-beat-1 Starting 
+ Container rag1004-e2e-worker-1 Started 
+ Container rag1004-e2e-api-1 Started 
+ Container rag1004-e2e-widget-1 Waiting 
+ Container rag1004-e2e-api-1 Waiting 
+ Container rag1004-e2e-beat-1 Started 
+ Container rag1004-e2e-widget-1 Healthy 
+ Container rag1004-e2e-api-1 Healthy 
+ Container rag1004-e2e-studio-1 Starting 
+ Container rag1004-e2e-studio-1 Started 
+ Container rag1004-e2e-rustfs-1 Waiting 
+ Container rag1004-e2e-api-1 Waiting 
+ Container rag1004-e2e-beat-1 Waiting 
+ Container rag1004-e2e-redis-1 Waiting 
+ Container rag1004-e2e-widget-1 Waiting 
+ Container rag1004-e2e-worker-1 Waiting 
+ Container rag1004-e2e-studio-1 Waiting 
+ Container rag1004-e2e-postgres-1 Waiting 
+ Container rag1004-e2e-mailpit-1 Waiting 
+ Container rag1004-e2e-host-1 Waiting 
+ Container rag1004-e2e-mailpit-1 Healthy 
+ Container rag1004-e2e-worker-1 Healthy 
+ Container rag1004-e2e-rustfs-1 Healthy 
+ Container rag1004-e2e-beat-1 Healthy 
+ Container rag1004-e2e-host-1 Healthy 
+ Container rag1004-e2e-redis-1 Healthy 
+ Container rag1004-e2e-widget-1 Healthy 
+ Container rag1004-e2e-postgres-1 Healthy 
+ Container rag1004-e2e-api-1 Healthy 
+ Container rag1004-e2e-studio-1 Healthy 
+docker compose -p rag1004-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-04-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag1004-e2e-api-run-69182491a10c Creating 
+ Container rag1004-e2e-api-run-69182491a10c Created 
+[0;93m2026-11-08 20:07:51.766077296 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:162: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Z", "end_time": "2026-11-08T20:09:09.588899Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "INSERT INTO mess\u2026vals (organisatio\u2026_reason, id) VALUES ($1::UUID, $\u2026, $11::UUID)", "net.peer.name": "postgres", "net.peer.port": 5432, "db.name": "studio", "db.user": "studio", "db.statement": "INSERT INTO message_retrievals (organisation_id, message_id, chunk_id, document_id, position, score, relevance, rank, cited, excluded_reason, id) VALUES ($1::UUID, $2::UUID, $3::UUID, $4::UUID, $5::INTEGER, $6::FLOAT, $7::FLOAT, $8::INTEGER, $9::BOOLEAN, $10::VARCHAR, $11::UUID), ($12::UUID, $13::UUID, $14::UUID, $15::UUID, $16::INTEGER, $17::FLOAT, $18::FLOAT, $19::INTEGER, $20::BOOLEAN, $21::VARCHAR, $22::UUID), ($23::UUID, $24::UUID, $25::UUID, $26::UUID, $27::INTEGER, $28::FLOAT, $29::FLOAT, $30::INTEGER, $31::BOOLEAN, $32::VARCHAR, $33::UUID), ($34::UUID, $35::UUID, $36::UUID, $37::UUID, $38::INTEGER, $39::FLOAT, $40::FLOAT, $41::INTEGER, $42::BOOLEAN, $43::VARCHAR, $44::UUID), ($45::UUID, $46::UUID, $47::UUID, $48::UUID, $49::INTEGER, $50::FLOAT, $51::FLOAT, $52::INTEGER, $53::BOOLEAN, $54::VARCHAR, $55::UUID), ($56::UUID, $57::UUID, $58::UUID, $59::UUID, $60::INTEGER, $61::FLOAT, $62::FLOAT, $63::INTEGER, $64::BOOLEAN, $65::VARCHAR, $66::UUID), ($67::UUID, $68::UUID, $69::UUID, $70::UUID, $71::INTEGER, $72::FLOAT, $73::FLOAT, $74::INTEGER, $75::BOOLEAN, $76::VARCHAR, $77::UUID), ($78::UUID, $79::UUID, $80::UUID, $81::UUID, $82::INTEGER, $83::FLOAT, $84::FLOAT, $85::INTEGER, $86::BOOLEAN, $87::VARCHAR, $88::UUID), ($89::UUID, $90::UUID, $91::UUID, $92::UUID, $93::INTEGER, $94::FLOAT, $95::FLOAT, $96::INTEGER, $97::BOOLEAN, $98::VARCHAR, $99::UUID), ($100::UUID, $101::UUID, $102::UUID, $103::UUID, $104::INTEGER, $105::FLOAT, $106::FLOAT, $107::INTEGER, $108::BOOLEAN, $109::VARCHAR, $110::UUID), ($111::UUID, $112::UUID, $113::UUID, $114::UUID, $115::INTEGER, $116::FLOAT, $117::FLOAT, $118::INTEGER, $119::BOOLEAN, $120::VARCHAR, $121::UUID), ($122::UUID, $123::UUID, $124::UUID, $125::UUID, $126::INTEGER, $127::FLOAT, $128::FLOAT, $129::INTEGER, $130::BOOLEAN, $131::VARCHAR, $132::UUID), ($133::UUID, $134::UUID, $135::UUID, $136::UUID, $137::INTEGER, $138::FLOAT, $139::FLOAT, $140::INTEGER, $141::BOOLEAN, $142::VARCHAR, $143::UUID), ($144::UUID, $145::UUID, $146::UUID, $147::UUID, $148::INTEGER, $149::FLOAT, $150::FLOAT, $151::INTEGER, $152::BOOLEAN, $153::VARCHAR, $154::UUID), ($155::UUID, $156::UUID, $157::UUID, $158::UUID, $159::INTEGER, $160::FLOAT, $161::FLOAT, $162::INTEGER, $163::BOOLEAN, $164::VARCHAR, $165::UUID), ($166::UUID, $167::UUID, $168::UUID, $169::UUID, $170::INTEGER, $171::FLOAT, $172::FLOAT, $173::INTEGER, $174::BOOLEAN, $175::VARCHAR, $176::UUID), ($177::UUID, $178::UUID, $179::UUID, $180::UUID, $181::INTEGER, $182::FLOAT, $183::FLOAT, $184::INTEGER, $185::BOOLEAN, $186::VARCHAR, $187::UUID), ($188::UUID, $189::UUID, $190::UUID, $191::UUID, $192::INTEGER, $193::FLOAT, $194::FLOAT, $195::INTEGER, $196::BOOLEAN, $197::VARCHAR, $198::UUID), ($199::UUID, $200::UUID, $201::UUID, $202::UUID, $203::INTEGER, $204::FLOAT, $205::FLOAT, $206::INTEGER, $207::BOOLEAN, $208::VARCHAR, $209::UUID), ($210::UUID, $211::UUID, $212::UUID, $213::UUID, $214::INTEGER, $215::FLOAT, $216::FLOAT, $217::INTEGER, $218::BOOLEAN, $219::VARCHAR, $220::UUID) RETURNING message_retrievals.created_at, message_retrievals.id", "db.system": "postgresql", "db.operation": "INSERT"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "6c3361e937e7", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "87fd14b7-97ce-469e-a368-91d68bb87bd3", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 12}, "schema_url": ""}}
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:28683/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:28675/demo/
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/frontend
+> playwright test tests/attack-panel.spec.ts tests/demo-pages.spec.ts tests/seed.spec.ts tests/embed.spec.ts tests/token-budget.spec.ts tests/llm-classifier.spec.ts tests/playground.spec.ts tests/widget-accessibility.spec.ts tests/smoke.spec.ts
+
+
+Running 22 tests using 2 workers
+
+  ✓   1 [studio] › e2e/tests/attack-panel.spec.ts:28:3 › Attack panel › has a button per attack category and a benign control (3.0s)
+  ✓   3 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Instruction override: shows the reply and each Guardrail layer's outcome (5.2s)
+  ✓   2 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (8.9s)
+  ✓   4 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Prompt extraction: shows the reply and each Guardrail layer's outcome (2.1s)
+  ✓   5 [studio] › e2e/tests/demo-pages.spec.ts:36:3 › Demo host pages › the help-centre page shows the same Agent inline (2.7s)
+  ✓   6 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Role-play jailbreak: shows the reply and each Guardrail layer's outcome (1.6s)
+  ✓   7 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (1.8s)
+  ✓   8 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Encoded attack (base64): shows the reply and each Guardrail layer's outcome (2.4s)
+  ✓  10 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Benign control: shows the reply and each Guardrail layer's outcome (1.8s)
+  ✓  11 [studio] › e2e/tests/attack-panel.spec.ts:54:3 › Attack panel › the canary cuts off the encoded attack's leak: the secret never reaches the page (1.4s)
+  ✓   9 [studio] › e2e/tests/demo-pages.spec.ts:69:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (7.3s)
+  ✓  12 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (15.0s)
+  ✓  13 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (20.1s)
+  ✓  15 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (4.8s)
+  ✓  16 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (4.2s)
+  ✓  17 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.7s)
+  ✓  18 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.5s)
+  ✓  14 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (29.0s)
+  ✓  20 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (10.3s)
+  ✓  19 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (19.3s)
+  ✓  21 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (9.4s)
+  ✓  22 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (7.6s)
+
+  22 passed (1.5m)
+exit 0

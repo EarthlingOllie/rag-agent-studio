@@ -1,0 +1,25 @@
+$ scripts/deploy/tests/deploy.test.sh @ 12d1e44 (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
+ok   deploys_in_order_at_the_given_tag
+ok   runs_the_migration_task_in_the_private_subnets
+ok   rolls_each_service_onto_its_new_task_definition
+ok   uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader
+ok   prints_the_cloudfront_url_in_the_job_summary
+ok   pushes_locally_built_images_when_the_tag_is_not_in_ecr
+ok   refuses_to_push_images_that_are_not_arm64
+ok   fails_when_the_tag_is_neither_in_ecr_nor_built
+ok   a_failed_migration_stops_before_any_service_rolls
+ok   a_migration_that_never_ran_stops_the_deploy
+ok   a_migration_task_that_cannot_start_stops_the_deploy
+ok   services_that_do_not_stabilise_fail_before_uploading
+ok   a_failed_apply_stops_the_deploy
+ok   a_failed_smoke_check_fails_the_deploy
+ok   smoke_checks_a_live_agent_when_given
+ok   rejects_the_tag_''
+ok   rejects_the_tag_'latest'
+ok   rejects_the_tag_'has space'
+ok   rejects_the_tag_'../etc'
+ok   rejects_the_tag_'aaaaaaaaaaaaaaaaaaaa'
+ok   requires_the_state_bucket
+ok   requires_the_frontend_builds
+ok   requires_the_demo_pages
+exit 0

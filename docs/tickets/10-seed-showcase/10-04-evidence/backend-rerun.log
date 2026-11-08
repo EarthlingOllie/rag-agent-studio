@@ -1,0 +1,6 @@
+$ uv run pytest --no-cov tests/integration/test_prices.py tests/integration/test_logging.py tests/integration/test_attack_panel.py tests/unit/test_model_gateway.py (the full run's 2 failures plus the touched modules) @ 37ae1ab (ticket/10-04-attack-panel in wt1004, clean tree: 1 changes)
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+........................................................................ [ 77%]
+.....................                                                    [100%]
+93 passed in 114.79s (0:01:54)
+exit 0
