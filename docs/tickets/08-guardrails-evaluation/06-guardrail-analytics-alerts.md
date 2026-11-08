@@ -9,7 +9,7 @@
 - [07-04: Rollups and Version KPIs](../07-feedback-logging-comparison/04-rollups-version-kpis.md)
 - [06-06: Token Budget](../06-embed-widget-operational-settings/06-token-budget.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The block rate is included in rollups and KPI cards
 - [ ] Conversations can be filtered by Guardrail outcome
