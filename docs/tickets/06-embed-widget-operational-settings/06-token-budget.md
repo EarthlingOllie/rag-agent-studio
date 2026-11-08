@@ -7,7 +7,7 @@
 **Blocked by:**
 - [06-05: Rate limits](05-rate-limits.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A daily counter per Agent per UTC date is incremented with actual usage
 - [ ] An exhausted budget makes the Agent unavailable, shows an alert badge and sends one deduplicated email to Owners
