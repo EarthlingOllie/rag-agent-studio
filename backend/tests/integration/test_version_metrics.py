@@ -422,6 +422,7 @@ async def test_a_version_with_no_visitor_use_has_empty_kpis(
         },
         "rating": {"n": 0, "mean": None, "low_confidence": True},
         "fallback": {"count": 0, "rate": None},
+        "guardrail_blocks": {"count": 0, "rate": None},
         "latency": {"n": 0, "first_token_p95_ms": None, "total_p95_ms": None},
     }
 

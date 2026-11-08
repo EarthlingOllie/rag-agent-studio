@@ -47,6 +47,12 @@ function previewText(conversation: ConversationSummary): string {
   return conversation.message_count === 0 ? "(nothing asked yet)" : "(text purged)";
 }
 
+/** How many of a Conversation's replies have a Guardrail outcome, such as "2 events", or "None". */
+function guardrailText({ guardrail_events: events }: ConversationSummary): string {
+  if (events === 0) return "None";
+  return `${String(events)} ${events === 1 ? "event" : "events"}`;
+}
+
 const versionsText = (conversation: ConversationSummary) =>
   conversation.version_numbers.length === 0 ? "Draft" : conversation.version_numbers.map((n) => `v${String(n)}`).join(", ");
 
@@ -209,6 +215,25 @@ function Filters({
           <option value="none">Not rated</option>
         </select>
       </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Guardrail
+        <select
+          className={INPUT}
+          value={filters.guardrail ?? ""}
+          onChange={(event) => {
+            set({ guardrail: event.currentTarget.value });
+          }}
+        >
+          <option value="">Any or none</option>
+          <option value="blocked">Blocked</option>
+          <option value="flagged">Flagged</option>
+          <option value="logged">Logged</option>
+          <option value="replaced">Replaced (Canary token)</option>
+          <option value="allowed">Allowed unchecked</option>
+          <option value="any">With a Guardrail event</option>
+          <option value="none">Without</option>
+        </select>
+      </label>
     </fieldset>
   );
 }
@@ -237,6 +262,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
             <th scope="col" className="py-2 pr-4 font-medium">Messages</th>
             <th scope="col" className="py-2 pr-4 font-medium">Feedback</th>
             <th scope="col" className="py-2 pr-4 font-medium">Rating</th>
+            <th scope="col" className="py-2 pr-4 font-medium">Guardrail</th>
             <th scope="col" className="py-2 font-medium">First question</th>
           </tr>
         </thead>
@@ -252,6 +278,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
               <td className="py-2 pr-4">{conversation.message_count}</td>
               <td className="whitespace-nowrap py-2 pr-4">{thumbsText(conversation)}</td>
               <td className="whitespace-nowrap py-2 pr-4">{ratingText(conversation.rating)}</td>
+              <td className="whitespace-nowrap py-2 pr-4">{guardrailText(conversation)}</td>
               <td className="py-2">
                 <Link
                   to="/organisations/$organisationId/projects/$projectId/conversations/$conversationId"

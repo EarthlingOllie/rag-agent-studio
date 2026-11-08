@@ -137,6 +137,7 @@ export const hrHelper: Agent = {
   live_version: null,
   has_unpublished_changes: false,
   budget_exhausted: false,
+  block_rate_alert: false,
 };
 
 type AgentVersion = Schemas["AgentVersionOut"];

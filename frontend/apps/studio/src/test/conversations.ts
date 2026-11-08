@@ -29,6 +29,7 @@ export const visitorConversation: Summary = {
   thumbs_down: 1,
   rating: 4,
   deleted_at: null,
+  guardrail_events: 2,
 };
 
 /** An Editor trying HR helper's Draft in the Playground. */
@@ -46,6 +47,7 @@ export const playgroundConversation: Summary = {
   thumbs_down: 0,
   rating: null,
   deleted_at: null,
+  guardrail_events: 0,
 };
 
 const unanswered = {
@@ -157,7 +159,7 @@ export const visitorTrace: Trace = {
 
 /**
  * Serves the Conversations viewer's routes from these Conversations. The list keeps those of the
- * Agent asked for and the Playground, feedback and rating filters, like the API; other filters are only
+ * Agent asked for and the Playground, feedback, rating and Guardrail filters, like the API; other filters are only
  * recorded. Every
  * list query is recorded, as are Trace reads.
  */
@@ -190,6 +192,12 @@ export function fakeConversationsApi(
       const playground = query.get("playground");
       const feedback = query.get("feedback");
       const rating = query.get("rating");
+      const guardrail = query.get("guardrail");
+      // Only how many replies have a Guardrail outcome is known here: an action keeps those with any.
+      const guarded = ({ guardrail_events: events }: Summary) => {
+        if (guardrail === null) return true;
+        return guardrail === "none" ? events === 0 : events > 0;
+      };
       const rated = ({ rating: score }: Summary) => {
         if (rating === null) return true;
         if (rating === "any") return score !== null;
@@ -208,7 +216,8 @@ export function fakeConversationsApi(
           (agentId === null || conversation.agent_id === agentId) &&
           (playground === null || String(conversation.is_playground) === playground) &&
           given(conversation) &&
-          rated(conversation),
+          rated(conversation) &&
+          guarded(conversation),
       );
       return HttpResponse.json({
         items,

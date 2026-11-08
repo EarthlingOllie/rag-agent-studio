@@ -1,6 +1,7 @@
 """Guardrail outcomes: what each Guardrail layer decided about one answer, saved on the Message
 and shown in its Trace."""
 
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -29,3 +30,9 @@ class GuardrailOutcome:
 
     def as_dict(self) -> dict[str, str | float | None]:
         return asdict(self)
+
+
+def blocked(outcomes: Sequence[Mapping[str, object]]) -> bool:
+    """Whether a saved answer's Guardrail outcomes say the input Guardrail blocked its
+    question."""
+    return any((o["layer"], o["action"]) == ("input", "blocked") for o in outcomes)

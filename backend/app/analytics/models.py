@@ -9,7 +9,16 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,6 +59,8 @@ class UsageDaily(IdMixin, Base):
     rating_count: Mapped[int] = mapped_column(Integer)
     # Fallback replies.
     fallback_count: Mapped[int] = mapped_column(Integer)
+    # Replies that were the refusal text because the input Guardrail blocked the question.
+    guardrail_blocks: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # Histograms of milliseconds to the first token, and to the whole reply.
     first_token_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)
     latency_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)

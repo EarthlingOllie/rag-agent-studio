@@ -1,0 +1,122 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0806-e2e -f docker-compose.yml -f docs/tickets/08-guardrails-evaluation/08-06-evidence/compose.sandbox.yml' @ 4db4513 (clean tree: 0 changes) (CI settings: one retry)
+[... first lines cut: the last 120 lines of the run follow ...]
+
+    Locator: getByRole('heading', { name: 'Projects' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('heading', { name: 'Projects' }) with timeout 5000ms
+      - waiting for getByRole('heading', { name: 'Projects' })
+
+
+      51 |     await page.getByRole("button", { name: "Sign in" }).click();
+      52 |
+    > 53 |     await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+         |                                                                   ^
+      54 |     await expect(page.getByText(member.organisationName)).toBeVisible();
+      55 |   });
+      56 |
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/e2e/tests/auth.spec.ts:53:67
+
+    Error Context: test-results/tests-auth-sign-up-sign-in-23e99-k-in-after-a-wrong-password-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-auth-sign-up-sign-in-23e99-k-in-after-a-wrong-password-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-auth-sign-up-sign-in-23e99-k-in-after-a-wrong-password-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations 
+
+    Test timeout of 30000ms exceeded.
+
+    Error Context: test-results/tests-auth-accessibility-s-5b6c1-s-no-WCAG-2-2-AA-violations-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-auth-accessibility-s-5b6c1-s-no-WCAG-2-2-AA-violations-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-auth-accessibility-s-5b6c1-s-no-WCAG-2-2-AA-violations-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: frame.evaluate: Test timeout of 30000ms exceeded.
+
+      76 |     await signedInPage.goto("/");
+      77 |     await expect(signedInPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+    > 78 |     const results = await makeAxeBuilder().analyze();
+         |                     ^
+      79 |     expect(results.violations).toEqual([]);
+      80 |   });
+      81 | });
+        at AxeBuilder.runPartialRecursive (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:282:39)
+        at AxeBuilder.analyze (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:211:39)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/e2e/tests/auth.spec.ts:78:21
+
+    Error Context: test-results/tests-auth-accessibility-t-ea049-s-no-WCAG-2-2-AA-violations-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-auth-accessibility-t-ea049-s-no-WCAG-2-2-AA-violations-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-auth-accessibility-t-ea049-s-no-WCAG-2-2-AA-violations-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating 
+
+    Error: page.evaluate: Target crashed 
+     Please check out https://github.com/dequelabs/axe-core-npm/blob/develop/packages/playwright/error-handling.md
+
+      112 |     await filters.getByLabel("Rating").selectOption("4 of 5");
+      113 |     await expect(loved).toHaveCount(1);
+    > 114 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+          |             ^
+      115 |
+      116 |     await loved.getByRole("link", { name: "How many days of annual leave do I get?" }).click();
+      117 |     const rating = page.getByRole("region", { name: "Conversation Rating" });
+        at AxeBuilder.analyze (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:219:13)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/e2e/tests/conversation-rating.spec.ts:114:13
+    [cause]: Error: page.evaluate: Target crashed 
+        at AxeBuilder.axeConfigure (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:340:43)
+        at AxeBuilder.finishRun (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:321:41)
+        at AxeBuilder.analyze (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:217:14)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/ev0806-clone/frontend/e2e/tests/conversation-rating.spec.ts:114:13
+
+    Error Context: test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6 failed
+    [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save 
+    [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log 
+    [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log 
+    [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys 
+    [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions 
+    [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown 
+  7 flaky
+    [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override 
+    [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab 
+    [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out 
+    [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password 
+    [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations 
+    [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations 
+    [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating 
+  76 passed (16.1m)
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:125: e2e] Error 1
+exit 2

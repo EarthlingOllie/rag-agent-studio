@@ -55,6 +55,9 @@ class ConversationSummaryOut(BaseModel):
     rating: int | None
     # When an Owner deleted it on request (its text is purged); null otherwise.
     deleted_at: datetime | None
+    # How many of its replies have a Guardrail outcome (blocked, flagged, logged, replaced or
+    # allowed).
+    guardrail_events: int
 
 
 class ConversationPageOut(BaseModel):
@@ -101,6 +104,16 @@ async def list_conversations(
             )
         ),
     ] = None,
+    guardrail: Annotated[
+        service.GuardrailFilter | None,
+        Query(
+            description=(
+                "Only those with a reply whose Guardrail outcome took this action (`blocked`, "
+                "`flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome "
+                "(`any`), or with none (`none`)"
+            )
+        ),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
@@ -113,6 +126,7 @@ async def list_conversations(
         playground=playground,
         feedback=feedback,
         rating=rating,
+        guardrail=guardrail,
     )
     try:
         result = await service.list_conversations(
@@ -136,6 +150,7 @@ async def list_conversations(
                 thumbs_down=row.thumbs_down,
                 rating=row.rating,
                 deleted_at=row.conversation.deleted_at,
+                guardrail_events=row.guardrail_events,
             )
             for row in result.rows
         ],

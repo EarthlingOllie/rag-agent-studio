@@ -4,7 +4,8 @@ Each run recomputes the current UTC day (its rollup is partial until the day is 
 finalises every day before it that isn't final yet, for each Organisation: normally just the
 previous day, but days a stopped Beat missed are caught up too. A final day is never recomputed
 by later runs. Every day's rollup is recomputed from the raw tables in full and replaces what
-was there, so running twice gives the same rollups (idempotent)."""
+was there, so running twice gives the same rollups (idempotent). After the rollup, each Agent's
+block rate is checked for a spike (``app.analytics.alerts``)."""
 
 import uuid
 from datetime import UTC, date, datetime, timedelta
@@ -13,9 +14,11 @@ from sqlalchemy import delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.analytics.alerts import check_block_rates
 from app.analytics.models import UsageDaily, UsageRollupState
 from app.analytics.usage import Only, day_bounds, usage_on
 from app.conversations.models import Conversation, Message, MessageRole
+from app.mail.port import Mailer
 
 # Serialises concurrent runs (an hourly run overlapping a slow one, or a manual run).
 _LOCK_KEY = 707_04
@@ -62,9 +65,16 @@ async def pending_days(session: AsyncSession, today: date) -> dict[uuid.UUID, da
     return {organisation_id: first.date() for organisation_id, first in rows}
 
 
-async def roll_up(sessionmaker: async_sessionmaker[AsyncSession], at: datetime) -> None:
+async def roll_up(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    at: datetime,
+    *,
+    mailer: Mailer,
+    studio_url: str,
+) -> None:
     """Rolls usage up as of ``at``: finalises the days before its UTC day that aren't final,
-    then recomputes its day."""
+    then recomputes its day. Then checks every Agent's block rate for a spike (the Block rate
+    alert), emailing Owners through ``mailer``."""
     today = at.astimezone(UTC).date()
     yesterday = today - timedelta(days=1)
     async with sessionmaker() as session, session.begin():
@@ -86,3 +96,5 @@ async def roll_up(sessionmaker: async_sessionmaker[AsyncSession], at: datetime) 
                 )
             )
         await _recompute(session, today)
+    async with sessionmaker() as session:
+        await check_block_rates(session, at, mailer=mailer, studio_url=studio_url)

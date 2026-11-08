@@ -79,6 +79,43 @@ def agent_link(studio_url: str, organisation_id: str, project_id: str, agent_id:
     )
 
 
+def blocked_conversations_link(
+    studio_url: str, organisation_id: str, project_id: str, agent_id: str
+) -> str:
+    """The Conversations viewer, filtered to the Agent's Conversations with a blocked message."""
+    return (
+        f"{studio_url.rstrip('/')}/organisations/{organisation_id}/projects/{project_id}"
+        f"/conversations?agent={agent_id}&guardrail=blocked"
+    )
+
+
+def block_rate_spike(
+    *,
+    to: str,
+    name: str,
+    agent_name: str,
+    blocks: int,
+    replies: int,
+    rate: str,
+    baseline_rate: str,
+    link: str,
+) -> Email:
+    return Email(
+        to=to,
+        subject=f"{agent_name} is blocking an unusual share of messages",
+        text=(
+            f"Hello {name},\n\n"
+            f"The input Guardrail of the Agent {agent_name} blocked {blocks} of the last "
+            f"hour's {replies} Visitor messages ({rate}), against {baseline_rate} over the "
+            "week before. Someone may be attacking it.\n\n"
+            "Review the blocked Conversations in the Studio:\n\n"
+            f"{link}\n\n"
+            'The Agent shows a "Block rate spike" badge until an hour\'s block rate is back '
+            "to normal. You get this email once per spike.\n"
+        ),
+    )
+
+
 def token_budget_exhausted(*, to: str, name: str, agent_name: str, budget: int, link: str) -> Email:
     return Email(
         to=to,

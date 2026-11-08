@@ -2354,6 +2354,8 @@ export interface components {
         AgentOut: {
             /** Archived At */
             archived_at: string | null;
+            /** Block Rate Alert */
+            block_rate_alert: boolean;
             /** Budget Exhausted */
             budget_exhausted: boolean;
             /**
@@ -2900,6 +2902,8 @@ export interface components {
             created_at: string;
             /** Deleted At */
             deleted_at: string | null;
+            /** Guardrail Events */
+            guardrail_events: number;
             /**
              * Id
              * Format: uuid
@@ -3439,6 +3443,21 @@ export interface components {
             category: components["schemas"]["FontCategory"];
             family: components["schemas"]["Font"];
         };
+        /** GuardrailBlocksOut */
+        GuardrailBlocksOut: {
+            /** Count */
+            count: number;
+            /** Rate */
+            rate: number | null;
+        };
+        /**
+         * GuardrailFilter
+         * @description Which Conversations to keep by their replies' Guardrail outcomes: with a reply whose
+         *     Guardrail took this action (blocked, flagged, logged, replaced or allowed), with any
+         *     Guardrail outcome, or with none.
+         * @enum {string}
+         */
+        GuardrailFilter: "blocked" | "flagged" | "logged" | "replaced" | "allowed" | "any" | "none";
         /**
          * GuardrailFlagOut
          * @description Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.
@@ -4937,6 +4956,7 @@ export interface components {
             conversations: number;
             cost: components["schemas"]["CostOut"];
             fallback: components["schemas"]["FallbackOut"];
+            guardrail_blocks: components["schemas"]["GuardrailBlocksOut"];
             /** Is Live */
             is_live: boolean;
             latency: components["schemas"]["LatencyOut"];
@@ -9219,6 +9239,8 @@ export interface operations {
                 feedback?: components["schemas"]["FeedbackFilter"] | null;
                 /** @description Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`) */
                 rating?: components["schemas"]["RatingFilter"] | null;
+                /** @description Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`) */
+                guardrail?: components["schemas"]["GuardrailFilter"] | null;
                 page?: number;
                 page_size?: number;
             };

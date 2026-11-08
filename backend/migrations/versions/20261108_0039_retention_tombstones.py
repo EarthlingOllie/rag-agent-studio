@@ -4,8 +4,8 @@ on request (``conversations.deleted_at``), and each Message retrieval's Document
 (``message_retrievals.document_name``, the tombstone), with its Chunk and Document IDs nullable
 so they can be cleared when the Document is deleted.
 
-Revision ID: 0038_retention_tombstones
-Revises: 0037_usage_daily
+Revision ID: 0039_retention_tombstones
+Revises: 0038_guardrail_analytics
 Create Date: 2026-11-08
 """
 
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0038_retention_tombstones"
-down_revision: str | None = "0037_usage_daily"
+revision: str = "0039_retention_tombstones"
+down_revision: str | None = "0038_guardrail_analytics"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
