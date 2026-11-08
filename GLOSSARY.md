@@ -105,7 +105,7 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ and the Low-budget helper), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ and the Low-budget helper), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:

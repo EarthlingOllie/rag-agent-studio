@@ -94,7 +94,34 @@ output "migration_execution_role_policy" {
   value       = local.migration_execution_role_policy
 }
 
+output "seed_task" {
+  description = "How the seed workflow runs the one-off seed task (ticket 10-05): task definition, container, private subnets, security group, and the log group and stream prefix it prints the output from."
+  value = {
+    task_definition_arn = aws_ecs_task_definition.seed.arn
+    container_name      = "seed"
+    subnet_ids          = var.private_subnet_ids
+    security_group_id   = aws_security_group.seed.id
+    log_group_name      = aws_cloudwatch_log_group.seed.name
+    log_stream_prefix   = "seed"
+  }
+}
+
+output "seed_security_group_id" {
+  description = "Security group of the seed task: the database and the cache admit it."
+  value       = aws_security_group.seed.id
+}
+
+output "seed_task_role_policy" {
+  description = "Policy document of the seed task role."
+  value       = local.seed_task_role_policy
+}
+
+output "seed_execution_role_policy" {
+  description = "Policy document of the seed task's execution role."
+  value       = local.seed_execution_role_policy
+}
+
 output "task_environment" {
-  description = "Plain environment variables of each container (api, worker, beat, migrate), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
-  value       = merge(local.environment, { migrate = local.migrate_environment })
+  description = "Plain environment variables of each container (api, worker, beat, migrate, seed), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
+  value       = merge(local.environment, { migrate = local.migrate_environment, seed = local.seed_environment })
 }
