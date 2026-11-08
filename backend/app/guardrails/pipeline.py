@@ -20,7 +20,7 @@ went unchecked. In warn and log mode the LLM classifier isn't called yet (see AD
 
 import asyncio
 import dataclasses
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
 
 from pydantic_ai.models import Model
@@ -48,12 +48,6 @@ class RefusalEvent:
 
 
 GuardedEvent = TurnEvent | RefusalEvent
-
-
-def blocked(outcomes: Sequence[Mapping[str, object]]) -> bool:
-    """Whether a saved answer's Guardrail outcomes say the input Guardrail blocked its
-    question."""
-    return any((o["layer"], o["action"]) == ("input", "blocked") for o in outcomes)
 
 
 _WHY: dict[str, str] = {

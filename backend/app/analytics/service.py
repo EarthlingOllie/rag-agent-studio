@@ -63,6 +63,13 @@ class VersionKpis:
         return usage.fallback_count / usage.messages if usage.messages else None
 
     @property
+    def block_rate(self) -> float | None:
+        """The share of replies that were the refusal text: the input Guardrail blocked the
+        question."""
+        usage = self.usage
+        return usage.guardrail_blocks / usage.messages if usage.messages else None
+
+    @property
     def cost_total(self) -> Decimal:
         return self.usage.cost_usd.quantize(DOLLARS)
 

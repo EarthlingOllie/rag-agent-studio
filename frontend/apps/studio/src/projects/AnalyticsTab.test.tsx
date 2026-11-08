@@ -49,6 +49,7 @@ test("an Editor sees the Live Version's KPI cards, with the interval and sample 
   );
   expect(card("Mean rating")).toBe("Mean rating3.5 of 5n = 2 ratingsLow confidence (fewer than 30 ratings)");
   expect(card("Fallback rate")).toBe("Fallback rate25%1 of 4 replies were the fallback text");
+  expect(card("Guardrail block rate")).toBe("Guardrail block rate50%2 of 4 replies were blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latency1.5 sFirst token 320 msn = 4 replies");
   // Every Version is fetched at once, for the last 30 days.
   expect(queries.map(({ agentId, query }) => [agentId, query.toString()])).toEqual([[hrHelper.id, ""]]);
@@ -69,6 +70,8 @@ test("a Version with enough evidence has no low-confidence marks", async () => {
   expect(card("Cost per Conversation")).toBe("Cost per Conversation$1.25$150.00 in total, at the prices of the time");
   expect(card("Mean rating")).toBe("Mean rating4.3 of 5n = 40 ratings");
   expect(card("Fallback rate")).toBe("Fallback rate0%0 of 400 replies were the fallback text");
+  // Under one percent shows a decimal, so a small block rate doesn't read as none.
+  expect(card("Guardrail block rate")).toBe("Guardrail block rate0.8%3 of 400 replies were blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latency2.4 sFirst token 950 msn = 400 replies");
 });
 
@@ -83,6 +86,7 @@ test("a Version with no Visitor use yet says so on every card", async () => {
   expect(card("Thumbs-up rate")).toBe("Thumbs-up rateNo votes yetn = 0 votes (0 up, 0 down)Low confidence (fewer than 30 votes)");
   expect(card("Mean rating")).toBe("Mean ratingNo ratings yetn = 0 ratingsLow confidence (fewer than 30 ratings)");
   expect(card("Fallback rate")).toBe("Fallback rateNo replies yet0 of 0 replies were the fallback text");
+  expect(card("Guardrail block rate")).toBe("Guardrail block rateNo replies yet0 of 0 replies were blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latencyNo replies yetn = 0 replies");
 });
 
@@ -95,6 +99,7 @@ test("one of each is counted in the singular", async () => {
     thumbs_up: { up: 1, down: 0, n: 1, rate: 1, low: 0.2065493, high: 1, low_confidence: true },
     rating: { n: 1, mean: 5, low_confidence: true },
     fallback: { count: 0, rate: 0 },
+    guardrail_blocks: { count: 1, rate: 1 },
     latency: { n: 1, first_token_p95_ms: 0.4, total_p95_ms: 999 },
   });
   setUp({ versions: { [hrHelper.id]: [one] } });
@@ -107,6 +112,7 @@ test("one of each is counted in the singular", async () => {
   expect(card("Cost per Conversation")).toBe("Cost per Conversation$0.00$0.00 in total, at the prices of the time");
   expect(card("Thumbs-up rate")).toBe("Thumbs-up rate100%95% interval 21% to 100%n = 1 vote (1 up, 0 down)Low confidence (fewer than 30 votes)");
   expect(card("Mean rating")).toBe("Mean rating5.0 of 5n = 1 ratingLow confidence (fewer than 30 ratings)");
+  expect(card("Guardrail block rate")).toBe("Guardrail block rate100%1 of 1 reply was blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latency999 msFirst token 0 msn = 1 reply");
 });
 

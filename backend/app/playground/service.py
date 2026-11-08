@@ -47,7 +47,8 @@ from app.default_model.service import read_default
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
-from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent, blocked
+from app.guardrails.outcomes import blocked
+from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
 from app.projects.instructions import project_version

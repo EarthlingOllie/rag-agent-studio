@@ -109,6 +109,10 @@
             ],
             "title": "Archived At"
           },
+          "block_rate_alert": {
+            "title": "Block Rate Alert",
+            "type": "boolean"
+          },
           "budget_exhausted": {
             "title": "Budget Exhausted",
             "type": "boolean"
@@ -175,7 +179,8 @@
           "draft_revision",
           "live_version",
           "has_unpublished_changes",
-          "budget_exhausted"
+          "budget_exhausted",
+          "block_rate_alert"
         ],
         "title": "AgentOut",
         "type": "object"
@@ -1572,6 +1577,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "guardrail_events": {
+            "title": "Guardrail Events",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1640,7 +1649,8 @@
           "version_numbers",
           "thumbs_up",
           "thumbs_down",
-          "rating"
+          "rating",
+          "guardrail_events"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -3018,6 +3028,45 @@
         ],
         "title": "FontOut",
         "type": "object"
+      },
+      "GuardrailBlocksOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "count",
+          "rate"
+        ],
+        "title": "GuardrailBlocksOut",
+        "type": "object"
+      },
+      "GuardrailFilter": {
+        "description": "Which Conversations to keep by their replies' Guardrail outcomes: with a reply whose\nGuardrail took this action (blocked, flagged, logged, replaced or allowed), with any\nGuardrail outcome, or with none.",
+        "enum": [
+          "blocked",
+          "flagged",
+          "logged",
+          "replaced",
+          "allowed",
+          "any",
+          "none"
+        ],
+        "title": "GuardrailFilter",
+        "type": "string"
       },
       "GuardrailFlagOut": {
         "description": "Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.",
@@ -6874,6 +6923,9 @@
           "fallback": {
             "$ref": "#/components/schemas/FallbackOut"
           },
+          "guardrail_blocks": {
+            "$ref": "#/components/schemas/GuardrailBlocksOut"
+          },
           "is_live": {
             "title": "Is Live",
             "type": "boolean"
@@ -6920,6 +6972,7 @@
           "thumbs_up",
           "rating",
           "fallback",
+          "guardrail_blocks",
           "latency"
         ],
         "title": "VersionKpisOut",
@@ -13586,6 +13639,24 @@
               ],
               "description": "Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`)",
               "title": "Rating"
+            }
+          },
+          {
+            "description": "Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`)",
+            "in": "query",
+            "name": "guardrail",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GuardrailFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`)",
+              "title": "Guardrail"
             }
           },
           {
