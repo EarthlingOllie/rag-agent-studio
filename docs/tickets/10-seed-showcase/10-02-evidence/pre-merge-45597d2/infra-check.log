@@ -1,0 +1,458 @@
+$ TF_CLI_CONFIG_FILE=<scratch filesystem mirror of hashicorp/aws> make infra-check @ 45597d2 (ticket/10-02-seeded-history, clean tree: 0 changes)
+terraform fmt -check -recursive -diff infra
+infra/tests/backend.test.sh
+ok   demo: S3 backend with native locking
+infra/tests/compose.test.sh
+ok   envs/demo composes cache
+ok   envs/demo composes cdn
+ok   infra/bootstrap composes ci-oidc
+ok   envs/demo composes database
+ok   envs/demo composes ecr
+ok   envs/demo composes ecs
+ok   envs/demo composes kms
+ok   envs/demo composes network
+ok   envs/demo composes storage
+scripts/deploy/tests/smoke.test.sh
+ok   passes_when_health_studio_and_the_widget_shell_respond
+ok   passes_against_a_live_agent_whose_shell_names_its_allowed_origins
+ok   fails_when_the_health_endpoint_reports_an_error
+ok   fails_when_health_answers_200_without_status_ok
+ok   fails_when_the_studio_is_not_served
+ok   fails_when_the_studio_page_is_not_the_studio
+ok   fails_when_the_studio_is_not_html
+ok   fails_when_the_widget_shell_has_no_csp
+ok   fails_when_the_widget_shell_csp_has_no_frame_ancestors
+ok   fails_when_the_widget_shell_errors
+ok   retries_each_check_before_failing
+ok   retries_the_health_check_3_times
+ok   passes_once_a_failing_check_recovers
+ok   fails_when_the_site_is_unreachable
+ok   rejects_bad_arguments ''
+ok   rejects_bad_arguments 'ftp://example.com'
+ok   rejects_bad_arguments 'https://d111111abcdef8.cloudfront.net/studio'
+scripts/deploy/tests/deploy.test.sh
+ok   deploys_in_order_at_the_given_tag
+ok   runs_the_migration_task_in_the_private_subnets
+ok   rolls_each_service_onto_its_new_task_definition
+ok   uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader
+ok   prints_the_cloudfront_url_in_the_job_summary
+ok   pushes_locally_built_images_when_the_tag_is_not_in_ecr
+ok   refuses_to_push_images_that_are_not_arm64
+ok   fails_when_the_tag_is_neither_in_ecr_nor_built
+ok   a_failed_migration_stops_before_any_service_rolls
+ok   a_migration_that_never_ran_stops_the_deploy
+ok   a_migration_task_that_cannot_start_stops_the_deploy
+ok   services_that_do_not_stabilise_fail_before_uploading
+ok   a_failed_apply_stops_the_deploy
+ok   a_failed_smoke_check_fails_the_deploy
+ok   smoke_checks_a_live_agent_when_given
+ok   rejects_the_tag_''
+ok   rejects_the_tag_'latest'
+ok   rejects_the_tag_'has space'
+ok   rejects_the_tag_'../etc'
+ok   rejects_the_tag_'aaaaaaaaaaaaaaaaaaaa'
+ok   requires_the_state_bucket
+ok   requires_the_frontend_builds
+ok   requires_the_demo_pages
+scripts/deploy/tests/destroy.test.sh
+ok   destroys_the_demo_when_the_confirmation_is_typed_exactly
+ok   refuses_without_a_confirmation
+ok   refuses_a_confirmation_that_is_nearly_right
+ok   refuses_a_confirmation_with_extra_text
+ok   refuses_the_environment_name_alone
+ok   requires_the_state_bucket
+ok   a_failed_destroy_fails_the_run
+ok   rejects_missing_arguments
+node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+	infra/modules/cdn/functions/spa-fallback.test.mjs
+TAP version 13
+# Subtest: a deep link to a Studio route loads the Studio's index.html
+ok 1 - a deep link to a Studio route loads the Studio's index.html
+  ---
+  duration_ms: 1.468344
+  type: 'test'
+  ...
+# Subtest: the root loads index.html
+ok 2 - the root loads index.html
+  ---
+  duration_ms: 0.232986
+  type: 'test'
+  ...
+# Subtest: a route with a trailing slash loads index.html
+ok 3 - a route with a trailing slash loads index.html
+  ---
+  duration_ms: 0.135911
+  type: 'test'
+  ...
+# Subtest: a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
+ok 4 - a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
+  ---
+  duration_ms: 0.142856
+  type: 'test'
+  ...
+# Subtest: the demo pages' folder loads the demo shop, not the Studio (ticket 10-03)
+ok 5 - the demo pages' folder loads the demo shop, not the Studio (ticket 10-03)
+  ---
+  duration_ms: 0.135387
+  type: 'test'
+  ...
+# Subtest: /demo redirects to /demo/, so the pages' relative links stay in the folder
+ok 6 - /demo redirects to /demo/, so the pages' relative links stay in the folder
+  ---
+  duration_ms: 1.244744
+  type: 'test'
+  ...
+# Subtest: a demo page is a file and passes through
+ok 7 - a demo page is a file and passes through
+  ---
+  duration_ms: 0.243687
+  type: 'test'
+  ...
+# Subtest: a dot in an earlier path segment does not make a route a file
+ok 8 - a dot in an earlier path segment does not make a route a file
+  ---
+  duration_ms: 0.174813
+  type: 'test'
+  ...
+# Subtest: the rest of the request (method, query string, headers, cookies) is untouched
+ok 9 - the rest of the request (method, query string, headers, cookies) is untouched
+  ---
+  duration_ms: 0.339706
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 249.05695
+# start of coverage report
+# --------------------------------------------------------------------------
+# file                      | line % | branch % | funcs % | uncovered lines
+# --------------------------------------------------------------------------
+# infra                     |        |          |         | 
+#  modules                  |        |          |         | 
+#   cdn                     |        |          |         | 
+#    functions              |        |          |         | 
+#     spa-fallback.js       | 100.00 |   100.00 |  100.00 | 
+#     spa-fallback.test.mjs | 100.00 |   100.00 |  100.00 | 
+# --------------------------------------------------------------------------
+# all files                 | 100.00 |   100.00 |  100.00 | 
+# --------------------------------------------------------------------------
+# end of coverage report
+scripts/ci/tests/plan-gate.test.sh
+ok   runs_when_the_secret_is_set_and_infra_changed
+ok   runs_when_the_infra_workflow_changed
+ok   skips_without_the_secret
+ok   skips_when_no_infrastructure_changed
+ok   fails_when_the_state_bucket_is_missing
+ok   fails_when_the_base_commit_is_unknown
+ok   rejects_missing_arguments
+== infra/bootstrap/
+Success! The configuration is valid.
+
+tests/bootstrap.tftest.hcl... in progress
+  run "names_the_state_bucket_after_the_account"... pass
+  run "versions_the_state_bucket"... pass
+  run "encrypts_the_state_bucket_with_a_rotating_key"... pass
+  run "keeps_the_state_bucket_private_and_tls_only"... pass
+  run "outputs_a_native_locking_backend_configuration"... pass
+  run "lets_only_this_repository_assume_the_deploy_role"... pass
+  run "lets_the_deploy_role_use_the_state_and_manage_prefixed_iam_only"... pass
+  run "rejects_a_name_prefix_that_would_let_the_role_manage_itself"... pass
+tests/bootstrap.tftest.hcl... tearing down
+tests/bootstrap.tftest.hcl... pass
+
+Success! 8 passed, 0 failed.
+== infra/envs/demo/
+Success! The configuration is valid.
+
+tests/demo.tftest.hcl... in progress
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "wires_the_data_modules_into_the_environment"... pass
+  run "wires_the_compute_module_into_the_data_modules"... pass
+  run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb"... pass
+  run "outputs_everything_the_deploy_workflow_needs"... pass
+  run "a_domain_name_adds_acm_and_route53_to_the_demo"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/demo.tftest.hcl... tearing down
+tests/demo.tftest.hcl... pass
+
+Success! 7 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "encrypts_in_transit_and_at_rest_with_auth_on"... pass
+  run "keeps_the_auth_token_out_of_state_and_in_secrets_manager"... pass
+  run "auth_token_version_bumps_both_writes"... pass
+  run "is_private_and_admits_only_listed_clients"... pass
+  run "admits_no_one_without_clients"... pass
+  run "demo_runs_one_cheap_node_with_snapshots"... pass
+  run "replicas_turn_on_failover"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_redis_6"... pass
+  run "rejects_a_non_elasticache_node_type"... pass
+  run "rejects_negative_replicas"... pass
+  run "rejects_more_than_five_replicas"... pass
+  run "rejects_turning_snapshots_off"... pass
+  run "rejects_snapshot_retention_over_35_days"... pass
+  run "rejects_a_single_subnet"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_a_zero_auth_token_version"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 19 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "serves_the_studio_from_the_static_bucket_through_origin_access_control"... pass
+  run "serves_embed_js_and_widget_assets_from_the_static_bucket_cached"... pass
+  run "a_function_gives_the_studio_spa_fallback_routing"... pass
+  run "caches_static_paths"... pass
+  run "gives_each_path_its_own_behaviour"... pass
+  run "routes_the_api_and_widget_shell_to_the_alb_uncached"... pass
+  run "never_caches_dynamic_paths"... pass
+  run "forwards_viewer_headers_cookies_and_query_strings_to_the_api"... pass
+  run "the_alb_origin_carries_the_secret_header_and_a_long_read_timeout"... pass
+  run "the_read_timeout_is_configurable"... pass
+  run "rejects_a_read_timeout_cloudfront_does_not_allow"... pass
+  run "rejects_a_short_read_timeout"... pass
+  run "rejects_an_origin_that_is_not_an_alb"... pass
+  run "rejects_a_short_origin_secret"... pass
+  run "rejects_an_invalid_header_name"... pass
+  run "adds_security_headers_without_overriding_the_api"... pass
+  run "without_a_domain_there_is_no_certificate_or_dns"... pass
+  run "a_domain_adds_an_acm_certificate_in_us_east_1"... pass
+  run "a_domain_adds_route53_alias_records"... pass
+  run "a_subdomain_can_live_in_its_parent_zone"... pass
+  run "rejects_a_domain_that_is_not_a_hostname"... pass
+  run "rejects_a_hosted_zone_without_a_domain"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 25 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "creates_the_github_oidc_provider"... pass
+  run "trusts_only_this_repository"... pass
+  run "narrows_trust_to_chosen_subjects"... pass
+  run "reuses_an_existing_oidc_provider"... pass
+  run "attaches_the_chosen_managed_policies"... pass
+  run "attaches_no_inline_policy_by_default"... pass
+  run "attaches_the_inline_policy"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_a_wildcard_repository"... pass
+  run "rejects_a_wildcard_subject"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 11 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "runs_postgres_16_encrypted_private_with_backups"... pass
+  run "requires_tls_and_admits_only_listed_clients"... pass
+  run "admits_no_one_without_clients"... pass
+  run "keeps_the_password_out_of_state_and_in_secrets_manager"... pass
+  run "password_version_bumps_both_writes"... pass
+  run "demo_defaults_are_cheap_and_destroyable"... pass
+  run "production_toggles_turn_on_protection"... pass
+  run "outputs_the_connection_details"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_postgres_15"... pass
+  run "rejects_turning_backups_off"... pass
+  run "rejects_backup_retention_over_35_days"... pass
+  run "rejects_a_single_subnet"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_a_non_rds_instance_class"... pass
+  run "rejects_storage_under_the_gp3_minimum"... pass
+  run "rejects_an_invalid_database_name"... pass
+  run "rejects_a_reserved_master_username"... pass
+  run "rejects_a_malformed_master_username"... pass
+  run "rejects_a_fractional_password_version"... pass
+  run "rejects_a_zero_password_version"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 23 passed, 0 failed.
+== infra/modules/ecr/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "scans_every_image_on_push"... pass
+  run "expires_untagged_and_old_images"... pass
+  run "lifecycle_limits_are_configurable"... pass
+  run "tags_are_immutable_and_images_encrypted_with_the_data_key"... pass
+  run "force_delete_lets_one_destroy_remove_everything"... pass
+  run "outputs_each_repository_url_and_arn"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_no_repositories"... pass
+  run "rejects_an_uppercase_repository_name"... pass
+  run "rejects_keeping_no_tagged_images"... pass
+  run "rejects_a_fractional_untagged_expiry"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 14 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "runs_api_worker_and_beat_on_arm64_fargate"... pass
+  run "task_sizes_and_counts_are_variables"... pass
+  run "each_service_runs_the_one_backend_image_with_its_own_command"... pass
+  run "each_service_has_its_own_least_privilege_task_role"... pass
+  run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_with_an_external_id"... pass
+  run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key"... pass
+  run "only_cloudfront_can_reach_the_alb"... pass
+  run "the_api_trusts_the_alb_and_cloudfront_as_forwarding_proxies"... pass
+  run "rejects_a_vpc_cidr_that_is_not_a_cidr"... pass
+  run "the_alb_forwards_only_requests_carrying_the_secret_header"... pass
+  run "origin_secret_version_rotates_the_header_value"... pass
+  run "the_header_name_is_configurable"... pass
+  run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values"... pass
+  run "session_secret_version_bumps_the_write"... pass
+  run "a_logfire_token_is_injected_into_every_service_when_given"... pass
+  run "no_logfire_token_without_a_secret"... pass
+  run "every_service_logs_to_its_own_log_group_with_retention"... pass
+  run "log_retention_is_configurable"... pass
+  run "containers_run_with_a_read_only_root_filesystem"... pass
+  run "each_service_has_its_own_least_privilege_execution_role"... pass
+  run "services_reach_only_their_data_stores_and_https"... pass
+  run "deployments_roll_back_and_beat_never_runs_twice"... pass
+  run "outputs_the_cluster_services_and_the_bedrock_trust_principal"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer"... pass
+  run "rejects_an_unknown_cpu_value"... pass
+  run "accepts_every_fargate_cpu_size"... pass
+  run "accepts_4_vcpu_tasks"... pass
+  run "rejects_a_missing_service_size"... pass
+  run "rejects_two_beats"... pass
+  run "rejects_a_negative_count"... pass
+  run "rejects_the_latest_tag"... pass
+  run "rejects_an_image_from_outside_ecr"... pass
+  run "rejects_a_repository_arn_that_is_not_ecr"... pass
+  run "rejects_keeping_logs_forever"... pass
+  run "rejects_a_logfire_secret_that_is_not_a_secret_arn"... pass
+  run "rejects_a_header_name_with_spaces"... pass
+  run "rejects_fractional_secret_versions"... pass
+  run "rejects_a_single_public_subnet"... pass
+  run "rejects_no_private_subnets"... pass
+  run "rejects_arns_of_the_wrong_kind"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "alb_deletion_protection_is_off_for_the_demo_and_can_be_turned_on"... pass
+  run "the_demo_alb_can_be_destroyed_in_one_run"... pass
+  run "migrations_run_as_a_one_off_task_on_the_backend_image"... pass
+  run "the_migration_task_has_least_privilege_roles_and_reaches_only_postgres_and_https"... pass
+  run "outputs_how_to_run_the_migration_task_and_each_service_task_definition"... pass
+  run "the_migration_task_size_is_a_variable"... pass
+  run "rejects_a_migration_task_size_fargate_does_not_offer"... pass
+  run "a_migration_logfire_token_is_injected_when_given"... pass
+  run "task_settings_match_the_recorded_contract"... pass
+  run "demo_pages_turn_on_the_apis_demo_routes_only"... pass
+  run "rejects_a_studio_url_that_is_not_an_https_origin"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 54 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "every_key_rotates_yearly"... pass
+  run "key_policy_trusts_only_this_account"... pass
+  run "outputs_name_each_key_from_the_prefix"... pass
+  run "outputs_each_key_arn"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rotation_period_is_configurable"... pass
+  run "rejects_a_rotation_period_aws_does_not_allow"... pass
+  run "rejects_a_rotation_period_over_the_aws_maximum"... pass
+  run "rejects_a_deletion_window_under_seven_days"... pass
+  run "rejects_a_deletion_window_over_thirty_days"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 12 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "spans_two_azs_with_public_and_private_subnets"... pass
+  run "private_subnets_have_no_public_ips"... pass
+  run "egresses_through_fck_nat_by_default"... pass
+  run "managed_nat_toggle_swaps_fck_nat_for_a_nat_gateway"... pass
+  run "rejects_an_unknown_nat_instance_type_family"... pass
+  run "vpc_endpoints_keep_aws_traffic_off_the_nat"... pass
+  run "endpoints_are_the_same_with_a_managed_nat"... pass
+  run "names_resources_from_the_prefix"... pass
+  run "every_fck_nat_mode_resource_carries_the_standard_tags"... pass
+  run "every_managed_nat_mode_resource_carries_the_standard_tags"... pass
+  run "locks_down_the_default_security_group"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+  run "rejects_an_invalid_vpc_cidr"... pass
+  run "rejects_anything_but_two_distinct_azs"... pass
+  run "rejects_a_single_az"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 16 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "both_buckets_are_private_and_encrypted"... pass
+  run "documents_cors_allows_only_the_cloudfront_origin"... pass
+  run "documents_allow_no_cross_origin_requests_until_the_origin_is_known"... pass
+  run "rejects_a_wildcard_cors_origin"... pass
+  run "rejects_a_plain_http_cors_origin"... pass
+  run "rejects_a_cors_origin_with_a_path"... pass
+  run "rejects_a_wildcard_subdomain_cors_origin"... pass
+  run "static_assets_are_readable_only_by_the_cloudfront_distribution"... pass
+  run "static_assets_are_readable_by_no_one_until_the_distribution_is_known"... pass
+  run "every_bucket_refuses_requests_without_tls"... pass
+  run "rejects_a_distribution_arn_that_is_not_cloudfront"... pass
+  run "abandoned_uploads_are_cleaned_up"... pass
+  run "outputs_what_the_ecs_and_cdn_modules_need"... pass
+  run "buckets_keep_their_objects_on_destroy_by_default"... pass
+  run "force_destroy_empties_buckets_on_destroy"... pass
+  run "every_resource_carries_the_standard_tags"... pass
+  run "rejects_a_key_that_is_not_a_kms_arn"... pass
+  run "rejects_tags_without_project_and_environment"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 19 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+terraform scan results:
+
+Passed checks: 288, Failed checks: 0, Skipped checks: 55
+
+
+exit 0

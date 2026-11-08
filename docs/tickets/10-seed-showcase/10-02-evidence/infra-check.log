@@ -1,4 +1,4 @@
-$ TF_CLI_CONFIG_FILE=<scratch filesystem mirror of hashicorp/aws> make infra-check @ 45597d2 (ticket/10-02-seeded-history, clean tree: 0 changes)
+$ TF_CLI_CONFIG_FILE=<scratch filesystem mirror of hashicorp/aws> make infra-check @ 3963442 (ticket/10-02-seeded-history, clean tree: 0 changes)
 terraform fmt -check -recursive -diff infra
 infra/tests/backend.test.sh
 ok   demo: S3 backend with native locking
@@ -69,55 +69,55 @@ TAP version 13
 # Subtest: a deep link to a Studio route loads the Studio's index.html
 ok 1 - a deep link to a Studio route loads the Studio's index.html
   ---
-  duration_ms: 1.468344
+  duration_ms: 1.123597
   type: 'test'
   ...
 # Subtest: the root loads index.html
 ok 2 - the root loads index.html
   ---
-  duration_ms: 0.232986
+  duration_ms: 0.149549
   type: 'test'
   ...
 # Subtest: a route with a trailing slash loads index.html
 ok 3 - a route with a trailing slash loads index.html
   ---
-  duration_ms: 0.135911
+  duration_ms: 0.095755
   type: 'test'
   ...
 # Subtest: a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
 ok 4 - a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
   ---
-  duration_ms: 0.142856
+  duration_ms: 0.138183
   type: 'test'
   ...
 # Subtest: the demo pages' folder loads the demo shop, not the Studio (ticket 10-03)
 ok 5 - the demo pages' folder loads the demo shop, not the Studio (ticket 10-03)
   ---
-  duration_ms: 0.135387
+  duration_ms: 0.087667
   type: 'test'
   ...
 # Subtest: /demo redirects to /demo/, so the pages' relative links stay in the folder
 ok 6 - /demo redirects to /demo/, so the pages' relative links stay in the folder
   ---
-  duration_ms: 1.244744
+  duration_ms: 0.945497
   type: 'test'
   ...
 # Subtest: a demo page is a file and passes through
 ok 7 - a demo page is a file and passes through
   ---
-  duration_ms: 0.243687
+  duration_ms: 0.109427
   type: 'test'
   ...
 # Subtest: a dot in an earlier path segment does not make a route a file
 ok 8 - a dot in an earlier path segment does not make a route a file
   ---
-  duration_ms: 0.174813
+  duration_ms: 0.083632
   type: 'test'
   ...
 # Subtest: the rest of the request (method, query string, headers, cookies) is untouched
 ok 9 - the rest of the request (method, query string, headers, cookies) is untouched
   ---
-  duration_ms: 0.339706
+  duration_ms: 0.135943
   type: 'test'
   ...
 1..9
@@ -128,7 +128,7 @@ ok 9 - the rest of the request (method, query string, headers, cookies) is untou
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 249.05695
+# duration_ms 108.225646
 # start of coverage report
 # --------------------------------------------------------------------------
 # file                      | line % | branch % | funcs % | uncovered lines
