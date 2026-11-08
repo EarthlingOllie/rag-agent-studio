@@ -31,6 +31,9 @@ CONVERSATION_RATE_DEFAULT = 10
 CONVERSATION_RATE_MAX = 1000
 IP_RATE_DEFAULT = 30
 IP_RATE_MAX = 10000
+# The Token Budget: tokens an Agent's Visitor replies may use in one UTC day.
+TOKEN_BUDGET_DEFAULT = 1_000_000
+TOKEN_BUDGET_MAX = 1_000_000_000
 
 
 def new_public_id() -> str:
@@ -71,6 +74,14 @@ class Agent(IdMixin, Base):
     ip_messages_per_minute: Mapped[int] = mapped_column(
         Integer, server_default=text(str(IP_RATE_DEFAULT))
     )
+    # The Token Budget: how many tokens Visitor replies may use per UTC date. The day's usage is
+    # counted in Redis (admission control); the Playground doesn't count.
+    daily_token_budget: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(TOKEN_BUDGET_DEFAULT))
+    )
+    # The budget alert flag: when the day's Token Budget ran out, shown as the Studio's alert
+    # badge. Beat clears it at midnight UTC; None when there is no alert.
+    budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

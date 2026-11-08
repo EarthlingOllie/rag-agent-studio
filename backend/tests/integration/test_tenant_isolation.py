@@ -578,6 +578,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _AGENT + "/live-history", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/operational-settings", EDITOR, _an_agent),
     ScopedRoute("PATCH", _AGENT + "/operational-settings", EDITOR, _operational_settings),
+    ScopedRoute("GET", _AGENT + "/token-usage", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/theme-override", EDITOR, _an_agent),
     ScopedRoute("PUT", _AGENT + "/theme-override", OWNER, _a_colour_override),
     ScopedRoute(

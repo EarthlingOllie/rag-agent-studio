@@ -30,7 +30,8 @@ export class OperationalSettingsError extends Error {}
 
 type Path = { organisation_id: string; project_id: string; agent_id: string };
 
-/** An Agent's Allowed Origins, unavailable text and rate limits: not part of its Draft or Versions. */
+/** An Agent's Allowed Origins, unavailable text, rate limits and Token Budget: not part of its
+ * Draft or Versions. */
 export type OperationalSettings = Schemas["OperationalSettingsOut"];
 
 const PATH =
@@ -38,6 +39,29 @@ const PATH =
 
 const settingsKey = (path: Path) =>
   ["operational-settings", path.organisation_id, path.agent_id] as const;
+
+/** Today's (UTC) Visitor usage against the Agent's Token Budget. */
+export type TokenUsage = Schemas["TokenUsageOut"];
+
+const usageKey = (path: Path) => ["token-usage", path.organisation_id, path.agent_id] as const;
+
+/** Why today's usage couldn't be loaded. */
+export class TokenUsageError extends Error {}
+
+/** Today's usage against the Token Budget, for the budget meter. */
+export function useTokenUsage(path: Path) {
+  return useQuery({
+    queryKey: usageKey(path),
+    queryFn: async (): Promise<TokenUsage> => {
+      const { data } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage",
+        { params: { path } },
+      );
+      if (!data) throw new TokenUsageError();
+      return data;
+    },
+  });
+}
 
 /** The Agent's Operational Settings. */
 export function useOperationalSettings(path: Path) {
@@ -70,6 +94,8 @@ export function useChangeOperationalSettings(path: Path) {
     },
     onSuccess: (settings) => {
       queryClient.setQueryData(settingsKey(path), settings);
+      // The meter measures against the budget.
+      void queryClient.invalidateQueries({ queryKey: usageKey(path) });
     },
   });
 }

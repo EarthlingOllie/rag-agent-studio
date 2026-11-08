@@ -488,10 +488,10 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins, the Unavailable text and the rate limits are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins, the Unavailable text, the rate limits and the Token Budget are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
-What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit, and later a spent Token Budget). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
 _Avoid_: Error message, offline message
 
 **Theme override**:
@@ -503,13 +503,18 @@ How many Visitor messages an Agent admits in any one minute, per Conversation (i
 _Avoid_: Throttling (that is sign-in protection), quota
 
 **Admission control**:
-The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: the Agent's Rate limits now, the Token Budget later. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
+The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: first the Agent's Token Budget, then its Rate limits. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
 
 **Trusted proxies**:
 The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
 
 **Token Budget**:
-The maximum tokens an Agent may consume per day before it stops answering Visitors.
+The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by default) before it stops answering Visitors. Part of the Operational Settings. Each reply adds the input and output tokens it actually used to the Agent's counter for that date; once the day's usage reaches the budget, Admission control refuses Visitor messages with the Unavailable text (`unavailable` event, reason `budget_exhausted`), the Agent gets its Budget alert and the Owners are emailed. A new UTC date starts a new counter, so the budget resets at midnight UTC; raising it applies at once. The Playground doesn't count and is never refused. The Studio's budget meter shows today's usage against it.
+_Avoid_: Quota, spend limit (cost is tracked separately)
+
+**Budget alert**:
+The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
+_Avoid_: Budget warning, alarm
 
 **Allowed Origins**:
 The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). A host may start with a subdomain wildcard over a named site (`https://*.example.com` is every subdomain of example.com, but not example.com itself, and never a bare `*.com`), and localhost (`localhost`, `127.0.0.1`, `[::1]`) may take any port as `http://localhost:*`, for development. The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Part of the Operational Settings: changes apply to the next page load, without publishing, and are audited.

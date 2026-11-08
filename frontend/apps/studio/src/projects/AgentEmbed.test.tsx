@@ -372,3 +372,118 @@ test("the snippet chooses a bubble or an inline container by its data attributes
   await user.clear(target);
   expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(`${start} data-launcher="inline" async></script>`);
 });
+
+// The Token Budget
+
+const usagePath = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/token-usage";
+
+test("the budget meter shows today's usage against the daily Token Budget", async () => {
+  setUp({ tokensUsed: 250_000 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  const meter = await within(embed).findByRole("progressbar", { name: "Tokens used today" });
+  await waitFor(() => {
+    expect(meter).toHaveAttribute("aria-valuenow", "250000");
+  });
+  expect(meter).toHaveAttribute("aria-valuemin", "0");
+  expect(meter).toHaveAttribute("aria-valuemax", "1000000");
+  expect(within(embed).getByText("250,000 of 1,000,000 tokens used today (25%).")).toBeInTheDocument();
+  expect(
+    within(embed).getByText("The budget resets at midnight UTC. The Playground doesn't count."),
+  ).toBeInTheDocument();
+  expect(within(embed).queryByText(/Today's Token Budget is spent/)).not.toBeInTheDocument();
+});
+
+test("a spent budget is explained beside the meter", async () => {
+  setUp({ tokensUsed: 1_000_480 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(
+    await within(embed).findByText(
+      "Today's Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you raise the budget.",
+    ),
+  ).toBeInTheDocument();
+  // The meter stops at full.
+  expect(within(embed).getByRole("progressbar", { name: "Tokens used today" })).toHaveAttribute(
+    "aria-valuenow",
+    "1000000",
+  );
+  expect(within(embed).getByText("1,000,480 of 1,000,000 tokens used today (100%).")).toBeInTheDocument();
+});
+
+test("today's usage that can't be loaded says so", async () => {
+  setUp({ tokenUsage: () => HttpResponse.json({ detail: "Boom" }, { status: 500 }) });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(await within(embed).findByText("Today's usage could not be loaded.")).toBeInTheDocument();
+  expect(within(embed).queryByRole("progressbar")).not.toBeInTheDocument();
+});
+
+test("an Editor sets the daily Token Budget and the meter follows", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ tokensUsed: 500 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const field = within(embed).getByLabelText("Tokens per day");
+  expect(await within(embed).findByDisplayValue("1000000")).toBe(field);
+
+  await user.clear(field);
+  await user.type(field, "2000");
+  await user.click(within(embed).getByRole("button", { name: "Save Token Budget" }));
+
+  expect(await within(embed).findByText("Saved. The new budget applies to the next message.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    { route: "operational-settings", body: { daily_token_budget: 2000 } },
+  ]);
+  expect(await within(embed).findByText("500 of 2,000 tokens used today (25%).")).toBeInTheDocument();
+  expect(field).toHaveValue(2000);
+});
+
+test("a refused Token Budget is explained", async () => {
+  const user = userEvent.setup();
+  setUp();
+  server.use(
+    http.patch(settingsPath, () =>
+      HttpResponse.json(
+        {
+          detail: [
+            {
+              loc: ["body", "daily_token_budget"],
+              msg: "Input should be less than or equal to 1000000000",
+              type: "less_than_equal",
+            },
+          ],
+        },
+        { status: 422 },
+      ),
+    ),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const field = await within(embed).findByDisplayValue("1000000");
+
+  await user.clear(field);
+  await user.type(field, "2000000000");
+  await user.click(within(embed).getByRole("button", { name: "Save Token Budget" }));
+
+  expect(await within(embed).findByRole("alert")).toHaveTextContent("Input should be less than or equal to 1000000000");
+  await user.type(field, "5");
+  expect(within(embed).queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("while the Operational Settings load, the Token Budget cannot be saved over", async () => {
+  setUp();
+  server.use(
+    http.get(settingsPath, () => new Promise<Response>(() => undefined)),
+    http.get(usagePath, () => new Promise<Response>(() => undefined)),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(within(embed).getByLabelText("Tokens per day")).toBeDisabled();
+  expect(within(embed).getByRole("button", { name: "Save Token Budget" })).toBeDisabled();
+  expect(within(embed).queryByRole("progressbar")).not.toBeInTheDocument();
+});

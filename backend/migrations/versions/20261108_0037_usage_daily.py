@@ -2,8 +2,8 @@
 sums and histogram, frozen cost, thumbs, rating sum and count, fallbacks, latency histograms)
 and ``usage_rollup_state`` (per Organisation, the last day whose rollup is final).
 
-Revision ID: 0036_usage_daily
-Revises: 0035_conversation_ratings
+Revision ID: 0037_usage_daily
+Revises: 0036_token_budget
 Create Date: 2026-11-08
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0036_usage_daily"
-down_revision: str | None = "0035_conversation_ratings"
+revision: str = "0037_usage_daily"
+down_revision: str | None = "0036_token_budget"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

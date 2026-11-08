@@ -8,14 +8,16 @@
   Conversation token, then send messages with it (``Authorization: Bearer …``); each answer
   streams as Server-Sent Events from the Live Version. Visitors are anonymous: these routes take
   no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS.
-- The Studio's Operational Settings routes (Allowed Origins, the unavailable text and the rate
-  limits), for Editors and Owners. Changes apply on the next request and are audited.
+- The Studio's Operational Settings routes (Allowed Origins, the unavailable text, the rate
+  limits and the Token Budget), for Editors and Owners. Changes apply on the next request and are
+  audited. Beside them, today's usage against the Token Budget, for the Studio's meter.
 """
 
 import html
 import json
 import uuid
 from collections.abc import AsyncIterator
+from datetime import date, datetime
 from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -27,19 +29,22 @@ from app.agents.models import (
     CONVERSATION_RATE_MAX,
     IP_RATE_MAX,
     ORIGIN_MAX,
+    TOKEN_BUDGET_MAX,
     UNAVAILABLE_TEXT_MAX,
 )
 from app.agents.service import AgentNotFoundError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db, ErrorResponse
 from app.core.client_ip import request_ip
+from app.core.settings import Settings
 from app.documents.ports import IngestionPorts
 from app.embed import service
-from app.embed.admission import Admission
+from app.embed.admission import Admission, Refusal
 from app.embed.tokens import TokenSigner
 from app.guardrails.pipeline import RefusalEvent
+from app.mail.port import Mailer
 from app.playground.api import QUESTION_MAX
-from app.playground.service import NoDefaultModelError, answer
+from app.playground.service import Answered, NoDefaultModelError, answer
 from app.projects.service import ProjectNotFoundError
 from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
@@ -50,8 +55,10 @@ from app.theme.resolve import font_stylesheet_url, theme_stylesheet, widget_them
 
 NO_LONGER_AVAILABLE = "This assistant is no longer available."
 TEMPORARILY_UNAVAILABLE = service.DEFAULT_UNAVAILABLE_TEXT
-# The `unavailable` event's reason when admission control refuses a message.
+# The `unavailable` event's reason when admission control refuses a message: a rate limit, or
+# the day's Token Budget is spent.
 RATE_LIMITED = "rate_limited"
+BUDGET_EXHAUSTED = "budget_exhausted"
 INVALID_TOKEN = "This chat has expired. Reload the page to start a new one."  # noqa: S105 (a message)
 WIDGET_SCRIPT = "/widget/assets/widget.js"
 IMAGES = ("avatar", "logo")
@@ -247,9 +254,10 @@ def _sse(event: str, data: dict[str, Any]) -> str:
         200: {
             "content": {"text/event-stream": {"schema": {"type": "string"}}},
             "description": (
-                "Server-Sent Events. When admission control refuses the message (the "
-                "Conversation or the Visitor's IP address is over the Agent's rate limit), "
-                "one `unavailable` event (`reason`: `rate_limited`, and as `message` the "
+                "Server-Sent Events. When admission control refuses the message, one "
+                "`unavailable` event (`reason`: `budget_exhausted` when the Agent's daily "
+                "Token Budget is spent, or `rate_limited` when the Conversation or the "
+                "Visitor's IP address is over the Agent's rate limit; and as `message` the "
                 "Agent's unavailable text); nothing is saved. Otherwise "
                 "`token` events (`text`), then `citation` events "
                 "(`label`, `document_name`, `passage`; only when the Live Version shows "
@@ -280,20 +288,30 @@ async def send_message(
     authorization: Authorization = "",
 ) -> StreamingResponse:
     """Asks the Agent's Live Version a question in the token's Conversation. The answer is
-    recorded against the Version that was Live when it was generated. Messages over the
-    Agent's rate limits, per Conversation and per IP address, get its unavailable text."""
+    recorded against the Version that was Live when it was generated, and the tokens it used
+    count against the Agent's daily Token Budget. Messages over the Agent's rate limits, per
+    Conversation and per IP address, or once the day's budget is spent, get its unavailable
+    text; the first refusal or reply that finds the budget spent raises the Agent's alert and
+    emails its Owners, once per day."""
     token = _bearer(authorization)
     # The Agent's own words for "can't answer now", read on every request so a change applies
     # at once.
     unavailable = await service.unavailable_text(db, public_id)
+    settings: Settings = request.app.state.settings
+    mailer: Mailer = request.app.state.mailer
+    studio_url = str(settings.studio_url)
     try:
-        prepared = await service.prepare_turn(
+        admitted = await service.prepare_turn(
             db, signer, public_id, token, body.content, admission=admission, ip=ip, now=clock.now()
         )
-    except service.NotAdmittedError:
-        return _event_stream(
-            _one(_sse("unavailable", {"reason": RATE_LIMITED, "message": unavailable}))
-        )
+    except service.NotAdmittedError as refused:
+        reason = RATE_LIMITED
+        if refused.reason is Refusal.TOKEN_BUDGET:
+            reason = BUDGET_EXHAUSTED
+            await service.budget_exhausted(
+                db, refused.agent_id, mailer=mailer, studio_url=studio_url, now=clock.now()
+            )
+        return _event_stream(_one(_sse("unavailable", {"reason": reason, "message": unavailable})))
     except service.InvalidTokenError:
         raise _invalid() from None
     except (AgentNotServedError, AgentNotLiveError):
@@ -301,6 +319,22 @@ async def send_message(
     except NoDefaultModelError:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, unavailable) from None
     ingestion: IngestionPorts = request.app.state.ingestion
+    prepared = admitted.turn
+
+    async def spent(event: Answered) -> None:
+        # The reply's actual usage counts against today's Token Budget; the reply that spends
+        # it raises the alert.
+        used = event.event.input_tokens + event.event.output_tokens
+        total = await admission.record_usage(admitted.limits.public_id, used)
+        if total >= admitted.limits.daily_token_budget:
+            async with request.app.state.sessionmaker() as session:
+                await service.budget_exhausted(
+                    session,
+                    admitted.agent_id,
+                    mailer=mailer,
+                    studio_url=studio_url,
+                    now=request.app.state.clock.now(),
+                )
 
     async def events() -> AsyncIterator[str]:
         async for event in answer(
@@ -333,6 +367,7 @@ async def send_message(
                         },
                     )
             else:
+                await spent(event)
                 yield _sse("done", {"message_id": str(event.message_id)})
 
     return _event_stream(events())
@@ -460,6 +495,7 @@ UnavailableText = Annotated[
 ]
 ConversationRate = Annotated[int, Field(ge=1, le=CONVERSATION_RATE_MAX)]
 IpRate = Annotated[int, Field(ge=1, le=IP_RATE_MAX)]
+TokenBudget = Annotated[int, Field(ge=1, le=TOKEN_BUDGET_MAX)]
 
 
 class OperationalSettingsOut(BaseModel):
@@ -472,6 +508,10 @@ class OperationalSettingsOut(BaseModel):
     # any one minute. Messages over the limit get the unavailable text instead of an answer.
     conversation_messages_per_minute: int
     ip_messages_per_minute: int
+    # The Token Budget: how many tokens the Agent's Visitor replies may use per UTC date. Once
+    # the day's usage reaches it, Visitors get the unavailable text until midnight UTC. The
+    # Playground doesn't count.
+    daily_token_budget: int
 
 
 class OperationalSettingsChange(BaseModel):
@@ -482,6 +522,7 @@ class OperationalSettingsChange(BaseModel):
     unavailable_text: UnavailableText | None = None
     conversation_messages_per_minute: ConversationRate | None = None
     ip_messages_per_minute: IpRate | None = None
+    daily_token_budget: TokenBudget | None = None
 
     @field_validator("conversation_messages_per_minute", "ip_messages_per_minute", mode="before")
     @classmethod
@@ -491,6 +532,14 @@ class OperationalSettingsChange(BaseModel):
             raise ValueError("A rate limit must be a whole number of messages.")
         return value
 
+    @field_validator("daily_token_budget", mode="before")
+    @classmethod
+    def _a_budget_is_a_number(cls, value: object) -> object:
+        # Leaving the budget out keeps it; there is no "no budget".
+        if value is None:
+            raise ValueError("The Token Budget must be a whole number of tokens.")
+        return value
+
 
 def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
     return OperationalSettingsOut(
@@ -498,6 +547,7 @@ def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
         unavailable_text=found.unavailable_text,
         conversation_messages_per_minute=found.conversation_messages_per_minute,
         ip_messages_per_minute=found.ip_messages_per_minute,
+        daily_token_budget=found.daily_token_budget,
     )
 
 
@@ -541,6 +591,7 @@ async def change_operational_settings(
             unavailable_text="" if blank_text else body.unavailable_text,
             conversation_messages_per_minute=body.conversation_messages_per_minute,
             ip_messages_per_minute=body.ip_messages_per_minute,
+            daily_token_budget=body.daily_token_budget,
             now=clock.now(),
         )
     except (ProjectNotFoundError, AgentNotFoundError):
@@ -561,3 +612,40 @@ async def change_operational_settings(
             ],
         ) from None
     return _out(found)
+
+
+class TokenUsageOut(BaseModel):
+    # The UTC date counted: today's.
+    date: date
+    # Tokens the Agent's Visitor replies have used today. The Playground doesn't count.
+    tokens_used: int
+    daily_token_budget: int
+    # Whether today's budget is spent, so Visitors get the unavailable text.
+    exhausted: bool
+    # Midnight UTC, when a new day's budget starts.
+    resets_at: datetime
+
+
+@settings_router.get("/token-usage", operation_id="getTokenUsage", responses=NOT_FOUND_RESPONSE)
+async def get_token_usage(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    admission: AdmissionDep,
+) -> TokenUsageOut:
+    """Today's (UTC) Visitor usage against the Agent's Token Budget, for the Studio's meter."""
+    try:
+        found = await service.token_usage(
+            db, scope, project_id, agent_id, admission=admission, now=clock.now()
+        )
+    except (ProjectNotFoundError, AgentNotFoundError):
+        raise not_found() from None
+    return TokenUsageOut(
+        date=found.date,
+        tokens_used=found.tokens_used,
+        daily_token_budget=found.daily_token_budget,
+        exhausted=found.exhausted,
+        resets_at=found.resets_at,
+    )
