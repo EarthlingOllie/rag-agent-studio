@@ -115,10 +115,11 @@ class VersionDay:
 
 @dataclass(frozen=True)
 class Only:
-    """Which usage to work out: one Agent's, or every Organisation's whose rollup for the day
-    isn't final yet (``unfinalised``)."""
+    """Which usage to work out: one Agent's, one Organisation's, or every Organisation's whose
+    rollup for the day isn't final yet (``unfinalised``)."""
 
     agent_id: uuid.UUID | None = None
+    organisation_id: uuid.UUID | None = None
     unfinalised: bool = False
 
 
@@ -138,6 +139,8 @@ def _visitor_replies(day: date, only: Only) -> list[ColumnElement[bool]]:
     ]
     if only.agent_id is not None:
         conditions.append(Conversation.agent_id == only.agent_id)
+    if only.organisation_id is not None:
+        conditions.append(Message.organisation_id == only.organisation_id)
     if only.unfinalised:
         conditions.append(
             ~exists().where(

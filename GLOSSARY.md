@@ -622,3 +622,7 @@ _Avoid_: Error bars, margin
 **Low confidence**:
 The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.
 _Avoid_: Insufficient data, greyed out
+
+**Organisation cost**:
+What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage in its own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
+_Avoid_: Billing, invoice, spend report

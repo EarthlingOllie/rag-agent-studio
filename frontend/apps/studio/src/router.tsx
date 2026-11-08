@@ -12,6 +12,7 @@ import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./auth/ResetPasswordPage";
 import { SignInPage } from "./auth/SignInPage";
 import { SignUpPage } from "./auth/SignUpPage";
+import { CostPage } from "./cost/CostPage";
 import { AcceptInvitePage } from "./invites/AcceptInvitePage";
 import {
   AuditSettingsPage,
@@ -141,6 +142,7 @@ const conversationRoute = createRoute({
 });
 const analyticsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/analytics", component: AnalyticsTab });
 const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });
+const costRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/cost", component: CostPage });
 const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
@@ -191,6 +193,7 @@ const routeTree = rootRoute.addChildren([
         analyticsTabRoute,
         projectSettingsTabRoute,
       ]),
+      costRoute,
       settingsRoute.addChildren([generalSettingsRoute, credentialsSettingsRoute, modelsSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,

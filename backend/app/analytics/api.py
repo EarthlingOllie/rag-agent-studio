@@ -1,8 +1,12 @@
-"""Studio route for Version KPIs: an Agent's Versions' key numbers over a range of UTC days.
-Editors and Owners may read them. Playground Conversations never count."""
+"""Studio routes for analytics:
+- Version KPIs: an Agent's Versions' key numbers over a range of UTC days. Editors and Owners
+  may read them. Playground Conversations never count.
+- Org cost: what the Organisation spent over a range of UTC days, by Project or by Agent, with
+  Playground usage in a separate column. Owners only."""
 
 import uuid
 from datetime import UTC, date, timedelta
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -15,11 +19,13 @@ from app.auth.api import Db
 from app.playground.api import Dollars
 from app.projects.service import ProjectNotFoundError
 from app.tenancy.api import ORGANISATION_PREFIX
-from app.tenancy.policy import Scope
+from app.tenancy.policy import OwnerScope, Scope
 
 router = APIRouter(
     prefix=ORGANISATION_PREFIX + "/projects/{project_id}/agents/{agent_id}", tags=["analytics"]
 )
+
+cost_router = APIRouter(prefix=ORGANISATION_PREFIX, tags=["analytics"])
 
 DEFAULT_DAYS = 30
 MAX_DAYS = 366
@@ -142,6 +148,24 @@ def _bad_range(detail: str) -> HTTPException:
     return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail)
 
 
+def _days(start: date | None, end: date | None, today: date) -> tuple[date, date]:
+    """The UTC days asked for, both inclusive: by default the 30 days up to today. Raises 422
+    for a start after the end, or a range of more than ``MAX_DAYS`` days."""
+    last = end or today
+    first = start or last - timedelta(days=DEFAULT_DAYS - 1)
+    if first > last:
+        raise _bad_range("The start must not be after the end.")
+    if (last - first).days >= MAX_DAYS:
+        raise _bad_range(f"The range can be at most {MAX_DAYS} days.")
+    return first, last
+
+
+StartDay = Annotated[
+    date | None, Query(description="The first UTC day; 30 days before `end` if left out")
+]
+EndDay = Annotated[date | None, Query(description="The last UTC day; today if left out")]
+
+
 @router.get("/metrics", operation_id="getVersionMetrics", responses=NOT_FOUND_RESPONSE)
 async def get_version_metrics(
     project_id: uuid.UUID,
@@ -155,20 +179,13 @@ async def get_version_metrics(
             description="The Agent Versions to show (repeat it for several); every one if left out"
         ),
     ] = None,
-    start: Annotated[
-        date | None, Query(description="The first UTC day; 30 days before `end` if left out")
-    ] = None,
-    end: Annotated[date | None, Query(description="The last UTC day; today if left out")] = None,
+    start: StartDay = None,
+    end: EndDay = None,
 ) -> VersionMetricsOut:
     """Each chosen Agent Version's KPIs over the UTC days `start` to `end` (both inclusive, at
     most 366 days), including today's so far. Only Visitor Conversations count."""
     today = clock.now().astimezone(UTC).date()
-    last = end or today
-    first = start or last - timedelta(days=DEFAULT_DAYS - 1)
-    if first > last:
-        raise _bad_range("The start must not be after the end.")
-    if (last - first).days >= MAX_DAYS:
-        raise _bad_range(f"The range can be at most {MAX_DAYS} days.")
+    first, last = _days(start, end, today)
     try:
         kpis = await service.version_metrics(
             db, scope, project_id, agent_id, version or [], first, last, today
@@ -177,4 +194,72 @@ async def get_version_metrics(
         raise not_found() from None
     return VersionMetricsOut(
         agent_id=agent_id, start=first, end=last, versions=[_out(k) for k in kpis]
+    )
+
+
+class CostAmountsOut(BaseModel):
+    # In US dollars, at the prices frozen when each reply was made: Visitor replies, Playground
+    # replies, and both.
+    visitor_usd: Dollars
+    playground_usd: Dollars
+    total_usd: Dollars
+
+
+class CostRowOut(CostAmountsOut):
+    project_id: uuid.UUID
+    project_name: str
+    # Set when the cost is broken down by Agent.
+    agent_id: uuid.UUID | None
+    agent_name: str | None
+
+
+class OrgCostOut(BaseModel):
+    # The UTC days covered, both inclusive.
+    start: date
+    end: date
+    group_by: service.CostGroup
+    # One per Project or Agent that replied in the period, most expensive first.
+    rows: list[CostRowOut]
+    total: CostAmountsOut
+
+
+@cost_router.get("/cost", operation_id="getOrganisationCost")
+async def get_organisation_cost(
+    scope: OwnerScope,
+    db: Db,
+    clock: ClockDep,
+    group_by: Annotated[
+        service.CostGroup, Query(description="Break the cost down by Project or by Agent")
+    ] = service.CostGroup.PROJECT,
+    start: StartDay = None,
+    end: EndDay = None,
+) -> OrgCostOut:
+    """What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
+    366 days), including today's so far, by Project or by Agent. Playground usage is in its own
+    column. Owners only."""
+    today = clock.now().astimezone(UTC).date()
+    first, last = _days(start, end, today)
+    lines = await service.org_cost(db, scope, group_by, first, last, today)
+    rows = [
+        CostRowOut(
+            project_id=line.project_id,
+            project_name=line.project_name,
+            agent_id=line.agent_id,
+            agent_name=line.agent_name,
+            visitor_usd=line.visitor_usd,
+            playground_usd=line.playground_usd,
+            total_usd=line.total_usd,
+        )
+        for line in lines
+    ]
+    visitor = sum((line.visitor_usd for line in lines), Decimal(0))
+    playground = sum((line.playground_usd for line in lines), Decimal(0))
+    return OrgCostOut(
+        start=first,
+        end=last,
+        group_by=group_by,
+        rows=rows,
+        total=CostAmountsOut(
+            visitor_usd=visitor, playground_usd=playground, total_usd=visitor + playground
+        ),
     )
