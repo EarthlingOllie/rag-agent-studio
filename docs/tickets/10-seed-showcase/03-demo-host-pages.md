@@ -8,7 +8,7 @@
 - [10-01: Seed foundation](01-seed-foundation.md)
 - [06-06: Token Budget](../06-embed-widget-operational-settings/06-token-budget.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The shop pages (bubble and inline) are on an allowed origin
 - [ ] A page on a disallowed origin is blocked
