@@ -20,8 +20,15 @@ async def _purge(at: datetime) -> int:
         await engine.dispose()
 
 
+def _as_of(at: str) -> datetime:
+    parsed = datetime.fromisoformat(at)
+    if parsed.tzinfo is None:
+        raise ValueError(f"The purge time {at!r} needs its UTC offset")
+    return parsed
+
+
 @celery_app.task(name=PURGE_TASK)
 def purge_expired(at: str | None = None) -> int:
-    """Purges as of now, or as of ``at`` (an ISO 8601 time with its offset), to redo a run by
-    hand. Returns how many Messages were purged."""
-    return asyncio.run(_purge(SystemClock().now() if at is None else datetime.fromisoformat(at)))
+    """Purges as of now, or as of ``at`` (an ISO 8601 time with its offset; one without is
+    refused), to redo a run by hand. Returns how many Messages were purged."""
+    return asyncio.run(_purge(SystemClock().now() if at is None else _as_of(at)))

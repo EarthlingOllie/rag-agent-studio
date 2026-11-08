@@ -8,15 +8,20 @@ the Conversations viewer (Message text, ``purged_at``, feedback comments), the V
 endpoint (identical before and after a purge), the Trace (tombstones) and Audit Events."""
 
 import asyncio
-from datetime import datetime, timedelta
+import json
+from collections.abc import AsyncIterator
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
 import pytest
 from fastapi import FastAPI
+from pydantic_ai.messages import ModelMessage
+from pydantic_ai.models.function import AgentInfo
 
 from app.retention.tasks import purge_expired
 from app.worker.celery_app import PURGE_TASK, ROLL_UP_TASK, celery_app
+from tests.agents import answer_text, answer_with, ask, parse_sse
 from tests.conftest import ClientFactory, MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import project_path, upload
 from tests.fakes.clock import ControllableClock
@@ -31,6 +36,8 @@ from tests.integration.test_conversations import (
 from tests.integration.test_document_editions import audit_events
 from tests.integration.test_embed import send
 from tests.integration.test_input_guardrail import ATTACK, REASON, guard
+from tests.integration.test_message_feedback import give, reply
+from tests.integration.test_playground import echo
 from tests.integration.test_projects import archive as archive_project
 from tests.integration.test_version_metrics import (
     chat,
@@ -467,3 +474,120 @@ async def test_only_owners_delete_conversations_and_only_in_their_project(
     (messages,) = await conversation_messages(owner, agent["project_id"])
     assert texts(messages)[0] == "How much leave?"
     assert await audit_events(owner, "conversation.deleted") == []
+
+
+# What is purged stays purged
+
+
+async def test_a_purged_turn_is_not_replayed_to_the_model(
+    app: FastAPI, owner: SignedUpMember, clock: ControllableClock
+) -> None:
+    agent = await live_agent(app, owner)
+    project_id = agent["project_id"]
+    assert (await set_window(owner, 7)).status_code == 200
+    conversation_id = await playground_chat(owner, project_id, agent["id"], "How much leave?")
+    clock.advance(timedelta(days=8))
+    await purge(clock.now())
+    answer_with(app, echo)
+
+    response = await ask(owner, project_id, agent["id"], conversation_id, "And sick days?")
+
+    assert response.status_code == 200, response.text
+    # Only the new question reaches the model: the purged turn isn't sent as empty text.
+    parts = json.loads(answer_text(response))
+    assert [part[:2] for part in parts if part[1] != "system-prompt"] == [
+        ["ModelRequest", "user-prompt"]
+    ]
+    assert "And sick days?" in parts[-1][2]
+
+
+async def test_a_purged_reply_takes_a_rating_but_no_comment(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await live_agent(app, owner)
+    assert (await set_window(owner, 7)).status_code == 200
+    token, (old_reply,) = await chat(visitor, agent, "How much leave?")
+    # The Visitor keeps the Conversation token alive with a message a day for over a week.
+    for _ in range(8):
+        clock.advance(timedelta(hours=23))
+        await reply(visitor, agent["public_id"], token, "Still there?")
+    await roll_up(clock.now())
+    await purge(clock.now())
+
+    response = await give(
+        visitor, agent["public_id"], token, old_reply, rating="up", comment="I am Ada Lovelace"
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {"rating": "up", "comment": None}
+    (messages,) = await conversation_messages(owner, agent["project_id"])
+    assert texts(messages)[:2] == ["", ""]
+    assert [
+        (m["feedback"]["rating"], m["feedback"]["comment"]) for m in messages if m["feedback"]
+    ] == [("up", None)]
+
+
+async def test_a_deleted_playground_conversation_takes_no_more_questions(
+    app: FastAPI, owner: SignedUpMember, member_factory: MemberFactory
+) -> None:
+    editor = await member_factory(owner, "editor")
+    agent = await live_agent(app, owner)
+    project_id = agent["project_id"]
+    conversation_id = await playground_chat(editor, project_id, agent["id"], "Testing")
+    deleted = await owner.client.delete(conversations_path(owner, project_id, conversation_id))
+    assert deleted.status_code == 204, deleted.text
+
+    response = await ask(editor, project_id, agent["id"], conversation_id, "My name is Ada")
+
+    assert response.status_code == 404, response.text
+    detail = await opened(owner, project_id, conversation_id)
+    assert texts(detail["messages"]) == ["", ""]
+
+
+async def test_an_answer_finishing_after_its_conversation_is_deleted_is_purged(
+    app: FastAPI, owner: SignedUpMember, clock: ControllableClock
+) -> None:
+    agent = await live_agent(app, owner)
+    project_id = agent["project_id"]
+    conversation_id = await playground_chat(owner, project_id, agent["id"], "Testing")
+
+    async def deleted_midway(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+        yield "Ada, you have "
+        response = await owner.client.delete(conversations_path(owner, project_id, conversation_id))
+        assert response.status_code == 204, response.text
+        yield "25 days of leave."
+
+    answer_with(app, deleted_midway)
+
+    response = await ask(owner, project_id, agent["id"], conversation_id, "I am Ada; my leave?")
+
+    assert response.status_code == 200, response.text
+    assert parse_sse(response.text)[-1][0] == "done"
+    detail = await opened(owner, project_id, conversation_id)
+    assert texts(detail["messages"]) == ["", "", "", ""]
+    now = clock.now().isoformat().replace("+00:00", "Z")
+    assert {m["purged_at"] for m in detail["messages"]} == {now}
+
+
+async def test_the_rollup_gate_goes_by_the_utc_day_of_the_cutoff(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await live_agent(app, owner)
+    assert (await set_window(owner, 7)).status_code == 200
+    # Nov 5, 09:00 UTC; the rollup of Nov 5 never finalises.
+    await chat(visitor, agent, "How much leave?")
+    clock.advance(timedelta(days=7, hours=1))
+    # Run by hand at 10:00 UTC on Nov 12, written at UTC-11: the cutoff is Nov 5, 10:00 UTC,
+    # which is Nov 4, 23:00 at UTC-11.
+    at = clock.now().astimezone(timezone(timedelta(hours=-11)))
+
+    await purge(at)
+
+    (messages,) = await conversation_messages(owner, agent["project_id"])
+    assert texts(messages)[0] == "How much leave?"
+
+
+async def test_a_purge_by_hand_needs_a_time_with_its_offset(owner: SignedUpMember) -> None:
+    # Eager tasks propagate their errors (as a worker would record the failure).
+    with pytest.raises(ValueError, match="offset"):
+        await asyncio.to_thread(purge_expired.apply, kwargs={"at": "2026-11-12T10:00:00"})

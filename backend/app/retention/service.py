@@ -12,7 +12,7 @@ of its day is final (``app.analytics.rollup``), so no metric is ever worked out 
 day that wasn't already counted."""
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import ColumnElement, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -77,8 +77,10 @@ async def purge_expired(sessionmaker: async_sessionmaker[AsyncSession], at: date
             cutoff = at - timedelta(days=days)
             conditions = [Message.organisation_id == organisation_id, Message.created_at < cutoff]
             # The first day up to the cutoff's whose rollup isn't final, if any: Visitor
-            # Messages from then on wait. Playground Messages never go into the rollups.
-            first_open = (await pending_days(session, cutoff.date() + timedelta(days=1))).get(
+            # Messages from then on wait. Playground Messages never go into the rollups. Rollup
+            # days are UTC days, whatever offset ``at`` is written in.
+            last_day = cutoff.astimezone(UTC).date()
+            first_open = (await pending_days(session, last_day + timedelta(days=1))).get(
                 organisation_id
             )
             if first_open is not None:
