@@ -28,6 +28,7 @@ export const visitorConversation: Summary = {
   thumbs_up: 1,
   thumbs_down: 1,
   rating: 4,
+  deleted_at: null,
 };
 
 /** An Editor trying HR helper's Draft in the Playground. */
@@ -44,6 +45,7 @@ export const playgroundConversation: Summary = {
   thumbs_up: 0,
   thumbs_down: 0,
   rating: null,
+  deleted_at: null,
 };
 
 const unanswered = {
@@ -62,6 +64,7 @@ const unanswered = {
   cost_usd: null,
   fallback: false,
   feedback: null,
+  purged_at: null,
 };
 
 function question(id: string, content: string, created_at: string): Message {
@@ -124,6 +127,7 @@ export const visitorDetail: Detail = {
       { score: 4, previous_score: 2, agent_version_number: 2, changed_at: "2026-11-06T10:22:00Z" },
     ],
   },
+  deleted_at: null,
 };
 
 export const playgroundDetail: Detail = {
@@ -166,10 +170,13 @@ export function fakeConversationsApi(
     listStatus?: number;
     /** The total the list reports, when more than the items given (paging). */
     total?: number;
+    /** Answers every deletion with this status instead. */
+    deleteStatus?: number;
   } = {},
 ) {
-  const conversations = options.conversations ?? [playgroundConversation, visitorConversation];
-  const details = options.details ?? [visitorDetail, playgroundDetail];
+  let conversations = options.conversations ?? [playgroundConversation, visitorConversation];
+  let details = options.details ?? [visitorDetail, playgroundDetail];
+  const deletions: string[] = [];
   const traces = options.traces ?? [visitorTrace, { ...hrTrace, message_id: PLAYGROUND_REPLY_ID, agent_version_number: null }];
   const queries: URLSearchParams[] = [];
   const traceReads: string[] = [];
@@ -223,5 +230,33 @@ export function fakeConversationsApi(
       },
     ),
   );
-  return { queries, traceReads };
+  server.use(
+    http.delete("*/api/organisations/:organisationId/projects/:projectId/conversations/:conversationId", ({ params }) => {
+      const id = String(params.conversationId);
+      deletions.push(id);
+      if (options.deleteStatus) return HttpResponse.json({ detail: "Failed" }, { status: options.deleteStatus });
+      // Deleting purges the Messages' text and feedback comments, as the API does.
+      const now = DELETED_AT;
+      details = details.map((detail) =>
+        detail.id === id
+          ? {
+              ...detail,
+              deleted_at: now,
+              messages: detail.messages.map((m) => ({
+                ...m,
+                content: "",
+                purged_at: now,
+                feedback: m.feedback && { ...m.feedback, comment: null },
+              })),
+            }
+          : detail,
+      );
+      conversations = conversations.map((c) => (c.id === id ? { ...c, deleted_at: now, preview: null } : c));
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  return { queries, traceReads, deletions };
 }
+
+/** When the fake API deletes a Conversation. */
+export const DELETED_AT = "2026-11-08T12:00:00Z";

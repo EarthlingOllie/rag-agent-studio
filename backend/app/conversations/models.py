@@ -15,6 +15,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Identity,
+    Index,
     Integer,
     Numeric,
     String,
@@ -65,10 +66,21 @@ class Conversation(IdMixin, Base):
     # A Visitor Conversation's Conversation token, as its SHA-256 hex digest; the token itself is
     # only ever held by the Visitor's widget. None for Playground Conversations.
     token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # When an Owner deleted it on request: its Messages' text and feedback comments are purged
+    # and its Conversation token cleared, while its numbers stay for the metrics.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Message(IdMixin, Base):
     __tablename__ = "messages"
+    __table_args__ = (
+        # The purge looks for Messages not yet purged, oldest first.
+        Index(
+            "ix_messages_unpurged_created_at",
+            "created_at",
+            postgresql_where=text("purged_at IS NULL"),
+        ),
+    )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organisations.id", ondelete="CASCADE"), index=True
@@ -111,6 +123,10 @@ class Message(IdMixin, Base):
     guardrail_outcomes: Mapped[list[dict[str, str | float | None]]] = mapped_column(
         JSONB, default=list, server_default=text("'[]'::jsonb")
     )
+    # When its text (and any feedback comment on it) was purged, by the Retention Window or a
+    # Conversation deleted on request (``app.retention``); ``content`` is then empty. Every
+    # number and attribution stays.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class MessageRetrieval(IdMixin, Base):
@@ -118,7 +134,9 @@ class MessageRetrieval(IdMixin, Base):
     number in its label) and maybe ``cited``, or left out with an ``excluded_reason``.
     ``position`` orders the Trace: the Chunks given to the model by rank, then the rest as
     retrieval ranked them. The Chunk and Document IDs have no foreign keys, so the Trace
-    outlives a Chunk replaced or deleted with its Document."""
+    outlives a Chunk replaced with its Document's edition. When the Document is deleted, both
+    IDs are cleared and ``document_name``, the name when the answer was given, stays as the
+    tombstone."""
 
     __tablename__ = "message_retrievals"
     __table_args__ = (UniqueConstraint("message_id", "position"),)
@@ -127,8 +145,10 @@ class MessageRetrieval(IdMixin, Base):
         ForeignKey("organisations.id", ondelete="CASCADE"), index=True
     )
     message_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(Message.id, ondelete="CASCADE"))
-    chunk_id: Mapped[uuid.UUID]
-    document_id: Mapped[uuid.UUID]
+    chunk_id: Mapped[uuid.UUID | None]
+    document_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
+    # None only for retrievals of Documents deleted before names were kept.
+    document_name: Mapped[str | None] = mapped_column(Text)
     position: Mapped[int] = mapped_column(Integer)
     score: Mapped[float] = mapped_column(Float)
     relevance: Mapped[float] = mapped_column(Float)

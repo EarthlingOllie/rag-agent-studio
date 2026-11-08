@@ -297,6 +297,7 @@ def _retrievals(
         MessageRetrieval(
             chunk_id=c.chunk_id,
             document_id=c.document_id,
+            document_name=c.document_name,
             score=c.score,
             relevance=c.relevance,
             rank=c.rank,
@@ -308,6 +309,7 @@ def _retrievals(
         MessageRetrieval(
             chunk_id=e.chunk_id,
             document_id=e.document_id,
+            document_name=e.document_name,
             score=e.score,
             relevance=e.relevance,
             rank=None,

@@ -265,6 +265,7 @@ export const hrTrace: Schemas["TraceOut"] = {
       rank: 1,
       cited: true,
       excluded_reason: null,
+      document_deleted: false,
     },
     {
       chunk_id: "f0000000-0000-4000-8000-000000000002",
@@ -276,6 +277,7 @@ export const hrTrace: Schemas["TraceOut"] = {
       rank: 2,
       cited: false,
       excluded_reason: null,
+      document_deleted: false,
     },
     {
       chunk_id: "f0000000-0000-4000-8000-000000000003",
@@ -287,11 +289,14 @@ export const hrTrace: Schemas["TraceOut"] = {
       rank: null,
       cited: false,
       excluded_reason: "below_min_score",
+      document_deleted: false,
     },
+    // A Chunk of a Document deleted since: a tombstone keeps its name.
     {
-      chunk_id: "f0000000-0000-4000-8000-000000000004",
-      document_id: "d0000000-0000-4000-8000-000000000004",
-      document_name: null,
+      chunk_id: null,
+      document_id: null,
+      document_name: "old-handbook.md",
+      document_deleted: true,
       text: null,
       score: 0.2,
       relevance: 0.5,
@@ -309,6 +314,7 @@ export const hrTrace: Schemas["TraceOut"] = {
       rank: null,
       cited: false,
       excluded_reason: "outside_tags",
+      document_deleted: false,
     },
   ],
 };
