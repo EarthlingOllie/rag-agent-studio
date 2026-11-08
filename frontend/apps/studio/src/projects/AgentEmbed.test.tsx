@@ -265,6 +265,81 @@ test("while the Operational Settings load, the unavailable text cannot be saved 
   expect(within(embed).getByRole("button", { name: "Save unavailable text" })).toBeDisabled();
 });
 
+test("an Editor sets the rate limits per Conversation and per IP address", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ unavailableText: "Back soon." });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const perConversation = within(embed).getByLabelText("Messages per minute per Conversation");
+  const perIp = within(embed).getByLabelText("Messages per minute per IP address");
+  expect(await within(embed).findByDisplayValue("10")).toBe(perConversation);
+  expect(perIp).toHaveValue(30);
+
+  await user.clear(perConversation);
+  await user.type(perConversation, "4");
+  await user.clear(perIp);
+  await user.type(perIp, "12");
+  await user.click(within(embed).getByRole("button", { name: "Save rate limits" }));
+
+  expect(
+    await within(embed).findByText("Saved. Messages over a limit get the unavailable text from now on."),
+  ).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: { conversation_messages_per_minute: 4, ip_messages_per_minute: 12 },
+    },
+  ]);
+  expect(perConversation).toHaveValue(4);
+  expect(perIp).toHaveValue(12);
+  // The other settings are left as they were.
+  expect(within(embed).getByLabelText("Unavailable text")).toHaveValue("Back soon.");
+});
+
+test("a refused rate limit is explained", async () => {
+  const user = userEvent.setup();
+  setUp();
+  server.use(
+    http.patch(settingsPath, () =>
+      HttpResponse.json(
+        {
+          detail: [
+            {
+              loc: ["body", "ip_messages_per_minute"],
+              msg: "Input should be less than or equal to 10000",
+              type: "less_than_equal",
+            },
+          ],
+        },
+        { status: 422 },
+      ),
+    ),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const perIp = await within(embed).findByDisplayValue("30");
+
+  await user.clear(perIp);
+  await user.type(perIp, "20000");
+  await user.click(within(embed).getByRole("button", { name: "Save rate limits" }));
+
+  expect(await within(embed).findByRole("alert")).toHaveTextContent("Input should be less than or equal to 10000");
+  // Editing again clears the explanation.
+  await user.type(perIp, "0");
+  expect(within(embed).queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("while the Operational Settings load, the rate limits cannot be saved over", async () => {
+  setUp();
+  server.use(http.get(settingsPath, () => new Promise<Response>(() => undefined)));
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(within(embed).getByLabelText("Messages per minute per Conversation")).toBeDisabled();
+  expect(within(embed).getByLabelText("Messages per minute per IP address")).toBeDisabled();
+  expect(within(embed).getByRole("button", { name: "Save rate limits" })).toBeDisabled();
+});
+
 test("the snippet chooses a bubble or an inline container by its data attributes", async () => {
   const user = userEvent.setup();
   setUp();

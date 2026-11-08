@@ -2188,7 +2188,8 @@ export interface paths {
         /**
          * Send Message
          * @description Asks the Agent's Live Version a question in the token's Conversation. The answer is
-         *     recorded against the Version that was Live when it was generated.
+         *     recorded against the Version that was Live when it was generated. Messages over the
+         *     Agent's rate limits, per Conversation and per IP address, get its unavailable text.
          */
         post: operations["sendWidgetMessage"];
         delete?: never;
@@ -3800,6 +3801,10 @@ export interface components {
         OperationalSettingsChange: {
             /** Allowed Origins */
             allowed_origins?: string[] | null;
+            /** Conversation Messages Per Minute */
+            conversation_messages_per_minute?: number | null;
+            /** Ip Messages Per Minute */
+            ip_messages_per_minute?: number | null;
             /** Unavailable Text */
             unavailable_text?: string | null;
         };
@@ -3807,6 +3812,10 @@ export interface components {
         OperationalSettingsOut: {
             /** Allowed Origins */
             allowed_origins: string[];
+            /** Conversation Messages Per Minute */
+            conversation_messages_per_minute: number;
+            /** Ip Messages Per Minute */
+            ip_messages_per_minute: number;
             /** Unavailable Text */
             unavailable_text: string;
         };
@@ -11025,7 +11034,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
+            /** @description Server-Sent Events. When admission control refuses the message (the Conversation or the Visitor's IP address is over the Agent's rate limit), one `unavailable` event (`reason`: `rate_limited`, and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;

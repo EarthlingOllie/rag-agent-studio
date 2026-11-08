@@ -25,6 +25,16 @@ variable "vpc_id" {
   type        = string
 }
 
+variable "vpc_cidr" {
+  description = "The VPC's IPv4 CIDR. The ALB connects to the API from inside it, so the API trusts X-Forwarded-For from it."
+  type        = string
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0)) && strcontains(var.vpc_cidr, "/")
+    error_message = "vpc_cidr must be a CIDR block, such as 10.0.0.0/16."
+  }
+}
+
 variable "public_subnet_ids" {
   description = "Public subnets, in two AZs, for the ALB. CloudFront reaches it over the internet (ADR-0011)."
   type        = list(string)

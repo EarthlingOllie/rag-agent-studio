@@ -165,10 +165,19 @@ locals {
     KMS_KEY_ID          = var.credentials_key_arn
     STUDIO_URL          = var.studio_url
   }
+  # The proxies whose X-Forwarded-For entries the API believes when finding a Visitor's IP for per-IP rate limits
+  # (spec 06; backend/app/core/client_ip.py): the ALB, which connects from inside the VPC, and CloudFront's
+  # origin-facing servers, the only addresses the ALB admits. CloudFront appends the viewer's address and the ALB
+  # appends CloudFront's, so the first untrusted address from the right is the Visitor's.
+  trusted_proxies = join(",", concat([var.vpc_cidr], sort([for e in data.aws_ec2_managed_prefix_list.cloudfront.entries : e.cidr])))
+
   base_environment = merge(local.common_environment, local.database_environment, local.cache_environment)
   environment = {
     # The API's task role is the principal Organisations trust in their Bedrock roles (spec 09 story 13).
-    api    = merge(local.base_environment, local.app_environment, { BEDROCK_PLATFORM_PRINCIPAL = aws_iam_role.task["api"].arn })
+    api = merge(local.base_environment, local.app_environment, {
+      BEDROCK_PLATFORM_PRINCIPAL = aws_iam_role.task["api"].arn
+      TRUSTED_PROXIES            = local.trusted_proxies
+    })
     worker = merge(local.base_environment, local.app_environment)
     beat   = local.base_environment
   }
