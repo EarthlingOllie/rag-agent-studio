@@ -1,0 +1,15 @@
+commit b9e473e (stack from the e2e run)
+$ celery inspect registered (worker)
+->  celery@f16e8f89e78d: OK
+    * analytics.roll_up_usage
+$ beat schedule
+2026-11-08 07:01:00.162172503 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+{'worker-health-check': ('worker.health_check', '300.0'), 'usage-rollup': ('analytics.roll_up_usage', '<crontab: 5 * * * * (m/h/dM/MY/d)>')}
+$ celery call analytics.roll_up_usage, then the rows it wrote
+    day     | versions | conversations | messages | up | down | ratings | fallbacks 
+------------+----------+---------------+----------+----+------+---------+-----------
+ 2026-11-08 |       15 |            18 |       26 |  5 |    6 |       7 |        24
+(1 row)
+
+Task analytics.roll_up_usage[a234ab9b-4e8d-4081-8d97-5c286b97e1a7] received
+Task analytics.roll_up_usage[a234ab9b-4e8d-4081-8d97-5c286b97e1a7] succeeded in 0.1076264189905487s: [Redacted]
