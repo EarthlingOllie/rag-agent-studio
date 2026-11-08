@@ -42,7 +42,7 @@ the navigation chrome change.
 
 ## Slices (one branch / PR each, in this order)
 
-Each slice is independently shippable. Merge or rebase on `candidate` before starting the next one:
+The reskin is worked on the `candidate-reskin` branch: branch each slice from it and merge it back there, never straight into `candidate`. Each slice is independently shippable. Merge the latest `candidate-reskin` in before starting the next one:
 other agents keep adding features to these pages, so small slices conflict least.
 
 | # | Slice | Done when |

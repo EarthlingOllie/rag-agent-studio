@@ -15,7 +15,7 @@
 - [ ] Switcher items that navigate are router links
 - [ ] `openSection` helpers exist for Playwright (`e2e/fixtures/navigation.ts`) and Testing Library (`apps/studio/src/test/navigation.ts`), and every navigation step in unit and end-to-end tests uses them
 - [ ] Role-based hiding is asserted as a missing menu item
-- [ ] `candidate` is merged immediately before landing; no other design ticket is open while this one is
+- [ ] The latest `candidate` is merged into this ticket's branch immediately before landing, so navigation tests for every feature are migrated; no other design ticket is open while this one is
 - [ ] Behaviour is unchanged apart from what this ticket names; moved actions are listed in the PR
 - [ ] The palette ratchet baseline is lowered to the new count
 - [ ] Light and dark screenshots of every page changed are in the ticket's evidence folder, matching the mockups on the design canvas

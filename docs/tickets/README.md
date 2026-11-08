@@ -133,6 +133,8 @@ Work the **frontier**: any ticket whose blockers are all done. `01-01` and `11-0
 
 ## 11: Studio design system and reskin
 
+These tickets are worked on the `candidate-reskin` branch: each ticket branches from it and merges back into it, not into `candidate`. `11-01` begins by merging `candidate` in. When `11-13` is done, `candidate-reskin` merges into `candidate`.
+
 | Ticket | Title | Blocked by |
 |---|---|---|
 | `11-01` | [Palette ratchet and design system round 2](./11-studio-design/01-ratchet-design-system-round-2.md) | none |

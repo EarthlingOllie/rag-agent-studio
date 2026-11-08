@@ -2,7 +2,7 @@
 
 **Ticket:** `11-01` · **Spec:** [Studio design system and reskin](../../specs/11-studio-design-spec.md)
 
-**What to build:** CI stops new Tailwind palette classes appearing in the Studio, and the design system gains every shared pattern the newer views need, so feature work and reskin slices build from the same parts.
+**What to build:** The reskin starts from every feature built so far: `candidate` is merged into `candidate-reskin` first. Then CI stops new Tailwind palette classes appearing in the Studio, and the design system gains every shared pattern the newer views need, so feature work and reskin slices build from the same parts.
 
 **Blocked by:**
 - None
@@ -11,6 +11,7 @@
 
 **Status:** ready-for-agent
 
+- [ ] The latest `candidate` is merged into `candidate-reskin` before any other change, and every check passes on the merge; the merged commit is named in the evidence
 - [ ] `frontend/scripts/palette-ratchet` counts palette-class uses under `apps/studio/src` against a committed `palette-baseline.json`; CI fails when the count rises and prints the new baseline when it falls
 - [ ] The ratchet is tested on a fixture tree: a rise fails, a fall passes
 - [ ] `Dialog` and `ConfirmDialog` trap focus, close on Escape, return focus to the opener, and use `alertdialog` for destructive confirmations

@@ -15,6 +15,7 @@
 
 **Status:** ready-for-agent
 
+- [ ] The latest `candidate` is merged in and any feature UI it brings is reskinned, so `candidate-reskin` can merge back into `candidate` cleanly
 - [ ] The palette count is zero; the ratchet becomes "none allowed" and the baseline file is deleted
 - [ ] On narrow screens the breadcrumb collapses its middle crumbs into a menu and keeps the Organisation and the current page
 - [ ] The axe harness runs every signed-in page in light and dark
