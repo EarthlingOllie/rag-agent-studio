@@ -9,7 +9,7 @@
 - [08-01: Input Guardrail: local classifier, block mode](../08-guardrails-evaluation/01-input-guardrail-block.md)
 - [08-04: Canary token](../08-guardrails-evaluation/04-canary-token.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The debug endpoint is enabled only in demo mode
 - [ ] There are buttons per attack category, plus a benign control
