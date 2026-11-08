@@ -8,11 +8,11 @@
 - [10-01: Seed foundation](01-seed-foundation.md)
 - [06-06: Token Budget](../06-embed-widget-operational-settings/06-token-budget.md)
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] The shop pages (bubble and inline) are on an allowed origin
-- [ ] A page on a disallowed origin is blocked
-- [ ] A low-budget Agent has a button to exhaust its budget
-- [ ] In AWS, the pages are served under the demo path
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The shop pages (bubble and inline) are on an allowed origin
+- [x] A page on a disallowed origin is blocked
+- [x] A low-budget Agent has a button to exhaust its budget
+- [x] In AWS, the pages are served under the demo path
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

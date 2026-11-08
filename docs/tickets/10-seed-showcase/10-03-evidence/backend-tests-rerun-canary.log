@@ -1,0 +1,22 @@
+$ cd backend && 20 times: uv run pytest --no-cov -q tests/integration/test_canary.py (fresh rag1003-pg/redis/rustfs) @ aafb62b
+4 passed in 4.18s
+4 passed in 4.21s
+4 passed in 4.10s
+4 passed in 4.34s
+4 passed in 4.35s
+4 passed in 4.19s
+4 passed in 4.45s
+4 passed in 4.30s
+4 passed in 4.55s
+4 passed in 4.56s
+4 passed in 4.25s
+4 passed in 4.30s
+4 passed in 4.23s
+4 passed in 4.25s
+4 passed in 4.12s
+4 passed in 4.49s
+4 passed in 4.61s
+4 passed in 3.99s
+4 passed in 4.24s
+4 passed in 4.30s
+exit 0
