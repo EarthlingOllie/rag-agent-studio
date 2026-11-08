@@ -22,6 +22,7 @@ docker exec rag0606-pg psql -U studio -c "CREATE DATABASE studio_test" >/dev/nul
 docker rm -f rag0606-pg rag0606-redis rag0606-rustfs >/dev/null 2>&1
 (echo "\$ TF_CLI_CONFIG_FILE=<scratch filesystem mirror of hashicorp/aws> make infra-check $H"; TF_CLI_CONFIG_FILE=$S/tf0906.rc timeout 2400 make infra-check 2>&1; echo "exit $?") > $L/infra-check.log
 (echo "\$ gitleaks git (origin/candidate..HEAD) $H"; gitleaks git --log-opts="origin/candidate..HEAD" . 2>&1; echo "exit $?"; echo "\$ make audit $H"; timeout 900 make audit 2>&1; echo "exit $?") > $L/security.log
-bash $C/$E/run-e2e.sh
+# RUN_E2E=0 skips images and e2e when run-e2e.sh already ran green on the same code.
+[ "${RUN_E2E:-1}" = 1 ] && bash $C/$E/run-e2e.sh
 for f in install lint client-drift frontend-tests backend-tests infra-check security images e2e; do echo "$f: $(grep -a '^exit' $L/$f.log | tr '\n' ' ')"; done
 echo ALLDONE
