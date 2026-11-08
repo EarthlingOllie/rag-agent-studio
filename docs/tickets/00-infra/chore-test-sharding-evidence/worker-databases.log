@@ -1,9 +1,10 @@
-$ psql -l on ragshard Postgres after the -n 3 run, and each database's alembic revision
-studio_test: 0037_usage_daily, organisations=2
-studio_test_gw0: 0037_usage_daily, organisations=1129
-studio_test_gw1: 0037_usage_daily, organisations=613
-studio_test_gw2: 0037_usage_daily, organisations=986
+$ each database's alembic revision and Organisation count on ragshard Postgres after both runs at b93406e (serial first, then -n 3)
+studio_test: 0037_usage_daily, organisations=2277
+studio_test_gw0: 0037_usage_daily, organisations=563
+studio_test_gw1: 0037_usage_daily, organisations=966
+studio_test_gw2: 0037_usage_daily, organisations=1200
 
-$ redis-cli info keyspace (serial run in progress on db 15)
+$ redis-cli info keyspace
 # Keyspace
-db15:keys=6,expires=6,avg_ttl=1209599745,subexpiry=0
+db12:keys=2242,expires=2090,avg_ttl=1203927933,subexpiry=0
+db13:keys=2614,expires=2473,avg_ttl=1203703480,subexpiry=0
