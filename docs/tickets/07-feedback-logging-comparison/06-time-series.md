@@ -7,7 +7,7 @@
 **Blocked by:**
 - [07-04: Rollups and Version KPIs](04-rollups-version-kpis.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A `time_series` query feeds a Recharts chart with Live History markers
 - [ ] Granularity and date range can be chosen
