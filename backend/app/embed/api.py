@@ -8,8 +8,8 @@
   Conversation token, then send messages with it (``Authorization: Bearer …``); each answer
   streams as Server-Sent Events from the Live Version. Visitors are anonymous: these routes take
   no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS.
-- The Studio's Operational Settings routes (Allowed Origins and the unavailable text), for
-  Editors and Owners. Changes apply on the next request and are audited.
+- The Studio's Operational Settings routes (Allowed Origins, the unavailable text and the rate
+  limits), for Editors and Owners. Changes apply on the next request and are audited.
 """
 
 import html
@@ -20,15 +20,22 @@ from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
-from app.agents.models import ORIGIN_MAX, UNAVAILABLE_TEXT_MAX
+from app.agents.models import (
+    CONVERSATION_RATE_MAX,
+    IP_RATE_MAX,
+    ORIGIN_MAX,
+    UNAVAILABLE_TEXT_MAX,
+)
 from app.agents.service import AgentNotFoundError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db, ErrorResponse
+from app.core.client_ip import request_ip
 from app.documents.ports import IngestionPorts
 from app.embed import service
+from app.embed.admission import Admission
 from app.embed.tokens import TokenSigner
 from app.guardrails.pipeline import RefusalEvent
 from app.playground.api import QUESTION_MAX
@@ -43,6 +50,8 @@ from app.theme.resolve import font_stylesheet_url, theme_stylesheet, widget_them
 
 NO_LONGER_AVAILABLE = "This assistant is no longer available."
 TEMPORARILY_UNAVAILABLE = service.DEFAULT_UNAVAILABLE_TEXT
+# The `unavailable` event's reason when admission control refuses a message.
+RATE_LIMITED = "rate_limited"
 INVALID_TOKEN = "This chat has expired. Reload the page to start a new one."  # noqa: S105 (a message)
 WIDGET_SCRIPT = "/widget/assets/widget.js"
 IMAGES = ("avatar", "logo")
@@ -54,6 +63,16 @@ def get_signer(request: Request) -> TokenSigner:
 
 
 Signer = Annotated[TokenSigner, Depends(get_signer)]
+
+
+def get_admission(request: Request) -> Admission:
+    return Admission(request.app.state.redis, request.app.state.clock)
+
+
+AdmissionDep = Annotated[Admission, Depends(get_admission)]
+
+
+VisitorIp = Annotated[str, Depends(request_ip)]
 
 
 # The shell
@@ -227,7 +246,11 @@ def _sse(event: str, data: dict[str, Any]) -> str:
         200: {
             "content": {"text/event-stream": {"schema": {"type": "string"}}},
             "description": (
-                "Server-Sent Events: `token` events (`text`), then `citation` events "
+                "Server-Sent Events. When admission control refuses the message (the "
+                "Conversation or the Visitor's IP address is over the Agent's rate limit), "
+                "one `unavailable` event (`reason`: `rate_limited`, and as `message` the "
+                "Agent's unavailable text); nothing is saved. Otherwise "
+                "`token` events (`text`), then `citation` events "
                 "(`label`, `document_name`, `passage`; only when the Live Version shows "
                 "citations) and one `done` event (`message_id`); or, when the "
                 "answer leaks the Canary token, a `replace` event (`text`) then `done`; or, "
@@ -251,17 +274,24 @@ async def send_message(
     db: Db,
     signer: Signer,
     clock: ClockDep,
+    admission: AdmissionDep,
+    ip: VisitorIp,
     authorization: Authorization = "",
 ) -> StreamingResponse:
     """Asks the Agent's Live Version a question in the token's Conversation. The answer is
-    recorded against the Version that was Live when it was generated."""
+    recorded against the Version that was Live when it was generated. Messages over the
+    Agent's rate limits, per Conversation and per IP address, get its unavailable text."""
     token = _bearer(authorization)
     # The Agent's own words for "can't answer now", read on every request so a change applies
     # at once.
     unavailable = await service.unavailable_text(db, public_id)
     try:
         prepared = await service.prepare_turn(
-            db, signer, public_id, token, body.content, now=clock.now()
+            db, signer, public_id, token, body.content, admission=admission, ip=ip, now=clock.now()
+        )
+    except service.NotAdmittedError:
+        return _event_stream(
+            _one(_sse("unavailable", {"reason": RATE_LIMITED, "message": unavailable}))
         )
     except service.InvalidTokenError:
         raise _invalid() from None
@@ -304,8 +334,16 @@ async def send_message(
             else:
                 yield _sse("done", {"message_id": str(event.message_id)})
 
+    return _event_stream(events())
+
+
+async def _one(event: str) -> AsyncIterator[str]:
+    yield event
+
+
+def _event_stream(events: AsyncIterator[str]) -> StreamingResponse:
     return StreamingResponse(
-        events(),
+        events,
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -407,6 +445,8 @@ Origin = Annotated[str, StringConstraints(max_length=ORIGIN_MAX * 2)]
 UnavailableText = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=UNAVAILABLE_TEXT_MAX)
 ]
+ConversationRate = Annotated[int, Field(ge=1, le=CONVERSATION_RATE_MAX)]
+IpRate = Annotated[int, Field(ge=1, le=IP_RATE_MAX)]
 
 
 class OperationalSettingsOut(BaseModel):
@@ -415,6 +455,10 @@ class OperationalSettingsOut(BaseModel):
     allowed_origins: list[str]
     # What Visitors are told when the Agent can't answer.
     unavailable_text: str
+    # Rate limits: how many messages a Visitor's Conversation, and an IP address, may send in
+    # any one minute. Messages over the limit get the unavailable text instead of an answer.
+    conversation_messages_per_minute: int
+    ip_messages_per_minute: int
 
 
 class OperationalSettingsChange(BaseModel):
@@ -423,11 +467,24 @@ class OperationalSettingsChange(BaseModel):
     allowed_origins: Annotated[list[Origin], Field(max_length=service.ORIGINS_MAX)] | None = None
     # Null or blank restores the default.
     unavailable_text: UnavailableText | None = None
+    conversation_messages_per_minute: ConversationRate | None = None
+    ip_messages_per_minute: IpRate | None = None
+
+    @field_validator("conversation_messages_per_minute", "ip_messages_per_minute", mode="before")
+    @classmethod
+    def _a_limit_is_a_number(cls, value: object) -> object:
+        # Leaving a limit out keeps it; there is no "no limit".
+        if value is None:
+            raise ValueError("A rate limit must be a whole number of messages.")
+        return value
 
 
 def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
     return OperationalSettingsOut(
-        allowed_origins=found.allowed_origins, unavailable_text=found.unavailable_text
+        allowed_origins=found.allowed_origins,
+        unavailable_text=found.unavailable_text,
+        conversation_messages_per_minute=found.conversation_messages_per_minute,
+        ip_messages_per_minute=found.ip_messages_per_minute,
     )
 
 
@@ -469,6 +526,8 @@ async def change_operational_settings(
             agent_id,
             allowed_origins=body.allowed_origins,
             unavailable_text="" if blank_text else body.unavailable_text,
+            conversation_messages_per_minute=body.conversation_messages_per_minute,
+            ip_messages_per_minute=body.ip_messages_per_minute,
             now=clock.now(),
         )
     except (ProjectNotFoundError, AgentNotFoundError):

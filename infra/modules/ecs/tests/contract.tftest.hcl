@@ -8,9 +8,14 @@ mock_provider "aws" {
     }
   }
 
+  # Two of CloudFront's origin-facing ranges (the real list has dozens and changes).
   mock_data "aws_ec2_managed_prefix_list" {
     defaults = {
       id = "pl-93a247fa"
+      entries = [
+        { cidr = "205.251.249.0/24", description = "" },
+        { cidr = "130.176.0.0/18", description = "" },
+      ]
     }
   }
 
@@ -81,6 +86,7 @@ variables {
   name_prefix          = "studio-demo"
   tags                 = { Environment = "demo", Project = "rag-agent-studio" }
   vpc_id               = "vpc-0123456789abcdef0"
+  vpc_cidr             = "10.20.0.0/16"
   public_subnet_ids    = ["subnet-0aaaaaaaaaaaaaaa1", "subnet-0bbbbbbbbbbbbbbb2"]
   private_subnet_ids   = ["subnet-0ccccccccccccccc3", "subnet-0ddddddddddddddd4"]
   image_repository_url = "123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api"
@@ -361,6 +367,33 @@ run "only_cloudfront_can_reach_the_alb" {
     )
     error_message = "The API tasks must admit only the ALB, on the API port."
   }
+}
+
+# Spec 06: the Visitor's IP is taken from CloudFront's and the ALB's X-Forwarded-For entries, believed only from
+# the trusted proxies. The ALB connects from inside the VPC and CloudFront from its origin-facing ranges (the only
+# addresses the ALB admits); without both, every Visitor would share one per-IP rate limit.
+run "the_api_trusts_the_alb_and_cloudfront_as_forwarding_proxies" {
+  command = apply
+
+  assert {
+    condition     = local.environment.api.TRUSTED_PROXIES == "10.20.0.0/16,130.176.0.0/18,205.251.249.0/24"
+    error_message = "The API must trust X-Forwarded-For from the VPC (the ALB) and CloudFront's origin-facing ranges."
+  }
+
+  assert {
+    condition     = !contains(keys(local.environment.worker), "TRUSTED_PROXIES") && !contains(keys(local.environment.beat), "TRUSTED_PROXIES")
+    error_message = "Only the API serves requests, so only it is told the trusted proxies."
+  }
+}
+
+run "rejects_a_vpc_cidr_that_is_not_a_cidr" {
+  command = plan
+
+  variables {
+    vpc_cidr = "the-vpc"
+  }
+
+  expect_failures = [var.vpc_cidr]
 }
 
 run "the_alb_forwards_only_requests_carrying_the_secret_header" {

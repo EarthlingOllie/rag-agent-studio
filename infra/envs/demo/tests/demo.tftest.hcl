@@ -182,6 +182,11 @@ run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb" {
   }
 
   assert {
+    condition     = startswith(module.ecs.task_environment.api.TRUSTED_PROXIES, "${module.network.vpc_cidr},") || module.ecs.task_environment.api.TRUSTED_PROXIES == module.network.vpc_cidr
+    error_message = "The API must trust X-Forwarded-For from the ALB, inside the environment's VPC (spec 06 trusted proxies)."
+  }
+
+  assert {
     condition     = module.ecs.task_environment.api.BEDROCK_PLATFORM_PRINCIPAL == output.bedrock_trust_principal
     error_message = "The API must show Organisations the same trust principal the environment outputs."
   }

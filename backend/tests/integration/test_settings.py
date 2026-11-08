@@ -44,3 +44,16 @@ async def test_startup_fails_fast_on_a_local_key_wrapper_key_that_is_not_32_byte
     ):
         async with LifespanManager(create_app()):
             pass  # startup must not complete
+
+
+async def test_startup_fails_fast_on_a_trusted_proxy_that_is_not_an_address(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    settings_env.setenv("TRUSTED_PROXIES", "10.0.0.0/16, the-load-balancer")
+
+    with pytest.raises(
+        SettingsError,
+        match=r"TRUSTED_PROXIES: Value error, 'the-load-balancer' isn't an IP address or network",
+    ):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete
