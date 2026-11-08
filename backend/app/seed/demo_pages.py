@@ -16,7 +16,6 @@ Embed Snippet), so neither route reveals anything a demo page doesn't already sh
 OpenAPI document: no Studio code calls them.
 """
 
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
