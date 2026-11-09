@@ -40,30 +40,6 @@ function shown(value: JsonValue, names: Record<string, string>): string {
   return (value as { model: string }).model;
 }
 
-const LINE_STYLE: Record<DiffLine["op"], { sign: string; label: string; className: string }> = {
-  equal: { sign: " ", label: "Unchanged", className: "text-muted" },
-  delete: { sign: "−", label: "Removed", className: "bg-danger-soft text-danger" },
-  insert: { sign: "+", label: "Added", className: "bg-accent-soft text-accent-ink" },
-};
-
-/** A line diff of markdown: removed lines marked −, added lines +. */
-export function TextDiff({ lines, label }: { lines: DiffLine[]; label: string }) {
-  return (
-    <ol aria-label={label} className="overflow-x-auto rounded border border-line font-mono text-xs">
-      {lines.map((line, index) => {
-        const style = LINE_STYLE[line.op];
-        return (
-          <li key={index} className={`whitespace-pre-wrap px-2 ${style.className}`}>
-            <span className="sr-only">{style.label}: </span>
-            <span aria-hidden="true">{style.sign} </span>
-            {line.text}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 /** One side of a line diff, as text: the lines before the change, or after it. */
 function sideText(lines: DiffLine[], side: "before" | "after"): string {
   const dropped = side === "before" ? "insert" : "delete";
