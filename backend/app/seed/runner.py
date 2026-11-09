@@ -3,7 +3,8 @@
 ``seed`` drives the FastAPI app in process, over HTTP: it signs up the demo Owner, invites and
 signs up the Editor, adds the demo model's credential (and a real one, if given), sets the
 Default Model and the Theme, creates the Project, its Tags, Documents and Agents, and publishes
-the Agents the demo pages embed with the shop origin in their Allowed Origins (ticket 10-03).
+the Agents the demo pages embed with the shop origin in their Allowed Origins (ticket 10-03),
+among them the attack panel's Guardrail demo Agent, on the naive demo model (ticket 10-04).
 So the seeded data is valid by construction. Files go to the object store through presigned URLs,
 as a browser's do, and ingestion runs wherever the app sends it (the worker, or eagerly in tests).
 
@@ -28,16 +29,12 @@ from sqlalchemy import select
 
 from app.credentials.registry import PROVIDERS, Provider
 from app.seed import content
+from app.seed.client import SeedApi, new_client
+from app.seed.client import SeedError as SeedError
+from app.seed.history import ShiftedClock, generate, history_start
 from app.storage.memory import InMemoryObjectStore
 from app.tenancy.erasure import erase_member, erase_organisation
 from app.tenancy.models import Member, Membership, Organisation, Role
-
-# HTTPS, so the client's cookie jar sends the Secure session cookie back.
-BASE_URL = "https://seed.internal"
-
-
-class SeedError(Exception):
-    """The seed can't go on; the message says why and what to do."""
 
 
 @dataclass(frozen=True)
@@ -88,23 +85,6 @@ class SeedReport:
         ]
 
 
-class _Api:
-    """A signed-in client, raising ``SeedError`` on any answer but the expected one."""
-
-    def __init__(self, client: httpx.AsyncClient) -> None:
-        self.client = client
-        self.organisation = ""
-
-    def path(self, *parts: str) -> str:
-        return "/".join(["/api/organisations", self.organisation, *parts])
-
-    async def call(self, method: str, path: str, *, expect: int = 200, body: Any = None) -> Any:
-        response = await self.client.request(method, path, json=body)
-        if response.status_code != expect:
-            raise SeedError(f"{method} {path} answered {response.status_code}: {response.text}")
-        return response.json()
-
-
 async def _put_file(app: FastAPI, url: str, data: bytes, content_type: str) -> None:
     """What the browser's PUT to a presigned URL does."""
     store = app.state.ingestion.object_store
@@ -116,7 +96,7 @@ async def _put_file(app: FastAPI, url: str, data: bytes, content_type: str) -> N
     response.raise_for_status()
 
 
-async def _owner(api: _Api) -> None:
+async def _owner(api: SeedApi) -> None:
     owner = content.OWNER
     response = await api.client.post(
         "/api/auth/sign-up",
@@ -150,7 +130,7 @@ async def _owner(api: _Api) -> None:
     api.organisation = found[0]
 
 
-async def _editor(app: FastAPI, api: _Api) -> None:
+async def _editor(app: FastAPI, api: SeedApi) -> None:
     editor = content.EDITOR
     members = await api.call("GET", api.path("members"))
     if any(m["email"] == editor.email for m in members):
@@ -162,8 +142,8 @@ async def _editor(app: FastAPI, api: _Api) -> None:
         body={"email": editor.email, "role": Role.EDITOR, "send_email": False},
     )
     (token,) = parse_qs(urlsplit(issued["link"]).query)["token"]
-    async with _client(app) as client:
-        await _Api(client).call(
+    async with new_client(app) as client:
+        await SeedApi(client).call(
             "POST",
             "/api/invites/sign-up",
             expect=201,
@@ -171,7 +151,7 @@ async def _editor(app: FastAPI, api: _Api) -> None:
         )
 
 
-async def _credential(api: _Api, name: str, provider: Provider, api_key: str) -> str:
+async def _credential(api: SeedApi, name: str, provider: Provider, api_key: str) -> str:
     credentials = await api.call("GET", api.path("credentials"))
     for credential in credentials:
         if credential["name"] == name:
@@ -187,8 +167,12 @@ async def _credential(api: _Api, name: str, provider: Provider, api_key: str) ->
     return new
 
 
-async def _default_model(api: _Api, real: RealCredential | None) -> str:
-    demo = await _credential(api, content.DEMO_CREDENTIAL, Provider.DEMO, content.DEMO_KEY)
+async def _demo_credential(api: SeedApi) -> str:
+    return await _credential(api, content.DEMO_CREDENTIAL, Provider.DEMO, content.DEMO_KEY)
+
+
+async def _default_model(api: SeedApi, real: RealCredential | None) -> str:
+    demo = await _demo_credential(api)
     chosen = (demo, content.DEMO_MODEL)
     if real is not None:
         name = f"Northwind {PROVIDERS[real.provider].name}"
@@ -203,14 +187,14 @@ async def _default_model(api: _Api, real: RealCredential | None) -> str:
     return f"{current['model_name']} ({current['credential_name']})"
 
 
-async def _theme(api: _Api) -> None:
+async def _theme(api: SeedApi) -> None:
     wanted = content.THEME.model_dump(mode="json")
     current = await api.call("GET", api.path("theme"))
     if {key: current[key] for key in wanted} != wanted:
         await api.call("PUT", api.path("theme"), body=wanted)
 
 
-async def _project(api: _Api) -> str:
+async def _project(api: SeedApi) -> str:
     projects = await api.call("GET", api.path("projects"))
     found = [p["id"] for p in projects if p["name"] == content.PROJECT_NAME]
     if found:
@@ -226,7 +210,7 @@ async def _project(api: _Api) -> str:
     return new
 
 
-async def _tags(api: _Api, project: str) -> dict[str, str]:
+async def _tags(api: SeedApi, project: str) -> dict[str, str]:
     tags = {
         t["name"]: t["id"] for t in await api.call("GET", api.path("projects", project, "tags"))
     }
@@ -240,7 +224,7 @@ async def _tags(api: _Api, project: str) -> dict[str, str]:
 
 
 async def _documents(
-    app: FastAPI, api: _Api, project: str, assets: Path, tags: dict[str, str]
+    app: FastAPI, api: SeedApi, project: str, assets: Path, tags: dict[str, str]
 ) -> int:
     documents = api.path("projects", project, "documents")
     existing = {d["name"]: d for d in await api.call("GET", documents)}
@@ -272,7 +256,7 @@ def shop_origin(app: FastAPI) -> str:
 
 
 async def _embedding(
-    api: _Api, agent_path: str, agent: Any, embedding: content.Embedding, origin: str
+    api: SeedApi, agent_path: str, agent: Any, embedding: content.Embedding, origin: str
 ) -> None:
     """Publishes the Agent if it isn't Live, and sets what the demo pages need of its
     Operational Settings."""
@@ -291,17 +275,39 @@ async def _embedding(
         await api.call("PATCH", settings_path, body=wanted)
 
 
-async def _agents(api: _Api, project: str, tags: dict[str, str], origin: str) -> None:
+async def _instructions(api: SeedApi, project: str) -> None:
+    """Publishes Instructions v1 if the Project has never had Instructions; later Versions are
+    the history's (ticket 10-02)."""
+    path = api.path("projects", project, "instructions")
+    found = await api.call("GET", f"{path}/versions")
+    if not found["versions"]:
+        await api.call("PUT", path, body={"markdown": content.INSTRUCTIONS_V1})
+        await api.call(
+            "POST", f"{path}/versions", expect=201, body={"note": content.INSTRUCTIONS_V1_NOTE}
+        )
+
+
+async def _agents(api: SeedApi, project: str, tags: dict[str, str], origin: str) -> dict[str, Any]:
+    """Each seeded Agent, by name, as it was found or created (before its Draft is set)."""
     agents = api.path("projects", project, "agents")
     existing = {a["name"]: a for a in await api.call("GET", agents)}
     for wanted in content.AGENTS:
         agent = existing.get(wanted.name)
         if agent is None:
-            agent = await api.call("POST", agents, expect=201, body={"name": wanted.name})
+            agent = existing[wanted.name] = await api.call(
+                "POST", agents, expect=201, body={"name": wanted.name}
+            )
         draft = agent["draft"]
+        model = None
+        if wanted.demo_model is not None:
+            model = {"credential_id": await _demo_credential(api), "model": wanted.demo_model}
         changed = {
             **draft,
-            "behaviour": {**draft["behaviour"], "system_prompt": wanted.system_prompt},
+            "behaviour": {
+                **draft["behaviour"],
+                "system_prompt": wanted.system_prompt,
+                "model": model,
+            },
             "retrieval": {
                 **draft["retrieval"],
                 "tag_ids": sorted(tags[name] for name in wanted.tags),
@@ -312,25 +318,57 @@ async def _agents(api: _Api, project: str, tags: dict[str, str], origin: str) ->
             await api.call("PUT", f"{agents}/{agent['id']}/draft", body=changed)
         if wanted.embedding is not None:
             await _embedding(api, f"{agents}/{agent['id']}", agent, wanted.embedding, origin)
+    return existing
 
 
-def _client(app: FastAPI) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE_URL)
+async def _demo_owner_exists(app: FastAPI) -> bool:
+    async with app.state.sessionmaker() as session:
+        found = await session.scalar(select(Member.id).where(Member.email == content.OWNER.email))
+    return found is not None
 
 
-async def seed(app: FastAPI, assets: Path, real: RealCredential | None = None) -> SeedReport:
-    """Builds, or completes, the demo Organisation. ``assets`` is the ``seed`` folder."""
-    async with _client(app) as client:
-        api = _Api(client)
-        await _owner(api)
-        await _editor(app, api)
-        default_model = await _default_model(api, real)
-        await _theme(api)
-        project = await _project(api)
-        tags = await _tags(api, project)
-        documents = await _documents(app, api, project, assets, tags)
-        origin = shop_origin(app)
-        await _agents(api, project, tags, origin)
+async def seed(
+    app: FastAPI,
+    assets: Path,
+    real: RealCredential | None = None,
+    history: content.History | None = None,
+) -> SeedReport:
+    """Builds, or completes, the demo Organisation. ``assets`` is the ``seed`` folder.
+
+    A fresh demo Organisation gets its history (``app.seed.history``): it is set up four weeks
+    in the past, under a clock the seed sets back, and lives through the story to today. The
+    history always runs on the demo model; a real credential becomes the Default Model after
+    it. Seeding again only puts the foundation back; the history is never replayed. ``history``
+    says how much to make: ``content.HISTORY`` unless given."""
+    system_clock = app.state.clock
+    fresh = not await _demo_owner_exists(app)
+    start = history_start(system_clock.now())
+    clock = ShiftedClock(start)
+    if fresh:
+        app.state.clock = clock
+    try:
+        async with new_client(app) as client:
+            api = SeedApi(client)
+            await _owner(api)
+            await _editor(app, api)
+            default_model = await _default_model(api, None if fresh else real)
+            await _theme(api)
+            project = await _project(api)
+            tags = await _tags(api, project)
+            documents = await _documents(app, api, project, assets, tags)
+            origin = shop_origin(app)
+            await _instructions(api, project)
+            agents = await _agents(api, project, tags, origin)
+            if fresh:
+                await generate(app, api, clock, start, project, agents, history or content.HISTORY)
+                default_model = await _default_model(api, real)
+            elif agents[content.HR_AGENT]["live_version"] is None:
+                raise SeedError(
+                    f"{content.HR_AGENT} has no Versions, so the demo history is missing. "
+                    "Run `make seed-reset` to recreate the demo Organisation with it."
+                )
+    finally:
+        app.state.clock = system_clock
     return SeedReport(
         organisation_id=api.organisation,
         studio_url=str(app.state.settings.studio_url),

@@ -1,0 +1,8 @@
+    name     | number | conversations | replies 
+-------------+--------+---------------+---------
+ HR helper   |      1 |            90 |     152
+ HR helper   |      2 |            35 |      57
+ HR helper   |      3 |            15 |      25
+ Product FAQ |      1 |            84 |     142
+(4 rows)
+

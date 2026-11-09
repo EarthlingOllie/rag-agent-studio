@@ -22,7 +22,9 @@ from tests.theme_images import png
 
 RUSTFS_URL = os.environ.get("TEST_OBJECT_STORE_URL", "http://localhost:9000")
 RUSTFS_KEYS = {"access_key_id": "studio", "secret_access_key": "studio-secret"}
-BUCKET = "studio-documents-test"
+# Under pytest-xdist each worker has its own bucket, so two workers never race to create it.
+_WORKER = os.environ.get("PYTEST_XDIST_WORKER")
+BUCKET = f"studio-documents-test-{_WORKER}" if _WORKER else "studio-documents-test"
 
 
 def rustfs(bucket: str = BUCKET, **overrides: str) -> S3ObjectStore:

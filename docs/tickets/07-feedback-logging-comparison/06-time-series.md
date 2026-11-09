@@ -7,10 +7,10 @@
 **Blocked by:**
 - [07-04: Rollups and Version KPIs](04-rollups-version-kpis.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A `time_series` query feeds a Recharts chart with Live History markers
-- [ ] Granularity and date range can be chosen
-- [ ] A confounder note appears when Documents changed during the period
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] A `time_series` query feeds a Recharts chart with Live History markers
+- [x] Granularity and date range can be chosen
+- [x] A confounder note appears when Documents changed during the period
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

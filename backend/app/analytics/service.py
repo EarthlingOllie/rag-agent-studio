@@ -1,11 +1,10 @@
-"""The analytics query interface:
-- ``version_metrics``, each Agent Version's KPIs over a range of UTC days;
-- ``org_cost``, what the Organisation spent over a range of UTC days, by Project or by Agent.
-
-Visitor usage on days before today comes from the ``usage_daily`` rollups; today, the live
-partial day, is worked out from the raw tables. Playground Conversations never count in the
-KPIs. Org cost shows their replies' cost in a separate column, read from the raw Messages: the
-rollups never hold Playground usage.
+"""The analytics query interface: ``version_metrics``, each Agent Version's KPIs over a range
+of UTC days, and ``time_series``, one metric of an Agent per day, week or month, with Live
+History markers and the Project's Document changes (a confounder). Days before today come
+from the ``usage_daily`` rollups; today, the live partial day, is worked out from the raw
+tables. Playground Conversations never count in either. ``org_cost`` is what the Organisation
+spent over a range of UTC days, by Project or by Agent, with Playground replies' cost in a
+separate column, read from the raw Messages: the rollups never hold Playground usage.
 
 Percentiles come from the merged histograms; Wilson intervals are worked out here, from the
 counts. A KPI whose sample is smaller than ``LOW_CONFIDENCE_BELOW`` is flagged low confidence."""
@@ -13,20 +12,23 @@ counts. A KPI whose sample is smaller than ``LOW_CONFIDENCE_BELOW`` is flagged l
 import enum
 import uuid
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute, aliased
 
-from app.agents.models import Agent, AgentVersion
+from app.agents.models import Agent, AgentVersion, LiveHistoryEntry
 from app.agents.service import get_agent
 from app.analytics.models import UsageDaily
 from app.analytics.stats import Interval, wilson
 from app.analytics.usage import DOLLARS, Only, Usage, day_bounds, usage_on
+from app.audit.models import AuditEvent
 from app.conversations.models import Conversation, Message, MessageRole
+from app.documents.models import Document
 from app.projects.models import Project
 from app.tenancy.repository import OrganisationScope
 
@@ -70,6 +72,13 @@ class VersionKpis:
     def fallback_rate(self) -> float | None:
         usage = self.usage
         return usage.fallback_count / usage.messages if usage.messages else None
+
+    @property
+    def block_rate(self) -> float | None:
+        """The share of replies that were the refusal text: the input Guardrail blocked the
+        question."""
+        usage = self.usage
+        return usage.guardrail_blocks / usage.messages if usage.messages else None
 
     @property
     def cost_total(self) -> Decimal:
@@ -240,4 +249,197 @@ async def org_cost(
     ]
     return sorted(
         lines, key=lambda line: (-line.total_usd, line.project_name, line.agent_name or "")
+    )
+
+
+class TimeSeriesMetric(enum.StrEnum):
+    """What a time series measures, over each of its periods."""
+
+    CONVERSATIONS = "conversations"
+    REPLIES = "replies"
+    COST_USD = "cost_usd"
+    MEAN_TOKENS = "mean_tokens"
+    THUMBS_UP_RATE = "thumbs_up_rate"
+    MEAN_RATING = "mean_rating"
+    FALLBACK_RATE = "fallback_rate"
+    P95_LATENCY_MS = "p95_latency_ms"
+
+
+class TimeSeriesGranularity(enum.StrEnum):
+    DAY = "day"
+    # ISO weeks, Monday to Sunday.
+    WEEK = "week"
+    MONTH = "month"
+
+
+def _rate(part: int, n: int) -> tuple[float | None, int]:
+    return (part / n if n else None), n
+
+
+# Each metric's value over some usage (None without a sample), and its sample size.
+_MEASURES: dict[TimeSeriesMetric, Callable[[Usage], tuple[float | None, int]]] = {
+    TimeSeriesMetric.CONVERSATIONS: lambda u: (u.conversations, u.conversations),
+    TimeSeriesMetric.REPLIES: lambda u: (u.messages, u.messages),
+    TimeSeriesMetric.COST_USD: lambda u: (float(u.cost_usd.quantize(DOLLARS)), u.conversations),
+    TimeSeriesMetric.MEAN_TOKENS: lambda u: _rate(u.tokens, u.token_replies),
+    TimeSeriesMetric.THUMBS_UP_RATE: lambda u: _rate(u.thumbs_up, u.thumbs_up + u.thumbs_down),
+    TimeSeriesMetric.MEAN_RATING: lambda u: _rate(u.rating_sum, u.rating_count),
+    TimeSeriesMetric.FALLBACK_RATE: lambda u: _rate(u.fallback_count, u.messages),
+    TimeSeriesMetric.P95_LATENCY_MS: lambda u: (
+        u.latency_histogram.percentile(0.95),
+        u.latency_histogram.count,
+    ),
+}
+
+# The first day of the period (day, ISO week or month) a day is in.
+_PERIOD_START: dict[TimeSeriesGranularity, Callable[[date], date]] = {
+    TimeSeriesGranularity.DAY: lambda day: day,
+    TimeSeriesGranularity.WEEK: lambda day: day - timedelta(days=day.weekday()),
+    TimeSeriesGranularity.MONTH: lambda day: day.replace(day=1),
+}
+
+
+def _periods(start: date, end: date, granularity: TimeSeriesGranularity) -> list[tuple[date, date]]:
+    """The periods covering ``start`` to ``end``, each clipped to the range."""
+    period_start = _PERIOD_START[granularity]
+    found: list[tuple[date, date]] = []
+    day = start
+    while day <= end:
+        following = day + timedelta(days=1)
+        while following <= end and period_start(following) == period_start(day):
+            following += timedelta(days=1)
+        found.append((day, following - timedelta(days=1)))
+        day = following
+    return found
+
+
+@dataclass(frozen=True)
+class Point:
+    start: date
+    end: date
+    value: float | None
+    n: int
+
+
+@dataclass(frozen=True)
+class Marker:
+    """A change of the Live Version: one Live History entry."""
+
+    occurred_at: datetime
+    action: str
+    from_version: AgentVersion | None
+    to_version: AgentVersion
+
+
+@dataclass(frozen=True)
+class DocumentChanges:
+    """What changed in the Project's Knowledge Base during a range: Documents added, replaced or
+    processed again (still there), and Documents deleted."""
+
+    changed: int
+    deleted: int
+
+
+@dataclass(frozen=True)
+class TimeSeries:
+    points: list[Point]
+    markers: list[Marker]
+    document_changes: DocumentChanges
+
+
+async def _markers(
+    session: AsyncSession, agent_id: uuid.UUID, since: datetime, until: datetime
+) -> list[Marker]:
+    before = aliased(AgentVersion)
+    after = aliased(AgentVersion)
+    rows = await session.execute(
+        select(LiveHistoryEntry, before, after)
+        .outerjoin(before, before.id == LiveHistoryEntry.from_version_id)
+        .join(after, after.id == LiveHistoryEntry.to_version_id)
+        .where(
+            LiveHistoryEntry.agent_id == agent_id,
+            LiveHistoryEntry.occurred_at >= since,
+            LiveHistoryEntry.occurred_at < until,
+        )
+        .order_by(LiveHistoryEntry.seq)
+    )
+    return [Marker(entry.occurred_at, entry.action, old, new) for entry, old, new in rows]
+
+
+async def _document_changes(
+    session: AsyncSession,
+    organisation_id: uuid.UUID,
+    project_id: uuid.UUID,
+    since: datetime,
+    until: datetime,
+) -> DocumentChanges:
+    def within(column: InstrumentedAttribute[datetime]) -> ColumnElement[bool]:
+        return and_(column >= since, column < until)
+
+    changed = await session.scalar(
+        select(func.count())
+        .select_from(Document)
+        .where(
+            Document.project_id == project_id,
+            or_(within(Document.created_at), within(Document.updated_at)),
+        )
+    )
+    deleted = await session.scalar(
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(
+            AuditEvent.organisation_id == organisation_id,
+            AuditEvent.action == "document.deleted",
+            AuditEvent.before["project_id"].astext == str(project_id),
+            within(AuditEvent.occurred_at),
+        )
+    )
+    return DocumentChanges(changed=changed or 0, deleted=deleted or 0)
+
+
+async def time_series(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    metric: TimeSeriesMetric,
+    granularity: TimeSeriesGranularity,
+    start: date,
+    end: date,
+    today: date,
+) -> TimeSeries:
+    """The metric over every Version of the Agent, per period of the UTC days ``start`` to
+    ``end`` inclusive (each period clipped to the range), including today so far; with the
+    Live History entries made during the range and the Project's Document changes during it.
+    Raises ``AgentNotFoundError``."""
+    agent = (await get_agent(session, scope, project_id, agent_id)).agent
+    daily: dict[date, Usage] = {}
+    rolled = await session.scalars(
+        select(UsageDaily).where(
+            UsageDaily.agent_id == agent.id,
+            UsageDaily.day >= start,
+            UsageDaily.day <= min(end, today - timedelta(days=1)),
+        )
+    )
+    for row in rolled:
+        daily.setdefault(row.day, Usage()).add(Usage.of_row(row))
+    if start <= today <= end:
+        for version_day in (await usage_on(session, today, Only(agent_id=agent.id))).values():
+            daily.setdefault(today, Usage()).add(version_day.usage)
+    points = []
+    for first, last in _periods(start, end, granularity):
+        usage = Usage()
+        for day, used in daily.items():
+            if first <= day <= last:
+                usage.add(used)
+        value, n = _MEASURES[metric](usage)
+        points.append(Point(first, last, value, n))
+    since, _ = day_bounds(start)
+    _, until = day_bounds(end)
+    return TimeSeries(
+        points=points,
+        markers=await _markers(session, agent.id, since, until),
+        document_changes=await _document_changes(
+            session, scope.organisation_id, agent.project_id, since, until
+        ),
     )

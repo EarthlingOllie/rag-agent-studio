@@ -5,10 +5,14 @@ import { useAgents } from "./agents";
 import { type MetricsRange, type VersionKpis, useVersionMetrics } from "./analytics";
 import { ProjectRequestError } from "./projects";
 import { INPUT, useOrganisationRole } from "./ProjectsPage";
+import { TimeSeriesChart } from "./TimeSeriesChart";
 
 const ROUTE = "/signed-in/organisations/$organisationId/projects/$projectId/analytics";
 
 const percent = (rate: number) => `${String(Math.round(rate * 100))}%`;
+
+/** A rate under one percent (but not none) keeps one decimal, so it doesn't read as 0% or 1%. */
+const finePercent = (rate: number) => (rate > 0 && rate < 0.01 ? `${(rate * 100).toFixed(1)}%` : percent(rate));
 
 const cents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fractionOfACent = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumSignificantDigits: 2 });
@@ -68,7 +72,7 @@ function KpiCard({
 }
 
 function Kpis({ kpis }: { kpis: VersionKpis }) {
-  const { tokens, cost, thumbs_up: thumbs, rating, fallback, latency } = kpis;
+  const { tokens, cost, thumbs_up: thumbs, rating, fallback, guardrail_blocks: blocks, latency } = kpis;
   return (
     <ul aria-label={`Key numbers for v${String(kpis.number)}`} className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <KpiCard
@@ -118,6 +122,13 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
         details={<p>{`${String(fallback.count)} of ${plural(kpis.messages, "reply", "replies")} were the fallback text`}</p>}
       />
       <KpiCard
+        title="Guardrail block rate"
+        value={blocks.rate === null ? "No replies yet" : finePercent(blocks.rate)}
+        details={
+          <p>{`${String(blocks.count)} of ${plural(kpis.messages, "reply was", "replies were")} blocked by the input Guardrail`}</p>
+        }
+      />
+      <KpiCard
         title="p95 latency"
         value={latency.total_p95_ms === null ? "No replies yet" : duration(latency.total_p95_ms)}
         details={
@@ -163,6 +174,7 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
           {`${metrics.data.start} to ${metrics.data.end} (UTC days), including today so far. Visitor Conversations only: the Playground is left out.`}
         </p>
         <Kpis kpis={shown} />
+        <TimeSeriesChart organisationId={organisationId} projectId={projectId} agentId={agentId} range={range} />
       </>
     );
   }
@@ -202,7 +214,7 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
   );
 }
 
-/** The Analytics tab: an Agent Version's KPI cards, with intervals, sample sizes and small samples marked. */
+/** The Analytics tab: an Agent Version's KPI cards, with intervals, sample sizes and small samples marked, and the Agent's time series. */
 export function AnalyticsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useParams({ from: ROUTE });

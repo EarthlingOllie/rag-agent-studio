@@ -82,6 +82,10 @@ class Agent(IdMixin, Base):
     # The budget alert flag: when the day's Token Budget ran out, shown as the Studio's alert
     # badge. Beat clears it at midnight UTC; None when there is no alert.
     budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Block rate alert flag: when the hourly rollup found the input Guardrail's block rate
+    # spiking, shown as the Studio's alert badge. The first run that finds no spike clears it;
+    # None when there is no alert.
+    block_rate_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

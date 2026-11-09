@@ -1,0 +1,147 @@
+# Filtered for size: the 19553 JSON log lines the seed's in-process API printed (one per request, ~33 MB) are removed; everything else is as run.
+$ (env from e2e.env) CI=1: docker compose -p rag1002-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-02-evidence/compose.sandbox.yml up -d --build --wait; time make seed COMPOSE=...; cd frontend && pnpm e2e tests/seed.spec.ts tests/demo-pages.spec.ts tests/embed.spec.ts tests/token-budget.spec.ts tests/operational-settings.spec.ts tests/widget-lifecycle.spec.ts tests/widget-accessibility.spec.ts tests/branded-widget.spec.ts tests/smoke.spec.ts tests/auth.spec.ts @ 45597d2 (ticket/10-02-seeded-history in clean1002, clean tree: 0 changes) (CI settings: one retry)
+ Volume rag1002-e2e_postgres-data Creating 
+ Network rag1002-e2e_default Creating 
+ Volume rag1002-e2e_rustfs-data Creating 
+ Volume rag1002-e2e_rustfs-data Creating 
+ Network rag1002-e2e_default Creating 
+ Volume rag1002-e2e_postgres-data Creating 
+ Volume rag1002-e2e_postgres-data Created 
+ Volume rag1002-e2e_postgres-data Created 
+ Volume rag1002-e2e_rustfs-data Created 
+ Volume rag1002-e2e_rustfs-data Created 
+ Network rag1002-e2e_default Created 
+ Network rag1002-e2e_default Created 
+ Container rag1002-e2e-mailpit-1 Creating 
+ Container rag1002-e2e-host-1 Creating 
+ Container rag1002-e2e-postgres-1 Creating 
+ Container rag1002-e2e-widget-1 Creating 
+ Container rag1002-e2e-rustfs-1 Creating 
+ Container rag1002-e2e-redis-1 Creating 
+ Container rag1002-e2e-mailpit-1 Created 
+ Container rag1002-e2e-host-1 Created 
+ Container rag1002-e2e-rustfs-1 Created 
+ Container rag1002-e2e-widget-1 Created 
+ Container rag1002-e2e-postgres-1 Created 
+ Container rag1002-e2e-redis-1 Created 
+ Container rag1002-e2e-worker-1 Creating 
+ Container rag1002-e2e-api-1 Creating 
+ Container rag1002-e2e-beat-1 Creating 
+ Container rag1002-e2e-worker-1 Created 
+ Container rag1002-e2e-api-1 Created 
+ Container rag1002-e2e-studio-1 Creating 
+ Container rag1002-e2e-beat-1 Created 
+ Container rag1002-e2e-studio-1 Created 
+ Container rag1002-e2e-rustfs-1 Starting 
+ Container rag1002-e2e-host-1 Starting 
+ Container rag1002-e2e-mailpit-1 Starting 
+ Container rag1002-e2e-postgres-1 Starting 
+ Container rag1002-e2e-redis-1 Starting 
+ Container rag1002-e2e-widget-1 Starting 
+ Container rag1002-e2e-rustfs-1 Started 
+ Container rag1002-e2e-host-1 Started 
+ Container rag1002-e2e-mailpit-1 Started 
+ Container rag1002-e2e-postgres-1 Started 
+ Container rag1002-e2e-redis-1 Started 
+ Container rag1002-e2e-rustfs-1 Waiting 
+ Container rag1002-e2e-postgres-1 Waiting 
+ Container rag1002-e2e-redis-1 Waiting 
+ Container rag1002-e2e-postgres-1 Waiting 
+ Container rag1002-e2e-redis-1 Waiting 
+ Container rag1002-e2e-rustfs-1 Waiting 
+ Container rag1002-e2e-redis-1 Waiting 
+ Container rag1002-e2e-rustfs-1 Waiting 
+ Container rag1002-e2e-postgres-1 Waiting 
+ Container rag1002-e2e-widget-1 Started 
+ Container rag1002-e2e-rustfs-1 Healthy 
+ Container rag1002-e2e-rustfs-1 Healthy 
+ Container rag1002-e2e-rustfs-1 Healthy 
+ Container rag1002-e2e-postgres-1 Healthy 
+ Container rag1002-e2e-postgres-1 Healthy 
+ Container rag1002-e2e-postgres-1 Healthy 
+ Container rag1002-e2e-redis-1 Healthy 
+ Container rag1002-e2e-api-1 Starting 
+ Container rag1002-e2e-redis-1 Healthy 
+ Container rag1002-e2e-worker-1 Starting 
+ Container rag1002-e2e-redis-1 Healthy 
+ Container rag1002-e2e-beat-1 Starting 
+ Container rag1002-e2e-api-1 Started 
+ Container rag1002-e2e-api-1 Waiting 
+ Container rag1002-e2e-widget-1 Waiting 
+ Container rag1002-e2e-worker-1 Started 
+ Container rag1002-e2e-beat-1 Started 
+ Container rag1002-e2e-widget-1 Healthy 
+ Container rag1002-e2e-api-1 Healthy 
+ Container rag1002-e2e-studio-1 Starting 
+ Container rag1002-e2e-studio-1 Started 
+ Container rag1002-e2e-beat-1 Waiting 
+ Container rag1002-e2e-mailpit-1 Waiting 
+ Container rag1002-e2e-host-1 Waiting 
+ Container rag1002-e2e-redis-1 Waiting 
+ Container rag1002-e2e-postgres-1 Waiting 
+ Container rag1002-e2e-widget-1 Waiting 
+ Container rag1002-e2e-worker-1 Waiting 
+ Container rag1002-e2e-api-1 Waiting 
+ Container rag1002-e2e-rustfs-1 Waiting 
+ Container rag1002-e2e-studio-1 Waiting 
+ Container rag1002-e2e-api-1 Healthy 
+ Container rag1002-e2e-rustfs-1 Healthy 
+ Container rag1002-e2e-redis-1 Healthy 
+ Container rag1002-e2e-mailpit-1 Healthy 
+ Container rag1002-e2e-widget-1 Healthy 
+ Container rag1002-e2e-postgres-1 Healthy 
+ Container rag1002-e2e-host-1 Healthy 
+ Container rag1002-e2e-beat-1 Healthy 
+ Container rag1002-e2e-worker-1 Healthy 
+ Container rag1002-e2e-studio-1 Healthy 
+docker compose -p rag1002-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-02-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean1002/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag1002-e2e-api-run-6b1d2cfec17d Creating 
+ Container rag1002-e2e-api-run-6b1d2cfec17d Created 
+[0;93m2026-11-08 14:34:09.999752731 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:161: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:41483/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:41475/demo/
+
+real	2m21.270s
+user	0m0.432s
+sys	0m0.335s
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean1002/frontend
+> playwright test tests/seed.spec.ts tests/demo-pages.spec.ts tests/embed.spec.ts tests/token-budget.spec.ts tests/operational-settings.spec.ts tests/widget-lifecycle.spec.ts tests/widget-accessibility.spec.ts tests/branded-widget.spec.ts tests/smoke.spec.ts tests/auth.spec.ts
+
+
+Running 24 tests using 2 workers
+
+  ✓   1 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (4.3s)
+  ✓   3 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (3.4s)
+  ✓   4 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.4s)
+  ✓   5 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.6s)
+  ✓   2 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (15.0s)
+  ✓   6 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.9s)
+  ✓   8 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (3.0s)
+  ✓   7 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (3.9s)
+  ✓  10 [studio] › e2e/tests/demo-pages.spec.ts:36:3 › Demo host pages › the help-centre page shows the same Agent inline (2.7s)
+  ✓  11 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (1.9s)
+  ✓  12 [studio] › e2e/tests/demo-pages.spec.ts:69:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (5.7s)
+  ✓   9 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (12.4s)
+  ✓  14 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (5.1s)
+  ✓  13 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (9.8s)
+  ✓  15 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (3.7s)
+  ✓  16 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.2s)
+  ✓  18 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.1s)
+  ✓  19 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (9.6s)
+  ✓  17 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (16.1s)
+  ✓  20 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (9.6s)
+  ✓  21 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (8.3s)
+  ✓  23 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (3.9s)
+  ✓  24 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (4.8s)
+  ✓  22 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (9.9s)
+
+  24 passed (1.3m)
+exit 0

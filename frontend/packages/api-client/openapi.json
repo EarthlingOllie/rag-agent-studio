@@ -109,6 +109,10 @@
             ],
             "title": "Archived At"
           },
+          "block_rate_alert": {
+            "title": "Block Rate Alert",
+            "type": "boolean"
+          },
           "budget_exhausted": {
             "title": "Budget Exhausted",
             "type": "boolean"
@@ -175,7 +179,8 @@
           "draft_revision",
           "live_version",
           "has_unpublished_changes",
-          "budget_exhausted"
+          "budget_exhausted",
+          "block_rate_alert"
         ],
         "title": "AgentOut",
         "type": "object"
@@ -1572,6 +1577,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "guardrail_events": {
+            "title": "Guardrail Events",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1640,7 +1649,8 @@
           "version_numbers",
           "thumbs_up",
           "thumbs_down",
-          "rating"
+          "rating",
+          "guardrail_events"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -2303,6 +2313,24 @@
           "code"
         ],
         "title": "DisableRequest",
+        "type": "object"
+      },
+      "DocumentChangesOut": {
+        "properties": {
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changed",
+          "deleted"
+        ],
+        "title": "DocumentChangesOut",
         "type": "object"
       },
       "DocumentDetailOut": {
@@ -3109,6 +3137,45 @@
         ],
         "title": "FontOut",
         "type": "object"
+      },
+      "GuardrailBlocksOut": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "count",
+          "rate"
+        ],
+        "title": "GuardrailBlocksOut",
+        "type": "object"
+      },
+      "GuardrailFilter": {
+        "description": "Which Conversations to keep by their replies' Guardrail outcomes: with a reply whose\nGuardrail took this action (blocked, flagged, logged, replaced or allowed), with any\nGuardrail outcome, or with none.",
+        "enum": [
+          "blocked",
+          "flagged",
+          "logged",
+          "replaced",
+          "allowed",
+          "any",
+          "none"
+        ],
+        "title": "GuardrailFilter",
+        "type": "string"
       },
       "GuardrailFlagOut": {
         "description": "Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.",
@@ -3932,6 +3999,53 @@
         "title": "LiveHistoryEntryOut",
         "type": "object"
       },
+      "LiveHistoryMarkerOut": {
+        "description": "A change of the Live Version during the range: one Live History entry.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "from_version": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarkerVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "point_start": {
+            "format": "date",
+            "title": "Point Start",
+            "type": "string"
+          },
+          "to_version": {
+            "$ref": "#/components/schemas/MarkerVersionOut"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "day",
+          "point_start",
+          "action",
+          "from_version",
+          "to_version"
+        ],
+        "title": "LiveHistoryMarkerOut",
+        "type": "object"
+      },
       "LiveVersionOut": {
         "properties": {
           "id": {
@@ -3949,6 +4063,25 @@
           "number"
         ],
         "title": "LiveVersionOut",
+        "type": "object"
+      },
+      "MarkerVersionOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "number"
+        ],
+        "title": "MarkerVersionOut",
         "type": "object"
       },
       "MemberOut": {
@@ -6337,6 +6470,121 @@
         "title": "ThumbsUpOut",
         "type": "object"
       },
+      "TimeSeriesGranularity": {
+        "enum": [
+          "day",
+          "week",
+          "month"
+        ],
+        "title": "TimeSeriesGranularity",
+        "type": "string"
+      },
+      "TimeSeriesMetric": {
+        "description": "What a time series measures, over each of its periods.",
+        "enum": [
+          "conversations",
+          "replies",
+          "cost_usd",
+          "mean_tokens",
+          "thumbs_up_rate",
+          "mean_rating",
+          "fallback_rate",
+          "p95_latency_ms"
+        ],
+        "title": "TimeSeriesMetric",
+        "type": "string"
+      },
+      "TimeSeriesOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "document_changes": {
+            "$ref": "#/components/schemas/DocumentChangesOut"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/TimeSeriesGranularity"
+          },
+          "markers": {
+            "items": {
+              "$ref": "#/components/schemas/LiveHistoryMarkerOut"
+            },
+            "title": "Markers",
+            "type": "array"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/TimeSeriesMetric"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPointOut"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "metric",
+          "granularity",
+          "start",
+          "end",
+          "points",
+          "markers",
+          "document_changes"
+        ],
+        "title": "TimeSeriesOut",
+        "type": "object"
+      },
+      "TimeSeriesPointOut": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "value",
+          "n"
+        ],
+        "title": "TimeSeriesPointOut",
+        "type": "object"
+      },
       "TokenUsageOut": {
         "properties": {
           "daily_token_budget": {
@@ -7001,6 +7249,9 @@
           "fallback": {
             "$ref": "#/components/schemas/FallbackOut"
           },
+          "guardrail_blocks": {
+            "$ref": "#/components/schemas/GuardrailBlocksOut"
+          },
           "is_live": {
             "title": "Is Live",
             "type": "boolean"
@@ -7047,6 +7298,7 @@
           "thumbs_up",
           "rating",
           "fallback",
+          "guardrail_blocks",
           "latency"
         ],
         "title": "VersionKpisOut",
@@ -13255,6 +13507,139 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
+      "get": {
+        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed and the Project's Document changes during the range. Only Visitor\nConversations count.",
+        "operationId": "getTimeSeries",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "What to measure",
+            "in": "query",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TimeSeriesMetric",
+              "description": "What to measure"
+            }
+          },
+          {
+            "description": "One point per day, ISO week or month",
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimeSeriesGranularity",
+              "default": "day",
+              "description": "One point per day, ISO week or month"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeSeriesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Time Series",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/token-usage": {
       "get": {
         "description": "Today's (UTC) Visitor usage against the Agent's Token Budget, for the Studio's meter.",
@@ -13806,6 +14191,24 @@
               ],
               "description": "Only those whose Conversation Rating is this score (`1` to `5`), rated with any score (`any`), or not rated (`none`)",
               "title": "Rating"
+            }
+          },
+          {
+            "description": "Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`)",
+            "in": "query",
+            "name": "guardrail",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GuardrailFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`)",
+              "title": "Guardrail"
             }
           },
           {

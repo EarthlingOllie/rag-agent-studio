@@ -105,12 +105,24 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ and the Low-budget helper), published with the shop origin as their Allowed Origin. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
 _Avoid_: Sample org, test tenant, sandbox
+
+**Seeded history**:
+The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
+_Avoid_: Fake data, sample history, fixtures
 
 **Demo pages**:
 Static pages that show an Agent the way a Visitor meets it: Northwind's fictional shop with the Product FAQ as a bubble, a help-centre page with it inline, and a page with the Low-budget helper, whose tiny daily Token Budget a button spends in one click (the widget then shows its Unavailable text and the Studio its Budget alert). They are on the shop origin, which the seed allows: `http://localhost:5175/demo/` in `docker compose`, `/demo/` on the Studio's own address in AWS. A fourth page, on an origin no Agent allows (`http://localhost:5176`, local only), pastes the same Embed Snippet and is refused by the browser. The pages ask the API which seeded Agents to embed; those routes exist only when the stack runs with `DEMO_PAGES` on.
 _Avoid_: Demo host page (for the shop), test page
+
+**Attack panel**:
+The Demo page (`/demo/attacks.html`) with one button per attack category (instruction override, prompt extraction, role-play jailbreak, encoded attack) and a benign control. Each click sends that button's fixed message to the Guardrail demo Agent the way the widget does, as a new Visitor Conversation, and shows the reply as it streams and what each Guardrail layer did: the input Guardrail blocked, flagged, logged or passed it; the Canary token replaced or flagged the reply, stayed quiet, or was not reached because the message was blocked. The Guardrail demo Agent answers with the Naive demo model, so whatever is stopped is stopped by a Guardrail layer. It uses Demo mode's debug endpoint, which returns each answer's Guardrail outcomes without a Studio login.
+_Avoid_: Red-team page, jailbreak console
+
+**Demo mode**:
+A stack run with `DEMO_PAGES` on (`docker compose` and the AWS demo): only then do the demo routes exist, the Demo pages' Agent lookup and budget button and the Attack panel's debug endpoint. Without it they answer 404.
+_Avoid_: Seed mode, debug mode
 
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. An archived Agent leaves the Agents list, its Draft can't be changed and the Playground starts no Conversation with it. Any Member can archive. Permanent deletion is a separate action.
@@ -173,6 +185,10 @@ _Avoid_: Global model, org model
 **Demo model**:
 The demo provider's only chat model. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
+
+**Naive demo model**:
+The demo provider's second chat model (`demo-naive`): the Naive model behind its own label, "Naive demo model (obeys injected instructions, not AI)". The Attack panel's Guardrail demo Agent always answers with it, even when the seed was given a real Provider Credential, so the panel shows the Guardrails at work rather than a model refusing.
+_Avoid_: Evil model, unsafe model
 
 **Model gateway**:
 The single factory every model call goes through: it turns a Provider Credential and a model name into a chat model, an embedder or a reranker, refusing a model the credential doesn't offer for that Capability. Tests and `docker compose` swap in fake adapters here and nowhere else.
@@ -584,7 +600,7 @@ _Avoid_: Session, chat, thread
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Conversations viewer**:
-The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), and by Conversation Rating (one score from 1 to 5, rated, or not rated); each row shows its thumbs-up and thumbs-down counts and its current Conversation Rating. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
+The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), and by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none); each row shows its thumbs-up and thumbs-down counts, its current Conversation Rating and how many of its replies have a Guardrail outcome. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
 _Avoid_: Chat log, transcript list
 
 **Message Feedback**:
@@ -608,12 +624,20 @@ The append-only record of a Conversation's Conversation Ratings: the first ratin
 _Avoid_: Rating history
 
 **Version KPIs**:
-An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics tab: volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text) and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
+An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics tab: volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
 _Avoid_: Stats, dashboard numbers
 
 **Usage rollup**:
-The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
+The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
 _Avoid_: Aggregate, summary table
+
+**Block rate**:
+The share of an Agent Version's Visitor replies that were its refusal text because the input Guardrail blocked the question, shown with the count as the "Guardrail block rate" KPI card in the Version KPIs. Warned or logged messages were answered, so they aren't blocks; neither is a reply the Canary token replaced. Only Visitor Conversations count. A rate under 1% is shown with one decimal, so a few blocks don't read as none.
+_Avoid_: Attack rate, refusal rate
+
+**Block rate alert**:
+The flag an Agent carries while its Block rate spikes, as in an attack. After each hourly rollup, the Agent's Visitor messages in the hour up to that run are compared with its baseline, the week before that hour: at least 5 blocked messages, at least 20% of the hour's messages and at least three times the baseline's rate is a spike. Raising it emails every Owner once (with a link to the Conversations viewer filtered to the Agent's blocked messages); the Studio shows a "Block rate spike" badge on the Agent list and the Agent page, the same badge mechanism as the Budget alert. The first hourly run that no longer finds a spike clears it, and a new spike alerts again.
+_Avoid_: Attack alarm, spike warning
 
 **Wilson interval**:
 The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from its counts when the Version KPIs are read; shown with the sample size so a few lucky votes don't look like a winner.
@@ -622,6 +646,18 @@ _Avoid_: Error bars, margin
 **Low confidence**:
 The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.
 _Avoid_: Insufficient data, greyed out
+
+**Time series**:
+One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate or p95 latency) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown as a chart in the Project's Analytics tab with each point's sample size. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
+_Avoid_: Trend graph, history chart
+
+**Live History marker**:
+A mark on the Time series at a Live History entry made during its range: the day, the action (publish, revert, bulk publish or bulk revert) and the Versions from and to, so an Editor can see the effect of each release.
+_Avoid_: Release line, annotation
+
+**Confounder note**:
+The warning under the Time series when the Project's Knowledge Base changed during its range: how many Documents were added, replaced or processed again, and how many were deleted. Documents aren't versioned (ADR-0003), so answers can change without the Live Version changing, and a difference across a marker may be the Documents' doing.
+_Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
 What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage in its own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
