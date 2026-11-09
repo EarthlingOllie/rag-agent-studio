@@ -60,6 +60,8 @@ All runs are local and one at a time (GitHub Actions is down; the user authorise
 | Images | exit 0 | [remerge-images.log](remerge-images.log) |
 | **Every e2e spec** again | exit 0: **91 passed**, the five-minute demo (with its Cost step) and 07-08's `organisation-cost.spec.ts` among them | [remerge-e2e.log](remerge-e2e.log) |
 
+**Backend full run on the final tree** (because the 07-08 re-merge brought shared backend code, `main.py`'s router list): `TEST_WORKERS=3 make test-backend` at `e304736` (`origin/candidate` `a76f8b1` merged, clean tree, fresh `rag1006-pg/redis/rustfs` containers, removed afterwards): exit 0, **2516 passed** in 34 min, coverage 100.00% ([final-backend-tests.log](final-backend-tests.log)). `origin/candidate` had not moved when this finished; this ticket adds no migration (the migration chain ends at `0039`, as on candidate).
+
 An earlier full backend run, before the 10-05 merge (`8b42e71`), had 2493 passed and 1 failed: `test_logging.py::test_the_worker_writes_only_json_lines` didn't see its worker's start-up line in time under the shared machine's load (load average 12–14). It passed on rerun (8 passed) with no change: [run1-backend-tests.log](run1-backend-tests.log), [run1-backend-rerun.log](run1-backend-rerun.log). The seed's JSON request logs were filtered out of the committed e2e logs (lines starting `{"`), nothing else.
 
 ## Gaps and best guesses
