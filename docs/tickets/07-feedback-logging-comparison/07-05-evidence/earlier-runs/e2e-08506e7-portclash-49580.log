@@ -1,0 +1,6 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml' @ 08506e7 (ticket/07-05-version-comparison; code unchanged since 08506e7) (CI settings: one retry; run with no other e2e stack on the machine)
+docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0705-e2e_default Creating 
+[...]
+Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint rag0705-e2e-api-1 (0650a73a4729bb11cc4ec896f76622d18cb4e736f74761c24144e78830d2c911): failed to bind host port 0.0.0.0:49580/tcp: address already in use
+exit 2

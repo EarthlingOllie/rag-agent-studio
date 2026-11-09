@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { dollars } from "../projects/AnalyticsTab";
+import { dollars } from "../projects/format";
 import { ProjectRequestError } from "../projects/projects";
 import { INPUT, useOrganisationRole } from "../projects/ProjectsPage";
 import { type CostGroup, type CostQuery, type OrgCost, useOrgCost } from "./cost";

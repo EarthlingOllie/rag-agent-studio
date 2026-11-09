@@ -174,6 +174,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "get",
         ),
         "getVersionMetrics": (f"{_PROJECT}/agents/{{agent_id}}/metrics", "get"),
+        "compareVersions": (f"{_PROJECT}/agents/{{agent_id}}/comparison", "get"),
+        "exportVersionComparison": (f"{_PROJECT}/agents/{{agent_id}}/comparison.csv", "get"),
         "getOrganisationCost": ("/api/organisations/{organisation_id}/cost", "get"),
         "getTimeSeries": (f"{_PROJECT}/agents/{{agent_id}}/time-series", "get"),
     }
