@@ -1133,6 +1133,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1173,7 +1185,8 @@
           "created_at",
           "last_activity_at",
           "messages",
-          "rating"
+          "rating",
+          "deleted_at"
         ],
         "title": "ConversationDetailOut",
         "type": "object"
@@ -1357,6 +1370,18 @@
             ],
             "title": "Output Tokens"
           },
+          "purged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purged At"
+          },
           "role": {
             "title": "Role",
             "type": "string"
@@ -1381,7 +1406,8 @@
           "cost_usd",
           "agent_version_number",
           "fallback",
-          "feedback"
+          "feedback",
+          "purged_at"
         ],
         "title": "ConversationMessageOut",
         "type": "object"
@@ -1577,6 +1603,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
           "guardrail_events": {
             "title": "Guardrail Events",
             "type": "integer"
@@ -1650,6 +1688,7 @@
           "thumbs_up",
           "thumbs_down",
           "rating",
+          "deleted_at",
           "guardrail_events"
         ],
         "title": "ConversationSummaryOut",
@@ -1667,6 +1706,38 @@
         ],
         "title": "ConversationTokenOut",
         "type": "object"
+      },
+      "CostAmountsOut": {
+        "properties": {
+          "playground_usd": {
+            "title": "Playground Usd",
+            "type": "string"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          },
+          "visitor_usd": {
+            "title": "Visitor Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "visitor_usd",
+          "playground_usd",
+          "total_usd"
+        ],
+        "title": "CostAmountsOut",
+        "type": "object"
+      },
+      "CostGroup": {
+        "description": "What org cost is broken down by.",
+        "enum": [
+          "project",
+          "agent"
+        ],
+        "title": "CostGroup",
+        "type": "string"
       },
       "CostOut": {
         "properties": {
@@ -1691,6 +1762,65 @@
           "per_conversation_usd"
         ],
         "title": "CostOut",
+        "type": "object"
+      },
+      "CostRowOut": {
+        "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Name"
+          },
+          "playground_usd": {
+            "title": "Playground Usd",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          },
+          "visitor_usd": {
+            "title": "Visitor Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "visitor_usd",
+          "playground_usd",
+          "total_usd",
+          "project_id",
+          "project_name",
+          "agent_id",
+          "agent_name"
+        ],
+        "title": "CostRowOut",
         "type": "object"
       },
       "CreateAgentRequest": {
@@ -4338,6 +4468,99 @@
         "title": "MessageOut",
         "type": "object"
       },
+      "MetricRowOut": {
+        "properties": {
+          "a": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "A"
+          },
+          "b": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "B"
+          },
+          "better": {
+            "anyOf": [
+              {
+                "enum": [
+                  "a",
+                  "b"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Better"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "boolean"
+          },
+          "difference": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difference"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "count",
+              "tokens",
+              "usd",
+              "rate",
+              "rating",
+              "ms"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "label",
+          "unit",
+          "a",
+          "b",
+          "difference",
+          "changed",
+          "better",
+          "low_confidence"
+        ],
+        "title": "MetricRowOut",
+        "type": "object"
+      },
       "MfaChallengeResponse": {
         "properties": {
           "mfa_required": {
@@ -4624,6 +4847,42 @@
         "title": "OptionalPricesOut",
         "type": "object"
       },
+      "OrgCostOut": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "group_by": {
+            "$ref": "#/components/schemas/CostGroup"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CostRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/CostAmountsOut"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "group_by",
+          "rows",
+          "total"
+        ],
+        "title": "OrgCostOut",
+        "type": "object"
+      },
       "OrganisationMemberOut": {
         "properties": {
           "email": {
@@ -4674,6 +4933,11 @@
             "title": "Require Mfa",
             "type": "boolean"
           },
+          "retention_days": {
+            "description": "The Retention Window: Message text and feedback comments older than this many days are purged daily; metrics are kept",
+            "title": "Retention Days",
+            "type": "integer"
+          },
           "role": {
             "$ref": "#/components/schemas/Role"
           }
@@ -4682,7 +4946,8 @@
           "id",
           "name",
           "role",
-          "require_mfa"
+          "require_mfa",
+          "retention_days"
         ],
         "title": "OrganisationOut",
         "type": "object"
@@ -5415,6 +5680,22 @@
           "error_category"
         ],
         "title": "ReplacementOut",
+        "type": "object"
+      },
+      "RetentionWindowRequest": {
+        "properties": {
+          "retention_days": {
+            "description": "Days Message text and feedback comments are kept before they are purged",
+            "maximum": 3650.0,
+            "minimum": 7.0,
+            "title": "Retention Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retention_days"
+        ],
+        "title": "RetentionWindowRequest",
         "type": "object"
       },
       "Retrieval-Input": {
@@ -6731,18 +7012,36 @@
       "TracedChunkOut": {
         "properties": {
           "chunk_id": {
-            "format": "uuid",
-            "title": "Chunk Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
           },
           "cited": {
             "title": "Cited",
             "type": "boolean"
           },
+          "document_deleted": {
+            "title": "Document Deleted",
+            "type": "boolean"
+          },
           "document_id": {
-            "format": "uuid",
-            "title": "Document Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
           },
           "document_name": {
             "anyOf": [
@@ -6807,6 +7106,7 @@
           "chunk_id",
           "document_id",
           "document_name",
+          "document_deleted",
           "text",
           "score",
           "relevance",
@@ -7108,6 +7408,52 @@
           "name"
         ],
         "title": "VersionAuthor",
+        "type": "object"
+      },
+      "VersionComparisonOut": {
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/VersionKpisOut"
+          },
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "b": {
+            "$ref": "#/components/schemas/VersionKpisOut"
+          },
+          "config_diff": {
+            "$ref": "#/components/schemas/AgentDiffOut"
+          },
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/MetricRowOut"
+            },
+            "title": "Metrics",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "start",
+          "end",
+          "a",
+          "b",
+          "metrics",
+          "config_diff"
+        ],
+        "title": "VersionComparisonOut",
         "type": "object"
       },
       "VersionKpisOut": {
@@ -8773,6 +9119,99 @@
         "summary": "Get Bedrock Setup",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/cost": {
+      "get": {
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage is in its own\ncolumn. Owners only.",
+        "operationId": "getOrganisationCost",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Break the cost down by Project or by Agent",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CostGroup",
+              "default": "project",
+              "description": "Break the cost down by Project or by Agent"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgCostOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Organisation Cost",
+        "tags": [
+          "analytics"
         ]
       }
     },
@@ -11387,6 +11826,278 @@
         "summary": "Archive Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
+      "get": {
+        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, and the configuration diff from `a` to `b`. Only Visitor\nConversations count.",
+        "operationId": "compareVersions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "One of the Agent's Versions: the first side",
+            "in": "query",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "description": "One of the Agent's Versions: the first side",
+              "format": "uuid",
+              "title": "A",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Another of the Agent's Versions: the second side",
+            "in": "query",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "description": "Another of the Agent's Versions: the second side",
+              "format": "uuid",
+              "title": "B",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionComparisonOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Versions",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison.csv": {
+      "get": {
+        "description": "The comparison of Versions `a` and `b` as a CSV download: a row per metric with both\nVersions' values, the difference and the Version it favours.",
+        "operationId": "exportVersionComparison",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "One of the Agent's Versions: the first side",
+            "in": "query",
+            "name": "a",
+            "required": true,
+            "schema": {
+              "description": "One of the Agent's Versions: the first side",
+              "format": "uuid",
+              "title": "A",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Another of the Agent's Versions: the second side",
+            "in": "query",
+            "name": "b",
+            "required": true,
+            "schema": {
+              "description": "Another of the Agent's Versions: the second side",
+              "format": "uuid",
+              "title": "B",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "CSV"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Version Comparison",
+        "tags": [
+          "analytics"
         ]
       }
     },
@@ -14054,6 +14765,71 @@
       }
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}": {
+      "delete": {
+        "description": "Deletes the Conversation on request (Owners only): its Messages' text and feedback\ncomments are purged at once and its Conversation token stops working; its numbers stay in\nthe metrics. Recorded as ``conversation.deleted``.",
+        "operationId": "deleteConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Conversation",
+        "tags": [
+          "conversations"
+        ]
+      },
       "get": {
         "description": "The Conversation and its Messages, oldest first, with the Agent Version of each\nanswer.",
         "operationId": "getConversation",
@@ -16724,6 +17500,80 @@
         "summary": "Get Upload Limits",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/retention-window": {
+      "put": {
+        "description": "Sets the Organisation's Retention Window (Owners only), from 7 to 3650 days. Recorded as\n``organisation.retention_window_changed``.",
+        "operationId": "setRetentionWindow",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionWindowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Organisation requires MFA. Turn on MFA for your account to continue. Or: Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Retention Window",
+        "tags": [
+          "organisations"
         ]
       }
     },

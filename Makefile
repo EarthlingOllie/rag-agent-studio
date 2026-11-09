@@ -7,7 +7,7 @@ API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
-	seed seed-reset
+	seed seed-reset link-check
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -77,6 +77,11 @@ seed: ## Create the demo Organisation in the running stack and print its sign-in
 seed-reset: ## Erase the demo Organisation (only that one) and seed it again
 	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed --reset"
 
+link-check: ## Check that every relative link (and its #anchor) in the Markdown git tracks resolves; offline, with the checker's tests at 100% coverage
+	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+		scripts/ci/tests/links.test.mjs
+	node scripts/ci/link-check.mjs
+
 TF_ROOTS := $(sort $(dir $(wildcard infra/bootstrap/main.tf infra/modules/*/main.tf infra/envs/*/main.tf)))
 IMAGE_TAG ?= local
 # Empty builds for this machine's architecture. The deploy workflow sets linux/arm64: the ECS tasks run on ARM64.
@@ -91,6 +96,7 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	scripts/deploy/tests/smoke.test.sh
 	scripts/deploy/tests/deploy.test.sh
 	scripts/deploy/tests/destroy.test.sh
+	scripts/deploy/tests/seed.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
 		$(wildcard infra/modules/*/functions/*.test.mjs)
 	scripts/ci/tests/plan-gate.test.sh
@@ -104,7 +110,7 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	cd infra && checkov --config-file .checkov.yaml
 
 images: ## Build the API (also used by the worker and Beat) and Studio images; IMAGE_PLATFORM=linux/arm64 builds for Fargate
-	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) -t rag-agent-studio/api:$(IMAGE_TAG) backend
+	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) --build-context seed=seed -t rag-agent-studio/api:$(IMAGE_TAG) backend
 	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) -t rag-agent-studio/studio:$(IMAGE_TAG) frontend
 
 security: secret-scan audit image-scan ## Every security gate: gitleaks, pip-audit, pnpm audit and Trivy

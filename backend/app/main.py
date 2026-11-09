@@ -46,7 +46,8 @@ from app.pricing import api as pricing_api
 from app.projects import api as projects_api
 from app.projects import embedding_api, instructions_api
 from app.projects.embedding import project_embedding_references
-from app.seed import demo_pages
+from app.retention import api as retention_api
+from app.seed import attack_panel, demo_pages
 from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
@@ -84,6 +85,8 @@ ROUTERS: Sequence[APIRouter] = (
     playground_api.router,
     conversations_api.router,
     analytics_api.router,
+    analytics_api.cost_router,
+    retention_api.router,
     embed_api.settings_router,
     branding_api.router,
     embed_api.widget_router,
@@ -91,6 +94,7 @@ ROUTERS: Sequence[APIRouter] = (
     feedback_api.rating_router,
     embed_api.shell_router,
     demo_pages.router,
+    attack_panel.router,
 )
 
 

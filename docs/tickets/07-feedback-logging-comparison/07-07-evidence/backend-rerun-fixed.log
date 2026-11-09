@@ -1,0 +1,7 @@
+$ uv run pytest tests/integration/test_logging.py --no-cov @ fix (wait for 'Uvicorn running on'); four runs
+run 1: 8 passed in 34.73s
+run 2: 8 passed in 35.96s
+run 3: 1 failed, 7 passed in 54.97s
+run 3 failure: test_beat_writes_only_json_lines, Beat did not stop within 20 s at load average ~11 (subprocess.TimeoutExpired in stop()); not the API server test
+run 4: 8 passed in 34.07s
+exit 0

@@ -39,7 +39,7 @@ async def _recompute(session: AsyncSession, day: date) -> None:
     await session.flush()
 
 
-async def _pending(session: AsyncSession, today: date) -> dict[uuid.UUID, date]:
+async def pending_days(session: AsyncSession, today: date) -> dict[uuid.UUID, date]:
     """Each Organisation with Visitor replies on days before ``today`` that aren't final: the
     first such day."""
     start, _ = day_bounds(today)
@@ -79,7 +79,7 @@ async def roll_up(
     yesterday = today - timedelta(days=1)
     async with sessionmaker() as session, session.begin():
         await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _LOCK_KEY})
-        pending = await _pending(session, today)
+        pending = await pending_days(session, today)
         day = min(pending.values(), default=today)
         while day <= yesterday:
             await _recompute(session, day)

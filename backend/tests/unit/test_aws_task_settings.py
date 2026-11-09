@@ -52,8 +52,8 @@ def task_env(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) ->
     return _use_task_env(request.param, monkeypatch)
 
 
-def test_the_contract_names_the_api_worker_beat_and_migration_containers() -> None:
-    assert sorted(_containers()) == ["api", "beat", "migrate", "worker"]
+def test_the_contract_names_the_api_worker_beat_migration_and_seed_containers() -> None:
+    assert sorted(_containers()) == ["api", "beat", "migrate", "seed", "worker"]
 
 
 def test_each_container_loads_settings_that_reach_rds_and_elasticache_over_tls(
@@ -86,8 +86,10 @@ def test_each_container_can_build_its_database_and_redis_clients(
     assert isinstance(celery.backend, RedisBackend)
 
 
-@pytest.mark.parametrize("container", ["api", "worker"])
-def test_the_api_and_worker_seal_with_kms_and_keep_documents_in_the_bucket(
+# The seed task (ticket 10-05) runs the API in process, so it seals the demo credential and
+# uploads the demo Documents as the API does.
+@pytest.mark.parametrize("container", ["api", "worker", "seed"])
+def test_the_api_worker_and_seed_seal_with_kms_and_keep_documents_in_the_bucket(
     container: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task_env = _use_task_env(container, monkeypatch)
@@ -99,6 +101,17 @@ def test_the_api_and_worker_seal_with_kms_and_keep_documents_in_the_bucket(
     assert settings.object_store_bucket == task_env["OBJECT_STORE_BUCKET"]
     assert settings.object_store_endpoint_url is None
     assert str(settings.studio_url).rstrip("/") == task_env["STUDIO_URL"]
+
+
+def test_the_seed_puts_the_demo_pages_on_the_studio_origin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _use_task_env("seed", monkeypatch)
+    settings = load_settings()
+
+    # No DEMO_SHOP_ORIGIN: the seed allows the demo pages' origin, /demo/ on CloudFront.
+    assert settings.demo_shop_origin is None
+    assert settings.demo_pages is False
 
 
 def test_the_api_is_told_its_own_bedrock_trust_principal(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attack panel: Northwind Traders</title>
+<style>
+:root{--olive:#3f5f2a;--saffron:#9a4508;--paper:#fbf8f1;--ink:#1f2419;--muted:#4b5142;--red:#9b1c1c;--green:#245c1f}
+*{box-sizing:border-box}
+body{font:16px/1.5 Georgia,"Times New Roman",serif;margin:0;background:var(--paper);color:var(--ink)}
+header{background:var(--olive);color:#fff;padding:16px 24px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline}
+header a{color:#fff}
+header .brand{font-size:1.5rem;font-weight:bold;margin:0}
+nav ul{display:flex;flex-wrap:wrap;gap:16px;list-style:none;margin:0;padding:0}
+main{max-width:960px;margin:0 auto;padding:24px}
+.notice{border-left:4px solid var(--saffron);background:#fff;padding:12px 16px}
+.attacks{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0}
+button{font:inherit;background:var(--saffron);color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+button.benign{background:var(--olive)}
+.result{background:#fff;border:1px solid #d9d4c5;border-radius:6px;padding:16px;margin-top:16px}
+.result h2{margin-top:0}
+.payload,.stream{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9rem;background:#f3efe4;border-radius:4px;padding:8px 12px;margin:0}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;border-bottom:1px solid #d9d4c5;padding:6px 8px;vertical-align:top}
+.acted{color:var(--red);font-weight:bold}
+.idle{color:var(--green)}
+footer{max-width:960px;margin:0 auto;padding:24px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<header>
+<p class="brand"><a href="./">Northwind Traders</a></p>
+<nav aria-label="Demo pages"><ul>
+<li><a href="./">Shop (bubble)</a></li>
+<li><a href="inline.html">Help centre (inline)</a></li>
+<li><a href="budget.html">Low-budget helper</a></li>
+<li><a href="attacks.html" aria-current="page">Attack panel</a></li>
+</ul></nav>
+</header>
+<main>
+<h1>Attack panel</h1>
+<p>Each button sends a fixed attack to the <strong id="agent-name">Guardrail demo</strong> Agent, as a Visitor's widget would. Its model is the naive demo model, which does whatever it is told, so anything stopped here is stopped by a Guardrail layer. You see the reply as it streams, then what each layer did: the input Guardrail (checks the message before the model sees it) and the Canary token (watches the reply for the secret in the Agent's instructions).</p>
+<ul class="attacks" id="attacks" aria-label="Attacks"></ul>
+<p class="notice" id="demo-status" role="status">Loading the attacks…</p>
+<section class="result" id="result" aria-labelledby="result-heading" hidden>
+<h2 id="result-heading">Result</h2>
+<h3>Sent</h3>
+<p class="payload" id="payload"></p>
+<p id="expected"></p>
+<h3>Reply</h3>
+<p class="stream" id="stream" aria-live="polite"></p>
+<p id="stream-note"></p>
+<h3>Guardrail layers</h3>
+<table id="layers" aria-label="Guardrail layers">
+<thead><tr><th scope="col">Layer</th><th scope="col">Outcome</th><th scope="col">Why</th></tr></thead>
+<tbody></tbody>
+</table>
+<p id="acted"></p>
+</section>
+</main>
+<footer><p>Northwind Traders is a fictional company. This page is part of the RAG Agent Studio demo: all content is synthetic. Its debug endpoint exists only in demo mode.</p></footer>
+<script>
+// Ask the API for the attacks, make a button for each, and on a click stream the reply from the
+// demo-only debug endpoint, then show each Guardrail layer's outcome from its `trace` event.
+(() => {
+  const status = document.getElementById("demo-status");
+  const list = document.getElementById("attacks");
+  const result = document.getElementById("result");
+  const stream = document.getElementById("stream");
+  const note = document.getElementById("stream-note");
+  const rows = document.querySelector("#layers tbody");
+  const acted = document.getElementById("acted");
+  const OUTCOMES = {
+    blocked: "Blocked", flagged: "Flagged", logged: "Logged", allowed: "Allowed unchecked",
+    replaced: "Replaced the reply", passed: "Passed", quiet: "Quiet", not_reached: "Not reached",
+  };
+  const IDLE = ["passed", "quiet", "not_reached"];
+
+  function events(buffer, handle) {
+    // Server-Sent Events: blocks separated by a blank line, each "event: …" and "data: …".
+    const blocks = buffer.split("\n\n");
+    const rest = blocks.pop();
+    for (const block of blocks) {
+      const fields = {};
+      for (const line of block.split("\n")) {
+        const at = line.indexOf(": ");
+        if (at > 0) fields[line.slice(0, at)] = line.slice(at + 2);
+      }
+      if (fields.event) handle(fields.event, JSON.parse(fields.data || "{}"));
+    }
+    return rest;
+  }
+
+  function showTrace(trace) {
+    rows.replaceChildren();
+    for (const layer of trace.layers) {
+      const row = document.createElement("tr");
+      row.dataset.layer = layer.layer;
+      const name = document.createElement("th");
+      name.scope = "row";
+      name.textContent = layer.name;
+      const outcome = document.createElement("td");
+      outcome.textContent = OUTCOMES[layer.action] || layer.action;
+      outcome.className = IDLE.includes(layer.action) ? "idle" : "acted";
+      const why = document.createElement("td");
+      why.textContent = (layer.reason || "") + (layer.score == null ? "" : " (score " + layer.score.toFixed(2) + ")");
+      row.append(name, outcome, why);
+      rows.append(row);
+    }
+    const names = trace.layers.filter((l) => !IDLE.includes(l.action)).map((l) => l.name);
+    acted.textContent = names.length ? "Acted: " + names.join(", ") + "." : "No Guardrail layer acted.";
+  }
+
+  async function fire(attack, buttons) {
+    buttons.forEach((b) => (b.disabled = true));
+    result.hidden = false;
+    document.getElementById("result-heading").textContent = attack.label;
+    document.getElementById("payload").textContent = attack.payload;
+    document.getElementById("expected").textContent = "Expected: " + attack.expected;
+    stream.textContent = "";
+    note.textContent = "";
+    rows.replaceChildren();
+    acted.textContent = "";
+    status.textContent = "Sending " + attack.label + "…";
+    try {
+      const response = await fetch("/api/demo/attacks/" + encodeURIComponent(attack.id), { method: "POST" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.detail || String(response.status));
+      }
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = "";
+      const handle = (kind, data) => {
+        if (kind === "token") stream.textContent += data.text;
+        else if (kind === "replace") {
+          note.textContent = "The Canary token cut the reply off here and replaced it with: " + data.text;
+          stream.textContent = data.text;
+        } else if (kind === "refusal") {
+          stream.textContent = data.text;
+          note.textContent = "Refused before the model saw the message.";
+        } else if (kind === "citation") note.textContent = "Cited [" + data.label + "] " + data.document_name + ".";
+        else if (kind === "unavailable" || kind === "error") stream.textContent = data.message;
+        else if (kind === "trace") showTrace(data);
+      };
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer = events(buffer + value, handle);
+      }
+      events(buffer + "\n\n", handle);
+      status.textContent = attack.label + ": done.";
+    } catch (error) {
+      status.textContent = "The attack couldn't be sent: " + error.message;
+    }
+    buttons.forEach((b) => (b.disabled = false));
+  }
+
+  (async () => {
+    try {
+      const response = await fetch("/api/demo/attacks");
+      const panel = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(panel.detail || "The demo isn't available.");
+      document.getElementById("agent-name").textContent = panel.agent.name;
+      const buttons = panel.attacks.map((attack) => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = attack.label;
+        if (attack.category === "benign") button.className = "benign";
+        button.addEventListener("click", () => fire(attack, buttons));
+        item.append(button);
+        list.append(item);
+        return button;
+      });
+      status.textContent = "Choose an attack.";
+    } catch (error) {
+      status.textContent = "The demo isn't ready: " + error.message;
+    }
+  })();
+})();
+</script>
+</body>
+</html>

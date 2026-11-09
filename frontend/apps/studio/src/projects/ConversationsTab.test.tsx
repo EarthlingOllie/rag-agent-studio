@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { agentVersion, fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import {
+  DELETED_AT,
   PLAYGROUND_CONVERSATION_ID,
   PLAYGROUND_REPLY_ID,
   VISITOR_CONVERSATION_ID,
@@ -13,6 +14,7 @@ import {
   playgroundDetail,
   visitorConversation,
   visitorDetail,
+  visitorTrace,
 } from "../test/conversations";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -27,8 +29,8 @@ const editorSession: Session = {
 const helperV1 = agentVersion(1);
 const helperV2 = agentVersion(2);
 
-function setUp(options: Parameters<typeof fakeConversationsApi>[0] = {}) {
-  fakeAuthApi({ signedInAs: editorSession });
+function setUp(options: Parameters<typeof fakeConversationsApi>[0] = {}, session: Session = editorSession) {
+  fakeAuthApi({ signedInAs: session });
   fakeProjectsApi();
   fakeAgentsApi({ agents: [hrHelper, oldHelper], versions: { [hrHelper.id]: [helperV2, helperV1] } });
   return fakeConversationsApi(options);
@@ -452,6 +454,101 @@ test("a rating attributed to a Draft answer says so", async () => {
   const rating = await screen.findByRole("region", { name: "Conversation Rating" });
   expect(rating).toHaveTextContent("Rated 3 of 5 · for the Draft · 2026-11-06 10:22 UTC");
   expect(rating).not.toHaveTextContent("dismissed");
+});
+
+// Retention and deletion
+
+test("an Owner deletes a Conversation on request after confirming, and its text is shown as purged", async () => {
+  const { deletions } = setUp({}, adaSession);
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  await screen.findByRole("list", { name: "Messages" });
+
+  await userEvent.click(screen.getByRole("button", { name: "Delete Conversation" }));
+  const confirm = screen.getByRole("group", { name: "Delete Conversation" });
+  expect(confirm).toHaveTextContent(
+    "Its Messages' text and feedback comments will be purged now and can't be recovered. Its numbers stay in the metrics.",
+  );
+  await userEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+  expect(deletions).toEqual([]);
+  await userEvent.click(screen.getByRole("button", { name: "Delete Conversation" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, delete it" }));
+
+  expect(
+    await screen.findByText("Deleted on request 2026-11-08 12:00 UTC. Its numbers stay in the metrics."),
+  ).toBeInTheDocument();
+  expect(deletions).toEqual([VISITOR_CONVERSATION_ID]);
+  expect(screen.queryByRole("button", { name: "Delete Conversation" })).not.toBeInTheDocument();
+  const items = within(screen.getByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  for (const item of items) {
+    expect(item).toHaveTextContent("Text purged 2026-11-08 12:00 UTC: the Conversation was deleted on request.");
+  }
+  expect(screen.queryByText("It should know part-time leave.")).not.toBeInTheDocument();
+  // The feedback and rating stay.
+  expect(within(items[3] as HTMLElement).getByRole("group", { name: "Visitor feedback" })).toHaveTextContent("Thumbs down");
+  expect(screen.getByRole("region", { name: "Conversation Rating" })).toHaveTextContent("Rated 4 of 5");
+
+  await userEvent.click(screen.getByRole("link", { name: "All Conversations" }));
+  expect((await rows()).map((row) => row[8])).toEqual(["Testing leave", "(deleted on request)"]);
+});
+
+test("Editors can't delete a Conversation", async () => {
+  setUp();
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  await screen.findByRole("list", { name: "Messages" });
+  expect(screen.queryByRole("button", { name: "Delete Conversation" })).not.toBeInTheDocument();
+});
+
+test("a failed deletion says so", async () => {
+  setUp({ deleteStatus: 500 }, adaSession);
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  await userEvent.click(await screen.findByRole("button", { name: "Delete Conversation" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yes, delete it" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("The Conversation could not be deleted. Try again shortly.");
+  expect(screen.getByRole("button", { name: "Delete Conversation" })).toBeInTheDocument();
+});
+
+test("Messages purged by the Retention Window say so, also in a Conversation deleted later", async () => {
+  const purgedAt = "2026-11-07T00:35:00Z";
+  const purged = visitorDetail.messages.map((m, index) =>
+    index < 2 ? { ...m, content: "", purged_at: purgedAt } : { ...m, content: "", purged_at: DELETED_AT },
+  );
+  setUp({
+    conversations: [{ ...visitorConversation, preview: null }, { ...playgroundConversation, preview: null, message_count: 0 }],
+    details: [{ ...visitorDetail, messages: purged, deleted_at: DELETED_AT }],
+  });
+  renderStudio(conversationsTab);
+  expect((await rows()).map((row) => row[8])).toEqual(["(text purged)", "(nothing asked yet)"]);
+
+  await userEvent.click(screen.getByRole("link", { name: "(text purged)" }));
+
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  expect(items[0]).toHaveTextContent("Text purged 2026-11-07 00:35 UTC: it was older than the Retention Window.");
+  expect(items[1]).toHaveTextContent("Text purged 2026-11-07 00:35 UTC: it was older than the Retention Window.");
+  expect(items[2]).toHaveTextContent("Text purged 2026-11-08 12:00 UTC: the Conversation was deleted on request.");
+});
+
+test("a Trace names a deleted Document's Chunk as a tombstone", async () => {
+  const legacy = { ...visitorTrace.chunks[3], document_name: null } as (typeof visitorTrace.chunks)[number];
+  setUp({ traces: [{ ...visitorTrace, chunks: [...visitorTrace.chunks, legacy] }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  await userEvent.click(within(items[1] as HTMLElement).getByRole("button", { name: "Trace" }));
+
+  const table = await screen.findByRole("table", { name: "Retrieved Chunks" });
+  const documents = within(table)
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => within(row).getAllByRole("cell")[1]?.textContent);
+  expect(documents).toEqual([
+    "leave-policy.md",
+    "expenses.md",
+    "parking.md",
+    "Chunk from deleted Document old-handbook.md",
+    "price-list.md",
+    // Deleted before Traces kept Document names.
+    "Chunk from a deleted Document",
+  ]);
 });
 
 test("the list shows each Conversation's Guardrail events and is filtered by Guardrail outcome", async () => {

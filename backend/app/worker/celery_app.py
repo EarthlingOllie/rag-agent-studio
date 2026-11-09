@@ -9,6 +9,8 @@ HEALTH_CHECK_TASK = "worker.health_check"
 CLEAR_BUDGET_ALERTS_TASK = "embed.clear_budget_alerts"
 # The usage rollup (app.analytics.tasks), which Beat runs hourly.
 ROLL_UP_TASK = "analytics.roll_up_usage"
+# The retention purge (app.retention.tasks), which Beat runs daily.
+PURGE_TASK = "retention.purge_expired"
 
 celery_app = Celery(
     "rag_agent_studio",
@@ -19,6 +21,7 @@ celery_app = Celery(
         "app.projects.tasks",
         "app.re_embedding.tasks",
         "app.embed.tasks",
+        "app.retention.tasks",
     ],
 )
 # Schedules are in UTC: the Token Budget's day is the UTC date.
@@ -44,6 +47,12 @@ def configure_celery(settings: Settings) -> Celery:
             # Hourly, a few minutes past the hour: the current day's usage rollups, and the
             # previous day's finalised once it is over.
             "usage-rollup": {"task": ROLL_UP_TASK, "schedule": crontab(minute=5)},
+            # Daily, after the 00:05 rollup has finalised the previous day: Message text and
+            # feedback comments older than each Retention Window.
+            "retention-purge": {
+                "task": PURGE_TASK,
+                "schedule": crontab(minute="35", hour="0"),
+            },
         },
     )
     return celery_app

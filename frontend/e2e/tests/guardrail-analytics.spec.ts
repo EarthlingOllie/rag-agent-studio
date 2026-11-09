@@ -66,7 +66,7 @@ test.describe("Guardrail analytics", () => {
 
     // The Editor reads the Live Version's block rate: one of its three replies was a refusal.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
-    await expect(page.getByLabel("Version")).toHaveText("v1 (Live)");
+    await expect(page.getByRole("combobox", { name: /^Version/ })).toHaveText("v1 (Live)");
     const card = page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name: "Guardrail block rate" });
     await expect(card).toContainText("33%", { timeout: 15_000 });
     await expect(card).toContainText("1 of 3 replies were blocked by the input Guardrail");

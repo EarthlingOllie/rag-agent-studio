@@ -15,6 +15,7 @@ import {
   useConversation,
   useConversations,
   useConversationTrace,
+  useDeleteConversation,
 } from "./conversations";
 import { BUTTON, INPUT, useOrganisationRole } from "./ProjectsPage";
 import { answeredBy, TraceDrawerFrame } from "./TraceDrawer";
@@ -37,6 +38,13 @@ function thumbsText({ thumbs_up: up, thumbs_down: down }: ConversationSummary): 
 /** A Conversation's Conversation Rating, such as "4 of 5", or "Not rated". */
 function ratingText(rating: number | null): string {
   return rating === null ? "Not rated" : `${String(rating)} of 5`;
+}
+
+/** The first question, or why there is none to show. */
+function previewText(conversation: ConversationSummary): string {
+  if (conversation.deleted_at !== null) return "(deleted on request)";
+  if (conversation.preview !== null) return conversation.preview;
+  return conversation.message_count === 0 ? "(nothing asked yet)" : "(text purged)";
 }
 
 /** How many of a Conversation's replies have a Guardrail outcome, such as "2 events", or "None". */
@@ -278,7 +286,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
                   search={filters}
                   className="underline"
                 >
-                  {conversation.preview ?? "(nothing asked yet)"}
+                  {previewText(conversation)}
                 </Link>
               </td>
             </tr>
@@ -420,22 +428,33 @@ function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
   );
 }
 
+/** A Message's text, or a note that it was purged and why. */
+function MessageText({ message, deletedAt }: { message: ConversationMessage; deletedAt: string | null }) {
+  if (message.purged_at === null) return <p className="whitespace-pre-wrap">{message.content}</p>;
+  // The daily purge may have cleared it before the Conversation was deleted.
+  const why =
+    message.purged_at === deletedAt ? "the Conversation was deleted on request" : "it was older than the Retention Window";
+  return <p className="text-sm italic text-slate-700">{`Text purged ${formatTime(message.purged_at)}: ${why}.`}</p>;
+}
+
 function MessageItem({
   message,
   asker,
   agentName,
+  deletedAt,
   onTrace,
 }: {
   message: ConversationMessage;
   asker: string;
   agentName: string;
+  deletedAt: string | null;
   onTrace: () => void;
 }) {
   if (message.role === "user") {
     return (
       <li aria-label={asker} className="rounded bg-slate-100 p-3">
         <p className="text-xs font-medium text-slate-700">{asker}</p>
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        <MessageText message={message} deletedAt={deletedAt} />
       </li>
     );
   }
@@ -445,7 +464,7 @@ function MessageItem({
         {agentName} · {answeredBy(message)}
         {message.fallback && " · fallback reply"}
       </p>
-      <p className="whitespace-pre-wrap">{message.content}</p>
+      <MessageText message={message} deletedAt={deletedAt} />
       <FeedbackNote message={message} visitor={asker === "Visitor"} />
       <button type="button" className={`${BUTTON} mt-2`} onClick={onTrace}>
         Trace
@@ -454,9 +473,67 @@ function MessageItem({
   );
 }
 
+/**
+ * An Owner deletes the Conversation on request, after confirming: its text and feedback comments are
+ * purged at once; its numbers stay in the metrics.
+ */
+function DeleteConversation({ path }: { path: ConversationPath }) {
+  const remove = useDeleteConversation(path);
+  const [confirming, setConfirming] = useState(false);
+  if (!confirming) {
+    return (
+      <div className="space-y-2">
+        {remove.isError && <p role="alert">The Conversation could not be deleted. Try again shortly.</p>}
+        <button
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            setConfirming(true);
+          }}
+        >
+          Delete Conversation
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div role="group" aria-label="Delete Conversation" className="space-y-2 rounded border border-red-200 bg-red-50 p-3 text-sm">
+      <p>
+        Its Messages&apos; text and feedback comments will be purged now and can&apos;t be recovered. Its numbers stay in the
+        metrics. The deletion is recorded in the Audit log.
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className={BUTTON}
+          disabled={remove.isPending}
+          onClick={() => {
+            remove.mutate(undefined, {
+              onSettled: () => {
+                setConfirming(false);
+              },
+            });
+          }}
+        >
+          Yes, delete it
+        </button>
+        <button
+          type="button"
+          className={BUTTON}
+          onClick={() => {
+            setConfirming(false);
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** One Conversation: its Messages, each reply with the Version that answered and its Trace. */
 export function ConversationPage() {
-  const { organisationId } = useOrganisationRole();
+  const { organisationId, isOwner } = useOrganisationRole();
   const { projectId, conversationId } = useParams({ from: DETAIL_ROUTE });
   const filters = useSearch({ from: DETAIL_ROUTE });
   const path = { organisation_id: organisationId, project_id: projectId, conversation_id: conversationId };
@@ -479,6 +556,11 @@ export function ConversationPage() {
         <p className="text-sm text-slate-700">
           {kind} · started {formatTime(data.created_at)} · last active {formatTime(data.last_activity_at)}
         </p>
+        {data.deleted_at === null ? (
+          isOwner && <DeleteConversation path={path} />
+        ) : (
+          <p className="text-sm font-medium">{`Deleted on request ${formatTime(data.deleted_at)}. Its numbers stay in the metrics.`}</p>
+        )}
         <ol aria-label="Messages" className="space-y-3">
           {data.messages.map((message) => (
             <MessageItem
@@ -486,6 +568,7 @@ export function ConversationPage() {
               message={message}
               asker={data.is_playground ? "Editor" : "Visitor"}
               agentName={data.agent_name}
+              deletedAt={data.deleted_at}
               onTrace={() => {
                 setTraced(message.id);
               }}

@@ -296,6 +296,34 @@ def _side_out(side: versions.DiffSide) -> DiffSideOut:
     return DiffSideOut(kind="version", version=_number(side.version))
 
 
+def diff_out(found: versions.ConfigDiff) -> AgentDiffOut:
+    """The response form of a diff between two sides of an Agent (also Version comparison's)."""
+    pinned = found.instructions
+    return AgentDiffOut.model_validate(
+        {
+            "from": _side_out(found.source),
+            "to": _side_out(found.target),
+            "changes": [
+                FieldChangeOut(
+                    path=change.path,
+                    before=change.before,
+                    after=change.after,
+                    added=change.added,
+                    removed=change.removed,
+                    lines=None if change.lines is None else lines_out(change.lines),
+                )
+                for change in found.changes
+            ],
+            "instructions": pinned
+            and InstructionsChangeOut(
+                before=pinned.before and _number(pinned.before),
+                after=pinned.after and _number(pinned.after),
+                lines=lines_out(pinned.lines),
+            ),
+        }
+    )
+
+
 SIDE_HELP = "The Draft (draft), the Live Version (live), or a Version's ID."
 
 
@@ -321,30 +349,7 @@ async def diff_agent(
         raise not_found() from None
     except versions.NotLiveError:
         raise HTTPException(status.HTTP_409_CONFLICT, NOT_LIVE) from None
-    pinned = found.instructions
-    return AgentDiffOut.model_validate(
-        {
-            "from": _side_out(found.source),
-            "to": _side_out(found.target),
-            "changes": [
-                FieldChangeOut(
-                    path=change.path,
-                    before=change.before,
-                    after=change.after,
-                    added=change.added,
-                    removed=change.removed,
-                    lines=None if change.lines is None else lines_out(change.lines),
-                )
-                for change in found.changes
-            ],
-            "instructions": pinned
-            and InstructionsChangeOut(
-                before=pinned.before and _number(pinned.before),
-                after=pinned.after and _number(pinned.after),
-                lines=lines_out(pinned.lines),
-            ),
-        }
-    )
+    return diff_out(found)
 
 
 class StartDraftRequest(BaseModel):

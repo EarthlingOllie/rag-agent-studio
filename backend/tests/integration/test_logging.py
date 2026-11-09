@@ -194,7 +194,7 @@ def test_the_api_server_writes_only_json_lines() -> None:
     port = _free_port()
     service = _Service(sys.executable, "-m", "app.serve", str(port))
     try:
-        service.wait_for("Application startup complete")
+        service.wait_for("Uvicorn running on")  # listening, not just started
         response = httpx.get(f"http://127.0.0.1:{port}/api/health", timeout=10)
         service.wait_for("/api/health")
     finally:
@@ -222,7 +222,7 @@ def test_the_api_server_leaves_forwarding_headers_to_the_app(
     port = _free_port()
     service = _Service(sys.executable, "-m", "app.serve", str(port))
     try:
-        service.wait_for("Application startup complete")
+        service.wait_for("Uvicorn running on")  # listening, not just started
         httpx.get(
             f"http://127.0.0.1:{port}/api/health",
             headers={"X-Forwarded-For": "203.0.113.7"},

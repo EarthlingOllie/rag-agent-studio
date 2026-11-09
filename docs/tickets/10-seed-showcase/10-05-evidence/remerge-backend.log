@@ -1,0 +1,17 @@
+$ cd backend && pytest --no-cov tests/unit/test_aws_task_settings.py tests/integration/test_seed.py tests/integration/test_seeded_history.py tests/integration/test_worker_entrypoint.py tests/integration/test_retention.py tests/integration/test_migrations.py  @ 3762f3b (ticket/10-05-seed-in-aws in wt1005, clean tree: 0 changes)
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, xdist-3.8.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 78 items
+
+tests/unit/test_aws_task_settings.py ................                    [ 20%]
+tests/integration/test_seed.py ............................              [ 56%]
+tests/integration/test_seeded_history.py .......                         [ 65%]
+tests/integration/test_worker_entrypoint.py ......                       [ 73%]
+tests/integration/test_retention.py ...................                  [ 97%]
+tests/integration/test_migrations.py ..                                  [100%]
+
+======================== 78 passed in 351.97s (0:05:51) ========================
+exit 0

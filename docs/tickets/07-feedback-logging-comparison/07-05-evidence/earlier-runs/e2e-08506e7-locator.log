@@ -1,0 +1,11 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml' @ 08506e7 (ticket/07-05-version-comparison; code unchanged since 08506e7) (CI settings: one retry; run with no other e2e stack on the machine; host ports below the ephemeral range)
+docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0705-e2e_default Creating 
+[...]
+  ✘  83 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (6.4s)
+  ✘  85 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (retry #1) (7.9s)
+    Error: strict mode violation: getByLabel('Version') resolved to 2 elements:
+    Error: strict mode violation: getByLabel('Version') resolved to 2 elements:
+  1 failed
+  88 passed (7.0m)
+exit 2

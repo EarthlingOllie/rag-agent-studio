@@ -430,6 +430,14 @@ async def _a_live_agent(owner: SignedUpMember, add_member: MemberFactory) -> Pre
     return params, None
 
 
+async def _two_agent_versions(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent_version(owner, add_member)
+    path = _AGENT.format(organisation_id=owner.organisation_id, **params) + "/versions"
+    again = await owner.client.post(path, json={"note": "Second release"})
+    assert again.status_code == 201, again.text
+    return params | {"other_version_id": again.json()["id"]}, None
+
+
 async def _a_version_to_start_from(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _an_agent_version(owner, add_member)
     return params, {"version_id": params["version_id"]}
@@ -604,11 +612,22 @@ PROJECT_SCOPED_ROUTES = [
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
+    *(
+        ScopedRoute(
+            "GET",
+            _AGENT + path,
+            EDITOR,
+            _two_agent_versions,
+            {"a": "{version_id}", "b": "{other_version_id}"},
+        )
+        for path in ("/comparison", "/comparison.csv")
+    ),
     ScopedRoute(
         "GET", _AGENT + "/time-series", EDITOR, _a_live_agent, query={"metric": "conversations"}
     ),
     ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
     ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
+    ScopedRoute("DELETE", _CONVERSATIONS + "/{conversation_id}", OWNER, _a_playground_conversation),
     ScopedRoute(
         "GET",
         _CONVERSATIONS + "/{conversation_id}/messages/{message_id}/trace",
@@ -623,14 +642,22 @@ async def _policy_left_off(owner: SignedUpMember, add_member: MemberFactory) -> 
     return {}, {"require_mfa": False}
 
 
+async def _a_retention_window(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"retention_days": 30}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS, EDITOR),
     ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
     *PROJECT_SCOPED_ROUTES,
     ScopedRoute("GET", "/api/organisations/{organisation_id}", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/mfa-policy", OWNER, _policy_left_off),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/retention-window", OWNER, _a_retention_window
+    ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets", OWNER),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/cost", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/invites", OWNER),
     ScopedRoute("POST", "/api/organisations/{organisation_id}/invites", OWNER, _new_invite_body),
     ScopedRoute(
@@ -685,7 +712,9 @@ async def _call(
 ) -> httpx.Response:
     params, body = prepared
     path = route.path.format(organisation_id=organisation_id, **params)
-    return await client.request(route.method, path, params=route.query, json=body)
+    # Query values may name prepared resources, as the path does.
+    query = {name: value.format(**params) for name, value in route.query.items()}
+    return await client.request(route.method, path, params=query, json=body)
 
 
 @pytest.mark.parametrize("route", ORGANISATION_SCOPED_ROUTES, ids=str)

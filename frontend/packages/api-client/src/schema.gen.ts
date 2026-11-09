@@ -463,6 +463,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Organisation Cost
+         * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
+         *     366 days), including today's so far, by Project or by Agent. Playground usage is in its own
+         *     column. Owners only.
+         */
+        get: operations["getOrganisationCost"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/credentials": {
         parameters: {
             query?: never;
@@ -983,6 +1005,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Versions
+         * @description Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
+         *     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
+         *     the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
+         *     Conversations count.
+         */
+        get: operations["compareVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Version Comparison
+         * @description The comparison of Versions `a` and `b` as a CSV download: a row per metric with both
+         *     Versions' values, the difference and the Version it favours.
+         */
+        get: operations["exportVersionComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/diff": {
         parameters: {
             query?: never;
@@ -1486,7 +1552,13 @@ export interface paths {
         get: operations["getConversation"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Conversation
+         * @description Deletes the Conversation on request (Owners only): its Messages' text and feedback
+         *     comments are purged at once and its Conversation token stops working; its numbers stay in
+         *     the metrics. Recorded as ``conversation.deleted``.
+         */
+        delete: operations["deleteConversation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2025,6 +2097,27 @@ export interface paths {
          */
         get: operations["getUploadLimits"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/retention-window": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Retention Window
+         * @description Sets the Organisation's Retention Window (Owners only), from 7 to 3650 days. Recorded as
+         *     ``organisation.retention_window_changed``.
+         */
+        put: operations["setRetentionWindow"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2730,6 +2823,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleted At */
+            deleted_at: string | null;
             /**
              * Id
              * Format: uuid
@@ -2789,6 +2884,8 @@ export interface components {
             model_provider: string | null;
             /** Output Tokens */
             output_tokens: number | null;
+            /** Purged At */
+            purged_at: string | null;
             /** Role */
             role: string;
         };
@@ -2869,6 +2966,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleted At */
+            deleted_at: string | null;
             /** Guardrail Events */
             guardrail_events: number;
             /**
@@ -2901,12 +3000,47 @@ export interface components {
             /** Conversation Token */
             conversation_token: string;
         };
+        /** CostAmountsOut */
+        CostAmountsOut: {
+            /** Playground Usd */
+            playground_usd: string;
+            /** Total Usd */
+            total_usd: string;
+            /** Visitor Usd */
+            visitor_usd: string;
+        };
+        /**
+         * CostGroup
+         * @description What org cost is broken down by.
+         * @enum {string}
+         */
+        CostGroup: "project" | "agent";
         /** CostOut */
         CostOut: {
             /** Per Conversation Usd */
             per_conversation_usd: string | null;
             /** Total Usd */
             total_usd: string;
+        };
+        /** CostRowOut */
+        CostRowOut: {
+            /** Agent Id */
+            agent_id: string | null;
+            /** Agent Name */
+            agent_name: string | null;
+            /** Playground Usd */
+            playground_usd: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /** Total Usd */
+            total_usd: string;
+            /** Visitor Usd */
+            visitor_usd: string;
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
@@ -3895,6 +4029,30 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** MetricRowOut */
+        MetricRowOut: {
+            /** A */
+            a: number | null;
+            /** B */
+            b: number | null;
+            /** Better */
+            better: ("a" | "b") | null;
+            /** Changed */
+            changed: boolean;
+            /** Difference */
+            difference: number | null;
+            /** Label */
+            label: string;
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** Metric */
+            metric: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "count" | "tokens" | "usd" | "rate" | "rating" | "ms";
+        };
         /** MfaChallengeResponse */
         MfaChallengeResponse: {
             /**
@@ -3985,6 +4143,23 @@ export interface components {
             /** Output */
             output: string | null;
         };
+        /** OrgCostOut */
+        OrgCostOut: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            group_by: components["schemas"]["CostGroup"];
+            /** Rows */
+            rows: components["schemas"]["CostRowOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            total: components["schemas"]["CostAmountsOut"];
+        };
         /** OrganisationMemberOut */
         OrganisationMemberOut: {
             /** Email */
@@ -4017,6 +4192,11 @@ export interface components {
              * @description Whether every Member must have MFA turned on
              */
             require_mfa: boolean;
+            /**
+             * Retention Days
+             * @description The Retention Window: Message text and feedback comments older than this many days are purged daily; metrics are kept
+             */
+            retention_days: number;
             role: components["schemas"]["Role"];
         };
         /**
@@ -4291,6 +4471,14 @@ export interface components {
             /** Name */
             name: string;
             status: components["schemas"]["DocumentStatus"];
+        };
+        /** RetentionWindowRequest */
+        RetentionWindowRequest: {
+            /**
+             * Retention Days
+             * @description Days Message text and feedback comments are kept before they are purged
+             */
+            retention_days: number;
         };
         /** Retrieval */
         "Retrieval-Input": {
@@ -4798,18 +4986,14 @@ export interface components {
         };
         /** TracedChunkOut */
         TracedChunkOut: {
-            /**
-             * Chunk Id
-             * Format: uuid
-             */
-            chunk_id: string;
+            /** Chunk Id */
+            chunk_id: string | null;
             /** Cited */
             cited: boolean;
-            /**
-             * Document Id
-             * Format: uuid
-             */
-            document_id: string;
+            /** Document Deleted */
+            document_deleted: boolean;
+            /** Document Id */
+            document_id: string | null;
             /** Document Name */
             document_name: string | null;
             /** Excluded Reason */
@@ -4907,6 +5091,29 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** VersionComparisonOut */
+        VersionComparisonOut: {
+            a: components["schemas"]["VersionKpisOut"];
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            b: components["schemas"]["VersionKpisOut"];
+            config_diff: components["schemas"]["AgentDiffOut"];
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Metrics */
+            metrics: components["schemas"]["MetricRowOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
         };
         /** VersionKpisOut */
         VersionKpisOut: {
@@ -6080,6 +6287,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getOrganisationCost: {
+        parameters: {
+            query?: {
+                /** @description Break the cost down by Project or by Agent */
+                group_by?: components["schemas"]["CostGroup"];
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgCostOut"];
                 };
             };
             /** @description Validation Error */
@@ -7860,6 +8105,108 @@ export interface operations {
             };
         };
     };
+    compareVersions: {
+        parameters: {
+            query: {
+                /** @description One of the Agent's Versions: the first side */
+                a: string;
+                /** @description Another of the Agent's Versions: the second side */
+                b: string;
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                agent_id: string;
+                project_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionComparisonOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exportVersionComparison: {
+        parameters: {
+            query: {
+                /** @description One of the Agent's Versions: the first side */
+                a: string;
+                /** @description Another of the Agent's Versions: the second side */
+                b: string;
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     diffAgent: {
         parameters: {
             query: {
@@ -9261,6 +9608,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ConversationDetailOut"];
                 };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Not found */
             404: {
@@ -10825,6 +11212,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadLimitsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setRetentionWindow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetentionWindowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationOut"];
+                };
+            };
+            /** @description This Organisation requires MFA. Turn on MFA for your account to continue. Or: Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not found */

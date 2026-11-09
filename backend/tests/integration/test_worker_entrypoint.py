@@ -30,7 +30,7 @@ def test_worker_entrypoint_points_celery_at_the_configured_broker(
     assert "documents.ingest" in entrypoint.app.tasks
 
 
-def test_beat_schedules_the_worker_health_check_the_budget_alert_reset_and_the_usage_rollup(
+def test_beat_schedules_the_health_check_budget_alert_reset_usage_rollup_and_purge(
     settings_env: pytest.MonkeyPatch,
 ) -> None:
     entrypoint = _import_worker_entrypoint()
@@ -40,9 +40,12 @@ def test_beat_schedules_the_worker_health_check_the_budget_alert_reset_and_the_u
         "worker.health_check",
         "embed.clear_budget_alerts",
         "analytics.roll_up_usage",
+        "retention.purge_expired",
     ]
     # The tasks register when the worker loads its includes (not on import, in this process).
-    assert {"app.embed.tasks", "app.analytics.tasks"} <= set(entrypoint.app.conf.include)
+    assert {"app.embed.tasks", "app.analytics.tasks", "app.retention.tasks"} <= set(
+        entrypoint.app.conf.include
+    )
 
 
 def test_worker_entrypoint_fails_fast_naming_a_missing_setting(
