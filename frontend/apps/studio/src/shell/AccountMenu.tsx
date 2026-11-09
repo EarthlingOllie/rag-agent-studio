@@ -43,8 +43,17 @@ export function AccountMenu({ session, organisationId, inOrganisation }: {
         </p>
       )}
       <Menu
-        label={<Avatar name={session.member.name} />}
-        triggerLabel={`${session.member.name}, Account`}
+        // The name is hidden text, "<Member>, Account", not aria-label: the initials are visible
+        // text, and a label that didn't contain them would fail WCAG 2.5.3 (label in name). The
+        // avatar is a picture of the same name, so it is hidden from assistive technology.
+        label={
+          <>
+            <span aria-hidden="true">
+              <Avatar name={session.member.name} />
+            </span>
+            <span className="sr-only">{`${session.member.name}, Account`}</span>
+          </>
+        }
         menuLabel="Account"
         align="end"
         triggerClassName="rounded-full"
