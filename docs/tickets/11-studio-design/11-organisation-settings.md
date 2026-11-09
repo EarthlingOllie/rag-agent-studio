@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-04: Shell, breadcrumb and navigation test helpers](04-shell-navigation.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Settings crumb lists General, Credentials, Models, Theme, and Members and Audit for Owners only
 - [ ] Forms sit in panels with labels above fields and one primary per form; the price table and audit log use table cards with `Pagination`
