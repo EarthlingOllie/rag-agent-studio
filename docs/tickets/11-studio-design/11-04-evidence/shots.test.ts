@@ -142,7 +142,7 @@ const PAGES: { name: string; path: string; open?: RegExp; twoOrganisations?: tru
   { name: "settings-audit", path: `/organisations/${ORG}/settings/audit` },
   // The top bar's menus, open.
   { name: "menu-sections", path: `/organisations/${ORG}/projects`, open: /, Organisation sections$/ },
-  { name: "menu-account", path: `/organisations/${ORG}/projects`, open: /, Account$/ },
+  { name: "menu-account", path: `/organisations/${ORG}/projects`, open: /^Ada Lovelace, Account$/ },
   { name: "menu-organisations", path: `/organisations/${ORG}/projects`, open: /, Organisations$/, twoOrganisations: true },
 ];
 
