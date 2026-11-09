@@ -59,8 +59,24 @@ function start(
   return fake;
 }
 
+/** Manage tags, on the toolbar, opens the Tags dialog. */
 async function tagsPanel() {
-  return within(await screen.findByRole("region", { name: "Tags" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Manage tags" }));
+  return within(screen.getByRole("dialog", { name: "Tags" }));
+}
+
+/** ⋯ → Edit Tags on a Document's row: the dialog that sets its Tags. */
+async function editTags(name: string) {
+  await userEvent.click(screen.getByRole("button", { name: `More actions for ${name}` }));
+  await userEvent.click(within(screen.getByRole("menu", { name: `Actions for ${name}` })).getByRole("menuitem", { name: "Edit Tags" }));
+  return within(screen.getByRole("dialog", { name: `Tags for ${name}` }));
+}
+
+/** Picks a Tag from one of the bulk bar's menus (Add Tag, Remove Tag). */
+async function bulkTag(menu: "Add Tag" | "Remove Tag", tag: string) {
+  const bar = within(screen.getByRole("toolbar", { name: "Bulk actions" }));
+  await userEvent.click(bar.getByRole("button", { name: menu }));
+  await userEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: tag }));
 }
 
 async function documentNames() {
@@ -261,23 +277,17 @@ test("the Tags say when they can't be loaded", async () => {
     ),
   );
 
-  expect(
-    await screen.findByText("The Tags could not be loaded. Try again shortly."),
-  ).toBeInTheDocument();
+  const panel = await tagsPanel();
+  expect(await panel.findByRole("alert")).toHaveTextContent(
+    "The Tags could not be loaded. Try again shortly.",
+  );
 });
 
 test("an Editor applies several Tags to one Document", async () => {
   const { requests } = start();
   await screen.findByRole("table", { name: "Documents" });
 
-  await userEvent.click(
-    rowOf("Leave policy.pdf").getByRole("button", {
-      name: "Edit Tags for Leave policy.pdf",
-    }),
-  );
-  const editor = within(
-    screen.getByRole("group", { name: "Tags for Leave policy.pdf" }),
-  );
+  const editor = await editTags("Leave policy.pdf");
   expect(editor.getByRole("checkbox", { name: "HR" })).toBeChecked();
   await userEvent.click(editor.getByRole("checkbox", { name: "Policy" }));
   await userEvent.click(editor.getByRole("checkbox", { name: "Sales" }));
@@ -288,7 +298,7 @@ test("an Editor applies several Tags to one Document", async () => {
     expect(tagsOf("Leave policy.pdf")).toEqual(["HR", "Policy"]);
   });
   expect(
-    screen.queryByRole("group", { name: "Tags for Leave policy.pdf" }),
+    screen.queryByRole("dialog", { name: "Tags for Leave policy.pdf" }),
   ).not.toBeInTheDocument();
   expect(
     requests.filter((r) => r.route === "setTags").map((r) => r.body),
@@ -298,14 +308,9 @@ test("an Editor applies several Tags to one Document", async () => {
 test("editing one Document's Tags can be cancelled, and a refusal shows its reason", async () => {
   start();
   await screen.findByRole("table", { name: "Documents" });
-  await userEvent.click(
-    rowOf("Expenses.docx").getByRole("button", {
-      name: "Edit Tags for Expenses.docx",
-    }),
-  );
-  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await userEvent.click((await editTags("Expenses.docx")).getByRole("button", { name: "Cancel" }));
   expect(
-    screen.queryByRole("group", { name: "Tags for Expenses.docx" }),
+    screen.queryByRole("dialog", { name: "Tags for Expenses.docx" }),
   ).not.toBeInTheDocument();
 
   server.use(
@@ -318,15 +323,11 @@ test("editing one Document's Tags can be cancelled, and a refusal shows its reas
         ),
     ),
   );
-  await userEvent.click(
-    rowOf("Expenses.docx").getByRole("button", {
-      name: "Edit Tags for Expenses.docx",
-    }),
-  );
-  await userEvent.click(screen.getByRole("checkbox", { name: "HR" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save Tags" }));
+  const editor = await editTags("Expenses.docx");
+  await userEvent.click(editor.getByRole("checkbox", { name: "HR" }));
+  await userEvent.click(editor.getByRole("button", { name: "Save Tags" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
+  expect(await editor.findByRole("alert")).toHaveTextContent(
     "This Project is archived. An Owner can restore it.",
   );
 });
@@ -335,14 +336,10 @@ test("a Project without Tags says how to add them when editing a Document's Tags
   start({ tags: [] });
   await screen.findByRole("table", { name: "Documents" });
 
-  await userEvent.click(
-    rowOf("Expenses.docx").getByRole("button", {
-      name: "Edit Tags for Expenses.docx",
-    }),
-  );
+  const editor = await editTags("Expenses.docx");
 
   expect(
-    screen.getByText("This Project has no Tags yet. Add one under Tags."),
+    editor.getByText("This Project has no Tags yet. Add one under Manage tags."),
   ).toBeInTheDocument();
 });
 
@@ -350,7 +347,7 @@ test("an Editor bulk-applies a Tag to many Documents and takes it off again", as
   const { requests } = start();
   await screen.findByRole("table", { name: "Documents" });
   expect(
-    screen.queryByRole("group", { name: "Bulk tagging" }),
+    screen.queryByRole("toolbar", { name: "Bulk actions" }),
   ).not.toBeInTheDocument();
 
   await userEvent.click(
@@ -359,22 +356,16 @@ test("an Editor bulk-applies a Tag to many Documents and takes it off again", as
   await userEvent.click(
     screen.getByRole("checkbox", { name: "Select Expenses.docx" }),
   );
-  const bulk = within(screen.getByRole("group", { name: "Bulk tagging" }));
-  expect(bulk.getByText("2 selected")).toBeInTheDocument();
-  await userEvent.selectOptions(bulk.getByLabelText("Tag"), "Policy");
-  await userEvent.click(
-    bulk.getByRole("button", { name: "Apply to selected" }),
-  );
+  const bulk = within(screen.getByRole("toolbar", { name: "Bulk actions" }));
+  expect(bulk.getByText("2 Documents selected")).toBeInTheDocument();
+  await bulkTag("Add Tag", "Policy");
 
   await waitFor(() => {
     expect(tagsOf("Expenses.docx")).toEqual(["Policy"]);
   });
   expect(tagsOf("Leave policy.pdf")).toEqual(["HR", "Policy"]);
 
-  await userEvent.selectOptions(bulk.getByLabelText("Tag"), "HR");
-  await userEvent.click(
-    bulk.getByRole("button", { name: "Remove from selected" }),
-  );
+  await bulkTag("Remove Tag", "HR");
 
   await waitFor(() => {
     expect(tagsOf("Leave policy.pdf")).toEqual(["Policy"]);
@@ -388,7 +379,7 @@ test("an Editor bulk-applies a Tag to many Documents and takes it off again", as
 
   await userEvent.click(bulk.getByRole("button", { name: "Clear selection" }));
   expect(
-    screen.queryByRole("group", { name: "Bulk tagging" }),
+    screen.queryByRole("toolbar", { name: "Bulk actions" }),
   ).not.toBeInTheDocument();
 });
 
@@ -408,17 +399,11 @@ test("select all picks every listed Document, and a bulk refusal shows its reaso
 
   const all = screen.getByRole("checkbox", { name: "Select all Documents" });
   await userEvent.click(all);
-  const bulk = within(screen.getByRole("group", { name: "Bulk tagging" }));
-  expect(bulk.getByText("3 selected")).toBeInTheDocument();
-  expect(
-    bulk.getByRole("button", { name: "Apply to selected" }),
-  ).toBeDisabled();
-  await userEvent.selectOptions(bulk.getByLabelText("Tag"), "Sales");
-  await userEvent.click(
-    bulk.getByRole("button", { name: "Apply to selected" }),
-  );
+  const bulk = within(screen.getByRole("toolbar", { name: "Bulk actions" }));
+  expect(bulk.getByText("3 Documents selected")).toBeInTheDocument();
+  await bulkTag("Add Tag", "Sales");
 
-  expect(await bulk.findByRole("alert")).toHaveTextContent(
+  expect(await screen.findByRole("alert")).toHaveTextContent(
     "One or more of these Documents aren't in this Project.",
   );
   expect(requests.filter((r) => r.route === "bulkTag")).toHaveLength(0);
@@ -427,11 +412,11 @@ test("select all picks every listed Document, and a bulk refusal shows its reaso
     screen.getByRole("checkbox", { name: "Select Sales deck.pptx" }),
   );
   expect(all).not.toBeChecked();
-  expect(bulk.getByText("2 selected")).toBeInTheDocument();
+  expect(bulk.getByText("2 Documents selected")).toBeInTheDocument();
   await userEvent.click(all);
   await userEvent.click(all);
   expect(
-    screen.queryByRole("group", { name: "Bulk tagging" }),
+    screen.queryByRole("toolbar", { name: "Bulk actions" }),
   ).not.toBeInTheDocument();
 });
 
@@ -451,7 +436,9 @@ test("the Document list is searched by name and filtered by status and Tag", asy
   await screen.findByText("Expenses.docx");
   expect(await documentNames()).toEqual(["Leave policy.pdf", "Expenses.docx"]);
 
-  await userEvent.selectOptions(screen.getByLabelText("Filter by Tag"), "HR");
+  await userEvent.click(
+    within(screen.getByRole("radiogroup", { name: "Filter by Tag" })).getByRole("radio", { name: "HR" }),
+  );
   await waitForGone(() => screen.queryByText("Expenses.docx"));
   expect(await documentNames()).toEqual(["Leave policy.pdf"]);
   expect(requests.filter((r) => r.route === "list").at(-1)?.body).toBe(
@@ -460,7 +447,7 @@ test("the Document list is searched by name and filtered by status and Tag", asy
 
   await userEvent.selectOptions(screen.getByLabelText("Status"), "Failed");
   expect(
-    await screen.findByText("No Documents match these filters."),
+    await screen.findByRole("heading", { name: "No Documents match these filters" }),
   ).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
@@ -489,7 +476,7 @@ test("an archived Project's Tags are shown but can't be changed", async () => {
   ).not.toBeInTheDocument();
   await screen.findByRole("table", { name: "Documents" });
   expect(
-    screen.queryByRole("button", { name: /Edit Tags/ }),
+    screen.queryByRole("button", { name: /More actions/ }),
   ).not.toBeInTheDocument();
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   expect(tagsOf("Leave policy.pdf")).toEqual(["HR"]);

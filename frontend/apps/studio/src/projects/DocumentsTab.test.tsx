@@ -38,6 +38,44 @@ function rowOf(
   return within(cell.closest("tr") as HTMLElement);
 }
 
+const HEADERS = ["Select", "Name", "Type", "Tags", "Status", "Chunks", "Flagged", "Size", "Actions"];
+
+/** The figure on a stat card above the table. */
+function stat(label: string) {
+  const stats = within(screen.getByRole("region", { name: "Knowledge Base" }));
+  return stats.getByText(label, { selector: "span" }).nextElementSibling as HTMLElement;
+}
+
+/** Waits until the Documents card counts this much of the quota ("2 / 500"). */
+async function expectQuota(text: string) {
+  await screen.findByRole("region", { name: "Knowledge Base" });
+  await waitFor(() => {
+    expect(stat("Documents")).toHaveTextContent(text);
+  });
+}
+
+/** The items of a Document's ⋯ menu; the menu is closed again. */
+async function actionsOf(name: string) {
+  await userEvent.click(screen.getByRole("button", { name: `More actions for ${name}` }));
+  const items = within(screen.getByRole("menu", { name: `Actions for ${name}` }))
+    .getAllByRole("menuitem")
+    .map((item) => `${item.textContent}${item.hasAttribute("disabled") ? " (disabled)" : ""}`);
+  await userEvent.keyboard("{Escape}");
+  return items;
+}
+
+/** Chooses an item from a Document's ⋯ menu. */
+async function chooseAction(name: string, action: string) {
+  await userEvent.click(screen.getByRole("button", { name: `More actions for ${name}` }));
+  await userEvent.click(within(screen.getByRole("menu", { name: `Actions for ${name}` })).getByRole("menuitem", { name: action }));
+}
+
+/** ⋯ → New edition, then the file picked in the picker it opens. */
+async function uploadNewEdition(name: string, files: File | File[], options?: { applyAccept: boolean }) {
+  await chooseAction(name, "New edition");
+  await userEvent.upload(screen.getByLabelText(`New edition of ${name}`), files, options);
+}
+
 /** The text of the row's cell under the given column header. */
 function cellUnder(
   table: Awaited<ReturnType<typeof documentsTable>>,
@@ -68,11 +106,10 @@ test("Documents with flagged Chunks show how many, so they stand out", async () 
   const table = await documentsTable();
   const flagged = cellUnder(table, "handbook.pdf", "Flagged");
   expect(flagged).toHaveTextContent(/^2$/);
-  expect(within(flagged).getByText("2").tagName).toBe("STRONG");
+  expect(within(flagged).getByLabelText("2 flagged chunks")).toHaveClass("text-flag");
   expect(cellUnder(table, "handbook.pdf", "Chunks")).toHaveTextContent(/^12$/);
   const clean = cellUnder(table, "faq.md", "Flagged");
-  expect(clean).toHaveTextContent(/^0$/);
-  expect(clean.querySelector("strong")).toBeNull();
+  expect(within(clean).getByLabelText("No flagged chunks")).not.toHaveClass("text-flag");
 });
 
 test("a Document's flagged Chunks are counted once it is Ready, without refreshing", async () => {
@@ -83,7 +120,7 @@ test("a Document's flagged Chunks are counted once it is Ready, without refreshi
   expect(await screen.findByText(/No Documents yet/)).toBeInTheDocument();
 
   await userEvent.upload(
-    screen.getByLabelText("Choose files to upload"),
+    screen.getByLabelText("Upload"),
     file("notes.md", `# Notes\n\n${PLANTED_INJECTION}.`),
   );
 
@@ -101,7 +138,7 @@ test("an Editor uploads files and watches each go from Queued to Ready without r
   renderStudio(documentsTab());
   expect(await screen.findByText(/No Documents yet/)).toBeInTheDocument();
 
-  await userEvent.upload(screen.getByLabelText("Choose files to upload"), [
+  await userEvent.upload(screen.getByLabelText("Upload"), [
     file("handbook.md"),
     file("faq.txt", "Q and A"),
   ]);
@@ -151,9 +188,9 @@ test("files dropped on the dropzone are uploaded", async () => {
   const dropzone = await screen.findByTestId("dropzone");
 
   fireEvent.dragOver(dropzone);
-  expect(dropzone).toHaveClass("border-slate-700");
+  expect(dropzone).toHaveClass("border-accent");
   fireEvent.dragLeave(dropzone);
-  expect(dropzone).not.toHaveClass("border-slate-700");
+  expect(dropzone).not.toHaveClass("border-accent");
   fireEvent.drop(dropzone, { dataTransfer: { files: [file("dropped.md")] } });
 
   expect(
@@ -166,9 +203,9 @@ test("a file of an unsupported type is refused before upload, and the others sti
   fakeProjectsApi();
   const { requests } = fakeDocumentsApi();
   renderStudio(documentsTab());
-  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+  await expectQuota("0 / 500");
 
-  await userEvent.upload(await screen.findByLabelText("Choose files to upload"), [file("sheet.xlsx"), file("README"), file("ok.md")], {
+  await userEvent.upload(await screen.findByLabelText("Upload"), [file("sheet.xlsx"), file("README"), file("ok.md")], {
     applyAccept: false,
   });
 
@@ -186,7 +223,7 @@ test("a file over the size limit is refused before upload", async () => {
   renderStudio(documentsTab());
   expect(await screen.findByText(/up to 2.0 MB each/)).toBeInTheDocument();
 
-  await userEvent.upload(screen.getByLabelText("Choose files to upload"), file("huge.md", "x".repeat(2 * 1024 * 1024 + 1)));
+  await userEvent.upload(screen.getByLabelText("Upload"), file("huge.md", "x".repeat(2 * 1024 * 1024 + 1)));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("This file is larger than the 2 MB upload limit.");
   expect(requests.filter((r) => r.route === "start")).toEqual([]);
@@ -197,16 +234,16 @@ test("files beyond the Project's Document quota are refused with a clear message
   fakeProjectsApi();
   const { requests } = fakeDocumentsApi({ documents: [aDocument()], limits: { document_quota: 2 } });
   renderStudio(documentsTab());
-  expect(await screen.findByText(/1 of 2 Documents/)).toBeInTheDocument();
+  await expectQuota("1 / 2");
 
-  await userEvent.upload(screen.getByLabelText("Choose files to upload"), [file("fits.md"), file("over.md")]);
+  await userEvent.upload(screen.getByLabelText("Upload"), [file("fits.md"), file("over.md")]);
 
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "This Project has reached its quota of 2 Documents. Delete a Document, or ask an Owner to raise the quota.",
   );
   expect(await (await documentsTable()).findByRole("cell", { name: "fits.md" })).toBeInTheDocument();
   expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([{ filename: "fits.md", size_bytes: 20 }]);
-  expect(await screen.findByText(/2 of 2 Documents/)).toBeInTheDocument();
+  await expectQuota("2 / 2");
 });
 
 test("a quota of one names a single Document", async () => {
@@ -214,9 +251,9 @@ test("a quota of one names a single Document", async () => {
   fakeProjectsApi();
   fakeDocumentsApi({ documents: [aDocument()], limits: { document_quota: 1 } });
   renderStudio(documentsTab());
-  expect(await screen.findByText(/1 of 1 Documents/)).toBeInTheDocument();
+  await expectQuota("1 / 1");
 
-  await userEvent.upload(screen.getByLabelText("Choose files to upload"), file("over.md"));
+  await userEvent.upload(screen.getByLabelText("Upload"), file("over.md"));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("This Project has reached its quota of 1 Document. Delete a Document");
 });
@@ -230,9 +267,9 @@ test("a file the API refuses at the start says why", async () => {
     http.post("*/api/organisations/:organisationId/projects/:projectId/uploads", () => HttpResponse.json({ detail: full }, { status: 409 })),
   );
   renderStudio(documentsTab());
-  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+  await expectQuota("0 / 500");
 
-  await userEvent.upload(screen.getByLabelText("Choose files to upload"), file("handbook.md"));
+  await userEvent.upload(screen.getByLabelText("Upload"), file("handbook.md"));
 
   expect(await screen.findByRole("alert")).toHaveTextContent(full);
 });
@@ -243,7 +280,7 @@ test("uploads still go ahead when the upload limits can't be loaded, and the API
   const { requests } = fakeDocumentsApi();
   server.use(http.get(`*/api/organisations/:organisationId/projects/:projectId/uploads/limits`, () => new HttpResponse(null, { status: 502 })));
   renderStudio(documentsTab());
-  const picker = await screen.findByLabelText("Choose files to upload");
+  const picker = await screen.findByLabelText("Upload");
   expect(picker).toHaveAttribute("accept", ".pdf,.docx,.pptx,.html,.htm,.md,.markdown,.txt");
 
   await userEvent.upload(picker, [file("sheet.xlsx"), file("ok.md")], { applyAccept: false });
@@ -251,7 +288,7 @@ test("uploads still go ahead when the upload limits can't be loaded, and the API
   expect(await screen.findByRole("alert")).toHaveTextContent(UNSUPPORTED);
   expect(await (await documentsTable()).findByRole("cell", { name: "ok.md" })).toBeInTheDocument();
   expect(requests.filter((r) => r.route === "start")).toHaveLength(2);
-  expect(screen.queryByText(/Documents in this Project's quota/)).not.toBeInTheDocument();
+  expect(stat("Documents")).toHaveTextContent(/^—$/);
 });
 
 test("each upload shows its progress until it is stored", async () => {
@@ -267,7 +304,7 @@ test("each upload shows its progress until it is stored", async () => {
   renderStudio(documentsTab());
 
   await userEvent.upload(
-    await screen.findByLabelText("Choose files to upload"),
+    await screen.findByLabelText("Upload"),
     file("slow.md"),
   );
 
@@ -315,7 +352,7 @@ test.each([
   renderStudio(documentsTab());
 
   await userEvent.upload(
-    await screen.findByLabelText("Choose files to upload"),
+    await screen.findByLabelText("Upload"),
     file("handbook.md"),
   );
 
@@ -338,7 +375,7 @@ test("a confirmation the API refuses shows its reason", async () => {
   renderStudio(documentsTab());
 
   await userEvent.upload(
-    await screen.findByLabelText("Choose files to upload"),
+    await screen.findByLabelText("Upload"),
     file("handbook.md"),
   );
 
@@ -367,7 +404,7 @@ test("Documents show their status, size and Chunk count, and what kind of failur
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size", "Actions"]);
+  ).toEqual(HEADERS);
   const ready = rowOf(table, "handbook.pdf");
   expect(ready.getByText("Ready")).toBeInTheDocument();
   expect(ready.getByText("12")).toBeInTheDocument();
@@ -377,7 +414,7 @@ test("Documents show their status, size and Chunk count, and what kind of failur
   expect(failed.getByText("Unsupported content")).toBeInTheDocument();
   expect(failed.getByText("This file isn't a valid DOCX file. Check the file, then upload it again.")).toBeInTheDocument();
   expect(failed.getByText("20.0 KB")).toBeInTheDocument();
-  expect(failed.getByRole("button", { name: "Retry broken.docx" })).toBeInTheDocument();
+  expect(await actionsOf("broken.docx")).toContain("Retry");
 });
 
 const failedDocument = (category: Schemas["FailureCategory"], message: string) =>
@@ -414,7 +451,7 @@ test("an Editor retries a failed Document and watches it go back to Ready", asyn
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(table.getByRole("button", { name: "Retry broken.md" }));
+  await chooseAction("broken.md", "Retry");
 
   expect(await table.findByText("Queued")).toBeInTheDocument();
   expect(table.queryByText("Conversion error")).not.toBeInTheDocument();
@@ -437,7 +474,8 @@ test.each([
   );
   renderStudio(documentsTab());
 
-  await userEvent.click((await documentsTable()).getByRole("button", { name: "Retry broken.md" }));
+  await documentsTable();
+  await chooseAction("broken.md", "Retry");
 
   expect(await screen.findByRole("alert")).toHaveTextContent(message);
 });
@@ -452,8 +490,9 @@ test("a Document waiting for an automatic retry says so while it is Queued", asy
 
   const row = rowOf(await documentsTable(), "handbook.pdf");
   expect(row.getByText("Queued")).toBeInTheDocument();
-  expect(row.getByText(retrying)).toHaveClass("text-slate-700");
-  expect(row.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(row.getByText(retrying)).toHaveClass("text-muted");
+  expect(row.getByText(retrying)).not.toHaveClass("text-danger");
+  expect(await actionsOf("handbook.pdf")).not.toContain("Retry");
 });
 
 test("the Document list says when it can't be loaded", async () => {
@@ -466,11 +505,9 @@ test("the Document list says when it can't be loaded", async () => {
   );
   renderStudio(documentsTab());
 
-  expect(
-    await screen.findByText(
-      "The Documents could not be loaded. Try again shortly.",
-    ),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "The Documents could not be loaded" + "Try again shortly.",
+  );
 });
 
 test("a status poll that fails keeps the last known statuses", async () => {
@@ -499,7 +536,7 @@ test("an archived Project takes no uploads", async () => {
 
   expect(await screen.findByText(/No Documents yet/)).toBeInTheDocument();
   expect(
-    screen.queryByLabelText("Choose files to upload"),
+    screen.queryByLabelText("Upload"),
   ).not.toBeInTheDocument();
 });
 
@@ -508,7 +545,7 @@ test("uploading a file already in the Project is refused with a link to the exis
   fakeProjectsApi();
   const { requests } = fakeDocumentsApi();
   renderStudio(documentsTab());
-  const picker = await screen.findByLabelText("Choose files to upload");
+  const picker = await screen.findByLabelText("Upload");
   await userEvent.upload(picker, file("handbook.md"));
   const table = await documentsTable();
   expect(
@@ -540,11 +577,9 @@ test("an Editor uploads a new edition, and the old one shows as Ready until the 
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size", "Actions"]);
+  ).toEqual(HEADERS);
 
-  await userEvent.upload(
-    table.getByLabelText("New edition of handbook.pdf"),
-    file("handbook-2027.md", "# Handbook 2027"),
+  await uploadNewEdition("handbook.pdf", file("handbook-2027.md", "# Handbook 2027"),
   );
 
   const uploads = within(screen.getByRole("list", { name: "Uploads" }));
@@ -587,9 +622,7 @@ test("a second new edition shows as soon as it is uploaded, after the first has 
   fakeDocumentsApi({ documents: [aDocument()] });
   renderStudio(documentsTab());
   const table = await documentsTable();
-  await userEvent.upload(
-    table.getByLabelText("New edition of handbook.pdf"),
-    file("handbook-2027.md", "# Handbook 2027"),
+  await uploadNewEdition("handbook.pdf", file("handbook-2027.md", "# Handbook 2027"),
   );
   const replaced = await table.findByRole(
     "cell",
@@ -656,10 +689,7 @@ test("a failed new edition says why, and the Document keeps its current edition"
   expect(row.getByText("Conversion error")).toBeInTheDocument();
   expect(row.getByText(CONVERT_FAILED)).toBeInTheDocument();
   // A failed new edition can be replaced by another, or retried.
-  expect(row.getByLabelText("New edition of handbook.pdf")).toBeInTheDocument();
-  expect(
-    row.getByRole("button", { name: "Retry handbook.pdf" }),
-  ).toBeInTheDocument();
+  expect(await actionsOf("handbook.pdf")).toEqual(["Retry", "New edition", "Edit Tags", "Delete"]);
 });
 
 test("an Editor retries a failed new edition and it replaces the Document", async () => {
@@ -669,9 +699,7 @@ test("an Editor retries a failed new edition and it replaces the Document", asyn
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(
-    table.getByRole("button", { name: "Retry handbook.pdf" }),
-  );
+  await chooseAction("handbook.pdf", "Retry");
 
   expect(
     await table.findByText(/New edition 2 \(broken\.md\): Queued/),
@@ -693,21 +721,17 @@ test("a new edition of an unsupported type is refused before upload, even in a f
     limits: { document_quota: 1 },
   });
   renderStudio(documentsTab());
-  expect(await screen.findByText(/1 of 1 Documents/)).toBeInTheDocument();
+  await expectQuota("1 / 1");
   const table = await documentsTable();
 
-  await userEvent.upload(
-    table.getByLabelText("New edition of handbook.pdf"),
-    file("sheet.xlsx"),
+  await uploadNewEdition("handbook.pdf", file("sheet.xlsx"),
     { applyAccept: false },
   );
   expect(await screen.findByRole("alert")).toHaveTextContent(UNSUPPORTED);
   expect(requests.filter((r) => r.route === "start")).toEqual([]);
 
   // A new edition doesn't add a Document, so the full quota doesn't refuse it.
-  await userEvent.upload(
-    table.getByLabelText("New edition of handbook.pdf"),
-    file("handbook-2.md"),
+  await uploadNewEdition("handbook.pdf", file("handbook-2.md"),
   );
   expect(
     await table.findByText(/New edition 2 \(handbook-2\.md\)/),
@@ -733,7 +757,7 @@ test("a failed Document in an archived Project offers no retry", async () => {
 
   const row = rowOf(await documentsTable(), "handbook.pdf");
   expect(row.getByText("Conversion error")).toBeInTheDocument();
-  expect(row.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(row.queryByRole("button", { name: /More actions/ })).not.toBeInTheDocument();
 });
 
 test("a new edition the API refuses says why", async () => {
@@ -748,11 +772,9 @@ test("a new edition the API refuses says why", async () => {
     ),
   );
   renderStudio(documentsTab());
-  const table = await documentsTable();
+  await documentsTable();
 
-  await userEvent.upload(
-    table.getByLabelText("New edition of handbook.pdf"),
-    file("new.md"),
+  await uploadNewEdition("handbook.pdf", file("new.md"),
   );
 
   expect(await screen.findByRole("alert")).toHaveTextContent(busy);
@@ -785,9 +807,7 @@ test("a Document still processing can be deleted but not replaced", async () => 
   renderStudio(documentsTab());
 
   const row = rowOf(await documentsTable(), "handbook.pdf");
-  expect(
-    row.getByRole("button", { name: "Delete handbook.pdf" }),
-  ).toBeInTheDocument();
+  expect(await actionsOf("handbook.pdf")).toEqual(["Edit Tags", "Delete"]);
   expect(
     row.queryByLabelText("New edition of handbook.pdf"),
   ).not.toBeInTheDocument();
@@ -804,28 +824,22 @@ test("an Editor deletes a Document after confirming, and it leaves the list", as
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(
-    table.getByRole("button", { name: "Delete handbook.pdf" }),
-  );
+  await chooseAction("handbook.pdf", "Delete");
   const confirmation = within(
-    table.getByRole("group", { name: "Delete handbook.pdf?" }),
+    screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }),
   );
   expect(
-    confirmation.getByText(
-      "Delete handbook.pdf? It stops being retrieved at once.",
-    ),
+    confirmation.getByText("Its 12 chunks stop being retrieved at once."),
   ).toBeInTheDocument();
   await userEvent.click(confirmation.getByRole("button", { name: "Cancel" }));
-  expect(table.queryByRole("group")).not.toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(requests.filter((r) => r.route === "delete")).toEqual([]);
 
-  await userEvent.click(
-    table.getByRole("button", { name: "Delete handbook.pdf" }),
-  );
+  await chooseAction("handbook.pdf", "Delete");
   await userEvent.click(
     within(
-      table.getByRole("group", { name: "Delete handbook.pdf?" }),
-    ).getByRole("button", { name: "Delete" }),
+      screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }),
+    ).getByRole("button", { name: "Delete handbook.pdf" }),
   );
 
   await waitFor(() => {
@@ -852,24 +866,19 @@ test("a delete that fails says so and keeps the Document", async () => {
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(
-    table.getByRole("button", { name: "Delete handbook.pdf" }),
-  );
-  await userEvent.click(
-    within(
-      table.getByRole("group", { name: "Delete handbook.pdf?" }),
-    ).getByRole("button", { name: "Delete" }),
-  );
+  await chooseAction("handbook.pdf", "Delete");
+  const dialog = within(screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Delete handbook.pdf" }));
 
-  expect(await table.findByRole("alert")).toHaveTextContent(
+  // The refusal shows in the dialog, which stays open to try again or cancel.
+  expect(await dialog.findByRole("alert")).toHaveTextContent(
     "The Document could not be deleted. Try again.",
   );
   expect(table.getByRole("cell", { name: "handbook.pdf" })).toBeInTheDocument();
   // Asking again clears the message.
-  await userEvent.click(
-    table.getByRole("button", { name: "Delete handbook.pdf" }),
-  );
-  expect(table.queryByRole("alert")).not.toBeInTheDocument();
+  await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+  await chooseAction("handbook.pdf", "Delete");
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
 test("an archived Project's Documents can't be replaced or deleted", async () => {
@@ -881,10 +890,11 @@ test("an archived Project's Documents can't be replaced or deleted", async () =>
   const table = await documentsTable();
   expect(
     table.getAllByRole("columnheader").map((header) => header.textContent),
-  ).toEqual(["Select", "Name", "Status", "Tags", "Chunks", "Flagged", "Size"]);
+  ).toEqual(HEADERS);
   expect(
-    table.queryByRole("button", { name: /Delete/ }),
+    table.queryByRole("button", { name: /More actions/ }),
   ).not.toBeInTheDocument();
+  expect(table.queryByLabelText(/New edition/)).not.toBeInTheDocument();
 });
 
 test("a new edition still uploads when the upload limits can't be loaded, and the API checks it", async () => {
@@ -893,9 +903,9 @@ test("a new edition still uploads when the upload limits can't be loaded, and th
   const { requests } = fakeDocumentsApi({ documents: [aDocument()] });
   server.use(http.get(`*/api/organisations/:organisationId/projects/:projectId/uploads/limits`, () => new HttpResponse(null, { status: 502 })));
   renderStudio(documentsTab());
-  const table = await documentsTable();
+  await documentsTable();
 
-  await userEvent.upload(table.getByLabelText("New edition of handbook.pdf"), file("handbook-2027.md", "# Handbook 2027"));
+  await uploadNewEdition("handbook.pdf", file("handbook-2027.md", "# Handbook 2027"));
 
   expect(await within(screen.getByRole("list", { name: "Uploads" })).findByText("Uploaded")).toBeInTheDocument();
   expect(requests.filter((r) => r.route === "start").map((r) => r.body)).toEqual([
@@ -908,14 +918,14 @@ test("a Document that fails stops counting towards the quota without a reload", 
   fakeProjectsApi();
   fakeDocumentsApi({ failing: ["broken.pdf"] });
   renderStudio(documentsTab());
-  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+  await expectQuota("0 / 500");
 
-  await userEvent.upload(screen.getByLabelText("Choose files to upload"), new File(["not a pdf"], "broken.pdf", { type: "application/pdf" }));
+  await userEvent.upload(screen.getByLabelText("Upload"), new File(["not a pdf"], "broken.pdf", { type: "application/pdf" }));
 
-  expect(await screen.findByText(/1 of 500 Documents/)).toBeInTheDocument();
+  await expectQuota("1 / 500");
   const row = rowOf(await documentsTable(), "broken.pdf");
   expect(await row.findByText("Unsupported content", {}, { timeout: 8000 })).toBeInTheDocument();
-  expect(await screen.findByText(/0 of 500 Documents/)).toBeInTheDocument();
+  await expectQuota("0 / 500");
 }, 15000);
 test("a Ready or Failed Document is retried, and goes through Queued to Ready again", async () => {
   fakeAuthApi({ signedInAs: adaSession });
@@ -930,13 +940,13 @@ test("a Ready or Failed Document is retried, and goes through Queued to Ready ag
   const { requests } = fakeDocumentsApi({ documents: [aDocument(), failedScan] });
   renderStudio(documentsTab());
   const table = await documentsTable();
-  expect(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" })).toBeInTheDocument();
+  expect(await actionsOf("handbook.pdf")).toContain("Retry");
 
-  await userEvent.click(rowOf(table, "scan.pdf").getByRole("button", { name: "Retry scan.pdf" }));
+  await chooseAction("scan.pdf", "Retry");
 
   expect(await rowOf(table, "scan.pdf").findByText("Queued")).toBeInTheDocument();
   expect(rowOf(table, "scan.pdf").queryByText(/couldn't be processed/)).not.toBeInTheDocument();
-  expect(rowOf(table, "scan.pdf").queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(await actionsOf("scan.pdf")).not.toContain("Retry");
   expect(await rowOf(table, "scan.pdf").findByText("Ready", {}, { timeout: 6000 })).toBeInTheDocument();
   expect(rowOf(table, "scan.pdf").getByRole("cell", { name: "4" })).toBeInTheDocument();
   expect(requests.filter((r) => r.route === "retry")).toEqual([{ route: "retry", body: failedScan.id }]);
@@ -956,7 +966,8 @@ test("a Document still being processed, or with a new edition being processed, h
   const table = await documentsTable();
   expect(rowOf(table, "handbook.pdf").getByText("Processing")).toBeInTheDocument();
   expect(rowOf(table, "policy.pdf").getByText(/New edition 2/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(await actionsOf("handbook.pdf")).toEqual(["Edit Tags", "Delete"]);
+  expect(await actionsOf("policy.pdf")).toEqual(["Edit Tags", "Delete"]);
 });
 
 test("an archived Project's Documents have no Retry", async () => {
@@ -966,7 +977,7 @@ test("an archived Project's Documents have no Retry", async () => {
   renderStudio(documentsTab(oldProject.id));
 
   expect((await documentsTable()).getByText("Ready")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Retry/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /More actions/ })).not.toBeInTheDocument();
 });
 
 test("a refused retry shows the API's reason", async () => {
@@ -982,9 +993,10 @@ test("a refused retry shows the API's reason", async () => {
   renderStudio(documentsTab());
   const table = await documentsTable();
 
-  await userEvent.click(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" }));
+  await chooseAction("handbook.pdf", "Retry");
 
-  expect(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" })).toBeDisabled();
+  // While the retry is under way, Retry waits.
+  expect(await actionsOf("handbook.pdf")).toContain("Retry (disabled)");
   expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
   expect(rowOf(table, "handbook.pdf").getByText("Ready")).toBeInTheDocument();
 });
@@ -995,9 +1007,9 @@ test("a retry that fails without a reason asks to try again", async () => {
   fakeDocumentsApi({ documents: [aDocument()] });
   server.use(http.post(`${DOCUMENTS}/:documentId/retry`, () => new HttpResponse("Bad gateway", { status: 502 })));
   renderStudio(documentsTab());
-  const table = await documentsTable();
+  await documentsTable();
 
-  await userEvent.click(rowOf(table, "handbook.pdf").getByRole("button", { name: "Retry handbook.pdf" }));
+  await chooseAction("handbook.pdf", "Retry");
 
   expect(await screen.findByRole("alert")).toHaveTextContent("The retry failed. Try again.");
 });

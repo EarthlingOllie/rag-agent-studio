@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { Session } from "../auth/session";
 import { Breadcrumb, CrumbSwitcher, CrumbText, type IconName, type MenuItem, type MenuLinkProps } from "../design";
+import { useDocument } from "../projects/documents";
 import { useProject, useProjects } from "../projects/projects";
 import { OrganisationCrumb } from "./OrganisationSwitcher";
 
@@ -45,10 +46,16 @@ const PROJECT_SECTIONS: { label: string; icon: IconName; to: ProjectPath; also?:
   { label: "Settings", icon: "settings", to: `${PROJECT}/settings` },
 ];
 
+/** A Document's own crumb, after the Documents switcher: its name, or "Document" until it loads. */
+function DocumentCrumb({ organisationId, projectId, documentId }: { organisationId: string; projectId: string; documentId: string }) {
+  const document = useDocument(organisationId, projectId, documentId);
+  return <CrumbText current>{document.data?.name ?? "Document"}</CrumbText>;
+}
+
 /**
  * The Project crumb, a switcher of the Organisation's open Projects plus All Projects, then the
- * Project's section switcher. While the Project can't be shown (loading, not found) there are no
- * sections, and the Project crumb is the current one.
+ * Project's section switcher, then on the Document viewer the Document's name. While the Project
+ * can't be shown (loading, not found) there are no sections, and the Project crumb is the current one.
  */
 function ProjectBreadcrumb({
   organisationId,
@@ -90,12 +97,16 @@ function ProjectBreadcrumb({
   }));
   // Every page in a Project belongs to one section.
   const here = sections.find((section) => section.current) as MenuItem;
+  const viewing = matchRoute({ to: `${PROJECT}/documents/$documentId`, params: { organisationId, projectId } });
 
   return (
     <Breadcrumb>
       {leading}
       <CrumbSwitcher label={project.data?.name ?? "Project"} menuLabel="Projects" items={switcher} current={!project.data} />
-      {project.data && <CrumbSwitcher label={here.label} menuLabel="Project sections" items={sections} current />}
+      {project.data && <CrumbSwitcher label={here.label} menuLabel="Project sections" items={sections} current={viewing === false} />}
+      {project.data && viewing !== false && (
+        <DocumentCrumb organisationId={organisationId} projectId={projectId} documentId={viewing.documentId} />
+      )}
     </Breadcrumb>
   );
 }
