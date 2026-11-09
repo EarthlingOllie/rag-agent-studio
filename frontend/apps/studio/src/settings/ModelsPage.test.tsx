@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { legalVoyage, marketingOpenAi } from "../test/credentials";
@@ -72,6 +72,7 @@ test("an Owner sets the Default Model", async () => {
   await userEvent.selectOptions(form.getByRole("combobox", { name: "Model" }), "GPT-4.1 mini");
   await userEvent.click(form.getByRole("button", { name: "Save Default Model" }));
 
+  // Confirmed by a toast.
   expect(await screen.findByRole("status")).toHaveTextContent("The Default Model is now GPT-4.1 mini.");
   expect(api.set).toEqual([{ credential_id: marketingOpenAi.id, model: "gpt-4.1-mini" }]);
   expect(await screen.findByText("GPT-4.1 mini, using Marketing OpenAI (OpenAI)")).toBeInTheDocument();
@@ -133,7 +134,7 @@ test("without a chat-capable credential, Owners are sent to add one", async () =
   openAs();
 
   expect(await screen.findByText(/No credential can be used for chat yet/)).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Add one on the Credentials tab" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Add one in Credentials" })).toHaveAttribute(
     "href",
     `/organisations/${organisationId}/settings/credentials`,
   );
@@ -168,4 +169,16 @@ test("credentials that can't be loaded say so", async () => {
   openAs();
 
   expect(await screen.findByText("The credentials could not be loaded. Try again shortly.")).toBeInTheDocument();
+});
+
+test("the save button shows progress while the Default Model is saved", async () => {
+  fakeModelsApi();
+  server.use(http.put("*/api/organisations/:organisationId/default-model", () => delay("infinite")));
+  openAs();
+  const form = await picker();
+  await form.findByRole("option", { name: "Claude Sonnet 4.5" });
+
+  await userEvent.click(form.getByRole("button", { name: "Save Default Model" }));
+
+  expect(await form.findByRole("button", { name: "Saving…" })).toBeDisabled();
 });

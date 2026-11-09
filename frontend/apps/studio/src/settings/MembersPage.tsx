@@ -1,6 +1,7 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { button, field, surface, table, text, useToast } from "../design";
 import {
   type Invite,
   InviteRequestError,
@@ -13,9 +14,6 @@ import {
   useRevokeInvite,
 } from "../invites/invites";
 import { MembersList } from "./MembersList";
-
-const INPUT = "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
-const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
 
 function failure(error: Error | null): string | undefined {
   if (error === null) return undefined;
@@ -38,20 +36,20 @@ function issuedMessage(issued: IssuedInvite, emailRequested: boolean): string {
   return `Copy the link and send it to ${email}.`;
 }
 
-/** The link an Owner can copy for a just-issued invite. */
+/** The link an Owner can copy for a just-issued invite. The toast has confirmed the invite. */
 function InviteLink({ issued, emailRequested }: { issued: IssuedInvite; emailRequested: boolean }) {
   const [copied, setCopied] = useState<"yes" | "failed" | "no">("no");
   return (
-    <div role="status" className="mt-4 rounded border border-accent-soft bg-accent-soft p-3 text-sm text-accent-ink">
+    <section aria-label="New invite" className={`${surface.panel} flex flex-col gap-2 text-sm text-ink-2`}>
       <p>{issuedMessage(issued, emailRequested)}</p>
-      <label className="mt-2 block font-medium" htmlFor="invite-link">
+      <label className={field.label} htmlFor="invite-link">
         Invite link for {issued.invite.email}
       </label>
-      <div className="mt-1 flex gap-2">
-        <input id="invite-link" readOnly value={issued.link} className={`${INPUT} mt-0 font-mono text-xs`} />
+      <div className="flex gap-2">
+        <input id="invite-link" readOnly value={issued.link} className={`${field.inputMono} mt-0 text-xs`} />
         <button
           type="button"
-          className={BUTTON}
+          className={button.secondary}
           onClick={() => {
             navigator.clipboard.writeText(issued.link).then(
               () => {
@@ -66,10 +64,10 @@ function InviteLink({ issued, emailRequested }: { issued: IssuedInvite; emailReq
           Copy link
         </button>
       </div>
-      {copied === "yes" && <p className="mt-1">Link copied.</p>}
-      {copied === "failed" && <p className="mt-1">Couldn't copy. Select the link and copy it yourself.</p>}
-      <p className="mt-1">The link works once and expires on {day(issued.invite.expires_at)}.</p>
-    </div>
+      {copied === "yes" && <p>Link copied.</p>}
+      {copied === "failed" && <p className="text-danger">Couldn't copy. Select the link and copy it yourself.</p>}
+      <p className={text.muted}>The link works once and expires on {day(issued.invite.expires_at)}.</p>
+    </section>
   );
 }
 
@@ -93,33 +91,29 @@ function InviteForm({ organisationId, onIssued }: { organisationId: string; onIs
   }
 
   return (
-    <form onSubmit={onSubmit} aria-label="Invite someone" className="max-w-md space-y-4">
-      <h2 className="text-lg font-semibold">Invite someone</h2>
+    <form onSubmit={onSubmit} aria-label="Invite someone" className={`${surface.panel} flex flex-col gap-4`}>
+      <h2 className={text.heading}>Invite someone</h2>
       <FormError message={failure(createInvite.error)} />
       <div>
-        <label htmlFor="invite-email" className="block text-sm font-medium">
+        <label htmlFor="invite-email" className={field.label}>
           Email
         </label>
-        <input id="invite-email" name="email" type="email" required autoComplete="off" className={INPUT} />
+        <input id="invite-email" name="email" type="email" required autoComplete="off" className={field.input} />
       </div>
       <div>
-        <label htmlFor="invite-role" className="block text-sm font-medium">
+        <label htmlFor="invite-role" className={field.label}>
           Role
         </label>
-        <select id="invite-role" name="role" defaultValue="editor" className={INPUT}>
+        <select id="invite-role" name="role" defaultValue="editor" className={field.select}>
           <option value="editor">Editor</option>
           <option value="owner">Owner</option>
         </select>
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="send_email" defaultChecked />
+      <label className="flex items-center gap-2 text-sm text-ink-2">
+        <input type="checkbox" name="send_email" defaultChecked className={field.checkbox} />
         Email the invite link
       </label>
-      <button
-        type="submit"
-        disabled={createInvite.isPending}
-        className="rounded bg-accent px-4 py-2 font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted"
-      >
+      <button type="submit" disabled={createInvite.isPending} className={`${button.primary} self-start`}>
         {createInvite.isPending ? "Inviting…" : "Invite"}
       </button>
     </form>
@@ -137,40 +131,52 @@ function PendingRow({
 }) {
   const renew = useRenewInvite(organisationId);
   const revoke = useRevokeInvite(organisationId);
+  const toast = useToast();
   const busy = renew.isPending || revoke.isPending;
   return (
-    <tr className="border-t border-line align-top">
-      <td className="py-2 pr-4">{invite.email}</td>
-      <td className="py-2 pr-4">{ROLE_NAMES[invite.role]}</td>
-      <td className="py-2 pr-4">{invite.invited_by.name}</td>
-      <td className="py-2 pr-4">{invite.expired ? "Expired" : day(invite.expires_at)}</td>
-      <td className="py-2">
-        <div className="flex gap-2">
+    <tr className={table.row}>
+      <td className={`${table.td} font-medium`}>{invite.email}</td>
+      <td className={table.td}>{ROLE_NAMES[invite.role]}</td>
+      <td className={table.tdMuted}>{invite.invited_by.name}</td>
+      <td className={invite.expired ? table.tdMuted : `${table.td} font-mono text-[13px]`}>
+        {invite.expired ? "Expired" : day(invite.expires_at)}
+      </td>
+      <td className={table.td}>
+        <div className="flex justify-end gap-2">
           <button
             type="button"
-            className={BUTTON}
+            className={button.secondary}
             disabled={busy}
             aria-label={`New link for ${invite.email}`}
             onClick={() => {
-              renew.mutate(invite.id, { onSuccess: onIssued });
+              renew.mutate(invite.id, {
+                onSuccess: (issued) => {
+                  toast.show(`New invite link for ${invite.email}.`);
+                  onIssued(issued);
+                },
+              });
             }}
           >
             New link
           </button>
           <button
             type="button"
-            className={BUTTON}
+            className={button.danger}
             disabled={busy}
             aria-label={`Revoke invite for ${invite.email}`}
             onClick={() => {
-              revoke.mutate(invite.id);
+              revoke.mutate(invite.id, {
+                onSuccess: () => {
+                  toast.show(`Revoked the invite for ${invite.email}.`);
+                },
+              });
             }}
           >
             Revoke
           </button>
         </div>
         {(renew.isError || revoke.isError) && (
-          <p role="alert" className="mt-1 text-sm text-danger">
+          <p role="alert" className={field.error}>
             That didn't work. The invite may have been accepted or revoked already.
           </p>
         )}
@@ -181,52 +187,71 @@ function PendingRow({
 
 function PendingInvites({ organisationId, onIssued }: { organisationId: string; onIssued: (issued: IssuedInvite) => void }) {
   const invites = usePendingInvites(organisationId);
-  if (invites.isPending) return <p role="status">Loading invites…</p>;
-  if (invites.isError) return <p role="alert">The pending invites could not be loaded. Try again shortly.</p>;
-  if (invites.data.length === 0) return <p className="text-muted">No pending invites.</p>;
+  if (invites.isPending) return <p role="status" className={text.muted}>Loading invites…</p>;
+  if (invites.isError) return <p role="alert" className={text.muted}>The pending invites could not be loaded. Try again shortly.</p>;
+  if (invites.data.length === 0) return <p className={text.muted}>No pending invites.</p>;
   return (
-    <table className="w-full text-left text-sm" aria-label="Pending invites">
-      <thead>
-        <tr>
-          <th className="py-2 pr-4 font-medium">Email</th>
-          <th className="py-2 pr-4 font-medium">Role</th>
-          <th className="py-2 pr-4 font-medium">Invited by</th>
-          <th className="py-2 pr-4 font-medium">Expires</th>
-          <th className="py-2 font-medium">
-            <span className="sr-only">Actions</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {invites.data.map((invite) => (
-          <PendingRow key={invite.id} invite={invite} organisationId={organisationId} onIssued={onIssued} />
-        ))}
-      </tbody>
-    </table>
+    <div className={table.wrap}>
+      <table className={table.table} aria-label="Pending invites">
+        <thead>
+          <tr>
+            <th className={table.th}>Email</th>
+            <th className={table.th}>Role</th>
+            <th className={table.th}>Invited by</th>
+            <th className={table.th}>Expires</th>
+            <th className={table.th}>
+              <span className="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {invites.data.map((invite) => (
+            <PendingRow key={invite.id} invite={invite} organisationId={organisationId} onIssued={onIssued} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
-/** Members tab: Owners see and manage Members, invite people and manage pending invites. */
-export function MembersPage({ organisationId, memberId, isOwner }: { organisationId: string; memberId: string; isOwner: boolean }) {
+/**
+ * Members: Owners see and manage Members, invite people and manage pending invites. Invites and
+ * member changes are confirmed by a toast; a new invite's link stays on the page to copy.
+ */
+export function MembersPage({
+  organisationId,
+  organisationName,
+  memberId,
+  isOwner,
+}: {
+  organisationId: string;
+  organisationName: string;
+  memberId: string;
+  isOwner: boolean;
+}) {
   const [issued, setIssued] = useState<{ invite: IssuedInvite; emailed: boolean } | null>(null);
-  if (!isOwner) return <p>Only Owners can manage Members and invites.</p>;
+  const toast = useToast();
+  if (!isOwner) return <p className={text.muted}>Only Owners can manage Members and invites.</p>;
   return (
-    <section aria-labelledby="members-heading">
-      <h2 id="members-heading" className="text-lg font-semibold">
-        Members
-      </h2>
-      <div className="mt-2 mb-8">
-        <MembersList organisationId={organisationId} memberId={memberId} />
+    <section aria-labelledby="members-heading" className="flex flex-col gap-7">
+      <div className="flex flex-col gap-3">
+        <h2 id="members-heading" className={text.heading}>
+          Members
+        </h2>
+        <MembersList organisationId={organisationId} organisationName={organisationName} memberId={memberId} />
       </div>
-      <InviteForm
-        organisationId={organisationId}
-        onIssued={(invite, emailed) => {
-          setIssued({ invite, emailed });
-        }}
-      />
-      {issued && <InviteLink key={issued.invite.link} issued={issued.invite} emailRequested={issued.emailed} />}
-      <h2 className="mt-8 text-lg font-semibold">Pending invites</h2>
-      <div className="mt-2">
+      <div className="grid max-w-2xl gap-4">
+        <InviteForm
+          organisationId={organisationId}
+          onIssued={(invite, emailed) => {
+            toast.show(`Invited ${invite.invite.email}.`);
+            setIssued({ invite, emailed });
+          }}
+        />
+        {issued && <InviteLink key={issued.invite.link} issued={issued.invite} emailRequested={issued.emailed} />}
+      </div>
+      <div className="flex flex-col gap-3">
+        <h2 className={text.heading}>Pending invites</h2>
         <PendingInvites
           organisationId={organisationId}
           onIssued={(invite) => {

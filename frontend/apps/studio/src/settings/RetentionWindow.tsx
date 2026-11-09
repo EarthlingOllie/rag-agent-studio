@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { button, field, Notice, surface, text } from "../design";
 import {
   MAX_RETENTION_DAYS,
   MIN_RETENTION_DAYS,
@@ -9,8 +10,6 @@ import {
   useSetRetentionWindow,
 } from "./retention";
 
-const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
-const INPUT = "w-28 rounded border border-field px-2 py-1 text-sm";
 const RANGE = `Choose from ${String(MIN_RETENTION_DAYS)} to ${String(MAX_RETENTION_DAYS)} days.`;
 
 function failure(error: Error | null): string | undefined {
@@ -24,21 +23,21 @@ function RetentionForm({ organisationId, days }: { organisationId: string; days:
   const [value, setValue] = useState(String(days));
   return (
     <form
-      className="space-y-2"
+      className="flex flex-col gap-2"
       onSubmit={(event) => {
         event.preventDefault();
         save.mutate(Number(value));
       }}
     >
       <FormError message={failure(save.error)} />
-      <label htmlFor="retention-days" className="block text-sm font-medium">
+      <label htmlFor="retention-days" className={field.label}>
         Retention Window (days)
       </label>
       <div className="flex items-center gap-2">
         <input
           id="retention-days"
           type="number"
-          className={INPUT}
+          className={`${field.inputMono} mt-0 w-28`}
           min={MIN_RETENTION_DAYS}
           max={MAX_RETENTION_DAYS}
           required
@@ -49,18 +48,14 @@ function RetentionForm({ organisationId, days }: { organisationId: string; days:
             setValue(event.currentTarget.value);
           }}
         />
-        <button type="submit" className={BUTTON} disabled={save.isPending}>
+        <button type="submit" className={button.primary} disabled={save.isPending}>
           {save.isPending ? "Saving…" : "Save"}
         </button>
       </div>
-      <p id="retention-range" className="text-sm text-muted">
+      <p id="retention-range" className={text.small}>
         {RANGE} Changes are recorded in the Audit log.
       </p>
-      {save.isSuccess && (
-        <p role="status" className="text-sm text-accent-ink">
-          Saved.
-        </p>
-      )}
+      {save.isSuccess && <Notice tone="success">Saved.</Notice>}
     </form>
   );
 }
@@ -73,27 +68,27 @@ export function RetentionWindow({ organisationId, isOwner }: { organisationId: s
   const organisation = useOrganisationDetails(organisationId);
   let body;
   if (organisation.isError) {
-    body = <p role="alert">The Retention Window could not be loaded. Try again shortly.</p>;
+    body = <p role="alert" className={text.muted}>The Retention Window could not be loaded. Try again shortly.</p>;
   } else if (organisation.data === undefined) {
-    body = <p role="status">Loading the Retention Window…</p>;
+    body = <p role="status" className={text.muted}>Loading the Retention Window…</p>;
   } else {
     const days = organisation.data.retention_days;
     body = (
       <>
-        <p className="text-sm text-muted">
+        <p className={text.muted}>
           {`Message text and feedback comments are kept for ${String(days)} days, then purged every night. Metrics are kept.`}
         </p>
         {isOwner ? (
           <RetentionForm organisationId={organisationId} days={days} />
         ) : (
-          <p className="text-sm text-muted">Only Owners can change this.</p>
+          <p className={text.muted}>Only Owners can change this.</p>
         )}
       </>
     );
   }
   return (
-    <section aria-labelledby="retention-heading" className="max-w-md space-y-3">
-      <h2 id="retention-heading" className="text-lg font-semibold">
+    <section aria-labelledby="retention-heading" className={`${surface.panel} flex flex-col gap-3`}>
+      <h2 id="retention-heading" className={text.heading}>
         Retention
       </h2>
       {body}

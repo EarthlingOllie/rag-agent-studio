@@ -229,7 +229,7 @@ test("Bedrock credentials show their role or key, region and Bedrock-specific st
 
   expect(roleRow?.getByText("Amazon Bedrock · eu-west-2")).toBeInTheDocument();
   expect(roleRow?.getByLabelText("IAM role arn:aws:iam::111122223333:role/StudioBedrockAccess")).toHaveTextContent("IAM role");
-  expect(roleRow?.getByText(/Check failed: We couldn't assume this role/)).toBeInTheDocument();
+  expect(roleRow?.getByText(/^We couldn't assume this role/)).toBeInTheDocument();
   expect(keysRow?.getByLabelText("Key ending MPLE")).toBeInTheDocument();
   expect(keysRow?.getByText("Amazon Bedrock · us-east-1")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Rotate key: Bedrock prod" })).not.toBeInTheDocument();
@@ -245,7 +245,7 @@ test("re-checking a Bedrock credential that fails shows the Bedrock reason", asy
 
   await userEvent.click(await screen.findByRole("button", { name: "Check now: Bedrock sandbox" }));
 
-  expect(await screen.findByText(/Check failed: Bedrock, or this model, isn't available in that region/)).toBeInTheDocument();
+  expect(await screen.findByText(/^Bedrock, or this model, isn't available in that region/)).toBeInTheDocument();
 });
 
 test("an Owner who looked at access keys can go back to the role", async () => {
