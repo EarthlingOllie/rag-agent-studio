@@ -151,7 +151,18 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
   });
 
-  await test.step("10. The Audit tab is already full of the seeded history", async () => {
+  await test.step("10. Organisation cost: what each Project and Agent spent, the Playground apart", async () => {
+    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Cost" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
+    const byProject = page.getByRole("table", { name: "Cost by Project" });
+    await expect(byProject.getByRole("row", { name: /^Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel("Break down by").selectOption("Agent");
+    const byAgent = page.getByRole("table", { name: "Cost by Agent" });
+    await expect(byAgent.getByRole("row", { name: /^HR helper Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+  });
+
+  await test.step("11. The Audit tab is already full of the seeded history", async () => {
     await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
     await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
     const events = page.getByRole("table", { name: "Audit Events" });

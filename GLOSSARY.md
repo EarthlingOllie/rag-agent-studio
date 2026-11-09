@@ -121,7 +121,7 @@ The Demo page (`/demo/attacks.html`) with one button per attack category (instru
 _Avoid_: Red-team page, jailbreak console
 
 **Five-minute demo**:
-The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace, the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace, the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
 _Avoid_: Walkthrough, showcase script, smoke test
 
 **Demo mode**:
