@@ -30,7 +30,7 @@ export function DiscardDraft({ agent, organisationId, onReplaced }: DraftProps) 
     <div className="space-y-2">
       <FormError message={draftChangeFailure(replace.error)} />
       {confirming ? (
-        <div role="group" aria-label="Discard the Draft" className="space-y-2 rounded border border-slate-200 bg-white p-3 text-sm">
+        <div role="group" aria-label="Discard the Draft" className="space-y-2 rounded border border-line bg-surface p-3 text-sm">
           <p>The Draft&apos;s unpublished changes will be lost, and it goes back to the settings of the Live Version (v{live.number}).</p>
           <div className="flex gap-2">
             <button
@@ -123,8 +123,8 @@ function Compare({
     </div>
   );
   let body;
-  if (diff.isPending) body = <p className="text-sm text-slate-700">Comparing…</p>;
-  else if (diff.isError) body = <p className="text-sm text-slate-700">The comparison could not be loaded. {agentFailure(diff.error)}</p>;
+  if (diff.isPending) body = <p className="text-sm text-muted">Comparing…</p>;
+  else if (diff.isError) body = <p className="text-sm text-muted">The comparison could not be loaded. {agentFailure(diff.error)}</p>;
   else body = <AgentDiffView diff={diff.data} names={names} />;
   return (
     <section aria-labelledby="compare-heading" className="space-y-2">
@@ -186,7 +186,7 @@ function StartDraft({
       ) : (
         <button
           type="button"
-          className="text-sm text-slate-900 underline"
+          className="text-sm text-ink underline"
           onClick={() => {
             replace.reset();
             setConfirming(true);
@@ -209,23 +209,23 @@ export function AgentVersions({ agent, organisationId, onReplaced }: DraftProps)
   const archived = agent.archived_at !== null;
   let body;
   if (found.isPending) {
-    body = <p className="text-sm text-slate-700">Loading the Versions…</p>;
+    body = <p className="text-sm text-muted">Loading the Versions…</p>;
   } else if (found.isError) {
-    body = <p className="text-sm text-slate-700">The Versions could not be loaded.</p>;
+    body = <p className="text-sm text-muted">The Versions could not be loaded.</p>;
   } else if (found.data.versions.length === 0) {
-    body = <p className="text-sm text-slate-700">No Versions yet. Publishing the Draft makes v1.</p>;
+    body = <p className="text-sm text-muted">No Versions yet. Publishing the Draft makes v1.</p>;
   } else {
     const { versions, live_version_id: liveId } = found.data;
     body = (
       <>
         <ol aria-label="Versions" className="space-y-2">
           {versions.map((version) => (
-            <li key={version.id} className="space-y-1 rounded border border-slate-200 bg-white p-2 text-sm">
+            <li key={version.id} className="space-y-1 rounded border border-line bg-surface p-2 text-sm">
               <p>
                 <span className="font-semibold">v{version.number}</span>
-                {version.id === liveId && <span className="ml-2 rounded-full bg-green-100 px-2 text-green-900">Live</span>} · {version.note}
+                {version.id === liveId && <span className="ml-2 rounded-full bg-accent-soft px-2 text-accent-ink">Live</span>} · {version.note}
               </p>
-              <p className="text-slate-700">
+              <p className="text-muted">
                 {version.author.name} · {new Date(version.created_at).toLocaleString()} ·{" "}
                 {version.instructions_version ? `Instructions v${String(version.instructions_version.number)}` : "No Project Instructions"}
               </p>
@@ -238,7 +238,7 @@ export function AgentVersions({ agent, organisationId, onReplaced }: DraftProps)
     );
   }
   return (
-    <section aria-labelledby="versions-heading" className="space-y-2 rounded border border-slate-200 bg-white p-3">
+    <section aria-labelledby="versions-heading" className="space-y-2 rounded border border-line bg-surface p-3">
       <h3 id="versions-heading" className="font-semibold">
         Versions
       </h3>

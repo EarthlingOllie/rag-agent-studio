@@ -84,7 +84,7 @@ function ChooseModel({
           ))}
         </select>
       </label>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Provider models come from the Organisation's Provider Credentials that
         can embed. The built-in model needs none.
       </p>
@@ -108,7 +108,7 @@ function ReEmbed({ state }: { state: EmbeddingModelState }) {
       <div role="status" className="space-y-1">
         <p>
           Re-embedding with{" "}
-          <span className="font-medium text-slate-900">{job.model_id}</span>:{" "}
+          <span className="font-medium text-ink">{job.model_id}</span>:{" "}
           {job.embedded_chunks} of {job.total_chunks} Chunks. Retrieval uses{" "}
           {job.from_model_id} until it finishes.
         </p>
@@ -123,7 +123,7 @@ function ReEmbed({ state }: { state: EmbeddingModelState }) {
   }
   if (job?.status === "failed") {
     return (
-      <p role="alert" className="text-red-700">
+      <p role="alert" className="text-danger">
         Re-embedding with {job.model_id} failed. {job.error_message}
       </p>
     );
@@ -156,9 +156,9 @@ export function EmbeddingModelSetting({
       <h2 id="embedding-model-heading" className="font-medium">
         Embedding Model
       </h2>
-      <p className="text-slate-700">
+      <p className="text-muted">
         Documents are embedded with{" "}
-        <span className="font-medium text-slate-900">{active.modelId}</span>.{" "}
+        <span className="font-medium text-ink">{active.modelId}</span>.{" "}
         {project.document_count === 0 || running ? "" : RE_EMBEDS}
       </p>
       {state.data && <ReEmbed state={state.data} />}

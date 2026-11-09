@@ -40,15 +40,15 @@ function shown(value: JsonValue, names: Record<string, string>): string {
 }
 
 const LINE_STYLE: Record<DiffLine["op"], { sign: string; label: string; className: string }> = {
-  equal: { sign: " ", label: "Unchanged", className: "text-slate-700" },
-  delete: { sign: "−", label: "Removed", className: "bg-red-50 text-red-900" },
-  insert: { sign: "+", label: "Added", className: "bg-green-50 text-green-900" },
+  equal: { sign: " ", label: "Unchanged", className: "text-muted" },
+  delete: { sign: "−", label: "Removed", className: "bg-danger-soft text-danger" },
+  insert: { sign: "+", label: "Added", className: "bg-accent-soft text-accent-ink" },
 };
 
 /** A line diff of markdown: removed lines marked −, added lines +. */
 export function TextDiff({ lines, label }: { lines: DiffLine[]; label: string }) {
   return (
-    <ol aria-label={label} className="overflow-x-auto rounded border border-slate-200 font-mono text-xs">
+    <ol aria-label={label} className="overflow-x-auto rounded border border-line font-mono text-xs">
       {lines.map((line, index) => {
         const style = LINE_STYLE[line.op];
         return (
@@ -71,15 +71,15 @@ function Change({ change, names }: { change: FieldChange; names: Record<string, 
   } else if (change.added && change.removed) {
     detail = (
       <p className="text-sm">
-        {change.added.length > 0 && <span className="mr-3 text-green-900">Added: {shown(change.added, names)}</span>}
-        {change.removed.length > 0 && <span className="mr-3 text-red-900">Removed: {shown(change.removed, names)}</span>}
+        {change.added.length > 0 && <span className="mr-3 text-accent-ink">Added: {shown(change.added, names)}</span>}
+        {change.removed.length > 0 && <span className="mr-3 text-danger">Removed: {shown(change.removed, names)}</span>}
         {change.added.length === 0 && change.removed.length === 0 && <span>Reordered</span>}
       </p>
     );
   } else {
     detail = (
       <p className="text-sm">
-        <del className="text-red-900">{shown(change.before, names)}</del> → <ins className="text-green-900 no-underline">{shown(change.after, names)}</ins>
+        <del className="text-danger">{shown(change.before, names)}</del> → <ins className="text-accent-ink no-underline">{shown(change.after, names)}</ins>
       </p>
     );
   }
@@ -101,7 +101,7 @@ export function AgentDiffView({ diff, names = {} }: { diff: AgentDiff; names?: R
   const title = `Changes from ${side(diff.from)} to ${side(diff.to)}`;
   const pinned = diff.instructions;
   if (diff.changes.length === 0 && !pinned) {
-    return <p className="text-sm text-slate-700">No differences: {side(diff.from)} and {side(diff.to)} have the same settings.</p>;
+    return <p className="text-sm text-muted">No differences: {side(diff.from)} and {side(diff.to)} have the same settings.</p>;
   }
   return (
     <div className="space-y-3">

@@ -6,21 +6,21 @@ import { AuthRequestError, useCompletePasswordReset } from "./session";
 import { MIN_PASSWORD_LENGTH } from "./SignUpPage";
 
 const requestNewLink = (
-  <Link to="/forgot-password" className="font-medium text-slate-900 underline">
+  <Link to="/forgot-password" className="font-medium text-ink underline">
     Request a new link
   </Link>
 );
 
 function ErrorWithNewLink({ children }: { children: string }) {
   return (
-    <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+    <div role="alert" className="rounded border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
       {children} {requestNewLink}
     </div>
   );
 }
 
 const backToSignIn = (
-  <Link to="/sign-in" className="font-medium text-slate-900 underline">
+  <Link to="/sign-in" className="font-medium text-ink underline">
     Back to sign in
   </Link>
 );
@@ -43,7 +43,7 @@ export function ResetPasswordPage() {
   if (completeReset.isSuccess) {
     return (
       <AuthLayout title="Choose a new password" footer={backToSignIn}>
-        <p role="status" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+        <p role="status" className="rounded border border-accent-soft bg-accent-soft px-3 py-2 text-sm text-accent-ink">
           Your password has been reset and you've been signed out everywhere.{" "}
           <Link to="/sign-in" className="font-medium underline">
             Sign in with your new password
@@ -84,7 +84,7 @@ export function ResetPasswordPage() {
           autoComplete="new-password"
           minLength={MIN_PASSWORD_LENGTH}
         />
-        <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p className="-mt-2 text-sm text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
         <SubmitButton pending={completeReset.isPending} label="Set new password" pendingLabel="Saving…" />
       </form>
     </AuthLayout>

@@ -20,9 +20,9 @@ import {
   useRotateCredential,
 } from "./credentials";
 
-const INPUT = "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
-const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
-const PRIMARY = "rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:bg-slate-600";
+const INPUT = "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
+const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
+const PRIMARY = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 function when(iso: string): string {
@@ -36,12 +36,12 @@ function capabilities(list: Capability[]): string {
 function Status({ credential }: { credential: Credential }) {
   if (credential.check_failure) {
     return (
-      <span className="text-red-800">
+      <span className="text-danger">
         Check failed: {failureMessages(credential.provider)[credential.check_failure]}
       </span>
     );
   }
-  return <span className="text-green-900">Working</span>;
+  return <span className="text-accent-ink">Working</span>;
 }
 
 /** Owner actions on one credential: check it again, rotate its key, or delete it. */
@@ -151,7 +151,7 @@ const KIND_NAMES: Record<string, string> = { agent: "Agent", project: "Project",
 /** The refusal to delete a credential something still uses, listing what uses it. */
 function InUse({ name, error }: { name: string; error: CredentialRequestError }) {
   return (
-    <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+    <div role="alert" className="rounded border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
       <p>{name} is still in use, so it wasn't deleted. Move these to another credential first:</p>
       <ul className="mt-1 list-disc pl-5">
         {error.references.map((reference) => (
@@ -185,12 +185,12 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
     <div className="space-y-3">
       {inUse ? <InUse name={deleting} error={inUse} /> : <FormError message={credentialFailure(rotate.error ?? remove.error ?? check.error)} />}
       {done && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {done}
         </p>
       )}
       {credentials.data.length === 0 ? (
-        <p className="text-sm text-slate-700">No credentials yet.</p>
+        <p className="text-sm text-muted">No credentials yet.</p>
       ) : (
         <table className="w-full text-left text-sm" aria-label="Provider Credentials">
           <thead>
@@ -210,7 +210,7 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
           </thead>
           <tbody>
             {credentials.data.map((credential) => (
-              <tr key={credential.id} className="border-t border-slate-200 align-top">
+              <tr key={credential.id} className="border-t border-line align-top">
                 <td className="py-2 pr-4">{credential.name}</td>
                 <td className="py-2 pr-4">
                   {credential.region ? `${PROVIDER_NAMES[credential.provider]} · ${credential.region}` : PROVIDER_NAMES[credential.provider]}
@@ -350,11 +350,11 @@ function BedrockRoleSetup({ organisationId }: { organisationId: string }) {
   if (!setup.data) return <p role="status">Loading the AWS setup details…</p>;
   const { external_id: externalId, platform_principal: principal, trust_policy: trust, permissions_policy: permissions } = setup.data;
   return (
-    <section aria-labelledby="bedrock-setup-heading" className="space-y-3 rounded border border-slate-300 bg-slate-50 p-3">
+    <section aria-labelledby="bedrock-setup-heading" className="space-y-3 rounded border border-field bg-canvas p-3">
       <h4 id="bedrock-setup-heading" className="text-sm font-semibold">
         Set up the role in AWS
       </h4>
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700">
+      <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
         <li>In the IAM console, create a role with a custom trust policy, and paste the trust policy below.</li>
         <li>Attach the permissions policy below to the role (or a policy that allows the same Bedrock actions).</li>
         <li>In the Bedrock console, enable access to the models you'll use, in the region you choose here.</li>
@@ -438,7 +438,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
       </h3>
       <FormError message={credentialFailure(add.error, providerId)} />
       {saved && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {saved}
         </p>
       )}
@@ -522,7 +522,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
             </fieldset>
             {authKind === "aws_role" ? (
               <>
-                <p className="text-sm text-slate-700">
+                <p className="text-sm text-muted">
                   We assume a role in your AWS account using your Organisation's external ID, so no secret is stored and you can
                   revoke access at any time.
                 </p>
@@ -536,7 +536,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
               </>
             ) : (
               <>
-                <p className="text-sm text-slate-700">
+                <p className="text-sm text-muted">
                   Prefer the IAM role: access keys are long-lived secrets. If you use them, give the IAM user only the Bedrock
                   permissions it needs. We store the secret encrypted and never show it again.
                 </p>
@@ -585,11 +585,11 @@ export function CredentialsPage({ organisationId, isOwner }: { organisationId: s
         <h2 id="credentials-heading" className="text-lg font-semibold">
           Provider Credentials
         </h2>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           Each key is checked with its provider when it's saved, stored encrypted, and never shown again: only its last four
           characters are. Amazon Bedrock can instead connect through an IAM role in your AWS account, so no secret is stored.
         </p>
-        {!isOwner && <p className="text-sm text-slate-700">Only Owners can add, check, rotate or delete credentials.</p>}
+        {!isOwner && <p className="text-sm text-muted">Only Owners can add, check, rotate or delete credentials.</p>}
       </div>
       <CredentialsTable organisationId={organisationId} isOwner={isOwner} />
       {isOwner && providers.data && <AddCredential organisationId={organisationId} providers={providers.data} />}

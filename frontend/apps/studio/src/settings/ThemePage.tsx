@@ -21,9 +21,9 @@ import type { ThemeImage } from "./themeImages";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_RADIUS = 24;
-const INPUT = "rounded border border-slate-400 px-2 py-1 text-sm disabled:bg-slate-100 aria-[invalid=true]:border-red-700";
-const BUTTON = "rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:bg-slate-500";
-const FIELD_ERROR = "text-xs text-red-800";
+const INPUT = "rounded border border-field px-2 py-1 text-sm disabled:bg-sunken aria-[invalid=true]:border-danger";
+const BUTTON = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
+const FIELD_ERROR = "text-xs text-danger";
 
 type Validity = (field: string, valid: boolean) => void;
 
@@ -50,7 +50,7 @@ function ColourField({
   };
   return (
     <div className="space-y-1">
-      <label htmlFor={id} className="block text-xs font-medium text-slate-700">
+      <label htmlFor={id} className="block text-xs font-medium text-ink-2">
         {label}
       </label>
       <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ function ColourField({
             apply(event.currentTarget.value);
           }}
           onChange={() => undefined}
-          className="h-8 w-10 cursor-pointer rounded border border-slate-400 bg-white p-0.5 disabled:cursor-not-allowed"
+          className="h-8 w-10 cursor-pointer rounded border border-field bg-surface p-0.5 disabled:cursor-not-allowed"
         />
         <input
           id={id}
@@ -305,13 +305,13 @@ function ThemeEditor({
             save.mutate(draft);
           }}
         >
-          {!isOwner && <p className="rounded bg-slate-100 px-3 py-2 text-sm text-slate-700">Only Owners can change the Theme.</p>}
+          {!isOwner && <p className="rounded bg-sunken px-3 py-2 text-sm text-muted">Only Owners can change the Theme.</p>}
           <fieldset disabled={!isOwner} className="space-y-6">
             <Section title="Colours">
-              <p className="text-sm text-slate-700">Each colour has a value for light mode and one for dark mode.</p>
+              <p className="text-sm text-muted">Each colour has a value for light mode and one for dark mode.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {COLOUR_TOKENS.map(({ token, label }) => (
-                  <div key={token} className="flex flex-wrap gap-4 rounded border border-slate-200 p-3">
+                  <div key={token} className="flex flex-wrap gap-4 rounded border border-line p-3">
                     {(["light", "dark"] as const).map((colourScheme) => (
                       <ColourField
                         key={colourScheme}
@@ -389,7 +389,7 @@ function ThemeEditor({
           </fieldset>
           <div role="status" aria-label="Contrast" className="space-y-2">
             {warnings.length > 0 && (
-              <div className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <div className="rounded border border-flag bg-flag-soft px-3 py-2 text-sm text-flag">
                 <p className="font-medium">Some colours fail WCAG AA contrast. You can still save.</p>
                 <ul className="mt-1 list-disc pl-5">
                   {warnings.map((warning) => (
@@ -403,7 +403,7 @@ function ThemeEditor({
             <div className="space-y-3">
               <FormError message={save.isError ? "Something went wrong. Try again." : undefined} />
               {save.isSuccess && (
-                <p role="status" aria-label="Saved" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+                <p role="status" aria-label="Saved" className="rounded border border-accent-soft bg-accent-soft px-3 py-2 text-sm text-accent-ink">
                   Theme saved. The widget uses it now.
                 </p>
               )}
@@ -449,7 +449,7 @@ export function ThemePage({ organisationId, isOwner }: { organisationId: string;
       />
     );
   } else {
-    body = <p className="text-sm text-slate-700">Loading the Theme…</p>;
+    body = <p className="text-sm text-muted">Loading the Theme…</p>;
   }
   return (
     <section aria-labelledby="theme-heading" className="space-y-4">
@@ -457,7 +457,7 @@ export function ThemePage({ organisationId, isOwner }: { organisationId: string;
         <h2 id="theme-heading" className="text-lg font-semibold">
           Theme
         </h2>
-        <p className="text-sm text-slate-700">How embedded Agents look to Visitors. Changes apply as soon as they are saved.</p>
+        <p className="text-sm text-muted">How embedded Agents look to Visitors. Changes apply as soon as they are saved.</p>
       </div>
       {body}
     </section>

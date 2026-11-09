@@ -41,8 +41,8 @@ import { StatusPage } from "./status/StatusPage";
 
 function StatusLayout() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="border-b border-line bg-surface">
         <nav className="mx-auto flex max-w-4xl items-center gap-6 px-6 py-4" aria-label="Main">
           <Link to="/" className="font-semibold">
             RAG Agent Studio

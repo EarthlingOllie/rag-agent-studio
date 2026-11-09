@@ -19,7 +19,7 @@ const INVALID = "This invite link is invalid or has expired. Ask an Owner of the
 const SOMETHING_WRONG = "Something went wrong. Try again.";
 
 const signInLink = (
-  <Link to="/sign-in" className="font-medium text-slate-900 underline">
+  <Link to="/sign-in" className="font-medium text-ink underline">
     Sign in
   </Link>
 );
@@ -39,9 +39,9 @@ function statusOf(error: Error | null): number | undefined {
 
 function Invitation({ preview }: { preview: InvitePreview }) {
   return (
-    <p className="text-slate-700">
-      {preview.invited_by_name} invited <strong className="text-slate-900">{preview.email}</strong> to join{" "}
-      <strong className="text-slate-900">{preview.organisation_name}</strong> as{" "}
+    <p className="text-muted">
+      {preview.invited_by_name} invited <strong className="text-ink">{preview.email}</strong> to join{" "}
+      <strong className="text-ink">{preview.organisation_name}</strong> as{" "}
       {preview.role === "owner" ? "an Owner" : "an Editor"}.
     </p>
   );
@@ -63,7 +63,7 @@ function JoinAsMember({ token, preview }: { token: string; preview: InvitePrevie
         onClick={() => {
           accept.mutate(token);
         }}
-        className="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:bg-slate-600"
+        className="w-full rounded bg-accent px-4 py-2 font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted"
       >
         {accept.isPending ? "Joining…" : `Join ${preview.organisation_name}`}
       </button>
@@ -77,7 +77,7 @@ function WrongAccount({ session, preview }: { session: Session; preview: InviteP
   return (
     <div className="space-y-4">
       <Invitation preview={preview} />
-      <p role="alert" className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <p role="alert" className="rounded border border-flag-soft bg-flag-soft px-3 py-2 text-sm text-flag">
         You're signed in as {session.member.email}. Sign out, then open the link again to accept as {preview.email}.
       </p>
       <FormError message={signOut.isError ? "Sign-out failed. Try again." : undefined} />
@@ -87,7 +87,7 @@ function WrongAccount({ session, preview }: { session: Session; preview: InviteP
         onClick={() => {
           signOut.mutate();
         }}
-        className="w-full rounded border border-slate-400 px-4 py-2 font-medium hover:bg-slate-100"
+        className="w-full rounded border border-field px-4 py-2 font-medium hover:bg-sunken"
       >
         Sign out
       </button>
@@ -117,7 +117,7 @@ function CreateAccount({ token, preview }: { token: string; preview: InvitePrevi
       <FormError message={signUp.error === null ? undefined : (messages[status ?? 0] ?? SOMETHING_WRONG)} />
       <Field label="Your name" name="name" autoComplete="name" />
       <Field label="Password" name="password" type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} />
-      <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
+      <p className="-mt-2 text-sm text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
       <SubmitButton pending={signUp.isPending} label="Create account and join" pendingLabel="Creating your account…" />
     </form>
   );
@@ -148,7 +148,7 @@ function SignInToAccept({ preview }: { preview: InvitePreview }) {
         }}
       >
         <Invitation preview={preview} />
-        <p className="text-sm text-slate-700">Enter the 6-digit code from your authenticator app, or a recovery code.</p>
+        <p className="text-sm text-muted">Enter the 6-digit code from your authenticator app, or a recovery code.</p>
         <FormError message={codeError} />
         <Field label="Authentication code" name="code" autoComplete="one-time-code" />
         <SubmitButton pending={verify.isPending} label="Verify" pendingLabel="Verifying…" />
@@ -166,11 +166,11 @@ function SignInToAccept({ preview }: { preview: InvitePreview }) {
       }}
     >
       <Invitation preview={preview} />
-      <p className="text-sm text-slate-700">You already have an account. Sign in to accept.</p>
+      <p className="text-sm text-muted">You already have an account. Sign in to accept.</p>
       <FormError message={signInErrorMessage(signIn.error)} />
       <Field label="Password" name="password" type="password" autoComplete="current-password" />
       <p className="-mt-2 text-sm">
-        <Link to="/forgot-password" className="text-slate-700 underline">
+        <Link to="/forgot-password" className="text-muted underline">
           Forgot your password?
         </Link>
       </p>

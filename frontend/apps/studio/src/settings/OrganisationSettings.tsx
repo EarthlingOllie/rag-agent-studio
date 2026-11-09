@@ -12,7 +12,7 @@ import { RetentionWindow } from "./RetentionWindow";
 import { ThemePage } from "./ThemePage";
 import { useSetMfaPolicy } from "./mfaPolicy";
 
-const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
+const TAB = "rounded px-3 py-2 text-sm text-ink-2 hover:bg-sunken [&.active]:bg-sunken [&.active]:font-medium [&.active]:text-ink";
 
 function useOrganisation() {
   const { organisationId } = useParams({ from: "/signed-in/organisations/$organisationId" });
@@ -28,7 +28,7 @@ function useOrganisation() {
   };
 }
 
-const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
+const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
 
 /** The Require MFA policy: Owners turn it on or off; everyone else sees which it is. */
 function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: string; mfaRequired: boolean; isOwner: boolean }) {
@@ -38,7 +38,7 @@ function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: s
       <h2 id="mfa-policy-heading" className="text-lg font-semibold">
         Two-factor authentication
       </h2>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         {mfaRequired
           ? "Every Member must use two-factor authentication. Members without it are asked to set it up before they can do anything else here."
           : "Members choose whether to use two-factor authentication."}
@@ -62,7 +62,7 @@ function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: s
           </button>
         </>
       ) : (
-        <p className="text-sm text-slate-700">Only Owners can change this.</p>
+        <p className="text-sm text-muted">Only Owners can change this.</p>
       )}
     </section>
   );
@@ -81,7 +81,7 @@ function LeaveOrganisation({ organisationId, organisationName }: { organisationI
       <FormError message={memberFailure(leave.error)} />
       {confirming ? (
         <>
-          <p className="text-sm text-slate-700">You will lose access to {organisationName} until someone invites you again.</p>
+          <p className="text-sm text-muted">You will lose access to {organisationName} until someone invites you again.</p>
           <div className="flex gap-2">
             <button
               type="button"
@@ -138,7 +138,7 @@ export function OrganisationSettingsLayout() {
       <h1 id="page-heading" className="text-2xl font-semibold">
         Organisation settings
       </h1>
-      <nav aria-label="Organisation settings" className="mt-4 flex gap-2 border-b border-slate-200 pb-2">
+      <nav aria-label="Organisation settings" className="mt-4 flex gap-2 border-b border-line pb-2">
         <Link to="/organisations/$organisationId/settings" params={{ organisationId }} activeOptions={{ exact: true }} className={TAB}>
           General
         </Link>

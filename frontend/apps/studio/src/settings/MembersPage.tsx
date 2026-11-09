@@ -14,8 +14,8 @@ import {
 } from "../invites/invites";
 import { MembersList } from "./MembersList";
 
-const INPUT = "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
-const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
+const INPUT = "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
+const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
 
 function failure(error: Error | null): string | undefined {
   if (error === null) return undefined;
@@ -42,7 +42,7 @@ function issuedMessage(issued: IssuedInvite, emailRequested: boolean): string {
 function InviteLink({ issued, emailRequested }: { issued: IssuedInvite; emailRequested: boolean }) {
   const [copied, setCopied] = useState<"yes" | "failed" | "no">("no");
   return (
-    <div role="status" className="mt-4 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+    <div role="status" className="mt-4 rounded border border-accent-soft bg-accent-soft p-3 text-sm text-accent-ink">
       <p>{issuedMessage(issued, emailRequested)}</p>
       <label className="mt-2 block font-medium" htmlFor="invite-link">
         Invite link for {issued.invite.email}
@@ -118,7 +118,7 @@ function InviteForm({ organisationId, onIssued }: { organisationId: string; onIs
       <button
         type="submit"
         disabled={createInvite.isPending}
-        className="rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:bg-slate-600"
+        className="rounded bg-accent px-4 py-2 font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted"
       >
         {createInvite.isPending ? "Inviting…" : "Invite"}
       </button>
@@ -139,7 +139,7 @@ function PendingRow({
   const revoke = useRevokeInvite(organisationId);
   const busy = renew.isPending || revoke.isPending;
   return (
-    <tr className="border-t border-slate-200 align-top">
+    <tr className="border-t border-line align-top">
       <td className="py-2 pr-4">{invite.email}</td>
       <td className="py-2 pr-4">{ROLE_NAMES[invite.role]}</td>
       <td className="py-2 pr-4">{invite.invited_by.name}</td>
@@ -170,7 +170,7 @@ function PendingRow({
           </button>
         </div>
         {(renew.isError || revoke.isError) && (
-          <p role="alert" className="mt-1 text-sm text-red-800">
+          <p role="alert" className="mt-1 text-sm text-danger">
             That didn't work. The invite may have been accepted or revoked already.
           </p>
         )}
@@ -183,7 +183,7 @@ function PendingInvites({ organisationId, onIssued }: { organisationId: string; 
   const invites = usePendingInvites(organisationId);
   if (invites.isPending) return <p role="status">Loading invites…</p>;
   if (invites.isError) return <p role="alert">The pending invites could not be loaded. Try again shortly.</p>;
-  if (invites.data.length === 0) return <p className="text-slate-700">No pending invites.</p>;
+  if (invites.data.length === 0) return <p className="text-muted">No pending invites.</p>;
   return (
     <table className="w-full text-left text-sm" aria-label="Pending invites">
       <thead>

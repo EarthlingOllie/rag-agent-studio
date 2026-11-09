@@ -3,8 +3,8 @@ import { useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { memberFailure, type OrganisationMember, type Role, useChangeRole, useMembers, useRemoveMember } from "./members";
 
-const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
-const SELECT = "rounded border border-slate-400 bg-white px-2 py-1 text-sm focus:outline-2 focus:outline-slate-900";
+const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
+const SELECT = "rounded border border-field bg-surface px-2 py-1 text-sm focus:outline-2 focus:outline-accent";
 
 function MemberRow({
   member,
@@ -21,7 +21,7 @@ function MemberRow({
 }) {
   const [confirming, setConfirming] = useState(false);
   return (
-    <tr className="border-t border-slate-200 align-top">
+    <tr className="border-t border-line align-top">
       <td className="py-2 pr-4">
         {member.name}
         {isYou && " (you)"}
@@ -97,7 +97,7 @@ export function MembersList({ organisationId, memberId }: { organisationId: stri
   return (
     <div className="space-y-3">
       <FormError message={memberFailure(error)} />
-      {done && <p className="text-sm text-green-900">{done}</p>}
+      {done && <p className="text-sm text-accent-ink">{done}</p>}
       <table className="w-full text-left text-sm" aria-label="Members">
         <thead>
           <tr>

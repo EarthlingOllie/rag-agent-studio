@@ -23,7 +23,7 @@ function OcrSetting({
   // the box shows it at once instead of after the mutation's state catches up.
   const [requested, setRequested] = useState<boolean | null>(null);
   return (
-    <fieldset className="max-w-xl space-y-2 rounded border border-slate-200 p-4">
+    <fieldset className="max-w-xl space-y-2 rounded border border-line p-4">
       <legend className="px-1 font-medium">OCR</legend>
       <FormError message={projectFailure(update.error)} />
       <label className="flex items-center gap-2">
@@ -47,11 +47,11 @@ function OcrSetting({
         />
         Read scanned PDFs with OCR
       </label>
-      <p id="ocr-help" className="text-sm text-slate-700">
+      <p id="ocr-help" className="text-sm text-muted">
         OCR reads text in images, such as scanned pages. It makes processing
         slower, so leave it off unless this Project has scanned PDFs.
       </p>
-      <p role="status" className="text-sm text-slate-700">
+      <p role="status" className="text-sm text-muted">
         {project.ocr_enabled
           ? "OCR is on. New uploads are read with OCR. Retry a Document on the Documents tab to reprocess it."
           : "OCR is off. Text in images isn't read."}
@@ -87,11 +87,11 @@ function FlaggedChunkSetting({
     <fieldset
       role="radiogroup"
       aria-describedby="flagged-help"
-      className="max-w-xl space-y-2 rounded border border-slate-200 p-4"
+      className="max-w-xl space-y-2 rounded border border-line p-4"
     >
       <legend className="px-1 font-medium">Flagged Chunks</legend>
       <FormError message={projectFailure(update.error)} />
-      <p id="flagged-help" className="text-sm text-slate-700">
+      <p id="flagged-help" className="text-sm text-muted">
         The ingestion scan flags Chunks that look like instructions to an AI, such as text hidden
         in a Document telling the Agent to ignore its rules. Clear a false positive in the
         Document viewer.
@@ -120,7 +120,7 @@ function FlaggedChunkSetting({
           {label}
         </label>
       ))}
-      <p role="status" className="text-sm text-slate-700">
+      <p role="status" className="text-sm text-muted">
         {project.flagged_chunk_mode === "exclude"
           ? "Flagged Chunks are never given to an Agent. The Trace lists them as excluded by the ingestion scan."
           : "Flagged Chunks are retrieved like any other, and marked in the Document viewer."}

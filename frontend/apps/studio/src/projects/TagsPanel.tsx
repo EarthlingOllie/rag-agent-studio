@@ -2,8 +2,8 @@ import { type SubmitEvent, useState } from "react";
 
 import { type Tag, tagFailure, useTagChange, useTags } from "./tags";
 
-const BUTTON = "rounded border border-slate-300 px-2 py-1 text-sm";
-const PRIMARY = "rounded bg-slate-900 px-3 py-1 text-sm font-medium text-white";
+const BUTTON = "rounded border border-field px-2 py-1 text-sm";
+const PRIMARY = "rounded bg-accent px-3 py-1 text-sm font-medium text-on-accent";
 
 function documentCount(count: number): string {
   return count === 1 ? "1 Document" : `${String(count)} Documents`;
@@ -57,14 +57,14 @@ function NewTag({
           onChange={(event) => {
             setName(event.target.value);
           }}
-          className="rounded border border-slate-300 px-2 py-1"
+          className="rounded border border-field px-2 py-1"
         />
       </label>
       <button type="submit" className={PRIMARY} disabled={create.isPending}>
         Add Tag
       </button>
       {message && (
-        <p role="alert" className="w-full text-sm text-red-700">
+        <p role="alert" className="w-full text-sm text-danger">
           {message}
         </p>
       )}
@@ -111,7 +111,7 @@ function TagRow({
             onChange={(event) => {
               setName(event.target.value);
             }}
-            className="rounded border border-slate-300 px-2 py-1 text-sm"
+            className="rounded border border-field px-2 py-1 text-sm"
           />
           <button type="submit" className={PRIMARY}>
             Save
@@ -127,7 +127,7 @@ function TagRow({
             Cancel
           </button>
           {message && (
-            <p role="alert" className="w-full text-sm text-red-700">
+            <p role="alert" className="w-full text-sm text-danger">
               {message}
             </p>
           )}
@@ -141,7 +141,7 @@ function TagRow({
       <span data-testid="tag-name" className="font-medium">
         {tag.name}
       </span>
-      <span className="text-slate-700">
+      <span className="text-muted">
         {documentCount(tag.document_count)}
       </span>
       {editable && mode === "view" && (
@@ -176,13 +176,13 @@ function TagRow({
             {documentCount(tag.document_count)}. The Documents stay.
           </span>
           {warning && (
-            <span role="alert" className="w-full text-amber-900">
+            <span role="alert" className="w-full text-flag">
               {warning}
             </span>
           )}
           <button
             type="button"
-            className="rounded bg-red-700 px-2 py-1 text-white"
+            className="rounded bg-danger px-2 py-1 text-on-danger"
             onClick={() => {
               change.mutate({ kind: "delete", tagId: tag.id }, done);
             }}
@@ -201,7 +201,7 @@ function TagRow({
         </span>
       )}
       {message && (
-        <span role="alert" className="w-full text-red-700">
+        <span role="alert" className="w-full text-danger">
           {message}
         </span>
       )}
@@ -228,7 +228,7 @@ export function TagsPanel({
     list = <p role="status">Loading Tags…</p>;
   } else if (tags.data.length === 0) {
     list = (
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         No Tags yet. Tags organise Documents by topic or audience.
       </p>
     );
@@ -251,7 +251,7 @@ export function TagsPanel({
   return (
     <section
       aria-labelledby="tags-heading"
-      className="space-y-2 rounded border border-slate-200 p-4"
+      className="space-y-2 rounded border border-line p-4"
     >
       <h3 id="tags-heading" className="font-semibold">
         Tags

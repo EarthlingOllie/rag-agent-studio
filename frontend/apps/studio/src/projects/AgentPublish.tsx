@@ -13,19 +13,19 @@ export function LiveStatus({ agent }: { agent: Agent }) {
   return (
     <>
       {agent.live_version ? (
-        <span className="rounded-full bg-green-100 px-2 py-0.5 text-sm font-medium text-green-900">
+        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-sm font-medium text-accent-ink">
           Live v{agent.live_version.number}
         </span>
       ) : (
-        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-sm font-medium text-slate-900">Not live</span>
+        <span className="rounded-full bg-sunken px-2 py-0.5 text-sm font-medium text-ink">Not live</span>
       )}
       {agent.has_unpublished_changes && (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-medium text-amber-950">Unpublished changes</span>
+        <span className="rounded-full bg-flag-soft px-2 py-0.5 text-sm font-medium text-flag">Unpublished changes</span>
       )}
       {agent.budget_exhausted && (
         <span
           title="Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC."
-          className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
+          className="rounded-full bg-danger-soft px-2 py-0.5 text-sm font-medium text-danger"
         >
           Budget exhausted
         </span>
@@ -33,7 +33,7 @@ export function LiveStatus({ agent }: { agent: Agent }) {
       {agent.block_rate_alert && (
         <span
           title="In the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations."
-          className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
+          className="rounded-full bg-danger-soft px-2 py-0.5 text-sm font-medium text-danger"
         >
           Block rate spike
         </span>
@@ -61,11 +61,11 @@ function ChangesToPublish({ agent, organisationId }: { agent: Agent; organisatio
   const names = useTagNames(organisationId, agent.project_id);
   let body;
   if (!live) {
-    body = <p className="text-sm text-slate-700">This is the first Version: all of the Draft&apos;s settings go live.</p>;
+    body = <p className="text-sm text-muted">This is the first Version: all of the Draft&apos;s settings go live.</p>;
   } else if (diff.isPending) {
-    body = <p className="text-sm text-slate-700">Comparing the Draft with the Live Version (v{live.number})…</p>;
+    body = <p className="text-sm text-muted">Comparing the Draft with the Live Version (v{live.number})…</p>;
   } else if (diff.isError) {
-    body = <p className="text-sm text-slate-700">The changes could not be loaded. {agentFailure(diff.error)}</p>;
+    body = <p className="text-sm text-muted">The changes could not be loaded. {agentFailure(diff.error)}</p>;
   } else {
     body = <AgentDiffView diff={diff.data} names={names} />;
   }
@@ -111,7 +111,7 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
 
   let options;
   if (history.isError) {
-    options = <p className="text-sm text-slate-700">The Instructions Versions could not be loaded.</p>;
+    options = <p className="text-sm text-muted">The Instructions Versions could not be loaded.</p>;
   } else {
     const versions = history.data?.versions ?? [];
     const current = versions.find((version) => version.id === history.data?.current_version_id);
@@ -146,9 +146,9 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
   }
 
   return (
-    <form aria-label="Publish" onSubmit={onSubmit} noValidate className="space-y-2 rounded border border-slate-200 bg-white p-3">
+    <form aria-label="Publish" onSubmit={onSubmit} noValidate className="space-y-2 rounded border border-line bg-surface p-3">
       <h3 className="font-semibold">Publish</h3>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Publishing freezes the saved Draft as a new Version, and Visitors are served it at once.
       </p>
       <label htmlFor="publish-note" className="block text-sm font-medium">
@@ -171,7 +171,7 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
       <button type="submit" className={BUTTON} disabled={publish.isPending}>
         {publish.isPending ? "Publishing…" : "Publish"}
       </button>
-      <p role="status" className="text-sm text-slate-700">
+      <p role="status" className="text-sm text-muted">
         {publish.data ? outcome(publish.data) : ""}
       </p>
     </form>

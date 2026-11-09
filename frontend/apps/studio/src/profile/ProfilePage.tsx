@@ -6,7 +6,7 @@ import { MIN_PASSWORD_LENGTH } from "../auth/SignUpPage";
 
 function Saved({ children }: { children: string }) {
   return (
-    <p role="status" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+    <p role="status" className="rounded border border-accent-soft bg-accent-soft px-3 py-2 text-sm text-accent-ink">
       {children}
     </p>
   );
@@ -68,7 +68,7 @@ function PasswordForm() {
         autoComplete="new-password"
         minLength={MIN_PASSWORD_LENGTH}
       />
-      <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
+      <p className="-mt-2 text-sm text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
       <SubmitButton pending={changePassword.isPending} label="Change password" pendingLabel="Changing password…" />
     </form>
   );
@@ -84,7 +84,7 @@ export function ProfilePage() {
         <h1 id="page-heading" className="text-2xl font-semibold">
           Profile
         </h1>
-        <p className="mt-2 text-slate-700">
+        <p className="mt-2 text-muted">
           Signed in as <span className="font-medium">{member.email}</span>
         </p>
       </div>

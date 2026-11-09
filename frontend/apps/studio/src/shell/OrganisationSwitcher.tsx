@@ -13,7 +13,7 @@ export function OrganisationSwitcher({ session, organisationId }: { session: Ses
   const current = session.organisations.find((organisation) => organisation.id === organisationId);
 
   if (session.organisations.length < 2) {
-    return current ? <span className="text-sm text-slate-700">{current.name}</span> : null;
+    return current ? <span className="text-sm text-muted">{current.name}</span> : null;
   }
   return (
     <div className="flex items-center gap-2">
@@ -34,7 +34,7 @@ export function OrganisationSwitcher({ session, organisationId }: { session: Ses
             },
           });
         }}
-        className="rounded border border-slate-400 bg-white px-2 py-1 text-sm"
+        className="rounded border border-field bg-surface px-2 py-1 text-sm"
       >
         {current === undefined && <option value={organisationId}>Choose an Organisation</option>}
         {session.organisations.map((organisation) => (
@@ -44,7 +44,7 @@ export function OrganisationSwitcher({ session, organisationId }: { session: Ses
         ))}
       </select>
       {switchOrganisation.isError && (
-        <p role="alert" className="text-sm text-red-800">
+        <p role="alert" className="text-sm text-danger">
           Couldn't switch Organisation. Try again.
         </p>
       )}

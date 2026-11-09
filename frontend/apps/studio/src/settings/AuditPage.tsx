@@ -4,7 +4,7 @@ import { type AuditEventPage, type AuditFilters, NO_FILTERS, PAGE_SIZE, useAudit
 
 type AuditEvent = AuditEventPage["items"][number];
 
-const INPUT = "rounded border border-slate-400 bg-white px-2 py-1 text-sm";
+const INPUT = "rounded border border-field bg-surface px-2 py-1 text-sm";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 export function formatTime(iso: string): string {
@@ -17,7 +17,7 @@ function formatValues(values: AuditEvent["before"]): string {
 
 function EventRow({ event }: { event: AuditEvent }) {
   return (
-    <tr className="border-t border-slate-200 align-top">
+    <tr className="border-t border-line align-top">
       <td className="whitespace-nowrap py-2 pr-4">{formatTime(event.occurred_at)}</td>
       <td className="py-2 pr-4">{event.actor?.name ?? "System"}</td>
       <td className="py-2 pr-4 font-mono text-xs">{event.action}</td>
@@ -79,12 +79,12 @@ function Filters({
 }
 
 function Results({ data }: { data: AuditEventPage }) {
-  if (data.items.length === 0) return <p className="mt-6 text-slate-700">No Audit Events match these filters.</p>;
+  if (data.items.length === 0) return <p className="mt-6 text-muted">No Audit Events match these filters.</p>;
   return (
     <div className="mt-6 overflow-x-auto">
       <table className="w-full text-left text-sm" aria-label="Audit Events">
         <thead>
-          <tr className="text-slate-700">
+          <tr className="text-muted">
             <th scope="col" className="py-2 pr-4 font-medium">When</th>
             <th scope="col" className="py-2 pr-4 font-medium">Actor</th>
             <th scope="col" className="py-2 pr-4 font-medium">Action</th>
@@ -106,13 +106,13 @@ function Results({ data }: { data: AuditEventPage }) {
 function Pager({ data, onPage }: { data: AuditEventPage; onPage: (page: number) => void }) {
   if (data.total === 0) return null;
   const pages = Math.ceil(data.total / PAGE_SIZE);
-  const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:opacity-50";
+  const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:opacity-50";
   return (
     <div className="mt-4 flex items-center gap-4">
       <button type="button" className={BUTTON} disabled={data.page <= 1} onClick={() => { onPage(data.page - 1); }}>
         Previous page
       </button>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Page {data.page} of {pages} · {data.total} {data.total === 1 ? "event" : "events"}
       </p>
       <button type="button" className={BUTTON} disabled={data.page >= pages} onClick={() => { onPage(data.page + 1); }}>
@@ -138,12 +138,12 @@ function AuditLog({ organisationId }: { organisationId: string }) {
         }}
       />
       {events.isPending && (
-        <p role="status" className="mt-6 text-slate-700">
+        <p role="status" className="mt-6 text-muted">
           Loading Audit Events…
         </p>
       )}
       {events.isError && (
-        <p role="alert" className="mt-6 text-red-800">
+        <p role="alert" className="mt-6 text-danger">
           Audit Events could not be loaded. Try again shortly.
         </p>
       )}
@@ -166,11 +166,11 @@ export function AuditPage({ organisationId, isOwner }: { organisationId: string;
       </h2>
       {isOwner ? (
         <>
-          <p className="mt-2 text-slate-700">Every security and configuration change in this Organisation, newest first.</p>
+          <p className="mt-2 text-muted">Every security and configuration change in this Organisation, newest first.</p>
           <AuditLog organisationId={organisationId} />
         </>
       ) : (
-        <p className="mt-2 text-slate-700">Only Owners can view Audit Events.</p>
+        <p className="mt-2 text-muted">Only Owners can view Audit Events.</p>
       )}
     </section>
   );

@@ -58,7 +58,7 @@ function ConfounderNote({ changes }: { changes: TimeSeries["document_changes"] }
   if (changes.changed > 0) parts.push(`${String(changes.changed)} added, replaced or processed again`);
   if (changes.deleted > 0) parts.push(`${String(changes.deleted)} deleted`);
   return (
-    <p role="note" className="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+    <p role="note" className="mt-4 rounded border border-flag bg-flag-soft p-3 text-sm text-flag">
       {`Documents changed during this period: ${parts.join(", ")}. The Knowledge Base isn't versioned, so these changes may confound the comparison: a difference across a marker may come from the Documents rather than the Version.`}
     </p>
   );
@@ -69,7 +69,7 @@ function Chart({ series }: { series: TimeSeries }) {
   const byPoint = markersByPoint(series.markers);
   return (
     <figure className="mt-4">
-      <figcaption className="text-sm text-slate-700">
+      <figcaption className="text-sm text-muted">
         {`${label} per ${series.granularity}, from ${series.start} until ${series.end} (UTC), today so far included. Every Version of the Agent together; the Playground is left out. Dashed lines mark where the Live Version changed.`}
       </figcaption>
       <div className="mt-2 overflow-x-auto">
@@ -98,7 +98,7 @@ function Chart({ series }: { series: TimeSeries }) {
       </div>
       <h4 className="mt-4 text-sm font-medium">Live Version changes</h4>
       {series.markers.length === 0 ? (
-        <p className="text-sm text-slate-700">None in this period.</p>
+        <p className="text-sm text-muted">None in this period.</p>
       ) : (
         <ul aria-label="Live Version changes" className="list-inside list-disc text-sm">
           {series.markers.map((marker) => (

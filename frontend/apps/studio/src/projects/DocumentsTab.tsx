@@ -61,7 +61,7 @@ function UploadRow({ upload }: { upload: Upload }) {
     <li className="flex flex-wrap items-center gap-3 text-sm">
       <span className="font-medium">{upload.name}</span>
       {upload.replacing && (
-        <span className="text-slate-700">
+        <span className="text-muted">
           New edition of {upload.replacing}
         </span>
       )}
@@ -74,10 +74,10 @@ function UploadRow({ upload }: { upload: Upload }) {
         />
       )}
       {state.phase === "uploaded" && (
-        <span className="text-slate-700">Uploaded</span>
+        <span className="text-muted">Uploaded</span>
       )}
       {state.phase === "failed" && (
-        <span role="alert" className="text-red-700">
+        <span role="alert" className="text-danger">
           {state.message}
           {state.existing && (
             <>
@@ -128,9 +128,9 @@ function Dropzone({
         setDragging(false);
       }}
       onDrop={onDrop}
-      className={`rounded border-2 border-dashed p-6 text-center ${dragging ? "border-slate-700 bg-slate-50" : "border-slate-300"}`}
+      className={`rounded border-2 border-dashed p-6 text-center ${dragging ? "border-slate-700 bg-canvas" : "border-field"}`}
     >
-      <label className="cursor-pointer font-medium text-slate-900 underline">
+      <label className="cursor-pointer font-medium text-ink underline">
         Choose files to upload
         <input
           type="file"
@@ -140,7 +140,7 @@ function Dropzone({
           className="sr-only"
         />
       </label>
-      <p className="mt-1 text-sm text-slate-700">
+      <p className="mt-1 text-sm text-muted">
         or drop them here. PDF, DOCX, PPTX, HTML, Markdown and TXT
         {limits && `, up to ${formatSize(limits.max_upload_bytes)} each`}.
       </p>
@@ -162,12 +162,12 @@ function Failure({
   return (
     <>
       {failed && category && (
-        <span className="block font-medium text-red-700">
+        <span className="block font-medium text-danger">
           {CATEGORY_LABELS[category]}
         </span>
       )}
       {message && (
-        <span className={`block ${failed ? "text-red-700" : "text-slate-700"}`}>
+        <span className={`block ${failed ? "text-danger" : "text-slate-700 text-muted!"}`}>
           {message}
         </span>
       )}
@@ -179,7 +179,7 @@ function ReplacementStatus({ document }: { document: ProjectDocument }) {
   const { replacement } = document;
   if (!replacement) return null;
   return (
-    <span className="block text-slate-700">
+    <span className="block text-muted">
       New edition {replacement.edition} ({replacement.name}):{" "}
       {STATUS_LABELS[replacement.status]}
       <Failure
@@ -238,7 +238,7 @@ function DocumentActions({
         <button
           type="button"
           onClick={() => void confirmDelete()}
-          className="rounded bg-red-700 px-2 py-1 text-white"
+          className="rounded bg-danger px-2 py-1 text-on-danger"
         >
           Delete
         </button>
@@ -289,12 +289,12 @@ function DocumentActions({
           setFailed(false);
           setConfirming(true);
         }}
-        className="text-red-700 underline"
+        className="text-danger underline"
       >
         Delete
       </button>
       {failed && (
-        <span role="alert" className="text-red-700">
+        <span role="alert" className="text-danger">
           The Document could not be deleted. Try again.
         </span>
       )}
@@ -302,9 +302,9 @@ function DocumentActions({
   );
 }
 
-const BUTTON = "rounded border border-slate-300 px-2 py-1 text-sm";
+const BUTTON = "rounded border border-field px-2 py-1 text-sm";
 const PRIMARY =
-  "rounded bg-slate-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-50";
+  "rounded bg-accent px-3 py-1 text-sm font-medium text-on-accent disabled:opacity-50";
 
 interface TagScope {
   organisationId: string;
@@ -319,7 +319,7 @@ function TagList({ document }: { document: ProjectDocument }) {
       {document.tags.map((tag) => (
         <li
           key={tag.id}
-          className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-900"
+          className="rounded bg-sunken px-2 py-0.5 text-xs text-ink"
         >
           {tag.name}
         </li>
@@ -368,7 +368,7 @@ function DocumentTagsEditor({
       <fieldset aria-label={`Tags for ${document.name}`} className="space-y-2">
         <div className="flex flex-wrap gap-3">
           {scope.tags.length === 0 && (
-            <p className="text-slate-700">
+            <p className="text-muted">
               This Project has no Tags yet. Add one under Tags.
             </p>
           )}
@@ -394,7 +394,7 @@ function DocumentTagsEditor({
           </button>
         </div>
         {message && (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="text-danger">
             {message}
           </p>
         )}
@@ -420,7 +420,7 @@ function BulkTagging({
   return (
     <fieldset
       aria-label="Bulk tagging"
-      className="flex flex-wrap items-end gap-2 rounded border border-slate-200 p-3 text-sm"
+      className="flex flex-wrap items-end gap-2 rounded border border-line p-3 text-sm"
     >
       <span className="font-medium">{selected.length} selected</span>
       <label className="flex flex-col">
@@ -430,7 +430,7 @@ function BulkTagging({
           onChange={(event) => {
             setTagId(event.target.value);
           }}
-          className="rounded border border-slate-300 px-2 py-1"
+          className="rounded border border-field px-2 py-1"
         >
           <option value="">Choose a Tag</option>
           {scope.tags.map((tag) => (
@@ -474,7 +474,7 @@ function BulkTagging({
         Clear selection
       </button>
       {message && (
-        <p role="alert" className="w-full text-red-700">
+        <p role="alert" className="w-full text-danger">
           {message}
         </p>
       )}
@@ -509,7 +509,7 @@ function DocumentRows({
     <table className="w-full text-left text-sm">
       <caption className="sr-only">Documents</caption>
       <thead>
-        <tr className="border-b border-slate-200">
+        <tr className="border-b border-line">
           <th scope="col" className="w-8">
             <span className="sr-only">Select</span>
             {editable && (
@@ -542,7 +542,7 @@ function DocumentRows({
           <tr
             key={document.id}
             id={`document-${document.id}`}
-            className="border-b border-slate-100 align-top target:bg-amber-50"
+            className="border-b border-line-soft align-top target:bg-flag-soft"
           >
             <td className="py-2">
               {editable && (
@@ -606,7 +606,7 @@ function DocumentRows({
             <td>
               {/* Chunks the ingestion Guardrail scan flagged: emphasised, so risky Documents stand out. */}
               {document.flagged_chunk_count > 0 ? (
-                <strong className="text-amber-800">{document.flagged_chunk_count}</strong>
+                <strong className="text-flag">{document.flagged_chunk_count}</strong>
               ) : (
                 document.flagged_chunk_count
               )}
@@ -652,7 +652,7 @@ function Filters({
           onChange={(event) => {
             onChange({ ...filters, q: event.target.value });
           }}
-          className="rounded border border-slate-300 px-2 py-1"
+          className="rounded border border-field px-2 py-1"
         />
       </label>
       <label className="flex flex-col">
@@ -665,7 +665,7 @@ function Filters({
               status: event.target.value as DocumentStatus | "",
             });
           }}
-          className="rounded border border-slate-300 px-2 py-1"
+          className="rounded border border-field px-2 py-1"
         >
           <option value="">Any status</option>
           {Object.entries(STATUS_LABELS).map(([value, label]) => (
@@ -682,7 +682,7 @@ function Filters({
           onChange={(event) => {
             onChange({ ...filters, tagId: event.target.value });
           }}
-          className="rounded border border-slate-300 px-2 py-1"
+          className="rounded border border-field px-2 py-1"
         >
           <option value="">Any Tag</option>
           {tags.map((tag) => (
@@ -757,9 +757,9 @@ export function DocumentsTab() {
     list = <p role="status">Loading Documents…</p>;
   } else if (documents.data.length === 0) {
     list = filtered ? (
-      <p className="text-slate-700">No Documents match these filters.</p>
+      <p className="text-muted">No Documents match these filters.</p>
     ) : (
-      <p className="text-slate-700">
+      <p className="text-muted">
         No Documents yet. Upload files to build this Project's Knowledge Base.
       </p>
     );
@@ -792,7 +792,7 @@ export function DocumentsTab() {
         Documents
       </h2>
       {limits.data && (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           {limits.data.documents_counted} of {limits.data.document_quota}{" "}
           Documents in this Project&apos;s quota. Failed Documents don&apos;t
           count.

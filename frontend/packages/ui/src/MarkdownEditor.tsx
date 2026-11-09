@@ -55,18 +55,18 @@ const FORMATTED = [
   "space-y-2 text-sm",
   "[&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-semibold [&_h4]:font-semibold [&_h5]:font-semibold [&_h6]:font-semibold",
   "[&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6",
-  "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:font-mono [&_pre]:rounded [&_pre]:bg-slate-100 [&_pre]:p-2",
-  "[&_a]:text-blue-800 [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3",
+  "[&_code]:rounded [&_code]:bg-sunken [&_code]:px-1 [&_code]:font-mono [&_pre]:rounded [&_pre]:bg-sunken [&_pre]:p-2",
+  "[&_a]:text-accent [&_a]:underline [&_blockquote]:border-l-4 [&_blockquote]:border-field [&_blockquote]:pl-3",
 ].join(" ");
 
 const ATTRIBUTES = {
   role: "textbox",
   "aria-multiline": "true",
-  class: `${FORMATTED} min-h-32 rounded border border-slate-300 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-500 aria-invalid:border-red-700`,
+  class: `${FORMATTED} min-h-32 rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent aria-invalid:border-danger`,
 };
 
 const TOOL =
-  "rounded px-2 py-1 text-sm text-slate-800 hover:bg-slate-100 disabled:opacity-50 aria-pressed:bg-slate-200 aria-pressed:font-semibold";
+  "rounded px-2 py-1 text-sm text-ink hover:bg-sunken disabled:opacity-50 aria-pressed:bg-sunken aria-pressed:font-semibold";
 
 type Tool = { label: string; text: string; isActive: (editor: Editor) => boolean; run: (editor: Editor) => void };
 
@@ -267,11 +267,11 @@ export function MarkdownEditor({ label, defaultValue, onChange, name, maxLength,
             setSource(event.target.value);
             change(event.target.value);
           }}
-          className="block w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm"
+          className="block w-full rounded border border-field px-3 py-2 font-mono text-sm"
         />
       )}
       {count !== undefined && (
-        <p id={countId} className={`text-xs ${over > 0 ? "font-semibold text-red-800" : "text-slate-700"}`}>
+        <p id={countId} className={`text-xs ${over > 0 ? "font-semibold text-danger" : "text-ink-2"}`}>
           {count}
         </p>
       )}

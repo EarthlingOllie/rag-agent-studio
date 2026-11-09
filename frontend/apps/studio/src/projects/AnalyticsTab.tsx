@@ -41,17 +41,17 @@ function KpiCard({
       aria-labelledby={id}
       className={
         lowConfidence
-          ? "rounded border border-dashed border-slate-400 bg-slate-50 p-4 text-slate-600"
-          : "rounded border border-slate-200 bg-white p-4 text-slate-900"
+          ? "rounded border border-dashed border-field bg-canvas p-4 text-muted"
+          : "rounded border border-line bg-surface p-4 text-ink"
       }
     >
       <h3 id={id} className="text-sm font-medium">
         {title}
       </h3>
-      <p className={lowConfidence ? "mt-1 text-2xl font-semibold text-slate-600" : "mt-1 text-2xl font-semibold"}>{value}</p>
+      <p className={lowConfidence ? "mt-1 text-2xl font-semibold text-muted" : "mt-1 text-2xl font-semibold"}>{value}</p>
       <div className="mt-1 space-y-0.5 text-sm">{details}</div>
       {lowConfidence && (
-        <p className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-700">
+        <p className="mt-2 text-xs font-medium uppercase tracking-wide text-ink-2">
           Low confidence <span className="normal-case tracking-normal">({why})</span>
         </p>
       )}
@@ -154,11 +154,11 @@ function AgentMetrics({ organisationId, projectId, agentId }: { organisationId: 
   } else if (metrics.isError) {
     body = <p role="alert">{failure(metrics.error)}</p>;
   } else if (shown === undefined) {
-    body = <p className="mt-4 text-slate-700">This Agent has no Versions yet. Publish it, and Visitors' Conversations with each Version are measured here.</p>;
+    body = <p className="mt-4 text-muted">This Agent has no Versions yet. Publish it, and Visitors' Conversations with each Version are measured here.</p>;
   } else {
     body = (
       <>
-        <p className="mt-4 text-sm text-slate-700">
+        <p className="mt-4 text-sm text-muted">
           {`${metrics.data.start} to ${metrics.data.end} (UTC days), including today so far. Visitor Conversations only: the Playground is left out.`}
         </p>
         <Kpis kpis={shown} />
@@ -217,7 +217,7 @@ export function AnalyticsTab() {
   } else if (agents.isError) {
     body = <p role="alert">The Agents could not be loaded. Try again shortly.</p>;
   } else if (shownAgent === undefined) {
-    body = <p className="mt-2 text-slate-700">No Agents to measure yet. Create and publish an Agent, and each Version's key numbers appear here.</p>;
+    body = <p className="mt-2 text-muted">No Agents to measure yet. Create and publish an Agent, and each Version's key numbers appear here.</p>;
   } else {
     body = (
       <>

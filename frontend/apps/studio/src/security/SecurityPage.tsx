@@ -12,8 +12,8 @@ import {
   useStartEnrolment,
 } from "./mfa";
 
-const BUTTON = "rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:bg-slate-600";
-const SECONDARY_BUTTON = "rounded border border-slate-400 px-4 py-2 text-sm hover:bg-slate-100";
+const BUTTON = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
+const SECONDARY_BUTTON = "rounded border border-field px-4 py-2 text-sm hover:bg-sunken";
 
 function errorMessage(error: Error | null, incorrect: string): string | undefined {
   if (error === null) return undefined;
@@ -30,7 +30,7 @@ function RequiredNotice() {
   return (
     <>
       {requiring.map((organisation) => (
-        <p key={organisation.id} className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p key={organisation.id} className="mt-4 rounded border border-flag bg-flag-soft px-3 py-2 text-sm text-flag">
           {organisation.name} requires two-factor authentication. Set it up to continue.
         </p>
       ))}
@@ -58,7 +58,7 @@ function Input({ label, name, type = "text", autoComplete, inputMode }: {
         autoComplete={autoComplete}
         required
         {...(inputMode === undefined ? {} : { inputMode })}
-        className="mt-1 block w-full max-w-xs rounded border border-slate-400 px-3 py-2 focus:outline-2 focus:outline-slate-900"
+        className="mt-1 block w-full max-w-xs rounded border border-field px-3 py-2 focus:outline-2 focus:outline-accent"
       />
     </div>
   );
@@ -67,7 +67,7 @@ function Input({ label, name, type = "text", autoComplete, inputMode }: {
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="mt-6 rounded-lg border border-slate-200 bg-white p-6">
+    <section aria-labelledby={id} className="mt-6 rounded-lg border border-line bg-surface p-6">
       <h2 id={id} className="text-lg font-semibold">
         {title}
       </h2>
@@ -80,13 +80,13 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
   return (
     <Panel title="Save your recovery codes">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         If you lose your phone, each of these codes signs you in once. Keep them somewhere safe: they won't be shown
         again.
       </p>
       <ol aria-label="Recovery codes" className="grid max-w-sm grid-cols-2 gap-2 font-mono text-sm">
         {codes.map((code) => (
-          <li key={code} className="rounded bg-slate-100 px-2 py-1">
+          <li key={code} className="rounded bg-sunken px-2 py-1">
             {code}
           </li>
         ))}
@@ -116,12 +116,12 @@ function Enrol({ enrolment, onCancel, onConfirmed }: {
 
   return (
     <Panel title="Set up your authenticator app">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Scan this QR code with an authenticator app such as Google Authenticator, 1Password or Authy.
       </p>
       <img src={enrolment.qr_code} alt="QR code for your authenticator app" width={200} height={200} />
-      <p className="text-sm text-slate-700">
-        Can't scan it? Enter this key instead: <code className="break-all font-mono text-slate-900">{enrolment.secret}</code>
+      <p className="text-sm text-muted">
+        Can't scan it? Enter this key instead: <code className="break-all font-mono text-ink">{enrolment.secret}</code>
       </p>
       <form onSubmit={onSubmit} className="space-y-4" aria-label="Confirm your authenticator app">
         <FormError message={errorMessage(confirm.error, "That code is incorrect. Check your app and try again.")} />
@@ -143,7 +143,7 @@ function MfaOff({ onEnrolment }: { onEnrolment: (enrolment: Enrolment) => void }
   const start = useStartEnrolment();
   return (
     <Panel title="Two-factor authentication">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         <strong>Off.</strong> Protect your account with a code from an authenticator app as well as your password.
       </p>
       <FormError message={start.isError ? "Something went wrong. Try again." : undefined} />
@@ -182,12 +182,12 @@ function MfaOn({ status, onNewCodes }: { status: MfaStatus; onNewCodes: (codes: 
   return (
     <>
       <Panel title="Two-factor authentication">
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           <strong>On.</strong> Signing in asks for a code from your authenticator app.
         </p>
       </Panel>
       <Panel title="Recovery codes">
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           {status.recovery_codes_remaining === 1
             ? "1 recovery code left."
             : `${String(status.recovery_codes_remaining)} recovery codes left.`}{" "}
@@ -247,7 +247,7 @@ export function SecurityPage() {
       <h1 id="page-heading" className="text-2xl font-semibold">
         Security
       </h1>
-      <p className="mt-2 text-slate-700">Settings for your own account, in every Organisation you belong to.</p>
+      <p className="mt-2 text-muted">Settings for your own account, in every Organisation you belong to.</p>
       <RequiredNotice />
       {content}
     </section>

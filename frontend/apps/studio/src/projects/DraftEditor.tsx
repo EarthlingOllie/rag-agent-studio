@@ -31,7 +31,7 @@ const STATUS_TEXT: Record<Exclude<Status, "failed">, string> = {
   invalid: "Not saved: fix the settings marked below.",
 };
 
-const ERROR_TEXT = "mt-1 text-sm text-red-800";
+const ERROR_TEXT = "mt-1 text-sm text-danger";
 
 /** The messages for one setting, linked to its control by `id`. */
 function Errors({ id, messages }: { id: string; messages: string[] }) {
@@ -66,7 +66,7 @@ function Field({ label, hint, errors, children }: FieldProps) {
         {label}
       </label>
       {hint && (
-        <p id={`${id}-hint`} className="text-xs text-slate-700">
+        <p id={`${id}-hint`} className="text-xs text-muted">
           {hint}
         </p>
       )}
@@ -245,11 +245,11 @@ function ModelChoiceField({
     onIncomplete(field, incomplete);
   }, [field, incomplete, onIncomplete]);
   return (
-    <fieldset className="space-y-2 rounded border border-slate-200 p-3">
+    <fieldset className="space-y-2 rounded border border-line p-3">
       <legend className="px-1 text-sm font-medium">{legend}</legend>
-      <p className="text-xs text-slate-700">{hint}</p>
+      <p className="text-xs text-muted">{hint}</p>
       {credentials.isSuccess && offering.length === 0 && !value ? (
-        <p className="text-sm text-slate-700">{empty}</p>
+        <p className="text-sm text-muted">{empty}</p>
       ) : (
         <>
           <label htmlFor={`${id}-credential`} className="block text-sm">
@@ -273,7 +273,7 @@ function ModelChoiceField({
           </select>
           {credentialId !== "" &&
             (!models.isPending && options.length === 0 ? (
-              <p className="text-sm text-slate-700">This credential offers no models for this.</p>
+              <p className="text-sm text-muted">This credential offers no models for this.</p>
             ) : (
               <>
                 <label htmlFor={`${id}-model`} className="block text-sm">
@@ -299,7 +299,7 @@ function ModelChoiceField({
                     </option>
                   ))}
                 </select>
-                {incomplete && <p className="text-sm text-slate-700">Choose a model to use this credential.</p>}
+                {incomplete && <p className="text-sm text-muted">Choose a model to use this credential.</p>}
               </>
             ))}
         </>
@@ -326,8 +326,8 @@ function TagScoping({
   return (
     <fieldset className="space-y-1">
       <legend className="text-sm font-medium">Tag scoping</legend>
-      <p className="text-xs text-slate-700">Only search Documents with one of these Tags. None searches every Document.</p>
-      {tags.data?.length === 0 && <p className="text-sm text-slate-700">This Project has no Tags yet.</p>}
+      <p className="text-xs text-muted">Only search Documents with one of these Tags. None searches every Document.</p>
+      {tags.data?.length === 0 && <p className="text-sm text-muted">This Project has no Tags yet.</p>}
       {(tags.data ?? []).map((tag) => (
         <label key={tag.id} className="flex items-center gap-2 text-sm">
           <input
@@ -348,7 +348,7 @@ function TagScoping({
 /** A group of settings; disabling it disables every control in it. */
 function Group({ legend, disabled, children }: { legend: string; disabled: boolean; children: ReactNode }) {
   return (
-    <fieldset disabled={disabled} className="space-y-3 rounded border border-slate-300 p-4">
+    <fieldset disabled={disabled} className="space-y-3 rounded border border-field p-4">
       <legend className="px-1 text-base font-semibold">{legend}</legend>
       {children}
     </fieldset>
@@ -377,7 +377,7 @@ const orNull = (text: string) => (text.trim() === "" ? null : text);
  */
 function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () => void; onKeep: () => void }) {
   return (
-    <div role="alert" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+    <div role="alert" className="space-y-2 rounded border border-flag bg-flag-soft p-3 text-sm text-flag">
       <p>
         Someone else saved this Draft while you were editing (saved {new Date(latest.draft_updated_at).toLocaleString()}). Your
         changes aren&apos;t saved. Load their Draft, or save yours over it.
@@ -394,7 +394,7 @@ function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () =
   );
 }
 
-const CONFLICT_BUTTON = "rounded border border-slate-400 bg-white px-3 py-1 text-sm text-slate-900 hover:bg-slate-100";
+const CONFLICT_BUTTON = "rounded border border-field bg-surface px-3 py-1 text-sm text-ink hover:bg-sunken";
 
 /**
  * The Agent's Draft, every group of its AgentConfig. Each change is saved automatically once
@@ -521,7 +521,7 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
         <h2 id="draft-heading" className="text-lg font-semibold">
           Draft
         </h2>
-        <p role="status" aria-label="Draft status" className={`text-sm ${status === "saved" ? "text-slate-700" : "text-slate-900"}`}>
+        <p role="status" aria-label="Draft status" className={`text-sm ${status === "saved" ? "text-muted" : "text-ink"}`}>
           {readOnly
             ? "Read only while archived."
             : status === "failed"
@@ -767,7 +767,7 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
       </Group>
 
       <Group legend="Guardrails" disabled={readOnly}>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           Every message is checked by the built-in classifier. Block refuses a flagged message,
           warn answers it with a caution to the model and flags it, and log only records the
           verdict. The LLM classifier is enforced in block mode.

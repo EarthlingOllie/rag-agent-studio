@@ -5,7 +5,7 @@ import { OrganisationSwitcher } from "./OrganisationSwitcher";
 
 function Centered({ children, role }: { children: string; role: "status" | "alert" }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
+    <main className="flex min-h-screen items-center justify-center bg-canvas text-ink">
       <p role={role}>{children}</p>
     </main>
   );
@@ -36,7 +36,7 @@ function SignOutButton() {
   return (
     <div className="flex items-center gap-3">
       {signOut.isError && (
-        <p role="alert" className="text-sm text-red-800">
+        <p role="alert" className="text-sm text-danger">
           Sign-out failed. Try again.
         </p>
       )}
@@ -50,7 +50,7 @@ function SignOutButton() {
             },
           });
         }}
-        className="rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100"
+        className="rounded border border-field px-3 py-1 text-sm hover:bg-sunken"
       >
         Sign out
       </button>
@@ -58,7 +58,7 @@ function SignOutButton() {
   );
 }
 
-const NAV_LINK = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
+const NAV_LINK = "rounded px-3 py-2 text-sm text-ink-2 hover:bg-sunken [&.active]:bg-sunken [&.active]:font-medium [&.active]:text-ink";
 
 /** The Studio frame for one Organisation: navigation, the Member, and the page. */
 export function OrganisationShell() {
@@ -71,20 +71,20 @@ export function OrganisationShell() {
   const onSecurityPage = useLocation().pathname.endsWith("/security");
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-6">
             <span className="font-semibold">RAG Agent Studio</span>
             <OrganisationSwitcher session={session} organisationId={organisationId} />
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-700">{session.member.name}</span>
+            <span className="text-sm text-muted">{session.member.name}</span>
             {organisation && (
               <Link
                 to="/organisations/$organisationId/profile"
                 params={{ organisationId }}
-                className="text-sm text-slate-700 underline"
+                className="text-sm text-muted underline"
               >
                 Profile
               </Link>
@@ -126,7 +126,7 @@ export function OrganisationShell() {
       ) : (
         <main className="mx-auto max-w-5xl px-6 py-8">
           <h1 className="text-2xl font-semibold">Organisation not found</h1>
-          <p className="mt-2 text-slate-700">
+          <p className="mt-2 text-muted">
             It doesn't exist, or you are not a Member of it. <Link to="/" className="underline">Go to your Organisation</Link>
           </p>
         </main>

@@ -13,7 +13,7 @@ function errorMessage(error: Error | null, recovery: boolean): string | undefine
 }
 
 const SIGN_IN_AGAIN = (
-  <Link to="/sign-in" className="font-medium text-slate-900 underline">
+  <Link to="/sign-in" className="font-medium text-ink underline">
     Sign in again
   </Link>
 );
@@ -45,7 +45,7 @@ export function MfaChallengePage() {
   return (
     <AuthLayout title="Two-factor authentication" footer={<>Wrong account? {SIGN_IN_AGAIN}</>}>
       <form onSubmit={onSubmit} className="space-y-4" aria-label="Two-factor authentication">
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           {recovery
             ? "Enter one of the recovery codes you saved when you turned on two-factor authentication. Each code works once."
             : "Enter the 6-digit code from your authenticator app."}
@@ -64,7 +64,7 @@ export function MfaChallengePage() {
           setRecovery(!recovery);
           verify.reset();
         }}
-        className="mt-4 text-sm text-slate-900 underline"
+        className="mt-4 text-sm text-ink underline"
       >
         {recovery ? "Use your authenticator app instead" : "Use a recovery code instead"}
       </button>
