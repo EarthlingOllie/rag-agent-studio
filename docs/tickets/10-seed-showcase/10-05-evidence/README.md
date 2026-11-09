@@ -62,6 +62,31 @@ What failed, and why:
 - **E2E, `guardrail-analytics.spec.ts` (on candidate since 08-06):** `getByLabel("Version")` also matches the analytics chart's "Live Version changes" list, so the spec fails in strict mode whenever that list is shown. `version-kpis.spec.ts` uses the same locator. A first fix, `{ exact: true }`, failed both specs because the select's accessible name includes its chosen option ([e2e-rerun-attempt1-exact-locator.log](e2e-rerun-attempt1-exact-locator.log)); the select is now found as `getByRole("combobox", { name: /^Version/ })` (`87dfa37`), and both pass. It is a test-only change, so only those specs were re-run.
 - **First ECS-like seed attempt (environmental):** with 1.7 GB left on the shared disk, the stack's Postgres backend crashed mid-seed (`server process … exited with exit code 2`, [ecs-seed-attempt1-postgres.log](ecs-seed-attempt1-postgres.log)), so run 1 stopped after signing up the Owner, and run 2 refused, as designed, with "HR helper has no Versions … Run `make seed-reset`" ([ecs-seed-attempt1-postgres-crash.log](ecs-seed-attempt1-postgres-crash.log)). After freeing the build cache, the same images and script passed. This shows a seed that dies part-way must be reset (the workflow's `reset` input); that is the 10-02 design (the history is only made when the Demo Organisation is created) and is documented in ADR-0012.
 
+## Final gate (after re-merging `origin/candidate`)
+
+The runs above were at `e42ea6e`. Before the PR, `origin/candidate` had moved to `9b06d3a` (#76, 10-04 Attack panel); it was merged in at `5ab7512` (one conflict, `GLOSSARY.md` **Demo Organisation**: both sentences kept, the Guardrail demo Agent from 10-04 and the AWS seed workflow from this ticket). [run-checks.sh](run-checks.sh) then ran every check and each full suite once more from that clean tree, as the final gate:
+
+| Check @ `5ab7512` | Result | Log |
+|---|---|---|
+| `make install`, `make lint` (ruff, ruff format, mypy --strict; eslint, tsc) | pass | [final-install.log](final-install.log), [final-lint.log](final-lint.log) |
+| actionlint + shellcheck | pass | [final-workflow-lint.log](final-workflow-lint.log) |
+| `make check-client` | pass, tree clean | [final-client-drift.log](final-client-drift.log) |
+| `make infra-check` (fmt, deploy-script tests, validate, `terraform test` with mock providers, tflint, checkov) | pass | [final-infra-check.log](final-infra-check.log) |
+| `make test-frontend` (full, 100% gate) | pass: 58 files, 794 tests | [final-frontend-tests.log](final-frontend-tests.log) |
+| `TEST_WORKERS=3 make test-backend` (full, 100% line and branch gate) | **pass: 2465 passed, coverage 100.00%** | [final-backend-tests.log](final-backend-tests.log) |
+| gitleaks | no leaks | [final-security.log](final-security.log) |
+| images; the seed task's command in the image, no mount, twice | pass; both exit 0, identical counts `1 2 1 4 2 4 8 2 224 752 261 98 28 1` (4 Agents now, with 10-04's Guardrail demo Agent) | [final-images.log](final-images.log), [final-ecs-seed.log](final-ecs-seed.log), [final-stack-up.log](final-stack-up.log) |
+| `make seed` and the full Playwright suite | **pass: 97 passed** | [final-e2e.log](final-e2e.log) |
+
+While that ran, `origin/candidate` moved again to `0b77e0c` (#78, 07-07 Retention and tombstones: migration `0039`, a Beat schedule, frontend retention UI). It merged cleanly at `c3502d1` and touched none of this ticket's files; this ticket adds no migration, so the numbering stays linear (`0039` is the head). Per the test policy the full suites were not repeated; [remerge-checks.sh](remerge-checks.sh) re-ran the whole-repo cheap checks and the backend modules this ticket touches or that meet the merged change, at `3762f3b`:
+
+| Check @ `3762f3b` | Result | Log |
+|---|---|---|
+| `make install`, `make lint` | pass | [remerge-lint.log](remerge-lint.log) |
+| `make check-client` | pass, tree clean | [remerge-client-drift.log](remerge-client-drift.log) |
+| `make infra-check` | pass | [remerge-infra-check.log](remerge-infra-check.log) |
+| pytest: `test_aws_task_settings.py`, `test_seed.py`, `test_seeded_history.py`, `test_worker_entrypoint.py`, `test_retention.py`, `test_migrations.py` | pass: 78 passed | [remerge-backend.log](remerge-backend.log) |
+
 ## Gaps (only a real AWS account can show these)
 
 - **Nothing ran against AWS.** No `terraform apply`, no ECS task, no OIDC exchange: the run-task, waiter, describe-tasks and get-log-events calls are asserted against stubs, and the infrastructure with the mock provider. Unverified: that Fargate starts the seed task with these roles and secrets; that the seed's presigned PUTs to the SSE-KMS documents bucket succeed from the private subnets through the S3 endpoint/NAT; that the worker service ingests the seeded Documents in time (the seed waits for Ready); the CloudWatch stream name `seed/seed/<task ID>` (the documented awslogs format); and the seed's real duration on 1 vCPU / 4 GB (best guess: a few minutes; `SEED_WAIT_ROUNDS` allows about an hour and the job `timeout-minutes: 75`).
