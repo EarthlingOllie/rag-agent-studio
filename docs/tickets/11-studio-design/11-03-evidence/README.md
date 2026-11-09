@@ -73,7 +73,7 @@ There is no new runtime behaviour: class lists changed, logic did not. The exist
 | # | Criterion | Evidence |
 |---|---|---|
 | 1 | A one-off script applies the class-mapping table from the `studio-reskin` skill across `apps/studio/src`; it is committed with the PR and then deleted | Added in `1cb2d98`, applied in `b99b1d5` ([codemod.log](codemod.log)), deleted in `0cc9ce8`. The table is above. |
-| 2 | Only class lists change: no markup, text, routes or tests change | `git diff aca809b..0cc9ce8 --word-diff` shows only class tokens changed in 49 source files. No `*.test.*`, router or e2e file is in the diff. The single non-mapping class change is `min-h-6` (commit `2551e7a`, below). |
+| 2 | Only class lists change: no markup, text, routes or tests change | `git diff aca809b..0cc9ce8 --word-diff` shows only class tokens changed in 49 source files. No `*.test.*` or e2e file is in the diff; `router.tsx` changes only its root wrapper's class lists, no route. The single non-mapping class change is `min-h-6` (commit `2551e7a`, below). |
 | 3 | Ambiguous mappings are left for review and listed in the PR | `border-slate-700` is left. The judgement calls (`text-slate-700` split, meter fill, disabled fills, danger hover) and the three test pins are listed above and in the PR. |
 | 4 | The palette count falls substantially; anything left is listed by file for the area tickets | 636 to **24** (96%). By-file list above: 3 real uses, for 11-06 and 11-10. |
 | 5 | Behaviour is unchanged apart from what this ticket names; moved actions are listed in the PR | All 935 tests pass unchanged. Moved actions: none. `min-h-6` only enlarges the row-action hit area. |
