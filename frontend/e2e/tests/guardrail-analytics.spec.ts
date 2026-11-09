@@ -74,17 +74,20 @@ test.describe("Guardrail analytics", () => {
 
     // The Conversations viewer, filtered to those with a blocked message, shows the attack only.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/conversations`);
-    const table = page.getByRole("table", { name: "Conversations" });
-    await expect(table.getByRole("row")).toHaveCount(3, { timeout: 15_000 });
+    const list = page.getByRole("list", { name: "Conversations" });
+    await expect(list.getByRole("listitem")).toHaveCount(2, { timeout: 15_000 });
     await page.getByRole("group", { name: "Filter Conversations" }).getByLabel("Guardrail").selectOption("Blocked");
     await expect(page).toHaveURL(/guardrail=blocked/);
-    await expect(table.getByRole("row")).toHaveCount(2, { timeout: 15_000 });
-    const attacked = table.getByRole("row").nth(1);
-    await expect(attacked.getByRole("cell").nth(7)).toHaveText("1 event");
-    await expect(attacked.getByRole("cell").nth(8)).toHaveText("How many days of annual leave do I get?");
+    await expect(list.getByRole("listitem")).toHaveCount(1, { timeout: 15_000 });
+    const attacked = list.getByRole("listitem").first();
+    await expect(attacked.getByRole("definition").nth(7)).toHaveText("1 event");
+    await expect(attacked.getByRole("link")).toHaveText("How many days of annual leave do I get?");
+    // Its transcript badges the blocked reply.
+    await attacked.getByRole("link").click();
+    await expect(page.getByRole("list", { name: "Messages" }).getByText("Blocked by guardrail")).toBeVisible();
     await page.getByRole("group", { name: "Filter Conversations" }).getByLabel("Guardrail").selectOption("Without");
-    await expect(table.getByRole("row").nth(1).getByRole("cell").nth(8)).toHaveText("Can I carry leave over?", { timeout: 15_000 });
-    await expect(table.getByRole("row")).toHaveCount(2);
+    await expect(list.getByRole("listitem").first().getByRole("link")).toHaveText("Can I carry leave over?", { timeout: 15_000 });
+    await expect(list.getByRole("listitem")).toHaveCount(1);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 });

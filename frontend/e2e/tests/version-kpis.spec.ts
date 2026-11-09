@@ -73,11 +73,11 @@ test.describe("Version KPIs", () => {
     const card = (name: string) => page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name });
     await expect(card("Volume")).toContainText("1 Conversation", { timeout: 15_000 });
     await expect(card("Volume")).toContainText("2 replies");
-    await expect(card("Volume")).toContainText("Low confidence (fewer than 30 Conversations)");
+    await expect(card("Volume").getByText("Low sample")).toHaveAttribute("title", "Fewer than 30 Conversations");
     await expect(card("Thumbs-up rate")).toContainText("50%");
     await expect(card("Thumbs-up rate")).toContainText("95% interval 9% to 91%");
     await expect(card("Thumbs-up rate")).toContainText("n = 2 votes (1 up, 1 down)");
-    await expect(card("Thumbs-up rate")).toContainText("Low confidence (fewer than 30 votes)");
+    await expect(card("Thumbs-up rate").getByText("Low sample")).toHaveAttribute("title", "Fewer than 30 votes");
     await expect(card("Mean rating")).toContainText("2.0 of 5");
     await expect(card("Mean rating")).toContainText("n = 1 rating");
     // The Project has no Documents, so every reply is the fallback text and asks no model.
