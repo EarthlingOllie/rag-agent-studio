@@ -160,16 +160,16 @@ test("an Agent whose Token Budget is spent shows an alert badge in the list and 
 
   const list = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
   const [first, second] = within(list).getAllByRole("listitem");
-  expect(within(first as HTMLElement).getByText("Budget exhausted")).toHaveAttribute(
+  expect(within(first as HTMLElement).getByText("Budget spent")).toHaveAttribute(
     "title",
     "Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC.",
   );
-  expect(within(second as HTMLElement).queryByText("Budget exhausted")).not.toBeInTheDocument();
+  expect(within(second as HTMLElement).queryByText("Budget spent")).not.toBeInTheDocument();
 
   await userEvent.click(within(list).getByRole("link", { name: "HR helper" }));
 
   expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByText("Budget exhausted")).toBeInTheDocument();
+  expect(screen.getByText("Budget spent")).toBeInTheDocument();
 });
 
 test("an Agent whose Guardrail block rate spiked shows an alert badge in the list and on its page", async () => {

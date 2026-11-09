@@ -31,8 +31,10 @@ function setUp(
   });
 }
 
+/** Opens the publish dialog from the top bar. */
 async function publishForm() {
-  return screen.findByRole("form", { name: "Publish" }, { timeout: 5000 });
+  await userEvent.click(await within(await screen.findByRole("banner", {}, { timeout: 5000 })).findByRole("button", { name: "Publish" }, { timeout: 5000 }));
+  return screen.findByRole("form", { name: "Publish" });
 }
 
 test("an Agent that has never been published is shown as not live", async () => {
@@ -53,7 +55,8 @@ test("the Agents list shows which Agents are live and which aren't", async () =>
   expect(first).toHaveTextContent("HR helper");
   expect(first).toHaveTextContent("Not live");
   expect(second).toHaveTextContent("Benefits FAQ");
-  expect(second).toHaveTextContent("Live v3");
+  expect(second).toHaveTextContent("Live");
+  expect(within(second).getByLabelText("Version 3")).toBeInTheDocument();
 });
 
 test("publishing with a note makes the Draft the Live Version, pinning the Current Instructions", async () => {
@@ -73,7 +76,7 @@ test("publishing with a note makes the Draft the Live Version, pinning the Curre
   await userEvent.click(within(form).getByRole("button", { name: "Publish" }));
 
   expect(await within(form).findByRole("status")).toHaveTextContent("Published v1 with Instructions v2. It is now Live.");
-  expect(await screen.findByText("Live v1")).toBeInTheDocument();
+  expect(await screen.findByLabelText("Version 1")).toBeInTheDocument();
   expect(screen.queryByText("Not live")).not.toBeInTheDocument();
   expect(within(form).getByLabelText("Note")).toHaveValue("");
   expect(requests.filter((r) => r.route === "publish")).toEqual([{ route: "publish", body: { note: "First release" } }]);
@@ -83,7 +86,7 @@ test("an Editor can pin an older Instructions Version", async () => {
   const { requests } = setUp({ agents: [liveHelper] });
   renderStudio(agentPage(liveHelper.id));
   const form = await publishForm();
-  expect(screen.getByText("Live v3")).toBeInTheDocument();
+  expect(screen.getByLabelText("Version 3")).toBeInTheDocument();
   await within(form).findByRole("option", { name: "v1 · Note 1" });
 
   await userEvent.selectOptions(within(form).getByRole("combobox", { name: "Project Instructions" }), "v1 · Note 1");
@@ -149,8 +152,9 @@ test("the Instructions picker says when the Versions can't be loaded", async () 
     ),
   );
   renderStudio(agentPage(hrHelper.id));
+  const form = await publishForm();
 
-  expect(await screen.findByText("The Instructions Versions could not be loaded.", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(await within(form).findByText("The Instructions Versions could not be loaded.")).toBeInTheDocument();
 });
 
 test("an archived Agent can't be published", async () => {
@@ -158,6 +162,6 @@ test("an archived Agent can't be published", async () => {
   renderStudio(agentPage(oldHelper.id));
 
   expect(await screen.findByRole("status", { name: "Archived" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.queryByRole("form", { name: "Publish" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Publish" })).not.toBeInTheDocument();
   expect(screen.getByText("Not live")).toBeInTheDocument();
 });

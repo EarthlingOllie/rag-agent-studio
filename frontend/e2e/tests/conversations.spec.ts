@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openAgentView } from "../fixtures/agent";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -55,9 +56,9 @@ test.describe("Conversations viewer", () => {
       (await page.request.post(`${agentApi}/playground/conversations/${playgroundId}/messages`, { data: { content: "Testing leave" } })).status(),
     ).toBe(200);
 
-    // The Agent page leads to its Conversations.
+    // The Agent's Conversations view leads to its Conversations.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
-    await page.getByRole("link", { name: "Conversations with this Agent" }).click();
+    await openAgentView(page, "Conversations");
     const table = page.getByRole("table", { name: "Conversations" });
     const playgroundRow = table.getByRole("row", { name: /Testing leave/ });
     const visitorRow = table.getByRole("row", { name: /How many days of annual leave/ });

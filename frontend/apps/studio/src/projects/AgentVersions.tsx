@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { Badge, button, ConfirmDialog, field, Icon, Menu, Skeleton, surface, text } from "../design";
 import { AgentDiffView } from "./AgentDiff";
 import { useTagNames } from "./AgentPublish";
 import {
@@ -13,70 +14,8 @@ import {
   useAgentVersions,
   useReplaceDraft,
 } from "./agents";
-import { BUTTON, INPUT } from "./ProjectsPage";
 
 type DraftProps = { agent: Agent; organisationId: string; onReplaced: () => void };
-
-/**
- * Discards the Draft's unpublished changes: the Live Version's settings go back in the Draft,
- * after the Editor confirms. Shown while the Draft differs from the Live Version.
- */
-export function DiscardDraft({ agent, organisationId, onReplaced }: DraftProps) {
-  const replace = useReplaceDraft(organisationId, agent.project_id, agent.id);
-  const [confirming, setConfirming] = useState(false);
-  const live = agent.live_version;
-  if (!live || (!agent.has_unpublished_changes && !replace.error)) return null;
-  return (
-    <div className="space-y-2">
-      <FormError message={draftChangeFailure(replace.error)} />
-      {confirming ? (
-        <div role="group" aria-label="Discard the Draft" className="space-y-2 rounded border border-line bg-surface p-3 text-sm">
-          <p>The Draft&apos;s unpublished changes will be lost, and it goes back to the settings of the Live Version (v{live.number}).</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={BUTTON}
-              disabled={replace.isPending}
-              onClick={() => {
-                replace.mutate(
-                  { versionId: "live", baseRevision: agent.draft_revision },
-                  {
-                    onSuccess: onReplaced,
-                    onSettled: () => {
-                      setConfirming(false);
-                    },
-                  },
-                );
-              }}
-            >
-              Yes, discard the changes
-            </button>
-            <button
-              type="button"
-              className={BUTTON}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            replace.reset();
-            setConfirming(true);
-          }}
-        >
-          Discard Draft
-        </button>
-      )}
-    </div>
-  );
-}
 
 function sideName(side: DiffSide, versions: AgentVersion[], liveId: string | null): string {
   if (side === "draft") return "Draft";
@@ -103,12 +42,12 @@ function Compare({
   const sides: DiffSide[] = ["draft", ...versions.map((version) => version.id)];
   const picker = (id: string, label: string, value: DiffSide, onChange: (side: DiffSide) => void) => (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className={field.label}>
         {label}
       </label>
       <select
         id={id}
-        className={INPUT}
+        className={field.select}
         value={value}
         onChange={(event) => {
           onChange(event.target.value);
@@ -123,15 +62,15 @@ function Compare({
     </div>
   );
   let body;
-  if (diff.isPending) body = <p className="text-sm text-muted">Comparing…</p>;
-  else if (diff.isError) body = <p className="text-sm text-muted">The comparison could not be loaded. {agentFailure(diff.error)}</p>;
+  if (diff.isPending) body = <p className={text.muted}>Comparing…</p>;
+  else if (diff.isError) body = <p className={text.muted}>The comparison could not be loaded. {agentFailure(diff.error)}</p>;
   else body = <AgentDiffView diff={diff.data} names={names} />;
   return (
-    <section aria-labelledby="compare-heading" className="space-y-2">
-      <h4 id="compare-heading" className="text-sm font-semibold">
+    <section aria-labelledby="compare-heading" className={`${surface.panel} flex flex-col gap-4`}>
+      <h2 id="compare-heading" className={text.subheading}>
         Compare
-      </h4>
-      <div className="grid gap-2 sm:grid-cols-2">
+      </h2>
+      <div className="grid gap-3 sm:grid-cols-2">
         {picker("compare-from", "From", from, setFrom)}
         {picker("compare-to", "To", to, setTo)}
       </div>
@@ -140,109 +79,98 @@ function Compare({
   );
 }
 
-function StartDraft({
-  agent,
-  organisationId,
-  version,
-  onReplaced,
-}: DraftProps & { version: AgentVersion }) {
+/**
+ * The Agent's Versions, newest first: number, note, author, time, pinned Instructions and which
+ * is Live. Each Version's ⋯ menu starts the Draft from it, after a confirmation. Any two (or the
+ * Draft) can be compared. An archived Agent's Versions can be read and compared but start no Draft.
+ */
+export function AgentVersions({ agent, organisationId, onReplaced }: DraftProps) {
+  const found = useAgentVersions(organisationId, agent.project_id, agent.id);
   const replace = useReplaceDraft(organisationId, agent.project_id, agent.id);
-  const [confirming, setConfirming] = useState(false);
-  const label = `Start Draft from v${String(version.number)}`;
+  const [starting, setStarting] = useState<AgentVersion | null>(null);
+  const archived = agent.archived_at !== null;
+  let body;
+  if (found.isPending) {
+    body = <Skeleton label="Loading the Versions" />;
+  } else if (found.isError) {
+    body = <p className={text.muted}>The Versions could not be loaded.</p>;
+  } else if (found.data.versions.length === 0) {
+    body = <p className={text.muted}>No Versions yet. Publishing the Draft makes v1.</p>;
+  } else {
+    const { versions, live_version_id: liveId } = found.data;
+    body = (
+      <ol aria-label="Versions" className="flex flex-col divide-y divide-line-soft">
+        {versions.map((version) => (
+          <li key={version.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+            <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+              <p className="flex flex-wrap items-center gap-2 text-ink">
+                <Badge kind="version" version={version.number} />
+                {version.id === liveId && <Badge kind="live" />}
+                <span>{version.note}</span>
+              </p>
+              <p className={text.small}>
+                {version.author.name} · {new Date(version.created_at).toLocaleString()} ·{" "}
+                {version.instructions_version ? `Instructions v${String(version.instructions_version.number)}` : "No Project Instructions"}
+              </p>
+            </div>
+            {!archived && (
+              <Menu
+                label={<Icon name="more" />}
+                triggerLabel={`Actions for v${String(version.number)}`}
+                align="end"
+                triggerClassName={button.iconBare}
+                items={[
+                  {
+                    label: `Start Draft from v${String(version.number)}`,
+                    onSelect: () => {
+                      replace.reset();
+                      setStarting(version);
+                    },
+                  },
+                ]}
+              />
+            )}
+          </li>
+        ))}
+      </ol>
+    );
+  }
   return (
-    <div className="space-y-1">
-      <FormError message={draftChangeFailure(replace.error)} />
-      {confirming ? (
-        <div role="group" aria-label={label} className="flex flex-wrap items-center gap-2 text-sm">
-          <span>The Draft will be replaced by v{version.number}&apos;s settings. Nothing is published.</span>
-          <button
-            type="button"
-            className={BUTTON}
-            disabled={replace.isPending}
-            onClick={() => {
+    <>
+      <section aria-labelledby="versions-heading" className={`${surface.panel} flex flex-col gap-4`}>
+        <h2 id="versions-heading" className={text.subheading}>
+          Versions
+        </h2>
+        <FormError message={draftChangeFailure(replace.error)} />
+        {body}
+        {starting && (
+          <ConfirmDialog
+            open
+            title={`Start Draft from v${String(starting.number)}?`}
+            confirmLabel="Yes, replace the Draft"
+            busy={replace.isPending}
+            onConfirm={() => {
               replace.mutate(
-                { versionId: version.id, baseRevision: agent.draft_revision },
+                { versionId: starting.id, baseRevision: agent.draft_revision },
                 {
                   onSuccess: onReplaced,
                   onSettled: () => {
-                    setConfirming(false);
+                    setStarting(null);
                   },
                 },
               );
             }}
-          >
-            Yes, replace the Draft
-          </button>
-          <button
-            type="button"
-            className={BUTTON}
-            onClick={() => {
-              setConfirming(false);
+            onCancel={() => {
+              setStarting(null);
             }}
           >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="text-sm text-ink underline"
-          onClick={() => {
-            replace.reset();
-            setConfirming(true);
-          }}
-        >
-          {label}
-        </button>
+            The Draft will be replaced by v{starting.number}&apos;s settings. Nothing is published.
+          </ConfirmDialog>
+        )}
+      </section>
+      {found.data && found.data.versions.length > 0 && (
+        <Compare agent={agent} organisationId={organisationId} versions={found.data.versions} liveId={found.data.live_version_id} />
       )}
-    </div>
-  );
-}
-
-/**
- * The Agent's Versions, newest first: number, note, author, time, pinned Instructions and which
- * is Live. Any two (or the Draft) can be compared, and the Draft can be started from any of
- * them. An archived Agent's Versions can be read and compared but start no Draft.
- */
-export function AgentVersions({ agent, organisationId, onReplaced }: DraftProps) {
-  const found = useAgentVersions(organisationId, agent.project_id, agent.id);
-  const archived = agent.archived_at !== null;
-  let body;
-  if (found.isPending) {
-    body = <p className="text-sm text-muted">Loading the Versions…</p>;
-  } else if (found.isError) {
-    body = <p className="text-sm text-muted">The Versions could not be loaded.</p>;
-  } else if (found.data.versions.length === 0) {
-    body = <p className="text-sm text-muted">No Versions yet. Publishing the Draft makes v1.</p>;
-  } else {
-    const { versions, live_version_id: liveId } = found.data;
-    body = (
-      <>
-        <ol aria-label="Versions" className="space-y-2">
-          {versions.map((version) => (
-            <li key={version.id} className="space-y-1 rounded border border-line bg-surface p-2 text-sm">
-              <p>
-                <span className="font-semibold">v{version.number}</span>
-                {version.id === liveId && <span className="ml-2 rounded-full bg-accent-soft px-2 text-accent-ink">Live</span>} · {version.note}
-              </p>
-              <p className="text-muted">
-                {version.author.name} · {new Date(version.created_at).toLocaleString()} ·{" "}
-                {version.instructions_version ? `Instructions v${String(version.instructions_version.number)}` : "No Project Instructions"}
-              </p>
-              {!archived && <StartDraft agent={agent} organisationId={organisationId} version={version} onReplaced={onReplaced} />}
-            </li>
-          ))}
-        </ol>
-        <Compare agent={agent} organisationId={organisationId} versions={versions} liveId={liveId} />
-      </>
-    );
-  }
-  return (
-    <section aria-labelledby="versions-heading" className="space-y-2 rounded border border-line bg-surface p-3">
-      <h3 id="versions-heading" className="font-semibold">
-        Versions
-      </h3>
-      {body}
-    </section>
+    </>
   );
 }

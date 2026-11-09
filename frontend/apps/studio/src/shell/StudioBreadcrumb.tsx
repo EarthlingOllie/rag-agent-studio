@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { Session } from "../auth/session";
 import { Breadcrumb, CrumbSwitcher, CrumbText, type IconName, type MenuItem, type MenuLinkProps } from "../design";
+import { useAgent, useAgents } from "../projects/agents";
 import { useProject, useProjects } from "../projects/projects";
 import { OrganisationCrumb } from "./OrganisationSwitcher";
 
@@ -44,6 +45,78 @@ const PROJECT_SECTIONS: { label: string; icon: IconName; to: ProjectPath; also?:
   { label: "Analytics", icon: "analytics", to: `${PROJECT}/analytics` },
   { label: "Settings", icon: "settings", to: `${PROJECT}/settings` },
 ];
+
+const AGENT = `${PROJECT}/agents/$agentId` as const;
+
+type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed`;
+
+/** An Agent's views, in menu order. Conversations opens the Project's Conversations with this Agent. */
+const AGENT_VIEWS: { label: string; icon: IconName; to?: AgentViewPath }[] = [
+  { label: "Playground", icon: "send", to: AGENT },
+  { label: "Versions", icon: "history", to: `${AGENT}/versions` },
+  { label: "Embed & limits", icon: "external", to: `${AGENT}/embed` },
+  { label: "Conversations", icon: "conversations" },
+];
+
+/**
+ * Inside an Agent: the crumbs `before` it, its section crumb (`section`), the Agent crumb, a
+ * switcher of the Project's open Agents, then the view switcher (Playground, Versions, Embed &
+ * limits, Conversations). Until the Agent is loaded, or when it can't be found, the section crumb
+ * is the current one.
+ */
+function AgentBreadcrumb({
+  organisationId,
+  projectId,
+  agentId,
+  before,
+  section,
+}: {
+  organisationId: string;
+  projectId: string;
+  agentId: string;
+  before: ReactNode[];
+  section: (current: boolean) => ReactNode;
+}) {
+  const matchRoute = useMatchRoute();
+  const agents = useAgents(organisationId, projectId);
+  const agent = useAgent(organisationId, projectId, agentId);
+  if (!agent.data) {
+    return (
+      <Breadcrumb>
+        {before}
+        {section(true)}
+      </Breadcrumb>
+    );
+  }
+  const switcher: MenuItem[] = (agents.data ?? []).map((candidate) => ({
+    id: candidate.id,
+    label: candidate.name,
+    icon: "agents" as const,
+    current: candidate.id === agentId,
+    renderLink: (props: MenuLinkProps) => <Link to={AGENT} params={{ organisationId, projectId, agentId: candidate.id }} {...props} />,
+  }));
+  const views: MenuItem[] = AGENT_VIEWS.map(({ label, icon, to }) => ({
+    label,
+    icon,
+    current: to !== undefined && matchRoute({ to, params: { organisationId, projectId, agentId } }) !== false,
+    renderLink: (props: MenuLinkProps) =>
+      to === undefined ? (
+        <Link to={`${PROJECT}/conversations`} params={{ organisationId, projectId }} search={{ agent: agentId }} {...props} />
+      ) : (
+        <Link to={to} params={{ organisationId, projectId, agentId }} {...props} />
+      ),
+  }));
+  // Every view inside the Agent's route is one of its views.
+  const here = views.find((view) => view.current) as MenuItem;
+  return (
+    <Breadcrumb>
+      {before}
+      {section(false)}
+      <CrumbSwitcher label={agent.data.name} menuLabel="Agents" items={switcher} />
+      <CrumbSwitcher label={here.label} menuLabel="Agent views" items={views} current />
+    </Breadcrumb>
+  );
+}
 
 /**
  * The Project crumb, a switcher of the Organisation's open Projects plus All Projects, then the
@@ -90,12 +163,31 @@ function ProjectBreadcrumb({
   }));
   // Every page in a Project belongs to one section.
   const here = sections.find((section) => section.current) as MenuItem;
+  const agent = matchRoute({ to: AGENT, params: { organisationId, projectId }, fuzzy: true });
+  const sectionCrumb = (current: boolean) => (
+    <CrumbSwitcher key="section" label={here.label} menuLabel="Project sections" items={sections} current={current} />
+  );
 
+  const projectCrumb = (
+    <CrumbSwitcher key="project" label={project.data?.name ?? "Project"} menuLabel="Projects" items={switcher} current={!project.data} />
+  );
+
+  if (project.data && agent !== false) {
+    return (
+      <AgentBreadcrumb
+        organisationId={organisationId}
+        projectId={projectId}
+        agentId={agent.agentId}
+        before={[...leading, projectCrumb]}
+        section={sectionCrumb}
+      />
+    );
+  }
   return (
     <Breadcrumb>
       {leading}
-      <CrumbSwitcher label={project.data?.name ?? "Project"} menuLabel="Projects" items={switcher} current={!project.data} />
-      {project.data && <CrumbSwitcher label={here.label} menuLabel="Project sections" items={sections} current />}
+      {projectCrumb}
+      {project.data && sectionCrumb(true)}
     </Breadcrumb>
   );
 }

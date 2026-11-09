@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent } from "../fixtures/agent";
 import { HOST_URL, STUDIO_URL } from "../fixtures/env";
 import { openSection } from "../fixtures/navigation";
 
@@ -46,27 +47,28 @@ test.describe("Embed an Agent", () => {
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
 
     // No snippet until the Agent has a Live Version.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("region", { name: "Embed Snippet" });
     await expect(embed).toContainText("Publish the Agent to get its Embed Snippet.");
-    await expect(embed.getByRole("button", { name: "Copy snippet" })).toHaveCount(0);
+    await expect(embed.getByRole("button", { name: "Copy Embed Snippet" })).toHaveCount(0);
 
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     const snippet = `<script src="${STUDIO_URL}/embed.js" data-agent="${publicId}" async></script>`;
-    await expect(embed.getByLabel("Embed Snippet")).toHaveText(snippet);
+    await expect(embed.locator("code")).toHaveText(snippet);
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: STUDIO_URL });
-    await embed.getByRole("button", { name: "Copy snippet" }).click();
-    await expect(embed.getByText("Copied.")).toBeVisible();
+    await embed.getByRole("button", { name: "Copy Embed Snippet" }).click();
+    await expect(embed.getByRole("button", { name: "Copy Embed Snippet" })).toHaveText("Copied");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippet);
 
     // Allow the demo host page's origin.
     const hostOrigin = new URL(HOST_URL).origin;
-    await embed.getByLabel("Allowed Origins").fill(hostOrigin);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    const origins = page.getByRole("region", { name: "Allowed Origins" });
+    await origins.getByRole("textbox", { name: "Add an Allowed Origin" }).fill(hostOrigin);
+    await origins.getByRole("textbox", { name: "Add an Allowed Origin" }).press("Enter");
+    await origins.getByRole("button", { name: "Save Allowed Origins" }).click();
+    await expect(origins.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // The shell may be framed by that origin only.

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 
 // The compose stack checks keys with the fake verifier, answers with the fake gateway's chat
 // model and reranks with its fake reranker (a passage scores the share of the question's words
@@ -57,6 +58,7 @@ test.describe("Reranker", () => {
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
     const status = page.getByRole("status", { name: "Draft status" });
     await expect(status).toHaveText("All changes saved", { timeout: 15_000 });
+    await openSettings(page, "Retrieval");
     const retrieval = page.getByRole("group", { name: "Retrieval" });
     let save = nextSave(page);
     await retrieval.getByLabel("Chunks per answer (top-k)").fill("1");
@@ -83,9 +85,8 @@ test.describe("Reranker", () => {
     await page.getByRole("button", { name: "Send" }).click();
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "Support helper" });
     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
-    await answer.getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
-    const rows = trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row");
+    await answer.getByText("Trace", { exact: true }).click();
+    const rows = answer.getByRole("group", { name: "Trace" }).getByRole("table", { name: "Retrieved Chunks" }).getByRole("row");
     await expect(rows).toHaveCount(3, { timeout: 15_000 });
     const given = rows.nth(1).getByRole("cell");
     await expect(given.nth(0)).toHaveText("C1");

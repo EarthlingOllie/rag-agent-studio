@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openAgentView } from "../fixtures/agent";
 import { signInAs } from "../fixtures/auth";
 import { BLOCKED_HOST_URL, HOST_URL } from "../fixtures/env";
 import { openSection } from "../fixtures/navigation";
@@ -68,14 +69,15 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await page.getByRole("button", { name: "Send" }).click();
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText(DEMO_ANSWER, { timeout: 30_000 });
-    await answer.getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
+    // The Trace folds open under the answer.
+    await answer.getByText("Trace", { exact: true }).click();
+    const trace = answer.getByRole("group", { name: "Trace" });
     await expect(trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row").nth(1)).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
   });
 
   await test.step("4. Publish and revert: the HR helper's Live History tells the v2 story", async () => {
+    await openAgentView(page, "Versions");
     const timeline = page.getByRole("list", { name: "Live History" });
     await expect(timeline.getByRole("listitem").nth(0)).toContainText("Published v1 → v3");
     await expect(timeline.getByRole("listitem").nth(1)).toContainText("Reverted v2 → v1");
@@ -149,7 +151,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
 
     await openProjectTab(page, "Agents");
     const listed = page.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Low-budget helper" });
-    await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
+    await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
   });
 
   await test.step("10. Organisation cost: what each Project and Agent spent, the Playground apart", async () => {

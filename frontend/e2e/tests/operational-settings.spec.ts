@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent } from "../fixtures/agent";
 import { HOST_URL } from "../fixtures/env";
 import { openSection } from "../fixtures/navigation";
 
@@ -30,24 +31,28 @@ test.describe("Operational Settings", () => {
       id: string;
       public_id: string;
     };
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     // The Operational Settings, saved without publishing again.
     const allowed = new URL(HOST_URL);
     const disallowed = new URL(HOST_URL);
     disallowed.hostname = "127.0.0.1"; // The same page, served on another origin.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
-    const origins = embed.getByLabel("Allowed Origins");
-    await expect(origins).toBeEnabled();
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("main");
+    const originsCard = page.getByRole("region", { name: "Allowed Origins" });
+    const origins = originsCard.getByRole("textbox", { name: "Add an Allowed Origin" });
     await origins.fill("www.example.com");
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByRole("alert")).toContainText("'www.example.com' isn't a site address.");
-    await origins.fill(`${allowed.origin}\nhttps://*.example.com`);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    await origins.press("Enter");
+    await originsCard.getByRole("button", { name: "Save Allowed Origins" }).click();
+    await expect(originsCard.getByRole("alert")).toContainText("'www.example.com' isn't a site address.");
+    await originsCard.getByRole("button", { name: "Remove www.example.com" }).click();
+    for (const origin of [allowed.origin, "https://*.example.com"]) {
+      await origins.fill(origin);
+      await origins.press("Enter");
+    }
+    await originsCard.getByRole("button", { name: "Save Allowed Origins" }).click();
+    await expect(originsCard.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
     await embed.getByLabel("Unavailable text").fill(UNAVAILABLE);
     await embed.getByRole("button", { name: "Save unavailable text" }).click();
     await expect(embed.getByText("Saved. Visitors see it from their next message.")).toBeVisible({ timeout: 15_000 });

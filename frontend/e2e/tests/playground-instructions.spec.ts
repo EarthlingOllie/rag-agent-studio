@@ -62,12 +62,10 @@ test.describe("Playground Instructions picker", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // The Trace names the Instructions too.
-    await answers.nth(1).getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
-    await expect(trace.getByText("Instructions", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await expect(trace.locator("dt", { hasText: "Instructions" }).locator("+ dd")).toHaveText("v1");
+    await answers.nth(1).getByText("Trace", { exact: true }).click();
+    await expect(answers.nth(1).getByRole("group", { name: "Trace" }).getByText("Instructions", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(answers.nth(1).getByRole("group", { name: "Trace" }).locator("dt", { hasText: "Instructions" }).locator("+ dd")).toHaveText("v1");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // The API records each answer's Instructions: the Draft marker, then v1.
     const conversation = (await (

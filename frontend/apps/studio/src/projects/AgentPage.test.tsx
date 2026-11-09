@@ -24,7 +24,7 @@ function setUp(options: Parameters<typeof fakeAgentsApi>[0] = {}) {
   return fakeAgentsApi({ agents: [hrHelper], ...options });
 }
 
-test("the Agent page shows the Draft beside the Playground", async () => {
+test("the Agent page shows the Draft's configuration beside the Playground", async () => {
   setUp();
   renderStudio(agentPage);
 
@@ -32,10 +32,7 @@ test("the Agent page shows the Draft beside the Playground", async () => {
   expect(await screen.findByRole("textbox", { name: "System prompt" })).toHaveTextContent("Answer from the handbook.");
   expect(screen.getByLabelText("Chunks per answer (top-k)")).toHaveValue(5);
   expect(screen.getByRole("heading", { level: 2, name: "Playground" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "All Agents" })).toHaveAttribute(
-    "href",
-    `/organisations/${organisationId}/projects/${hrProject.id}/agents`,
-  );
+  expect(screen.getByRole("complementary", { name: "Configuration" })).toBeInTheDocument();
 });
 
 test("a question is answered in the Playground as the answer streams in", async () => {
@@ -94,12 +91,12 @@ test("an answer without citations shows no sources", async () => {
   expect(within(answer).queryByRole("list", { name: "Sources" })).not.toBeInTheDocument();
 });
 
-test("the Trace drawer shows the model, usage, cost, latency and every Chunk retrieved", async () => {
+test("the Trace folded under an answer shows the model, usage, cost, latency and every Chunk retrieved", async () => {
   const { answer, requests } = await askLeave();
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   expect(await within(drawer).findByText("openai · gpt-4.1-mini")).toBeInTheDocument();
   expect(within(drawer).getByText("120 input · 6 output")).toBeInTheDocument();
   expect(within(drawer).getByText("$0.0000576")).toBeInTheDocument();
@@ -116,8 +113,9 @@ test("the Trace drawer shows the model, usage, cost, latency and every Chunk ret
   expect(within(drawer).getByText("No Guardrail stepped in.")).toBeInTheDocument();
   expect(requests.at(-1)).toEqual({ route: "trace", body: { conversationId: CONVERSATION_ID, messageId: hrTrace.message_id } });
 
-  await userEvent.click(within(drawer).getByRole("button", { name: "Close" }));
-  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+  // It folds away again under the answer.
+  await userEvent.click(within(drawer).getByText("Trace"));
+  expect(within(drawer).getByRole("table", { name: "Retrieved Chunks", hidden: true })).not.toBeVisible();
 });
 
 test("an answer that leaked the Canary token is replaced by the fallback text, with no sources", async () => {
@@ -161,9 +159,9 @@ test("the Trace shows each Guardrail outcome, or that none stepped in", async ()
       }),
   });
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   const outcomes = await within(drawer).findByRole("list", { name: "Guardrails" });
   expect(
     within(outcomes)
@@ -189,9 +187,9 @@ test("the Trace says a flagged question was answered with a caution (warn) or on
       }),
   });
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   const outcomes = await within(drawer).findByRole("list", { name: "Guardrails" });
   expect(
     within(outcomes)
@@ -239,9 +237,9 @@ test("the Trace says when the LLM classifier flagged a message or couldn't check
       }),
   });
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   const outcomes = await within(drawer).findByRole("list", { name: "Guardrails" });
   expect(
     within(outcomes)
@@ -263,7 +261,7 @@ test("a question the input Guardrail blocked gets the Agent's refusal text, mark
   expect(within(answer).getByText("Blocked by the input Guardrail: the model wasn't asked.")).toBeInTheDocument();
   expect(within(answer).queryByRole("list", { name: "Sources" })).not.toBeInTheDocument();
   // Its Trace says why.
-  expect(within(answer).getByRole("button", { name: "Trace" })).toBeInTheDocument();
+  expect(within(answer).getByText("Trace")).toBeInTheDocument();
 });
 
 test("the Trace of a refusal says the input Guardrail blocked the question and no model was asked", async () => {
@@ -290,9 +288,9 @@ test("the Trace of a refusal says the input Guardrail blocked the question and n
       }),
   });
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   expect(await within(drawer).findByText("None (blocked)")).toBeInTheDocument();
   expect(
     within(drawer).getByText(
@@ -304,7 +302,7 @@ test("the Trace of a refusal says the input Guardrail blocked the question and n
   );
 });
 
-test("the Trace of a fallback reply says no Chunk was relevant enough, and Escape closes it", async () => {
+test("the Trace of a fallback reply says no Chunk was relevant enough", async () => {
   await askLeave({
     trace: () =>
       HttpResponse.json({
@@ -320,17 +318,12 @@ test("the Trace of a fallback reply says no Chunk was relevant enough, and Escap
       }),
   });
 
-  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+  await userEvent.click(screen.getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   expect(await within(drawer).findByText(/No Chunk reached the minimum score/)).toBeInTheDocument();
   expect(within(drawer).getByText("None (fallback)")).toBeInTheDocument();
   expect(within(drawer).getByText("$0")).toBeInTheDocument();
-  // Other keys leave it open.
-  await userEvent.keyboard("a");
-  expect(screen.getByRole("dialog", { name: "Trace" })).toBeInTheDocument();
-  await userEvent.keyboard("{Escape}");
-  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
 });
 
 test("the Trace lists a Chunk the ingestion scan flagged as excluded by it, in a Project that excludes flagged Chunks", async () => {
@@ -347,9 +340,9 @@ test("the Trace lists a Chunk the ingestion scan flagged as excluded by it, in a
   };
   await askLeave({ trace: () => HttpResponse.json({ ...hrTrace, chunks: [...hrTrace.chunks.slice(0, 1), flagged] }) });
 
-  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+  await userEvent.click(screen.getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   const table = await within(drawer).findByRole("table", { name: "Retrieved Chunks" });
   const rows = within(table).getAllByRole("row");
   expect(rows.map((row) => Array.from(row.querySelectorAll("th, td"), (cell) => cell.textContent))).toEqual([
@@ -369,18 +362,18 @@ test("the Trace lists a Chunk the ingestion scan flagged as excluded by it, in a
 test("the Trace of an answer whose model has no known price shows the cost as unknown", async () => {
   await askLeave({ trace: () => HttpResponse.json({ ...hrTrace, cost_usd: null }) });
 
-  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+  await userEvent.click(screen.getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   expect(await within(drawer).findByText("Unknown")).toBeInTheDocument();
 });
 
 test("a Trace that can't be loaded says so", async () => {
   await askLeave({ trace: () => HttpResponse.json({ detail: "Not found" }, { status: 404 }) });
 
-  await userEvent.click(screen.getByRole("button", { name: "Trace" }));
+  await userEvent.click(screen.getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   expect(await within(drawer).findByRole("alert")).toHaveTextContent("The Trace could not be loaded.");
 });
 
@@ -433,7 +426,11 @@ test("an Agent that doesn't exist says so", async () => {
   fakeAgentsApi();
   renderStudio(agentPage);
 
-  expect(await screen.findByText("The Agent could not be found.", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Agent not found" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "All Agents" })).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/projects/${hrProject.id}/agents`,
+  );
 });
 
 const RATE_LIMITED =
@@ -475,15 +472,15 @@ test.each([
 
 test("resetting the Playground starts a new Conversation", async () => {
   const { requests } = await askLeave();
-  await userEvent.click(within(screen.getByRole("list", { name: "Playground messages" })).getByRole("button", { name: "Trace" }));
-  expect(await screen.findByRole("dialog", { name: "Trace" })).toBeInTheDocument();
+  await userEvent.click(within(screen.getByRole("list", { name: "Playground messages" })).getByText("Trace"));
+  expect(await screen.findByRole("table", { name: "Retrieved Chunks" })).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("button", { name: "Reset conversation" }));
 
   expect(await screen.findByText("Started a new conversation.")).toBeInTheDocument();
   const messages = screen.getByRole("list", { name: "Playground messages" });
   expect(within(messages).queryAllByRole("listitem")).toHaveLength(0);
-  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Trace" })).not.toBeInTheDocument();
 
   await userEvent.type(screen.getByLabelText("Question"), "And sick leave?");
   await userEvent.click(screen.getByRole("button", { name: "Send" }));

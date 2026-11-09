@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent, saveAllowedOrigins } from "../fixtures/agent";
 import { HOST_URL } from "../fixtures/env";
 import { latestEmailTo } from "../fixtures/mailpit";
 import { openSection } from "../fixtures/navigation";
@@ -49,18 +50,13 @@ test.describe("Token Budget", () => {
     const agentPage = page.url();
     const agentApi = agentPage.replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     // Operational Settings: the host page's origin, the unavailable text, and a tiny budget.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
-    const origins = embed.getByLabel("Allowed Origins");
-    await expect(origins).toBeEnabled();
-    await origins.fill(new URL(HOST_URL).origin);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("main");
+    await saveAllowedOrigins(page, [new URL(HOST_URL).origin]);
     await embed.getByLabel("Unavailable text").fill(UNAVAILABLE);
     await embed.getByRole("button", { name: "Save unavailable text" }).click();
     await expect(embed.getByText("Saved. Visitors see it from their next message.")).toBeVisible({ timeout: 15_000 });
@@ -105,17 +101,17 @@ test.describe("Token Budget", () => {
     // The Studio: the alert badge on the Agent's page and in the Agent list, and the meter full.
     await page.reload();
     await expect(page.getByRole("heading", { level: 2, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("region", { name: "Agent", exact: true }).getByText("Budget exhausted").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Thrifty helper" }).getByText("Budget spent")).toBeVisible();
     await expect(
       embed.getByText(
         "Today's Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you raise the budget.",
       ),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(embed.getByRole("progressbar", { name: "Tokens used today" })).toHaveAttribute("aria-valuenow", "1");
+    await expect(embed.getByRole("meter", { name: "Tokens used today" })).toHaveAttribute("aria-valuenow", "1");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await page.getByRole("link", { name: "All Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     const listed = page.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Thrifty helper" });
-    await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
+    await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
 
     // The Owner got one email about it.
     const email = await latestEmailTo(page.request, member.email);

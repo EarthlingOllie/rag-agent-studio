@@ -2,6 +2,7 @@ import { COLOUR_TOKENS, type ColourToken } from "@studio/ui";
 import { type ChangeEvent, type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { surface, text } from "../design";
 import { useTheme } from "../settings/theme";
 import type { Agent } from "./agents";
 import { type ColourValue, type ThemeOverride, useAgentAvatar, useSaveOverrideColours, useThemeOverride } from "./branding";
@@ -202,11 +203,11 @@ export function AgentBranding({ agent, organisationId, isOwner }: { agent: Agent
     );
 
   return (
-    <section aria-labelledby="branding-heading" className="space-y-3">
-      <h2 id="branding-heading" className="text-lg font-semibold">
-        Widget branding
+    <section aria-labelledby="branding-heading" className={`${surface.panel} flex flex-col gap-4`}>
+      <h2 id="branding-heading" className={text.subheading}>
+        Theme override
       </h2>
-      <p className="text-sm text-muted">
+      <p className={text.muted}>
         {isOwner
           ? "Changes apply to the widget at once, without publishing."
           : "Only Owners can change the widget branding. Changes apply without publishing."}
