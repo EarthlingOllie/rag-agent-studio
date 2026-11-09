@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-05: Project frame](05-project-frame.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Stat cards show Documents against the quota, Chunks, flagged chunks (flag colour when above zero) and the Embedding Model
 - [ ] Rows show the file type, `Tag`, `Status` and `FlagCount`; Retry, New edition, Edit Tags and Delete move into a ⋯ menu
