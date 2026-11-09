@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-04: Shell, breadcrumb and navigation test helpers](04-shell-navigation.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Project crumb lists the Projects plus All Projects; the section crumb lists Documents, Instructions, Agents, Conversations, Analytics and Settings with icons and number hints
 - [ ] The Project tab row and the All Projects link are gone
