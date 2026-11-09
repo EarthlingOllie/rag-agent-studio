@@ -9,6 +9,7 @@ import type { Page } from "@playwright/test";
 export type NavigationMenu =
   | "Organisations"
   | "Organisation sections"
+  | "Projects"
   | "Project sections"
   | "Organisation settings"
   | "Account";
@@ -19,7 +20,6 @@ export type NavigationMenu =
  * that use the helpers do not change.
  */
 const TAB_ROWS: Partial<Record<NavigationMenu, string>> = {
-  "Project sections": "Project",
   "Organisation settings": "Organisation settings",
 };
 
@@ -57,7 +57,16 @@ export async function sectionNames(page: Page, menu: NavigationMenu): Promise<st
   await menuButton(page, menu).click();
   const items = page.getByRole("menu", { name: menu }).getByRole("menuitem");
   await items.first().waitFor();
-  const names = (await items.allTextContents()).map((text) => text.trim());
+  // An item's name without what is hidden from assistive technology (a number hint, an icon).
+  const names = await items.evaluateAll((elements) =>
+    elements.map((element) => {
+      const copy = element.cloneNode(true) as Element;
+      copy.querySelectorAll("[aria-hidden=true]").forEach((hidden) => {
+        hidden.remove();
+      });
+      return copy.textContent.trim();
+    }),
+  );
   await page.keyboard.press("Escape");
   return names;
 }
