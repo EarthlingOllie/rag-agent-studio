@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-05: Project frame](05-project-frame.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Agent crumb switches Agent; a view crumb switches between Playground, Versions, Embed & limits and Conversations
 - [ ] Saved state, History and Publish sit in the top bar; Live, Draft and Not live use `Badge`
