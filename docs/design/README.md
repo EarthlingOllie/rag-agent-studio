@@ -136,8 +136,12 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 - A menu that navigates renders router `<Link>`s (`MenuItem.renderLink`) so items are real links.
 - Sections a Member may not see (an Editor and Members or Audit) are left out of the menu, exactly
   as the tabs leave them out today.
-- On narrow screens the breadcrumb wraps; if it must shorten, keep the Organisation and the
-  current page and collapse the middle into "…".
+- On narrow screens (below `md`, 768px) a path of three or more crumbs keeps the first (the
+  Organisation) and the last (the current page) and folds the middle into "…" (`Breadcrumb` does
+  it; pages register nothing). The "…" button, named "Show the whole path", opens the folded
+  crumbs in a popover list ("The whole path"), each still its switcher; Escape (outside a
+  switcher's own menu), a press outside or following a link closes it. The top bar wraps under
+  the breadcrumb.
 
 ### Pages
 
@@ -359,7 +363,11 @@ As built for Analytics' Over time (`projects/TimeSeriesChart.tsx`, Recharts):
 
 CI runs `pnpm palette-ratchet` (from `frontend/`, also the last step of `make test-frontend`). It
 counts palette-class uses under `apps/studio/src` with the same pattern as the reskin skill's
-leftover check, and compares the count with `frontend/palette-baseline.json`:
+leftover check (the `dark:` variant counts only as `dark:` directly followed by a class, so a
+Theme colour's `{ light, dark }` key is not counted). The count reached zero in ticket 11-13 and
+`frontend/palette-baseline.json` was deleted: with no baseline file none are allowed, and any
+palette class fails the check. While the reskin was under way it compared the count with the
+baseline:
 
 - **Higher**: the check fails and lists the files. Use tokens and recipes instead.
 - **Lower**: the check passes and prints the new count. Commit it

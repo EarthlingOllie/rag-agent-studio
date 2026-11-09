@@ -33,7 +33,7 @@ The Studio's design system (`docs/design/README.md`, code in `frontend/apps/stud
 _Avoid_: Theme, skin, component library
 
 **Breadcrumb**:
-The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, the Organisation settings areas, the Project switcher, a Project's sections, the Agent switcher, an Agent's views); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile, Security and Sign out are also in the account menu beside it.
+The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, the Organisation settings areas, the Project switcher, a Project's sections, the Agent switcher, an Agent's views); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile, Security and Sign out are also in the account menu beside it. On a narrow screen a path of three or more crumbs keeps the Organisation and the current page and folds the crumbs between them into "…" (Show the whole path), which opens them as a list, each still its switcher.
 _Avoid_: Tabs, side menu, nav bar
 
 **Project section**:
@@ -45,7 +45,7 @@ One of the four pages of an Agent in the Studio, in this order: Playground (the 
 _Avoid_: Agent tab, Agent section
 
 **Palette ratchet**:
-The CI check that counts Tailwind palette classes (`slate-700`, `dark:`, `bg-white`…) in the Studio's source and fails when the count rises above the committed baseline (`frontend/palette-baseline.json`). Each reskin slice lowers the baseline; at zero the baseline file goes and none are allowed.
+The CI check that counts Tailwind palette classes (`slate-700`, the `dark:` variant, `bg-white`…) in the Studio's source and fails when there are any. During the reskin it compared the count with a committed baseline (`frontend/palette-baseline.json`) that each slice lowered; the count reached zero in 11-13, the baseline file went, and none are allowed. An object key named `dark` (a Theme colour's `{ light, dark }`) is not a class and is not counted.
 _Avoid_: Lint rule, colour check
 
 **Launcher**:
