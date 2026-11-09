@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-05: Project frame](05-project-frame.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Agents are listed in a table card with `Badge` for Live v<N>, Draft changes and Not live
 - [ ] Selecting Agents shows `BulkBar` with Revert; results are reported per Agent
