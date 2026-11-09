@@ -1,0 +1,62 @@
+$ palette ratchet rise demo (at 0325d23): add one palette class to a Studio file, run, revert
+640 palette-class uses under apps/studio/src, up from the baseline of 639.
+  auth/AuthLayout.tsx: 16
+  auth/ForgotPasswordPage.tsx: 5
+  auth/MfaChallengePage.tsx: 3
+  auth/ResetPasswordPage.tsx: 9
+  auth/SignInPage.tsx: 2
+  auth/SignUpPage.tsx: 2
+  cost/CostPage.tsx: 8
+  design/recipes.ts: 1
+  design/tokens.css: 3
+  index.css: 3
+  invites/AcceptInvitePage.tsx: 17
+  profile/ProfilePage.tsx: 5
+  projects/AgentBranding.test.tsx: 3
+  projects/AgentBranding.tsx: 11
+  projects/AgentDiff.tsx: 11
+  projects/AgentEmbed.tsx: 21
+  projects/AgentLiveHistory.tsx: 9
+  projects/AgentPage.tsx: 30
+  projects/AgentPublish.tsx: 18
+  projects/AgentsTab.tsx: 10
+  projects/AgentVersions.tsx: 15
+  projects/AnalyticsTab.test.tsx: 3
+  projects/AnalyticsTab.tsx: 11
+  projects/BulkRollout.tsx: 12
+  projects/ConversationsTab.tsx: 22
+  projects/DocumentsTab.test.tsx: 3
+  projects/DocumentsTab.tsx: 36
+  projects/DocumentViewer.tsx: 14
+  projects/DraftEditor.tsx: 20
+  projects/EmbeddingModel.tsx: 5
+  projects/InstructionsTab.tsx: 10
+  projects/InstructionsVersions.tsx: 12
+  projects/ProjectPage.tsx: 22
+  projects/ProjectSettingsTab.tsx: 6
+  projects/ProjectsPage.tsx: 14
+  projects/TagsPanel.tsx: 14
+  projects/TimeSeriesChart.tsx: 5
+  projects/TraceDrawer.tsx: 8
+  projects/VersionComparison.tsx: 8
+  router.tsx: 4
+  security/SecurityPage.tsx: 22
+  settings/AuditPage.tsx: 12
+  settings/CredentialsPage.tsx: 26
+  settings/MembersList.tsx: 8
+  settings/MembersPage.tsx: 16
+  settings/ModelsPage.tsx: 13
+  settings/OrganisationSettings.tsx: 11
+  settings/PriceTable.tsx: 22
+  settings/RetentionWindow.tsx: 7
+  settings/ThemeImages.tsx: 14
+  settings/ThemePage.test.tsx: 1
+  settings/ThemePage.tsx: 23
+  shell/OrganisationSwitcher.tsx: 4
+  shell/SignedInShell.tsx: 16
+  status/StatusPage.tsx: 8
+  test/theme.ts: 6
+Use the design system's token utilities and recipes (docs/design/README.md) instead of Tailwind palette classes or dark:.
+exit 1
+639 palette-class uses under apps/studio/src (baseline 639).
+exit 0

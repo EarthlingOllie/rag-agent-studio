@@ -38,8 +38,8 @@ test-backend: ## Backend tests against real Postgres and Redis (start them with 
 test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
 	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
 
-test-frontend: ## Studio, widget and API client tests, then the embed loader's size budget
-	cd frontend && pnpm test && pnpm check-embed-size
+test-frontend: ## Studio, widget and API client tests, the embed loader's size budget, then the palette ratchet
+	cd frontend && pnpm test && pnpm check-embed-size && pnpm palette-ratchet
 
 lint: lint-backend lint-frontend ## Lint and type-check backend and frontend
 

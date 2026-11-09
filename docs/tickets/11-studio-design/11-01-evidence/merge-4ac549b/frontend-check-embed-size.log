@@ -1,0 +1,34 @@
+
+> rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/merge-candidate/frontend
+> pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size
+
+
+> @studio/widget@ build /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/merge-candidate/frontend/apps/widget
+> vite build && vite build --config vite.embed.config.ts
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 78 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 262ms
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/embed.js  1.36 kB │ gzip: 0.77 kB
+
+✓ built in 22ms
+
+> @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/merge-candidate/frontend/apps/widget
+> node scripts/check-size.mjs
+
+embed.js: 1367 bytes, 778 gzipped (budget 2048 and 1024)

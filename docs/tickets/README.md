@@ -3,6 +3,8 @@
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
 Work the **frontier**: any ticket whose blockers are all done. `01-01` and `11-01` are the only tickets with no blockers.
 
+New tickets start from [TEMPLATE.md](./TEMPLATE.md). Its standing criteria apply to every ticket: new Studio UI uses the [design system](../design/README.md) (the palette ratchet enforces it), tests sit at the highest seam with 100% coverage, and the glossary and ADRs stay current.
+
 ## 01: Skeleton, CI, auth and tenancy
 
 | Ticket | Title | Blocked by |

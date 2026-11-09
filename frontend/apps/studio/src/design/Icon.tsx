@@ -14,6 +14,8 @@ const PATHS = {
   security: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
   chevronDown: "M7 10l5 5 5-5",
   chevronRight: "M10 7l5 5-5 5",
+  chevronLeft: "M14 7l-5 5 5 5",
+  copy: "M9 9h11v11H9zM5 15H4V4h11v1",
   search: "M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14zM20 20l-4-4",
   upload: "M12 16V4M6 10l6-6 6 6M4 20h16",
   plus: "M12 5v14M5 12h14",

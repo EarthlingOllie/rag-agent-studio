@@ -42,6 +42,11 @@ const PAIRS: readonly [foreground: string, background: string, required: number]
   ["danger", "surface", 4.5],
   ["danger", "danger-soft", 4.5],
   ["accent", "sunken", 3],
+  // Text on a filled danger button (ConfirmDialog's destructive action).
+  ["on-danger", "danger", 4.5],
+  // The one data colour: chart lines, bars and meter fills are marks, so 3:1.
+  ["chart-1", "surface", 3],
+  ["chart-1", "canvas", 3],
 ];
 
 describe.each([
@@ -63,4 +68,10 @@ it("exposes every token to Tailwind as a colour", () => {
   for (const name of Object.keys(light)) {
     expect(css).toContain(`--color-${name}: var(--ds-${name});`);
   }
+});
+
+it("keeps the chart colour apart from the UI accent, at the approved values", () => {
+  expect([light["chart-1"], darkByChoice["chart-1"]]).toEqual(["#00897b", "#1fa393"]);
+  expect(light["chart-1"]).not.toBe(light.accent);
+  expect(darkByChoice["chart-1"]).not.toBe(darkByChoice.accent);
 });
