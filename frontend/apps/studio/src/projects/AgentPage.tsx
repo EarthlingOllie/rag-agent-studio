@@ -38,7 +38,8 @@ import { AgentVersions } from "./AgentVersions";
 import { DraftEditor } from "./DraftEditor";
 import { useInstructionsVersions } from "./instructions";
 import { useOrganisationRole } from "./ProjectsPage";
-import { TraceFold } from "./TraceDrawer";
+import { PlaygroundTrace, TraceFold } from "./Trace";
+import { AgentAnalyticsLink } from "./AnalyticsTab";
 
 const AGENT_ROUTE = "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId";
 
@@ -285,10 +286,9 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
                 {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}
                 {message.instructions && <p className={text.small}>{message.instructions}</p>}
                 {message.messageId && conversationId && (
-                  <TraceFold
-                    path={{ ...path, conversation_id: conversationId, message_id: message.messageId }}
-                    summary={message.usage as string}
-                  />
+                  <TraceFold summary={message.usage as string}>
+                    <PlaygroundTrace path={{ ...path, conversation_id: conversationId, message_id: message.messageId }} />
+                  </TraceFold>
                 )}
               </div>
             </li>
@@ -510,16 +510,19 @@ function AgentHeader({ agent, organisationId, isOwner, onReplaced }: { agent: Ag
           </h2>
           <LiveStatus agent={agent} />
         </div>
-        {actions.length > 0 && (
-          <Menu
-            label={<Icon name="more" />}
-            triggerLabel="More Agent actions"
-            menuLabel="Agent actions"
-            align="end"
-            triggerClassName={button.icon}
-            items={actions}
-          />
-        )}
+        <div className="flex items-center gap-2">
+          <AgentAnalyticsLink organisationId={organisationId} projectId={agent.project_id} agentId={agent.id} />
+          {actions.length > 0 && (
+            <Menu
+              label={<Icon name="more" />}
+              triggerLabel="More Agent actions"
+              menuLabel="Agent actions"
+              align="end"
+              triggerClassName={button.icon}
+              items={actions}
+            />
+          )}
+        </div>
       </div>
       {!agent.live_version && <p className={text.muted}>Visitors can&apos;t use it until you publish it.</p>}
       {refusal && (

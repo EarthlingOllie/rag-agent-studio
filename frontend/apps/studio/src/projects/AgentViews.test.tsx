@@ -68,7 +68,7 @@ test("the view crumb switches between Playground, Versions, Embed & limits and C
     ["Playground", agentPage(hrHelper.id)],
     ["Versions", agentPage(hrHelper.id, "/versions")],
     ["Embed & limits", agentPage(hrHelper.id, "/embed")],
-    ["Conversations", `/organisations/${organisationId}/projects/${hrProject.id}/conversations?agent=${hrHelper.id}`],
+    ["Conversations", agentPage(hrHelper.id, "/conversations")],
   ]);
   await userEvent.keyboard("{Escape}");
 

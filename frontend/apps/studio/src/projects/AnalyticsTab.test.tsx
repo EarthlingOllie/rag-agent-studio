@@ -39,7 +39,7 @@ function card(title: string): string {
   return screen.getByRole("listitem", { name: title }).textContent;
 }
 
-const lowConfidence = (title: string) => card(title).includes("Low confidence");
+const lowSample = (title: string) => card(title).includes("Low sample");
 
 test("an Editor sees the Live Version's KPI cards, with the interval and sample size, small samples marked", async () => {
   const { queries } = setUp();
@@ -51,13 +51,13 @@ test("an Editor sees the Live Version's KPI cards, with the interval and sample 
   expect(screen.getByLabelText("Version")).toHaveDisplayValue("v2 (Live)");
   expect(within(screen.getByLabelText("Version")).getAllByRole("option").map((o) => o.textContent)).toEqual(["v2 (Live)", "v1"]);
   expect(screen.getByText(/2026-10-08 to 2026-11-06 \(UTC days\), including today so far/)).toBeInTheDocument();
-  expect(card("Volume")).toBe("Volume3 Conversations4 repliesLow confidence (fewer than 30 Conversations)");
+  expect(card("Volume")).toBe("VolumeLow sample3 Conversations4 replies");
   expect(card("Tokens per reply")).toBe("Tokens per reply120 meanp95 300n = 3 replies that asked a model");
   expect(card("Cost per Conversation")).toBe("Cost per Conversation$0.0012$0.0036 in total, at the prices of the time");
   expect(card("Thumbs-up rate")).toBe(
-    "Thumbs-up rate67%95% interval 21% to 94%n = 3 votes (2 up, 1 down)Low confidence (fewer than 30 votes)",
+    "Thumbs-up rateLow sample67%95% interval 21% to 94%n = 3 votes (2 up, 1 down)",
   );
-  expect(card("Mean rating")).toBe("Mean rating3.5 of 5n = 2 ratingsLow confidence (fewer than 30 ratings)");
+  expect(card("Mean rating")).toBe("Mean ratingLow sample3.5 of 5n = 2 ratings");
   expect(card("Fallback rate")).toBe("Fallback rate25%1 of 4 replies were the fallback text");
   expect(card("Guardrail block rate")).toBe("Guardrail block rate50%2 of 4 replies were blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latency1.5 sFirst token 320 msn = 4 replies");
@@ -73,8 +73,8 @@ test("a Version with enough evidence has no low-confidence marks", async () => {
   await userEvent.selectOptions(screen.getByLabelText("Version"), "v1");
 
   expect(screen.getByRole("list", { name: "Key numbers for v1" })).toBeInTheDocument();
-  expect(screen.queryByText(/Low confidence/)).not.toBeInTheDocument();
-  expect(["Volume", "Thumbs-up rate", "Mean rating"].map(lowConfidence)).toEqual([false, false, false]);
+  expect(screen.queryByText("Low sample")).not.toBeInTheDocument();
+  expect(["Volume", "Thumbs-up rate", "Mean rating"].map(lowSample)).toEqual([false, false, false]);
   expect(card("Volume")).toBe("Volume120 Conversations400 replies");
   expect(card("Thumbs-up rate")).toBe("Thumbs-up rate80%95% interval 63% to 90%n = 30 votes (24 up, 6 down)");
   expect(card("Cost per Conversation")).toBe("Cost per Conversation$1.25$150.00 in total, at the prices of the time");
@@ -90,11 +90,11 @@ test("a Version with no Visitor use yet says so on every card", async () => {
   renderStudio(analyticsTab);
 
   expect(await screen.findByRole("list", { name: "Key numbers for v1" })).toBeInTheDocument();
-  expect(card("Volume")).toBe("Volume0 Conversations0 repliesLow confidence (fewer than 30 Conversations)");
+  expect(card("Volume")).toBe("VolumeLow sample0 Conversations0 replies");
   expect(card("Tokens per reply")).toBe("Tokens per replyNo replies yetn = 0 replies that asked a model");
   expect(card("Cost per Conversation")).toBe("Cost per ConversationNo Conversations yet$0.00 in total, at the prices of the time");
-  expect(card("Thumbs-up rate")).toBe("Thumbs-up rateNo votes yetn = 0 votes (0 up, 0 down)Low confidence (fewer than 30 votes)");
-  expect(card("Mean rating")).toBe("Mean ratingNo ratings yetn = 0 ratingsLow confidence (fewer than 30 ratings)");
+  expect(card("Thumbs-up rate")).toBe("Thumbs-up rateLow sampleNo votes yetn = 0 votes (0 up, 0 down)");
+  expect(card("Mean rating")).toBe("Mean ratingLow sampleNo ratings yetn = 0 ratings");
   expect(card("Fallback rate")).toBe("Fallback rateNo replies yet0 of 0 replies were the fallback text");
   expect(card("Guardrail block rate")).toBe("Guardrail block rateNo replies yet0 of 0 replies were blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latencyNo replies yetn = 0 replies");
@@ -117,11 +117,11 @@ test("one of each is counted in the singular", async () => {
 
   // Not Live: the newest Version is shown.
   expect(await screen.findByRole("list", { name: "Key numbers for v3" })).toBeInTheDocument();
-  expect(card("Volume")).toBe("Volume1 Conversation1 replyLow confidence (fewer than 30 Conversations)");
+  expect(card("Volume")).toBe("VolumeLow sample1 Conversation1 reply");
   expect(card("Tokens per reply")).toBe("Tokens per reply80 meanp95 80n = 1 reply that asked a model");
   expect(card("Cost per Conversation")).toBe("Cost per Conversation$0.00$0.00 in total, at the prices of the time");
-  expect(card("Thumbs-up rate")).toBe("Thumbs-up rate100%95% interval 21% to 100%n = 1 vote (1 up, 0 down)Low confidence (fewer than 30 votes)");
-  expect(card("Mean rating")).toBe("Mean rating5.0 of 5n = 1 ratingLow confidence (fewer than 30 ratings)");
+  expect(card("Thumbs-up rate")).toBe("Thumbs-up rateLow sample100%95% interval 21% to 100%n = 1 vote (1 up, 0 down)");
+  expect(card("Mean rating")).toBe("Mean ratingLow sample5.0 of 5n = 1 rating");
   expect(card("Guardrail block rate")).toBe("Guardrail block rate100%1 of 1 reply was blocked by the input Guardrail");
   expect(card("p95 latency")).toBe("p95 latency999 msFirst token 0 msn = 1 reply");
 });
@@ -182,7 +182,7 @@ test("the tab says so while the Agents load and when they can't be loaded", asyn
   );
   renderStudio(analyticsTab);
 
-  expect(await screen.findByText("Loading the Agents…")).toBeInTheDocument();
+  expect(await screen.findByRole("status", { name: "Loading the Agents" })).toBeInTheDocument();
   expect(await screen.findByRole("alert")).toHaveTextContent("The Agents could not be loaded. Try again shortly.");
 });
 
@@ -242,7 +242,7 @@ test("an Editor compares two Versions side by side, with the differences highlig
   expect(compared("p95 time to first token (ms)")).toEqual(["950 ms", "320 ms", "−630 ms", "v2"]);
   expect(compared("p95 total latency (ms)")).toEqual(["2.4 s", "1.5 s", "−920 ms", "v2"]);
   // Rows that differ are highlighted; the Version a metric favours is named in words too.
-  expect(rowOf("Mean tokens per reply")).toHaveClass("bg-amber-50");
+  expect(rowOf("Mean tokens per reply")).toHaveClass("bg-flag-soft");
   expect(queries.map((q) => q.toString())).toEqual([`a=${largeSample.version_id}&b=${smallSample.version_id}`]);
 });
 
@@ -373,10 +373,10 @@ test("the Editor picks any two Versions; the same one twice is not compared", as
   expect(compared("Conversations (small sample)")).toEqual(["5", "120", "+115", ""]);
   // A side with no value has no difference; nothing on either side is the same.
   expect(compared("Mean rating (small sample)")).toEqual(["—", "4.25", "—", ""]);
-  expect(rowOf("Mean rating (small sample)")).toHaveClass("bg-amber-50");
+  expect(rowOf("Mean rating (small sample)")).toHaveClass("bg-flag-soft");
   expect(compared("Fallback rate")).toEqual(["—", "—", "Same", ""]);
   expect(compared("Replies")).toEqual(["5", "5", "Same", ""]);
-  expect(rowOf("Replies")).not.toHaveClass("bg-amber-50");
+  expect(rowOf("Replies")).not.toHaveClass("bg-flag-soft");
   expect(screen.getByText("No differences: v3 and v1 have the same settings.")).toBeInTheDocument();
   // The pair asked for each time; never the same Version twice.
   expect(queries.map((q) => [q.get("a"), q.get("b")])).toEqual([
@@ -397,6 +397,6 @@ test("the comparison says so while it loads", async () => {
   setUp();
   renderStudio(analyticsTab);
 
-  expect(await screen.findByText("Comparing the Versions…")).toBeInTheDocument();
+  expect(await screen.findByRole("status", { name: "Comparing the Versions" })).toBeInTheDocument();
   expect(await screen.findByRole("table", { name: "v1 compared with v2" })).toBeInTheDocument();
 });

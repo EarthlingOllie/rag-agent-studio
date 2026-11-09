@@ -22,6 +22,11 @@ function setUp(options: Parameters<typeof fakeTimeSeriesApi>[0] = {}) {
   return fakeTimeSeriesApi(options);
 }
 
+/** Shows the series as a table (the chart is shown first). */
+async function showTable(section: HTMLElement) {
+  await userEvent.click(await within(section).findByRole("radio", { name: "Table" }));
+}
+
 /** The numbers behind the chart, row by row, as the Editor reads them. */
 function rows(): string[][] {
   const table = screen.getByRole("table", { name: /the numbers behind the chart/ });
@@ -40,16 +45,10 @@ test("the time series shows the metric per day with markers where the Live Versi
   const { container } = renderStudio(analyticsTab);
 
   const section = await screen.findByRole("region", { name: "Over time" });
-  expect(await within(section).findByRole("table")).toBeInTheDocument();
+  expect(await within(section).findByRole("figure")).toBeInTheDocument();
   expect(within(section).getByLabelText("Metric")).toHaveDisplayValue("Conversations");
   expect(within(section).getByLabelText("Granularity")).toHaveDisplayValue("Day");
   expect(screen.getByText(/Conversations per day, from 2026-11-03 until 2026-11-06 \(UTC\)/)).toBeInTheDocument();
-  expect(rows()).toEqual([
-    ["Period", "Conversations", "n (Conversations)"],
-    ["2026-11-04", "No data", "0"],
-    ["2026-11-05", "1", "1"],
-    ["2026-11-06", "0", "4"],
-  ]);
   // Every Live History entry is listed, and marked on the chart at its day's point.
   expect(within(screen.getByRole("list", { name: "Live Version changes" })).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
     "2026-11-05: v1 published",
@@ -58,9 +57,19 @@ test("the time series shows the metric per day with markers where the Live Versi
   ]);
   const lines = container.querySelectorAll(".recharts-reference-line");
   expect([...lines].map((line) => line.textContent)).toEqual(["v1", "v2, v1"]);
-  expect(container.querySelector(".recharts-line")).not.toBeNull();
-  // No Documents changed: no confounder note.
+  expect(container.querySelector(".recharts-area")).not.toBeNull();
+  // No Documents changed: no confounder note, and no band.
   expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  expect(container.querySelector(".recharts-reference-area")).toBeNull();
+
+  await showTable(section);
+
+  expect(rows()).toEqual([
+    ["Period", "Conversations", "n (Conversations)"],
+    ["2026-11-04", "No data", "0"],
+    ["2026-11-05", "1", "1"],
+    ["2026-11-06", "0", "4"],
+  ]);
   expect(queries.map(({ agentId, query }) => [agentId, query.toString()])).toEqual([[hrHelper.id, "metric=conversations&granularity=day"]]);
 });
 
@@ -82,7 +91,7 @@ test("each metric reads in its own units, with what its sample size counts", asy
   });
   renderStudio(analyticsTab);
   const section = await screen.findByRole("region", { name: "Over time" });
-  await within(section).findByRole("table");
+  await showTable(section);
 
   const options = within(within(section).getByLabelText("Metric")).getAllByRole("option");
   expect(options.map((o) => o.textContent)).toEqual([
@@ -120,7 +129,7 @@ test("the Editor chooses the granularity, and the tab's dates set the range", as
   });
   const { container } = renderStudio(analyticsTab);
   const section = await screen.findByRole("region", { name: "Over time" });
-  await within(section).findByRole("table");
+  await within(section).findByRole("figure");
 
   await userEvent.type(screen.getByLabelText("From (UTC)"), "2026-11-01");
   await userEvent.type(screen.getByLabelText("To (UTC)"), "2026-11-08");
@@ -128,11 +137,12 @@ test("the Editor chooses the granularity, and the tab's dates set the range", as
 
   expect(await screen.findByText(/Conversations per week, from 2026-11-01 until 2026-11-08/)).toBeInTheDocument();
   expect(within(section).getByLabelText("Granularity")).toHaveDisplayValue("Week");
+  expect([...container.querySelectorAll(".recharts-reference-line")].map((line) => line.textContent)).toEqual(["v2, v1"]);
+  await showTable(section);
   expect(rows().slice(1)).toEqual([
     ["2026-11-01", "2", "2"],
     ["2026-11-02 to 2026-11-08", "5", "5"],
   ]);
-  expect([...container.querySelectorAll(".recharts-reference-line")].map((line) => line.textContent)).toEqual(["v2, v1"]);
   expect(within(screen.getByRole("list", { name: "Live Version changes" })).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
     "2026-11-04: v2 bulk published (from v1)",
     "2026-11-05: v1 bulk reverted to (from v2)",
@@ -158,7 +168,8 @@ test("an action the Studio doesn't know yet is shown as the API names it", async
   setUp({ respond: () => ({ markers: [marker("2026-11-05", 1, 2, "scheduled_publish")] }) });
   renderStudio(analyticsTab);
 
-  expect(await screen.findByText("2026-11-05: v2 scheduled_publish (from v1)")).toBeInTheDocument();
+  const changes = await screen.findByRole("list", { name: "Live Version changes" });
+  expect(within(changes).getByRole("listitem")).toHaveTextContent(/^2026-11-05: v2 scheduled_publish \(from v1\)$/);
 });
 
 test.each([
@@ -187,7 +198,7 @@ test("a range the API refuses is explained in the time series too", async () => 
   renderStudio(analyticsTab);
   const section = await screen.findByRole("region", { name: "Over time" });
 
-  expect(within(section).getByRole("status")).toHaveTextContent("Loading the time series…");
+  expect(within(section).getByRole("status", { name: "Loading the time series" })).toBeInTheDocument();
   expect(await within(section).findByRole("alert")).toHaveTextContent(
     "Check the dates: From can't be after To, and the range can be at most 366 days.",
   );

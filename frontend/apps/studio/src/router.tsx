@@ -27,7 +27,13 @@ import { AgentEmbedView, AgentPage, AgentPlaygroundView, AgentVersionsView } fro
 import { AgentsTab } from "./projects/AgentsTab";
 import { AnalyticsTab } from "./projects/AnalyticsTab";
 import { ProjectLayout } from "./projects/ProjectPage";
-import { ConversationPage, ConversationsTab } from "./projects/ConversationsTab";
+import {
+  AgentConversationsView,
+  agentConversationFilters,
+  ConversationPage,
+  ConversationsTab,
+  NoConversationChosen,
+} from "./projects/ConversationsTab";
 import { conversationFilters } from "./projects/conversations";
 import { DocumentsTab } from "./projects/DocumentsTab";
 import { ProjectSettingsTab } from "./projects/ProjectSettingsTab";
@@ -118,25 +124,49 @@ const agentsTabRoute = createRoute({
   component: AgentsTab,
 });
 const agentRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents/$agentId", component: AgentPage });
-// An Agent's views, switched in the breadcrumb. Its Conversations are the Project's, filtered to it.
+// An Agent's views, switched in the breadcrumb.
 const agentPlaygroundRoute = createRoute({ getParentRoute: () => agentRoute, path: "/", component: AgentPlaygroundView });
 const agentVersionsRoute = createRoute({ getParentRoute: () => agentRoute, path: "/versions", component: AgentVersionsView });
 const agentEmbedRoute = createRoute({ getParentRoute: () => agentRoute, path: "/embed", component: AgentEmbedView });
+// The Agent's Conversations: the Project's list fixed to the Agent, beside the open Conversation.
+const agentConversationsRoute = createRoute({
+  getParentRoute: () => agentRoute,
+  path: "/conversations",
+  validateSearch: agentConversationFilters,
+  component: AgentConversationsView,
+});
+const agentConversationsIndexRoute = createRoute({
+  getParentRoute: () => agentConversationsRoute,
+  path: "/",
+  component: NoConversationChosen,
+});
+const agentConversationRoute = createRoute({
+  getParentRoute: () => agentConversationsRoute,
+  path: "/$conversationId",
+  component: ConversationPage,
+});
+// The Project's Conversations: the list, filtered by its URL so the filters survive opening a
+// Conversation, with the open one beside it.
 const conversationsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/conversations",
-  // The list's filters, so opening a Conversation and coming back keeps them.
   validateSearch: conversationFilters,
   component: ConversationsTab,
 });
+const conversationsIndexRoute = createRoute({ getParentRoute: () => conversationsTabRoute, path: "/", component: NoConversationChosen });
 const conversationRoute = createRoute({
-  getParentRoute: () => projectRoute,
-  path: "/conversations/$conversationId",
-  // The list's filters, carried to the way back.
-  validateSearch: conversationFilters,
+  getParentRoute: () => conversationsTabRoute,
+  path: "/$conversationId",
   component: ConversationPage,
 });
-const analyticsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/analytics", component: AnalyticsTab });
+// Analytics is filtered to one Agent, as `?agent=` (each Agent's views link to it).
+const analyticsTabRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/analytics",
+  validateSearch: (search: Record<string, unknown>): { agent?: string } =>
+    typeof search.agent === "string" && search.agent !== "" ? { agent: search.agent } : {},
+  component: AnalyticsTab,
+});
 const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });
 const costRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/cost", component: CostPage });
 const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
@@ -183,9 +213,13 @@ const routeTree = rootRoute.addChildren([
         documentViewerRoute,
         instructionsTabRoute,
         agentsTabRoute,
-        agentRoute.addChildren([agentPlaygroundRoute, agentVersionsRoute, agentEmbedRoute]),
-        conversationsTabRoute,
-        conversationRoute,
+        agentRoute.addChildren([
+          agentPlaygroundRoute,
+          agentVersionsRoute,
+          agentEmbedRoute,
+          agentConversationsRoute.addChildren([agentConversationsIndexRoute, agentConversationRoute]),
+        ]),
+        conversationsTabRoute.addChildren([conversationsIndexRoute, conversationRoute]),
         analyticsTabRoute,
         projectSettingsTabRoute,
       ]),
