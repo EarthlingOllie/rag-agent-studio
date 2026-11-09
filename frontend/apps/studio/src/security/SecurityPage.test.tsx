@@ -47,10 +47,17 @@ test("a Member enrols with a QR code and a confirming code, and sees the recover
   await user.click(screen.getByRole("button", { name: "Set up two-factor authentication" }));
 
   expect(await screen.findByRole("img", { name: "QR code for your authenticator app" })).toHaveAttribute("src", QR_CODE);
-  expect(screen.getByText(SECRET)).toBeInTheDocument();
+  // The QR code and its fallback key sit on their own card inside the set-up card.
+  const qrCard = within(
+    within(screen.getByRole("region", { name: "Set up your authenticator app" })).getByRole("figure", { name: /Can't scan it/ }),
+  );
+  expect(qrCard.getByRole("img", { name: "QR code for your authenticator app" })).toBeInTheDocument();
+  expect(qrCard.getByText(SECRET)).toBeInTheDocument();
   await fillAndSubmit("Confirm your authenticator app", { "Code from your app": GOOD_CODE }, "Turn on");
 
-  const list = await screen.findByRole("list", { name: "Recovery codes" });
+  const list = within(await screen.findByRole("region", { name: "Save your recovery codes" })).getByRole("list", {
+    name: "Recovery codes",
+  });
   expect(within(list).getAllByRole("listitem").map((item) => item.textContent)).toEqual(recoveryCodes("A"));
   expect(screen.getByText(/they won't be shown again/)).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "I've saved my recovery codes" }));
@@ -109,7 +116,7 @@ test("shows that the settings are loading", async () => {
   server.use(http.get("*/api/auth/mfa", () => delay("infinite")));
   openSecurity();
 
-  expect(await screen.findByText("Loading…", { selector: "section p" })).toBeInTheDocument();
+  expect(await screen.findByRole("status", { name: "Loading your security settings" })).toHaveAttribute("aria-busy", "true");
 });
 
 test("a Member with MFA makes new recovery codes with a code", async () => {

@@ -1,24 +1,22 @@
+import { Status, table } from "../design";
 import { useHealth, useWorkerHealth } from "./health";
 
 type State = "ok" | "error" | "pending";
 
 const LABELS: Record<State, string> = { ok: "OK", error: "Unavailable", pending: "Checking…" };
-const TONES: Record<State, string> = {
-  ok: "bg-accent-soft text-accent-ink",
-  error: "bg-danger-soft text-danger",
-  pending: "bg-sunken text-muted",
-};
+const TONES = { ok: "ready", error: "failed", pending: "working" } as const;
 
+/** One dependency: its name, a `Status` dot with the word, and what it said. */
 function StatusRow({ name, state, detail }: { name: string; state: State; detail?: string }) {
   return (
-    <tr className="border-t border-line">
-      <th scope="row" className="py-3 pr-6 text-left font-medium">
+    <tr className={table.row}>
+      <th scope="row" className={`${table.td} text-left font-medium`}>
         {name}
       </th>
-      <td className="py-3 pr-6">
-        <span className={`rounded px-2 py-0.5 text-sm ${TONES[state]}`}>{LABELS[state]}</span>
+      <td className={table.td}>
+        <Status tone={TONES[state]}>{LABELS[state]}</Status>
       </td>
-      <td className="py-3 text-sm text-muted">{detail}</td>
+      <td className={table.tdMuted}>{detail}</td>
     </tr>
   );
 }
@@ -48,16 +46,16 @@ export function StatusPage() {
   }
 
   return (
-    <section aria-labelledby="status-heading" className="space-y-6">
+    <section aria-labelledby="status-heading" className="flex flex-col gap-6">
       <div>
-        <h1 id="status-heading" className="text-2xl font-semibold">
+        <h1 id="status-heading" className="text-2xl font-medium tracking-[-0.01em] text-ink">
           System status
         </h1>
-        <p className="mt-1 text-muted" role="status">
+        <p className="mt-1 text-sm text-muted" role="status">
           {summary}
         </p>
       </div>
-      <table className="w-full rounded-lg bg-surface">
+      <table className={`${table.table} border-b border-line-soft`}>
         <tbody>
           <StatusRow name="API" state={apiState} />
           <StatusRow name="Database" state={dependencyState(checks?.database)} />
