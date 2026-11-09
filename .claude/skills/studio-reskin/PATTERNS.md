@@ -36,7 +36,8 @@ Adapt names to the code as you find it; other agents keep changing these pages.
 @import "./design/tokens.css";
 ```
 
-Also swap the markdown block's palette classes for tokens (`border-line`, `bg-sunken`).
+Also swap the markdown block's palette classes for tokens (`border-line`, `bg-sunken`), and give `code`
+and `pre` `text-ink` so their text contrasts with the sunken fill on a page still on palette colours.
 
 `index.html` `<head>`:
 
