@@ -13,7 +13,7 @@
 - [11-11: Organisation settings](11-organisation-settings.md)
 - [11-12: Signed-out pages, profile, security and status](12-signed-out-account-pages.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The latest `candidate` is merged in and any feature UI it brings is reskinned, so `candidate-reskin` can merge back into `candidate` cleanly
 - [ ] The palette count is zero; the ratchet becomes "none allowed" and the baseline file is deleted
