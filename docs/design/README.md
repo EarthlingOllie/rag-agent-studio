@@ -125,8 +125,8 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   Projects" (archived Projects are opened from the Projects list); a section switcher lists the
   sections with icons and number hints (1–6); an Agent switcher lists the Project's open Agents
   (an archived Agent is opened from the Agents list); an Agent's view switcher lists Playground,
-  Versions, Embed & limits and Conversations (which opens the Project's Conversations filtered to
-  the Agent).
+  Versions, Embed & limits and Conversations (the Conversations list fixed to the Agent, built in
+  11-10; a Conversation opened from it keeps the Agent's crumbs).
 - Inside a Project the Organisation's section switcher stays, as an ancestor crumb, so Cost,
   Settings and Security are one click away from any Project, as they were from the side menu.
 - Number hints are visual labels only (`aria-hidden`), so an item's name is just its label
@@ -160,9 +160,26 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   on the right (New Agent opens a `Dialog`). The Agents list is a `table.wrap` card with a
   `Segmented` Active / Archived filter, the Live state as `Badge`s (Live + version chip, Not
   live, Draft, Budget spent, Blocked by guardrail) and checkboxes that bring up the `BulkBar`.
+- **Conversations** (built in 11-10): the section heading, then a toolbar of pill filters
+  (`field.filter` labels over `field.pill` selects and dates: Agent, Version, From, To, then the
+  Visitors / Playground / Both `Segmented`, Feedback, Rating, Guardrail). Under it the list (a
+  `surface.card` of compact items: the first question as the link, then mono time, Agent, a
+  Playground pill, Version numbers and labelled counts; the open one on `accent-soft`) with
+  `Pagination` and the "Page n of m" line, and beside it the transcript in a `surface.panel`:
+  questions as bubbles on the right, answers beside an avatar with a Version chip (or Draft), a
+  `blocked` badge when the input Guardrail refused, the feedback note on `sunken`, and the Trace
+  folded under each answer (`TraceFold`). Delete Conversation (Owners) confirms in a destructive
+  `ConfirmDialog`. Before one is chosen the transcript side is an `EmptyState`. An Agent's
+  Conversations view is the same, fixed to the Agent (no Agent filter).
+- **Analytics** (built in 11-10): the section heading, one toolbar (Agent, Version, From, To; the
+  Agent is in the URL as `?agent=`), the range line, then KPI cards (`text-[13px]` muted title,
+  mono value, interval and n under it; a small sample is dashed and muted with a `lowSample` badge
+  whose title says why), Compare two Versions (`table.wrap`, changed rows on `flag-soft`), and
+  Over time (the chart; see *Charts*).
 - **Agent page**: a header with the Agent's name, its `Badge`s (Live with the Version chip, or Not
-  live; Draft while there are unpublished changes) and a ⋯ menu (Discard Draft, Archive, or Delete
-  permanently on an archived Agent), then the view the breadcrumb chose.
+  live; Draft while there are unpublished changes), "Analytics for this Agent" (a ghost link to
+  Analytics filtered to it) and a ⋯ menu (Discard Draft, Archive, or Delete permanently on an
+  archived Agent), then the view the breadcrumb chose.
   - **Playground**: the Playground is the main column (max 720px, centred); configuration is a
     right-hand panel (360–420px) of collapsible `Section`s (Behaviour open; Retrieval, Experience,
     Guardrails collapsed with a mono summary; a section the API refused a setting in opens). The
@@ -304,6 +321,24 @@ when equal). `diffLines(before, after)` gives the same diff as data.
 - `EmptyState tone="error"`: the same shape, announced as an alert, for a list that failed to load.
 - `Skeleton`: grey bars where content is loading, announced once as "Loading…" (pass a `label`
   such as "Loading Documents"). Use it for the first load; keep stale content on screen on refetch.
+
+### Charts
+
+As built for Analytics' Over time (`projects/TimeSeriesChart.tsx`, Recharts):
+
+- One series per chart in `chart-1` (`var(--ds-chart-1)`): a 2px line with a 12% area fill, so no
+  legend is needed. Never two y-axes: a second metric is a second chart (or the Metric select).
+- Gridlines are horizontal only, in `line-soft`; ticks in `muted`, 12px.
+- Live markers are dashed rules (`muted`, 4 3) with a mono pill label on `surface` at the top
+  ("v2", or "v2, v1" for several changes in one period); the same changes are listed under the
+  chart.
+- Documents changed during the range: a `flag-soft` band over the plot with a warning icon and
+  "Documents changed", and the `notice.warning` note under the chart.
+- Hover: a crosshair (a dashed vertical cursor, a dashed horizontal rule and a ringed dot at the
+  point) and a readout on `surface.popover`, `role="status"` "Chart readout": the period (mono), the
+  value and its n. Days with no data read "No data".
+- A `Segmented` "Show as: Chart / Table" swaps in the Table view (`table.wrap`, numbers in mono),
+  which also serves screen readers. The `figure` is named by its caption.
 
 ### Selections and lists
 

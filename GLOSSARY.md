@@ -41,7 +41,7 @@ One of the six areas of a Project in the Studio, in this order: Documents, Instr
 _Avoid_: Tab, page, area
 
 **Agent view**:
-One of the four pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Project's Conversations with that Agent). The Member moves between them with the view switcher, the Breadcrumb's last level inside an Agent; the crumb before it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name.
+One of the four pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the view switcher, the Breadcrumb's last level inside an Agent; the crumb before it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
 _Avoid_: Agent tab, Agent section
 
 **Palette ratchet**:
@@ -636,7 +636,7 @@ _Avoid_: Session, chat, thread
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Conversations viewer**:
-The Project's Conversations tab in the Studio. It lists the Project's Conversations, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitor or Playground, by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), and by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none); each row shows its thumbs-up and thumbs-down counts, its current Conversation Rating and how many of its replies have a Guardrail outcome. Opening one shows its Messages, each Agent Message with the Agent Version or Draft that answered, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace in the Trace drawer, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. An Agent's page links to the viewer filtered to that Agent. Any Member can use it.
+The Project's Conversations section in the Studio, also each Agent's Conversations view (there fixed to the Agent). It lists the Project's Conversations beside the open one's transcript, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitors, Playground or Both (a segmented choice), by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), and by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none); each listed Conversation shows its thumbs-up and thumbs-down counts, its current Conversation Rating and how many of its replies have a Guardrail outcome, and a long list is paged. Opening one shows its Messages beside the list, each Agent Message with the Agent Version (a Version chip) or Draft that answered, a "Blocked by guardrail" badge when the input Guardrail blocked the question, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace folded under it, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. Any Member can use it.
 _Avoid_: Chat log, transcript list
 
 **Message Feedback**:
@@ -644,7 +644,7 @@ A Visitor's thumbs-up or thumbs-down, with an optional comment (up to 1000 chara
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown in the Trace drawer, in the Playground and in the Conversations viewer.
+The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:
@@ -660,7 +660,7 @@ The append-only record of a Conversation's Conversation Ratings: the first ratin
 _Avoid_: Rating history
 
 **Version KPIs**:
-An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics tab: volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
+An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics section (a small sample marked Low sample): volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
 _Avoid_: Stats, dashboard numbers
 
 **Usage rollup**:
@@ -688,15 +688,15 @@ An Owner's removal of one Conversation's text on request (a Visitor's deletion r
 _Avoid_: Erasing a Conversation, removing a chat
 
 **Tombstone**:
-What a Trace keeps of a Message retrieval whose Document was deleted: the Document's name when the answer was given (its Chunk and Document IDs are cleared). The Trace drawer shows "Chunk from deleted Document <name>", so history stays readable.
+What a Trace keeps of a Message retrieval whose Document was deleted: the Document's name when the answer was given (its Chunk and Document IDs are cleared). The Trace shows "Chunk from deleted Document <name>", so history stays readable.
 _Avoid_: Broken reference, orphan
 
-**Low confidence**:
-The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.
-_Avoid_: Insufficient data, greyed out
+**Low sample**:
+The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and carries a "Low sample" badge whose title gives the reason ("Fewer than 30 votes"). A deliberate product choice: keep it when redesigning. The Version comparison marks such a metric "(small sample)".
+_Avoid_: Low confidence (its earlier label), insufficient data, greyed out
 
 **Version comparison**:
-Any two Versions of an Agent (the first and the second) side by side over a chosen range of UTC days, in the Analytics tab: every Version KPI for each, the difference (second minus first; rates in percentage points), and the Version a metric favours. Rows whose values differ are highlighted, and a metric whose sample is small on either side is marked "(small sample)". The configuration diff from the first Version to the second (the Agent diff, pinned Project Instructions included) is shown alongside, and the comparison can be exported as CSV. By default the Live Version (else the newest) is compared with the newest other one. Only Visitor Conversations count.
+Any two Versions of an Agent (the first and the second) side by side over a chosen range of UTC days, in the Analytics section: every Version KPI for each, the difference (second minus first; rates in percentage points), and the Version a metric favours. Rows whose values differ are highlighted, and a metric whose sample is small on either side is marked "(small sample)". The configuration diff from the first Version to the second (the Agent diff, pinned Project Instructions included) is shown alongside, and the comparison can be exported as CSV. By default the Live Version (else the newest) is compared with the newest other one. Only Visitor Conversations count.
 _Avoid_: A/B test, benchmark
 
 **Better side**:
@@ -704,15 +704,19 @@ The Version a compared metric favours. A higher thumbs-up rate or mean rating is
 _Avoid_: Winner
 
 **Time series**:
-One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate or p95 latency) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown as a chart in the Project's Analytics tab with each point's sample size. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
+One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate or p95 latency) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown in the Project's Analytics section as a chart (one line with an area fill, a hover readout of each point's period, value and sample size, and never two y-axes) or as its Table view. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
 _Avoid_: Trend graph, history chart
 
+**Table view**:
+The Time series as a table instead of a chart, chosen with "Show as: Chart / Table": each period, its value and its sample size (n). The numbers behind the chart, readable by screen readers and for exact values.
+_Avoid_: Data grid, raw data
+
 **Live History marker**:
-A mark on the Time series at a Live History entry made during its range: the day, the action (publish, revert, bulk publish or bulk revert) and the Versions from and to, so an Editor can see the effect of each release.
+A mark on the Time series at a Live History entry made during its range, drawn as a dashed rule labelled with the Version made Live (listed below the chart too): the day, the action (publish, revert, bulk publish or bulk revert) and the Versions from and to, so an Editor can see the effect of each release.
 _Avoid_: Release line, annotation
 
 **Confounder note**:
-The warning under the Time series when the Project's Knowledge Base changed during its range: how many Documents were added, replaced or processed again, and how many were deleted. Documents aren't versioned (ADR-0003), so answers can change without the Live Version changing, and a difference across a marker may be the Documents' doing.
+The warning under the Time series when the Project's Knowledge Base changed during its range: how many Documents were added, replaced or processed again, and how many were deleted. Documents aren't versioned (ADR-0003), so answers can change without the Live Version changing, and a difference across a marker may be the Documents' doing. The chart draws the range as a "Documents changed" band; the API counts the changes for the whole range, not per day.
 _Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
