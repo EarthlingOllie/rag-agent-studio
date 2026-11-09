@@ -39,6 +39,7 @@ import { aChunk, aDocument, aTag, fakeDocumentsApi, fakeDocumentViewerApi } from
 import { fakeAcceptApi, fakeInvitesApi, previewFor } from "../../../../frontend/apps/studio/src/test/invites";
 import { fakeMembersApi } from "../../../../frontend/apps/studio/src/test/members";
 import { fakeMfaApi } from "../../../../frontend/apps/studio/src/test/mfa";
+import { adaInTwo, fakeSwitcherApi } from "../../../../frontend/apps/studio/src/test/organisations";
 import { fakeModelsApi, fakePricesApi } from "../../../../frontend/apps/studio/src/test/models";
 import { fakeProjectsApi, hrProject, instructionsVersion } from "../../../../frontend/apps/studio/src/test/projects";
 import { fakeRetentionApi } from "../../../../frontend/apps/studio/src/test/retention";
@@ -429,6 +430,22 @@ test("a keyboard-only pass of every switcher, menu and dialog", async () => {
     expectThat(presses > 0 && appearance === "dark", `Tab ×${String(presses)}, Enter on Switch to dark mode: data-appearance=${String(appearance)}, focus on ${(await focused(page)).label}`);
     await page.keyboard.press("Enter");
     expectThat((await page.evaluate(() => document.documentElement.dataset.appearance)) === "light", "Enter again switches back to light");
+    await page.close();
+  }
+
+  // 3b. The Organisation switcher, which a Member of two Organisations has.
+  {
+    const page = await context.newPage();
+    signedIn(false);
+    fakeSwitcherApi(adaInTwo());
+    await page.goto(SIGNED_IN.find((t) => t.name === "projects")!.path);
+    await page.locator("h1").first().waitFor();
+    await page.waitForLoadState("networkidle");
+    log.push("the Organisation switcher (Ada in two Organisations)");
+    const presses = await tabTo(page, (label) => label.endsWith(', Organisations"'));
+    const trigger = (await focused(page)).label;
+    expectThat(presses > 0, `Tab ×${String(presses)} reaches ${trigger}`);
+    if (presses > 0) await checkMenu(page, trigger);
     await page.close();
   }
 
