@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { menuButton, openSection, sectionNames } from "../test/navigation";
+import { currentSection, menuButton, openSection, sectionNames } from "../test/navigation";
 import { fakeProjectsApi } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -40,7 +40,7 @@ test("the section switcher offers the Organisation's sections as links and opens
   renderStudio("/");
   expect(await screen.findByText(/No Projects yet/)).toBeInTheDocument();
 
-  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security"]);
+  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
   await userEvent.click(await menuButton("Organisation sections"));
   const sections = within(screen.getByRole("menu", { name: "Organisation sections" }));
   expect(sections.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
@@ -89,19 +89,32 @@ test("a Project that can't be loaded is a plain crumb", async () => {
   );
 });
 
-test("the account menu opens the Profile, which is then the current crumb", async () => {
+test("the account menu opens the Profile and Security, which are then the current section", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/");
   await screen.findByRole("heading", { name: "Projects" });
 
-  expect(await sectionNames("Account")).toEqual(["Profile", "Sign out"]);
+  expect(await sectionNames("Account")).toEqual(["Profile", "Security", "Sign out"]);
   await openSection("Account", "Profile");
 
   expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
-  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Profile")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  expect(await currentSection("Organisation sections")).toBe("Profile");
+  expect(await menuButton("Organisation sections")).toHaveAttribute("aria-current", "page");
+
+  await openSection("Account", "Security");
+
+  expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
+  expect(await currentSection("Organisation sections")).toBe("Security");
+});
+
+test("the breadcrumb's section switcher reaches the Profile", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio("/");
+  await screen.findByRole("heading", { name: "Projects" });
+
+  await openSection("Organisation sections", "Profile");
+
+  expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
 });
 
 test("signing out ends the session and returns to sign-in", async () => {
@@ -146,7 +159,7 @@ test("shows a loading state while the session is checked", async () => {
   server.use(http.get("*/api/auth/me", () => delay("infinite")));
   renderStudio("/");
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Loading…");
+  expect(await screen.findByRole("status", { name: "Loading the Studio" })).toHaveAttribute("aria-busy", "true");
 });
 
 test("says when the API cannot be reached", async () => {
@@ -160,7 +173,8 @@ test("tells a Member with no Organisation that they don't belong to one", async 
   fakeAuthApi({ signedInAs: { ...adaSession, organisations: [], active_organisation_id: null } });
   renderStudio("/");
 
-  expect(await screen.findByText("You don't belong to any Organisation yet.")).toHaveRole("status");
+  expect(await screen.findByRole("heading", { name: "You don't belong to any Organisation yet." })).toBeInTheDocument();
+  expect(screen.getByText(/Ask an Owner to invite you/)).toBeInTheDocument();
 });
 
 test("an Organisation the Member doesn't belong to is not found", async () => {
@@ -181,7 +195,8 @@ test("the status page links back to the Studio", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/status");
 
-  await userEvent.click(await screen.findByRole("link", { name: "RAG Agent Studio" }));
+  expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+  await userEvent.click(await screen.findByRole("link", { name: "Studio home" }));
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
 });

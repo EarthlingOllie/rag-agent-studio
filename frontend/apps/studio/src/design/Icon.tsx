@@ -6,6 +6,7 @@ const PATHS = {
   documents: "M7 3h7l5 5v13H7zM14 3v5h5",
   instructions: "M5 5h14M5 10h14M5 15h9M5 20h6",
   agents: "M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM5 21c0-4 3-6 7-6s7 2 7 6",
+  profile: "M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM5 21c0-4 3-6 7-6s7 2 7 6",
   conversations: "M4 5h16v11H9l-5 4z",
   analytics: "M5 20V10M12 20V4M19 20v-7",
   settings:
