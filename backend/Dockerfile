@@ -38,6 +38,12 @@ COPY alembic.ini ./
 COPY app ./app
 COPY migrations ./migrations
 
+# The demo Documents, so the seed (`python -m app.seed`, whose default assets folder is /seed) also
+# runs as a one-off ECS task in AWS (ticket 10-05). They live in the repository's seed folder, which
+# every build passes as the `seed` build context (Makefile `images`, docker-compose.yml). `make seed`
+# mounts the same folder over this one.
+COPY --from=seed documents /seed/documents
+
 # The local Embedding Model, its tokenizer, the input Guardrail's prompt-injection classifier
 # (ONNX, loaded once here to check it works) and (with PDF) the Docling models the PDF pipeline
 # uses (layout, table structure and RapidOCR's) are downloaded at build time, so the worker

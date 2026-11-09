@@ -4,6 +4,9 @@ name: rag-agent-studio
 x-backend: &backend
   build:
     context: ./backend
+    # The demo Documents the image carries at /seed (ticket 10-05; COPY --from=seed in the Dockerfile).
+    additional_contexts:
+      seed: ./seed
     args:
       # PDF conversion (Docling's layout models, PyTorch CPU) and the bundled models make the
       # image large; set these to false in .env for a lighter image without PDF support.

@@ -1,0 +1,89 @@
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /var/lib/postgresql/data ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /var/lib/postgresql/data -l logfile start
+
+initdb: warning: enabling "trust" authentication for local connections
+initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+waiting for server to start....2026-11-08 23:55:59.861 UTC [55] LOG:  starting PostgreSQL 16.12 (Debian 16.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-08 23:55:59.905 UTC [55] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-08 23:55:59.956 UTC [58] LOG:  database system was shut down at 2026-11-08 23:55:59 UTC
+2026-11-08 23:55:59.981 UTC [55] LOG:  database system is ready to accept connections
+ done
+server started
+CREATE DATABASE
+
+
+/usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/10-create-test-database.sql
+CREATE DATABASE
+
+
+waiting for server to shut down...2026-11-08 23:56:01.033 UTC [55] LOG:  received fast shutdown request
+.2026-11-08 23:56:01.034 UTC [55] LOG:  aborting any active transactions
+2026-11-08 23:56:01.042 UTC [55] LOG:  background worker "logical replication launcher" (PID 61) exited with exit code 1
+2026-11-08 23:56:01.042 UTC [56] LOG:  shutting down
+2026-11-08 23:56:01.043 UTC [56] LOG:  checkpoint starting: shutdown immediate
+2026-11-08 23:56:01.267 UTC [56] LOG:  checkpoint complete: wrote 1838 buffers (11.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.034 s, sync=0.188 s, total=0.225 s; sync files=597, longest=0.025 s, average=0.001 s; distance=8510 kB, estimate=8510 kB; lsn=0/1D39B90, redo lsn=0/1D39B90
+2026-11-08 23:56:01.294 UTC [55] LOG:  database system is shut down
+ done
+server stopped
+
+PostgreSQL init process complete; ready for start up.
+
+2026-11-08 23:56:01.361 UTC [1] LOG:  starting PostgreSQL 16.12 (Debian 16.12-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-08 23:56:01.363 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-08 23:56:01.364 UTC [1] LOG:  could not create IPv6 socket for address "::": Address family not supported by protocol
+2026-11-08 23:56:01.365 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-08 23:56:01.370 UTC [73] LOG:  database system was shut down at 2026-11-08 23:56:01 UTC
+2026-11-08 23:56:01.407 UTC [1] LOG:  database system is ready to accept connections
+2026-11-08 23:57:38.830 UTC [1] LOG:  server process (PID 300) was terminated by signal 13: Broken pipe
+2026-11-08 23:57:38.835 UTC [1] LOG:  terminating any other active server processes
+2026-11-08 23:57:38.853 UTC [1] LOG:  all server processes terminated; reinitializing
+2026-11-08 23:57:39.037 UTC [310] LOG:  database system was interrupted; last known up at 2026-11-08 23:56:01 UTC
+2026-11-08 23:57:39.744 UTC [313] FATAL:  the database system is in recovery mode
+2026-11-08 23:57:40.105 UTC [314] FATAL:  the database system is in recovery mode
+2026-11-08 23:57:40.514 UTC [310] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-11-08 23:57:40.561 UTC [310] LOG:  redo starts at 0/1D39C08
+2026-11-08 23:57:40.782 UTC [310] LOG:  invalid record length at 0/1FDDB18: expected at least 24, got 0
+2026-11-08 23:57:40.782 UTC [310] LOG:  redo done at 0/1FDDAE0 system usage: CPU: user: 0.00 s, system: 0.02 s, elapsed: 0.22 s
+2026-11-08 23:57:40.817 UTC [311] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-11-08 23:57:41.170 UTC [311] LOG:  checkpoint complete: wrote 515 buffers (3.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.133 s, sync=0.141 s, total=0.354 s; sync files=310, longest=0.033 s, average=0.001 s; distance=2703 kB, estimate=2703 kB; lsn=0/1FDDB18, redo lsn=0/1FDDB18
+2026-11-08 23:57:41.210 UTC [1] LOG:  database system is ready to accept connections
+2026-11-09 00:02:35.800 UTC [1] LOG:  server process (PID 585) exited with exit code 2
+2026-11-09 00:02:36.344 UTC [1] LOG:  terminating any other active server processes
+2026-11-09 00:02:37.311 UTC [586] LOG:  could not send data to client: Broken pipe
+2026-11-09 00:02:37.390 UTC [1] LOG:  all server processes terminated; reinitializing
+2026-11-09 00:02:38.714 UTC [587] LOG:  database system was interrupted; last known up at 2026-11-08 23:57:41 UTC
+2026-11-09 00:02:41.203 UTC [587] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-11-09 00:02:41.505 UTC [587] LOG:  redo starts at 0/1FDDB90
+2026-11-09 00:02:42.439 UTC [587] LOG:  invalid record length at 0/1FE8CC8: expected at least 24, got 0
+2026-11-09 00:02:42.463 UTC [587] LOG:  redo done at 0/1FE8C90 system usage: CPU: user: 0.00 s, system: 0.02 s, elapsed: 0.96 s
+2026-11-09 00:02:42.834 UTC [588] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-11-09 00:02:43.468 UTC [588] LOG:  checkpoint complete: wrote 37 buffers (0.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.160 s, sync=0.132 s, total=0.534 s; sync files=23, longest=0.059 s, average=0.006 s; distance=44 kB, estimate=44 kB; lsn=0/1FE8CC8, redo lsn=0/1FE8CC8
+2026-11-09 00:02:45.005 UTC [1] LOG:  database system is ready to accept connections
+2026-11-09 00:09:00.750 UTC [1042] ERROR:  duplicate key value violates unique constraint "uq_members_email"
+2026-11-09 00:09:00.750 UTC [1042] DETAIL:  Key (email)=(owner@northwind.example) already exists.
+2026-11-09 00:09:00.750 UTC [1042] STATEMENT:  INSERT INTO members (name, email, password_hash, id) VALUES ($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::UUID) RETURNING members.created_at
+2026-11-09 00:09:38.250 UTC [1173] ERROR:  duplicate key value violates unique constraint "uq_members_email"
+2026-11-09 00:09:38.250 UTC [1173] DETAIL:  Key (email)=(owner@northwind.example) already exists.
+2026-11-09 00:09:38.250 UTC [1173] STATEMENT:  INSERT INTO members (name, email, password_hash, id) VALUES ($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::UUID) RETURNING members.created_at

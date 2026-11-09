@@ -1530,7 +1530,13 @@ export interface paths {
         get: operations["getConversation"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Conversation
+         * @description Deletes the Conversation on request (Owners only): its Messages' text and feedback
+         *     comments are purged at once and its Conversation token stops working; its numbers stay in
+         *     the metrics. Recorded as ``conversation.deleted``.
+         */
+        delete: operations["deleteConversation"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2069,6 +2075,27 @@ export interface paths {
          */
         get: operations["getUploadLimits"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/retention-window": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Retention Window
+         * @description Sets the Organisation's Retention Window (Owners only), from 7 to 3650 days. Recorded as
+         *     ``organisation.retention_window_changed``.
+         */
+        put: operations["setRetentionWindow"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2774,6 +2801,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleted At */
+            deleted_at: string | null;
             /**
              * Id
              * Format: uuid
@@ -2833,6 +2862,8 @@ export interface components {
             model_provider: string | null;
             /** Output Tokens */
             output_tokens: number | null;
+            /** Purged At */
+            purged_at: string | null;
             /** Role */
             role: string;
         };
@@ -2913,6 +2944,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleted At */
+            deleted_at: string | null;
             /** Guardrail Events */
             guardrail_events: number;
             /**
@@ -4085,6 +4118,11 @@ export interface components {
              * @description Whether every Member must have MFA turned on
              */
             require_mfa: boolean;
+            /**
+             * Retention Days
+             * @description The Retention Window: Message text and feedback comments older than this many days are purged daily; metrics are kept
+             */
+            retention_days: number;
             role: components["schemas"]["Role"];
         };
         /**
@@ -4359,6 +4397,14 @@ export interface components {
             /** Name */
             name: string;
             status: components["schemas"]["DocumentStatus"];
+        };
+        /** RetentionWindowRequest */
+        RetentionWindowRequest: {
+            /**
+             * Retention Days
+             * @description Days Message text and feedback comments are kept before they are purged
+             */
+            retention_days: number;
         };
         /** Retrieval */
         "Retrieval-Input": {
@@ -4866,18 +4912,14 @@ export interface components {
         };
         /** TracedChunkOut */
         TracedChunkOut: {
-            /**
-             * Chunk Id
-             * Format: uuid
-             */
-            chunk_id: string;
+            /** Chunk Id */
+            chunk_id: string | null;
             /** Cited */
             cited: boolean;
-            /**
-             * Document Id
-             * Format: uuid
-             */
-            document_id: string;
+            /** Document Deleted */
+            document_deleted: boolean;
+            /** Document Id */
+            document_id: string | null;
             /** Document Name */
             document_name: string | null;
             /** Excluded Reason */
@@ -9475,6 +9517,46 @@ export interface operations {
             };
         };
     };
+    deleteConversation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getConversationTrace: {
         parameters: {
             query?: never;
@@ -11018,6 +11100,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadLimitsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setRetentionWindow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetentionWindowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganisationOut"];
+                };
+            };
+            /** @description This Organisation requires MFA. Turn on MFA for your account to continue. Or: Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not found */

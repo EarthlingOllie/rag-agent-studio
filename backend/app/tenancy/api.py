@@ -24,18 +24,25 @@ class OrganisationOut(BaseModel):
     name: str
     role: Role
     require_mfa: bool = Field(description="Whether every Member must have MFA turned on")
+    retention_days: int = Field(
+        description=(
+            "The Retention Window: Message text and feedback comments older than this many "
+            "days are purged daily; metrics are kept"
+        )
+    )
 
 
 class MfaPolicyRequest(BaseModel):
     require_mfa: bool
 
 
-def _out(organisation: Organisation, scope: OrganisationScope) -> OrganisationOut:
+def organisation_out(organisation: Organisation, scope: OrganisationScope) -> OrganisationOut:
     return OrganisationOut(
         id=organisation.id,
         name=organisation.name,
         role=scope.role,
         require_mfa=organisation.require_mfa,
+        retention_days=organisation.retention_days,
     )
 
 
@@ -52,7 +59,7 @@ _MFA_REQUIRED_OR_OWNERS_ONLY = f"{MFA_REQUIRED} Or, on an Owner-only route: {OWN
 )
 async def read_organisation(scope: Scope, db: Db) -> OrganisationOut:
     """The Organisation, as the signed-in Member sees it."""
-    return _out(await get_organisation(db, scope), scope)
+    return organisation_out(await get_organisation(db, scope), scope)
 
 
 _POLICY_ERRORS: dict[int | str, dict[str, Any]] = {
@@ -79,4 +86,4 @@ async def set_mfa_policy(
         )
     except mfa_policy.OwnerWithoutMfaError:
         raise HTTPException(status.HTTP_409_CONFLICT, OWNER_WITHOUT_MFA) from None
-    return _out(organisation, scope)
+    return organisation_out(organisation, scope)

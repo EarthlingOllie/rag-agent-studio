@@ -1,5 +1,5 @@
 import type { Schemas } from "@studio/api-client";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
 import type { Trace } from "./agents";
@@ -140,5 +140,27 @@ export function useConversationTrace(path: ConversationPath & { message_id: stri
       return data;
     },
     retry: false,
+  });
+}
+
+/**
+ * Deletes the Conversation on request (Owners only): the API purges its Messages' text and feedback
+ * comments at once. The Conversation and the list are read again once it succeeds.
+ */
+export function useDeleteConversation(path: ConversationPath) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { response } = await api.DELETE(
+        "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}",
+        { params: { path } },
+      );
+      if (!response.ok) throw failed(response);
+    },
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conversation", path.organisation_id, path.conversation_id] }),
+        queryClient.invalidateQueries({ queryKey: ["conversations", path.organisation_id, path.project_id] }),
+      ]),
   });
 }

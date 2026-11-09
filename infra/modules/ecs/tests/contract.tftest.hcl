@@ -69,6 +69,17 @@ override_resource {
   values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-migrate-execution" }
 }
 
+# The same for the seed task's roles (ticket 10-05).
+override_resource {
+  target = aws_iam_role.seed_task
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-seed-task" }
+}
+
+override_resource {
+  target = aws_iam_role.seed_execution
+  values = { arn = "arn:aws:iam::123456789012:role/studio-demo-ecs-seed-execution" }
+}
+
 # Its own ARN for the local key wrapper secret, so the policies are shown to name it (the mock gives every secret one ARN).
 override_resource {
   target = aws_secretsmanager_secret.platform["key-wrapper"]
@@ -1253,9 +1264,9 @@ run "task_settings_match_the_recorded_contract" {
         environment = { for e in jsondecode(t.container_definitions)[0].environment : e.name => e.value }
         secrets     = sort([for e in jsondecode(t.container_definitions)[0].secrets : e.name])
       } },
-      { migrate = {
-        environment = { for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].environment : e.name => e.value }
-        secrets     = sort([for e in jsondecode(aws_ecs_task_definition.migrate.container_definitions)[0].secrets : e.name])
+      { for k, t in { migrate = aws_ecs_task_definition.migrate, seed = aws_ecs_task_definition.seed } : k => {
+        environment           = { for e in jsondecode(t.container_definitions)[0].environment : e.name => e.value }
+        secrets               = sort([for e in jsondecode(t.container_definitions)[0].secrets : e.name])
       } },
     )) == jsonencode({ for k, v in jsondecode(file("${path.module}/tests/task-settings.json")) : k => v if k != "_comment" })
     error_message = "The containers' environment and secret names must match infra/modules/ecs/tests/task-settings.json, which the backend tests load into Settings."
@@ -1275,6 +1286,11 @@ run "demo_pages_turn_on_the_apis_demo_routes_only" {
     ) } == { api = true, beat = false, worker = false }
     error_message = "demo_pages must set DEMO_PAGES=true on the API only (ticket 10-03); without it no container has it (task-settings.json)."
   }
+
+  assert {
+    condition     = !contains([for e in jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].environment : e.name], "DEMO_PAGES")
+    error_message = "The seed task (ticket 10-05) serves no demo pages, so it never gets DEMO_PAGES."
+  }
 }
 
 run "rejects_a_studio_url_that_is_not_an_https_origin" {
@@ -1285,4 +1301,225 @@ run "rejects_a_studio_url_that_is_not_an_https_origin" {
   }
 
   expect_failures = [var.studio_url]
+}
+
+# --- Seed in AWS (ticket 10-05): the demo data seeded by a one-off task the seed workflow runs ------------------------
+
+run "the_seed_runs_as_a_one_off_task_on_the_backend_image" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.seed.family == "studio-demo-ecs-seed" &&
+      jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].name == "seed" &&
+      jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].image == "123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api:0123abc" &&
+      jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].command == ["python", "-m", "app.seed"]
+    )
+    error_message = "The seed task must run `python -m app.seed` (the command behind `make seed`) on the backend image at the deployed tag."
+  }
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.seed.requires_compatibilities == toset(["FARGATE"]) &&
+      aws_ecs_task_definition.seed.network_mode == "awsvpc" &&
+      one(aws_ecs_task_definition.seed.runtime_platform).cpu_architecture == "ARM64" &&
+      aws_ecs_task_definition.seed.cpu == "1024" && aws_ecs_task_definition.seed.memory == "4096" &&
+      jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].readonlyRootFilesystem == true &&
+      jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].mountPoints == [{ sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }]
+    )
+    error_message = "The seed task must be an ARM64 Fargate task with a read-only root filesystem and a scratch /tmp, sized for the in-process API and Guardrails."
+  }
+
+  assert {
+    condition = { for s in jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].secrets : s.name => s.valueFrom } == {
+      DATABASE_PASSWORD     = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA"
+      REDIS_AUTH_TOKEN      = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB"
+      SESSION_SECRET        = aws_secretsmanager_secret.platform["session"].arn
+      LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+    }
+    error_message = "The seed runs the API in process, so it gets the API's secrets: the database password, the Redis token, the session secret and the local key."
+  }
+
+  assert {
+    condition     = jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].logConfiguration.options == { "awslogs-group" = "/ecs/studio-demo-ecs/seed", "awslogs-region" = "eu-west-2", "awslogs-stream-prefix" = "seed" } && aws_cloudwatch_log_group.seed.retention_in_days == 14
+    error_message = "The seed task must log to its own log group (the seed workflow prints it), with the services' retention."
+  }
+}
+
+run "the_seed_task_has_its_own_roles_with_the_apis_data_access_and_no_bedrock" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_task_definition.seed.task_role_arn == "arn:aws:iam::123456789012:role/studio-demo-ecs-seed-task" &&
+      aws_ecs_task_definition.seed.execution_role_arn == "arn:aws:iam::123456789012:role/studio-demo-ecs-seed-execution" &&
+      aws_iam_role.seed_task.name == "studio-demo-ecs-seed-task" && aws_iam_role.seed_execution.name == "studio-demo-ecs-seed-execution" &&
+      aws_iam_role.seed_task.assume_role_policy == aws_iam_role.task["api"].assume_role_policy &&
+      aws_iam_role.seed_execution.assume_role_policy == aws_iam_role.task["api"].assume_role_policy
+    )
+    error_message = "The seed task must run with its own task and execution roles, assumable only by ECS tasks in this account."
+  }
+
+  assert {
+    condition = jsondecode(aws_iam_role_policy.seed_task.policy) == output.seed_task_role_policy && output.seed_task_role_policy == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "DocumentObjects"
+          Effect   = "Allow"
+          Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+          Resource = "arn:aws:s3:::studio-demo-documents-123456789012/*"
+        },
+        {
+          Sid      = "DocumentsBucket"
+          Effect   = "Allow"
+          Action   = ["s3:ListBucket"]
+          Resource = "arn:aws:s3:::studio-demo-documents-123456789012"
+        },
+        {
+          Sid      = "DocumentsEncryption"
+          Effect   = "Allow"
+          Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+          Resource = "arn:aws:kms:eu-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
+        },
+        {
+          Sid      = "ProviderCredentialEnvelopes"
+          Effect   = "Allow"
+          Action   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
+          Resource = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
+        },
+      ]
+    }
+    error_message = "The seed uploads the demo Documents (and erases them on --reset) and seals the demo credential, as the API does; it never assumes customer Bedrock roles."
+  }
+
+  assert {
+    condition = jsondecode(aws_iam_role_policy.seed_execution.policy) == output.seed_execution_role_policy && output.seed_execution_role_policy == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "AuthenticateToEcr"
+          Effect   = "Allow"
+          Action   = "ecr:GetAuthorizationToken"
+          Resource = "*"
+        },
+        {
+          Sid      = "PullTheBackendImage"
+          Effect   = "Allow"
+          Action   = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
+          Resource = "arn:aws:ecr:eu-west-2:123456789012:repository/rag-agent-studio/api"
+        },
+        {
+          Sid      = "WriteOwnLogs"
+          Effect   = "Allow"
+          Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+          Resource = "${aws_cloudwatch_log_group.seed.arn}:log-stream:*"
+        },
+        {
+          Sid    = "ReadOwnSecrets"
+          Effect = "Allow"
+          Action = "secretsmanager:GetSecretValue"
+          Resource = [
+            "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA",
+            "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd",
+            "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB",
+            aws_secretsmanager_secret.platform["session"].arn,
+          ]
+        },
+        {
+          Sid       = "DecryptSecretsThroughSecretsManager"
+          Effect    = "Allow"
+          Action    = "kms:Decrypt"
+          Resource  = "arn:aws:kms:eu-west-2:123456789012:key/22222222-2222-2222-2222-222222222222"
+          Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.eu-west-2.amazonaws.com" } }
+        },
+      ]
+    }
+    error_message = "The seed execution role may pull the image, write its own logs and read only the seed's secrets."
+  }
+}
+
+run "the_seed_task_reaches_only_https_postgres_and_redis" {
+  command = apply
+
+  assert {
+    condition = jsonencode({ for k, r in aws_vpc_security_group_egress_rule.seed : k => [r.security_group_id, r.ip_protocol, r.from_port, r.to_port, r.cidr_ipv4, r.referenced_security_group_id] }) == jsonencode({
+      https    = [aws_security_group.seed.id, "tcp", 443, 443, "0.0.0.0/0", null]
+      postgres = [aws_security_group.seed.id, "tcp", 5432, 5432, null, "sg-0database00000001"]
+      redis    = [aws_security_group.seed.id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
+    })
+    error_message = "The seed task may reach HTTPS (S3, KMS, logs, secrets), Postgres and Redis (it queues ingestion for the worker), nothing else."
+  }
+
+  assert {
+    condition     = length(aws_security_group.seed.ingress) == 0 && length(aws_security_group.seed.egress) == 0 && aws_security_group.seed.vpc_id == var.vpc_id
+    error_message = "The seed security group must have no inline rules and no ingress."
+  }
+}
+
+run "outputs_how_to_run_the_seed_task" {
+  command = apply
+
+  assert {
+    condition = output.seed_task == {
+      task_definition_arn = aws_ecs_task_definition.seed.arn
+      container_name      = "seed"
+      subnet_ids          = var.private_subnet_ids
+      security_group_id   = aws_security_group.seed.id
+      log_group_name      = "/ecs/studio-demo-ecs/seed"
+      log_stream_prefix   = "seed"
+    }
+    error_message = "The seed workflow needs the seed task definition, its container, private subnets, security group and where it logs."
+  }
+
+  assert {
+    condition     = output.seed_security_group_id == aws_security_group.seed.id
+    error_message = "The module must output the seed security group, for the database and cache ingress rules."
+  }
+
+  assert {
+    condition = alltrue([for tags in [
+      aws_ecs_task_definition.seed.tags, aws_iam_role.seed_task.tags, aws_iam_role.seed_execution.tags,
+      aws_security_group.seed.tags, aws_cloudwatch_log_group.seed.tags,
+      aws_vpc_security_group_egress_rule.seed["https"].tags, aws_vpc_security_group_egress_rule.seed["postgres"].tags,
+      aws_vpc_security_group_egress_rule.seed["redis"].tags,
+    ] : alltrue([for key, value in output.tags : lookup(tags, key, null) == value])])
+    error_message = "The seed task's resources must carry the standard tags."
+  }
+}
+
+run "the_seed_task_size_is_a_variable" {
+  command = plan
+
+  variables {
+    seed_task_size = { cpu = 2048, memory = 8192 }
+  }
+
+  assert {
+    condition     = aws_ecs_task_definition.seed.cpu == "2048" && aws_ecs_task_definition.seed.memory == "8192"
+    error_message = "seed_task_size must size the seed task."
+  }
+}
+
+run "rejects_a_seed_task_size_fargate_does_not_offer" {
+  command = plan
+
+  variables {
+    seed_task_size = { cpu = 1024, memory = 1024 }
+  }
+
+  expect_failures = [var.seed_task_size]
+}
+
+run "a_seed_logfire_token_is_injected_when_given" {
+  command = plan
+
+  variables {
+    logfire_token_secret_arn = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
+  }
+
+  assert {
+    condition     = { for s in jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].secrets : s.name => s.valueFrom }["LOGFIRE_TOKEN"] == "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
+    error_message = "The seed task must trace to Logfire like the services when a token is given."
+  }
 }

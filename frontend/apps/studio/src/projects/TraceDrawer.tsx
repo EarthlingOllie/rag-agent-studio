@@ -55,6 +55,12 @@ const EXCLUDED: Record<NonNullable<TraceChunk["excluded_reason"]>, string> = {
   guardrail_flagged: "Excluded: flagged by the ingestion scan",
 };
 
+/** The Chunk's Document, or a tombstone once the Document has been deleted. */
+function documentText(chunk: TraceChunk): string {
+  if (chunk.document_name === null) return "Chunk from a deleted Document";
+  return chunk.document_deleted ? `Chunk from deleted Document ${chunk.document_name}` : chunk.document_name;
+}
+
 function outcome(chunk: TraceChunk): string {
   if (chunk.excluded_reason) return EXCLUDED[chunk.excluded_reason];
   return chunk.cited ? "Cited" : "Given, not cited";
@@ -155,13 +161,14 @@ function TraceBody({ trace }: { trace: Trace }) {
           </tr>
         </thead>
         <tbody>
-          {trace.chunks.map((chunk) => (
+          {trace.chunks.map((chunk, index) => (
             <tr
-              key={chunk.chunk_id}
+              // A deleted Document's Chunk has no ID left; the Trace's order is fixed.
+              key={index}
               className="border-b border-slate-100 align-top"
             >
               <td>{chunk.rank === null ? "—" : `C${String(chunk.rank)}`}</td>
-              <td>{chunk.document_name ?? "Deleted Document"}</td>
+              <td>{documentText(chunk)}</td>
               <td className="text-xs whitespace-pre-wrap text-slate-700">
                 {chunk.text ?? "—"}
               </td>

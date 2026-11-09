@@ -167,7 +167,8 @@ class ConversationSummary:
     conversation: Conversation
     agent_name: str
     message_count: int
-    # The Visitor's (or Editor's) first question, cut to ``PREVIEW_MAX`` characters.
+    # The Visitor's (or Editor's) first question, cut to ``PREVIEW_MAX`` characters; None once
+    # its text is purged.
     preview: str | None
     # The Agent Versions that answered, in order; empty for a Playground Conversation.
     version_numbers: list[int]
@@ -227,16 +228,21 @@ async def list_conversations(
             )
         ).all()
     )
-    previews: dict[uuid.UUID, str] = dict(
-        (
-            await session.execute(
-                select(Message.conversation_id, func.left(Message.content, PREVIEW_MAX))
-                .where(Message.conversation_id.in_(ids), Message.role == MessageRole.USER)
-                .ext(distinct_on(Message.conversation_id))
-                .order_by(Message.conversation_id, Message.seq)
+    # The first question, unless its text has been purged.
+    previews: dict[uuid.UUID, str] = {
+        conversation_id: preview
+        for conversation_id, preview, purged_at in await session.execute(
+            select(
+                Message.conversation_id,
+                func.left(Message.content, PREVIEW_MAX),
+                Message.purged_at,
             )
-        ).all()
-    )
+            .where(Message.conversation_id.in_(ids), Message.role == MessageRole.USER)
+            .ext(distinct_on(Message.conversation_id))
+            .order_by(Message.conversation_id, Message.seq)
+        )
+        if purged_at is None
+    }
     numbers: dict[uuid.UUID, list[int]] = {}
     for conversation_id, number in await session.execute(
         select(Message.conversation_id, AgentVersion.number)
@@ -348,12 +354,17 @@ async def get_conversation(
 
 @dataclass(frozen=True)
 class TracedChunk:
-    """A Chunk retrieval of an answer, with its Chunk's text and Document's name when the
-    Chunk still exists."""
+    """A Chunk retrieval of an answer, with its Chunk's text while the Chunk still exists, and
+    its Document's name: the current name while the Document exists, else the name kept when
+    the answer was given (a tombstone, with ``document_deleted`` set)."""
 
     retrieval: MessageRetrieval
     document_name: str | None
     text: str | None
+
+    @property
+    def document_deleted(self) -> bool:
+        return self.retrieval.document_id is None
 
 
 async def traced_chunks(session: AsyncSession, message: Message) -> list[TracedChunk]:
@@ -365,7 +376,7 @@ async def traced_chunks(session: AsyncSession, message: Message) -> list[TracedC
         .where(MessageRetrieval.message_id == message.id)
         .order_by(MessageRetrieval.position)
     )
-    return [TracedChunk(row, name, text) for row, name, text in rows]
+    return [TracedChunk(row, name or row.document_name, text) for row, name, text in rows]
 
 
 def answer_in(messages: list[Message], message_id: uuid.UUID) -> Message:

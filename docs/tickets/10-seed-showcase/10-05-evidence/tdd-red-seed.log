@@ -1,0 +1,44 @@
+$ scripts/deploy/tests/seed.test.sh   # the new test against the claim commit bdcf405 (no seed.sh, stubs without the seed answers)
+FAIL runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output: exit 127, expected 0. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output: calls were:
+
+FAIL runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output: expected 'Seeded the demo Organisation 'Northwind'.' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output: expected 'Studio: https://d111111abcdef8.cloudfront.net' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output: expected 'The demo environment is seeded: https://d111111abcdef8.cloudfront.net' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+grep: /tmp/tmp.fzfoA75MKt/runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output/summary.md: No such file or directory
+cat: /tmp/tmp.fzfoA75MKt/runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output/summary.md: No such file or directory
+FAIL runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output: summary: 
+ok   never_applies_or_changes_the_infrastructure
+FAIL running_it_again_runs_the_same_non_destructive_seed: exit 127, expected 0. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL reset_overrides_the_command_with_seed_reset: exit 127, expected 0. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL reset_overrides_the_command_with_seed_reset: expected the call 'aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-seed:7 --launch-type FARGATE --started-by seed-demo-reset --network-configuration awsvpcConfiguration={subnets=[subnet-0ccccccccccccccc3,subnet-0ddddddddddddddd4],securityGroups=[sg-0seed00000000001],assignPublicIp=DISABLED} --overrides {"containerOverrides":[{"name":"seed","command":["python","-m","app.seed","--reset"]}]} --query tasks[0].taskArn --output text' in: 
+FAIL keeps_waiting_while_the_seed_runs: exit 127, expected 0. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL keeps_waiting_while_the_seed_runs: waited 0 times
+FAIL a_seed_that_never_stops_fails_the_run: exit 127, expected 1. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_seed_that_never_stops_fails_the_run: expected 'The seed task is still running after 2 waits (arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef)' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_failed_seed_fails_the_run_and_shows_its_output: exit 127, expected 1. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_failed_seed_fails_the_run_and_shows_its_output: expected 'Seed task exited 1 (arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef)' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_failed_seed_fails_the_run_and_shows_its_output: expected 'Seed failed: A demo Document failed ingestion' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_seed_task_that_never_ran_fails_the_run: exit 127, expected 1. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_seed_task_that_never_ran_fails_the_run: expected 'Seed task exited None' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_seed_task_that_cannot_start_fails_the_run: exit 127, expected 1. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL a_seed_task_that_cannot_start_fails_the_run: expected 'The seed task did not start (None)' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL missing_logs_do_not_hide_a_successful_seed: exit 127, expected 0. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL missing_logs_do_not_hide_a_successful_seed: expected 'Could not read the seed task's log' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL an_environment_deployed_without_the_seed_task_asks_for_a_deploy: exit 127, expected 1. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL an_environment_deployed_without_the_seed_task_asks_for_a_deploy: expected 'has no seed task: run the deploy workflow first' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL an_environment_that_is_not_deployed_asks_for_a_deploy: exit 127, expected 1. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL an_environment_that_is_not_deployed_asks_for_a_deploy: expected 'The demo environment is not deployed' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL requires_the_state_bucket: exit 127, expected 2. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL requires_the_state_bucket: expected 'TF_STATE_BUCKET' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL requires_the_region: exit 127, expected 2. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL requires_the_region: expected 'AWS_REGION' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_the_arguments_'--wipe': exit 127, expected 2. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_the_arguments_'--wipe': expected 'usage:' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_the_arguments_'--reset extra': exit 127, expected 2. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_the_arguments_'--reset extra': expected 'usage:' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_the_arguments_'reset': exit 127, expected 2. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_the_arguments_'reset': expected 'usage:' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_a_wait_that_is_not_a_positive_number: exit 127, expected 2. Output: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+FAIL rejects_a_wait_that_is_not_a_positive_number: expected 'SEED_WAIT_ROUNDS' in: env: '<bdcf405 tree>/scripts/deploy/tests/../seed.sh': No such file or directory
+exit 1

@@ -109,10 +109,16 @@ class ConversationOut(BaseModel):
 
 
 class TracedChunkOut(BaseModel):
-    chunk_id: uuid.UUID
-    document_id: uuid.UUID
-    # Null once the Chunk's Document edition is replaced or deleted.
+    # Both null once the Chunk's Document is deleted (a tombstone).
+    chunk_id: uuid.UUID | None
+    document_id: uuid.UUID | None
+    # The Document's name; for a deleted Document, its name when the answer was given (null
+    # only for Documents deleted before names were kept).
     document_name: str | None
+    # True when the Document has since been deleted: the Trace shows "Chunk from deleted
+    # Document <name>".
+    document_deleted: bool
+    # Null once the Chunk's Document edition is replaced or deleted.
     text: str | None
     # The weighted reciprocal rank fusion score, and the relevance the minimum applies to.
     score: float
@@ -245,6 +251,7 @@ async def trace_out(
                 chunk_id=c.retrieval.chunk_id,
                 document_id=c.retrieval.document_id,
                 document_name=c.document_name,
+                document_deleted=c.document_deleted,
                 text=c.text,
                 score=c.retrieval.score,
                 relevance=c.retrieval.relevance,

@@ -1,0 +1,269 @@
+$ CI=1: docker compose -p rag1005-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-05-evidence/compose.sandbox.yml up -d --wait; make seed COMPOSE=...; cd frontend && pnpm e2e tests/guardrail-analytics.spec.ts tests/version-kpis.spec.ts tests/members.spec.ts @ ec43814 (ticket/10-05-seed-in-aws in wt1005, clean tree: 0 changes)
+ Network rag1005-e2e_default Creating 
+ Network rag1005-e2e_default Creating 
+ Volume rag1005-e2e_postgres-data Creating 
+ Volume rag1005-e2e_postgres-data Creating 
+ Volume rag1005-e2e_rustfs-data Creating 
+ Volume rag1005-e2e_rustfs-data Creating 
+ Volume rag1005-e2e_rustfs-data Created 
+ Volume rag1005-e2e_rustfs-data Created 
+ Volume rag1005-e2e_postgres-data Created 
+ Volume rag1005-e2e_postgres-data Created 
+ Network rag1005-e2e_default Created 
+ Network rag1005-e2e_default Created 
+ Container rag1005-e2e-redis-1 Creating 
+ Container rag1005-e2e-postgres-1 Creating 
+ Container rag1005-e2e-mailpit-1 Creating 
+ Container rag1005-e2e-widget-1 Creating 
+ Container rag1005-e2e-rustfs-1 Creating 
+ Container rag1005-e2e-host-1 Creating 
+ Container rag1005-e2e-widget-1 Created 
+ Container rag1005-e2e-host-1 Created 
+ Container rag1005-e2e-mailpit-1 Created 
+ Container rag1005-e2e-rustfs-1 Created 
+ Container rag1005-e2e-redis-1 Created 
+ Container rag1005-e2e-postgres-1 Created 
+ Container rag1005-e2e-worker-1 Creating 
+ Container rag1005-e2e-api-1 Creating 
+ Container rag1005-e2e-beat-1 Creating 
+ Container rag1005-e2e-beat-1 Created 
+ Container rag1005-e2e-api-1 Created 
+ Container rag1005-e2e-studio-1 Creating 
+ Container rag1005-e2e-worker-1 Created 
+ Container rag1005-e2e-studio-1 Created 
+ Container rag1005-e2e-redis-1 Starting 
+ Container rag1005-e2e-postgres-1 Starting 
+ Container rag1005-e2e-host-1 Starting 
+ Container rag1005-e2e-rustfs-1 Starting 
+ Container rag1005-e2e-mailpit-1 Starting 
+ Container rag1005-e2e-widget-1 Starting 
+ Container rag1005-e2e-redis-1 Started 
+ Container rag1005-e2e-postgres-1 Started 
+ Container rag1005-e2e-host-1 Started 
+ Container rag1005-e2e-rustfs-1 Started 
+ Container rag1005-e2e-mailpit-1 Started 
+ Container rag1005-e2e-postgres-1 Waiting 
+ Container rag1005-e2e-postgres-1 Waiting 
+ Container rag1005-e2e-redis-1 Waiting 
+ Container rag1005-e2e-rustfs-1 Waiting 
+ Container rag1005-e2e-redis-1 Waiting 
+ Container rag1005-e2e-rustfs-1 Waiting 
+ Container rag1005-e2e-rustfs-1 Waiting 
+ Container rag1005-e2e-postgres-1 Waiting 
+ Container rag1005-e2e-redis-1 Waiting 
+ Container rag1005-e2e-widget-1 Started 
+ Container rag1005-e2e-postgres-1 Healthy 
+ Container rag1005-e2e-redis-1 Healthy 
+ Container rag1005-e2e-postgres-1 Healthy 
+ Container rag1005-e2e-redis-1 Healthy 
+ Container rag1005-e2e-redis-1 Healthy 
+ Container rag1005-e2e-postgres-1 Healthy 
+ Container rag1005-e2e-rustfs-1 Healthy 
+ Container rag1005-e2e-worker-1 Starting 
+ Container rag1005-e2e-rustfs-1 Healthy 
+ Container rag1005-e2e-api-1 Starting 
+ Container rag1005-e2e-rustfs-1 Healthy 
+ Container rag1005-e2e-beat-1 Starting 
+ Container rag1005-e2e-worker-1 Started 
+ Container rag1005-e2e-api-1 Started 
+ Container rag1005-e2e-widget-1 Waiting 
+ Container rag1005-e2e-api-1 Waiting 
+ Container rag1005-e2e-beat-1 Started 
+ Container rag1005-e2e-widget-1 Healthy 
+ Container rag1005-e2e-api-1 Healthy 
+ Container rag1005-e2e-studio-1 Starting 
+ Container rag1005-e2e-studio-1 Started 
+ Container rag1005-e2e-redis-1 Waiting 
+ Container rag1005-e2e-studio-1 Waiting 
+ Container rag1005-e2e-postgres-1 Waiting 
+ Container rag1005-e2e-rustfs-1 Waiting 
+ Container rag1005-e2e-widget-1 Waiting 
+ Container rag1005-e2e-worker-1 Waiting 
+ Container rag1005-e2e-beat-1 Waiting 
+ Container rag1005-e2e-host-1 Waiting 
+ Container rag1005-e2e-mailpit-1 Waiting 
+ Container rag1005-e2e-api-1 Waiting 
+ Container rag1005-e2e-host-1 Healthy 
+ Container rag1005-e2e-rustfs-1 Healthy 
+ Container rag1005-e2e-mailpit-1 Healthy 
+ Container rag1005-e2e-worker-1 Healthy 
+ Container rag1005-e2e-beat-1 Healthy 
+ Container rag1005-e2e-postgres-1 Healthy 
+ Container rag1005-e2e-widget-1 Healthy 
+ Container rag1005-e2e-redis-1 Healthy 
+ Container rag1005-e2e-api-1 Healthy 
+ Container rag1005-e2e-studio-1 Healthy 
+docker compose -p rag1005-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-05-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag1005-e2e-api-run-b3921d1d40b9 Creating 
+ Container rag1005-e2e-api-run-b3921d1d40b9 Created 
+[0;93m2026-11-09 00:24:11.954874334 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:161: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:31583/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:31575/demo/
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend
+> playwright test tests/guardrail-analytics.spec.ts tests/version-kpis.spec.ts tests/members.spec.ts
+
+
+Running 4 tests using 2 workers
+
+  ✓  1 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (16.7s)
+  ✘  2 [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome (21.0s)
+  ✓  3 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (10.4s)
+  ✘  4 [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome (retry #1) (15.1s)
+  ✘  5 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (12.3s)
+  ✘  6 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (retry #1) (11.1s)
+
+
+  1) [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByLabel('Version', { exact: true })
+    Expected: "v1 (Live)"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" getByLabel('Version', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('Version', { exact: true })
+        2 × locator resolved to <select disabled class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900"></select>
+          - unexpected value ""
+
+
+      67 |     // The Editor reads the Live Version's block rate: one of its three replies was a refusal.
+      68 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
+    > 69 |     await expect(page.getByLabel("Version", { exact: true })).toHaveText("v1 (Live)");
+         |                                                               ^
+      70 |     const card = page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name: "Guardrail block rate" });
+      71 |     await expect(card).toContainText("33%", { timeout: 15_000 });
+      72 |     await expect(card).toContainText("1 of 3 replies were blocked by the input Guardrail");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend/e2e/tests/guardrail-analytics.spec.ts:69:63
+
+    Error Context: test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByLabel('Version', { exact: true })
+    Expected: "v1 (Live)"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" getByLabel('Version', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('Version', { exact: true })
+        - locator resolved to <select disabled class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900"></select>
+        - unexpected value ""
+
+
+      67 |     // The Editor reads the Live Version's block rate: one of its three replies was a refusal.
+      68 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
+    > 69 |     await expect(page.getByLabel("Version", { exact: true })).toHaveText("v1 (Live)");
+         |                                                               ^
+      70 |     const card = page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name: "Guardrail block rate" });
+      71 |     await expect(card).toContainText("33%", { timeout: 15_000 });
+      72 |     await expect(card).toContainText("1 of 3 replies were blocked by the input Guardrail");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend/e2e/tests/guardrail-analytics.spec.ts:69:63
+
+    Error Context: test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByLabel('Version', { exact: true })
+    Expected: "v1 (Live)"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" getByLabel('Version', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('Version', { exact: true })
+        - locator resolved to <select disabled class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900"></select>
+        - unexpected value ""
+
+
+      70 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
+      71 |     await expect(page.getByLabel("Agent")).toHaveValue(agentId);
+    > 72 |     await expect(page.getByLabel("Version", { exact: true })).toHaveText("v1 (Live)");
+         |                                                               ^
+      73 |     const card = (name: string) => page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name });
+      74 |     await expect(card("Volume")).toContainText("1 Conversation", { timeout: 15_000 });
+      75 |     await expect(card("Volume")).toContainText("2 replies");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend/e2e/tests/version-kpis.spec.ts:72:63
+
+    Error Context: test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByLabel('Version', { exact: true })
+    Expected: "v1 (Live)"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveText" getByLabel('Version', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('Version', { exact: true })
+        - locator resolved to <select disabled class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900"></select>
+        - unexpected value ""
+
+
+      70 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
+      71 |     await expect(page.getByLabel("Agent")).toHaveValue(agentId);
+    > 72 |     await expect(page.getByLabel("Version", { exact: true })).toHaveText("v1 (Live)");
+         |                                                               ^
+      73 |     const card = (name: string) => page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name });
+      74 |     await expect(card("Volume")).toContainText("1 Conversation", { timeout: 15_000 });
+      75 |     await expect(card("Volume")).toContainText("2 replies");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend/e2e/tests/version-kpis.spec.ts:72:63
+
+    Error Context: test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome 
+    [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count 
+  2 passed (53.6s)
+ ELIFECYCLE  Command failed with exit code 1.
+exit 1

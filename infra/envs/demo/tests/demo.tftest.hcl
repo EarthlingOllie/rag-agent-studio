@@ -153,13 +153,13 @@ run "wires_the_compute_module_into_the_data_modules" {
   }
 
   assert {
-    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], worker = module.ecs.service_security_group_ids["worker"], migrate = module.ecs.migration_security_group_id }
-    error_message = "Only the API, the worker and the migration task may connect to the database."
+    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], worker = module.ecs.service_security_group_ids["worker"], migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id }
+    error_message = "Only the API, the worker, the migration task and the seed task may connect to the database."
   }
 
   assert {
-    condition     = module.cache.admitted_client_security_group_ids == module.ecs.service_security_group_ids
-    error_message = "The API, worker and Beat may connect to Redis."
+    condition     = module.cache.admitted_client_security_group_ids == merge(module.ecs.service_security_group_ids, { seed = module.ecs.seed_security_group_id })
+    error_message = "The API, worker, Beat and the seed task may connect to Redis."
   }
 
   assert {
@@ -226,11 +226,17 @@ run "outputs_everything_the_deploy_workflow_needs" {
       services                   = { api = "studio-demo-ecs-api", worker = "studio-demo-ecs-worker", beat = "studio-demo-ecs-beat" }
       task_definition_arns       = module.ecs.task_definition_arns
       migration_task             = module.ecs.migration_task
+      seed_task                  = module.ecs.seed_task
       static_bucket_name         = "studio-demo-static-123456789012"
       cloudfront_distribution_id = module.cdn.distribution_id
       cloudfront_url             = "https://d111111abcdef8.cloudfront.net"
     }
-    error_message = "The deploy output must name the cluster, services, task definitions, migration task, static bucket and distribution."
+    error_message = "The deploy output must name the cluster, services, task definitions, migration task, seed task, static bucket and distribution."
+  }
+
+  assert {
+    condition     = tolist(output.deploy.seed_task.subnet_ids) == tolist(module.network.private_subnet_ids) && output.deploy.seed_task.security_group_id == module.ecs.seed_security_group_id && output.deploy.seed_task.log_group_name == "/ecs/studio-demo-ecs/seed"
+    error_message = "The seed task (ticket 10-05) must run in the private subnets with the security group the database and cache admit."
   }
 
   assert {

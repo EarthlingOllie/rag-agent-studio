@@ -161,6 +161,7 @@ async def test_the_trace_shows_the_model_usage_and_every_chunk_retrieved(
         "chunk_id": done["chunks"][0]["chunk_id"],
         "document_id": cited["document_id"],
         "document_name": "product.txt",
+        "document_deleted": False,
         "text": PRODUCT,
         "score": done["chunks"][0]["score"],
         "relevance": done["chunks"][0]["relevance"],
