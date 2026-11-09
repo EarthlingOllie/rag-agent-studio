@@ -1,0 +1,6 @@
+$ pytest tests/unit/test_aws_task_settings.py --no-cov   # the new tests against the claim commit's task-settings.json (no seed container)
+FAILED ../../red1005b/backend/tests/unit/test_aws_task_settings.py::test_the_contract_names_the_api_worker_beat_migration_and_seed_containers
+FAILED ../../red1005b/backend/tests/unit/test_aws_task_settings.py::test_the_api_worker_and_seed_seal_with_kms_and_keep_documents_in_the_bucket[seed]
+FAILED ../../red1005b/backend/tests/unit/test_aws_task_settings.py::test_the_seed_puts_the_demo_pages_on_the_studio_origin
+3 failed, 11 passed in 0.96s
+exit 1

@@ -305,3 +305,23 @@ variable "migration_task_size" {
     error_message = "migration_task_size must be a Fargate CPU and memory pair of at most 1 vCPU, such as 256 and 512."
   }
 }
+
+variable "seed_task_size" {
+  description = "Fargate CPU units and memory (MiB) of the one-off seed task (ticket 10-05). It runs the API in process, with the local Embedding Model and the Guardrail classifier."
+  type = object({
+    cpu    = number
+    memory = number
+  })
+  default = { cpu = 1024, memory = 4096 }
+
+  # Fargate's allowed pairs from 1 to 4 vCPU: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html
+  validation {
+    condition = (
+      var.seed_task_size.cpu == 1024 ? var.seed_task_size.memory >= 2048 && var.seed_task_size.memory <= 8192 && var.seed_task_size.memory % 1024 == 0 :
+      var.seed_task_size.cpu == 2048 ? var.seed_task_size.memory >= 4096 && var.seed_task_size.memory <= 16384 && var.seed_task_size.memory % 1024 == 0 :
+      var.seed_task_size.cpu == 4096 ? var.seed_task_size.memory >= 8192 && var.seed_task_size.memory <= 30720 && var.seed_task_size.memory % 1024 == 0 :
+      false
+    )
+    error_message = "seed_task_size must be a Fargate CPU and memory pair of 1 to 4 vCPU, such as 1024 and 4096."
+  }
+}

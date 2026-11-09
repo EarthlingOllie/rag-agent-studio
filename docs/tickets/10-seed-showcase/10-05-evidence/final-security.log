@@ -1,0 +1,12 @@
+$ gitleaks git (origin/candidate..HEAD) @ 5ab7512 (ticket/10-05-seed-in-aws in wt1005, clean tree: 0 changes)
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+[90m2:29AM[0m [32mINF[0m [1m6 commits scanned.[0m
+[90m2:29AM[0m [32mINF[0m [1mscanned ~259263 bytes (259.26 KB) in 340ms[0m
+[90m2:29AM[0m [32mINF[0m [1mno leaks found[0m
+exit 0
