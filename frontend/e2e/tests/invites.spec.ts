@@ -28,7 +28,7 @@ test.describe("invites", () => {
     await form.getByLabel("Email", { exact: true }).fill(invited.email);
     await form.getByLabel("Role").selectOption("Editor");
     await form.getByRole("button", { name: "Invite" }).click();
-    await expect(page.getByRole("status")).toContainText(`We emailed an invite to ${invited.email}.`);
+    await expect(page.getByRole("region", { name: "New invite" })).toContainText(`We emailed an invite to ${invited.email}.`);
     const pending = page.getByRole("table", { name: "Pending invites" });
     await expect(pending.getByRole("cell", { name: invited.email, exact: true })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
@@ -94,7 +94,7 @@ test.describe("invites", () => {
     await form.getByLabel("Role").selectOption("Owner");
     await form.getByLabel("Email the invite link").uncheck();
     await form.getByRole("button", { name: "Invite" }).click();
-    await expect(page.getByRole("status")).toContainText(`Copy the link and send it to ${colleague.email}.`);
+    await expect(page.getByRole("region", { name: "New invite" })).toContainText(`Copy the link and send it to ${colleague.email}.`);
     const link = await page.getByLabel(`Invite link for ${colleague.email}`).inputValue();
 
     await colleaguePage.goto(new URL(link).pathname + new URL(link).search);

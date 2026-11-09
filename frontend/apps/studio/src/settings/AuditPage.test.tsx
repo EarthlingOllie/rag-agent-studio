@@ -123,6 +123,8 @@ test("Owners page through long histories, and changing a filter goes back to the
   renderStudio(auditPath);
 
   expect(await screen.findByText("Page 1 of 2 · 30 events")).toBeInTheDocument();
+  const pages = within(screen.getByRole("navigation", { name: "Audit Events pages" }));
+  expect(pages.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
   await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
@@ -131,8 +133,9 @@ test("Owners page through long histories, and changing a filter goes back to the
   expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
   await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
   expect(await screen.findByText("Page 1 of 2 · 30 events")).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+  await userEvent.click(pages.getByRole("button", { name: "Page 2" }));
   await screen.findByText("Page 2 of 2 · 30 events");
+  expect(pages.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
 
   await userEvent.selectOptions(screen.getByLabelText("Action"), "member.invited");
 

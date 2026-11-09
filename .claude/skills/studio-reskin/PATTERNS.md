@@ -309,5 +309,6 @@ with `openSection(page, "Project sections", "Agents")`, and the settings tabs wi
 Both helpers exist since 11-04, with the same names: `e2e/fixtures/navigation.ts` (Playwright, the
 page first) and `apps/studio/src/test/navigation.ts` (Testing Library: `openSection`,
 `sectionNames`, `currentSection`, `hasMenu`, `menuButton`). Menus that are still tab rows
-("Project sections", "Organisation settings") are listed in each helper's `TAB_ROWS`; the slice
-that turns a row into a switcher deletes its entry, and no test changes.
+are listed in each helper's `TAB_ROWS`; the slice that turns a row into a switcher deletes its
+entry, and no test changes. "Organisation settings" is a switcher since 11-11
+(`shell/SettingsCrumb.tsx`).

@@ -5,9 +5,11 @@ import type { Session } from "../auth/session";
 import { Breadcrumb, CrumbSwitcher, CrumbText, type IconName, type MenuItem, type MenuLinkProps } from "../design";
 import { useProject, useProjects } from "../projects/projects";
 import { OrganisationCrumb } from "./OrganisationSwitcher";
+import { SettingsCrumb } from "./SettingsCrumb";
 
 const ORGANISATION = "/organisations/$organisationId";
 const PROJECT = "/organisations/$organisationId/projects/$projectId";
+const SETTINGS = "/organisations/$organisationId/settings";
 
 type SectionPath =
   | "/organisations/$organisationId/projects"
@@ -107,8 +109,9 @@ function ProjectBreadcrumb({
 
 /**
  * The top bar's breadcrumb, computed from the route: Organisation / section, then the Project and
- * its section when one is open. Pages register nothing. While the Organisation requires MFA and
- * the Member has none, the section switcher offers only Security.
+ * its section when one is open, or the settings area (`SettingsCrumb`). Pages register nothing.
+ * While the Organisation requires MFA and the Member has none, the section switcher offers only
+ * Security.
  */
 export function StudioBreadcrumb({
   session,
@@ -122,6 +125,7 @@ export function StudioBreadcrumb({
   const matchRoute = useMatchRoute();
   const organisation = session.organisations.find((candidate) => candidate.id === organisationId);
   const project = matchRoute({ to: PROJECT, params: { organisationId }, fuzzy: true });
+  const settings = matchRoute({ to: SETTINGS, params: { organisationId }, fuzzy: true }) !== false;
   // The one page outside the section menu: Cost, for a Member who isn't an Owner.
   const costElsewhere = matchRoute({ to: `${ORGANISATION}/cost`, params: { organisationId } }) !== false;
 
@@ -137,7 +141,7 @@ export function StudioBreadcrumb({
   const leading = [
     <OrganisationCrumb key="organisation" session={session} organisationId={organisationId} />,
     organisation && here && (
-      <CrumbSwitcher key="sections" label={here.label} menuLabel="Organisation sections" items={sections} current={project === false} />
+      <CrumbSwitcher key="sections" label={here.label} menuLabel="Organisation sections" items={sections} current={project === false && !settings} />
     ),
   ];
 
@@ -147,6 +151,7 @@ export function StudioBreadcrumb({
   return (
     <Breadcrumb>
       {leading}
+      {organisation && settings && <SettingsCrumb organisationId={organisationId} isOwner={organisation.role === "owner"} />}
       {organisation && !here && costElsewhere && <CrumbText current>Cost</CrumbText>}
     </Breadcrumb>
   );

@@ -15,14 +15,15 @@ import {
 import { type ReactNode, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { button, field, notice, surface, text } from "../design";
 import { type ThemeFont, type ThemeSettings, useSaveTheme, useTheme, useThemeFonts } from "./theme";
 import { ThemeImages } from "./ThemeImages";
 import type { ThemeImage } from "./themeImages";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_RADIUS = 24;
-const INPUT = "rounded border border-field px-2 py-1 text-sm disabled:bg-sunken aria-[invalid=true]:border-danger";
-const BUTTON = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
+/** A short field (hex colour, radius): the design system's input, sized to its content. */
+const SHORT = "block h-10 rounded-xl border border-field bg-surface px-3 text-sm text-ink disabled:bg-sunken aria-[invalid=true]:border-danger";
 const FIELD_ERROR = "text-xs text-danger";
 
 type Validity = (field: string, valid: boolean) => void;
@@ -62,7 +63,7 @@ function ColourField({
             apply(event.currentTarget.value);
           }}
           onChange={() => undefined}
-          className="h-8 w-10 cursor-pointer rounded border border-field bg-surface p-0.5 disabled:cursor-not-allowed"
+          className="h-10 w-11 cursor-pointer rounded-xl border border-field bg-surface p-1 disabled:cursor-not-allowed"
         />
         <input
           id={id}
@@ -73,7 +74,7 @@ function ColourField({
             apply(event.target.value);
           }}
           spellCheck={false}
-          className={`${INPUT} w-24 font-mono`}
+          className={`${SHORT} w-28 font-mono`}
         />
       </div>
       {!valid && (
@@ -92,7 +93,7 @@ function RadiusField({ value, onChange, onValidity }: { value: number; onChange:
   const valid = parse(text) !== undefined;
   return (
     <div className="space-y-1">
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className={field.label}>
         Corner radius (px)
       </label>
       <input
@@ -111,7 +112,7 @@ function RadiusField({ value, onChange, onValidity }: { value: number; onChange:
           onValidity("radius", radius !== undefined);
           if (radius !== undefined) onChange(radius);
         }}
-        className={`${INPUT} w-24`}
+        className={`${SHORT} mt-1.5 w-28 font-mono`}
       />
       {!valid && (
         <p id={`${id}-error`} className={FIELD_ERROR}>
@@ -137,14 +138,15 @@ function Choices<T extends string>({
 }) {
   const id = useId();
   return (
-    <div role="radiogroup" aria-labelledby={id} className="space-y-1">
-      <span id={id} className="block text-sm font-medium">
+    <div role="radiogroup" aria-labelledby={id} className="space-y-1.5">
+      <span id={id} className={field.label}>
         {label}
       </span>
       <div className="flex flex-wrap gap-4">
         {options.map((option) => (
-          <label key={option.value} className="flex items-center gap-2 text-sm">
+          <label key={option.value} className="flex items-center gap-2 text-sm text-ink">
             <input
+              className={field.checkbox}
               type="radio"
               name={`${name}-${id}`}
               value={option.value}
@@ -242,10 +244,11 @@ function WidgetPreview({ theme, scheme, images }: { theme: ThemeSettings; scheme
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+/** One group of the Theme form, in its own panel. */
+function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="space-y-3">
-      <h3 className="text-base font-semibold">{title}</h3>
+    <section className={`${surface.panel} flex flex-col gap-4`}>
+      <h3 className={text.subheading}>{title}</h3>
       {children}
     </section>
   );
@@ -296,22 +299,22 @@ function ThemeEditor({
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
       <link rel="stylesheet" href={fontStylesheetUrl(draft.font)} />
-      <div className="space-y-8">
+      <div className="flex flex-col gap-6">
         <form
           aria-label="Theme"
-          className="space-y-6"
+          className="flex flex-col gap-6"
           onSubmit={(event) => {
             event.preventDefault();
             save.mutate(draft);
           }}
         >
-          {!isOwner && <p className="rounded bg-sunken px-3 py-2 text-sm text-muted">Only Owners can change the Theme.</p>}
-          <fieldset disabled={!isOwner} className="space-y-6">
-            <Section title="Colours">
-              <p className="text-sm text-muted">Each colour has a value for light mode and one for dark mode.</p>
+          {!isOwner && <p className={notice.info}>Only Owners can change the Theme.</p>}
+          <fieldset disabled={!isOwner} className="flex min-w-0 flex-col gap-6">
+            <Panel title="Colours">
+              <p className={text.muted}>Each colour has a value for light mode and one for dark mode.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {COLOUR_TOKENS.map(({ token, label }) => (
-                  <div key={token} className="flex flex-wrap gap-4 rounded border border-line p-3">
+                  <div key={token} className="flex flex-wrap gap-4 rounded-xl border border-line-soft p-3">
                     {(["light", "dark"] as const).map((colourScheme) => (
                       <ColourField
                         key={colourScheme}
@@ -326,8 +329,8 @@ function ThemeEditor({
                   </div>
                 ))}
               </div>
-            </Section>
-            <Section title="Shape and type">
+            </Panel>
+            <Panel title="Shape and type">
               <RadiusField
                 value={draft.radius}
                 onChange={(radius) => {
@@ -335,8 +338,8 @@ function ThemeEditor({
                 }}
                 onValidity={onValidity}
               />
-              <div className="space-y-1">
-                <label htmlFor={fontId} className="block text-sm font-medium">
+              <div>
+                <label htmlFor={fontId} className={field.label}>
                   Font
                 </label>
                 <select
@@ -345,7 +348,7 @@ function ThemeEditor({
                   onChange={(event) => {
                     update({ font: event.target.value as ThemeSettings["font"] });
                   }}
-                  className={INPUT}
+                  className={`${field.select} max-w-sm`}
                 >
                   {fonts.map((font) => (
                     <option key={font.family} value={font.family}>
@@ -354,8 +357,8 @@ function ThemeEditor({
                   ))}
                 </select>
               </div>
-            </Section>
-            <Section title="Mode and launcher">
+            </Panel>
+            <Panel title="Mode and launcher">
               <Choices
                 label="Mode"
                 name="mode"
@@ -385,11 +388,11 @@ function ThemeEditor({
                   }}
                 />
               )}
-            </Section>
+            </Panel>
           </fieldset>
           <div role="status" aria-label="Contrast" className="space-y-2">
             {warnings.length > 0 && (
-              <div className="rounded border border-flag bg-flag-soft px-3 py-2 text-sm text-flag">
+              <div className={notice.warning}>
                 <p className="font-medium">Some colours fail WCAG AA contrast. You can still save.</p>
                 <ul className="mt-1 list-disc pl-5">
                   {warnings.map((warning) => (
@@ -400,14 +403,14 @@ function ThemeEditor({
             )}
           </div>
           {isOwner && (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-3">
               <FormError message={save.isError ? "Something went wrong. Try again." : undefined} />
               {save.isSuccess && (
-                <p role="status" aria-label="Saved" className="rounded border border-accent-soft bg-accent-soft px-3 py-2 text-sm text-accent-ink">
+                <p role="status" aria-label="Saved" className={notice.success}>
                   Theme saved. The widget uses it now.
                 </p>
               )}
-              <button type="submit" className={BUTTON} disabled={hasInvalid || save.isPending}>
+              <button type="submit" className={`${button.primary} self-start`} disabled={hasInvalid || save.isPending}>
                 {save.isPending ? "Saving…" : "Save Theme"}
               </button>
             </div>
@@ -416,7 +419,7 @@ function ThemeEditor({
         <ThemeImages organisationId={organisationId} logo={images.logo} avatar={images.avatar} isOwner={isOwner} />
       </div>
       <section aria-labelledby="preview-heading" className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-        <h3 id="preview-heading" className="text-base font-semibold">
+        <h3 id="preview-heading" className={text.subheading}>
           Preview
         </h3>
         {draft.mode === "auto" && (
@@ -428,7 +431,11 @@ function ThemeEditor({
   );
 }
 
-/** The Theme tab: every Member sees the Theme and its preview; Owners edit and save it. */
+/**
+ * Theme settings: every Member sees the Theme and its preview; Owners edit and save it. The form is
+ * in the Studio's look; the preview (`WidgetPreview`, built from `@studio/ui`) shows the
+ * Organisation's Theme and is never restyled.
+ */
 export function ThemePage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   const theme = useTheme(organisationId);
   const fonts = useThemeFonts();
@@ -449,15 +456,15 @@ export function ThemePage({ organisationId, isOwner }: { organisationId: string;
       />
     );
   } else {
-    body = <p className="text-sm text-muted">Loading the Theme…</p>;
+    body = <p className={text.muted}>Loading the Theme…</p>;
   }
   return (
-    <section aria-labelledby="theme-heading" className="space-y-4">
-      <div>
-        <h2 id="theme-heading" className="text-lg font-semibold">
+    <section aria-labelledby="theme-heading" className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h2 id="theme-heading" className={text.heading}>
           Theme
         </h2>
-        <p className="text-sm text-muted">How embedded Agents look to Visitors. Changes apply as soon as they are saved.</p>
+        <p className={text.muted}>How embedded Agents look to Visitors. Changes apply as soon as they are saved.</p>
       </div>
       {body}
     </section>

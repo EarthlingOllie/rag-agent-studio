@@ -146,6 +146,11 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   Guardrails collapsed with a mono summary). The trace folds open under each answer. Page actions
   (Saved state, History, Publish) sit in the top bar's right side.
 - **Settings and forms**: a `surface.panel` per group, labels above fields, one primary button.
+  Organisation settings (built in 11-11) keep one `PageHeader` ("Organisation settings"); the
+  area (General, Credentials, Models, Theme, and Members and Audit for Owners) is the Settings
+  switcher crumb (`shell/SettingsCrumb.tsx`). Lists there (Members, pending invites, Credentials,
+  the price table, the Audit log) are `table.wrap` cards; long ones page with `Pagination`.
+  Saved changes confirm with a toast; a destructive one asks with `ConfirmDialog` first.
 - **Signed-out pages** (sign in, sign up, MFA, reset, invite, the status page, and the shell's
   own loading and error states before the session is known): a centred `surface.panel` on the
   canvas with the wave mark, no top bar (`SignedOutFrame` in `auth/AuthLayout.tsx`). Form errors
@@ -168,7 +173,7 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
 | `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
-| `Badge` | Live, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Version chip |
+| `Badge` | Live, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Working, Check failed, Version chip |
 | `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
 | `EmptyState`, `Skeleton` | Empty, error and loading states |
 | `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
@@ -208,6 +213,9 @@ keyboard-complete and tested in `design/*.test.tsx`.
 - The message is read out by a polite live region that is always in the page. Offer Undo whenever the
   action can be reversed; it runs once and closes the toast.
 - Errors are not toasts: show them where they happened, with `Notice tone="error"`.
+- Today the provider wraps Organisation settings only (`OrganisationSettingsLayout`, 11-11), so
+  its always-present live region doesn't sit beside other pages' own status messages. Move it up
+  to wrap the app when another section needs toasts; an inner provider still works.
 
 ### Badge
 
@@ -223,6 +231,8 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `budgetSpent` | Budget spent | `danger-soft`, `danger` |
 | `blocked` | Blocked by guardrail | `danger-soft`, `danger` |
 | `lowSample` | Low sample | `flag-soft`, `flag` |
+| `checkPassed` | Working (a Provider Credential's last check passed) | `accent-soft` with an accent dot |
+| `checkFailed` | Check failed (the reason goes beside it) | `danger-soft`, `danger` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
 
 `title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;

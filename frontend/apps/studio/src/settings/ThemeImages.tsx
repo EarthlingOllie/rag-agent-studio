@@ -1,10 +1,11 @@
 import { type ChangeEvent, useId } from "react";
 
+import { button, surface, text } from "../design";
 import { type ThemeImage, type ThemeImageKind, useThemeImage } from "./themeImages";
 
 /** The image types the API accepts, for the file picker. */
 const ACCEPT = "image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp";
-const BUTTON = "rounded border border-field px-3 py-1.5 text-sm font-medium hover:bg-sunken disabled:text-muted";
+
 
 const LABELS: Record<ThemeImageKind, { title: string; noun: string; hint: string }> = {
   logo: { title: "Logo", noun: "logo", hint: "Shown in the widget's header." },
@@ -42,28 +43,30 @@ function ImageField({
   }
 
   return (
-    <div className="space-y-2 rounded border border-line p-3">
-      <h4 className="text-sm font-medium">{title}</h4>
-      <p className="text-xs text-muted">{hint}</p>
+    <div className="flex flex-col gap-2 rounded-xl border border-line-soft p-4">
+      <h4 className="text-sm font-medium text-ink">{title}</h4>
+      <p className={text.small}>{hint}</p>
       <div className="flex min-h-12 items-center gap-3">
         {image ? (
           <>
-            <img src={image.url} alt={`Current ${noun}`} className="h-12 max-w-24 rounded border border-line object-contain" />
-            <span className="text-sm text-muted">{describe(image)}</span>
+            <img src={image.url} alt={`Current ${noun}`} className="h-12 max-w-24 rounded-lg border border-line object-contain" />
+            <span className="font-mono text-[13px] text-muted">{describe(image)}</span>
           </>
         ) : (
-          <span className="text-sm text-muted">No {noun} yet.</span>
+          <span className={text.muted}>No {noun} yet.</span>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <label className={`${BUTTON} cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:text-muted has-[:focus-visible]:outline-2`}>
+        <label
+          className={`${button.secondary} cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent`}
+        >
           {pick}
           <input type="file" accept={ACCEPT} aria-describedby={statusId} disabled={!isOwner || busy} onChange={onChange} className="sr-only" />
         </label>
         {isOwner && image && (
           <button
             type="button"
-            className={BUTTON}
+            className={button.danger}
             disabled={busy}
             onClick={() => {
               void remove();
@@ -100,11 +103,11 @@ export function ThemeImages({
   isOwner: boolean;
 }) {
   return (
-    <section aria-labelledby="theme-images-heading" className="space-y-3">
-      <h3 id="theme-images-heading" className="text-base font-semibold">
+    <section aria-labelledby="theme-images-heading" className={`${surface.panel} flex flex-col gap-4`}>
+      <h3 id="theme-images-heading" className={text.subheading}>
         Logo and avatar
       </h3>
-      <p className="text-sm text-muted">PNG, JPEG or WebP, up to 1 MB. Images apply as soon as they are uploaded.</p>
+      <p className={text.muted}>PNG, JPEG or WebP, up to 1 MB. Images apply as soon as they are uploaded.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <ImageField organisationId={organisationId} kind="logo" image={logo} isOwner={isOwner} />
         <ImageField organisationId={organisationId} kind="avatar" image={avatar} isOwner={isOwner} />

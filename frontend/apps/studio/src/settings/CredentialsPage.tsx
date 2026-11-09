@@ -1,6 +1,7 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { Badge, button, ConfirmDialog, field, Notice, notice, surface, table, text } from "../design";
 import {
   CAPABILITY_NAMES,
   type Capability,
@@ -20,9 +21,6 @@ import {
   useRotateCredential,
 } from "./credentials";
 
-const INPUT = "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
-const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
-const PRIMARY = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 function when(iso: string): string {
@@ -33,18 +31,20 @@ function capabilities(list: Capability[]): string {
   return list.map((capability) => CAPABILITY_NAMES[capability]).join(", ");
 }
 
-function Status({ credential }: { credential: Credential }) {
+/** The last check's result: a Working or Check failed badge, with the reason for a failure. */
+function CheckResult({ credential }: { credential: Credential }) {
   if (credential.check_failure) {
     return (
-      <span className="text-danger">
-        Check failed: {failureMessages(credential.provider)[credential.check_failure]}
-      </span>
+      <>
+        <Badge kind="checkFailed" />{" "}
+        <span className="mt-1 block max-w-xs text-xs text-muted">{failureMessages(credential.provider)[credential.check_failure]}</span>
+      </>
     );
   }
-  return <span className="text-accent-ink">Working</span>;
+  return <Badge kind="checkPassed" />;
 }
 
-/** Owner actions on one credential: check it again, rotate its key, or delete it. */
+/** Owner actions on one credential: check it again, rotate its key, or delete it (after confirming). */
 function CredentialActions({
   credential,
   busy,
@@ -67,13 +67,13 @@ function CredentialActions({
   if (mode === "rotating") {
     return (
       <form
-        className="flex flex-wrap items-end gap-2"
+        className="flex flex-wrap items-end justify-end gap-2"
         onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
           event.preventDefault();
           onRotate(apiKey, idle);
         }}
       >
-        <label className="text-sm">
+        <label className={`${field.label} text-left`}>
           New API key for {credential.name}
           <input
             type="password"
@@ -83,47 +83,27 @@ function CredentialActions({
             onChange={(event) => {
               setApiKey(event.target.value);
             }}
-            className={INPUT}
+            className={field.input}
           />
         </label>
-        <button type="submit" className={BUTTON} disabled={busy}>
+        <button type="submit" className={button.primary} disabled={busy}>
           Check and rotate
         </button>
-        <button type="button" className={BUTTON} onClick={idle}>
+        <button type="button" className={button.secondary} onClick={idle}>
           Cancel
         </button>
       </form>
     );
   }
-  if (mode === "deleting") {
-    return (
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className={BUTTON}
-          disabled={busy}
-          onClick={() => {
-            setMode("idle");
-            onDelete();
-          }}
-        >
-          Yes, delete {credential.name}
-        </button>
-        <button type="button" className={BUTTON} onClick={idle}>
-          Cancel
-        </button>
-      </div>
-    );
-  }
   return (
-    <div className="flex flex-wrap gap-2">
-      <button type="button" className={BUTTON} disabled={busy} aria-label={`Check now: ${credential.name}`} onClick={onCheck}>
+    <div className="flex flex-wrap justify-end gap-2">
+      <button type="button" className={button.secondary} disabled={busy} aria-label={`Check now: ${credential.name}`} onClick={onCheck}>
         Check now
       </button>
       {credential.auth_kind === "api_key" && (
         <button
           type="button"
-          className={BUTTON}
+          className={button.secondary}
           aria-label={`Rotate key: ${credential.name}`}
           onClick={() => {
             setMode("rotating");
@@ -134,7 +114,7 @@ function CredentialActions({
       )}
       <button
         type="button"
-        className={BUTTON}
+        className={button.danger}
         aria-label={`Delete: ${credential.name}`}
         onClick={() => {
           setMode("deleting");
@@ -142,6 +122,21 @@ function CredentialActions({
       >
         Delete
       </button>
+      <ConfirmDialog
+        open={mode === "deleting"}
+        title={`Delete ${credential.name}?`}
+        confirmLabel={`Yes, delete ${credential.name}`}
+        destructive
+        busy={busy}
+        onCancel={idle}
+        onConfirm={() => {
+          setMode("idle");
+          onDelete();
+        }}
+      >
+        Its key is erased and it can't be used again. A credential an Agent, Project or the Default Model still uses is not
+        deleted: you are told what uses it.
+      </ConfirmDialog>
     </div>
   );
 }
@@ -151,7 +146,7 @@ const KIND_NAMES: Record<string, string> = { agent: "Agent", project: "Project",
 /** The refusal to delete a credential something still uses, listing what uses it. */
 function InUse({ name, error }: { name: string; error: CredentialRequestError }) {
   return (
-    <div role="alert" className="rounded border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
+    <div role="alert" className={notice.error}>
       <p>{name} is still in use, so it wasn't deleted. Move these to another credential first:</p>
       <ul className="mt-1 list-disc pl-5">
         {error.references.map((reference) => (
@@ -171,8 +166,8 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
   const remove = useDeleteCredential(organisationId);
   const [done, setDone] = useState<string | null>(null);
   const [deleting, setDeleting] = useState("");
-  if (credentials.isPending) return <p role="status">Loading credentials…</p>;
-  if (credentials.isError) return <p role="alert">The credentials could not be loaded. Try again shortly.</p>;
+  if (credentials.isPending) return <p role="status" className={text.muted}>Loading credentials…</p>;
+  if (credentials.isError) return <p role="alert" className={text.muted}>The credentials could not be loaded. Try again shortly.</p>;
   const busy = check.isPending || rotate.isPending || remove.isPending;
   const inUse = remove.error instanceof CredentialRequestError && remove.error.references.length > 0 ? remove.error : null;
   const start = () => {
@@ -182,86 +177,84 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
     remove.reset();
   };
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       {inUse ? <InUse name={deleting} error={inUse} /> : <FormError message={credentialFailure(rotate.error ?? remove.error ?? check.error)} />}
-      {done && (
-        <p role="status" className="text-sm text-accent-ink">
-          {done}
-        </p>
-      )}
+      {done && <Notice tone="success">{done}</Notice>}
       {credentials.data.length === 0 ? (
-        <p className="text-sm text-muted">No credentials yet.</p>
+        <p className={text.muted}>No credentials yet.</p>
       ) : (
-        <table className="w-full text-left text-sm" aria-label="Provider Credentials">
-          <thead>
-            <tr>
-              <th className="py-2 pr-4 font-medium">Name</th>
-              <th className="py-2 pr-4 font-medium">Provider</th>
-              <th className="py-2 pr-4 font-medium">Used for</th>
-              <th className="py-2 pr-4 font-medium">Key</th>
-              <th className="py-2 pr-4 font-medium">Status</th>
-              <th className="py-2 pr-4 font-medium">Last checked</th>
-              {isOwner && (
-                <th className="py-2 font-medium">
-                  <span className="sr-only">Actions</span>
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {credentials.data.map((credential) => (
-              <tr key={credential.id} className="border-t border-line align-top">
-                <td className="py-2 pr-4">{credential.name}</td>
-                <td className="py-2 pr-4">
-                  {credential.region ? `${PROVIDER_NAMES[credential.provider]} · ${credential.region}` : PROVIDER_NAMES[credential.provider]}
-                </td>
-                <td className="py-2 pr-4">{capabilities(credential.capabilities)}</td>
-                <KeyCell credential={credential} />
-                <td className="py-2 pr-4">
-                  <Status credential={credential} />
-                </td>
-                <td className="py-2 pr-4">{when(credential.last_checked_at)}</td>
+        <div className={table.wrap}>
+          <table className={`${table.table} min-w-[880px]`} aria-label="Provider Credentials">
+            <thead>
+              <tr>
+                <th className={table.th}>Name</th>
+                <th className={table.th}>Provider</th>
+                <th className={table.th}>Used for</th>
+                <th className={table.th}>Key</th>
+                <th className={table.th}>Status</th>
+                <th className={table.th}>Last checked</th>
                 {isOwner && (
-                  <td className="py-2">
-                    <CredentialActions
-                      credential={credential}
-                      busy={busy}
-                      onCheck={() => {
-                        start();
-                        check.mutate(credential.id, {
-                          onSuccess: (checked) => {
-                            setDone(checked.check_failure ? null : `${checked.name} passed its check.`);
-                          },
-                        });
-                      }}
-                      onRotate={(apiKey, finished) => {
-                        start();
-                        rotate.mutate(
-                          { credentialId: credential.id, apiKey },
-                          {
-                            onSuccess: (rotated) => {
-                              finished();
-                              setDone(`The key of ${rotated.name} was checked and replaced.`);
-                            },
-                          },
-                        );
-                      }}
-                      onDelete={() => {
-                        start();
-                        setDeleting(credential.name);
-                        remove.mutate(credential.id, {
-                          onSuccess: () => {
-                            setDone(`${credential.name} was deleted.`);
-                          },
-                        });
-                      }}
-                    />
-                  </td>
+                  <th className={table.th}>
+                    <span className="sr-only">Actions</span>
+                  </th>
                 )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {credentials.data.map((credential) => (
+                <tr key={credential.id} className={`${table.row} align-top`}>
+                  <td className={`${table.td} font-medium`}>{credential.name}</td>
+                  <td className={table.td}>
+                    {credential.region ? `${PROVIDER_NAMES[credential.provider]} · ${credential.region}` : PROVIDER_NAMES[credential.provider]}
+                  </td>
+                  <td className={table.tdMuted}>{capabilities(credential.capabilities)}</td>
+                  <KeyCell credential={credential} />
+                  <td className={table.td}>
+                    <CheckResult credential={credential} />
+                  </td>
+                  <td className={`${table.tdMuted} font-mono text-[13px] whitespace-nowrap`}>{when(credential.last_checked_at)}</td>
+                  {isOwner && (
+                    <td className={table.td}>
+                      <CredentialActions
+                        credential={credential}
+                        busy={busy}
+                        onCheck={() => {
+                          start();
+                          check.mutate(credential.id, {
+                            onSuccess: (checked) => {
+                              setDone(checked.check_failure ? null : `${checked.name} passed its check.`);
+                            },
+                          });
+                        }}
+                        onRotate={(apiKey, finished) => {
+                          start();
+                          rotate.mutate(
+                            { credentialId: credential.id, apiKey },
+                            {
+                              onSuccess: (rotated) => {
+                                finished();
+                                setDone(`The key of ${rotated.name} was checked and replaced.`);
+                              },
+                            },
+                          );
+                        }}
+                        onDelete={() => {
+                          start();
+                          setDeleting(credential.name);
+                          remove.mutate(credential.id, {
+                            onSuccess: () => {
+                              setDone(`${credential.name} was deleted.`);
+                            },
+                          });
+                        }}
+                      />
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -271,14 +264,14 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
 function KeyCell({ credential }: { credential: Credential }) {
   if (credential.role_arn) {
     return (
-      <td className="py-2 pr-4" aria-label={`IAM role ${credential.role_arn}`}>
+      <td className={table.td} aria-label={`IAM role ${credential.role_arn}`}>
         IAM role
-        <span className="block font-mono text-xs break-all">{credential.role_arn}</span>
+        <span className="block font-mono text-xs break-all text-muted">{credential.role_arn}</span>
       </td>
     );
   }
   return (
-    <td className="py-2 pr-4 font-mono" aria-label={`Key ending ${String(credential.masked_suffix)}`}>
+    <td className={`${table.td} font-mono text-[13px]`} aria-label={`Key ending ${String(credential.masked_suffix)}`}>
       ••••{credential.masked_suffix}
     </td>
   );
@@ -309,16 +302,16 @@ function Copyable({
   multiline?: boolean;
   onCopied: (copied: Copied) => void;
 }) {
-  const field = `${INPUT} font-mono text-xs`;
+  const box = `${field.inputMono} text-xs`;
   return (
     <div>
       <div className="flex items-end justify-between gap-2">
-        <label htmlFor={id} className="text-sm font-medium">
+        <label htmlFor={id} className={field.label}>
           {label}
         </label>
         <button
           type="button"
-          className={BUTTON}
+          className={button.secondary}
           onClick={() => {
             navigator.clipboard.writeText(value).then(
               () => {
@@ -334,9 +327,9 @@ function Copyable({
         </button>
       </div>
       {multiline ? (
-        <textarea id={id} readOnly rows={value.split("\n").length} value={value} className={field} />
+        <textarea id={id} readOnly rows={value.split("\n").length} value={value} className={box} />
       ) : (
-        <input id={id} readOnly value={value} className={field} />
+        <input id={id} readOnly value={value} className={box} />
       )}
     </div>
   );
@@ -350,11 +343,11 @@ function BedrockRoleSetup({ organisationId }: { organisationId: string }) {
   if (!setup.data) return <p role="status">Loading the AWS setup details…</p>;
   const { external_id: externalId, platform_principal: principal, trust_policy: trust, permissions_policy: permissions } = setup.data;
   return (
-    <section aria-labelledby="bedrock-setup-heading" className="space-y-3 rounded border border-field bg-canvas p-3">
-      <h4 id="bedrock-setup-heading" className="text-sm font-semibold">
+    <section aria-labelledby="bedrock-setup-heading" className="flex flex-col gap-3 rounded-xl bg-sunken p-4">
+      <h4 id="bedrock-setup-heading" className={text.subheading}>
         Set up the role in AWS
       </h4>
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
+      <ol className="list-decimal space-y-1 pl-5 text-sm text-ink-2">
         <li>In the IAM console, create a role with a custom trust policy, and paste the trust policy below.</li>
         <li>Attach the permissions policy below to the role (or a policy that allows the same Bedrock actions).</li>
         <li>In the Bedrock console, enable access to the models you'll use, in the region you choose here.</li>
@@ -364,7 +357,7 @@ function BedrockRoleSetup({ organisationId }: { organisationId: string }) {
       <Copyable id="bedrock-principal" label="Our AWS principal" value={principal} onCopied={setCopied} />
       <Copyable id="bedrock-trust-policy" label="Trust policy" value={trust} multiline onCopied={setCopied} />
       <Copyable id="bedrock-permissions-policy" label="Permissions policy" value={permissions} multiline onCopied={setCopied} />
-      <p role="status" className="text-sm">
+      <p role="status" className="text-sm text-ink-2">
         {copied?.ok === true && `${copied.what.replace("Your external", "External")} copied.`}
         {copied?.ok === false && "Couldn't copy. Select the text and copy it yourself."}
       </p>
@@ -388,7 +381,7 @@ function TextField({
   placeholder?: string;
 }) {
   return (
-    <label className="block text-sm font-medium">
+    <label className={field.label}>
       {label}
       <input
         type={type}
@@ -399,7 +392,7 @@ function TextField({
         onChange={(event) => {
           onChange(event.target.value);
         }}
-        className={INPUT}
+        className={type === "password" ? field.inputMono : field.input}
       />
     </label>
   );
@@ -432,18 +425,14 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
     setSecretAccessKey("");
   };
   return (
-    <section aria-labelledby="add-credential-heading" className="max-w-xl space-y-3">
-      <h3 id="add-credential-heading" className="text-base font-semibold">
+    <section aria-labelledby="add-credential-heading" className={`${surface.panel} flex max-w-2xl flex-col gap-4`}>
+      <h3 id="add-credential-heading" className={text.heading}>
         Add a credential
       </h3>
       <FormError message={credentialFailure(add.error, providerId)} />
-      {saved && (
-        <p role="status" className="text-sm text-accent-ink">
-          {saved}
-        </p>
-      )}
+      {saved && <Notice tone="success">{saved}</Notice>}
       <form
-        className="space-y-3"
+        className="flex flex-col gap-4"
         onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
           event.preventDefault();
           setSaved(null);
@@ -468,10 +457,10 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
           );
         }}
       >
-        <label className="block text-sm font-medium">
+        <label className={field.label}>
           Provider
           <select
-            className={INPUT}
+            className={field.select}
             value={providerId}
             onChange={(event) => {
               const next = providers.find((candidate) => candidate.id === event.target.value) as ProviderInfo;
@@ -491,14 +480,15 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
         <TextField label="Name" value={name} onChange={setName} placeholder={bedrock ? "Bedrock production" : "Marketing OpenAI"} />
         {bedrock ? (
           <>
-            <fieldset className="text-sm">
-              <legend id="aws-auth-legend" className="font-medium">
+            <fieldset className="text-sm text-ink">
+              <legend id="aws-auth-legend" className={field.label}>
                 How should we connect to your AWS account?
               </legend>
-              <div role="radiogroup" aria-labelledby="aws-auth-legend" className="mt-1 space-y-1">
+              <div role="radiogroup" aria-labelledby="aws-auth-legend" className="mt-1.5 space-y-1.5">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
+                    className={field.checkbox}
                     name="aws-auth-kind"
                     checked={authKind === "aws_role"}
                     onChange={() => {
@@ -510,6 +500,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
+                    className={field.checkbox}
                     name="aws-auth-kind"
                     checked={authKind === "aws_access_keys"}
                     onChange={() => {
@@ -522,7 +513,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
             </fieldset>
             {authKind === "aws_role" ? (
               <>
-                <p className="text-sm text-muted">
+                <p className={text.muted}>
                   We assume a role in your AWS account using your Organisation's external ID, so no secret is stored and you can
                   revoke access at any time.
                 </p>
@@ -536,7 +527,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
               </>
             ) : (
               <>
-                <p className="text-sm text-muted">
+                <p className={text.muted}>
                   Prefer the IAM role: access keys are long-lived secrets. If you use them, give the IAM user only the Bedrock
                   permissions it needs. We store the secret encrypted and never show it again.
                 </p>
@@ -549,12 +540,13 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
         ) : (
           <TextField label="API key" type="password" value={apiKey} onChange={setApiKey} />
         )}
-        <fieldset className="text-sm">
-          <legend className="font-medium">Use for</legend>
+        <fieldset className="text-sm text-ink">
+          <legend className={field.label}>Use for</legend>
           {offered.map((capability) => (
-            <label key={capability} className="mr-4 inline-flex items-center gap-1">
+            <label key={capability} className="mt-1.5 mr-4 inline-flex items-center gap-2">
               <input
                 type="checkbox"
+                    className={field.checkbox}
                 checked={chosen.includes(capability)}
                 onChange={(event) => {
                   setChosen(
@@ -568,7 +560,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
             </label>
           ))}
         </fieldset>
-        <button type="submit" className={PRIMARY} disabled={add.isPending || chosen.length === 0}>
+        <button type="submit" className={`${button.primary} self-start`} disabled={add.isPending || chosen.length === 0}>
           {add.isPending ? "Checking with the provider…" : "Check and save"}
         </button>
       </form>
@@ -580,16 +572,16 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
 export function CredentialsPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   const providers = useProviders();
   return (
-    <section aria-labelledby="credentials-heading" className="space-y-6">
-      <div className="space-y-1">
-        <h2 id="credentials-heading" className="text-lg font-semibold">
+    <section aria-labelledby="credentials-heading" className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <h2 id="credentials-heading" className={text.heading}>
           Provider Credentials
         </h2>
-        <p className="text-sm text-muted">
+        <p className={text.muted}>
           Each key is checked with its provider when it's saved, stored encrypted, and never shown again: only its last four
           characters are. Amazon Bedrock can instead connect through an IAM role in your AWS account, so no secret is stored.
         </p>
-        {!isOwner && <p className="text-sm text-muted">Only Owners can add, check, rotate or delete credentials.</p>}
+        {!isOwner && <p className={text.muted}>Only Owners can add, check, rotate or delete credentials.</p>}
       </div>
       <CredentialsTable organisationId={organisationId} isOwner={isOwner} />
       {isOwner && providers.data && <AddCredential organisationId={organisationId} providers={providers.data} />}
