@@ -12,8 +12,9 @@ Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/
 | `make gen-client` | Regenerates `frontend/packages/api-client` from the backend's OpenAPI schema. |
 | `make check-client` | Fails if the committed API client differs from a fresh generation (CI runs this). |
 | `make e2e-install` | Installs the Chromium build Playwright uses. |
-| `make e2e` | Starts the stack with `docker compose up --wait`, then runs the Playwright suite (fixture checks and the Studio smoke and auth tests with axe). |
+| `make e2e` | Starts the stack with `docker compose up --wait`, seeds the demo (`make seed`), then runs the Playwright suite with axe, including the README's five-minute demo as one test (`frontend/e2e/tests/five-minute-demo.spec.ts`). |
 | `make infra-check` | `terraform fmt`, `validate`, `terraform test`, TFLint (with the AWS ruleset) and Checkov over `infra/bootstrap`, every module in `infra/modules` and every environment in `infra/envs`, plus the S3 backend check (`infra/tests/backend.test.sh`) and the plan-gate tests (`scripts/ci/tests/plan-gate.test.sh`). No AWS account is needed: `terraform test` uses mocked providers. |
+| `make link-check` | Checks that every relative link, and its `#anchor`, in the Markdown git tracks resolves (offline: external links are not fetched), after the checker's own tests (`scripts/ci/tests/links.test.mjs`, 100% coverage). |
 | `make security` | gitleaks over the whole history (`secret-scan`), pip-audit and pnpm audit (`audit`), and a Trivy scan of the built images (`image-scan`). |
 | `make images` | Builds the API image (also used by the worker and Beat) and the Studio image. |
 | `make eval` | Guardrail attack evaluation suite against the naive mocked model (fails on any unexpected outcome); report in `backend/eval-report/`. |
@@ -201,4 +202,5 @@ To use a Chromium that is already installed instead of Playwright's download, se
 | `infra.yml` | `make infra-check`. On pull requests, `plan-gate` (`scripts/ci/plan-gate.sh`) decides whether `terraform plan (demo)` runs: only when the `AWS_DEPLOY_ROLE_ARN` secret exists and the pull request touches `infra/` or this workflow. Otherwise the plan job shows as skipped, with a notice saying why. When it runs, the plan is posted as a pull request comment. Setting it up: [infra-bootstrap.md](infra-bootstrap.md). |
 | `deploy.yml` | Builds the images on every push and pushes them to ECR on `main` when `AWS_DEPLOY_ROLE_ARN` is set (otherwise the push is skipped with a notice). A manual run deploys the demo environment at an image tag with `scripts/deploy/deploy.sh`: apply, migration task, service rollout, static upload, invalidation, smoke check. See [deploy-demo.md](deploy-demo.md). |
 | `destroy.yml` | Manual only: destroys the demo environment with `scripts/deploy/destroy.sh`, after the confirmation `destroy demo` is typed exactly. |
+| `links.yml` | `make link-check`: every relative link in the README and docs resolves, on every push and PR |
 | `guardrails-eval.yml` | `make eval` on every push and PR (mocked model); nightly at 02:41 UTC and on demand `make eval-live` (repository variables `EVAL_PROVIDER`, `EVAL_MODEL`, optional `EVAL_MIN_PASS_RATE`; secret `EVAL_API_KEY`). Both upload the report as an artifact and write it to the run summary. |

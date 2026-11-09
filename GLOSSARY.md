@@ -120,6 +120,10 @@ _Avoid_: Demo host page (for the shop), test page
 The Demo page (`/demo/attacks.html`) with one button per attack category (instruction override, prompt extraction, role-play jailbreak, encoded attack) and a benign control. Each click sends that button's fixed message to the Guardrail demo Agent the way the widget does, as a new Visitor Conversation, and shows the reply as it streams and what each Guardrail layer did: the input Guardrail blocked, flagged, logged or passed it; the Canary token replaced or flagged the reply, stayed quiet, or was not reached because the message was blocked. The Guardrail demo Agent answers with the Naive demo model, so whatever is stopped is stopped by a Guardrail layer. It uses Demo mode's debug endpoint, which returns each answer's Guardrail outcomes without a Studio login.
 _Avoid_: Red-team page, jailbreak console
 
+**Five-minute demo**:
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace, the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+_Avoid_: Walkthrough, showcase script, smoke test
+
 **Demo mode**:
 A stack run with `DEMO_PAGES` on (`docker compose` and the AWS demo): only then do the demo routes exist, the Demo pages' Agent lookup and budget button and the Attack panel's debug endpoint. Without it they answer 404.
 _Avoid_: Seed mode, debug mode
