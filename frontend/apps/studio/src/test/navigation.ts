@@ -11,6 +11,8 @@ export type NavigationMenu =
   | "Organisation sections"
   | "Projects"
   | "Project sections"
+  | "Agents"
+  | "Agent views"
   | "Organisation settings"
   | "Account";
 
