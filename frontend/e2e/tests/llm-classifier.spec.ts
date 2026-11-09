@@ -43,7 +43,7 @@ test.describe("LLM classifier", () => {
     });
     expect(draft.status()).toBe(200);
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);

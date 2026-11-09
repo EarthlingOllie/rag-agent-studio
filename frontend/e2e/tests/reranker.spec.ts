@@ -43,7 +43,7 @@ test.describe("Reranker", () => {
 
     // Two one-Chunk Documents, uploaded as an Editor would.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    await page.getByLabel("Choose files to upload").setInputFiles([
+    await page.getByLabel("Upload", { exact: true }).setInputFiles([
       { name: "product.txt", mimeType: "text/plain", buffer: Buffer.from(PRODUCT) },
       { name: "leave.txt", mimeType: "text/plain", buffer: Buffer.from(LEAVE) },
     ]);

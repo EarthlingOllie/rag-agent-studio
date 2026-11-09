@@ -193,12 +193,20 @@ test("the section switcher lists the Project's sections with icons and number hi
   expect(await currentSection("Project sections")).toBe("Conversations");
 });
 
-test("a section's inner pages keep their section current", async () => {
+test("a section's inner pages keep their section: a Document is under Documents, and its own crumb is current", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId", () =>
+      HttpResponse.json({ detail: "Not found" }, { status: 404 }),
+    ),
+  );
   renderStudio(projectPage(hrProject.id, "/documents/0e8f6a52-7d2b-4c8e-9f1a-3b5c7d9e1f20"));
 
-  expect(await screen.findByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
+  expect(await currentSection("Project sections")).toBe("Documents");
+  expect(screen.getByRole("button", { name: "Documents, Project sections" })).not.toHaveAttribute("aria-current");
+  // A Document that can't be loaded is still named by its crumb, as "Document".
+  expect(within(screen.getByRole("banner")).getByText("Document")).toHaveAttribute("aria-current", "page");
 });
 
 test("an archived Project still has its switchers; the Project switcher offers the open Projects", async () => {

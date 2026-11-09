@@ -287,12 +287,16 @@ _Avoid_: Error code, error type, failure reason
 Sending a Document through ingestion again from its stored file, with its Project's current settings, without uploading it again: a Failed Document, or its Failed new edition, or else a Ready Document's current edition (whose Chunks keep serving until the new ones replace them). Not while the Document, or a new edition of it, is still being processed. An Editor retries by hand; a transient failure (a provider error) is retried automatically, after an exponential backoff, up to a fixed number of attempts.
 _Avoid_: Reprocess, re-ingest, re-run
 
+**Knowledge Base figures**:
+The four stat cards at the top of a Project's Documents section: Documents counted against the Document quota, Chunks, flagged Chunks (in the flag colour when there are any) and the Project's Embedding Model. They are the whole Project's, whatever the list's filters show.
+_Avoid_: Stats, KPIs, summary
+
 **Document quota**:
 The most Documents a Project may hold, not counting Failed ones. Uploads beyond it are refused with a clear message, and a Document processed when the Project is already full fails with the quota category. A new Edition doesn't add a Document, so the quota never refuses one. Every Project starts at 500; an Owner can change it.
 _Avoid_: Document limit, storage limit, cap
 
 **Document viewer**:
-The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
+The Studio page for one Document: its converted markdown beside its Chunks, each on a card with its heading path and page range (a flagged Chunk's card is badged Flagged), and a download of the original file. The Breadcrumb's last crumb names the Document, after the Documents switcher that leads back to the list.
 _Avoid_: Document preview, inspector, detail page
 
 **Heading path**:
@@ -311,7 +315,7 @@ A newer Edition being ingested. Its Chunks are written under its own Edition num
 _Avoid_: Draft edition, pending upload, shadow copy
 
 **Tag**:
-A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay.
+A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay. In the Studio, Tags are created, renamed and deleted under Manage tags on the Documents toolbar, filtered by with the Tag chips, set on one Document from its ⋯ menu (Edit Tags), and added or removed in bulk from the bulk bar.
 _Avoid_: Category, folder, label
 
 **Chunk**:

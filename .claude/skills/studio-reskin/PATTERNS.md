@@ -204,6 +204,36 @@ Built in 11-05:
 Status tones: Ready `ready`, Queued/Processing `working`, Failed `failed`.
 The Tags panel opens from "Manage tags" (a `button.ghost` in the toolbar) as a `surface.panel`.
 
+Built in 11-06 (`projects/DocumentsTab.tsx`, `TagsPanel.tsx`, `DocumentViewer.tsx`):
+
+- The stat row is a `section` named "Knowledge Base". Its figures are the whole Project's, whatever
+  the filters show (a second, unfiltered `useDocuments`). The Embedding Model card prints the model id.
+- The toolbar is `role="search"`: the search pill, Tag chips as a `Segmented` radio group "Filter by
+  Tag" (All plus each Tag; hidden while there are none), Manage tags, then on the right Clear filters
+  (while filtered), the status `select` ("Status", Any status) and Upload: a `button.primary`-shaped
+  `<label>` around an `sr-only` file input named "Upload".
+- The drop zone is `surface.dropzone`, text only; dragging over it turns it `accent-soft`.
+- Columns: Select, Name, Type (`fileType()`: PDF, DOCX, PPTX, HTML, Markdown, Text, else File), Tags
+  (`Tag` pills), Status (`Status` dot, then the failure category and message), Chunks, Flagged
+  (`FlagCount`), Size, ⋯. The ⋯ button is "More actions for <name>", its menu "Actions for <name>":
+  Retry and New edition (once Ready or Failed), Edit Tags, Delete. New edition clicks a `hidden`
+  file input named "New edition of <name>". An archived Project has no ⋯, no selection, no Upload.
+- Edit Tags is a `Dialog` "Tags for <name>" (checkboxes, Save Tags); Delete is a destructive
+  `ConfirmDialog` "Delete <name>?" whose refusal shows in its `body`.
+- Selection shows `BulkBar` with two `Menu`s, Add Tag and Remove Tag, listing the Tags. A `Menu`
+  inside `BulkBar` keeps its own keys (the bar ignores keys a control already handled).
+- Toasts (`ToastProvider` around the section): "Deleted <name>.", "Retrying <name>.", "Saved the Tags
+  on <name>.", "Added <Tag> to 2 Documents.", "Removed <Tag> from 2 Documents.". Notices: upload
+  refusals (error, in the Uploads list), a full quota (warning), failed Documents (warning), a
+  refused retry (error).
+- States: `Skeleton` "Loading Documents"; `EmptyState` for no Documents, no matches and a failed load.
+- The Document viewer: the breadcrumb ends `… / Documents ▾ / <name>` (`DocumentCrumb`, "Document"
+  until it loads, and the section switcher is then not the current crumb). The header has the
+  name, a "Document details" list (status, type, size, chunks, flagged), Download original
+  (`button.secondary`) and a warning `Notice` when Chunks are flagged. The markdown is in a
+  `surface.panel`; each Chunk is a card (`rounded-2xl`, `border-flag` and `<Badge kind="flagged" />`
+  when flagged); paging is `Pagination` "Chunk pages". The All Documents link is gone.
+
 ## R4: Agent + Playground
 
 ```tsx

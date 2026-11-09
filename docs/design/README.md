@@ -141,6 +141,17 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 - **List and data pages** (Documents, Agents, Conversations, Members, Credentials, Audit):
   `PageHeader`, optional `StatCard` row, a toolbar, then a `table.wrap` card. Row actions in a ⋯
   `Menu` (`button.iconBare`), destructive items marked `danger`.
+  - **Documents** (as built in 11-06): inside a Project the `PageHeader` is the Project's, so the
+    section starts at the Knowledge Base figures (Documents / quota, Chunks, Flagged chunks,
+    Embedding Model). The toolbar is search, Tag chips (a `Segmented` "Filter by Tag", All first),
+    Manage tags (opens the Tags `Dialog`), then Clear filters, the status filter and Upload, the one
+    primary. A quiet drop zone sits under it. Rows show Name, Type, Tag pills, a status dot, Chunks,
+    `FlagCount` and Size; Retry, New edition, Edit Tags and Delete are in the ⋯ menu. A selection
+    shows `BulkBar` with Add Tag and Remove Tag menus. Changes are confirmed with a toast, Delete
+    asks in a `ConfirmDialog`, and refusals, a full quota and failed Documents are `Notice`s.
+  - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
+    and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
+    edged in `flag` and badged Flagged, paged with `Pagination`.
 - **A Project section** (built for Agents in 11-09) is the same under the Project's own header:
   `PageHeader level={2}` (the Project keeps the page's one h1) with the section's primary action
   on the right (New Agent opens a `Dialog`). The Agents list is a `table.wrap` card with a
@@ -187,7 +198,7 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
 | `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
-| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Working, Check failed, Version chip |
+| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, Version chip |
 | `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
 | `EmptyState`, `Skeleton` | Empty, error and loading states |
 | `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
@@ -246,6 +257,7 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `budgetSpent` | Budget spent | `danger-soft`, `danger` |
 | `blocked` | Blocked by guardrail | `danger-soft`, `danger` |
 | `lowSample` | Low sample | `flag-soft`, `flag` |
+| `flagged` | Flagged (a Chunk the ingestion scan flagged) | `flag-soft`, `flag` |
 | `checkPassed` | Working (a Provider Credential's last check passed) | `accent-soft` with an accent dot |
 | `checkFailed` | Check failed (the reason goes beside it) | `danger-soft`, `danger` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
@@ -283,7 +295,8 @@ when equal). `diffLines(before, after)` gives the same diff as data.
 ### Selections and lists
 
 - `BulkBar`: appears above a table while rows are selected: "3 Agents selected", the actions, Clear
-  selection. A toolbar: arrow keys move between its buttons, Escape clears.
+  selection. A toolbar: arrow keys move between its buttons, Escape clears. A `Menu` in the bar
+  (Add Tag ▾) keeps its own keys while open.
 - `Segmented`: a few mutually exclusive options side by side (Visitors / Playground / All). A radio
   group with one Tab stop; arrows move and choose, Home and End jump.
 - `Pagination`: Previous, page numbers (first, last, current and its neighbours, "…" between) and
