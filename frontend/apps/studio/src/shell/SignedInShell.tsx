@@ -101,6 +101,11 @@ export function OrganisationShell() {
                 <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className={NAV_LINK}>
                   Projects
                 </Link>
+                {organisation.role === "owner" && (
+                  <Link to="/organisations/$organisationId/cost" params={{ organisationId }} className={NAV_LINK}>
+                    Cost
+                  </Link>
+                )}
                 <Link to="/organisations/$organisationId/settings" params={{ organisationId }} className={NAV_LINK}>
                   Organisation settings
                 </Link>

@@ -1,0 +1,31 @@
+commit b4e379c
+$ make lint
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+390 files already formatted
+Success: no issues found in 390 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0708/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0708/frontend
+> tsc
+
+exit 0
+$ make check-client
+cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
+cd frontend && pnpm gen-client
+
+> rag-agent-studio-frontend@ gen-client /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0708/frontend
+> pnpm --filter @studio/api-client generate
+
+
+> @studio/api-client@ generate /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0708/frontend/packages/api-client
+> openapi-typescript ./openapi.json --output ./src/schema.gen.ts
+
+✨ openapi-typescript 7.13.0
+🚀 ./openapi.json → ./src/schema.gen.ts [758.5ms]
+API client is up to date.
+exit 0

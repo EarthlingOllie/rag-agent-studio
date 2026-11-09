@@ -85,6 +85,7 @@ ROUTERS: Sequence[APIRouter] = (
     playground_api.router,
     conversations_api.router,
     analytics_api.router,
+    analytics_api.cost_router,
     retention_api.router,
     embed_api.settings_router,
     branding_api.router,

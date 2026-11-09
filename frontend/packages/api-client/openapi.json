@@ -1707,6 +1707,38 @@
         "title": "ConversationTokenOut",
         "type": "object"
       },
+      "CostAmountsOut": {
+        "properties": {
+          "playground_usd": {
+            "title": "Playground Usd",
+            "type": "string"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          },
+          "visitor_usd": {
+            "title": "Visitor Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "visitor_usd",
+          "playground_usd",
+          "total_usd"
+        ],
+        "title": "CostAmountsOut",
+        "type": "object"
+      },
+      "CostGroup": {
+        "description": "What org cost is broken down by.",
+        "enum": [
+          "project",
+          "agent"
+        ],
+        "title": "CostGroup",
+        "type": "string"
+      },
       "CostOut": {
         "properties": {
           "per_conversation_usd": {
@@ -1730,6 +1762,65 @@
           "per_conversation_usd"
         ],
         "title": "CostOut",
+        "type": "object"
+      },
+      "CostRowOut": {
+        "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Name"
+          },
+          "playground_usd": {
+            "title": "Playground Usd",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          },
+          "visitor_usd": {
+            "title": "Visitor Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "visitor_usd",
+          "playground_usd",
+          "total_usd",
+          "project_id",
+          "project_name",
+          "agent_id",
+          "agent_name"
+        ],
+        "title": "CostRowOut",
         "type": "object"
       },
       "CreateAgentRequest": {
@@ -4754,6 +4845,42 @@
           "cached_input"
         ],
         "title": "OptionalPricesOut",
+        "type": "object"
+      },
+      "OrgCostOut": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "group_by": {
+            "$ref": "#/components/schemas/CostGroup"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CostRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/CostAmountsOut"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "group_by",
+          "rows",
+          "total"
+        ],
+        "title": "OrgCostOut",
         "type": "object"
       },
       "OrganisationMemberOut": {
@@ -8992,6 +9119,99 @@
         "summary": "Get Bedrock Setup",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/cost": {
+      "get": {
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage is in its own\ncolumn. Owners only.",
+        "operationId": "getOrganisationCost",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Break the cost down by Project or by Agent",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CostGroup",
+              "default": "project",
+              "description": "Break the cost down by Project or by Agent"
+            }
+          },
+          {
+            "description": "The first UTC day; 30 days before `end` if left out",
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The first UTC day; 30 days before `end` if left out",
+              "title": "Start"
+            }
+          },
+          {
+            "description": "The last UTC day; today if left out",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The last UTC day; today if left out",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgCostOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Organisation Cost",
+        "tags": [
+          "analytics"
         ]
       }
     },

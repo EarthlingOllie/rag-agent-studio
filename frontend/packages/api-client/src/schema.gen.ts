@@ -463,6 +463,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Organisation Cost
+         * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
+         *     366 days), including today's so far, by Project or by Agent. Playground usage is in its own
+         *     column. Owners only.
+         */
+        get: operations["getOrganisationCost"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/credentials": {
         parameters: {
             query?: never;
@@ -2978,12 +3000,47 @@ export interface components {
             /** Conversation Token */
             conversation_token: string;
         };
+        /** CostAmountsOut */
+        CostAmountsOut: {
+            /** Playground Usd */
+            playground_usd: string;
+            /** Total Usd */
+            total_usd: string;
+            /** Visitor Usd */
+            visitor_usd: string;
+        };
+        /**
+         * CostGroup
+         * @description What org cost is broken down by.
+         * @enum {string}
+         */
+        CostGroup: "project" | "agent";
         /** CostOut */
         CostOut: {
             /** Per Conversation Usd */
             per_conversation_usd: string | null;
             /** Total Usd */
             total_usd: string;
+        };
+        /** CostRowOut */
+        CostRowOut: {
+            /** Agent Id */
+            agent_id: string | null;
+            /** Agent Name */
+            agent_name: string | null;
+            /** Playground Usd */
+            playground_usd: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /** Total Usd */
+            total_usd: string;
+            /** Visitor Usd */
+            visitor_usd: string;
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
@@ -4085,6 +4142,23 @@ export interface components {
             input: string | null;
             /** Output */
             output: string | null;
+        };
+        /** OrgCostOut */
+        OrgCostOut: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            group_by: components["schemas"]["CostGroup"];
+            /** Rows */
+            rows: components["schemas"]["CostRowOut"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            total: components["schemas"]["CostAmountsOut"];
         };
         /** OrganisationMemberOut */
         OrganisationMemberOut: {
@@ -6213,6 +6287,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getOrganisationCost: {
+        parameters: {
+            query?: {
+                /** @description Break the cost down by Project or by Agent */
+                group_by?: components["schemas"]["CostGroup"];
+                /** @description The first UTC day; 30 days before `end` if left out */
+                start?: string | null;
+                /** @description The last UTC day; today if left out */
+                end?: string | null;
+            };
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrgCostOut"];
                 };
             };
             /** @description Validation Error */
