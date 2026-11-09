@@ -45,7 +45,6 @@ const DOC = aDocument().id;
 function signedIn(viewerLast: boolean, twoOrganisations = false) {
   server.resetHandlers();
   fakeAuthApi({ signedInAs: adaSession });
-  if (twoOrganisations) fakeSwitcherApi(adaInTwo());
   fakeAccountApi({ signedInAs: adaSession });
   const hr = aTag();
   fakeProjectsApi({
@@ -117,6 +116,8 @@ function signedIn(viewerLast: boolean, twoOrganisations = false) {
   fakeAuditApi();
   fakeRetentionApi();
   fakeMfaApi();
+  // Last, so its `me` (Ada in two Organisations) wins over the account fake's.
+  if (twoOrganisations) fakeSwitcherApi(adaInTwo());
 }
 
 const PAGES: { name: string; path: string; open?: RegExp; twoOrganisations?: true }[] = [
