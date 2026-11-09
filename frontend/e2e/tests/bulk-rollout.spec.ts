@@ -43,7 +43,7 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     // Agent B gets an unpublished Draft edit, which a rollout must not ship.
     expect((await page.request.put(`${agentB}/draft`, { data: { behaviour: { system_prompt: "Unreviewed." } } })).ok()).toBe(true);
     await page.reload();
-    await expect(page.getByText("0 Agents behind the Current Version (v1).")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/behind the Current Version/)).toHaveText("0 Agents behind the Current Version v1", { timeout: 15_000 });
 
     // Publish Instructions v2 in the Studio: the rollout dialog opens with both Agents selected.
     await page.getByRole("button", { name: "Markdown" }).click();
@@ -54,7 +54,9 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     const dialog = page.getByRole("dialog", { name: "Roll out Instructions v2" });
     await expect(dialog.getByRole("checkbox", { name: "Agent A" })).toBeChecked({ timeout: 15_000 });
     await expect(dialog.getByRole("checkbox", { name: "Agent B" })).toBeChecked();
-    await expect(dialog.getByRole("listitem").filter({ hasText: "Agent B" })).toContainText("Unpublished Draft changes (not included)");
+    const agentBRow = dialog.getByRole("listitem").filter({ hasText: "Agent B" });
+    await expect(agentBRow.getByText("Draft", { exact: true })).toBeVisible();
+    await expect(agentBRow).toContainText("changes not included");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // Adopt on Agent A only.
@@ -66,10 +68,10 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     await dialog.getByRole("button", { name: "Done" }).click();
 
     // Agent A serves Instructions v2; Agent B is behind on v1.
-    await expect(page.getByText("1 Agent behind the Current Version (v2).")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/behind the Current Version/)).toHaveText("1 Agent behind the Current Version v2", { timeout: 15_000 });
     const table = page.getByRole("table", { name: "Instructions each Agent runs with" });
     await expect(table.getByRole("row", { name: /Agent A/ })).toContainText("v2v2");
-    await expect(table.getByRole("row", { name: /Agent B/ })).toContainText("v1 (behind)");
+    await expect(table.getByRole("row", { name: /Agent B/ })).toContainText("v1Instructions behind");
     expect(await live(page, agentA)).toEqual([2, 2]);
     expect(await live(page, agentB)).toEqual([1, 1]);
     // The bulk publish built Agent A's v2 from its Live config, and Agent B's Draft edit stayed in its Draft.
@@ -91,15 +93,15 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     // Roll v2 out to both from the "behind" summary, then revert the Instructions: the Studio
     // offers to bulk-revert the Agents pinned to v2.
     await openSection(page, "Project sections", "Instructions");
-    await expect(page.getByText("2 Agents behind the Current Version (v2).")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/behind the Current Version/)).toHaveText("2 Agents behind the Current Version v2", { timeout: 15_000 });
     await page.getByRole("button", { name: "Roll out v2…" }).click();
     await dialog.getByRole("button", { name: "Publish to 2 Agents" }).click();
     await expect(results.getByRole("listitem")).toHaveCount(2, { timeout: 15_000 });
     await dialog.getByRole("button", { name: "Done" }).click();
-    await expect(page.getByText("0 Agents behind the Current Version (v2).")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/behind the Current Version/)).toHaveText("0 Agents behind the Current Version v2", { timeout: 15_000 });
 
     await page.getByRole("button", { name: "Revert to v1" }).click();
-    await page.getByRole("button", { name: "Yes, revert to v1" }).click();
+    await page.getByRole("alertdialog", { name: "Revert to v1?" }).getByRole("button", { name: "Yes, revert to v1" }).click();
     const offer = page.getByRole("dialog", { name: "Revert the Agents on Instructions v2?" });
     await expect(offer.getByRole("checkbox", { name: "Agent A (Live v3)" })).toBeChecked({ timeout: 15_000 });
     await expect(offer.getByRole("checkbox", { name: "Agent B (Live v2)" })).toBeChecked();
@@ -107,7 +109,7 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     await offer.getByRole("button", { name: "Revert 2 Agents" }).click();
     await expect(offer.getByRole("list", { name: "Results" }).getByRole("listitem")).toHaveCount(2, { timeout: 15_000 });
     await offer.getByRole("button", { name: "Done" }).click();
-    await expect(page.getByText("0 Agents behind the Current Version (v1).")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/behind the Current Version/)).toHaveText("0 Agents behind the Current Version v1", { timeout: 15_000 });
     expect(await live(page, agentA)).toEqual([1, 1]);
     expect(await live(page, agentB)).toEqual([1, 1]);
 
