@@ -184,7 +184,8 @@ function Chart({ series }: { series: TimeSeries }) {
 function NumbersTable({ series }: { series: TimeSeries }) {
   const { label, format, sample } = METRICS[series.metric];
   return (
-    <div className={table.wrap}>
+    // A focusable region, so the table can be scrolled sideways with the keyboard on a narrow screen.
+    <div className={table.wrap} role="region" aria-label={`${label}, the numbers behind the chart`} tabIndex={0}>
       <table className={table.table}>
         <caption className="sr-only">{`${label}, the numbers behind the chart`}</caption>
         <thead>

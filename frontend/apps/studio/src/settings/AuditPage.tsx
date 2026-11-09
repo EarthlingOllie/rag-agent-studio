@@ -82,7 +82,8 @@ function Filters({
 function Results({ data }: { data: AuditEventPage }) {
   if (data.items.length === 0) return <p className={text.muted}>No Audit Events match these filters.</p>;
   return (
-    <div className={table.wrap}>
+    // A focusable region, so the table can be scrolled sideways with the keyboard on a narrow screen.
+    <div className={table.wrap} role="region" aria-label="Audit Events" tabIndex={0}>
       <table className={`${table.table} min-w-[880px]`} aria-label="Audit Events">
         <thead>
           <tr>

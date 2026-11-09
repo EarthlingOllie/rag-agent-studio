@@ -31,7 +31,7 @@ export function Breadcrumb({ children }: { children: ReactNode }) {
   const crumbs = Children.toArray(children);
   const middle = crumbs.slice(1, -1);
   return (
-    <nav aria-label="Breadcrumb" className="min-w-0">
+    <nav aria-label="Breadcrumb" className="relative min-w-0">
       <ol className="flex flex-wrap items-center gap-0.5">
         {crumbs.map((crumb, index) => {
           const folded = index > 0 && index < crumbs.length - 1;
@@ -90,7 +90,8 @@ function PathFold({ children }: { children: ReactNode[] }) {
   }
 
   return (
-    <span ref={wrapper} className="relative inline-flex" onKeyDown={onKeyDown}>
+    // The list is placed against the breadcrumb (the nav), not the "…", so it fits a narrow window.
+    <span ref={wrapper} className="inline-flex" onKeyDown={onKeyDown}>
       <button
         ref={trigger}
         type="button"
@@ -109,7 +110,7 @@ function PathFold({ children }: { children: ReactNode[] }) {
           id={listId}
           aria-label="The whole path"
           onClick={onClick}
-          className={`${surface.popover} absolute top-full left-0 z-20 mt-2 flex min-w-60 flex-col items-start gap-1`}
+          className={`${surface.popover} absolute top-full left-0 z-20 mt-2 flex w-max max-w-[calc(100vw-2rem)] min-w-60 flex-col items-start gap-1`}
         >
           {children.map((crumb, index) => (
             <li key={index} className="flex">

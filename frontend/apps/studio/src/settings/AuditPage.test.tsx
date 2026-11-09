@@ -42,6 +42,10 @@ test("Owners open the Audit tab from Organisation settings and see who changed w
     ],
   ]);
   expect(screen.getByText("Page 1 of 1 · 3 events")).toBeInTheDocument();
+  // On a narrow screen the table scrolls sideways in a box that takes keyboard focus.
+  const box = screen.getByRole("region", { name: "Audit Events" });
+  expect(box).toHaveAttribute("tabindex", "0");
+  expect(within(box).getByRole("table", { name: "Audit Events" })).toBeInTheDocument();
 });
 
 test("Editors don't see the Audit tab", async () => {
