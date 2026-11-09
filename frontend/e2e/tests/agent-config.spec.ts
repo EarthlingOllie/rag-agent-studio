@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -62,7 +63,9 @@ test.describe("Full AgentConfig editor", () => {
     await behaviour.getByLabel("Temperature").fill("0.2");
     await save;
 
-    // Experience and Guardrails.
+    // Experience and Guardrails, folded until opened.
+    await openSettings(page, "Experience");
+    await openSettings(page, "Guardrails");
     const experience = page.getByRole("group", { name: "Experience" });
     save = nextSave(page);
     await experience.getByLabel("Greeting").fill("Hi! Ask me about leave.");

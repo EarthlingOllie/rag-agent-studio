@@ -253,8 +253,8 @@ test("the configuration diff between the two Versions is shown alongside", async
   const changes = await screen.findByRole("region", { name: "Configuration changes" });
   expect(within(changes).getByRole("list", { name: "Changes from v1 to v2" })).toBeInTheDocument();
   expect(within(changes).getByText("Behaviour › System prompt")).toBeInTheDocument();
-  expect(within(changes).getByRole("list", { name: "Behaviour › System prompt changes" })).toHaveTextContent(
-    "Removed: − Answer fully.Added: + Answer in one sentence.",
+  expect(within(changes).getByRole("table", { name: "Behaviour › System prompt changes" })).toHaveTextContent(
+    "1−RemovedAnswer fully.1+AddedAnswer in one sentence.",
   );
 });
 

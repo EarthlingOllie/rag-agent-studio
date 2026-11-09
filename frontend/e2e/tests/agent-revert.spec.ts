@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView } from "../fixtures/agent";
 import { openSection } from "../fixtures/navigation";
 
 test.describe("Revert an Agent via its Live History", () => {
@@ -16,9 +17,10 @@ test.describe("Revert an Agent via its Live History", () => {
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
+    await openAgentView(page, "Versions");
     await expect(page.getByText("Nothing has been Live yet. Publish the Draft to make v1 Live.")).toBeVisible();
 
-    const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const projectApi = agentApi.replace(/\/agents\/[^/]+$/, "");
     const publishInstructions = async (markdown: string) => {
       expect((await page.request.put(`${projectApi}/instructions`, { data: { markdown } })).ok()).toBe(true);
@@ -27,6 +29,7 @@ test.describe("Revert an Agent via its Live History", () => {
     };
     const publish = page.getByRole("form", { name: "Publish" });
     const publishAgent = async (note: string, instructions: number) => {
+      await page.getByRole("banner").getByRole("button", { name: "Publish" }).click();
       const picker = publish.getByRole("combobox", { name: "Project Instructions" });
       await expect(picker.getByRole("option", { name: `Current Version (v${String(instructions)})` })).toHaveCount(1, {
         timeout: 15_000,
@@ -34,6 +37,7 @@ test.describe("Revert an Agent via its Live History", () => {
       await publish.getByRole("textbox", { name: "Note" }).fill(note);
       await publish.getByRole("button", { name: "Publish" }).click();
       await expect(publish.getByRole("status")).toContainText(`with Instructions v${String(instructions)}`, { timeout: 15_000 });
+      await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
     };
 
     // v1 pins Instructions v1; v2 pins Instructions v2.
@@ -42,22 +46,23 @@ test.describe("Revert an Agent via its Live History", () => {
     await expect(page.getByText("There's no earlier Live Version to revert to: v1 was the first.")).toBeVisible();
     await publishInstructions("Be kind and brief.");
     await publishAgent("Second release", 2);
-    await expect(page.getByText("Live v2")).toBeVisible();
+    await expect(liveVersion(page, 2)).toBeVisible();
 
     const timeline = page.getByRole("list", { name: "Live History" });
     await expect(timeline.getByRole("listitem")).toHaveCount(2);
     await expect(timeline.getByRole("listitem").nth(0)).toContainText("Published v1 → v2");
     await expect(timeline.getByRole("listitem").nth(1)).toContainText("Published v1");
 
-    // Revert, confirming first.
-    await page.getByRole("button", { name: "Revert to v1" }).click();
-    const confirm = page.getByRole("group", { name: "Revert to v1?" });
+    // Revert, from the Live Version's ⋯ menu, confirming first.
+    await page.getByRole("button", { name: "Actions for the Live Version" }).click();
+    await page.getByRole("menuitem", { name: "Revert to v1" }).click();
+    const confirm = page.getByRole("dialog", { name: "Revert to v1?" });
     await expect(confirm).toContainText("Visitors are served v1 with the Instructions it pins at once.");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await confirm.getByRole("button", { name: "Yes, revert to v1" }).click();
 
     await expect(page.getByText("Reverted to v1 with Instructions v1. It is now Live.")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Live v1")).toBeVisible();
+    await expect(liveVersion(page, 1)).toBeVisible();
     await expect(timeline.getByRole("listitem")).toHaveCount(3);
     await expect(timeline.getByRole("listitem").nth(0)).toContainText("Reverted v2 → v1");
     await expect(page.getByText("There's no earlier Live Version to revert to: v1 was the first.")).toBeVisible();

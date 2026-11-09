@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { agentAction } from "../fixtures/agent";
 import { openSection } from "../fixtures/navigation";
 
 test.describe("Agent Archive and delete", () => {
@@ -17,21 +18,21 @@ test.describe("Agent Archive and delete", () => {
       await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill(name);
       await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
       await expect(page.getByRole("heading", { level: 2, name })).toBeVisible({ timeout: 15_000 });
-      await page.getByRole("link", { name: "All Agents" }).click();
+      await openSection(page, "Project sections", "Agents");
     }
 
     // Archive: the Agent leaves the list, its page turns read only and the Playground goes.
     await page.getByRole("table", { name: "Agents" }).getByRole("link", { name: "Old helper" }).click();
     await expect(page.getByRole("heading", { name: "Playground" })).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: "Archive Agent" }).click();
-    await page.getByRole("button", { name: "Yes, archive Old helper" }).click();
+    await agentAction(page, "Archive");
+    await page.getByRole("alertdialog", { name: "Archive Old helper?" }).getByRole("button", { name: "Yes, archive Old helper" }).click();
     const notice = page.getByRole("status", { name: "Archived" });
     await expect(notice).toContainText("This Agent is archived.");
     await expect(page.getByRole("heading", { name: "Playground" })).toHaveCount(0);
     await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("Read only while archived.");
     await expect(page.getByLabel("Chunks per answer (top-k)")).toBeDisabled();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await page.getByRole("link", { name: "All Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await expect(page.getByRole("table", { name: "Agents" }).getByRole("link")).toHaveText(["HR helper"]);
     await page.getByRole("radio", { name: "Archived" }).click();
     await expect(page.getByRole("table", { name: "Archived Agents" }).getByRole("link")).toHaveText(["Old helper"]);
@@ -44,10 +45,11 @@ test.describe("Agent Archive and delete", () => {
     await expect(notice).toHaveCount(0);
 
     // Permanent deletion needs it archived again and its name typed exactly.
-    await page.getByRole("button", { name: "Archive Agent" }).click();
+    await agentAction(page, "Archive");
     await page.getByRole("button", { name: "Yes, archive Old helper" }).click();
-    await notice.getByRole("button", { name: "Delete permanently" }).click();
-    const confirm = page.getByRole("form", { name: "Delete Old helper permanently" });
+    await expect(notice).toBeVisible();
+    await agentAction(page, "Delete permanently");
+    const confirm = page.getByRole("alertdialog", { name: "Delete Old helper permanently" });
     const button = confirm.getByRole("button", { name: "Delete Old helper permanently" });
     await confirm.getByLabel("Type Old helper to confirm").fill("old helper");
     await expect(button).toBeDisabled();

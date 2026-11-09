@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent, saveAllowedOrigins } from "../fixtures/agent";
 import { HOST_URL } from "../fixtures/env";
 import { openSection } from "../fixtures/navigation";
 
@@ -41,18 +42,13 @@ test.describe("Rate limits", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Busy helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     // Operational Settings: the host page's origin, the unavailable text, and the rate limits.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
-    const origins = embed.getByLabel("Allowed Origins");
-    await expect(origins).toBeEnabled();
-    await origins.fill(new URL(HOST_URL).origin);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("main");
+    await saveAllowedOrigins(page, [new URL(HOST_URL).origin]);
     await embed.getByLabel("Unavailable text").fill(UNAVAILABLE);
     await embed.getByRole("button", { name: "Save unavailable text" }).click();
     await expect(embed.getByText("Saved. Visitors see it from their next message.")).toBeVisible({ timeout: 15_000 });

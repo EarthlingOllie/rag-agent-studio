@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 import { openTags } from "../fixtures/documents";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
@@ -64,6 +65,7 @@ test.describe("Tag scoping", () => {
 
     // The Editor limits the Agent to HR in its Retrieval settings.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
+    await openSettings(page, "Retrieval");
     const scoping = page.getByRole("group", { name: "Tag scoping" });
     const saved = page.waitForResponse((r) => new URL(r.url()).pathname.endsWith("/draft") && r.request().method() === "PUT");
     await scoping.getByRole("checkbox", { name: "HR" }).check();
@@ -77,15 +79,13 @@ test.describe("Tag scoping", () => {
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
     await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link")).toHaveText(["C1 leave-policy.md"]);
-    await answer.getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
-    const chunks = trace.getByRole("table", { name: "Retrieved Chunks" });
+    await answer.getByText("Trace", { exact: true }).click();
+    const chunks = answer.getByRole("group", { name: "Trace" }).getByRole("table", { name: "Retrieved Chunks" });
     await expect(chunks.getByRole("row").filter({ hasText: "price-list.md" })).toContainText("Excluded: outside the Agent's Tags", {
       timeout: 15_000,
     });
     await expect(chunks.getByRole("row").filter({ hasText: "leave-policy.md" })).toContainText("Cited");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // Deleting HR warns that the HR helper uses it; once deleted, the Draft has no Tags.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);

@@ -1,5 +1,6 @@
 import type { Schemas } from "@studio/api-client";
 
+import { Diff } from "../design";
 import type { AgentDiff } from "./agents";
 
 type FieldChange = Schemas["FieldChangeOut"];
@@ -39,35 +40,25 @@ function shown(value: JsonValue, names: Record<string, string>): string {
   return (value as { model: string }).model;
 }
 
-const LINE_STYLE: Record<DiffLine["op"], { sign: string; label: string; className: string }> = {
-  equal: { sign: " ", label: "Unchanged", className: "text-muted" },
-  delete: { sign: "−", label: "Removed", className: "bg-danger-soft text-danger" },
-  insert: { sign: "+", label: "Added", className: "bg-accent-soft text-accent-ink" },
-};
+/** One side of a line diff, as text: the lines before the change, or after it. */
+function sideText(lines: DiffLine[], side: "before" | "after"): string {
+  const dropped = side === "before" ? "insert" : "delete";
+  return lines
+    .filter((line) => line.op !== dropped)
+    .map((line) => line.text)
+    .join("\n");
+}
 
-/** A line diff of markdown: removed lines marked −, added lines +. */
-export function TextDiff({ lines, label }: { lines: DiffLine[]; label: string }) {
-  return (
-    <ol aria-label={label} className="overflow-x-auto rounded border border-line font-mono text-xs">
-      {lines.map((line, index) => {
-        const style = LINE_STYLE[line.op];
-        return (
-          <li key={index} className={`whitespace-pre-wrap px-2 ${style.className}`}>
-            <span className="sr-only">{style.label}: </span>
-            <span aria-hidden="true">{style.sign} </span>
-            {line.text}
-          </li>
-        );
-      })}
-    </ol>
-  );
+/** A markdown change (a system prompt, Project Instructions) as the design system's line `Diff`. */
+function LinesDiff({ lines, label }: { lines: DiffLine[]; label: string }) {
+  return <Diff label={label} before={sideText(lines, "before")} after={sideText(lines, "after")} />;
 }
 
 function Change({ change, names }: { change: FieldChange; names: Record<string, string> }) {
   const name = settingName(change.path);
   let detail;
   if (change.lines) {
-    detail = <TextDiff lines={change.lines} label={`${name} changes`} />;
+    detail = <LinesDiff lines={change.lines} label={`${name} changes`} />;
   } else if (change.added && change.removed) {
     detail = (
       <p className="text-sm">
@@ -118,7 +109,7 @@ export function AgentDiffView({ diff, names = {} }: { diff: AgentDiff; names?: R
             Project Instructions: {pinned.before ? `v${String(pinned.before.number)}` : "none"} →{" "}
             {pinned.after ? `v${String(pinned.after.number)}` : "none"}
           </p>
-          <TextDiff lines={pinned.lines} label="Project Instructions changes" />
+          <LinesDiff lines={pinned.lines} label="Project Instructions changes" />
         </div>
       )}
     </div>

@@ -13,7 +13,7 @@ type Entry = Schemas["LiveHistoryEntryOut"];
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const agentPage = (agentId: string) =>
-  `/organisations/${organisationId}/projects/${hrProject.id}/agents/${agentId}`;
+  `/organisations/${organisationId}/projects/${hrProject.id}/agents/${agentId}/versions`;
 
 const version = (number: number) => ({ id: `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`, number });
 const ada = { id: "6a1b0c58-0d6e-4c1b-9d1e-1f1a6c0f0a01", name: "Ada Lovelace" };
@@ -46,6 +46,12 @@ function setUp(options: Parameters<typeof fakeAgentsApi>[0] = {}) {
 
 async function timeline() {
   return screen.findByRole("list", { name: "Live History" }, { timeout: 5000 });
+}
+
+/** Chooses Revert in the Live Version's ⋯ menu. */
+async function revertTo(version: string) {
+  await userEvent.click(await screen.findByRole("button", { name: "Actions for the Live Version" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: `Revert to ${version}` }));
 }
 
 function rows(list: HTMLElement) {
@@ -91,7 +97,7 @@ test("an Agent that has never been Live has an empty timeline and nothing to rev
   expect(
     await screen.findByText("Nothing has been Live yet. Publish the Draft to make v1 Live.", {}, { timeout: 5000 }),
   ).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Revert|Actions for the Live Version/ })).not.toBeInTheDocument();
 });
 
 test("the Editor is told when there's nothing to revert to", async () => {
@@ -101,7 +107,7 @@ test("the Editor is told when there's nothing to revert to", async () => {
 
   await timeline();
   expect(screen.getByText("There's no earlier Live Version to revert to: v1 was the first.")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Revert|Actions for the Live Version/ })).not.toBeInTheDocument();
 });
 
 test("reverting asks for confirmation, then makes the earlier Version Live and adds it to the timeline", async () => {
@@ -110,20 +116,18 @@ test("reverting asks for confirmation, then makes the earlier Version Live and a
   renderStudio(agentPage(agent.id));
   await timeline();
 
-  await userEvent.click(screen.getByRole("button", { name: "Revert to v2" }));
-  const confirm = screen.getByRole("group", { name: "Revert to v2?" });
-  expect(confirm).toHaveTextContent(
-    "Revert to v2? Visitors are served v2 with the Instructions it pins at once. The Draft isn't changed.",
-  );
+  await revertTo("v2");
+  const confirm = screen.getByRole("dialog", { name: "Revert to v2?" });
+  expect(confirm).toHaveTextContent("Visitors are served v2 with the Instructions it pins at once. The Draft isn't changed.");
   await userEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
-  expect(screen.queryByRole("group", { name: "Revert to v2?" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Revert to v2?" })).not.toBeInTheDocument();
   expect(requests.filter((r) => r.route === "revert")).toEqual([]);
 
-  await userEvent.click(screen.getByRole("button", { name: "Revert to v2" }));
+  await revertTo("v2");
   await userEvent.click(screen.getByRole("button", { name: "Yes, revert to v2" }));
 
   expect(await screen.findByText("Reverted to v2 with Instructions v2. It is now Live.")).toBeInTheDocument();
-  expect(await screen.findByText("Live v2")).toBeInTheDocument();
+  expect(await screen.findByLabelText("Version 2")).toBeInTheDocument();
   expect(rows(await timeline())[0]).toBe("Reverted v3 → v2Ada Lovelace · 2026-11-06 12:00 UTC");
   expect(requests.filter((r) => r.route === "revert")).toEqual([{ route: "revert" }]);
 });
@@ -134,13 +138,16 @@ test("reverting again follows the Live History further back instead of toggling"
   renderStudio(agentPage(agent.id));
   await timeline();
 
-  await userEvent.click(screen.getByRole("button", { name: "Revert to v2" }));
+  await revertTo("v2");
   await userEvent.click(screen.getByRole("button", { name: "Yes, revert to v2" }));
-  await userEvent.click(await screen.findByRole("button", { name: "Revert to v1" }));
+  await vi.waitFor(async () => {
+    expect(rows(await timeline())[0]).toMatch(/^Reverted v3 → v2/);
+  });
+  await revertTo("v1");
   await userEvent.click(screen.getByRole("button", { name: "Yes, revert to v1" }));
 
   expect(await screen.findByText("Reverted to v1 without Project Instructions. It is now Live.")).toBeInTheDocument();
-  expect(await screen.findByText("Live v1")).toBeInTheDocument();
+  expect(await screen.findByLabelText("Version 1")).toBeInTheDocument();
   expect(await screen.findByText("There's no earlier Live Version to revert to: v1 was the first.")).toBeInTheDocument();
 });
 
@@ -155,13 +162,15 @@ test("a Version published and then reverted is skipped", async () => {
   renderStudio(agentPage(agent.id));
   await timeline();
 
-  expect(screen.getByRole("button", { name: "Revert to v1" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Actions for the Live Version" }));
+  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Revert to v1"]);
 });
 
 test("publishing adds the move to the timeline", async () => {
   setUp({ agents: [hrHelper] });
   renderStudio(agentPage(hrHelper.id));
-  const form = await screen.findByRole("form", { name: "Publish" }, { timeout: 5000 });
+  await userEvent.click(await within(await screen.findByRole("banner")).findByRole("button", { name: "Publish" }, { timeout: 5000 }));
+  const form = await screen.findByRole("form", { name: "Publish" });
 
   await userEvent.type(within(form).getByLabelText("Note"), "First release");
   await userEvent.click(within(form).getByRole("button", { name: "Publish" }));
@@ -182,12 +191,12 @@ test.each([
   renderStudio(agentPage(agent.id));
   await timeline();
 
-  await userEvent.click(screen.getByRole("button", { name: "Revert to v2" }));
+  await revertTo("v2");
   await userEvent.click(screen.getByRole("button", { name: "Yes, revert to v2" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent(message);
-  expect(screen.getByText("Live v3")).toBeInTheDocument();
-  expect(screen.queryByRole("group", { name: "Revert to v2?" })).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Version 3")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Revert to v2?" })).not.toBeInTheDocument();
 });
 
 test("an archived Agent shows its timeline but can't be reverted", async () => {
@@ -196,7 +205,7 @@ test("an archived Agent shows its timeline but can't be reverted", async () => {
   renderStudio(agentPage(agent.id));
 
   expect(rows(await timeline())).toHaveLength(3);
-  expect(screen.queryByRole("button", { name: /Revert/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Revert|Actions for the Live Version/ })).not.toBeInTheDocument();
 });
 
 test("the timeline says when the Live History can't be loaded", async () => {

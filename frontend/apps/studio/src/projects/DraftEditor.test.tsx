@@ -386,9 +386,9 @@ test("a change still waiting to be saved is saved when the Editor leaves the pag
 
   // Change and leave in the same tick, so the autosave timer can't fire first however slow the machine.
   fireEvent.change(within(group("Experience")).getByLabelText("Greeting"), { target: { value: "Hi" } });
-  fireEvent.click(screen.getByRole("link", { name: "All Agents" }));
+  fireEvent.click(screen.getByRole("link", { name: "History" }));
 
-  await screen.findByRole("heading", { name: "Agents" }, { timeout: 5000 });
+  await screen.findByRole("heading", { name: "Live History" }, { timeout: 5000 });
   await vi.waitFor(() => {
     expect(saves(requests).map((draft) => draft.experience.greeting)).toEqual(["Hi"]);
   });

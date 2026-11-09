@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { agentAction, liveVersion, openAgentView } from "../fixtures/agent";
 import { openSection } from "../fixtures/navigation";
 
 test.describe("Diffs and Draft management", () => {
@@ -29,35 +30,33 @@ test.describe("Diffs and Draft management", () => {
     expect((await page.request.put(`${agentApi}/draft`, { data: prompt("Answer from the handbook.\nBe very brief.") })).ok()).toBe(true);
     await page.reload();
 
-    // The badge, and the publish dialog's Draft-to-Live diff.
-    await expect(page.getByText("Live v2")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Unpublished changes")).toBeVisible();
+    // The badges, and the publish dialog's Draft-to-Live diff.
+    await expect(liveVersion(page, 2)).toBeVisible({ timeout: 15_000 });
+    const draftBadge = page.getByTitle("The Draft has changes that aren't published yet.");
+    await expect(draftBadge).toBeVisible();
+    await page.getByRole("banner").getByRole("button", { name: "Publish" }).click();
     const changes = page.getByRole("region", { name: "Changes to publish" });
-    const promptChanges = changes.getByRole("list", { name: "Behaviour › System prompt changes" });
-    await expect(promptChanges.getByRole("listitem")).toHaveText(
-      ["Unchanged:   Answer from the handbook.", "Removed: − Be brief.", "Added: + Be very brief."],
-      { timeout: 15_000 },
-    );
+    const promptRows = changes.getByRole("table", { name: "Behaviour › System prompt changes" }).locator("tbody").getByRole("row");
+    await expect(promptRows).toHaveText(["11Answer from the handbook.", "2−RemovedBe brief.", "2+AddedBe very brief."], { timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 
-    // Discarding puts v2's settings back in the Draft.
-    await page.getByRole("button", { name: "Discard Draft" }).click();
-    await page.getByRole("button", { name: "Yes, discard the changes" }).click();
-    await expect(page.getByText("Unpublished changes")).toHaveCount(0, { timeout: 15_000 });
-    await expect(changes.getByText("No differences: v2 and the Draft have the same settings.")).toBeVisible({ timeout: 15_000 });
+    // Discarding, from the ⋯ menu, puts v2's settings back in the Draft.
+    await agentAction(page, "Discard Draft");
+    await page.getByRole("alertdialog", { name: "Discard the Draft?" }).getByRole("button", { name: "Yes, discard the changes" }).click();
+    await expect(draftBadge).toHaveCount(0, { timeout: 15_000 });
     await expect(page.getByRole("group", { name: "Behaviour" }).getByText("Be brief.")).toBeVisible();
+    await page.getByRole("banner").getByRole("button", { name: "Publish" }).click();
+    await expect(changes.getByText("No differences: v2 and the Draft have the same settings.")).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 
-    // Starting the Draft from v1 publishes nothing: v2 stays Live and the Draft now differs.
-    const versions = page.getByRole("list", { name: "Versions" });
-    const v1 = versions.getByRole("listitem").filter({ hasText: "First release" });
-    await v1.getByRole("button", { name: "Start Draft from v1" }).click();
-    await v1.getByRole("button", { name: "Yes, replace the Draft" }).click();
-    await expect(page.getByText("Unpublished changes")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Live v2")).toBeVisible();
-    await expect(page.getByRole("group", { name: "Behaviour" }).getByText("Be brief.")).toHaveCount(0);
-    await expect(promptChanges.getByRole("listitem")).toHaveText(["Unchanged:   Answer from the handbook.", "Removed: − Be brief."], {
-      timeout: 15_000,
-    });
+    // Starting the Draft from v1, in the Versions view, publishes nothing: v2 stays Live and the Draft now differs.
+    await openAgentView(page, "Versions");
+    await page.getByRole("button", { name: "Actions for v1" }).click();
+    await page.getByRole("menuitem", { name: "Start Draft from v1" }).click();
+    await page.getByRole("dialog", { name: "Start Draft from v1?" }).getByRole("button", { name: "Yes, replace the Draft" }).click();
+    await expect(draftBadge).toBeVisible({ timeout: 15_000 });
+    await expect(liveVersion(page, 2)).toBeVisible();
 
     // Comparing v1 with v2.
     const compare = page.getByRole("region", { name: "Compare" });
@@ -65,11 +64,15 @@ test.describe("Diffs and Draft management", () => {
     const idOf = (number: number) => versionIds.versions.find((version) => version.number === number)?.id ?? "";
     await compare.getByRole("combobox", { name: "From" }).selectOption(idOf(1));
     await compare.getByRole("combobox", { name: "To" }).selectOption(idOf(2));
-    await expect(compare.getByRole("list", { name: "Behaviour › System prompt changes" }).getByRole("listitem")).toHaveText(
-      ["Unchanged:   Answer from the handbook.", "Added: + Be brief."],
+    await expect(compare.getByRole("table", { name: "Behaviour › System prompt changes" }).locator("tbody").getByRole("row")).toHaveText(
+      ["11Answer from the handbook.", "2+AddedBe brief."],
       { timeout: 15_000 },
     );
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // Back in the Playground the Draft is v1's.
+    await openAgentView(page, "Playground");
+    await expect(page.getByRole("group", { name: "Behaviour" }).getByText("Be brief.")).toHaveCount(0, { timeout: 15_000 });
 
     // A colleague saves the Draft; this Editor's next save is refused and they load the colleague's.
     expect((await page.request.put(`${agentApi}/draft`, { data: prompt("A colleague's prompt.") })).ok()).toBe(true);

@@ -1,10 +1,10 @@
 import { MarkdownEditor } from "@studio/ui";
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
+import { button, field as fields, Section } from "../design";
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
 import { type Agent, StaleDraftError, useSaveDraft, useStoreAgent } from "./agents";
 import { type Draft, DraftRequestError, errorsFor, type FieldError, type ModelChoice, useCredentialModels } from "./draft";
-import { INPUT } from "./ProjectsPage";
 import { useTags } from "./tags";
 
 /** How long typing must pause before the Draft is saved. */
@@ -31,7 +31,7 @@ const STATUS_TEXT: Record<Exclude<Status, "failed">, string> = {
   invalid: "Not saved: fix the settings marked below.",
 };
 
-const ERROR_TEXT = "mt-1 text-sm text-danger";
+const ERROR_TEXT = fields.error;
 
 /** The messages for one setting, linked to its control by `id`. */
 function Errors({ id, messages }: { id: string; messages: string[] }) {
@@ -62,11 +62,11 @@ function Field({ label, hint, errors, children }: FieldProps) {
   const described = [hint && `${id}-hint`, errors.length > 0 && `${id}-error`].filter(Boolean).join(" ");
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className={fields.label}>
         {label}
       </label>
       {hint && (
-        <p id={`${id}-hint`} className="text-xs text-muted">
+        <p id={`${id}-hint`} className={fields.hint}>
           {hint}
         </p>
       )}
@@ -74,7 +74,7 @@ function Field({ label, hint, errors, children }: FieldProps) {
         id,
         "aria-invalid": errors.length > 0 ? true : undefined,
         "aria-describedby": described || undefined,
-        className: INPUT,
+        className: fields.input,
       })}
       <Errors id={`${id}-error`} messages={errors} />
     </div>
@@ -107,7 +107,7 @@ function NumberField({
       {(control) => (
         <input
           {...control}
-          className={`${control.className} w-32`}
+          className={`${fields.inputMono} max-w-32`}
           type="number"
           min={min}
           max={max}
@@ -144,6 +144,7 @@ function TextField({
         rows ? (
           <textarea
             {...control}
+            className={fields.textarea}
             rows={rows}
             value={value}
             onChange={(event) => {
@@ -185,6 +186,7 @@ function ChoiceField<Value extends string>({
       {(control) => (
         <select
           {...control}
+          className={fields.select}
           value={value}
           onChange={(event) => {
             onChange(event.target.value as Value);
@@ -245,19 +247,19 @@ function ModelChoiceField({
     onIncomplete(field, incomplete);
   }, [field, incomplete, onIncomplete]);
   return (
-    <fieldset className="space-y-2 rounded border border-line p-3">
-      <legend className="px-1 text-sm font-medium">{legend}</legend>
-      <p className="text-xs text-muted">{hint}</p>
+    <fieldset className="space-y-2 rounded-xl border border-line p-3">
+      <legend className="px-1 text-sm font-medium text-ink-2">{legend}</legend>
+      <p className={fields.hint}>{hint}</p>
       {credentials.isSuccess && offering.length === 0 && !value ? (
         <p className="text-sm text-muted">{empty}</p>
       ) : (
         <>
-          <label htmlFor={`${id}-credential`} className="block text-sm">
+          <label htmlFor={`${id}-credential`} className={fields.label}>
             Credential
           </label>
           <select
             id={`${id}-credential`}
-            className={INPUT}
+            className={fields.select}
             value={credentialId}
             onChange={(event) => {
               setCredentialId(event.target.value);
@@ -276,12 +278,12 @@ function ModelChoiceField({
               <p className="text-sm text-muted">This credential offers no models for this.</p>
             ) : (
               <>
-                <label htmlFor={`${id}-model`} className="block text-sm">
+                <label htmlFor={`${id}-model`} className={fields.label}>
                   Model
                 </label>
                 <select
                   id={`${id}-model`}
-                  className={INPUT}
+                  className={fields.select}
                   value={model}
                   onChange={(event) => {
                     onChange({
@@ -325,13 +327,14 @@ function TagScoping({
   const tags = useTags(organisationId, projectId);
   return (
     <fieldset className="space-y-1">
-      <legend className="text-sm font-medium">Tag scoping</legend>
-      <p className="text-xs text-muted">Only search Documents with one of these Tags. None searches every Document.</p>
+      <legend className={fields.label}>Tag scoping</legend>
+      <p className={fields.hint}>Only search Documents with one of these Tags. None searches every Document.</p>
       {tags.data?.length === 0 && <p className="text-sm text-muted">This Project has no Tags yet.</p>}
       {(tags.data ?? []).map((tag) => (
         <label key={tag.id} className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
+            className={fields.checkbox}
             checked={value.includes(tag.id)}
             onChange={(event) => {
               onChange(event.target.checked ? [...value, tag.id] : value.filter((id) => id !== tag.id));
@@ -345,13 +348,36 @@ function TagScoping({
   );
 }
 
-/** A group of settings; disabling it disables every control in it. */
-function Group({ legend, disabled, children }: { legend: string; disabled: boolean; children: ReactNode }) {
+/**
+ * A collapsible section of settings, with a mono summary of what is set. Disabling it disables
+ * every control in it. It opens by itself when the API refuses one of its settings, so the reason
+ * can be seen.
+ */
+function Group({
+  legend,
+  summary,
+  defaultOpen = false,
+  refused,
+  disabled,
+  children,
+}: {
+  legend: string;
+  summary: string;
+  defaultOpen?: boolean;
+  refused: boolean;
+  disabled: boolean;
+  children: ReactNode;
+}) {
+  const fieldset = useRef<HTMLFieldSetElement>(null);
+  useEffect(() => {
+    if (refused) (fieldset.current?.closest("details") as HTMLDetailsElement).open = true;
+  }, [refused]);
   return (
-    <fieldset disabled={disabled} className="space-y-3 rounded border border-field p-4">
-      <legend className="px-1 text-base font-semibold">{legend}</legend>
-      {children}
-    </fieldset>
+    <Section title={legend} summary={summary} defaultOpen={defaultOpen}>
+      <fieldset ref={fieldset} aria-label={legend} disabled={disabled} className="flex min-w-0 flex-col gap-4">
+        {children}
+      </fieldset>
+    </Section>
   );
 }
 
@@ -377,7 +403,7 @@ const orNull = (text: string) => (text.trim() === "" ? null : text);
  */
 function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () => void; onKeep: () => void }) {
   return (
-    <div role="alert" className="space-y-2 rounded border border-flag bg-flag-soft p-3 text-sm text-flag">
+    <div role="alert" className="mx-6 my-4 space-y-2 rounded-xl bg-flag-soft p-3 text-sm text-flag">
       <p>
         Someone else saved this Draft while you were editing (saved {new Date(latest.draft_updated_at).toLocaleString()}). Your
         changes aren&apos;t saved. Load their Draft, or save yours over it.
@@ -394,7 +420,7 @@ function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () =
   );
 }
 
-const CONFLICT_BUTTON = "rounded border border-field bg-surface px-3 py-1 text-sm text-ink hover:bg-sunken";
+const CONFLICT_BUTTON = button.secondary;
 
 /**
  * The Agent's Draft, every group of its AgentConfig. Each change is saved automatically once
@@ -403,7 +429,18 @@ const CONFLICT_BUTTON = "rounded border border-field bg-surface px-3 py-1 text-s
  * someone else has saved since, the Editor is asked to load their Draft or save their own over it,
  * and `onReplaced` is called once the Draft is replaced so the editor starts again from it.
  */
-export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agent; organisationId: string; onReplaced: () => void }) {
+export function DraftEditor({
+  agent,
+  organisationId,
+  onReplaced,
+  onStatus,
+}: {
+  agent: Agent;
+  organisationId: string;
+  onReplaced: () => void;
+  /** Hears the save state as words ("All changes saved"), for the top bar; null once the editor closes. */
+  onStatus: (status: string | null) => void;
+}) {
   // An archived Agent's Draft can't change until an Owner restores it.
   const readOnly = agent.archived_at !== null;
   const save = useSaveDraft(organisationId, agent.project_id, agent.id);
@@ -514,23 +551,29 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
   const systemPromptErrorId = useId();
   const [questions, setQuestions] = useState(experience.starter_questions.join("\n"));
 
+  const statusText = readOnly
+    ? "Read only while archived."
+    : status === "failed"
+      ? `Not saved: ${failure}`
+      : awaitingModel && (status === "saved" || status === "saving")
+        ? "Unsaved changes: choose a model."
+        : STATUS_TEXT[status];
+  useEffect(() => {
+    onStatus(statusText);
+  }, [onStatus, statusText]);
+  useEffect(
+    () => () => {
+      onStatus(null);
+    },
+    [onStatus],
+  );
+  const refused = (group: string) => errors.some((error) => error.field.startsWith(`${group}.`));
+  const model = behaviour.model?.model ?? "Default Model";
+
   return (
-    // No submit button: changes save themselves.
-    <form aria-labelledby="draft-heading" className="space-y-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="draft-heading" className="text-lg font-semibold">
-          Draft
-        </h2>
-        <p role="status" aria-label="Draft status" className={`text-sm ${status === "saved" ? "text-muted" : "text-ink"}`}>
-          {readOnly
-            ? "Read only while archived."
-            : status === "failed"
-              ? `Not saved: ${failure}`
-              : awaitingModel && (status === "saved" || status === "saving")
-                ? "Unsaved changes: choose a model."
-                : STATUS_TEXT[status]}
-        </p>
-      </div>
+    // No submit button: changes save themselves. The save state is shown in the top bar.
+    <form aria-label="Draft">
+      <h2 className="border-b border-line-soft px-6 py-4 text-base font-semibold text-ink">Configuration</h2>
       {conflict && (
         <DraftConflict
           latest={conflict}
@@ -547,7 +590,7 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
         />
       )}
 
-      <Group legend="Behaviour" disabled={readOnly}>
+      <Group legend="Behaviour" summary={`${model} · temp ${String(behaviour.temperature)}`} defaultOpen refused={refused("behaviour")} disabled={readOnly}>
         <div>
           {/* Written and stored as markdown (ticket 04-02). */}
           <MarkdownEditor
@@ -620,7 +663,7 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
         />
       </Group>
 
-      <Group legend="Retrieval" disabled={readOnly}>
+      <Group legend="Retrieval" summary={`top-${String(retrieval.top_k)} · hybrid ${String(retrieval.hybrid_weight)}`} refused={refused("retrieval")} disabled={readOnly}>
         <NumberField
           label="Chunks per answer (top-k)"
           min={1}
@@ -677,9 +720,10 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
             setRetrieval({ reranker });
           }}
         />
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm text-ink">
           <input
             type="checkbox"
+            className={fields.checkbox}
             checked={retrieval.citations}
             onChange={(event) => {
               setRetrieval({ citations: event.target.checked });
@@ -689,7 +733,7 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
         </label>
       </Group>
 
-      <Group legend="Experience" disabled={readOnly}>
+      <Group legend="Experience" summary={`${String(experience.starter_questions.length)} starter questions`} refused={refused("experience")} disabled={readOnly}>
         <TextField
           label="Display name"
           hint={`Empty shows the Agent's name, ${agent.name}.`}
@@ -766,8 +810,8 @@ export function DraftEditor({ agent, organisationId, onReplaced }: { agent: Agen
         />
       </Group>
 
-      <Group legend="Guardrails" disabled={readOnly}>
-        <p className="text-sm text-muted">
+      <Group legend="Guardrails" summary={`${guardrails.input_mode} · fail ${guardrails.fail_mode}`} refused={refused("guardrails")} disabled={readOnly}>
+        <p className={fields.hint}>
           Every message is checked by the built-in classifier. Block refuses a flagged message,
           warn answers it with a caution to the model and flags it, and log only records the
           verdict. The LLM classifier is enforced in block mode.

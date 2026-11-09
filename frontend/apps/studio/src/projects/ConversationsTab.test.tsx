@@ -17,6 +17,7 @@ import {
   visitorTrace,
 } from "../test/conversations";
 import { fakeProjectsApi, hrProject } from "../test/projects";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -215,6 +216,11 @@ test("a Playground Conversation is flagged, and its replies' Traces say the Draf
   expect((await within(drawer).findByText("Answered by")).nextElementSibling).toHaveTextContent("Draft");
   expect(within(drawer).getByText("Instructions").nextElementSibling).toHaveTextContent("Draft");
   expect(traceReads).toEqual([`${PLAYGROUND_CONVERSATION_ID}/${PLAYGROUND_REPLY_ID}`]);
+  // Other keys leave the drawer open; Escape closes it.
+  await userEvent.keyboard("a");
+  expect(screen.getByRole("dialog", { name: "Trace" })).toBeInTheDocument();
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
 });
 
 test("a Trace that can't be loaded says so", async () => {
@@ -240,7 +246,7 @@ test("an Agent page links to that Agent's Conversations", async () => {
   setUp({ conversations: [playgroundConversation] });
   renderStudio(`${projectPage}/agents/${hrHelper.id}`);
 
-  await userEvent.click(await screen.findByRole("link", { name: "Conversations with this Agent" }, { timeout: 5000 }));
+  await openSection("Agent views", "Conversations");
 
   expect(await rows()).toHaveLength(1);
   expect(within(filters()).getByLabelText("Agent")).toHaveValue(hrHelper.id);

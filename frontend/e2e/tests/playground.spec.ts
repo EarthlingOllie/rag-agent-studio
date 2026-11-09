@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
@@ -69,18 +70,18 @@ test.describe("Agent and Playground", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // The Trace shows the model, usage, cost, latency and the Chunks retrieved, the cited one first.
-    await answer.getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
-    await expect(trace.getByText("anthropic · claude-haiku-4-5")).toBeVisible({ timeout: 15_000 });
-    await expect(trace.getByText(/^\d+ input · \d+ output$/)).toBeVisible();
-    await expect(trace.getByText(/^\$\d/)).toBeVisible();
-    await expect(trace.getByText(/ms to the first token · \d+ ms in all/)).toBeVisible();
-    const firstChunk = trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row").nth(1);
+    await answer.getByText("Trace", { exact: true }).click();
+    await expect(answer.getByRole("group", { name: "Trace" }).getByText("anthropic · claude-haiku-4-5")).toBeVisible({ timeout: 15_000 });
+    await expect(answer.getByRole("group", { name: "Trace" }).getByText(/^\d+ input · \d+ output$/)).toBeVisible();
+    await expect(answer.getByRole("group", { name: "Trace" }).getByText(/^\$\d/)).toBeVisible();
+    await expect(answer.getByRole("group", { name: "Trace" }).getByText(/ms to the first token · \d+ ms in all/)).toBeVisible();
+    const firstChunk = answer.getByRole("group", { name: "Trace" }).getByRole("table", { name: "Retrieved Chunks" }).getByRole("row").nth(1);
     await expect(firstChunk.getByRole("cell").first()).toHaveText("C1");
     await expect(firstChunk.getByRole("cell").last()).toHaveText("Cited");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
-    await expect(trace).toBeHidden();
+    // Folding it again hides it.
+    await answer.getByText("Trace", { exact: true }).click();
+    await expect(answer.getByRole("table", { name: "Retrieved Chunks" })).toBeHidden();
 
     // An attack: the input Guardrail (the local ONNX classifier bundled in the API image) blocks
     // it before the model, and the Agent replies with its refusal text.
@@ -91,20 +92,20 @@ test.describe("Agent and Playground", () => {
     await expect(refused).toContainText("Blocked by the input Guardrail: the model wasn't asked.");
     await expect(refused).toContainText("0 input and 0 output tokens");
     await expect(refused.getByRole("list", { name: "Sources" })).toHaveCount(0);
-    await refused.getByRole("button", { name: "Trace" }).click();
-    await expect(trace.getByText("None (blocked)")).toBeVisible({ timeout: 15_000 });
+    await refused.getByText("Trace", { exact: true }).click();
+    await expect(refused.getByRole("group", { name: "Trace" }).getByText("None (blocked)")).toBeVisible({ timeout: 15_000 });
     await expect(
-      trace
+      refused.getByRole("group", { name: "Trace" })
         .getByRole("list", { name: "Guardrails" })
         .getByText(/^Input Guardrail: injection \(score \d\.\d\d\), blocked before the model\. The local classifier scored the message/),
     ).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // A leak attempt gets past the input Guardrail in log mode (which lets messages through), so
     // the Canary token is what stops it: the fake model obeys and streams its canary in pieces.
     // The stream is cut and the reply replaced by the fallback text before any piece is shown.
     const logged = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/draft") && response.request().method() === "PUT");
+    await openSettings(page, "Guardrails");
     await page.getByLabel("Input Guardrail mode").selectOption("log");
     expect((await logged).status()).toBe(200);
     await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("All changes saved");
@@ -114,16 +115,15 @@ test.describe("Agent and Playground", () => {
     await expect(leaked).toContainText("Sorry, I don't know the answer to that.", { timeout: 15_000 });
     await expect(leaked).toContainText(/output tokens/);
     await expect(leaked).not.toContainText("secret canary token is");
-    await leaked.getByRole("button", { name: "Trace" }).click();
-    await expect(trace.getByRole("list", { name: "Guardrails" }).getByText(/^Canary token: leak, cut off and replaced\./)).toBeVisible({
+    await leaked.getByText("Trace", { exact: true }).click();
+    await expect(leaked.getByRole("group", { name: "Trace" }).getByRole("list", { name: "Guardrails" }).getByText(/^Canary token: leak, cut off and replaced\./)).toBeVisible({
       timeout: 15_000,
     });
     // Log mode only recorded the classifier's verdict (ticket 08-02).
     await expect(
-      trace.getByRole("list", { name: "Guardrails" }).getByText(/^Input Guardrail: injection \(score \d\.\d\d\), logged only and answered as usual\./),
+      leaked.getByRole("group", { name: "Trace" }).getByRole("list", { name: "Guardrails" }).getByText(/^Input Guardrail: injection \(score \d\.\d\d\), logged only and answered as usual\./),
     ).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // Warn mode answers the attack the block mode refused, with a caution to the model, and flags it.
     const warned = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/draft") && response.request().method() === "PUT");
@@ -135,15 +135,14 @@ test.describe("Agent and Playground", () => {
     const cautioned = messages.getByRole("listitem", { name: "HR helper" }).nth(3);
     await expect(cautioned).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
     await expect(cautioned).not.toContainText("Blocked by the input Guardrail");
-    await cautioned.getByRole("button", { name: "Trace" }).click();
+    await cautioned.getByText("Trace", { exact: true }).click();
     await expect(
-      trace
+      cautioned.getByRole("group", { name: "Trace" })
         .getByRole("list", { name: "Guardrails" })
         .getByText(/^Input Guardrail: injection \(score \d\.\d\d\), flagged and answered with a caution to the model\./),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(trace.getByText("anthropic · claude-haiku-4-5")).toBeVisible();
+    await expect(cautioned.getByRole("group", { name: "Trace" }).getByText("anthropic · claude-haiku-4-5")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // The reload keeps the Draft.
     await page.reload();

@@ -300,7 +300,7 @@ test("an Agent whose Token Budget is spent is badged in the list, and still on i
   await userEvent.click(within(table).getByRole("link", { name: "HR helper" }));
 
   expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.getByText("Budget exhausted")).toBeInTheDocument();
+  expect(screen.getByText("Budget spent")).toBeInTheDocument();
 });
 
 test("an Agent whose Guardrail block rate spiked is badged in the list, and still on its page", async () => {

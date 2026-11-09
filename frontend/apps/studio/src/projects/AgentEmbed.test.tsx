@@ -10,7 +10,7 @@ import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const agentPage = (agentId: string) =>
-  `/organisations/${organisationId}/projects/${hrProject.id}/agents/${agentId}`;
+  `/organisations/${organisationId}/projects/${hrProject.id}/agents/${agentId}/embed`;
 const liveHelper = { ...hrHelper, live_version: { id: "a1e00000-0000-4000-8000-000000000003", number: 3 } };
 const snippet = `<script src="${window.location.origin}/embed.js" data-agent="${hrHelper.public_id}" async></script>`;
 
@@ -20,8 +20,10 @@ function setUp(options: Parameters<typeof fakeAgentsApi>[0] = {}) {
   return fakeAgentsApi({ agents: [liveHelper], ...options });
 }
 
+/** The Embed & limits view, once it shows. */
 async function embedSection() {
-  return screen.findByRole("region", { name: "Embed" }, { timeout: 5000 });
+  await screen.findByRole("heading", { name: "Embed Snippet" }, { timeout: 5000 });
+  return screen.getByRole("main");
 }
 
 test("an Agent that has never been published has no Embed Snippet yet", async () => {
@@ -30,8 +32,7 @@ test("an Agent that has never been published has no Embed Snippet yet", async ()
 
   const embed = await embedSection();
   expect(embed).toHaveTextContent("Publish the Agent to get its Embed Snippet.");
-  expect(within(embed).queryByRole("button", { name: "Copy snippet" })).not.toBeInTheDocument();
-  expect(within(embed).queryByLabelText("Embed Snippet")).not.toBeInTheDocument();
+  expect(within(embed).queryByRole("button", { name: "Copy Embed Snippet" })).not.toBeInTheDocument();
 });
 
 test("a live Agent's Embed Snippet is shown and copied", async () => {
@@ -40,10 +41,10 @@ test("a live Agent's Embed Snippet is shown and copied", async () => {
   renderStudio(agentPage(liveHelper.id));
 
   const embed = await embedSection();
-  expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(snippet);
-  await user.click(within(embed).getByRole("button", { name: "Copy snippet" }));
+  expect(within(embed).getByText(snippet)).toBeInTheDocument();
+  await user.click(within(embed).getByRole("button", { name: "Copy Embed Snippet" }));
 
-  expect(await within(embed).findByText("Copied.")).toBeInTheDocument();
+  expect(await within(embed).findByText("Embed Snippet copied.")).toBeInTheDocument();
   expect(await navigator.clipboard.readText()).toBe(snippet);
 });
 
@@ -54,9 +55,9 @@ test("when the browser refuses to copy, the Editor is told to copy it by hand", 
   const embed = await embedSection();
   vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
 
-  await user.click(within(embed).getByRole("button", { name: "Copy snippet" }));
+  await user.click(within(embed).getByRole("button", { name: "Copy Embed Snippet" }));
 
-  expect(await within(embed).findByText("Couldn't copy. Select the snippet and copy it.")).toBeInTheDocument();
+  expect(await within(embed).findByRole("alert")).toHaveTextContent("Couldn't copy. Select the text and copy it instead.");
 });
 
 test("an archived Agent has no Embed section", async () => {
@@ -64,23 +65,32 @@ test("an archived Agent has no Embed section", async () => {
   renderStudio(agentPage(oldHelper.id));
 
   expect(await screen.findByRole("heading", { name: oldHelper.name }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.queryByRole("region", { name: "Embed" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Embed Snippet" })).not.toBeInTheDocument();
 });
 
-test("an Editor saves the Allowed Origins, one per line", async () => {
+/** The saved Allowed Origins, once they are loaded. */
+async function origins(embed: HTMLElement) {
+  const list = await within(embed).findByRole("list", { name: "Allowed Origins" });
+  return within(list)
+    .queryAllByRole("listitem")
+    .map((item) => item.textContent);
+}
+
+test("an Editor adds and removes Allowed Origins, then saves them", async () => {
   const user = userEvent.setup();
   const { requests } = setUp({ allowedOrigins: ["https://www.example.com"] });
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
-  const field = within(embed).getByLabelText("Allowed Origins");
-  expect(await within(embed).findByDisplayValue("https://www.example.com")).toBe(field);
+  expect(await origins(embed)).toEqual(["https://www.example.com"]);
 
-  await user.clear(field);
-  await user.type(field, " HTTPS://Shop.example.com/ \n\nhttp://localhost:8080\n");
+  await user.click(within(embed).getByRole("button", { name: "Remove https://www.example.com" }));
+  await user.type(within(embed).getByRole("textbox", { name: "Add an Allowed Origin" }), " HTTPS://Shop.example.com/ {Enter}");
+  await user.type(within(embed).getByRole("textbox", { name: "Add an Allowed Origin" }), "http://localhost:8080{Enter}");
   await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
 
   expect(await within(embed).findByText("Saved. Pages on these sites can show the Agent now.")).toBeInTheDocument();
-  expect(field).toHaveValue("https://shop.example.com\nhttp://localhost:8080");
+  // The API's normal form is shown once saved.
+  expect(await origins(embed)).toEqual(["https://shop.example.com", "http://localhost:8080"]);
   expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
     {
       route: "operational-settings",
@@ -94,18 +104,15 @@ test("an invalid Allowed Origin is explained", async () => {
   setUp();
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
-  const field = within(embed).getByLabelText("Allowed Origins");
-  await waitFor(() => {
-    expect(field).toBeEnabled();
-  });
+  await origins(embed);
 
-  await user.type(field, "www.example.com");
+  await user.type(within(embed).getByRole("textbox", { name: "Add an Allowed Origin" }), "www.example.com{Enter}");
   await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
 
   expect(await within(embed).findByRole("alert")).toHaveTextContent(
     "'www.example.com' isn't a site address. Use a scheme, host and optional port, such as https://www.example.com, https://*.example.com for its subdomains, or http://localhost:8080 (http://localhost:* for any port).",
   );
-  expect(field).toHaveValue("www.example.com");
+  expect(await origins(embed)).toEqual(["www.example.com"]);
 });
 
 const settingsPath =
@@ -117,7 +124,7 @@ test("a failure to save the Allowed Origins is reported", async () => {
   server.use(http.patch(settingsPath, () => HttpResponse.json({ detail: "Boom" }, { status: 500 })));
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
-  await within(embed).findByDisplayValue("https://www.example.com");
+  await origins(embed);
 
   await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
 
@@ -139,7 +146,8 @@ test("while the Allowed Origins load, they cannot be saved over", async () => {
   const embed = await embedSection();
   const save = within(embed).getByRole("button", { name: "Save Allowed Origins" });
 
-  expect(within(embed).getByLabelText("Allowed Origins")).toBeDisabled();
+  expect(within(embed).getByRole("status", { name: "Loading the Allowed Origins" })).toBeInTheDocument();
+  expect(within(embed).queryByRole("textbox", { name: "Add an Allowed Origin" })).not.toBeInTheDocument();
   expect(save).toBeDisabled();
   await user.click(save);
   expect(puts).toBe(0);
@@ -162,7 +170,7 @@ test("when the Allowed Origins can't be loaded, they cannot be saved over", asyn
 
   expect(await within(embed).findByText("The Operational Settings could not be loaded.")).toBeInTheDocument();
   const save = within(embed).getByRole("button", { name: "Save Allowed Origins" });
-  expect(within(embed).getByLabelText("Allowed Origins")).toBeDisabled();
+  expect(within(embed).queryByRole("textbox", { name: "Add an Allowed Origin" })).not.toBeInTheDocument();
   expect(save).toBeDisabled();
   await user.click(save);
   expect(puts).toBe(0);
@@ -173,16 +181,15 @@ test("subdomain wildcards and localhost on any port are saved as Allowed Origins
   const { requests } = setUp();
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
-  const field = within(embed).getByLabelText("Allowed Origins");
-  await waitFor(() => {
-    expect(field).toBeEnabled();
-  });
+  await origins(embed);
+  const add = within(embed).getByRole("textbox", { name: "Add an Allowed Origin" });
 
-  await user.type(field, "https://*.Example.com\nhttp://localhost:*");
+  await user.type(add, "https://*.Example.com{Enter}");
+  await user.type(add, "http://localhost:*{Enter}");
   await user.click(within(embed).getByRole("button", { name: "Save Allowed Origins" }));
 
   expect(await within(embed).findByText("Saved. Pages on these sites can show the Agent now.")).toBeInTheDocument();
-  expect(field).toHaveValue("https://*.example.com\nhttp://localhost:*");
+  expect(await origins(embed)).toEqual(["https://*.example.com", "http://localhost:*"]);
   expect(requests).toContainEqual({
     route: "operational-settings",
     body: { allowed_origins: ["https://*.Example.com", "http://localhost:*"] },
@@ -209,7 +216,7 @@ test("an Editor words the unavailable text Visitors see", async () => {
     },
   ]);
   // The Allowed Origins are left as they were.
-  expect(within(embed).getByLabelText("Allowed Origins")).toHaveValue("https://www.example.com");
+  expect(await origins(embed)).toEqual(["https://www.example.com"]);
 });
 
 test("emptying the unavailable text restores the default", async () => {
@@ -363,7 +370,7 @@ test("the snippet chooses a bubble or an inline container by its data attributes
   expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(
     `${start} data-launcher="inline" data-target="[data-help=&quot;a&amp;b&quot;]" async></script>`,
   );
-  await user.click(within(embed).getByRole("button", { name: "Copy snippet" }));
+  await user.click(within(embed).getByRole("button", { name: "Copy Embed Snippet" }));
   expect(await navigator.clipboard.readText()).toBe(
     `${start} data-launcher="inline" data-target="[data-help=&quot;a&amp;b&quot;]" async></script>`,
   );
@@ -382,7 +389,7 @@ test("the budget meter shows today's usage against the daily Token Budget", asyn
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
 
-  const meter = await within(embed).findByRole("progressbar", { name: "Tokens used today" });
+  const meter = await within(embed).findByRole("meter", { name: "Tokens used today" });
   await waitFor(() => {
     expect(meter).toHaveAttribute("aria-valuenow", "250000");
   });
@@ -406,7 +413,7 @@ test("a spent budget is explained beside the meter", async () => {
     ),
   ).toBeInTheDocument();
   // The meter stops at full.
-  expect(within(embed).getByRole("progressbar", { name: "Tokens used today" })).toHaveAttribute(
+  expect(within(embed).getByRole("meter", { name: "Tokens used today" })).toHaveAttribute(
     "aria-valuenow",
     "1000000",
   );
@@ -419,7 +426,7 @@ test("today's usage that can't be loaded says so", async () => {
   const embed = await embedSection();
 
   expect(await within(embed).findByText("Today's usage could not be loaded.")).toBeInTheDocument();
-  expect(within(embed).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(embed).queryByRole("meter")).not.toBeInTheDocument();
 });
 
 test("an Editor sets the daily Token Budget and the meter follows", async () => {
@@ -485,5 +492,5 @@ test("while the Operational Settings load, the Token Budget cannot be saved over
 
   expect(within(embed).getByLabelText("Tokens per day")).toBeDisabled();
   expect(within(embed).getByRole("button", { name: "Save Token Budget" })).toBeDisabled();
-  expect(within(embed).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(embed).queryByRole("meter")).not.toBeInTheDocument();
 });

@@ -23,7 +23,7 @@ import {
   OrganisationSettingsLayout,
   ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
-import { AgentPage } from "./projects/AgentPage";
+import { AgentEmbedView, AgentPage, AgentPlaygroundView, AgentVersionsView } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
 import { AnalyticsTab } from "./projects/AnalyticsTab";
 import { ProjectLayout } from "./projects/ProjectPage";
@@ -118,6 +118,10 @@ const agentsTabRoute = createRoute({
   component: AgentsTab,
 });
 const agentRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents/$agentId", component: AgentPage });
+// An Agent's views, switched in the breadcrumb. Its Conversations are the Project's, filtered to it.
+const agentPlaygroundRoute = createRoute({ getParentRoute: () => agentRoute, path: "/", component: AgentPlaygroundView });
+const agentVersionsRoute = createRoute({ getParentRoute: () => agentRoute, path: "/versions", component: AgentVersionsView });
+const agentEmbedRoute = createRoute({ getParentRoute: () => agentRoute, path: "/embed", component: AgentEmbedView });
 const conversationsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/conversations",
@@ -179,7 +183,7 @@ const routeTree = rootRoute.addChildren([
         documentViewerRoute,
         instructionsTabRoute,
         agentsTabRoute,
-        agentRoute,
+        agentRoute.addChildren([agentPlaygroundRoute, agentVersionsRoute, agentEmbedRoute]),
         conversationsTabRoute,
         conversationRoute,
         analyticsTabRoute,

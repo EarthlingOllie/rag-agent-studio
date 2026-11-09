@@ -1,6 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useId, useState } from "react";
 
+import { Icon, surface } from "../design";
 import { type Trace, instructionsUsed, useTrace } from "./agents";
 import { BUTTON } from "./ProjectsPage";
 
@@ -88,7 +89,14 @@ export function answeredBy(answer: { agent_version_number: number | null }): str
   return answer.agent_version_number === null ? "Draft" : `Agent Version v${String(answer.agent_version_number)}`;
 }
 
+/** A cited Chunk in the accent colour, one the ingestion scan flagged in the flag colour. */
+function chunkTone(chunk: TraceChunk): string {
+  if (chunk.excluded_reason === "guardrail_flagged") return "text-flag";
+  return chunk.cited ? "font-medium text-accent" : "";
+}
+
 function TraceBody({ trace }: { trace: Trace }) {
+  const guardrailsId = useId();
   const facts: [string, string][] = [
     // An answer always has its tokens and latency; a fallback reply names no model, and the
     // cost is unknown when the model has no price.
@@ -131,14 +139,14 @@ function TraceBody({ trace }: { trace: Trace }) {
           its refusal text and the model wasn't asked.
         </p>
       )}
-      <section aria-labelledby="trace-guardrails" className="space-y-1 text-sm">
-        <h3 id="trace-guardrails" className="font-medium">
+      <section aria-labelledby={guardrailsId} className="space-y-1 text-sm">
+        <h3 id={guardrailsId} className="font-medium">
           Guardrails
         </h3>
         {trace.guardrail_outcomes.length === 0 ? (
           <p className="text-muted">No Guardrail stepped in.</p>
         ) : (
-          <ul aria-labelledby="trace-guardrails" className="list-disc pl-5">
+          <ul aria-labelledby={guardrailsId} className="list-disc pl-5">
             {trace.guardrail_outcomes.map((outcome, index) => (
               <li key={index}>
                 {LAYERS[outcome.layer]}: {verdict(outcome)},{" "}
@@ -148,7 +156,7 @@ function TraceBody({ trace }: { trace: Trace }) {
           </ul>
         )}
       </section>
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-sm [&_td]:py-1 [&_td]:pr-3 [&_th]:pr-3">
         <caption className="text-left font-medium">Retrieved Chunks</caption>
         <thead>
           <tr className="border-b border-line">
@@ -167,14 +175,14 @@ function TraceBody({ trace }: { trace: Trace }) {
               key={index}
               className="border-b border-line-soft align-top"
             >
-              <td>{chunk.rank === null ? "—" : `C${String(chunk.rank)}`}</td>
+              <td className={chunkTone(chunk)}>{chunk.rank === null ? "—" : `C${String(chunk.rank)}`}</td>
               <td>{documentText(chunk)}</td>
               <td className="text-xs whitespace-pre-wrap text-muted">
                 {chunk.text ?? "—"}
               </td>
               <td>{chunk.score.toFixed(3)}</td>
               <td>{chunk.relevance.toFixed(3)}</td>
-              <td>{outcome(chunk)}</td>
+              <td className={chunkTone(chunk)}>{outcome(chunk)}</td>
             </tr>
           ))}
         </tbody>
@@ -183,15 +191,40 @@ function TraceBody({ trace }: { trace: Trace }) {
   );
 }
 
-/** Why a Playground answer came out as it did: the model, usage, cost, latency and the Chunks retrieved. */
-export function TraceDrawer({
-  path,
-  onClose,
-}: {
-  path: TracePath;
-  onClose: () => void;
-}) {
-  return <TraceDrawerFrame trace={useTrace(path)} onClose={onClose} />;
+/** A Trace however it is loaded: loading, failed, or its body. */
+function TraceContent({ trace }: { trace: UseQueryResult<Trace> }) {
+  if (trace.isError) return <p role="alert">The Trace could not be loaded. Try again shortly.</p>;
+  if (trace.data === undefined) return <p role="status">Loading the Trace…</p>;
+  return <TraceBody trace={trace.data} />;
+}
+
+function LoadedTrace({ path }: { path: TracePath }) {
+  return <TraceContent trace={useTrace(path)} />;
+}
+
+/**
+ * Why a Playground answer came out as it did, folded under the answer: the summary row shows its
+ * usage; opening it loads the model, cost, latency, Guardrails and the Chunks retrieved.
+ */
+export function TraceFold({ path, summary }: { path: TracePath; summary: string }) {
+  // Loaded the first time it opens, and kept while it is folded again.
+  const [opened, setOpened] = useState(false);
+  return (
+    <details
+      aria-label="Trace"
+      className={`${surface.card} group overflow-hidden`}
+      onToggle={(event) => {
+        if (event.currentTarget.open) setOpened(true);
+      }}
+    >
+      <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+        <Icon name="chevronRight" size={14} className="text-muted transition-transform group-open:rotate-90" />
+        <span className="font-medium text-ink">Trace</span>
+        <span className="font-mono text-xs text-muted">{summary}</span>
+      </summary>
+      <div className="overflow-x-auto border-t border-line-soft px-4 py-4">{opened && <LoadedTrace path={path} />}</div>
+    </details>
+  );
 }
 
 /** The Trace drawer around a Trace however it is loaded (the Playground's or a Conversation's). */
@@ -212,17 +245,6 @@ export function TraceDrawerFrame({
     };
   }, [onClose]);
 
-  let body;
-  if (trace.isError) {
-    body = (
-      <p role="alert">The Trace could not be loaded. Try again shortly.</p>
-    );
-  } else if (trace.data === undefined) {
-    body = <p role="status">Loading the Trace…</p>;
-  } else {
-    body = <TraceBody trace={trace.data} />;
-  }
-
   return (
     <aside
       role="dialog"
@@ -237,7 +259,7 @@ export function TraceDrawerFrame({
           Close
         </button>
       </div>
-      {body}
+      <TraceContent trace={trace} />
     </aside>
   );
 }

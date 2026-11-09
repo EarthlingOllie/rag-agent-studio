@@ -1,10 +1,12 @@
 import { Link, Navigate, Outlet, useLocation, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { SignedOutFrame } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
 import { AppearanceToggle, Brand, button, EmptyState, layout, Notice, Skeleton, TopBar } from "../design";
 import { AccountMenu } from "./AccountMenu";
 import { StudioBreadcrumb } from "./StudioBreadcrumb";
+import { TopBarSlot } from "./TopBarActions";
 
 /** Everything a signed-in Member sees. Signed-out visitors are sent to the sign-in screen. */
 export function SignedInShell() {
@@ -55,6 +57,8 @@ export function OrganisationShell() {
   // The Require MFA policy: until the Member turns MFA on, the Organisation offers only enrolment.
   const mustEnrol = organisation !== undefined && organisation.mfa_required && !session.member.mfa_enabled;
   const onSecurityPage = useLocation().pathname.endsWith("/security");
+  // The page's own top bar actions are portalled into this element (`TopBarActions`).
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -67,6 +71,7 @@ export function OrganisationShell() {
         breadcrumb={<StudioBreadcrumb session={session} organisationId={organisationId} mustEnrol={mustEnrol} />}
         actions={
           <>
+            <div ref={setSlot} className="flex items-center gap-3 empty:hidden" />
             <AppearanceToggle />
             <AccountMenu session={session} organisationId={organisationId} inOrganisation={organisation !== undefined} />
           </>
@@ -77,7 +82,9 @@ export function OrganisationShell() {
           mustEnrol && !onSecurityPage ? (
             <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
           ) : (
-            <Outlet />
+            <TopBarSlot.Provider value={slot}>
+              <Outlet />
+            </TopBarSlot.Provider>
           )
         ) : (
           <EmptyState
