@@ -39,7 +39,8 @@ const label = (kpis: VersionKpis) => `v${String(kpis.number)}`;
 function ComparisonTable({ rows, a, b }: { rows: MetricRow[]; a: VersionKpis; b: VersionKpis }) {
   const name = { a: label(a), b: label(b) };
   return (
-    <div className={table.wrap}>
+    // A focusable region, so the table can be scrolled sideways with the keyboard on a narrow screen.
+    <div className={table.wrap} role="region" aria-label={`${name.a} compared with ${name.b}`} tabIndex={0}>
     <table aria-label={`${name.a} compared with ${name.b}`} className={table.table}>
       <thead>
         <tr>

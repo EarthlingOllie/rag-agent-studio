@@ -135,12 +135,68 @@ test("inside a Project the breadcrumb is the Organisation's sections, a Project 
   expect(await breadcrumb.findByRole("button", { name: "HR handbook, Projects" })).toBeInTheDocument();
   expect(breadcrumb.getAllByRole("listitem").map((crumb) => crumb.textContent)).toEqual([
     "Analytical Engines",
+    // The narrow screen's "…" (hidden on wider ones), which folds the middle crumbs.
+    "/…",
     "/Projects",
     "/HR handbook",
     "/Documents",
   ]);
   // The Organisation's sections stay one click away from any Project.
   expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
+});
+
+test("on a narrow screen the middle crumbs fold into a … menu; the Organisation and the current page stay", async () => {
+  const user = userEvent.setup();
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id, "/agents"));
+  const breadcrumb = within(await screen.findByRole("navigation", { name: "Breadcrumb" }));
+  await breadcrumb.findByRole("button", { name: "HR handbook, Projects" });
+
+  // The middle crumbs are hidden below the md breakpoint (CSS); the … button stands in for them.
+  const more = breadcrumb.getByRole("button", { name: "Show the whole path" });
+  expect(more).toHaveAttribute("aria-expanded", "false");
+  expect(more).toHaveTextContent("…");
+  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
+
+  await user.click(more);
+  expect(more).toHaveAttribute("aria-expanded", "true");
+  const path = within(screen.getByRole("list", { name: "The whole path" }));
+  // Only the middle: the Organisation's sections and the Project, not the Organisation or the page.
+  expect(path.getAllByRole("button").map((crumb) => crumb.getAttribute("aria-label"))).toEqual([
+    "Projects, Organisation sections",
+    "HR handbook, Projects",
+  ]);
+  // Escape closes it and returns focus to the … button.
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
+  expect(more).toHaveFocus();
+
+  // Its crumbs are the same switchers: following one closes the path.
+  await user.keyboard("{Enter}");
+  const opened = within(screen.getByRole("list", { name: "The whole path" }));
+  await user.click(opened.getByRole("button", { name: "HR handbook, Projects" }));
+  // Escape inside a switcher closes only the switcher.
+  await user.keyboard("{Escape}");
+  expect(screen.getByRole("list", { name: "The whole path" })).toBeInTheDocument();
+  await user.click(opened.getByRole("button", { name: "HR handbook, Projects" }));
+  await user.click(screen.getByRole("menuitem", { name: "Sales enablement" }));
+  expect(await screen.findByRole("heading", { level: 1, name: "Sales enablement" })).toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
+
+  // A press outside closes it too.
+  await user.click(more);
+  expect(screen.getByRole("list", { name: "The whole path" })).toBeInTheDocument();
+  await user.click(screen.getByRole("heading", { level: 1, name: "Sales enablement" }));
+  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
+});
+
+test("a breadcrumb of two crumbs has nothing to fold", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio("/");
+  expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
+  await menuButton("Organisation sections");
+  expect(screen.queryByRole("button", { name: "Show the whole path" })).not.toBeInTheDocument();
 });
 
 test("the Project switcher lists the open Projects as links, plus All Projects", async () => {

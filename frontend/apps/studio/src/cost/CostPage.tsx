@@ -18,7 +18,8 @@ function CostTable({ cost }: { cost: OrgCost }) {
   const byAgent = cost.group_by === "agent";
   const name = byAgent ? "Agent" : "Project";
   return (
-    <div className="mt-4 overflow-x-auto">
+    // A focusable region, so the table can be scrolled sideways with the keyboard on a narrow screen.
+    <div className="relative mt-4 overflow-x-auto" role="region" aria-label={`Cost by ${name}`} tabIndex={0}>
       <table className="w-full text-left text-sm" aria-label={`Cost by ${name}`}>
         <thead>
           <tr className="text-muted">

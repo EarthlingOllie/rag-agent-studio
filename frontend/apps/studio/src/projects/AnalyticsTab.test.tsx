@@ -205,6 +205,8 @@ test("an Editor compares two Versions side by side, with the differences highlig
 
   const table = await screen.findByRole("table", { name: "v1 compared with v2" });
   expect(screen.getByRole("heading", { level: 3, name: "Compare two Versions" })).toBeInTheDocument();
+  // On a narrow screen the table scrolls sideways in a box that takes keyboard focus.
+  expect(screen.getByRole("region", { name: "v1 compared with v2" })).toHaveAttribute("tabindex", "0");
   // The Live Version against the newest other one, by default.
   expect(screen.getByLabelText("First Version")).toHaveDisplayValue("v1");
   expect(screen.getByLabelText("Second Version")).toHaveDisplayValue("v2 (Live)");

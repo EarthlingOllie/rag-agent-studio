@@ -5,8 +5,13 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
-/** The `studio-reskin` skill's leftover check: palette colours, the `dark:` variant, white text or fills. */
-export const PALETTE_CLASS = /(slate|gray|zinc|red|green|amber|blue|white|black)-[0-9]{2,3}|\bdark:|bg-white|text-white/g;
+/**
+ * The `studio-reskin` skill's leftover check: palette colours, the `dark:` variant, white text or
+ * fills. The variant is `dark:` directly followed by a class (`dark:bg-black`, `dark:[…]`,
+ * `dark:!p-0`), so an object key named `dark` (`{ light: "#fff", dark: "#000" }`, a Theme colour)
+ * is not counted.
+ */
+export const PALETTE_CLASS = /(slate|gray|zinc|red|green|amber|blue|white|black)-[0-9]{2,3}|\bdark:(?=[\w[!-])|bg-white|text-white/g;
 
 /** Where the Studio's source lives, relative to `frontend/`. */
 export const STUDIO_SRC = "apps/studio/src";

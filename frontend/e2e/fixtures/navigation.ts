@@ -16,14 +16,6 @@ export type NavigationMenu =
   | "Organisation settings"
   | "Account";
 
-/**
- * Menus that are still a tab row, keyed by the switcher that replaces them, with the row's
- * navigation name. A later slice turns each into a switcher and deletes its entry here; the specs
- * that use the helpers do not change.
- */
-const TAB_ROWS: Partial<Record<NavigationMenu, string>> = {
-};
-
 function escape(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -35,11 +27,6 @@ export function menuButton(page: Page, menu: NavigationMenu) {
 
 /** Opens a navigation menu and follows (or chooses) `item`, as a Member does. */
 export async function openSection(page: Page, menu: NavigationMenu, item: string) {
-  const row = TAB_ROWS[menu];
-  if (row !== undefined) {
-    await page.getByRole("navigation", { name: row }).getByRole("link", { name: item, exact: true }).click();
-    return;
-  }
   await menuButton(page, menu).click();
   await page.getByRole("menu", { name: menu }).getByRole("menuitem", { name: item, exact: true }).click();
 }
@@ -49,12 +36,6 @@ export async function openSection(page: Page, menu: NavigationMenu, item: string
  * item missing from this list.
  */
 export async function sectionNames(page: Page, menu: NavigationMenu): Promise<string[]> {
-  const row = TAB_ROWS[menu];
-  if (row !== undefined) {
-    const links = page.getByRole("navigation", { name: row }).getByRole("link");
-    await links.first().waitFor();
-    return (await links.allTextContents()).map((text) => text.trim());
-  }
   await menuButton(page, menu).click();
   const items = page.getByRole("menu", { name: menu }).getByRole("menuitem");
   await items.first().waitFor();

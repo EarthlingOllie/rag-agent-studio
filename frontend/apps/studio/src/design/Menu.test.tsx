@@ -138,8 +138,9 @@ it("lays crumbs out with separators; the current one is the accent and says so",
     </Breadcrumb>,
   );
   const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
-  expect(nav.querySelectorAll("li")).toHaveLength(3);
-  expect(nav.textContent).toBe("Northwind Traders/Northwind Handbook/Documents");
+  // Three crumbs, and the narrow screen's "…" after the first (hidden on wider screens).
+  expect(nav.querySelectorAll("li")).toHaveLength(4);
+  expect(nav.textContent).toBe("Northwind Traders/…/Northwind Handbook/Documents");
 
   const current = screen.getByRole("button", { name: "Documents, Project sections" });
   expect(current).toHaveAttribute("aria-current", "page");

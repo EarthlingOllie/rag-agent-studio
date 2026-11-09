@@ -240,6 +240,8 @@ test("the chart has a Table view, chosen with a segmented control", async () => 
   await userEvent.click(within(view).getByRole("radio", { name: "Table" }));
 
   expect(within(section).getByRole("table", { name: "Conversations, the numbers behind the chart" })).toBeInTheDocument();
+  // On a narrow screen the table scrolls sideways in a box that takes keyboard focus.
+  expect(within(section).getByRole("region", { name: "Conversations, the numbers behind the chart" })).toHaveAttribute("tabindex", "0");
   expect(container.querySelector(".recharts-wrapper")).toBeNull();
 });
 

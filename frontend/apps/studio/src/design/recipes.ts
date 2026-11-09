@@ -42,9 +42,12 @@ export const field = {
   filter: "flex flex-col text-xs font-medium text-ink-2",
   /** A select or date filter in a toolbar: pill-shaped, button height. */
   pill: "mt-1 block h-9 rounded-full border border-line bg-surface px-3.5 text-sm text-ink disabled:bg-sunken disabled:text-muted",
-  /** A search box or filter in a toolbar: pill-shaped, icon inside. */
+  /**
+   * A search box or filter in a toolbar: pill-shaped, icon inside. Its input draws no outline of
+   * its own, so the pill draws the focus ring around the whole box.
+   */
   search:
-    "flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-sm text-muted focus-within:border-accent",
+    "flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-sm text-muted focus-within:border-accent focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent",
 } as const;
 
 /** Containers. */
@@ -61,7 +64,11 @@ export const surface = {
 
 /** Data tables: wrap the <table> in `table.wrap` so wide tables scroll inside the card. */
 export const table = {
-  wrap: "overflow-x-auto rounded-2xl border border-line bg-surface",
+  /**
+   * `relative` so an absolutely placed cell content (a screen-reader-only label) scrolls with the
+   * table instead of widening the page on a narrow screen.
+   */
+  wrap: "relative overflow-x-auto rounded-2xl border border-line bg-surface",
   table: "w-full border-collapse text-sm",
   th: "px-3 py-3 text-left text-xs font-medium text-muted first:pl-5 last:pr-5",
   thNumeric: "px-3 py-3 text-right text-xs font-medium text-muted first:pl-5 last:pr-5",

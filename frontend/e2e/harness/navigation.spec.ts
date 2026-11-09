@@ -3,7 +3,7 @@ import { expect, test } from "./test";
 
 /**
  * A stand-in for the Studio's top bar: a breadcrumb switcher whose menu opens on click and closes
- * on Escape, its items carrying number hints hidden from assistive technology, and a tab row a later slice has not yet replaced. Following an item writes it into
+ * on Escape, its items carrying number hints hidden from assistive technology. Following an item writes it into
  * the page's heading, so a spec can see which one was followed.
  */
 const TOP_BAR = `<!doctype html><html lang="en"><title>Navigation</title>
@@ -17,7 +17,6 @@ const TOP_BAR = `<!doctype html><html lang="en"><title>Navigation</title>
 </header>
 <main>
   <h1>Projects</h1>
-  <nav aria-label="Organisation settings"><a href="#General">General</a> <a href="#Members">Members</a></nav>
 </main>
 <script>
   const menu = document.querySelector("[role=menu]");
@@ -41,19 +40,9 @@ test.describe("navigation helpers", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Settings");
   });
 
-  test("openSection follows a tab in a row not yet replaced by a switcher", async ({ page }) => {
-    await openSection(page, "Organisation settings", "Members");
-
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Members");
-  });
-
   test("sectionNames lists a switcher's items, without their hidden number hints, and closes it", async ({ page }) => {
     expect(await sectionNames(page, "Organisation sections")).toEqual(["Projects", "Cost", "Settings"]);
     await expect(page.getByRole("menu", { name: "Organisation sections" })).toBeHidden();
     await expect(menuButton(page, "Organisation sections")).toBeVisible();
-  });
-
-  test("sectionNames lists a tab row's tabs", async ({ page }) => {
-    expect(await sectionNames(page, "Organisation settings")).toEqual(["General", "Members"]);
   });
 });

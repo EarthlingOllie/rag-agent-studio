@@ -37,6 +37,10 @@ test("an Owner sees what each Project cost over the last 30 days, with the Playg
   ]);
   expect(screen.getByLabelText("Break down by")).toHaveDisplayValue("Project");
   expect(queries.map((query) => query.toString())).toEqual(["group_by=project"]);
+  // On a narrow screen the table scrolls sideways in a box that takes keyboard focus.
+  const box = screen.getByRole("region", { name: "Cost by Project" });
+  expect(box).toHaveAttribute("tabindex", "0");
+  expect(within(box).getByRole("table", { name: "Cost by Project" })).toBeInTheDocument();
 });
 
 test("the Owner breaks the cost down by Agent, each with its Project", async () => {
