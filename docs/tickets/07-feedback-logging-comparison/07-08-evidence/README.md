@@ -1,0 +1,64 @@
+# Evidence: ticket 07-08, Organisation cost page
+
+Branch `ticket/07-08-organisation-cost`. The claim commit (`23078b7`), the first on the branch, set Status `in-progress`. The feature is `f94898a` (written by an earlier dispatch on `527d5d6` and not tested then); it was reviewed against the ticket, then `origin/candidate` at `9b06d3a` was merged in (`d624191`). That merge brought 07-06's time series into the same Analytics module: the conflicts in `backend/app/analytics/api.py` and `service.py` were resolved by keeping both features, and `org_cost`'s route now uses 07-06's shared `_range` / `_START` / `_END` date handling instead of its own copy. `GLOSSARY.md` and `test_openapi.py` kept both sides. `origin/candidate` had not moved again when the final checks ran (`git log HEAD..origin/candidate` empty). This ticket adds no migration, so the parallel tickets' migration numbering is unaffected.
+
+**Status: done.** Every criterion is met and evidenced below. Gaps and judgement calls are listed at the end.
+
+## What was built
+
+- **`org_cost` query** (`backend/app/analytics/service.py`), beside `version_metrics` in the Analytics module's query interface: `org_cost(scope, group_by, start, end, today)` returns one `CostLine` per Project (or per Agent, with its Project) that replied in the UTC days `start` to `end`, most expensive first, each with `visitor_usd`, `playground_usd` and `total_usd`.
+  - Visitor cost: days before today from the `usage_daily` rollups (summed per Agent), today (the live partial day) from the raw tables through `usage_on` (which gained an `organisation_id` filter in `Only`).
+  - Playground cost: the frozen `cost_usd` of Playground Conversations' replies, from the raw Messages (Playground usage never goes into the rollups, per the spec's Exclusions).
+  - Archived Projects and Agents keep their lines: they spent the money.
+- **Route** `GET /api/organisations/{org}/cost` (`getOrganisationCost`, `backend/app/analytics/api.py`), **Owners only** (`OwnerScope`; Editors 403, other tenants 404). Query: `group_by` = `project` (default) or `agent`, `start`/`end` UTC dates (default the last 30 days to today; at most 366 days; start after end → 422; the range checks are shared with the Version metrics route). Response: `start`, `end`, `group_by`, `rows[]` (`project_id`, `project_name`, `agent_id`, `agent_name`, `visitor_usd`, `playground_usd`, `total_usd`) and `total` (the three sums).
+- **Studio Cost page** (`frontend/apps/studio/src/cost/CostPage.tsx`, `cost.ts`) at `/organisations/{org}/cost`: a **Cost** link in the Organisation navigation shown to Owners only; "Break down by" (Project / Agent), From/To UTC days, the period line ("… (UTC days), including today so far, at the prices of the time"), and a table "Cost by Project" (Project, Visitors, Playground, Total) or "Cost by Agent" (Agent, Project, Visitors, Playground, Total) with an "All Projects" / "All Agents" total row. Empty period, loading, load failure and refused dates each say so. An Editor who opens the URL sees "Only Owners can see what the Organisation spends." and no request is made.
+- **Generated API client** regenerated. **Glossary**: new **Organisation cost**.
+
+## Test seams
+
+The [shared test seams](../../../specs/README.md#shared-test-seams) and the spec's Testing Decisions ("generate Conversations through the widget API using the runtime fake … run the rollup task, and assert on the analytics endpoints' numbers"; "cost uses frozen values after a price override changes"; "the current partial day is included"). Not confirmed with a human (none is reachable in this run); they are the ones the spec names.
+
+- **API and task seam:** `backend/tests/integration/test_organisation_cost.py` (9 tests, 12 cases). Visitors chat through the widget API and Owners in the Playground (the `FunctionModel` from 07-04 answering with as many words as asked, so costs differ); the rollup **Beat task is called directly** (`roll_up_usage.apply`) as of the controllable clock. Assertions are on HTTP responses only; the expected amounts are each reply's frozen `cost_usd` read back from the Conversations viewer (Visitor and Playground filters, per Agent), never from rollup tables.
+- **Network seam:** `frontend/apps/studio/src/cost/CostPage.test.tsx` (6 tests, MSW handlers typed by the generated client in `src/test/cost.ts`).
+- **End-to-end seam:** `frontend/e2e/tests/organisation-cost.spec.ts`: Playwright against the compose stack; the Owner makes a Playground reply, opens **Cost** from the navigation, sees the Project's row and the total, switches to Agent and sees the Agent's row; axe (WCAG 2.2 AA) on both tables.
+- Registries updated: `test_openapi.py` (`getOrganisationCost`), `test_tenant_isolation.py` (the route, Owner policy: Editors 403, other Organisations 404, the two-Organisation Member check).
+
+## Acceptance criteria
+
+| # | Criterion | Evidence |
+|---|---|---|
+| 1 | The `org_cost` query groups by Project or Agent for a period, with Playground usage in a separate column | **By Project:** `test_owners_see_each_projects_cost_with_playground_usage_in_its_own_column` (two Projects; the Handbook's Visitor and Playground costs in separate columns, Payroll's Playground 0; most expensive first; total row = the sums). **By Agent:** `test_by_agent_each_agent_has_its_own_line_including_archived_agents` (three Agents in one Project, each with its Project; an Agent used only in the Playground and then archived keeps its line; an unused Agent has none; the by-Project view of the same day is the sum). **Period:** `test_past_days_come_from_the_rollups_and_days_outside_the_period_dont_count` (Thursday's live numbers equal its finalised rollup's; Friday alone; both days; an empty day), `test_by_default_the_last_30_days_by_project`. **Frozen prices:** `test_cost_uses_the_prices_frozen_when_each_reply_was_made` (a price override changes nothing already spent; later replies cost the new price, Visitor and Playground). `test_an_organisation_with_no_replies_spent_nothing`; `test_bad_queries_are_refused` (start after end, over 366 days, a bad date, `group_by=version`). |
+| 2 | There's an Owner-only cost page | **API:** `test_editors_may_not_see_the_cost` (403 "Only Owners can do this"); `test_only_the_organisations_own_spending_is_shown` (another Organisation's Owner sees none of it and gets 404 on its path); the route in `test_tenant_isolation.py` with the Owner role. **Studio:** "an Owner sees what each Project cost …" (every cell, e.g. `Handbook $12.50 $0.0042 $12.50`, `All Projects $12.50 $0.0042 $12.51`); "the Owner breaks the cost down by Agent, each with its Project"; "the Owner chooses the period, and a period the API refuses is explained"; "a period with no spending says so"; loading and failure; "Owners find the cost page in the navigation; Editors neither see it nor can open it" (no Cost link, the Owners-only message, and no request). **E2E:** `organisation-cost.spec.ts` (from the navigation to both tables, axe clean). |
+| 3 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams as above. Backend ([backend-tests.log](backend-tests.log)): **2479 passed**, total coverage 100.00% (line and branch gate). Frontend ([frontend-tests.log](frontend-tests.log)): **59 files, 800 tests**, 100% statements (3858), branches (2597), functions and lines. E2E ([e2e.log](e2e.log)): every spec, **85 passed, 3 flaky** (passed on retry; none is this ticket's), `organisation-cost.spec.ts` passed first time. No coverage exclusions or pragmas added. |
+| 4 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | `GLOSSARY.md`: **Organisation cost**. No ADR decision changed: the spec's decisions are followed (rollups for past days, raw current day, Playground in its own column). |
+
+## Results
+
+All runs are local and one at a time (GitHub Actions is down; the user authorised merging on local results), on a machine shared with other tickets. Each log's first line names its commit. Code is identical across `d624191`, `eb931e2` and `ebb06b3`; the later two only add evidence files ([run-e2e.sh](run-e2e.sh), and moved sandbox e2e ports after a host-port clash with another job's stack).
+
+The backend suite used fresh `rag0708-*` containers (Postgres/pgvector :47082, Redis :47083, RustFS :47084), removed afterwards. The e2e stack was compose project `rag0708-e2e` on host ports 46110-46189 ([compose.sandbox.yml](compose.sandbox.yml), [e2e.env](e2e.env)), images built by [build.sh](build.sh) (the committed Dockerfiles plus the sandbox's egress CA, PDF extras off, `BUNDLE_MODELS=true`), driven by [run-e2e.sh](run-e2e.sh); stack, volumes and images were removed afterwards. The fake gateway / demo model answers; no real provider, key or paid API is used.
+
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Lint and type-check | `make lint` (ruff check, ruff format --check, mypy --strict, eslint, tsc) @ d624191 | exit 0 | [lint.log](lint.log) |
+| Backend (the one full run) | `TEST_WORKERS=3 make test-backend` @ d624191 | exit 0: **2479 passed** in 43 min; coverage 100.00% | [backend-tests.log](backend-tests.log) |
+| API client drift | `make check-client` @ d624191 | "API client is up to date", exit 0 | [client-drift.log](client-drift.log) |
+| Frontend (the one full run) | `make test-frontend` @ d624191 | exit 0: **59 files, 800 tests**; 100% statements/branches/functions/lines; `embed.js` 1367 B / 778 B gzipped | [frontend-tests.log](frontend-tests.log) |
+| Security | gitleaks (`origin/candidate..HEAD`), `make audit` @ eb931e2 | no leaks, no known vulnerabilities; exit 0, exit 0 | [security.log](security.log) |
+| Images | `build.sh` @ eb931e2 | exit 0 (bundled classifier flags the attack offline) | [images.log](images.log) |
+| End-to-end (the one full run) | `make e2e`'s steps (stack up, `make seed`, `pnpm e2e tests/`, CI settings: one retry) @ ebb06b3 | exit 0: **85 passed, 3 flaky**, including `organisation-cost.spec.ts` (passed first try). Flaky (passed on retry, not touched here): 08-06 `guardrail-analytics.spec.ts` and 07-04 `version-kpis.spec.ts` (`getByLabel('Version')` also matches 07-06's "Live Version changes" list, the same candidate clash 10-04 recorded), and `members.spec.ts` (a confirmation toast not seen in time on the first try) | [e2e.log](e2e.log) |
+| Infra | terraform | not run: no infra changes | n/a |
+
+The first e2e attempt (at `eb931e2`) did not start: host port 47876 was taken by another job at that moment; the ports were moved and the run repeated with the same images (`SKIP_BUILD=1`). The seed's JSON request logs were filtered out of the committed e2e log (lines starting `{"`), nothing else.
+
+## Gaps and judgement calls
+
+- **Seams not confirmed with a human.** The TDD skill asks for seams to be agreed first; no human is reachable, so the spec's own seams were used (best guess, recorded here).
+- **Test-first order:** the feature commit `f94898a` was written by an earlier dispatch that was stopped before running anything; this dispatch reviewed it against the ticket and ran its tests after the fact rather than replaying red-green.
+- **Where the page lives:** a top-level **Cost** item in the Organisation navigation (Owners only), not a tab in Organisation settings: it is a report, not a setting. The spec only says "Organisation cost page".
+- **Days before today come from the rollups**, as for the Version KPIs: until the first rollup run after midnight (hourly, minute 5), yesterday's Visitor cost is its last hourly rollup (up to an hour old). Playground cost has no rollup (the spec keeps Playground out of them) and is always read from the raw Messages, so it is exact at once.
+- **Which replies count:** every Agent reply's frozen cost; replies with no known price (and fallback replies, which ask no model) add 0. A Project or Agent appears only if it replied in the period (a zero-cost reply still gives it a line). Draft answers in the Playground count in the Playground column.
+- **Permanently deleted Projects and Agents** (03-11, 04-09) take their Messages and rollups with them (cascade), so their past cost no longer shows. Keeping it would need a cost ledger that outlives deletion; not in this ticket's scope.
+- **Sorting:** most expensive first, then by Project name, then Agent name. Amounts are US dollars to 9 decimal places in the API; the page rounds to the cent, or to two significant digits below a cent (07-04's `dollars` formatter), so the total row is the rounded exact sum, not the sum of rounded cells.
+- **E2E** uses a Project with no Documents, so its Playground reply is a fallback and costs $0.00; the cost amounts are covered at the API and network seams. The e2e checks the page's structure, navigation and accessibility against the real stack.
+- **Migration numbering:** this ticket adds no migration.
