@@ -1,4 +1,4 @@
-$ make test-frontend @ 108a72e (clean tree: 0 changes outside docs)
+$ make test-frontend @ f57d61e (clean tree: 0 changes)
 cd frontend && pnpm test && pnpm check-embed-size
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend
@@ -11,11 +11,11 @@ cd frontend && pnpm test && pnpm check-embed-size
 
  Test Files  59 passed (59)
       Tests  804 passed (804)
-   Start at  23:23:03
-   Duration  396.02s (tests 68%, environment 14%, import 10%, setup 5%, transform 1%, worker 1%)
+   Start at  01:25:10
+   Duration  291.42s (tests 70%, environment 14%, import 9%, setup 5%, transform 1%, worker 1%)
 
-    Isolate  59 workers spawned · ~3.11s startup each (spawn + environment, per file)
-             at least ~58.06s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  59 workers spawned · ~2.25s startup each (spawn + environment, per file)
+             at least ~42.00s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
@@ -43,12 +43,7 @@ rendering chunks...
 computing gzip size...
 dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
 
-[plugin builtin:vite-reporter] 
-(!) Some chunks are larger than 500 kB after minification. Consider:
-- Using dynamic import() to code-split the application
-- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
-- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 928ms
+✓ built in 483ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -56,9 +51,10 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 50ms
+✓ built in 29ms
 
 > @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/apps/widget
 > node scripts/check-size.mjs
 
 embed.js: 1367 bytes, 778 gzipped (budget 2048 and 1024)
+exit 0
