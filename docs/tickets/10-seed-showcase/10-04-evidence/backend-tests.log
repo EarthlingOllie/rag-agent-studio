@@ -1,4 +1,4 @@
-$ TEST_WORKERS=3 make test-backend (TEST_* -> fresh rag1004-pg/redis/rustfs) @ 12d1e44 (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
+$ TEST_WORKERS=3 make test-backend (TEST_* -> fresh rag1004-pg/redis/rustfs) @ 2bfa01b (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
 cd backend && uv run pytest -n 3
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -9,7 +9,7 @@ testpaths: tests
 plugins: logfire-sdk-5.4.0, xdist-3.8.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
 created: 3/3 workers
-3 workers [2450 items]
+3 workers [2461 items]
 
 ........................................................................ [  2%]
 ........................................................................ [  5%]
@@ -17,18 +17,18 @@ created: 3/3 workers
 ........................................................................ [ 11%]
 ........................................................................ [ 14%]
 ........................................................................ [ 17%]
-.................................F...................................... [ 20%]
-........................................................................ [ 23%]
+....................................................F......F........F... [ 20%]
+...F.................................................................... [ 23%]
 ........................................................................ [ 26%]
 ........................................................................ [ 29%]
 ........................................................................ [ 32%]
 ........................................................................ [ 35%]
 ........................................................................ [ 38%]
-........................................................................ [ 41%]
-...........................................................F............ [ 44%]
-........................................................................ [ 47%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
 ........................................................................ [ 49%]
-........................................................................ [ 52%]
+....................................................E................... [ 52%]
 ........................................................................ [ 55%]
 ........................................................................ [ 58%]
 ........................................................................ [ 61%]
@@ -37,21 +37,327 @@ created: 3/3 workers
 ........................................................................ [ 70%]
 ........................................................................ [ 73%]
 ........................................................................ [ 76%]
-........................................................................ [ 79%]
-........................................................................ [ 82%]
-........................................................................ [ 85%]
-........................................................................ [ 88%]
-........................................................................ [ 91%]
-........................................................................ [ 94%]
+........................................................................ [ 78%]
+..............................................F...F....F................ [ 81%]
+............................................................F........... [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 90%]
+........................................................................ [ 93%]
 ........................................................................ [ 96%]
 ........................................................................ [ 99%]
-..                                                                       [100%]
+.............
+ERROR: Coverage failure: total of 99 is less than fail-under=100
+                                                                         [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_organisation_scoped_routes_need_a_signed_in_member[GET /api/organisations/{organisation_id}/default-model] _
+[gw1] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+self = <redis.asyncio.connection.Connection(host=localhost,port=48879,db=13)>
+
+    async def _connect(self):
+        """Create a TCP socket connection"""
+        async with async_timeout(self.socket_connect_timeout):
+>           reader, writer = await asyncio.open_connection(
+                **self._connection_arguments()
+            )
+
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:1487: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.13/asyncio/streams.py:48: in open_connection
+    transport, _ = await loop.create_connection(
+/usr/local/lib/python3.13/asyncio/base_events.py:1123: in create_connection
+    infos = await self._ensure_resolved(
+/usr/local/lib/python3.13/asyncio/base_events.py:1519: in _ensure_resolved
+    return await loop.getaddrinfo(host, port, family=family, type=type,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=False debug=False>
+host = 'localhost', port = 48879, family = 0, type = <SocketKind.SOCK_STREAM: 1>
+proto = 0, flags = 0
+
+    async def getaddrinfo(self, host, port, *,
+                          family=0, type=0, proto=0, flags=0):
+        if self._debug:
+            getaddr_func = self._getaddrinfo_debug
+        else:
+            getaddr_func = socket.getaddrinfo
+    
+>       return await self.run_in_executor(
+            None, getaddr_func, host, port, family, type, proto, flags)
+E       asyncio.exceptions.CancelledError
+
+/usr/local/lib/python3.13/asyncio/base_events.py:940: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+self = <redis.asyncio.connection.Connection(host=localhost,port=48879,db=13)>
+check_health = True, retry_socket_connect = False
+
+    async def connect_check_health(
+        self, check_health: bool = True, retry_socket_connect: bool = True
+    ):
+        if self.is_connected:
+            return
+        # Track actual retry attempts for error reporting
+        actual_retry_attempts = 0
+    
+        def failure_callback(error, failure_count):
+            nonlocal actual_retry_attempts
+            actual_retry_attempts = failure_count
+            return self.disconnect(error=error, failure_count=failure_count)
+    
+        try:
+            if retry_socket_connect:
+                await self.retry.call_with_retry(
+                    lambda: self._connect(),
+                    failure_callback,
+                    with_failure_count=True,
+                )
+            else:
+>               await self._connect()
+
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:850: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:1486: in _connect
+    async with async_timeout(self.socket_connect_timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Timeout [expired]>
+exc_type = <class 'asyncio.exceptions.CancelledError'>
+exc_val = CancelledError(), exc_tb = <traceback object at 0x7f57703233c0>
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+    
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+    
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+    
+            if self._task.uncancel() <= self._cancelling and exc_type is not None:
+                # Since there are no new cancel requests, we're
+                # handling this.
+                if issubclass(exc_type, exceptions.CancelledError):
+>                   raise TimeoutError from exc_val
+E                   TimeoutError
+
+/usr/local/lib/python3.13/asyncio/timeouts.py:117: TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+self = <Coroutine test_organisation_scoped_routes_need_a_signed_in_member[GET /api/organisations/{organisation_id}/default-model]>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+        # When loop factories are configured, resolve the loop factory
+        # fixture early so that a factory variant change cascades cache
+        # invalidation before any async fixture checks its cache.
+        hook_caller = self.config.hook.pytest_asyncio_loop_factories
+        if hook_caller.get_hookimpls():
+            _ = self._request.getfixturevalue(_asyncio_loop_factory.__name__)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:559: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:945: in pytest_fixture_setup
+    hook_result = yield
+                  ^^^^^
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:408: in _asyncgen_fixture_wrapper
+    result = runner.run(setup(), context=context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/asyncio/runners.py:119: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/asyncio/base_events.py:726: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/pytest_asyncio/plugin.py:404: in setup
+    res = await gen_obj.__anext__()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/conftest.py:91: in app
+    async for key in redis.scan_iter(match=pattern):
+.venv/lib/python3.13/site-packages/redis/commands/core.py:6379: in scan_iter
+    cursor, data = await self.scan(
+.venv/lib/python3.13/site-packages/redis/asyncio/client.py:929: in execute_command
+    conn = self.connection or await pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/redis/utils.py:249: in async_wrapper
+    return await func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:2824: in get_connection
+    await self.ensure_connection(connection)
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:2865: in ensure_connection
+    await connection.connect()
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:819: in connect
+    await self.retry.call_with_retry(
+.venv/lib/python3.13/site-packages/redis/asyncio/retry.py:81: in call_with_retry
+    raise error
+.venv/lib/python3.13/site-packages/redis/asyncio/retry.py:69: in call_with_retry
+    return await do()
+           ^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <redis.asyncio.connection.Connection(host=localhost,port=48879,db=13)>
+check_health = True, retry_socket_connect = False
+
+    async def connect_check_health(
+        self, check_health: bool = True, retry_socket_connect: bool = True
+    ):
+        if self.is_connected:
+            return
+        # Track actual retry attempts for error reporting
+        actual_retry_attempts = 0
+    
+        def failure_callback(error, failure_count):
+            nonlocal actual_retry_attempts
+            actual_retry_attempts = failure_count
+            return self.disconnect(error=error, failure_count=failure_count)
+    
+        try:
+            if retry_socket_connect:
+                await self.retry.call_with_retry(
+                    lambda: self._connect(),
+                    failure_callback,
+                    with_failure_count=True,
+                )
+            else:
+                await self._connect()
+        except asyncio.CancelledError:
+            raise  # in 3.7 and earlier, this is an Exception, not BaseException
+        except (socket.timeout, asyncio.TimeoutError):
+            e = TimeoutError("Timeout connecting to server")
+            await record_error_count(
+                server_address=getattr(self, "host", None),
+                server_port=getattr(self, "port", None),
+                network_peer_address=getattr(self, "host", None),
+                network_peer_port=getattr(self, "port", None),
+                error_type=e,
+                retry_attempts=actual_retry_attempts,
+                is_internal=False,
+            )
+>           raise e
+E           redis.exceptions.TimeoutError: Timeout connecting to server
+
+.venv/lib/python3.13/site-packages/redis/asyncio/connection.py:864: TimeoutError
+---------------------------- Captured stdout setup -----------------------------
+------------------------------ Captured log setup ------------------------------
+INFO     app.main:main.py:136 API started
 =================================== FAILURES ===================================
-_______________________ test_beat_writes_only_json_lines _______________________
-[gw0] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+__________________ test_the_api_server_writes_only_json_lines __________________
+[gw1] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+    def test_the_api_server_writes_only_json_lines() -> None:
+        port = _free_port()
+        service = _Service(sys.executable, "-m", "app.serve", str(port))
+        try:
+>           service.wait_for("Application startup complete")
+
+tests/integration/test_logging.py:197: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.integration.test_logging._Service object at 0x7f5782fcee40>
+text = 'Application startup complete', timeout = 20.0
+
+    def wait_for(self, text: str, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                line = self._queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            self.lines.append(line)
+            if text in line:
+                return
+>       raise AssertionError(f"{text!r} not logged; got:\n{''.join(self.lines)}")
+E       AssertionError: 'Application startup complete' not logged; got:
+
+tests/integration/test_logging.py:165: AssertionError
+___________ test_the_api_server_leaves_forwarding_headers_to_the_app ___________
+[gw1] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f576f286350>
+
+    def test_the_api_server_leaves_forwarding_headers_to_the_app(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """uvicorn doesn't rewrite the client address from X-Forwarded-For, even for a peer it would
+        trust by default (127.0.0.1) or that FORWARDED_ALLOW_IPS names: the app's TRUSTED_PROXIES
+        is the one place forwarding headers are believed (``app/core/client_ip.py``)."""
+        monkeypatch.setenv("FORWARDED_ALLOW_IPS", "*")
+        port = _free_port()
+        service = _Service(sys.executable, "-m", "app.serve", str(port))
+        try:
+>           service.wait_for("Application startup complete")
+
+tests/integration/test_logging.py:225: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.integration.test_logging._Service object at 0x7f5782113250>
+text = 'Application startup complete', timeout = 20.0
+
+    def wait_for(self, text: str, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                line = self._queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            self.lines.append(line)
+            if text in line:
+                return
+>       raise AssertionError(f"{text!r} not logged; got:\n{''.join(self.lines)}")
+E       AssertionError: 'Application startup complete' not logged; got:
+
+tests/integration/test_logging.py:165: AssertionError
+____________________ test_the_worker_writes_only_json_lines ____________________
+[gw1] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
 
 empty_broker = None
-tmp_path = PosixPath('/tmp/pytest-of-root/pytest-563/popen-gw0/test_beat_writes_only_json_lin0')
+
+    def test_the_worker_writes_only_json_lines(empty_broker: None) -> None:
+        service = _Service(
+            sys.executable, "-m", "celery", "-A", "app.worker.main", "--quiet",
+            "worker", "--pool", "solo", "--loglevel", "INFO",
+        )  # fmt: skip
+        try:
+>           service.wait_for("ready")
+
+tests/integration/test_logging.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <tests.integration.test_logging._Service object at 0x7f578243efd0>
+text = 'ready', timeout = 20.0
+
+    def wait_for(self, text: str, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                line = self._queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            self.lines.append(line)
+            if text in line:
+                return
+>       raise AssertionError(f"{text!r} not logged; got:\n{''.join(self.lines)}")
+E       AssertionError: 'ready' not logged; got:
+
+tests/integration/test_logging.py:165: AssertionError
+_______________________ test_beat_writes_only_json_lines _______________________
+[gw1] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+empty_broker = None
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-576/popen-gw1/test_beat_writes_only_json_lin0')
 
     def test_beat_writes_only_json_lines(empty_broker: None, tmp_path: Path) -> None:
         service = _Service(
@@ -59,70 +365,310 @@ tmp_path = PosixPath('/tmp/pytest-of-root/pytest-563/popen-gw0/test_beat_writes_
             "beat", "--loglevel", "INFO", "--schedule", str(tmp_path / "beat-schedule"),
         )  # fmt: skip
         try:
-            service.wait_for("Starting")
-        finally:
-            output = service.stop()
-    
->       _assert_every_line_is_json_from(output, "beat")
+>           service.wait_for("Starting")
 
-tests/integration/test_logging.py:264: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
-tests/integration/test_logging.py:186: in _assert_every_line_is_json_from
-    entries = _json_lines(output)  # raises on any line that is not JSON
-              ^^^^^^^^^^^^^^^^^^^
-tests/integration/test_logging.py:41: in _json_lines
-    json.loads(line)
-/usr/local/lib/python3.13/json/__init__.py:352: in loads
-    return _default_decoder.decode(s)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-/usr/local/lib/python3.13/json/decoder.py:345: in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/test_logging.py:260: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = <json.decoder.JSONDecoder object at 0x7f197740c830>
-s = 'Traceback (most recent call last):', idx = 0
+self = <tests.integration.test_logging._Service object at 0x7f5770dc3820>
+text = 'Starting', timeout = 20.0
 
-    def raw_decode(self, s, idx=0):
-        """Decode a JSON document from ``s`` (a ``str`` beginning with
-        a JSON document) and return a 2-tuple of the Python
-        representation and the index in ``s`` where the document ended.
-    
-        This can be used to decode a JSON document from a string that may
-        have extraneous data at the end.
-    
-        """
-        try:
-            obj, end = self.scan_once(s, idx)
-        except StopIteration as err:
->           raise JSONDecodeError("Expecting value", s, err.value) from None
-E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+    def wait_for(self, text: str, timeout: float = 20.0) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                line = self._queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            self.lines.append(line)
+            if text in line:
+                return
+>       raise AssertionError(f"{text!r} not logged; got:\n{''.join(self.lines)}")
+E       AssertionError: 'Starting' not logged; got:
 
-/usr/local/lib/python3.13/json/decoder.py:363: JSONDecodeError
-___ test_the_repos_price_table_prices_only_models_in_the_capability_registry ___
+tests/integration/test_logging.py:165: AssertionError
+_ test_a_metric_by_day_includes_today_and_is_marked_where_the_live_version_changed _
 [gw0] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
 
-    def test_the_repos_price_table_prices_only_models_in_the_capability_registry() -> None:
-        from app.credentials.registry import PROVIDERS
-    
-        offered = {
-            (provider, model.id)
-            for provider, spec in PROVIDERS.items()
-            for models in spec.models.values()
-            for model in models
-        }
-        priced = {(e.provider, e.model) for e in price_table.load_price_file()}
-    
-        assert priced <= offered
-        # Cohere Rerank on Bedrock is priced per search, not per token: Owners override it.
->       assert offered - priced == {(Provider.BEDROCK, "cohere.rerank-v3-5:0")}
-E       AssertionError: assert {(<Provider.B...'demo-naive')} == {(<Provider.B...rank-v3-5:0')}
-E         
-E         Extra items in the left set:
-E         (<Provider.DEMO: 'demo'>, 'demo-naive')
-E         Use -v to get more diff
+app = <fastapi.applications.FastAPI object at 0x7f710ae28a50>
+owner = SignedUpMember(client=<httpx.AsyncClient object at 0x7f7112fb9b50>, member_id='ef63f380-9143-4468-990f-de48565b8c96', ...y 6199630a3fc1', organisation_id='d30b0922-8481-48fe-80d0-300fd2c6d94e', organisation_name='Organisation 6199630a3fc1')
+visitor = <httpx.AsyncClient object at 0x7f7112fbb1d0>
+clock = <tests.fakes.clock.ControllableClock object at 0x7f710ae039d0>
 
-tests/integration/test_prices.py:539: AssertionError
+    async def test_a_metric_by_day_includes_today_and_is_marked_where_the_live_version_changed(
+        app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+    ) -> None:
+>       agent = await three_days(app, owner, visitor, clock)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_time_series.py:131: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_time_series.py:118: in three_days
+    await roll_up(clock.now())
+tests/integration/test_version_metrics.py:112: in roll_up
+    result.get()
+.venv/lib/python3.13/site-packages/celery/result.py:1022: in get
+    assert_will_not_block()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def assert_will_not_block():
+        if task_join_will_block():
+>           raise RuntimeError(E_WOULDBLOCK)
+E           RuntimeError: Never call result.get() within a task!
+E           See https://docs.celeryq.dev/en/latest/userguide/tasks.html#avoid-launching-synchronous-subtasks
+
+.venv/lib/python3.13/site-packages/celery/result.py:38: RuntimeError
+---------------------------- Captured stdout setup -----------------------------
+------------------------------ Captured log setup ------------------------------
+INFO     app.main:main.py:136 API started
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/auth/sign-up "HTTP/1.1 201 Created"
+----------------------------- Captured stdout call -----------------------------
+------------------------------ Captured log call -------------------------------
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/credentials "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/default-model "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/uploads "HTTP/1.1 201 Created"
+INFO     celery.app.trace:trace.py:128 Task documents.ingest[c4025801-04ea-45ee-9718-ebeb0a684b7a] succeeded in 0.5156714619952254s: None
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/documents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/agents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/agents/64287a94-1983-44b1-8117-340f88c15ca3/versions "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_Zsunkz5JdNrW64Bjx8tPF1VP "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/messages/d2755671-9dc9-4671-af4e-0c47e7efa08a/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/agents/64287a94-1983-44b1-8117-340f88c15ca3/playground/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/agents/64287a94-1983-44b1-8117-340f88c15ca3/playground/conversations/4500f17f-0b83-4326-9efa-a0c5d1fa7bd7/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/agents/64287a94-1983-44b1-8117-340f88c15ca3/draft "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/d30b0922-8481-48fe-80d0-300fd2c6d94e/projects/180c5628-bb5a-440f-8f22-71debe3d2de0/agents/64287a94-1983-44b1-8117-340f88c15ca3/versions "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_Zsunkz5JdNrW64Bjx8tPF1VP "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/messages/a77b9183-46c2-4d80-8f23-f9869f303866/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_Zsunkz5JdNrW64Bjx8tPF1VP/messages/11c93e98-ad9f-48a1-85ff-906f5c12cb45/feedback "HTTP/1.1 200 OK"
+INFO     celery.app.trace:trace.py:128 Task analytics.roll_up_usage[4d4e8511-2752-4760-88ce-401a1fa26223] succeeded in 0.5123205709969625s: None
+--------------------------- Captured stdout teardown ---------------------------
+__________ test_only_live_version_changes_inside_the_range_are_marked __________
+[gw0] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+app = <fastapi.applications.FastAPI object at 0x7f710b7d4e10>
+owner = SignedUpMember(client=<httpx.AsyncClient object at 0x7f7112fba8d0>, member_id='71b88d82-8291-4d1b-88c2-3b48b101eb60', ...y d658d5178216', organisation_id='fddba4f2-108b-4cd3-bc84-2f69760e4030', organisation_name='Organisation d658d5178216')
+visitor = <httpx.AsyncClient object at 0x7f7112fba810>
+clock = <tests.fakes.clock.ControllableClock object at 0x7f71129093b0>
+
+    async def test_only_live_version_changes_inside_the_range_are_marked(
+        app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+    ) -> None:
+>       agent = await three_days(app, owner, visitor, clock)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/integration/test_time_series.py:171: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_time_series.py:118: in three_days
+    await roll_up(clock.now())
+tests/integration/test_version_metrics.py:112: in roll_up
+    result.get()
+.venv/lib/python3.13/site-packages/celery/result.py:1022: in get
+    assert_will_not_block()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def assert_will_not_block():
+        if task_join_will_block():
+>           raise RuntimeError(E_WOULDBLOCK)
+E           RuntimeError: Never call result.get() within a task!
+E           See https://docs.celeryq.dev/en/latest/userguide/tasks.html#avoid-launching-synchronous-subtasks
+
+.venv/lib/python3.13/site-packages/celery/result.py:38: RuntimeError
+---------------------------- Captured stdout setup -----------------------------
+------------------------------ Captured log setup ------------------------------
+INFO     app.main:main.py:136 API started
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/auth/sign-up "HTTP/1.1 201 Created"
+----------------------------- Captured stdout call -----------------------------
+------------------------------ Captured log call -------------------------------
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/credentials "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/default-model "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/uploads "HTTP/1.1 201 Created"
+INFO     celery.app.trace:trace.py:128 Task documents.ingest[487b720d-cf16-4ddd-8ec4-8fc0af45290b] succeeded in 0.47265945401159115s: None
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/documents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/agents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/agents/f9df1137-bd84-4830-b4ce-e5eb9ecfa91e/versions "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt__JKAqPl5F8IrRojmGIRYtUzY "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/messages/f743b2a5-4496-4fc9-93dc-50126623c5b4/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/agents/f9df1137-bd84-4830-b4ce-e5eb9ecfa91e/playground/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/agents/f9df1137-bd84-4830-b4ce-e5eb9ecfa91e/playground/conversations/bc9b6455-95ed-4a62-b231-796d62723b05/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/agents/f9df1137-bd84-4830-b4ce-e5eb9ecfa91e/draft "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/fddba4f2-108b-4cd3-bc84-2f69760e4030/projects/a8df3511-3954-49bd-9e42-3a8815968111/agents/f9df1137-bd84-4830-b4ce-e5eb9ecfa91e/versions "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt__JKAqPl5F8IrRojmGIRYtUzY "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/messages/e8fbe744-07b6-40c3-b971-85eaa4047452/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt__JKAqPl5F8IrRojmGIRYtUzY/messages/b3ccd96d-e9e8-4529-82a5-f9ca21536d48/feedback "HTTP/1.1 200 OK"
+INFO     celery.app.trace:trace.py:128 Task analytics.roll_up_usage[3a2f7021-fa1d-4ad1-a053-2105f1a45e06] succeeded in 0.42829847399843857s: None
+--------------------------- Captured stdout teardown ---------------------------
+__________ test_every_metric_matches_the_version_kpis_of_the_same_day __________
+[gw0] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+app = <fastapi.applications.FastAPI object at 0x7f7119083610>
+owner = SignedUpMember(client=<httpx.AsyncClient object at 0x7f711872d0d0>, member_id='7b31c71f-9286-4301-8841-0ab38cf1100a', ...y 11f0fa9e0395', organisation_id='54ddbd7f-0d5a-4c7a-a91e-209704040847', organisation_name='Organisation 11f0fa9e0395')
+visitor = <httpx.AsyncClient object at 0x7f7119f97e90>
+clock = <tests.fakes.clock.ControllableClock object at 0x7f7109bb6300>
+
+    async def test_every_metric_matches_the_version_kpis_of_the_same_day(
+        app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+    ) -> None:
+        agent = await live_agent(app, owner)
+        first, (a1, a2) = await chat(visitor, agent, "Leave? words:12", "And sick days? words:40")
+        await thumb(visitor, agent, first, a1, "up")
+        await thumb(visitor, agent, first, a2, "down")
+        await rate(visitor, agent, first, 4)
+        second, (b1,) = await chat(visitor, agent, "Parental leave? words:3")
+        await thumb(visitor, agent, second, b1, "up")
+        await rate(visitor, agent, second, 1)
+        day = {"start": "2026-11-05", "end": "2026-11-05"}
+        (kpis,) = (await metrics(owner, agent, **day))["versions"]
+        expected = {
+            "conversations": (kpis["conversations"], kpis["conversations"]),
+            "replies": (kpis["messages"], kpis["messages"]),
+            "cost_usd": (pytest.approx(float(kpis["cost"]["total_usd"])), kpis["conversations"]),
+            "mean_tokens": (pytest.approx(kpis["tokens"]["mean"]), kpis["tokens"]["n"]),
+            "thumbs_up_rate": (pytest.approx(kpis["thumbs_up"]["rate"]), kpis["thumbs_up"]["n"]),
+            "mean_rating": (pytest.approx(kpis["rating"]["mean"]), kpis["rating"]["n"]),
+            "fallback_rate": (pytest.approx(kpis["fallback"]["rate"]), kpis["messages"]),
+            "p95_latency_ms": (pytest.approx(kpis["latency"]["total_p95_ms"]), kpis["latency"]["n"]),
+        }
+        assert (kpis["conversations"], kpis["messages"], kpis["rating"]["n"]) == (2, 3, 2)
+        assert float(kpis["cost"]["total_usd"]) > 0
+    
+        found = {}
+        for metric in METRICS:
+            ((value, n),) = [
+                (p["value"], p["n"])
+                for p in (await series(owner, agent, metric=metric, **day))["points"]
+            ]
+            found[metric] = (value, n)
+    
+        assert found == expected
+        # The same numbers once the day is rolled up and final.
+        clock.advance(timedelta(days=1))
+>       await roll_up(clock.now())
+
+tests/integration/test_time_series.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_version_metrics.py:112: in roll_up
+    result.get()
+.venv/lib/python3.13/site-packages/celery/result.py:1022: in get
+    assert_will_not_block()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def assert_will_not_block():
+        if task_join_will_block():
+>           raise RuntimeError(E_WOULDBLOCK)
+E           RuntimeError: Never call result.get() within a task!
+E           See https://docs.celeryq.dev/en/latest/userguide/tasks.html#avoid-launching-synchronous-subtasks
+
+.venv/lib/python3.13/site-packages/celery/result.py:38: RuntimeError
+---------------------------- Captured stdout setup -----------------------------
+------------------------------ Captured log setup ------------------------------
+INFO     app.main:main.py:136 API started
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/auth/sign-up "HTTP/1.1 201 Created"
+----------------------------- Captured stdout call -----------------------------
+------------------------------ Captured log call -------------------------------
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/credentials "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/default-model "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/uploads "HTTP/1.1 201 Created"
+INFO     celery.app.trace:trace.py:128 Task documents.ingest[ff7e2e8f-7f53-4e09-8333-6374ae8ee637] succeeded in 0.3467197779973503s: None
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/documents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/versions "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_OqoT7GyrMHGKRH7yMtgdjdpc "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/messages/7b0400f5-b07b-47a3-afda-939c9e03b032/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/messages/bc90b53f-4575-4787-8e05-07b907de0bba/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/conversation/rating "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_OqoT7GyrMHGKRH7yMtgdjdpc "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/messages/a2ffaf53-2540-4727-be01-f7d0cd67f01c/feedback "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/widget/agents/agt_OqoT7GyrMHGKRH7yMtgdjdpc/conversation/rating "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/metrics?start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=conversations&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=replies&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=cost_usd&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=mean_tokens&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=thumbs_up_rate&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=mean_rating&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=fallback_rate&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/api/organisations/54ddbd7f-0d5a-4c7a-a91e-209704040847/projects/107bebaf-d607-4a6f-a863-07ff10f37417/agents/f90359c8-1cd7-4ff4-b295-222e21f6cf43/time-series?metric=p95_latency_ms&start=2026-11-05&end=2026-11-05 "HTTP/1.1 200 OK"
+INFO     celery.app.trace:trace.py:128 Task analytics.roll_up_usage[43c562ce-6fcc-4f3c-8081-bd74f3ba7efc] succeeded in 0.26951111800735816s: None
+--------------------------- Captured stdout teardown ---------------------------
+_________ test_weeks_and_months_add_up_their_days_clipped_to_the_range _________
+[gw0] linux -- Python 3.13.18 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/backend/.venv/bin/python
+
+app = <fastapi.applications.FastAPI object at 0x7f7113232fd0>
+owner = SignedUpMember(client=<httpx.AsyncClient object at 0x7f71188b1310>, member_id='de7b54b5-4f83-4802-83d0-3eb7d59c2f24', ...y 4f20cecfb283', organisation_id='1ae642aa-9d6f-41f7-ae74-f051719be48d', organisation_name='Organisation 4f20cecfb283')
+visitor = <httpx.AsyncClient object at 0x7f7110c61490>
+clock = <tests.fakes.clock.ControllableClock object at 0x7f710af124e0>
+
+    async def test_weeks_and_months_add_up_their_days_clipped_to_the_range(
+        app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+    ) -> None:
+        agent = await live_agent(app, owner)
+        # Thursday 5, Sunday 8, Monday 9 and Monday 16 November.
+        for day in (date(2026, 11, 5), date(2026, 11, 8), date(2026, 11, 9), date(2026, 11, 16)):
+            await chat_on(visitor, agent, clock, day)
+        clock.advance(timedelta(days=1))
+>       await roll_up(clock.now())
+
+tests/integration/test_time_series.py:259: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/integration/test_version_metrics.py:112: in roll_up
+    result.get()
+.venv/lib/python3.13/site-packages/celery/result.py:1022: in get
+    assert_will_not_block()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def assert_will_not_block():
+        if task_join_will_block():
+>           raise RuntimeError(E_WOULDBLOCK)
+E           RuntimeError: Never call result.get() within a task!
+E           See https://docs.celeryq.dev/en/latest/userguide/tasks.html#avoid-launching-synchronous-subtasks
+
+.venv/lib/python3.13/site-packages/celery/result.py:38: RuntimeError
+---------------------------- Captured stdout setup -----------------------------
+------------------------------ Captured log setup ------------------------------
+INFO     app.main:main.py:136 API started
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/auth/sign-up "HTTP/1.1 201 Created"
+----------------------------- Captured stdout call -----------------------------
+------------------------------ Captured log call -------------------------------
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/credentials "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: PUT https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/default-model "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/projects "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/projects/bf4e3879-bbe8-4958-a8b3-f2a57e2b615b/uploads "HTTP/1.1 201 Created"
+INFO     celery.app.trace:trace.py:128 Task documents.ingest[fee01f21-176c-4fa2-a388-41c56e02d2da] succeeded in 0.35065676699741744s: None
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/projects/bf4e3879-bbe8-4958-a8b3-f2a57e2b615b/documents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/projects/bf4e3879-bbe8-4958-a8b3-f2a57e2b615b/agents "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/organisations/1ae642aa-9d6f-41f7-ae74-f051719be48d/projects/bf4e3879-bbe8-4958-a8b3-f2a57e2b615b/agents/4b04f416-388e-4e9b-805c-dcfae96a082d/versions "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_YCuDLiX_zg6_ztetmqdQE2Pt "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_YCuDLiX_zg6_ztetmqdQE2Pt "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_YCuDLiX_zg6_ztetmqdQE2Pt "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/messages "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: GET https://testserver/widget/a/agt_YCuDLiX_zg6_ztetmqdQE2Pt "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/conversations "HTTP/1.1 201 Created"
+INFO     httpx:_client.py:1740 HTTP Request: POST https://testserver/api/widget/agents/agt_YCuDLiX_zg6_ztetmqdQE2Pt/messages "HTTP/1.1 200 OK"
+INFO     celery.app.trace:trace.py:128 Task analytics.roll_up_usage[59bfb22d-1333-498f-8c24-1f2296e07049] succeeded in 1.126497394987382s: None
+--------------------------- Captured stdout teardown ---------------------------
 ================================ tests coverage ================================
 _______________ coverage: platform linux, python 3.13.18-final-0 _______________
 
@@ -130,24 +676,25 @@ Name                                  Stmts   Miss Branch BrPart  Cover   Missin
 ---------------------------------------------------------------------------------
 app/__init__.py                           2      0      0      0   100%
 app/agents/__init__.py                    0      0      0      0   100%
-app/agents/api.py                       138      0      0      0   100%
+app/agents/api.py                       139      0      0      0   100%
 app/agents/bulk.py                      136      0     12      0   100%
 app/agents/bulk_api.py                   73      0      0      0   100%
 app/agents/config.py                     75      0      0      0   100%
-app/agents/models.py                     64      0      0      0   100%
+app/agents/models.py                     65      0      0      0   100%
 app/agents/service.py                   115      0     14      0   100%
 app/agents/serving.py                    39      0      6      0   100%
 app/agents/validation.py                 69      0     14      0   100%
 app/agents/versions.py                  237      0     40      0   100%
 app/agents/versions_api.py              167      0      2      0   100%
 app/analytics/__init__.py                 0      0      0      0   100%
-app/analytics/api.py                    126      0      4      0   100%
-app/analytics/models.py                  32      0      0      0   100%
-app/analytics/rollup.py                  35      0      4      0   100%
-app/analytics/service.py                153      0     30      0   100%
+app/analytics/alerts.py                  54      0      4      0   100%
+app/analytics/api.py                    130      0      4      0   100%
+app/analytics/models.py                  33      0      0      0   100%
+app/analytics/rollup.py                  39      0      4      0   100%
+app/analytics/service.py                157      2     30      3    97%   191, 306, 314->313
 app/analytics/stats.py                   60      0     10      0   100%
-app/analytics/tasks.py                   15      0      0      0   100%
-app/analytics/usage.py                  109      0     18      0   100%
+app/analytics/tasks.py                   17      0      0      0   100%
+app/analytics/usage.py                  113      0     18      0   100%
 app/api/__init__.py                       0      0      0      0   100%
 app/api/health.py                        69      0      8      0   100%
 app/audit/__init__.py                     2      0      0      0   100%
@@ -166,9 +713,9 @@ app/auth/service.py                      94      0     18      0   100%
 app/auth/sessions.py                     34      0      0      0   100%
 app/auth/throttle.py                     76      0     18      0   100%
 app/conversations/__init__.py             0      0      0      0   100%
-app/conversations/api.py                 97      0      4      0   100%
+app/conversations/api.py                 98      0      4      0   100%
 app/conversations/models.py              56      0      0      0   100%
-app/conversations/service.py            149      0     32      0   100%
+app/conversations/service.py            171      0     38      0   100%
 app/core/__init__.py                      0      0      0      0   100%
 app/core/client_ip.py                    41      0     14      0   100%
 app/core/clock.py                        11      0      0      0   100%
@@ -244,20 +791,20 @@ app/guardrails/fake.py                   22      0      6      0   100%
 app/guardrails/heuristic.py              29      0      4      0   100%
 app/guardrails/llm.py                    42      0      2      0   100%
 app/guardrails/local.py                  51      0      4      0   100%
-app/guardrails/outcomes.py               14      0      0      0   100%
-app/guardrails/pipeline.py               68      0     20      0   100%
+app/guardrails/outcomes.py               17      0      0      0   100%
+app/guardrails/pipeline.py               66      0     20      0   100%
 app/mail/__init__.py                      0      0      0      0   100%
 app/mail/factory.py                      12      0      4      0   100%
 app/mail/outbox.py                        6      0      0      0   100%
 app/mail/port.py                          9      0      0      0   100%
 app/mail/ses.py                          11      0      0      0   100%
 app/mail/smtp.py                         22      0      0      0   100%
-app/mail/templates.py                    23      0      2      0   100%
+app/mail/templates.py                    27      0      2      0   100%
 app/main.py                              98      0      4      0   100%
 app/openapi.py                            6      0      0      0   100%
 app/playground/__init__.py                0      0      0      0   100%
 app/playground/api.py                   165      0     12      0   100%
-app/playground/service.py               165      0     20      0   100%
+app/playground/service.py               166      0     20      0   100%
 app/pricing/__init__.py                   0      0      0      0   100%
 app/pricing/api.py                       70      0      0      0   100%
 app/pricing/models.py                    26      0      0      0   100%
@@ -333,12 +880,19 @@ app/worker/celery_app.py                 12      0      0      0   100%
 app/worker/main.py                       20      0      0      0   100%
 app/worker/tasks.py                       4      0      0      0   100%
 ---------------------------------------------------------------------------------
-TOTAL                                 11546      0   1414      0   100%
+TOTAL                                 11650      2   1424      3    99%
 Coverage XML written to file coverage.xml
-Required test coverage of 100.0% reached. Total coverage: 100.00%
+FAIL Required test coverage of 100.0% not reached. Total coverage: 99.96%
 =========================== short test summary info ============================
+FAILED tests/integration/test_logging.py::test_the_api_server_writes_only_json_lines
+FAILED tests/integration/test_logging.py::test_the_api_server_leaves_forwarding_headers_to_the_app
+FAILED tests/integration/test_logging.py::test_the_worker_writes_only_json_lines
 FAILED tests/integration/test_logging.py::test_beat_writes_only_json_lines - ...
-FAILED tests/integration/test_prices.py::test_the_repos_price_table_prices_only_models_in_the_capability_registry
-================= 2 failed, 2448 passed in 3256.77s (0:54:16) ==================
+FAILED tests/integration/test_time_series.py::test_a_metric_by_day_includes_today_and_is_marked_where_the_live_version_changed
+FAILED tests/integration/test_time_series.py::test_only_live_version_changes_inside_the_range_are_marked
+FAILED tests/integration/test_time_series.py::test_every_metric_matches_the_version_kpis_of_the_same_day
+FAILED tests/integration/test_time_series.py::test_weeks_and_months_add_up_their_days_clipped_to_the_range
+ERROR tests/integration/test_tenant_isolation.py::test_organisation_scoped_routes_need_a_signed_in_member[GET /api/organisations/{organisation_id}/default-model]
+============= 8 failed, 2452 passed, 1 error in 3778.41s (1:02:58) =============
 make: *** [Makefile:36: test-backend] Error 1
 exit 2

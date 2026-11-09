@@ -1,11 +1,11 @@
-$ make install @ 12d1e44 (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
+$ make install @ 2bfa01b (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
 cd backend && uv sync --frozen
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
-Checked 174 packages in 27ms
+Checked 174 packages in 5ms
 cd frontend && pnpm install --frozen-lockfile
 Scope: all 5 workspace projects
 Lockfile is up to date, resolution step is skipped
 Already up to date
 
-Done in 1.6s using pnpm v10.28.0
+Done in 1s using pnpm v10.28.0
 exit 0

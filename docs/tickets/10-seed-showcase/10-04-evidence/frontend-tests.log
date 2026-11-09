@@ -1,4 +1,4 @@
-$ make test-frontend @ 12d1e44 (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
+$ make test-frontend @ 2bfa01b (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
 cd frontend && pnpm test && pnpm check-embed-size
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/frontend
@@ -10,12 +10,12 @@ cd frontend && pnpm test && pnpm check-embed-size
 
 
  Test Files  58 passed (58)
-      Tests  789 passed (789)
-   Start at  20:15:29
-   Duration  203.01s (tests 70%, environment 13%, import 9%, setup 5%, transform 2%, worker 1%)
+      Tests  794 passed (794)
+   Start at  22:44:13
+   Duration  376.91s (tests 67%, environment 15%, import 10%, setup 6%, worker 1%, transform 1%)
 
-    Isolate  58 workers spawned · ~1.50s startup each (spawn + environment, per file)
-             at least ~27.45s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  58 workers spawned · ~3.14s startup each (spawn + environment, per file)
+             at least ~57.53s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
@@ -23,10 +23,10 @@ No files with missing coverage.
 1 empty file skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 3817/3817 )
-Branches     : 100% ( 2541/2541 )
-Functions    : 100% ( 1377/1377 )
-Lines        : 100% ( 3375/3375 )
+Statements   : 100% ( 3826/3826 )
+Branches     : 100% ( 2559/2559 )
+Functions    : 100% ( 1380/1380 )
+Lines        : 100% ( 3381/3381 )
 ================================================================================
 
 > rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/frontend
@@ -48,7 +48,7 @@ dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 319ms
+✓ built in 696ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -56,7 +56,7 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 32ms
+✓ built in 40ms
 
 > @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1004/frontend/apps/widget
 > node scripts/check-size.mjs

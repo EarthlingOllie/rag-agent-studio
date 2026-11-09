@@ -1,4 +1,4 @@
-$ scripts/deploy/tests/deploy.test.sh @ 12d1e44 (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
+$ scripts/deploy/tests/deploy.test.sh @ 2bfa01b (ticket/10-04-attack-panel in wt1004, clean tree: 0 changes)
 ok   deploys_in_order_at_the_given_tag
 ok   runs_the_migration_task_in_the_private_subnets
 ok   rolls_each_service_onto_its_new_task_definition
