@@ -1,0 +1,22 @@
+name: links
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  relative-links:
+    name: Every relative link in the README and docs resolves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Offline: the checker reads the Markdown git tracks; external links are not fetched.
+      - name: Check relative links
+        run: make link-check
