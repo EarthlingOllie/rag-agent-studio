@@ -36,6 +36,8 @@
   --color-flag-soft: var(--ds-flag-soft);
   --color-danger: var(--ds-danger);
   --color-danger-soft: var(--ds-danger-soft);
+  --color-on-danger: var(--ds-on-danger);
+  --color-chart-1: var(--ds-chart-1);
   --color-scrim: var(--ds-scrim);
 }
 
@@ -62,6 +64,9 @@
   --ds-flag-soft: #f7ebdd;
   --ds-danger: #a3372a;
   --ds-danger-soft: #f8e4e0;
+  --ds-on-danger: #ffffff;
+  /* Data marks only (charts, meter fills); the accent reads too grey as a data mark. */
+  --ds-chart-1: #00897b;
   --ds-scrim: rgb(21 32 31 / 0.12);
 }
 
@@ -89,6 +94,8 @@
     --ds-flag-soft: #3a2a1a;
     --ds-danger: #f08c7a;
     --ds-danger-soft: #3a1f1b;
+    --ds-on-danger: #1a0f0d;
+    --ds-chart-1: #1fa393;
     --ds-scrim: rgb(0 0 0 / 0.5);
   }
 }
@@ -115,6 +122,8 @@
   --ds-flag-soft: #3a2a1a;
   --ds-danger: #f08c7a;
   --ds-danger-soft: #3a1f1b;
+  --ds-on-danger: #1a0f0d;
+  --ds-chart-1: #1fa393;
   --ds-scrim: rgb(0 0 0 / 0.5);
 }
 

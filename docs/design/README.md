@@ -52,10 +52,16 @@ Tailwind's palette (`slate-700`, `red-800`, `green-50`) or the `dark:` variant.
 | `flag` | Flagged chunks, warnings | `#8A4B0F` | `#E8A062` |
 | `flag-soft` | Warning notice background | `#F7EBDD` | `#3A2A1A` |
 | `danger` | Errors, destructive actions | `#A3372A` | `#F08C7A` |
-| `danger-soft` | Error notice background, danger hover | `#F8E4E0` | `#3A1F1B` |
+| `danger-soft` | Error notice background, danger hover, removed diff lines | `#F8E4E0` | `#3A1F1B` |
+| `on-danger` | Text on a filled `danger` button (a destructive `ConfirmDialog`) | `#FFFFFF` | `#1A0F0D` |
+| `chart-1` | Data only: chart lines, bars and areas. Never UI | `#00897B` | `#1FA393` |
 
-Every text pair above meets WCAG AA (4.5:1) in both Appearances; `design/tokens.test.ts` checks
-this against `tokens.css`, so a token change that breaks contrast fails the build.
+Every text pair above meets WCAG AA (4.5:1) in both Appearances, and `chart-1` meets 3:1 against
+`surface` and `canvas` as a data mark; `design/tokens.test.ts` checks this against `tokens.css`, so a
+token change that breaks contrast fails the build.
+
+`chart-1` is kept apart from `accent` on purpose: the accent reads too grey as a data mark, and the
+accent keeps meaning "where you are, what to press". Use `chart-1` for data and nothing else.
 
 ### Where the accent goes
 
@@ -145,6 +151,12 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `Breadcrumb`, `CrumbSwitcher`, `CrumbText`, `crumbClass()` | Navigation |
 | `Menu`, `MenuItem`, `MenuLinkProps` | Switchers and ⋯ menus, keyboard-complete |
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
+| `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
+| `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
+| `Badge` | Live, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Version chip |
+| `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
+| `EmptyState`, `Skeleton` | Empty, error and loading states |
+| `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
 | `Icon`, `WaveMark` | Line icons (`documents`, `agents`, `more`, `upload`…) and the mark |
 | `useAppearance`, `setAppearance`, `initAppearance` | Light / dark / system, remembered per browser |
 
@@ -155,10 +167,107 @@ follows the system setting. The choice is stored in `localStorage` (`studio.appe
 applied to `<html data-appearance>` before the first render by `initAppearance()`. It belongs to
 the browser, not the Member's account.
 
+## Patterns
+
+Round 2 adds the patterns the newer views share. Use these instead of building your own. Each is
+keyboard-complete and tested in `design/*.test.tsx`.
+
+### Dialogs: `Dialog` and `ConfirmDialog`
+
+- A `Dialog` is modal: it takes focus (its first control), keeps Tab and Shift+Tab inside, closes on
+  Escape, its ✕ or a click on the scrim, and returns focus to the control that opened it. It has a
+  title (`text.heading`), an optional one-line description and a footer of buttons, primary last.
+- A `ConfirmDialog` asks before an action. The children name the thing and say what will happen
+  ("Its 42 chunks are removed and Agents stop citing it."). Pass `destructive` for Delete, Archive
+  and the like: it becomes an `alertdialog`, a stray click outside does not dismiss it, focus starts
+  on Cancel and the confirm button is the filled danger button (`button.dangerFilled`, `bg-danger
+  text-on-danger`). `busy` disables both buttons while the action runs.
+
+### Toast
+
+- Wrap the app in `ToastProvider`; call `useToast().show("Archived HR helper.", { onUndo })` after a
+  change. One toast at a time, bottom centre, gone after 8 seconds or on Dismiss.
+- The message is read out by a polite live region that is always in the page. Offer Undo whenever the
+  action can be reversed; it runs once and closes the toast.
+- Errors are not toasts: show them where they happened, with `Notice tone="error"`.
+
+### Badge
+
+`<Badge kind="…" />` with the same words everywhere:
+
+| `kind` | Words | Colour |
+| --- | --- | --- |
+| `live` | Live | `accent-soft` with an accent dot |
+| `draft` | Draft | `sand` |
+| `notLive` | Not live | `sunken`, `muted` |
+| `archived` | Archived | `sunken`, `muted` |
+| `instructionsBehind` | Instructions behind | `flag-soft`, `flag` |
+| `budgetSpent` | Budget spent | `danger-soft`, `danger` |
+| `blocked` | Blocked by guardrail | `danger-soft`, `danger` |
+| `lowSample` | Low sample | `flag-soft`, `flag` |
+| `version` | `v3` (read as "Version 3") | mono chip, `line` border |
+
+`title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;
+colour only repeats it.
+
+### CodeBlock
+
+Code to paste elsewhere (the Embed snippet): mono on `sunken`, with a Copy button that copies the
+exact text, turns into "Copied" for two seconds and announces "<label> copied.". If the browser
+refuses, an alert says to select and copy by hand.
+
+### Meter
+
+How much of a limit is used (Token Budget, Document quota): a bar in `accent` under 80%, `flag`
+from 80% and `danger` once spent, with the value always printed beside it ("8,200 / 10,000
+tokens"). It is a `meter` role with the value as text, so the colour is never the only signal.
+
+### Diff
+
+Line-by-line change between two texts (system prompt, Project Instructions, Agent config): both
+sides' line numbers, a + or − mark on added and removed lines (read as "Added"/"Removed"), added
+lines on `accent-soft`, removed on `danger-soft`, and a "2 added, 1 removed" summary ("No changes"
+when equal). `diffLines(before, after)` gives the same diff as data.
+
+### Empty, loading and error states
+
+- `EmptyState`: an icon, a title saying what is not here, a sentence saying what to do, and the next
+  step's button ("No Documents yet. Upload a file to start the Knowledge Base." [Upload]).
+- `EmptyState tone="error"`: the same shape, announced as an alert, for a list that failed to load.
+- `Skeleton`: grey bars where content is loading, announced once as "Loading…" (pass a `label`
+  such as "Loading Documents"). Use it for the first load; keep stale content on screen on refetch.
+
+### Selections and lists
+
+- `BulkBar`: appears above a table while rows are selected: "3 Agents selected", the actions, Clear
+  selection. A toolbar: arrow keys move between its buttons, Escape clears.
+- `Segmented`: a few mutually exclusive options side by side (Visitors / Playground / All). A radio
+  group with one Tab stop; arrows move and choose, Home and End jump.
+- `Pagination`: Previous, page numbers (first, last, current and its neighbours, "…" between) and
+  Next, in a named `navigation`. Hidden for a single page.
+- `EditableList`: a short list edited in place (Allowed Origins). Enter or Add adds; blanks,
+  duplicates and anything `validate` refuses are rejected with the reason under the input; Escape
+  clears; each item has a Remove button and focus moves to the next one after a removal. Give it
+  an `emptyWarning` when an empty list has a consequence ("No site can embed this Agent until you
+  add an origin.").
+
+## Keeping the old look out: the palette ratchet
+
+CI runs `pnpm palette-ratchet` (from `frontend/`, also the last step of `make test-frontend`). It
+counts palette-class uses under `apps/studio/src` with the same pattern as the reskin skill's
+leftover check, and compares the count with `frontend/palette-baseline.json`:
+
+- **Higher**: the check fails and lists the files. Use tokens and recipes instead.
+- **Lower**: the check passes and prints the new count. Commit it
+  (`node scripts/palette-ratchet/cli.mjs --write` writes it; it never raises the baseline).
+- When the count reaches zero, delete the baseline file: with no file, none are allowed.
+
 ## Don't
 
 - Don't use raw colours, Tailwind palette classes, `dark:`, or inline `style` colours.
 - Don't add tab rows or side navigation; add a crumb or a switcher item.
 - Don't put more than one primary button in a view, or colour whole sections green.
 - Don't use emoji or filled icons; use `Icon`.
+- Don't build your own dialog, toast, badge, meter, diff, empty state or pager: use the pattern.
+- Don't use `chart-1` for UI, or `accent` for data.
 - Don't restyle the widget preview (`ThemeScope`, `ChatWindow`): it shows the Organisation's Theme.

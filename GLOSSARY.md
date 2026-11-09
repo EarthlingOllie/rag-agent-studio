@@ -28,6 +28,14 @@ _Avoid_: Colour scheme setting, dark mode toggle
 Whether the Studio itself shows light, dark, or follows the system setting. A Member's choice for their browser, set from the top bar; it never affects the widget, which follows its Theme Mode.
 _Avoid_: Theme, Theme Mode, dark mode
 
+**Tidepool**:
+The Studio's design system (`docs/design/README.md`, code in `frontend/apps/studio/src/design`): colour tokens with a light and a dark value, class recipes, and the shared components every Studio page is built from (top bar and breadcrumb, menus, dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list). It styles the Studio only, never the widget, which shows the Organisation's Theme.
+_Avoid_: Theme, skin, component library
+
+**Palette ratchet**:
+The CI check that counts Tailwind palette classes (`slate-700`, `dark:`, `bg-white`…) in the Studio's source and fails when the count rises above the committed baseline (`frontend/palette-baseline.json`). Each reskin slice lowers the baseline; at zero the baseline file goes and none are allowed.
+_Avoid_: Lint rule, colour check
+
 **Launcher**:
 How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
 _Avoid_: Chat button, trigger

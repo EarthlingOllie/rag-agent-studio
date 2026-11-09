@@ -204,6 +204,62 @@ The Tags panel opens from "Manage tags" (a `button.ghost` in the toolbar) as a `
   `text-flag`. It replaces the drawer; keep the drawer's content and accessible names.
 - Composer: a `rounded-full border border-line bg-surface` row with the input and `button.primary` Send.
 
+## Round 2 patterns
+
+All from `../design`. Tests find them by role and name, never by class.
+
+```tsx
+// Destructive confirmation: alertdialog, focus on Cancel, filled danger button, focus returns.
+<ConfirmDialog
+  open={confirming}
+  title={`Delete ${doc.name}?`}
+  confirmLabel="Delete"
+  destructive
+  busy={remove.isPending}
+  onConfirm={() => { remove.mutate(); }}
+  onCancel={() => { setConfirming(false); }}
+>
+  Its {doc.chunks} chunks are removed and Agents stop citing it.
+</ConfirmDialog>
+
+// A form in a dialog (Edit details): title, description, footer with the one primary button.
+<Dialog open={editing} title="Edit details" onClose={close}
+  footer={<><button className={button.secondary} onClick={close}>Cancel</button><button className={button.primary}>Save</button></>}>
+  …fields…
+</Dialog>
+
+// After a reversible change. <ToastProvider> wraps the app once.
+const toast = useToast();
+toast.show(`Archived ${agent.name}.`, { onUndo: () => { restore.mutate(); } });
+
+<Badge kind="live" />  <Badge kind="draft" />  <Badge kind="version" version={3} />
+<Badge kind="lowSample" title="Fewer than 30 rated answers" />
+
+<CodeBlock label="Embed snippet" code={snippet} />
+<Meter label="Token Budget" value={used} max={budget} unit="tokens" />
+<Diff label="System prompt, v2 to v3" before={a.system_prompt} after={b.system_prompt} />
+
+{isPending ? <Skeleton label="Loading Documents" /> : documents.length === 0 ? (
+  <EmptyState icon="documents" title="No Documents yet" description="Upload a file to start the Knowledge Base."
+    action={<button className={button.primary}>Upload</button>} />
+) : <table>…</table>}
+{isError && <EmptyState tone="error" title="Couldn't load Documents" description="Try again in a moment." />}
+
+<BulkBar count={selected.size} noun={["Agent", "Agents"]} onClear={clear}>
+  <button className={button.secondary} onClick={publish}>Publish</button>
+</BulkBar>
+<Segmented label="Source" options={[{ value: "visitors", label: "Visitors" }, { value: "playground", label: "Playground" }]} value={source} onChange={setSource} />
+<Pagination label="Conversations pages" page={page} pageCount={pages} onPageChange={setPage} />
+<EditableList label="Allowed Origins" inputLabel="New origin" items={origins} onChange={setOrigins}
+  validate={(v) => (/^https?:\/\//.test(v) ? undefined : "Start with https://")}
+  emptyWarning="No site can embed this Agent until you add an origin." />
+```
+
+Old → new: a page's `confirm()` or inline "Are you sure?" panel → `ConfirmDialog`; a status
+`<span>` with palette colours → `Badge`; a `<pre>` plus "Copy" button → `CodeBlock`; a progress
+`<div>` → `Meter`; "Nothing here yet." text → `EmptyState`; "Loading…" text → `Skeleton`; a
+`<select>` of two or three options shown as buttons → `Segmented`.
+
 ## Tests: a navigation helper for Playwright
 
 `e2e/fixtures/navigation.ts`:

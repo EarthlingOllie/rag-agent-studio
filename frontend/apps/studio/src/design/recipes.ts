@@ -13,6 +13,8 @@ export const button = {
   secondary: `${CONTROL} h-9 rounded-full border border-field bg-surface px-4 text-sm text-ink hover:bg-sunken`,
   ghost: `${CONTROL} h-9 rounded-full px-3 text-sm text-ink hover:bg-sunken`,
   danger: `${CONTROL} h-9 rounded-full border border-field bg-surface px-4 text-sm text-danger hover:bg-danger-soft`,
+  /** The confirming button of a destructive ConfirmDialog: the one filled danger button. */
+  dangerFilled: `${CONTROL} h-9 rounded-full bg-danger px-4 text-sm text-on-danger hover:opacity-90`,
   /** Small text action inside a row or card ("Reset", "New conversation"). */
   quiet: `${CONTROL} rounded-md px-1 text-sm text-ink hover:text-accent`,
   /** Icon-only; always give it an aria-label. */

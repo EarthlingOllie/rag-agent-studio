@@ -28,6 +28,16 @@ the navigation chrome change.
   strings with `button.*`, `field.*`, `table.*`, `text.*`, `notice.*`, `surface.*`, `layout.*`.
   If a recipe is missing something many pages need, add it to `design/recipes.ts` (with a test if it
   has logic) rather than inlining it in a page.
+- **Patterns over page-local versions.** Dialogs, confirmations, toasts, badges, code snippets,
+  meters, diffs, empty/loading/error states, bulk bars, segmented controls, pagination and editable
+  lists already exist in the design system (`Dialog`, `ConfirmDialog`, `useToast`, `Badge`,
+  `CodeBlock`, `Meter`, `Diff`, `EmptyState`, `Skeleton`, `BulkBar`, `Segmented`, `Pagination`,
+  `EditableList`; see `docs/design/README.md` *Patterns* and PATTERNS.md). Replace a page's own
+  version with the pattern, keeping its accessible names where tests rely on them.
+- **Data colour.** Charts use `chart-1` only (one series, no legend); never `accent` for data.
+- **The ratchet.** `pnpm palette-ratchet` fails if palette classes under `apps/studio/src` rise
+  above `frontend/palette-baseline.json`. A slice that removes them commits the lower count it
+  prints (`node scripts/palette-ratchet/cli.mjs --write`).
 - **Accent sparingly.** Only: the view's one primary button, the current crumb and open switchers,
   Ready dots, citation markers, focus, links in running text, the current item's menu icon.
 - **Navigation is the breadcrumb.** No tab rows, no side menu. Sections become a `CrumbSwitcher`.
@@ -70,6 +80,7 @@ other agents keep adding features to these pages, so small slices conflict least
    Appearances (`page.emulateMedia({ colorScheme: "dark" })`, or the top bar toggle).
 5. Leftover check for the files you touched (must print nothing):
    `grep -nE '(slate|gray|zinc|red|green|amber|blue|white|black)-[0-9]{2,3}|\bdark:|bg-white|text-white' <files>`
+   Then `pnpm palette-ratchet` and commit the lowered `palette-baseline.json`.
 6. Describe the change in your PR as a reskin; list any behaviour that moved (e.g. "Archive moved
    into the ⋯ menu").
 
