@@ -92,6 +92,7 @@ async def test_the_instructions_have_two_versions_with_the_product_faq_behind(
         "Product FAQ": (1, 1, True),
         # Rolled out with a bulk publish.
         "Low-budget helper": (2, 2, False),
+        "Guardrail demo": (2, 2, False),
     }
     assert not any(a["has_draft_changes"] for a in rollout["agents"])
     budget = agents["Low-budget helper"]

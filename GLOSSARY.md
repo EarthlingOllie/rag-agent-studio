@@ -105,16 +105,24 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ and the Low-budget helper), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased.
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
-The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
+The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
 _Avoid_: Fake data, sample history, fixtures
 
 **Demo pages**:
 Static pages that show an Agent the way a Visitor meets it: Northwind's fictional shop with the Product FAQ as a bubble, a help-centre page with it inline, and a page with the Low-budget helper, whose tiny daily Token Budget a button spends in one click (the widget then shows its Unavailable text and the Studio its Budget alert). They are on the shop origin, which the seed allows: `http://localhost:5175/demo/` in `docker compose`, `/demo/` on the Studio's own address in AWS. A fourth page, on an origin no Agent allows (`http://localhost:5176`, local only), pastes the same Embed Snippet and is refused by the browser. The pages ask the API which seeded Agents to embed; those routes exist only when the stack runs with `DEMO_PAGES` on.
 _Avoid_: Demo host page (for the shop), test page
+
+**Attack panel**:
+The Demo page (`/demo/attacks.html`) with one button per attack category (instruction override, prompt extraction, role-play jailbreak, encoded attack) and a benign control. Each click sends that button's fixed message to the Guardrail demo Agent the way the widget does, as a new Visitor Conversation, and shows the reply as it streams and what each Guardrail layer did: the input Guardrail blocked, flagged, logged or passed it; the Canary token replaced or flagged the reply, stayed quiet, or was not reached because the message was blocked. The Guardrail demo Agent answers with the Naive demo model, so whatever is stopped is stopped by a Guardrail layer. It uses Demo mode's debug endpoint, which returns each answer's Guardrail outcomes without a Studio login.
+_Avoid_: Red-team page, jailbreak console
+
+**Demo mode**:
+A stack run with `DEMO_PAGES` on (`docker compose` and the AWS demo): only then do the demo routes exist, the Demo pages' Agent lookup and budget button and the Attack panel's debug endpoint. Without it they answer 404.
+_Avoid_: Seed mode, debug mode
 
 **Archive**:
 To retire an Agent or Project. It stops serving Visitors but keeps its Versions, Conversations and metrics. An archived Agent leaves the Agents list, its Draft can't be changed and the Playground starts no Conversation with it. Any Member can archive. Permanent deletion is a separate action.
@@ -177,6 +185,10 @@ _Avoid_: Global model, org model
 **Demo model**:
 The demo provider's only chat model. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
+
+**Naive demo model**:
+The demo provider's second chat model (`demo-naive`): the Naive model behind its own label, "Naive demo model (obeys injected instructions, not AI)". The Attack panel's Guardrail demo Agent always answers with it, even when the seed was given a real Provider Credential, so the panel shows the Guardrails at work rather than a model refusing.
+_Avoid_: Evil model, unsafe model
 
 **Model gateway**:
 The single factory every model call goes through: it turns a Provider Credential and a model name into a chat model, an embedder or a reranker, refusing a model the credential doesn't offer for that Capability. Tests and `docker compose` swap in fake adapters here and nowhere else.

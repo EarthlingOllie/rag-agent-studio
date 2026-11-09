@@ -3,7 +3,8 @@
 ``seed`` drives the FastAPI app in process, over HTTP: it signs up the demo Owner, invites and
 signs up the Editor, adds the demo model's credential (and a real one, if given), sets the
 Default Model and the Theme, creates the Project, its Tags, Documents and Agents, and publishes
-the Agents the demo pages embed with the shop origin in their Allowed Origins (ticket 10-03).
+the Agents the demo pages embed with the shop origin in their Allowed Origins (ticket 10-03),
+among them the attack panel's Guardrail demo Agent, on the naive demo model (ticket 10-04).
 So the seeded data is valid by construction. Files go to the object store through presigned URLs,
 as a browser's do, and ingestion runs wherever the app sends it (the worker, or eagerly in tests).
 
@@ -166,8 +167,12 @@ async def _credential(api: SeedApi, name: str, provider: Provider, api_key: str)
     return new
 
 
+async def _demo_credential(api: SeedApi) -> str:
+    return await _credential(api, content.DEMO_CREDENTIAL, Provider.DEMO, content.DEMO_KEY)
+
+
 async def _default_model(api: SeedApi, real: RealCredential | None) -> str:
-    demo = await _credential(api, content.DEMO_CREDENTIAL, Provider.DEMO, content.DEMO_KEY)
+    demo = await _demo_credential(api)
     chosen = (demo, content.DEMO_MODEL)
     if real is not None:
         name = f"Northwind {PROVIDERS[real.provider].name}"
@@ -293,9 +298,16 @@ async def _agents(api: SeedApi, project: str, tags: dict[str, str], origin: str)
                 "POST", agents, expect=201, body={"name": wanted.name}
             )
         draft = agent["draft"]
+        model = None
+        if wanted.demo_model is not None:
+            model = {"credential_id": await _demo_credential(api), "model": wanted.demo_model}
         changed = {
             **draft,
-            "behaviour": {**draft["behaviour"], "system_prompt": wanted.system_prompt},
+            "behaviour": {
+                **draft["behaviour"],
+                "system_prompt": wanted.system_prompt,
+                "model": model,
+            },
             "retrieval": {
                 **draft["retrieval"],
                 "tag_ids": sorted(tags[name] for name in wanted.tags),

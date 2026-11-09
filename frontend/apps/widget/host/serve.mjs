@@ -4,8 +4,9 @@
 // On PORT (5175, the shop origin the seed puts in the demo Agents' Allowed Origins):
 // - `/demo/`: Northwind's fictional shop with the Product FAQ as a bubble; `/demo/inline.html`,
 //   the same Agent in the page (the inline layout); `/demo/budget.html`, the Low-budget helper
-//   and a button that spends its Token Budget. These are the static files in ./demo, the same
-//   ones the deploy uploads to the static bucket under /demo/ in AWS (ticket 10-03).
+//   and a button that spends its Token Budget; `/demo/attacks.html`, the attack panel (ticket
+//   10-04). These are the static files in ./demo, the same ones the deploy uploads to the static
+//   bucket under /demo/ in AWS (ticket 10-03).
 // - `/?agent=agt_…`: pastes the Embed Snippet for any Agent, loading `embed.js` from WIDGET_URL
 //   (the Studio's origin). `&launcher=inline` puts the widget in the page's #chat container and
 //   `&launcher=bubble` asks for the bubble; without it the Theme's Launcher applies.
@@ -64,10 +65,14 @@ const HTML = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-
 
 async function proxy(request, response, url) {
   try {
-    const upstream = await fetch(`${apiUrl}${url.pathname}`, { method: request.method, headers: { Accept: "application/json" } });
-    response
-      .writeHead(upstream.status, { "Content-Type": upstream.headers.get("content-type") ?? "application/json" })
-      .end(Buffer.from(await upstream.arrayBuffer()));
+    const upstream = await fetch(`${apiUrl}${url.pathname}`, { method: request.method, headers: { Accept: "application/json, text/event-stream" } });
+    const type = upstream.headers.get("content-type") ?? "application/json";
+    response.writeHead(upstream.status, { "Content-Type": type, "Cache-Control": "no-cache" });
+    // The attack panel's replies are Server-Sent Events: pass them on as they arrive.
+    if (upstream.body) {
+      for await (const chunk of upstream.body) response.write(chunk);
+    }
+    response.end();
   } catch {
     response.writeHead(502, { "Content-Type": "application/json" }).end(JSON.stringify({ detail: "The API isn't reachable." }));
   }

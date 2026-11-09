@@ -33,13 +33,14 @@ from app.tenancy.models import Member, Membership, Organisation, Role
 NOT_SEEDED = "The demo isn't seeded yet. Run `make seed`."
 
 
-def _demo_pages_on(request: Request) -> None:
+def demo_pages_on(request: Request) -> None:
+    """Demo mode: the demo routes answer only when ``DEMO_PAGES`` is on, else 404."""
     if not request.app.state.settings.demo_pages:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found.")
 
 
 router = APIRouter(
-    prefix="/api/demo", dependencies=[Depends(_demo_pages_on)], include_in_schema=False
+    prefix="/api/demo", dependencies=[Depends(demo_pages_on)], include_in_schema=False
 )
 
 
@@ -66,8 +67,8 @@ class ExhaustedOut(BaseModel):
     daily_token_budget: int
 
 
-async def _demo_agents(db: AsyncSession) -> dict[str, Agent]:
-    """The Demo Organisation's live, unarchived shop and low-budget Agents, by name."""
+async def live_demo_agents(db: AsyncSession, *names: str) -> dict[str, Agent]:
+    """The Demo Organisation's live, unarchived Agents with these names, by name."""
     found = await db.scalars(
         select(Agent)
         .join(Organisation, Organisation.id == Agent.organisation_id)
@@ -77,7 +78,7 @@ async def _demo_agents(db: AsyncSession) -> dict[str, Agent]:
             Member.email == content.OWNER.email,
             Membership.role == Role.OWNER,
             Organisation.name == content.ORGANISATION_NAME,
-            Agent.name.in_([content.SHOP_AGENT, content.BUDGET_AGENT]),
+            Agent.name.in_(names),
             Agent.archived_at.is_(None),
             Agent.live_version_id.is_not(None),
         )
@@ -87,7 +88,7 @@ async def _demo_agents(db: AsyncSession) -> dict[str, Agent]:
 
 @router.get("/agents")
 async def demo_agents(request: Request, db: Db) -> DemoAgentsOut:
-    agents = await _demo_agents(db)
+    agents = await live_demo_agents(db, content.SHOP_AGENT, content.BUDGET_AGENT)
     if set(agents) != {content.SHOP_AGENT, content.BUDGET_AGENT}:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_SEEDED)
     shop, budget = agents[content.SHOP_AGENT], agents[content.BUDGET_AGENT]
@@ -106,7 +107,7 @@ async def demo_agents(request: Request, db: Db) -> DemoAgentsOut:
 async def exhaust_budget(
     public_id: str, request: Request, db: Db, clock: ClockDep, admission: AdmissionDep
 ) -> ExhaustedOut:
-    agent = (await _demo_agents(db)).get(content.BUDGET_AGENT)
+    agent = (await live_demo_agents(db, content.BUDGET_AGENT)).get(content.BUDGET_AGENT)
     if agent is None or agent.public_id != public_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found.")
     now = clock.now()

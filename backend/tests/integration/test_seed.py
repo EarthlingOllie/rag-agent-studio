@@ -160,7 +160,7 @@ async def test_the_seed_builds_the_demo_organisation_through_the_api(
     )
 
     agents = {a["name"]: a for a in await get(owner, "projects", project["id"], "agents")}
-    assert set(agents) == {"HR helper", "Product FAQ", "Low-budget helper"}
+    assert set(agents) == {"HR helper", "Product FAQ", "Low-budget helper", "Guardrail demo"}
     assert agents["HR helper"]["draft"]["retrieval"]["tag_ids"] == [tags["HR"]["id"]]
     assert agents["Product FAQ"]["draft"]["retrieval"]["tag_ids"] == [tags["Products"]["id"]]
     assert agents["Product FAQ"]["draft"]["experience"]["greeting"] == (
