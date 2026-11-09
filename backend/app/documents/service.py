@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import ScalarSelect
 
 from app import audit
+from app.conversations.models import MessageRetrieval
 from app.documents.limits import documents_counted, mime_type_for
 from app.documents.models import (
     FINAL_STATUSES,
@@ -596,6 +597,12 @@ async def delete_document(
     if staged is not None:
         keys += stored_keys(staged.object_key)
     await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
+    # Traces keep the retrievals as tombstones: the Document's name stays, its IDs go.
+    await session.execute(
+        update(MessageRetrieval)
+        .where(MessageRetrieval.document_id == document.id)
+        .values(document_id=None, chunk_id=None)
+    )
     await audit.record(
         session,
         organisation_id=scope.organisation_id,

@@ -11,8 +11,8 @@ export const workerHealthy: Schemas["WorkerHealthResponse"] = { status: "ok", re
 
 export const notSignedIn: Schemas["ErrorResponse"] = { detail: "Not signed in" };
 
-/** Default handlers describe a healthy stack, a visitor who is not signed in, and no Projects, Documents, Tags, Agents or
- * Conversations (so no Instructions rollout). */
+/** Default handlers describe a healthy stack, a visitor who is not signed in, no Projects, Documents, Tags, Agents or
+ * Conversations (so no Instructions rollout), and the default Retention Window. */
 export const server = setupServer(
   http.get("*/api/health", () => HttpResponse.json(healthy)),
   http.get("*/api/organisations/:organisationId/projects", () => HttpResponse.json([])),
@@ -26,5 +26,9 @@ export const server = setupServer(
     HttpResponse.json({ items: [], page: 1, page_size: 25, total: 0 }),
   ),
   http.get("*/api/health/worker", () => HttpResponse.json(workerHealthy)),
+  // Every Organisation keeps the default Retention Window.
+  http.get("*/api/organisations/:organisationId", ({ params }) =>
+    HttpResponse.json({ id: params.organisationId, name: "Analytical Engines", role: "owner", require_mfa: false, retention_days: 90 }),
+  ),
   http.get("*/api/auth/me", () => HttpResponse.json(notSignedIn, { status: 401 })),
 );

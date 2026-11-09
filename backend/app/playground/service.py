@@ -54,6 +54,7 @@ from app.pricing.table import TokenUsage, cost
 from app.projects.instructions import project_version
 from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
+from app.retention.service import purge_messages
 from app.retrieval.service import RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import Turn
@@ -153,12 +154,15 @@ async def get_conversation(
 
 def _turns(messages: list[Message]) -> list[Turn]:
     """Each question with the answer that followed it. A question left unanswered is skipped,
-    and so is one the input Guardrail blocked: an attack isn't replayed to the model later."""
+    and so is one the input Guardrail blocked: an attack isn't replayed to the model later. So
+    is a turn whose text was purged (``app.retention``): it has no text left to send."""
     return [
         Turn(question.content, answer.content)
         for question, answer in itertools.pairwise(messages)
         if (question.role, answer.role) == (MessageRole.USER, MessageRole.ASSISTANT)
         and not blocked(answer.guardrail_outcomes)
+        and question.purged_at is None
+        and answer.purged_at is None
     ]
 
 
@@ -243,7 +247,13 @@ async def save_question(
     instructions_version: InstructionsVersion | None = None,
     now: datetime,
 ) -> PreparedTurn:
-    """Checks ``config`` has a chat model, then saves the question in the Conversation."""
+    """Checks ``config`` has a chat model, then saves the question in the Conversation. A
+    Conversation deleted on request (``app.retention``) takes no more questions:
+    ``ConversationNotFoundError``."""
+    # Locked, so a deletion either comes first (and is seen here) or purges this question too.
+    await session.refresh(conversation, with_for_update=True)
+    if conversation.deleted_at is not None:
+        raise ConversationNotFoundError
     organisation_id = conversation.organisation_id
     chat = await _chat_model(session, organisation_id, config)
     reranker_choice = config.retrieval.reranker
@@ -298,6 +308,7 @@ def _retrievals(
         MessageRetrieval(
             chunk_id=c.chunk_id,
             document_id=c.document_id,
+            document_name=c.document_name,
             score=c.score,
             relevance=c.relevance,
             rank=c.rank,
@@ -309,6 +320,7 @@ def _retrievals(
         MessageRetrieval(
             chunk_id=e.chunk_id,
             document_id=e.document_id,
+            document_name=e.document_name,
             score=e.score,
             relevance=e.relevance,
             rank=None,
@@ -449,7 +461,13 @@ async def answer(
             session.add(message)
             await session.flush()
             session.add_all(_retrievals(prepared.organisation_id, message.id, event))
-            conversation = await session.get_one(Conversation, prepared.conversation_id)
+            # Locked, so a deletion either comes first (and is seen here) or purges this answer.
+            conversation = await session.get_one(
+                Conversation, prepared.conversation_id, with_for_update=True
+            )
             conversation.last_activity_at = now
+            if conversation.deleted_at is not None:
+                # Deleted on request while the answer streamed: its text isn't kept either.
+                await purge_messages(session, Message.id == message.id, now=now)
             await session.commit()
             yield Answered(message.id, event, message.first_token_ms or 0, latency_ms)

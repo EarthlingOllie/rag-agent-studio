@@ -15,6 +15,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     false,
@@ -39,6 +40,9 @@ PLATFORM_TABLES = frozenset(
 )
 
 
+DEFAULT_RETENTION_DAYS = 90
+
+
 class Role(enum.StrEnum):
     OWNER = "owner"
     EDITOR = "editor"
@@ -55,6 +59,11 @@ class Organisation(IdMixin, Base):
     # The Require MFA policy: while it is on, Members without MFA are refused this
     # Organisation's routes until they enrol (``app.tenancy.policy``).
     require_mfa: Mapped[bool] = mapped_column(Boolean, server_default=false(), default=False)
+    # The Retention Window: Message text and feedback comments older than this many days are
+    # purged daily (``app.retention``); metrics are kept.
+    retention_days: Mapped[int] = mapped_column(
+        Integer, server_default=text("90"), default=DEFAULT_RETENTION_DAYS
+    )
 
 
 class Member(IdMixin, Base):

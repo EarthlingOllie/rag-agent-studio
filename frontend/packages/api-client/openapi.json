@@ -1133,6 +1133,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1173,7 +1185,8 @@
           "created_at",
           "last_activity_at",
           "messages",
-          "rating"
+          "rating",
+          "deleted_at"
         ],
         "title": "ConversationDetailOut",
         "type": "object"
@@ -1357,6 +1370,18 @@
             ],
             "title": "Output Tokens"
           },
+          "purged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purged At"
+          },
           "role": {
             "title": "Role",
             "type": "string"
@@ -1381,7 +1406,8 @@
           "cost_usd",
           "agent_version_number",
           "fallback",
-          "feedback"
+          "feedback",
+          "purged_at"
         ],
         "title": "ConversationMessageOut",
         "type": "object"
@@ -1577,6 +1603,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
           "guardrail_events": {
             "title": "Guardrail Events",
             "type": "integer"
@@ -1650,6 +1688,7 @@
           "thumbs_up",
           "thumbs_down",
           "rating",
+          "deleted_at",
           "guardrail_events"
         ],
         "title": "ConversationSummaryOut",
@@ -4674,6 +4713,11 @@
             "title": "Require Mfa",
             "type": "boolean"
           },
+          "retention_days": {
+            "description": "The Retention Window: Message text and feedback comments older than this many days are purged daily; metrics are kept",
+            "title": "Retention Days",
+            "type": "integer"
+          },
           "role": {
             "$ref": "#/components/schemas/Role"
           }
@@ -4682,7 +4726,8 @@
           "id",
           "name",
           "role",
-          "require_mfa"
+          "require_mfa",
+          "retention_days"
         ],
         "title": "OrganisationOut",
         "type": "object"
@@ -5415,6 +5460,22 @@
           "error_category"
         ],
         "title": "ReplacementOut",
+        "type": "object"
+      },
+      "RetentionWindowRequest": {
+        "properties": {
+          "retention_days": {
+            "description": "Days Message text and feedback comments are kept before they are purged",
+            "maximum": 3650.0,
+            "minimum": 7.0,
+            "title": "Retention Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "retention_days"
+        ],
+        "title": "RetentionWindowRequest",
         "type": "object"
       },
       "Retrieval-Input": {
@@ -6731,18 +6792,36 @@
       "TracedChunkOut": {
         "properties": {
           "chunk_id": {
-            "format": "uuid",
-            "title": "Chunk Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
           },
           "cited": {
             "title": "Cited",
             "type": "boolean"
           },
+          "document_deleted": {
+            "title": "Document Deleted",
+            "type": "boolean"
+          },
           "document_id": {
-            "format": "uuid",
-            "title": "Document Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
           },
           "document_name": {
             "anyOf": [
@@ -6807,6 +6886,7 @@
           "chunk_id",
           "document_id",
           "document_name",
+          "document_deleted",
           "text",
           "score",
           "relevance",
@@ -14054,6 +14134,71 @@
       }
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}": {
+      "delete": {
+        "description": "Deletes the Conversation on request (Owners only): its Messages' text and feedback\ncomments are purged at once and its Conversation token stops working; its numbers stay in\nthe metrics. Recorded as ``conversation.deleted``.",
+        "operationId": "deleteConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Conversation",
+        "tags": [
+          "conversations"
+        ]
+      },
       "get": {
         "description": "The Conversation and its Messages, oldest first, with the Agent Version of each\nanswer.",
         "operationId": "getConversation",
@@ -16724,6 +16869,80 @@
         "summary": "Get Upload Limits",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/retention-window": {
+      "put": {
+        "description": "Sets the Organisation's Retention Window (Owners only), from 7 to 3650 days. Recorded as\n``organisation.retention_window_changed``.",
+        "operationId": "setRetentionWindow",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionWindowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganisationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Organisation requires MFA. Turn on MFA for your account to continue. Or: Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Retention Window",
+        "tags": [
+          "organisations"
         ]
       }
     },
