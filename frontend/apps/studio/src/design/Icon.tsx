@@ -6,6 +6,7 @@ const PATHS = {
   documents: "M7 3h7l5 5v13H7zM14 3v5h5",
   instructions: "M5 5h14M5 10h14M5 15h9M5 20h6",
   agents: "M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM5 21c0-4 3-6 7-6s7 2 7 6",
+  profile: "M12 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM5 21c0-4 3-6 7-6s7 2 7 6",
   conversations: "M4 5h16v11H9l-5 4z",
   analytics: "M5 20V10M12 20V4M19 20v-7",
   settings:
@@ -28,6 +29,10 @@ const PATHS = {
   external: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6",
   trash: "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13",
   history: "M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4M12 8v4l3 2",
+  key: "M8 11a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM11 14l9-9M17 8l2 2M15 10l2 2",
+  members: "M9 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM2.5 20c0-3.5 2.8-5.5 6.5-5.5s6.5 2 6.5 5.5M16 4.5a3.3 3.3 0 0 1 0 6.3M18 14.8c2.2.6 3.5 2.3 3.5 5.2",
+  model: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4",
+  palette: "M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8zM7.5 11.5v.01M10 7.5v.01M14.5 7.5v.01",
 } as const;
 
 export type IconName = keyof typeof PATHS | "more";

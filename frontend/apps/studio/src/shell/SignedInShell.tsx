@@ -1,25 +1,31 @@
 import { Link, Navigate, Outlet, useLocation, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { SignedOutFrame } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
-import { AppearanceToggle, Brand, layout, TopBar } from "../design";
+import { AppearanceToggle, Brand, button, EmptyState, layout, Notice, Skeleton, TopBar } from "../design";
 import { AccountMenu } from "./AccountMenu";
 import { StudioBreadcrumb } from "./StudioBreadcrumb";
 import { TopBarSlot } from "./TopBarActions";
 
-function Centered({ children, role }: { children: string; role: "status" | "alert" }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-canvas text-ink">
-      <p role={role}>{children}</p>
-    </main>
-  );
-}
-
 /** Everything a signed-in Member sees. Signed-out visitors are sent to the sign-in screen. */
 export function SignedInShell() {
   const me = useMe();
-  if (me.isPending) return <Centered role="status">Loading…</Centered>;
-  if (me.isError) return <Centered role="alert">The Studio could not reach the API. Try again shortly.</Centered>;
+  // Before the session is known there is no top bar to show, so these sit in the signed-out panel.
+  if (me.isPending) {
+    return (
+      <SignedOutFrame>
+        <Skeleton label="Loading the Studio" />
+      </SignedOutFrame>
+    );
+  }
+  if (me.isError) {
+    return (
+      <SignedOutFrame>
+        <Notice tone="error">The Studio could not reach the API. Try again shortly.</Notice>
+      </SignedOutFrame>
+    );
+  }
   if (me.data === null) return <Navigate to="/sign-in" />;
   return <Outlet />;
 }
@@ -29,7 +35,15 @@ export function HomeRedirect() {
   const { data } = useMe();
   const active = (data as Session).active_organisation_id;
   if (active === null) {
-    return <Centered role="status">You don't belong to any Organisation yet.</Centered>;
+    return (
+      <SignedOutFrame wide>
+        <EmptyState
+          icon="projects"
+          title="You don't belong to any Organisation yet."
+          description="Ask an Owner to invite you, then open the link in their email."
+        />
+      </SignedOutFrame>
+    );
   }
   return <Navigate to="/organisations/$organisationId/projects" params={{ organisationId: active }} />;
 }
@@ -73,12 +87,16 @@ export function OrganisationShell() {
             </TopBarSlot.Provider>
           )
         ) : (
-          <>
-            <h1 className="text-2xl font-semibold">Organisation not found</h1>
-            <p className="mt-2 text-muted">
-              It doesn't exist, or you are not a Member of it. <Link to="/" className="underline">Go to your Organisation</Link>
-            </p>
-          </>
+          <EmptyState
+            icon="warning"
+            title="Organisation not found"
+            description="It doesn't exist, or you are not a Member of it."
+            action={
+              <Link to="/" className={button.primary}>
+                Go to your Organisation
+              </Link>
+            }
+          />
         )}
       </main>
     </div>

@@ -66,6 +66,7 @@ test("an Owner overrides a model's prices, and the platform price stays visible"
   await userEvent.type(form.getByRole("textbox", { name: "Cached input" }), " 0.125 ");
   await userEvent.click(form.getByRole("button", { name: "Save prices" }));
 
+  // Confirmed by a toast.
   expect(await screen.findByRole("status")).toHaveTextContent("Prices for Claude Sonnet 4.5 saved.");
   expect(api.overridden).toEqual([
     { credentialId: legalClaude.id, body: { model: "claude-sonnet-4-5", input: "2.5", output: null, cached_input: "0.125" } },
@@ -110,7 +111,7 @@ test("a model without a platform price can be priced by an override", async () =
   await userEvent.type(form.getByRole("textbox", { name: "Input" }), "0.02");
   await userEvent.click(form.getByRole("button", { name: "Save prices" }));
 
-  await screen.findByRole("status");
+  expect(await screen.findByText("Prices for text-embedding-3-small saved.")).toBeInTheDocument();
   expect(rowText(await priceTable("Marketing OpenAI"), "text-embedding-3-small")).toEqual(["$0.02Override", "No price", "No price"]);
 });
 
@@ -154,7 +155,7 @@ test("cancelling closes the form without saving", async () => {
   await userEvent.click(form.getByRole("button", { name: "Cancel" }));
 
   expect(screen.queryByRole("form", { name: /Override prices for/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.getByRole("status")).toBeEmptyDOMElement();
   expect(api.overridden).toEqual([]);
 });
 
@@ -210,4 +211,35 @@ test("credentials that can't be loaded leave the prices unavailable", async () =
   openAs(editorSession);
 
   expect(await screen.findByText("The prices could not be loaded. Try again shortly.")).toBeInTheDocument();
+});
+
+test("a long price table is paged, ten models to a page", async () => {
+  const [first] = platformPrices[legalClaude.id] ?? [];
+  const many = Array.from({ length: 12 }, (_, index) => ({
+    ...(first as NonNullable<typeof first>),
+    model: `model-${String(index + 1)}`,
+    model_name: `Model ${String(index + 1).padStart(2, "0")}`,
+  }));
+  fakeModelsApi();
+  fakePricesApi({ prices: { [legalClaude.id]: many } });
+  openAs(editorSession);
+  const names = () => within(screen.getByRole("table", { name: "Prices for Legal Claude" })).getAllByRole("rowheader").map((cell) => cell.textContent);
+
+  await priceTable("Legal Claude");
+  expect(names()).toEqual(many.slice(0, 10).map((row) => row.model_name));
+  const pages = within(screen.getByRole("navigation", { name: "Prices for Legal Claude pages" }));
+  expect(pages.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+
+  await userEvent.click(pages.getByRole("button", { name: "Next page" }));
+
+  expect(names()).toEqual(["Model 11", "Model 12"]);
+  expect(pages.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+});
+
+test("a short price table has no pages", async () => {
+  fakeModelsApi();
+  openAs(editorSession);
+
+  await priceTable("Legal Claude");
+  expect(screen.queryByRole("navigation", { name: /pages$/ })).not.toBeInTheDocument();
 });

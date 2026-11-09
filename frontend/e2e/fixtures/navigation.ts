@@ -22,7 +22,6 @@ export type NavigationMenu =
  * that use the helpers do not change.
  */
 const TAB_ROWS: Partial<Record<NavigationMenu, string>> = {
-  "Organisation settings": "Organisation settings",
 };
 
 function escape(text: string) {

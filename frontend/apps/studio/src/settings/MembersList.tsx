@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { button, ConfirmDialog, table, text, useToast } from "../design";
 import { memberFailure, type OrganisationMember, type Role, useChangeRole, useMembers, useRemoveMember } from "./members";
 
-const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
-const SELECT = "rounded border border-field bg-surface px-2 py-1 text-sm focus:outline-2 focus:outline-accent";
+const SELECT = "h-9 rounded-xl border border-field bg-surface px-2.5 text-sm text-ink disabled:bg-sunken";
 
 function MemberRow({
   member,
@@ -19,15 +19,14 @@ function MemberRow({
   onChangeRole: (role: Role) => void;
   onRemove: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
   return (
-    <tr className="border-t border-line align-top">
-      <td className="py-2 pr-4">
+    <tr className={table.row}>
+      <td className={`${table.td} font-medium`}>
         {member.name}
         {isYou && " (you)"}
       </td>
-      <td className="py-2 pr-4">{member.email}</td>
-      <td className="py-2 pr-4">
+      <td className={table.tdMuted}>{member.email}</td>
+      <td className={table.td}>
         <select
           aria-label={`Role for ${member.name}`}
           className={SELECT}
@@ -41,106 +40,101 @@ function MemberRow({
           <option value="editor">Editor</option>
         </select>
       </td>
-      <td className="py-2">
-        {!isYou &&
-          (confirming ? (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className={BUTTON}
-                disabled={busy}
-                onClick={() => {
-                  setConfirming(false);
-                  onRemove();
-                }}
-              >
-                Yes, remove {member.name}
-              </button>
-              <button
-                type="button"
-                className={BUTTON}
-                onClick={() => {
-                  setConfirming(false);
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className={BUTTON}
-              disabled={busy}
-              aria-label={`Remove ${member.name}`}
-              onClick={() => {
-                setConfirming(true);
-              }}
-            >
-              Remove
-            </button>
-          ))}
+      <td className={`${table.td} text-right`}>
+        {!isYou && (
+          <button type="button" className={button.danger} disabled={busy} aria-label={`Remove ${member.name}`} onClick={onRemove}>
+            Remove
+          </button>
+        )}
       </td>
     </tr>
   );
 }
 
-/** The Members of the Organisation with their roles; Owners change roles and remove Members here. */
-export function MembersList({ organisationId, memberId }: { organisationId: string; memberId: string }) {
+/**
+ * The Members of the Organisation with their roles; Owners change roles and remove Members here.
+ * A removal is confirmed first; every change is confirmed by a toast.
+ */
+export function MembersList({
+  organisationId,
+  organisationName,
+  memberId,
+}: {
+  organisationId: string;
+  organisationName: string;
+  memberId: string;
+}) {
   const members = useMembers(organisationId);
   const changeRole = useChangeRole(organisationId);
   const removeMember = useRemoveMember(organisationId);
-  const [done, setDone] = useState<string | null>(null);
-  if (members.isPending) return <p role="status">Loading Members…</p>;
-  if (members.isError) return <p role="alert">The Members could not be loaded. Try again shortly.</p>;
+  const toast = useToast();
+  const [removing, setRemoving] = useState<OrganisationMember | null>(null);
+  if (members.isPending) return <p role="status" className={text.muted}>Loading Members…</p>;
+  if (members.isError) return <p role="alert" className={text.muted}>The Members could not be loaded. Try again shortly.</p>;
   const busy = changeRole.isPending || removeMember.isPending;
   const error = changeRole.error ?? removeMember.error;
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <FormError message={memberFailure(error)} />
-      {done && <p className="text-sm text-accent-ink">{done}</p>}
-      <table className="w-full text-left text-sm" aria-label="Members">
-        <thead>
-          <tr>
-            <th className="py-2 pr-4 font-medium">Name</th>
-            <th className="py-2 pr-4 font-medium">Email</th>
-            <th className="py-2 pr-4 font-medium">Role</th>
-            <th className="py-2 font-medium">
-              <span className="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {members.data.map((member) => (
-            <MemberRow
-              key={member.id}
-              member={member}
-              isYou={member.id === memberId}
-              busy={busy}
-              onChangeRole={(role) => {
-                setDone(null);
-                removeMember.reset();
-                changeRole.mutate(
-                  { memberId: member.id, role },
-                  {
-                    onSuccess: (changed) => {
-                      setDone(`${changed.name} is now ${changed.role === "owner" ? "an Owner" : "an Editor"}.`);
+      <div className={table.wrap}>
+        <table className={table.table} aria-label="Members">
+          <thead>
+            <tr>
+              <th className={table.th}>Name</th>
+              <th className={table.th}>Email</th>
+              <th className={table.th}>Role</th>
+              <th className={table.th}>
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {members.data.map((member) => (
+              <MemberRow
+                key={member.id}
+                member={member}
+                isYou={member.id === memberId}
+                busy={busy}
+                onChangeRole={(role) => {
+                  removeMember.reset();
+                  changeRole.mutate(
+                    { memberId: member.id, role },
+                    {
+                      onSuccess: (changed) => {
+                        toast.show(`${changed.name} is now ${changed.role === "owner" ? "an Owner" : "an Editor"}.`);
+                      },
                     },
-                  },
-                );
-              }}
-              onRemove={() => {
-                setDone(null);
-                changeRole.reset();
-                removeMember.mutate(member.id, {
-                  onSuccess: () => {
-                    setDone(`${member.name} was removed and can no longer open this Organisation.`);
-                  },
-                });
-              }}
-            />
-          ))}
-        </tbody>
-      </table>
+                  );
+                }}
+                onRemove={() => {
+                  setRemoving(member);
+                }}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ConfirmDialog
+        open={removing !== null}
+        title={`Remove ${removing?.name ?? ""}?`}
+        confirmLabel={`Yes, remove ${removing?.name ?? ""}`}
+        destructive
+        onCancel={() => {
+          setRemoving(null);
+        }}
+        onConfirm={() => {
+          const member = removing as OrganisationMember;
+          setRemoving(null);
+          changeRole.reset();
+          removeMember.mutate(member.id, {
+            onSuccess: () => {
+              toast.show(`${member.name} was removed and can no longer open this Organisation.`);
+            },
+          });
+        }}
+      >
+        {removing?.name} loses access to {organisationName} and its Projects straight away. Invite them again to bring them back.
+      </ConfirmDialog>
     </div>
   );
 }

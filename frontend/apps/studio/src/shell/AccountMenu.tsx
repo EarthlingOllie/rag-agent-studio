@@ -4,8 +4,9 @@ import { type Session, useSignOut } from "../auth/session";
 import { Avatar, Menu, type MenuItem } from "../design";
 
 /**
- * The Member's avatar, opening Profile and Sign out. Its name is "<Member>, Account", so the
- * Member's name stays in the top bar for screen readers. Profile needs an Organisation to sit in.
+ * The Member's avatar, opening their Profile, Security and Sign out. Its name is "<Member>, Account", so the
+ * Member's name stays in the top bar for screen readers. Profile and Security need an Organisation
+ * to sit in.
  */
 export function AccountMenu({ session, organisationId, inOrganisation }: {
   session: Session;
@@ -20,6 +21,10 @@ export function AccountMenu({ session, organisationId, inOrganisation }: {
           {
             label: "Profile",
             renderLink: (props) => <Link to="/organisations/$organisationId/profile" params={{ organisationId }} {...props} />,
+          } satisfies MenuItem,
+          {
+            label: "Security",
+            renderLink: (props) => <Link to="/organisations/$organisationId/security" params={{ organisationId }} {...props} />,
           } satisfies MenuItem,
         ]
       : []),

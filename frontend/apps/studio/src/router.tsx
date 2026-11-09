@@ -2,11 +2,11 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
   Outlet,
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { SignedOutFrame } from "./auth/AuthLayout";
 import { MfaChallengePage } from "./auth/MfaChallengePage";
 import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./auth/ResetPasswordPage";
@@ -39,20 +39,12 @@ import { ProfilePage } from "./profile/ProfilePage";
 import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
 
+/** The status page is public: the signed-out panel, its mark linking to the Studio. */
 function StatusLayout() {
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <header className="border-b border-line bg-surface">
-        <nav className="mx-auto flex max-w-4xl items-center gap-6 px-6 py-4" aria-label="Main">
-          <Link to="/" className="font-semibold">
-            RAG Agent Studio
-          </Link>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        <StatusPage />
-      </main>
-    </div>
+    <SignedOutFrame home wide>
+      <StatusPage />
+    </SignedOutFrame>
   );
 }
 

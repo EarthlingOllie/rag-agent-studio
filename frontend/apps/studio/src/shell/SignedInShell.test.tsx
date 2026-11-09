@@ -4,6 +4,8 @@ import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { currentSection, hasMenu, menuButton, openSection, sectionNames } from "../test/navigation";
+import { fakeInvitesApi } from "../test/invites";
+import { fakeMembersApi } from "../test/members";
 import { fakeProjectsApi, hrProject, oldProject, salesProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -40,7 +42,7 @@ test("the section switcher offers the Organisation's sections as links and opens
   renderStudio("/");
   expect(await screen.findByText(/No Projects yet/)).toBeInTheDocument();
 
-  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security"]);
+  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
   await userEvent.click(await menuButton("Organisation sections"));
   const sections = within(screen.getByRole("menu", { name: "Organisation sections" }));
   expect(sections.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
@@ -78,6 +80,50 @@ test("the breadcrumb follows the route and marks the current page", async () => 
   expect(breadcrumb().getByRole("button", { name: "Security, Organisation sections" })).toHaveAttribute("aria-current", "page");
 });
 
+test("Organisation settings are a Settings switcher crumb: the area is the current crumb, its siblings are links", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeMembersApi();
+  fakeInvitesApi();
+  renderStudio(`/organisations/${organisationId}/settings`);
+  const breadcrumb = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+
+  expect(await screen.findByRole("heading", { name: "Organisation settings", level: 1 })).toBeInTheDocument();
+  expect(screen.queryByRole("navigation", { name: "Organisation settings" })).not.toBeInTheDocument();
+  expect(breadcrumb().getByRole("button", { name: "Settings, Organisation sections" })).not.toHaveAttribute("aria-current");
+  expect(breadcrumb().getByRole("button", { name: "General, Organisation settings" })).toHaveAttribute("aria-current", "page");
+
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
+  await userEvent.click(await menuButton("Organisation settings"));
+  const menu = within(screen.getByRole("menu", { name: "Organisation settings" }));
+  expect(menu.getByRole("menuitem", { name: "Members" })).toHaveAttribute("href", `/organisations/${organisationId}/settings/members`);
+  expect(menu.getByRole("menuitem", { name: "General" })).toHaveAttribute("aria-current", "page");
+  await userEvent.keyboard("{Escape}");
+
+  await openSection("Organisation settings", "Members");
+
+  expect(await screen.findByRole("table", { name: "Members" })).toBeInTheDocument();
+  expect(await currentSection("Organisation settings")).toBe("Members");
+  expect(breadcrumb().getByRole("button", { name: "Members, Organisation settings" })).toHaveAttribute("aria-current", "page");
+});
+
+test("an Editor's Settings crumb leaves out Members and Audit", async () => {
+  fakeAuthApi({
+    signedInAs: { ...adaSession, organisations: adaSession.organisations.map((o) => ({ ...o, role: "editor" as const })) },
+  });
+  renderStudio(`/organisations/${organisationId}/settings/theme`);
+
+  expect(await currentSection("Organisation settings")).toBe("Theme");
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme"]);
+});
+
+test("an unknown settings address says so in the Settings crumb, which still offers every area", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(`/organisations/${organisationId}/settings/bogus`);
+
+  expect(await currentSection("Organisation settings")).toBe("Not found");
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
+});
+
 const projectPage = (projectId: string, section = "") => `/organisations/${organisationId}/projects/${projectId}${section}`;
 
 test("inside a Project the breadcrumb is the Organisation's sections, a Project switcher and a section switcher", async () => {
@@ -94,7 +140,7 @@ test("inside a Project the breadcrumb is the Organisation's sections, a Project 
     "/Documents",
   ]);
   // The Organisation's sections stay one click away from any Project.
-  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security"]);
+  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
 });
 
 test("the Project switcher lists the open Projects as links, plus All Projects", async () => {
@@ -174,19 +220,32 @@ test("a Project that can't be loaded keeps the Project switcher as the current c
   expect(hasMenu("Project sections")).toBe(false);
 });
 
-test("the account menu opens the Profile, which is then the current crumb", async () => {
+test("the account menu opens the Profile and Security, which are then the current section", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/");
   await screen.findByRole("heading", { name: "Projects" });
 
-  expect(await sectionNames("Account")).toEqual(["Profile", "Sign out"]);
+  expect(await sectionNames("Account")).toEqual(["Profile", "Security", "Sign out"]);
   await openSection("Account", "Profile");
 
   expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
-  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Profile")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  expect(await currentSection("Organisation sections")).toBe("Profile");
+  expect(await menuButton("Organisation sections")).toHaveAttribute("aria-current", "page");
+
+  await openSection("Account", "Security");
+
+  expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
+  expect(await currentSection("Organisation sections")).toBe("Security");
+});
+
+test("the breadcrumb's section switcher reaches the Profile", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio("/");
+  await screen.findByRole("heading", { name: "Projects" });
+
+  await openSection("Organisation sections", "Profile");
+
+  expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
 });
 
 test("signing out ends the session and returns to sign-in", async () => {
@@ -231,7 +290,7 @@ test("shows a loading state while the session is checked", async () => {
   server.use(http.get("*/api/auth/me", () => delay("infinite")));
   renderStudio("/");
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Loading…");
+  expect(await screen.findByRole("status", { name: "Loading the Studio" })).toHaveAttribute("aria-busy", "true");
 });
 
 test("says when the API cannot be reached", async () => {
@@ -245,7 +304,8 @@ test("tells a Member with no Organisation that they don't belong to one", async 
   fakeAuthApi({ signedInAs: { ...adaSession, organisations: [], active_organisation_id: null } });
   renderStudio("/");
 
-  expect(await screen.findByText("You don't belong to any Organisation yet.")).toHaveRole("status");
+  expect(await screen.findByRole("heading", { name: "You don't belong to any Organisation yet." })).toBeInTheDocument();
+  expect(screen.getByText(/Ask an Owner to invite you/)).toBeInTheDocument();
 });
 
 test("an Organisation the Member doesn't belong to is not found", async () => {
@@ -266,7 +326,8 @@ test("the status page links back to the Studio", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/status");
 
-  await userEvent.click(await screen.findByRole("link", { name: "RAG Agent Studio" }));
+  expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+  await userEvent.click(await screen.findByRole("link", { name: "Studio home" }));
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
 });
