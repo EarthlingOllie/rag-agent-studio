@@ -1,6 +1,8 @@
 /** The status badges the Studio shows beside Agents, Versions, Conversations, KPIs and Provider Credentials. */
 const BADGES = {
   live: { label: "Live", className: "bg-accent-soft text-accent-ink", dot: "bg-accent" },
+  /** The Current Version of the Project Instructions: the one Agents are published with. */
+  current: { label: "Current", className: "bg-accent-soft text-accent-ink" },
   draft: { label: "Draft", className: "bg-sand text-sand-ink" },
   notLive: { label: "Not live", className: "bg-sunken text-muted" },
   archived: { label: "Archived", className: "bg-sunken text-muted" },
@@ -8,6 +10,8 @@ const BADGES = {
   budgetSpent: { label: "Budget spent", className: "bg-danger-soft text-danger" },
   blocked: { label: "Blocked by guardrail", className: "bg-danger-soft text-danger" },
   lowSample: { label: "Low sample", className: "bg-flag-soft text-flag" },
+  /** A Chunk the ingestion Guardrail scan flagged as possible instructions to an AI. */
+  flagged: { label: "Flagged", className: "bg-flag-soft text-flag" },
   /** A Provider Credential whose last check passed. */
   checkPassed: { label: "Working", className: "bg-accent-soft text-accent-ink", dot: "bg-accent" },
   /** A Provider Credential whose last check failed; the reason goes beside it. */
@@ -25,8 +29,8 @@ const PILL = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px
 
 /**
  * A small pill. `kind` picks the words and colour (Live, Draft, Not live, Archived, Instructions
- * behind, Budget spent, Blocked by guardrail, Low sample, Working, Check failed); `kind="version"`
- * is a Version chip.
+ * behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed);
+ * `kind="version"` is a Version chip.
  * The words always carry the meaning; colour only repeats it.
  */
 export function Badge(props: { kind: BadgeKind; title?: string } | { kind: "version"; version: number }) {

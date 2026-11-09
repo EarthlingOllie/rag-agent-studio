@@ -85,7 +85,7 @@ test.describe("Time series", () => {
 
     // An Editor adds a Document: the period now carries the confounder note.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     await expect(page.getByRole("list", { name: "Uploads" }).getByText("Uploaded")).toBeVisible();
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
     await expect(section.getByRole("note")).toContainText("Documents changed during this period: 1 added, replaced or processed again.", {

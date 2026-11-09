@@ -291,12 +291,16 @@ _Avoid_: Error code, error type, failure reason
 Sending a Document through ingestion again from its stored file, with its Project's current settings, without uploading it again: a Failed Document, or its Failed new edition, or else a Ready Document's current edition (whose Chunks keep serving until the new ones replace them). Not while the Document, or a new edition of it, is still being processed. An Editor retries by hand; a transient failure (a provider error) is retried automatically, after an exponential backoff, up to a fixed number of attempts.
 _Avoid_: Reprocess, re-ingest, re-run
 
+**Knowledge Base figures**:
+The four stat cards at the top of a Project's Documents section: Documents counted against the Document quota, Chunks, flagged Chunks (in the flag colour when there are any) and the Project's Embedding Model. They are the whole Project's, whatever the list's filters show.
+_Avoid_: Stats, KPIs, summary
+
 **Document quota**:
 The most Documents a Project may hold, not counting Failed ones. Uploads beyond it are refused with a clear message, and a Document processed when the Project is already full fails with the quota category. A new Edition doesn't add a Document, so the quota never refuses one. Every Project starts at 500; an Owner can change it.
 _Avoid_: Document limit, storage limit, cap
 
 **Document viewer**:
-The Studio page for one Document: its converted markdown beside its Chunks, each with its heading path and page range, and a download of the original file.
+The Studio page for one Document: its converted markdown beside its Chunks, each on a card with its heading path and page range (a flagged Chunk's card is badged Flagged), and a download of the original file. The Breadcrumb's last crumb names the Document, after the Documents switcher that leads back to the list.
 _Avoid_: Document preview, inspector, detail page
 
 **Heading path**:
@@ -315,7 +319,7 @@ A newer Edition being ingested. Its Chunks are written under its own Edition num
 _Avoid_: Draft edition, pending upload, shadow copy
 
 **Tag**:
-A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay.
+A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay. In the Studio, Tags are created, renamed and deleted under Manage tags on the Documents toolbar, filtered by with the Tag chips, set on one Document from its ⋯ menu (Edit Tags), and added or removed in bulk from the bulk bar.
 _Avoid_: Category, folder, label
 
 **Chunk**:
@@ -458,7 +462,7 @@ The Agent Version currently served to Visitors, with the Instructions Version it
 _Avoid_: Active, production
 
 **Current Version**:
-The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones. Publishing the Instructions makes the new Version Current; reverting them moves Current back to the Version that was Current when the present one was published, so reverting again keeps walking back rather than toggling.
+The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones. Publishing the Instructions makes the new Version Current; reverting them moves Current back to the Version that was Current when the present one was published, so reverting again keeps walking back rather than toggling. The Instructions page shows the Versions as a timeline, newest first, with the Current Version carrying the **Current** badge; any two Versions, or a Version and the saved Draft, can be compared there.
 _Avoid_: Live (for Project Instructions), latest
 
 **Live History**:
@@ -484,7 +488,7 @@ _Avoid_: Mass rollback
 One bulk publish or bulk revert. Each Agent in it is processed in its own transaction, so a failure on one Agent never leaves another half-updated, and the result reports every Agent as succeeded, skipped (with the reason) or failed (with the reason). Its **bulk operation ID** is recorded on each Live History entry and Audit Event it makes.
 
 **Behind**:
-An Agent is behind when it is live but its Live Version doesn't pin the Current Instructions Version. The Project Instructions page shows "N Agents behind" and which Instructions Version each Agent pins, so partial rollouts are visible. An Agent that has never been published is not live, so it is never behind.
+An Agent is behind when it is live but its Live Version doesn't pin the Current Instructions Version. The Project Instructions page shows "N Agents behind" and which Instructions Version each Agent pins, as version chips with an **Instructions behind** badge on each Agent that is behind, so partial rollouts are visible. An Agent that has never been published is not live, so it is never behind.
 _Avoid_: Outdated, stale
 
 **Playground**:

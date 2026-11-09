@@ -1,9 +1,9 @@
-import { Link, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { FormError } from "../auth/AuthLayout";
+import { Badge, button, EmptyState, FlagCount, Notice, Pagination, Skeleton, Status, surface, text } from "../design";
 import {
   type ChunkPage,
   type DocumentDetail,
@@ -14,12 +14,9 @@ import {
   useClearChunkFlag,
   useDocument,
 } from "./documents";
-import { STATUS_LABELS } from "./DocumentsTab";
-import { BUTTON } from "./ProjectsPage";
+import { fileType, formatSize, STATUS_LABELS, STATUS_TONES } from "./DocumentsTab";
 
 type Chunk = ChunkPage["items"][number];
-
-const PROJECT = "/organisations/$organisationId/projects/$projectId";
 
 /** "Page 3", "Pages 3–4", or nothing for formats without pages. */
 function pageLabel({ page_start: start, page_end: end }: Chunk): string | null {
@@ -43,14 +40,14 @@ interface DocumentRef {
 function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk: Chunk; at: DocumentRef }) {
   const clear = useClearChunkFlag(at.organisationId, at.projectId, at.documentId);
   return (
-    <div className="space-y-2 rounded bg-flag-soft p-2 text-flag">
+    <div className="flex flex-col items-start gap-2 rounded-xl bg-flag-soft px-3.5 py-2.5 text-sm text-flag">
       <p role="note" aria-label="Guardrail flag">
-        <strong>Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
+        <strong className="font-medium">Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
       </p>
-      <FormError message={clearFlagFailure(clear.error)} />
+      {clear.error && <Notice tone="error">{clearFlagFailure(clear.error)}</Notice>}
       <button
         type="button"
-        className={BUTTON}
+        className={button.secondary}
         aria-label={`Clear flag on Chunk ${String(chunk.ordinal + 1)}`}
         disabled={clear.isPending}
         onClick={() => {
@@ -65,14 +62,18 @@ function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk
 
 function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
   const pages = pageLabel(chunk);
+  // A flagged Chunk's card is edged in the flag colour and badged, so it stands out while scrolling.
   const border = chunk.flag ? "border-flag" : "border-line";
   return (
-    <li className={`space-y-1 rounded border p-3 text-sm ${border}`}>
-      <p className="text-xs font-medium text-ink-2">Chunk {chunk.ordinal + 1}</p>
+    <li className={`flex flex-col gap-2 rounded-2xl border bg-surface p-4 text-sm ${border}`}>
+      <p className="flex items-center gap-2 font-mono text-xs text-muted">
+        Chunk {chunk.ordinal + 1}
+        {chunk.flag && <Badge kind="flagged" />}
+      </p>
       {chunk.heading_path.length > 0 && <p className="font-medium text-ink">{chunk.heading_path.join(" › ")}</p>}
       {pages && <p className="text-xs text-muted">{pages}</p>}
       {chunk.flag && <FlagNote flag={chunk.flag} chunk={chunk} at={at} />}
-      <p className="whitespace-pre-wrap text-ink">{chunk.text}</p>
+      <p className="whitespace-pre-wrap text-ink-2">{chunk.text}</p>
     </li>
   );
 }
@@ -83,55 +84,39 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
 
   let body;
   if (chunks.isError) {
-    body = <p role="alert">The Chunks could not be loaded. Try again shortly.</p>;
+    body = <Notice tone="error">The Chunks could not be loaded. Try again shortly.</Notice>;
   } else if (chunks.data === undefined) {
-    body = <p role="status">Loading Chunks…</p>;
+    body = <Skeleton label="Loading Chunks" />;
   } else if (chunks.data.total === 0) {
-    body = <p className="text-muted">This Document has no Chunks yet.</p>;
+    body = <p className={text.muted}>This Document has no Chunks yet.</p>;
   } else {
     const { items, total, offset } = chunks.data;
     const pageCount = Math.ceil(total / CHUNK_PAGE_SIZE);
     body = (
       <>
-        <p className="text-sm text-muted">
+        <p className={text.muted}>
           Chunks {offset + 1}–{offset + items.length} of {total}
         </p>
-        <ol className="space-y-2">
+        <ol aria-label="Chunks on this page" className="flex flex-col gap-3">
           {items.map((chunk) => (
             <ChunkItem key={chunk.id} chunk={chunk} at={{ organisationId, projectId, documentId }} />
           ))}
         </ol>
-        {pageCount > 1 && (
-          <nav aria-label="Chunk pages" className="flex gap-2">
-            <button
-              type="button"
-              className={BUTTON}
-              disabled={page === 0}
-              onClick={() => {
-                setPage(page - 1);
-              }}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className={BUTTON}
-              disabled={page + 1 >= pageCount}
-              onClick={() => {
-                setPage(page + 1);
-              }}
-            >
-              Next
-            </button>
-          </nav>
-        )}
+        <Pagination
+          label="Chunk pages"
+          page={page + 1}
+          pageCount={pageCount}
+          onPageChange={(next) => {
+            setPage(next - 1);
+          }}
+        />
       </>
     );
   }
 
   return (
-    <section aria-labelledby="chunks-heading" className="space-y-3">
-      <h3 id="chunks-heading" className="font-semibold">
+    <section aria-labelledby="chunks-heading" className="flex min-w-0 flex-col gap-3">
+      <h3 id="chunks-heading" className={text.heading}>
         Chunks
       </h3>
       {body}
@@ -140,32 +125,47 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
 }
 
 function DocumentHeader({ document, download }: { document: DocumentDetail; download: string }) {
+  const chunks = document.chunk_count;
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-3">
-      <div>
-        <h2 className="text-lg font-semibold">{document.name}</h2>
-        <p className="text-sm text-muted">
-          {STATUS_LABELS[document.status]}
-          {document.error_message && `: ${document.error_message}`}
-        </p>
-        {document.flagged_chunk_count > 0 && (
-          <p className="text-sm font-medium text-flag">
-            {document.flagged_chunk_count} {document.flagged_chunk_count === 1 ? "Chunk" : "Chunks"} flagged as possible
-            instructions to an AI.
-          </p>
-        )}
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h2 className="text-2xl font-medium tracking-[-0.01em] text-ink">{document.name}</h2>
+          <ul aria-label="Document details" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <li>
+              <Status tone={STATUS_TONES[document.status]}>
+                {STATUS_LABELS[document.status]}
+                {document.error_message && `: ${document.error_message}`}
+              </Status>
+            </li>
+            <li className="font-mono text-xs">{fileType(document.name)}</li>
+            <li className="font-mono text-xs">{formatSize(document.size_bytes)}</li>
+            <li className="font-mono text-xs">{`${String(chunks)} ${chunks === 1 ? "chunk" : "chunks"}`}</li>
+            {document.flagged_chunk_count > 0 && (
+              <li>
+                <FlagCount count={document.flagged_chunk_count} label="flagged chunks" />
+              </li>
+            )}
+          </ul>
+        </div>
+        <a href={download} download={document.name} className={button.secondary}>
+          Download original
+        </a>
       </div>
-      <a href={download} download={document.name} className={BUTTON}>
-        Download original
-      </a>
+      {document.flagged_chunk_count > 0 && (
+        <Notice tone="warning">
+          {document.flagged_chunk_count} {document.flagged_chunk_count === 1 ? "Chunk" : "Chunks"} flagged as possible
+          instructions to an AI.
+        </Notice>
+      )}
     </div>
   );
 }
 
 /**
- * The Document viewer: Docling's converted markdown beside the Document's Chunks, each with its
- * heading path and pages, so an Editor sees exactly what an Agent can retrieve. Chunks the
- * ingestion Guardrail scan flagged say why.
+ * The Document viewer: Docling's converted markdown beside the Document's Chunks, each on a card
+ * with its heading path and pages, so an Editor sees exactly what an Agent can retrieve. Chunks the
+ * ingestion Guardrail scan flagged are badged and say why.
  */
 export function DocumentViewer() {
   const { organisationId, projectId, documentId } = useParams({
@@ -175,23 +175,23 @@ export function DocumentViewer() {
 
   let content;
   if (document.isError) {
-    content = <p role="alert">This Document could not be loaded. It may have been removed.</p>;
+    content = <EmptyState tone="error" title="This Document could not be loaded" description="It may have been removed." />;
   } else if (document.data === undefined) {
-    content = <p role="status">Loading Document…</p>;
+    content = <Skeleton label="Loading the Document" />;
   } else {
     content = (
       <>
         <DocumentHeader document={document.data} download={downloadPath(organisationId, projectId, documentId)} />
         <div className="grid gap-6 lg:grid-cols-2">
-          <section aria-labelledby="markdown-heading" className="min-w-0 space-y-3">
-            <h3 id="markdown-heading" className="font-semibold">
+          <section aria-labelledby="markdown-heading" className="flex min-w-0 flex-col gap-3">
+            <h3 id="markdown-heading" className={text.heading}>
               Converted markdown
             </h3>
             {document.data.markdown === null ? (
-              <p className="text-muted">There is no converted markdown yet.</p>
+              <p className={text.muted}>There is no converted markdown yet.</p>
             ) : (
               // It scrolls on its own, so it takes focus for keyboard scrolling (WCAG 2.1.1).
-              <div tabIndex={0} className="markdown max-h-[70vh] overflow-auto rounded border border-line p-4 text-sm">
+              <div tabIndex={0} className={`${surface.panel} markdown max-h-[70vh] overflow-auto text-sm`}>
                 <Markdown remarkPlugins={[remarkGfm]}>{document.data.markdown}</Markdown>
               </div>
             )}
@@ -202,12 +202,6 @@ export function DocumentViewer() {
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <Link to={PROJECT} params={{ organisationId, projectId }} className="text-sm underline">
-        All Documents
-      </Link>
-      {content}
-    </div>
-  );
+  // The breadcrumb's Document crumb names it, and its Documents switcher leads back to the list.
+  return <div className="flex flex-col gap-6">{content}</div>;
 }

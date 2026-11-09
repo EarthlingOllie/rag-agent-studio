@@ -16,7 +16,7 @@ test.describe("Permanent Project deletion", () => {
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Retired handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
 

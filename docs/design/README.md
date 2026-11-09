@@ -144,6 +144,17 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 - **List and data pages** (Documents, Agents, Conversations, Members, Credentials, Audit):
   `PageHeader`, optional `StatCard` row, a toolbar, then a `table.wrap` card. Row actions in a ⋯
   `Menu` (`button.iconBare`), destructive items marked `danger`.
+  - **Documents** (as built in 11-06): inside a Project the `PageHeader` is the Project's, so the
+    section starts at the Knowledge Base figures (Documents / quota, Chunks, Flagged chunks,
+    Embedding Model). The toolbar is search, Tag chips (a `Segmented` "Filter by Tag", All first),
+    Manage tags (opens the Tags `Dialog`), then Clear filters, the status filter and Upload, the one
+    primary. A quiet drop zone sits under it. Rows show Name, Type, Tag pills, a status dot, Chunks,
+    `FlagCount` and Size; Retry, New edition, Edit Tags and Delete are in the ⋯ menu. A selection
+    shows `BulkBar` with Add Tag and Remove Tag menus. Changes are confirmed with a toast, Delete
+    asks in a `ConfirmDialog`, and refusals, a full quota and failed Documents are `Notice`s.
+  - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
+    and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
+    edged in `flag` and badged Flagged, paged with `Pagination`.
 - **Agent page**: a header with the Agent's name, its `Badge`s (Live with the Version chip, or Not
   live; Draft while there are unpublished changes) and a ⋯ menu (Discard Draft, Archive, or Delete
   permanently on an archived Agent), then the view the breadcrumb chose.
@@ -164,6 +175,15 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   switcher crumb (`shell/SettingsCrumb.tsx`). Lists there (Members, pending invites, Credentials,
   the price table, the Audit log) are `table.wrap` cards; long ones page with `Pagination`.
   Saved changes confirm with a toast; a destructive one asks with `ConfirmDialog` first.
+- **Project Instructions** (built in 11-07): a `surface.panel` each for the Draft (the markdown
+  editor with its character count, Save Instructions as a secondary button and the conflict offer
+  as a warning notice), Publish (the Note and **Publish Instructions**, the page's one primary),
+  Agents (the "N Agents behind" summary and a `table.wrap` of version chips with an Instructions
+  behind badge) and Versions (a timeline, newest first, each a version chip with the `current`
+  badge on the Current Version, then Compare: two selects and `Diff`). Reverting asks with a
+  destructive `ConfirmDialog`. The rollout offer after publishing and the bulk-revert offer after
+  reverting are `Dialog`s: every eligible Agent pre-selected, Draft changes badged `draft`, and
+  the results counted ("2 succeeded, 0 skipped, 1 failed") then listed per Agent.
 - **Signed-out pages** (sign in, sign up, MFA, reset, invite, the status page, and the shell's
   own loading and error states before the session is known): a centred `surface.panel` on the
   canvas with the wave mark, no top bar (`SignedOutFrame` in `auth/AuthLayout.tsx`). Form errors
@@ -186,7 +206,7 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
 | `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
-| `Badge` | Live, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Working, Check failed, Version chip |
+| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, Version chip |
 | `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
 | `EmptyState`, `Skeleton` | Empty, error and loading states |
 | `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
@@ -237,6 +257,7 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `kind` | Words | Colour |
 | --- | --- | --- |
 | `live` | Live | `accent-soft` with an accent dot |
+| `current` | Current (the Current Version of the Project Instructions) | `accent-soft` |
 | `draft` | Draft | `sand` |
 | `notLive` | Not live | `sunken`, `muted` |
 | `archived` | Archived | `sunken`, `muted` |
@@ -244,6 +265,7 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `budgetSpent` | Budget spent | `danger-soft`, `danger` |
 | `blocked` | Blocked by guardrail | `danger-soft`, `danger` |
 | `lowSample` | Low sample | `flag-soft`, `flag` |
+| `flagged` | Flagged (a Chunk the ingestion scan flagged) | `flag-soft`, `flag` |
 | `checkPassed` | Working (a Provider Credential's last check passed) | `accent-soft` with an accent dot |
 | `checkFailed` | Check failed (the reason goes beside it) | `danger-soft`, `danger` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
@@ -281,7 +303,8 @@ when equal). `diffLines(before, after)` gives the same diff as data.
 ### Selections and lists
 
 - `BulkBar`: appears above a table while rows are selected: "3 Agents selected", the actions, Clear
-  selection. A toolbar: arrow keys move between its buttons, Escape clears.
+  selection. A toolbar: arrow keys move between its buttons, Escape clears. A `Menu` in the bar
+  (Add Tag ▾) keeps its own keys while open.
 - `Segmented`: a few mutually exclusive options side by side (Visitors / Playground / All). A radio
   group with one Tab stop; arrows move and choose, Home and End jump.
 - `Pagination`: Previous, page numbers (first, last, current and its neighbours, "…" between) and

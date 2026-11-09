@@ -195,22 +195,3 @@ export function useRevertInstructions(organisationId: string, projectId: string)
     },
   });
 }
-
-export type InstructionsDiff = Schemas["InstructionsDiffOut"];
-
-/**
- * The line diff of the Instructions from one side to the other: the Draft (`draft`) or a
- * Version's ID. It is fetched again when the Versions or the saved Draft's revision (`draft`) change.
- */
-export function useInstructionsDiff(organisationId: string, projectId: string, sides: { from: string; to: string; draft: number | undefined }) {
-  return useQuery({
-    queryKey: [...versionsKey(organisationId, projectId), "diff", sides],
-    queryFn: async (): Promise<InstructionsDiff> => {
-      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/projects/{project_id}/instructions/diff", {
-        params: { path: { organisation_id: organisationId, project_id: projectId }, query: { from: sides.from, to: sides.to } },
-      });
-      if (!data) throw failed(response, error);
-      return data;
-    },
-  });
-}

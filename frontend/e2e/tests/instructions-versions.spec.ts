@@ -19,14 +19,18 @@ test.describe("Project Instructions Versions", () => {
     const publishForm = page.getByRole("form", { name: "Publish Instructions" });
     await page.getByRole("button", { name: "Markdown" }).click();
     const source = page.getByRole("textbox", { name: "Project Instructions (Markdown)" });
-    for (const [markdown, note, published] of [
-      ["Be kind.", "First rules", "Published v1"],
-      ["Be curt.", "Shorter answers", "Published v2"],
+    for (const [markdown, note, version] of [
+      ["Be kind.", "First rules", "v1"],
+      ["Be curt.", "Shorter answers", "v2"],
     ] as const) {
       await source.fill(markdown);
       await publishForm.getByRole("textbox", { name: "Note" }).fill(note);
       await publishForm.getByRole("button", { name: "Publish Instructions" }).click();
-      await expect(publishForm.getByRole("status")).toHaveText(published, { timeout: 15_000 });
+      // Publishing offers the rollout in a Dialog; this Project has no Agents to roll out to.
+      const rollout = page.getByRole("dialog", { name: `Roll out Instructions ${version}` });
+      await expect(rollout).toContainText("This Project has no Agents yet.", { timeout: 15_000 });
+      await rollout.getByRole("button", { name: "Not now" }).click();
+      await expect(publishForm.getByRole("status")).toHaveText(`Published ${version}`, { timeout: 15_000 });
     }
 
     const history = page.getByRole("list", { name: "Instructions Versions" });
@@ -34,12 +38,14 @@ test.describe("Project Instructions Versions", () => {
     await expect(history.getByRole("listitem")).toHaveCount(2);
     await expect(history.getByRole("listitem", { name: "v2" })).toContainText("Shorter answers");
     await expect(history.getByRole("listitem", { name: "v2" }).getByText("Current")).toBeVisible();
+    // The Draft compares with the Current Version by default, in the design system's Diff.
+    await expect(page.getByRole("region", { name: "Compare" }).getByText("No differences: v2 and the Draft are the same.")).toBeVisible();
     await history.getByRole("listitem", { name: "v1" }).getByText("Show the Instructions").click();
     await expect(history.getByRole("listitem", { name: "v1" }).getByText("Be kind.")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     await page.getByRole("button", { name: "Revert to v1" }).click();
-    await page.getByRole("button", { name: "Yes, revert to v1" }).click();
+    await page.getByRole("alertdialog", { name: "Revert to v1?" }).getByRole("button", { name: "Yes, revert to v1" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Reverted to v1" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Current Version: v1.")).toBeVisible();
     await expect(history.getByRole("listitem", { name: "v1" }).getByText("Current")).toBeVisible();

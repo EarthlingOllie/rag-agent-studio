@@ -154,7 +154,7 @@ export function Pagination({
 /**
  * The bar that appears while rows are selected: how many, the actions for them, and Clear
  * selection. It is a toolbar: the arrow keys move between its buttons (Home and End jump) and
- * Escape clears the selection.
+ * Escape clears the selection. A `Menu` in the bar keeps its own keys while it is open.
  */
 export function BulkBar({
   count,
@@ -172,6 +172,8 @@ export function BulkBar({
   if (count === 0) return null;
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // A control inside the bar that handled the key itself (a Menu opening, moving or closing) keeps it.
+    if (event.defaultPrevented) return;
     if (event.key === "Escape") {
       event.preventDefault();
       onClear();

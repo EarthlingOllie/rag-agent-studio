@@ -145,7 +145,7 @@ export function useUploadLimits(organisationId: string, projectId: string) {
 
 export const UNSUPPORTED_TYPE = "This file type isn't supported. Upload a PDF, DOCX, PPTX, HTML, Markdown or TXT file.";
 
-function quotaMessage(quota: number): string {
+export function quotaMessage(quota: number): string {
   return `This Project has reached its quota of ${String(quota)} ${quota === 1 ? "Document" : "Documents"}. Delete a Document, or ask an Owner to raise the quota.`;
 }
 
@@ -443,8 +443,7 @@ export function useRetryDocument(organisationId: string, projectId: string) {
 }
 
 /** What to tell the Member about a failed retry: the API's reason, or a retry hint. */
-export function retryFailure(error: Error | null): string | undefined {
-  if (error === null) return undefined;
+export function retryFailure(error: Error): string {
   // Every failed retry is a ProjectRequestError (see `failed`).
   return (error as ProjectRequestError).detail ?? RETRY_FAILED;
 }
@@ -523,8 +522,7 @@ export function useClearChunkFlag(organisationId: string, projectId: string, doc
 export const CLEAR_FLAG_FAILED = "The flag could not be cleared. Try again shortly.";
 
 /** What to tell the Editor about a failed clear: the API's reason, or a retry hint. */
-export function clearFlagFailure(error: Error | null): string | undefined {
-  if (error === null) return undefined;
+export function clearFlagFailure(error: Error): string {
   // Every failed clear is a ProjectRequestError (see `failed`).
   return (error as ProjectRequestError).detail ?? CLEAR_FLAG_FAILED;
 }

@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
 import { openSettings } from "../fixtures/agent";
+import { openTags } from "../fixtures/documents";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -40,7 +41,7 @@ test.describe("Tag scoping", () => {
     // One Project holds HR and Sales material.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
     await page
-      .getByLabel("Choose files to upload")
+      .getByLabel("Upload", { exact: true })
       .setInputFiles([
         markdown("leave-policy.md", "# Leave\n\nEveryone gets 25 days of annual leave a year."),
         markdown("price-list.md", "# Prices\n\nModel SKU-4471 ships with a two-year warranty."),
@@ -88,7 +89,7 @@ test.describe("Tag scoping", () => {
 
     // Deleting HR warns that the HR helper uses it; once deleted, the Draft has no Tags.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    const tags = page.getByRole("region", { name: "Tags" });
+    const tags = await openTags(page);
     await tags.getByRole("button", { name: "Delete HR" }).click();
     await expect(tags.getByRole("alert")).toHaveText(
       "1 Agent is limited to HR: HR helper. Deleting it takes it out of their Drafts; an Agent left with no Tags searches every Document.",

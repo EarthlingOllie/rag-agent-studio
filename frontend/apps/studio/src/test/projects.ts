@@ -89,8 +89,6 @@ export function fakeProjectsApi(
     versions?: Record<string, InstructionsHistory>;
     /** The Agents a revert reports as still pinned to the reverted Version; none when left out. */
     revertCandidates?: Schemas["BulkRevertCandidateOut"][];
-    /** Refuses every Instructions diff with this status. */
-    diffStatus?: number;
   } = {},
 ) {
   let projects = [...(options.projects ?? [hrProject, salesProject, oldProject])];
@@ -216,26 +214,6 @@ export function fakeProjectsApi(
       });
       versions[projectId] = { current_version_id: version.id, versions: [version, ...history.versions] };
       return HttpResponse.json(version, { status: 201 });
-    }),
-    http.get("*/api/organisations/:organisationId/projects/:projectId/instructions/diff", ({ params, request }) => {
-      const projectId = params.projectId as string;
-      const query = new URL(request.url).searchParams;
-      if (options.diffStatus) return HttpResponse.json({ detail: "Boom" }, { status: options.diffStatus });
-      const side = (id: string) => {
-        const version = historyOf(projectId).versions.find((candidate) => candidate.id === id);
-        return {
-          side: version ? { kind: "version" as const, version: { id: version.id, number: version.number } } : { kind: "draft" as const, version: null },
-          lines: (version ? version.markdown : (instructions[projectId] ?? "")).split("\n").filter(Boolean),
-        };
-      };
-      const before = side(query.get("from") as string);
-      const after = side(query.get("to") as string);
-      // A simple line diff: lines on both sides are equal, the rest deleted or inserted.
-      const lines = [
-        ...before.lines.map((text) => ({ op: after.lines.includes(text) ? ("equal" as const) : ("delete" as const), text })),
-        ...after.lines.filter((text) => !before.lines.includes(text)).map((text) => ({ op: "insert" as const, text })),
-      ];
-      return HttpResponse.json({ from: before.side, to: after.side, lines });
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/instructions/revert", ({ params }) => {
       const projectId = params.projectId as string;

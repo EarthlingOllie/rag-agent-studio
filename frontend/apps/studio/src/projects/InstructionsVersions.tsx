@@ -1,15 +1,12 @@
 import { type SubmitEvent, useState } from "react";
 
-import { FormError } from "../auth/AuthLayout";
+import { Badge, button, ConfirmDialog, Diff, field, Notice, notice, surface, text } from "../design";
 import { formatTime } from "../settings/AuditPage";
-import { TextDiff } from "./AgentDiff";
 import {
   type DraftInstructions,
-  type InstructionsDiff,
   type InstructionsReverted,
   type InstructionsVersion,
   useInstructions,
-  useInstructionsDiff,
   useInstructionsVersions,
   useIsLatestInstructionsChange,
   usePublishInstructions,
@@ -17,7 +14,6 @@ import {
   StaleInstructionsError,
   versionFailure,
 } from "./instructions";
-import { BUTTON, INPUT } from "./ProjectsPage";
 
 type Target = { organisationId: string; projectId: string };
 
@@ -62,22 +58,25 @@ export function PublishInstructionsForm({
     );
   }
 
+  const failure = latest && !(publish.error instanceof StaleInstructionsError) ? versionFailure(publish.error) : undefined;
   return (
-    <form aria-label="Publish Instructions" onSubmit={onSubmit} className="space-y-2 rounded border border-field p-3">
-      <FormError message={latest && !(publish.error instanceof StaleInstructionsError) ? versionFailure(publish.error) : undefined} />
-      <label className="block">
-        Note
-        <input name="note" required maxLength={500} className={INPUT} />
-      </label>
-      <p className="text-sm text-muted">
-        Publishing saves the Draft and freezes it as a new Version, which becomes the Current Version that Agents are published with.
-      </p>
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={publish.isPending} className={BUTTON}>
+    <form aria-label="Publish Instructions" onSubmit={onSubmit} className="flex flex-col gap-3">
+      {failure !== undefined && <Notice tone="error">{failure}</Notice>}
+      <div>
+        <label htmlFor="publish-instructions-note" className={field.label}>
+          Note
+        </label>
+        <input id="publish-instructions-note" name="note" required maxLength={500} className={field.input} />
+        <p className={field.hint}>
+          Publishing saves the Draft and freezes it as a new Version, which becomes the Current Version that Agents are published with.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={publish.isPending} className={button.primary}>
           {publish.isPending ? "Publishing…" : "Publish Instructions"}
         </button>
         {publish.isSuccess && latest && (
-          <span role="status" className="text-sm text-muted">
+          <span role="status" className={text.muted}>
             Published v{publish.data.number}
           </span>
         )}
@@ -86,72 +85,83 @@ export function PublishInstructionsForm({
   );
 }
 
+/** One Version on the timeline: its chip, the Current badge, the note, who published it and when. */
 function VersionItem({ version, current }: { version: InstructionsVersion; current: boolean }) {
   return (
-    <li aria-label={`v${String(version.number)}`} className="space-y-1 border-t border-line py-2">
-      <div className="flex items-center gap-2">
-        <span className="font-semibold">v{version.number}</span>
-        {current && <span className="rounded bg-accent-soft px-2 text-sm text-accent-ink">Current</span>}
+    <li aria-label={`v${String(version.number)}`} className="relative pb-5 pl-7 last:pb-0">
+      <span
+        aria-hidden="true"
+        className={`absolute top-1.5 left-0 size-3 rounded-full border-2 ${current ? "border-accent bg-accent" : "border-field bg-surface"}`}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge kind="version" version={version.number} />
+        {current && <Badge kind="current" />}
+        <span className={text.small}>
+          {version.author ? version.author.name : "No author"} · {formatTime(version.created_at)}
+        </span>
       </div>
-      <p>{version.note}</p>
-      <p className="text-sm text-muted">
-        {version.author ? version.author.name : "No author"} · {formatTime(version.created_at)}
-      </p>
-      <details>
-        <summary className="cursor-pointer text-sm underline">Show the Instructions</summary>
-        <pre className="mt-1 whitespace-pre-wrap rounded bg-canvas p-2 text-sm">{version.markdown || "(empty)"}</pre>
+      <p className={`mt-1 ${text.body}`}>{version.note}</p>
+      <details className="mt-1">
+        <summary className={`cursor-pointer ${text.muted} hover:text-ink`}>Show the Instructions</summary>
+        <pre className="mt-2 rounded-xl bg-sunken p-3 font-mono text-[13px] whitespace-pre-wrap text-ink">{version.markdown || "(empty)"}</pre>
       </details>
     </li>
   );
 }
 
-/** Compares any two Instructions Versions, or one with the saved Draft, line by line. */
+/** Compares any two Instructions Versions, or one with the saved Draft, line by line with `Diff`. */
 function CompareInstructions({ organisationId, projectId, versions, currentId }: Target & { versions: InstructionsVersion[]; currentId: string | null }) {
   const draft = useInstructions(organisationId, projectId);
   // By default, what publishing the saved Draft would change.
   const [from, setFrom] = useState(currentId ?? "draft");
   const [to, setTo] = useState("draft");
-  const diff = useInstructionsDiff(organisationId, projectId, { from, to, draft: draft.data?.revision });
-  const name = (side: InstructionsDiff["from"]) => (side.version ? `v${String(side.version.number)}` : "the Draft");
+  const version = (side: string) => versions.find((each) => each.id === side) as InstructionsVersion;
+  const name = (side: string) => (side === "draft" ? "the Draft" : `v${String(version(side).number)}`);
   const picker = (id: string, label: string, value: string, onChange: (side: string) => void) => (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className={field.label}>
         {label}
       </label>
       <select
         id={id}
-        className={INPUT}
+        className={field.select}
         value={value}
         onChange={(event) => {
           onChange(event.target.value);
         }}
       >
         <option value="draft">Draft (saved)</option>
-        {versions.map((version) => (
-          <option key={version.id} value={version.id}>
-            v{version.number}
-            {version.id === currentId ? " (Current)" : ""}
+        {versions.map((each) => (
+          <option key={each.id} value={each.id}>
+            v{each.number}
+            {each.id === currentId ? " (Current)" : ""}
           </option>
         ))}
       </select>
     </div>
   );
   let body;
-  if (diff.isPending) body = <p className="text-sm text-muted">Comparing…</p>;
-  else if (diff.isError) body = <p className="text-sm text-muted">The comparison could not be loaded. Try again shortly.</p>;
-  else if (diff.data.lines.every((line) => line.op === "equal"))
-    body = (
-      <p className="text-sm text-muted">
-        No differences: {name(diff.data.from)} and {name(diff.data.to)} are the same.
-      </p>
-    );
-  else body = <TextDiff lines={diff.data.lines} label={`Changes from ${name(diff.data.from)} to ${name(diff.data.to)}`} />;
+  if (draft.isError) body = <p className={text.muted}>The comparison could not be loaded. Try again shortly.</p>;
+  else if (draft.isPending) body = <p className={text.muted}>Comparing…</p>;
+  else {
+    const markdown = (side: string) => (side === "draft" ? draft.data.markdown : version(side).markdown);
+    const before = markdown(from);
+    const after = markdown(to);
+    body =
+      before === after ? (
+        <p className={text.muted}>
+          No differences: {name(from)} and {name(to)} are the same.
+        </p>
+      ) : (
+        <Diff label={`Changes from ${name(from)} to ${name(to)}`} before={before} after={after} />
+      );
+  }
   return (
-    <section aria-labelledby="compare-instructions-heading" className="space-y-2">
-      <h3 id="compare-instructions-heading" className="font-semibold">
+    <section aria-labelledby="compare-instructions-heading" className={`flex flex-col gap-3 ${surface.panel}`}>
+      <h4 id="compare-instructions-heading" className={text.subheading}>
         Compare
-      </h3>
-      <div className="grid gap-2 sm:grid-cols-2">
+      </h4>
+      <div className="grid gap-3 sm:grid-cols-2">
         {picker("compare-instructions-from", "From", from, setFrom)}
         {picker("compare-instructions-to", "To", to, setTo)}
       </div>
@@ -179,17 +189,32 @@ export function InstructionsVersions({
   const current = list.find((version) => version.id === currentId);
   const previous = current && list.find((version) => version.id === current.previous_version_id);
 
+  const failure = latest ? versionFailure(revert.error) : undefined;
   let revertControl = null;
   if (previous && !archived) {
     const label = `v${String(previous.number)}`;
-    revertControl = confirming ? (
-      <div role="group" aria-label={`Revert to ${label}?`} className="flex flex-wrap items-center gap-2">
-        <span>
-          Revert the Current Version to {label}? Agents published from now on use {label}. The Draft isn't changed.
-        </span>
+    revertControl = (
+      <>
         <button
           type="button"
           onClick={() => {
+            revert.reset();
+            setConfirming(true);
+          }}
+          className={button.secondary}
+        >
+          Revert to {label}
+        </button>
+        <ConfirmDialog
+          open={confirming}
+          destructive
+          title={`Revert to ${label}?`}
+          confirmLabel={`Yes, revert to ${label}`}
+          busy={revert.isPending}
+          onCancel={() => {
+            setConfirming(false);
+          }}
+          onConfirm={() => {
             revert.mutate(undefined, {
               onSuccess: onReverted,
               onSettled: () => {
@@ -197,51 +222,31 @@ export function InstructionsVersions({
               },
             });
           }}
-          disabled={revert.isPending}
-          className="rounded bg-danger px-2 py-1 text-on-danger"
         >
-          Yes, revert to {label}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setConfirming(false);
-          }}
-          className="underline"
-        >
-          Cancel
-        </button>
-      </div>
-    ) : (
-      <button
-        type="button"
-        onClick={() => {
-          revert.reset();
-          setConfirming(true);
-        }}
-        className={BUTTON}
-      >
-        Revert to {label}
-      </button>
+          Revert the Current Version to {label}? Agents published from now on use {label}. The Draft isn&apos;t changed.
+        </ConfirmDialog>
+      </>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <p>
-        {current
-          ? `Current Version: v${String(current.number)}.`
-          : "Not published yet. Publish the Draft to make v1, the Current Version."}
-      </p>
-      <FormError message={latest ? versionFailure(revert.error) : undefined} />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className={text.body}>
+          {current
+            ? `Current Version: v${String(current.number)}.`
+            : "Not published yet. Publish the Draft to make v1, the Current Version."}
+        </p>
+        {revertControl}
+      </div>
+      {failure !== undefined && <Notice tone="error">{failure}</Notice>}
       {revert.isSuccess && latest && (
-        <p role="status" className="text-sm text-muted">
+        <p role="status" className={notice.success}>
           Reverted to v{revert.data.number}
         </p>
       )}
-      {revertControl}
       {list.length > 0 && (
-        <ol aria-label="Instructions Versions">
+        <ol aria-label="Instructions Versions" className="relative before:absolute before:top-2 before:bottom-2 before:left-[5px] before:w-0.5 before:bg-line">
           {list.map((version) => (
             <VersionItem key={version.id} version={version} current={version.id === currentId} />
           ))}
