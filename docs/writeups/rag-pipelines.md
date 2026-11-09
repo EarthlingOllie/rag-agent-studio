@@ -36,4 +36,4 @@ flowchart TB
 - **Every answer has a Trace:** what was retrieved, cited and filtered out (and why), plus model, tokens, cost and latency.
 - **Versioned Agents.** Prompt, model and retrieval settings are frozen into Versions that can be compared side by side and reverted with one click.
 
-<sub>Design per [ADR-0001](../adr/0001-pgvector-hybrid-search.md), [ADR-0002](../adr/0002-local-embeddings-by-default.md), [spec 03](../specs/03-projects-knowledge-base-spec.md) and [spec 04](../specs/04-agents-retrieval-playground-spec.md); not yet implemented.</sub>
+<sub>Design per [ADR-0001](../adr/0001-pgvector-hybrid-search.md), [ADR-0002](../adr/0002-local-embeddings-by-default.md), [spec 03](../specs/03-projects-knowledge-base-spec.md) and [spec 04](../specs/04-agents-retrieval-playground-spec.md); built on the `candidate` branch.</sub>

@@ -32,4 +32,4 @@ flowchart LR
 
 **Being honest about limits:** no layer is perfect, and an encoded leak can only be flagged after it has streamed. The claim is a small blast radius, independent layers, and measured resilience.
 
-<sub>Design per [ADR-0007](../adr/0007-layered-prompt-injection-defence.md) and [spec 08](../specs/08-guardrails-evaluation-spec.md); not yet implemented.</sub>
+<sub>Design per [ADR-0007](../adr/0007-layered-prompt-injection-defence.md) and [spec 08](../specs/08-guardrails-evaluation-spec.md); built on the `candidate` branch.</sub>
