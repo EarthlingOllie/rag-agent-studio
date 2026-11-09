@@ -1,0 +1,11 @@
+$ sh -c cd frontend && SHOTS_DIR=../docs/tickets/11-studio-design/11-10-evidence/screenshots pnpm exec vitest run --config ../docs/tickets/11-studio-design/11-10-evidence/shots.config.mjs (at e469dc0)
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-10/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  15:56:03
+   Duration  94.43s (tests 99%, import 1%)
+
+exit 0

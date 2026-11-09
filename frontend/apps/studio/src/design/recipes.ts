@@ -38,6 +38,10 @@ export const field = {
   textarea:
     "mt-1.5 block w-full rounded-xl border border-field bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted disabled:bg-sunken aria-[invalid=true]:border-danger",
   checkbox: "size-4 rounded accent-accent",
+  /** A filter's label in a toolbar (Agent, Version, From): small, above its `pill` control. */
+  filter: "flex flex-col text-xs font-medium text-ink-2",
+  /** A select or date filter in a toolbar: pill-shaped, button height. */
+  pill: "mt-1 block h-9 rounded-full border border-line bg-surface px-3.5 text-sm text-ink disabled:bg-sunken disabled:text-muted",
   /** A search box or filter in a toolbar: pill-shaped, icon inside. */
   search:
     "flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-sm text-muted focus-within:border-accent",

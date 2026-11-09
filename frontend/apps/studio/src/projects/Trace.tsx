@@ -1,9 +1,8 @@
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 import { Icon, surface } from "../design";
 import { type Trace, instructionsUsed, useTrace } from "./agents";
-import { BUTTON } from "./ProjectsPage";
 
 type TraceChunk = Trace["chunks"][number];
 type GuardrailOutcome = Trace["guardrail_outcomes"][number];
@@ -192,22 +191,24 @@ function TraceBody({ trace }: { trace: Trace }) {
 }
 
 /** A Trace however it is loaded: loading, failed, or its body. */
-function TraceContent({ trace }: { trace: UseQueryResult<Trace> }) {
+export function TraceContent({ trace }: { trace: UseQueryResult<Trace> }) {
   if (trace.isError) return <p role="alert">The Trace could not be loaded. Try again shortly.</p>;
   if (trace.data === undefined) return <p role="status">Loading the Trace…</p>;
   return <TraceBody trace={trace.data} />;
 }
 
-function LoadedTrace({ path }: { path: TracePath }) {
+/** A Playground answer's Trace, read through the Agent. */
+export function PlaygroundTrace({ path }: { path: TracePath }) {
   return <TraceContent trace={useTrace(path)} />;
 }
 
 /**
- * Why a Playground answer came out as it did, folded under the answer: the summary row shows its
- * usage; opening it loads the model, cost, latency, Guardrails and the Chunks retrieved.
+ * Why an answer came out as it did, folded under the answer (in the Playground and in a
+ * Conversation's transcript): the summary row shows its usage; the `children` that load the Trace
+ * (the model, cost, latency, Guardrails and the Chunks retrieved) are rendered the first time it
+ * opens, and kept while it is folded again.
  */
-export function TraceFold({ path, summary }: { path: TracePath; summary: string }) {
-  // Loaded the first time it opens, and kept while it is folded again.
+export function TraceFold({ summary, children }: { summary: string; children: ReactNode }) {
   const [opened, setOpened] = useState(false);
   return (
     <details
@@ -222,44 +223,7 @@ export function TraceFold({ path, summary }: { path: TracePath; summary: string 
         <span className="font-medium text-ink">Trace</span>
         <span className="font-mono text-xs text-muted">{summary}</span>
       </summary>
-      <div className="overflow-x-auto border-t border-line-soft px-4 py-4">{opened && <LoadedTrace path={path} />}</div>
+      <div className="overflow-x-auto border-t border-line-soft px-4 py-4">{opened && children}</div>
     </details>
-  );
-}
-
-/** The Trace drawer around a Trace however it is loaded (the Playground's or a Conversation's). */
-export function TraceDrawerFrame({
-  trace,
-  onClose,
-}: {
-  trace: UseQueryResult<Trace>;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onClose]);
-
-  return (
-    <aside
-      role="dialog"
-      aria-labelledby="trace-heading"
-      className="fixed inset-y-0 right-0 z-10 w-full max-w-xl space-y-4 overflow-y-auto border-l border-line bg-surface p-6 shadow-lg"
-    >
-      <div className="flex items-center justify-between">
-        <h2 id="trace-heading" className="text-lg font-semibold">
-          Trace
-        </h2>
-        <button type="button" onClick={onClose} className={BUTTON} autoFocus>
-          Close
-        </button>
-      </div>
-      <TraceContent trace={trace} />
-    </aside>
   );
 }

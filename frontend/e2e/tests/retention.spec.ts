@@ -98,16 +98,15 @@ test.describe("Retention and tombstones", () => {
     await page.getByRole("link", { name: "How many days of annual leave do I get?" }).click();
     const messages = page.getByRole("list", { name: "Messages" });
     const reply = messages.getByRole("listitem", { name: "HR helper" });
-    await reply.getByRole("button", { name: "Trace" }).click();
-    const drawer = page.getByRole("dialog", { name: "Trace" });
-    const chunks = drawer.getByRole("table", { name: "Retrieved Chunks" });
+    await reply.getByText("Trace", { exact: true }).click();
+    const trace = reply.getByRole("group", { name: "Trace" });
+    const chunks = trace.getByRole("table", { name: "Retrieved Chunks" });
     await expect(chunks.getByRole("cell", { name: "Chunk from deleted Document leave-policy.md" })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await drawer.getByRole("button", { name: "Close" }).click();
 
     // The Owner deletes the Conversation on the Visitor's request, after confirming.
     await page.getByRole("button", { name: "Delete Conversation" }).click();
-    await expect(page.getByRole("group", { name: "Delete Conversation" })).toContainText("Its numbers stay in the metrics.");
+    await expect(page.getByRole("alertdialog", { name: "Delete Conversation" })).toContainText("Its numbers stay in the metrics.");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await page.getByRole("button", { name: "Yes, delete it" }).click();
     await expect(page.getByText(/^Deleted on request .* Its numbers stay in the metrics\.$/)).toBeVisible();
@@ -123,7 +122,6 @@ test.describe("Retention and tombstones", () => {
     const audit = await page.request.get(`${organisation}/audit-events`, { params: { action: "conversation.deleted" } });
     const { items } = (await audit.json()) as { items: { target: { type: string } }[] };
     expect(items.map((item) => item.target.type)).toEqual(["conversation"]);
-    await page.getByRole("link", { name: "All Conversations" }).click();
-    await expect(page.getByRole("table", { name: "Conversations" }).getByRole("link", { name: "(deleted on request)" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Conversations" }).getByRole("link", { name: "(deleted on request)" })).toBeVisible();
   });
 });

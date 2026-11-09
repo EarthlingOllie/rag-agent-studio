@@ -60,12 +60,6 @@ test.describe("Time series", () => {
     const section = page.getByRole("region", { name: "Over time" });
     await expect(section.getByLabel("Metric")).toHaveValue("conversations");
     await expect(section.getByLabel("Granularity")).toHaveValue("day");
-    const table = section.getByRole("table", { name: "Conversations, the numbers behind the chart" });
-    // The last 30 days, one row each (and the header); today's has the Visitor's Conversation.
-    await expect(table.getByRole("row")).toHaveCount(31, { timeout: 15_000 });
-    const cells = (row: number) => table.getByRole("row").nth(row).getByRole("cell");
-    await expect(cells(30)).toHaveText(["1", "1"]);
-    await expect(cells(29)).toHaveText(["0", "0"]);
     const changes = section.getByRole("list", { name: "Live Version changes" }).getByRole("listitem");
     await expect(changes).toHaveCount(3);
     await expect(changes.nth(0)).toContainText("v1 published");
@@ -76,6 +70,14 @@ test.describe("Time series", () => {
     await expect(section.locator(".recharts-reference-line")).toContainText("v1, v2, v1");
     await expect(section.getByRole("note")).toHaveCount(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // The Table view: the last 30 days, one row each (and the header); today's has the Visitor's Conversation.
+    await section.getByRole("radio", { name: "Table" }).click();
+    const table = section.getByRole("table", { name: "Conversations, the numbers behind the chart" });
+    await expect(table.getByRole("row")).toHaveCount(31, { timeout: 15_000 });
+    const cells = (row: number) => table.getByRole("row").nth(row).getByRole("cell");
+    await expect(cells(30)).toHaveText(["1", "1"]);
+    await expect(cells(29)).toHaveText(["0", "0"]);
 
     // By month: the range's months, the last holding the Conversation.
     await section.getByLabel("Granularity").selectOption("Month");
@@ -91,6 +93,8 @@ test.describe("Time series", () => {
     await expect(section.getByRole("note")).toContainText("Documents changed during this period: 1 added, replaced or processed again.", {
       timeout: 15_000,
     });
+    // The chart draws the period as a Documents-changed band.
+    await expect(section.getByText("Documents changed", { exact: true })).toBeVisible();
     await expect(section.getByRole("note")).toContainText("may confound the comparison");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });

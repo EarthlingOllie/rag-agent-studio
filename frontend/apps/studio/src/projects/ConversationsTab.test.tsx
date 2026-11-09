@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { agentVersion, fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
@@ -37,13 +37,28 @@ function setUp(options: Parameters<typeof fakeConversationsApi>[0] = {}, session
   return fakeConversationsApi(options);
 }
 
-/** The list's rows as the Editor reads them, one array of cell texts per row. */
+/**
+ * The list's Conversations as the Editor reads them, one array per Conversation: when it started,
+ * the Agent, with whom, the Versions that answered, Messages, Message Feedback, Conversation
+ * Rating, Guardrail events, then the first question (its link).
+ */
 async function rows() {
-  const table = await screen.findByRole("table", { name: "Conversations" });
-  return within(table)
-    .getAllByRole("row")
-    .slice(1)
-    .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent));
+  const list = await screen.findByRole("list", { name: "Conversations" });
+  return within(list)
+    .getAllByRole("listitem")
+    .map((item) => [
+      ...within(item)
+        .getAllByRole("definition")
+        .map((fact) => fact.textContent),
+      within(item).getByRole("link").textContent,
+    ]);
+}
+
+/** Opens a reply's folded Trace. */
+async function openTrace(reply: HTMLElement) {
+  const trace = within(reply).getByRole("group", { name: "Trace" });
+  await userEvent.click(within(trace).getByText("Trace"));
+  return trace;
 }
 
 const filters = () => screen.getByRole("group", { name: "Filter Conversations" });
@@ -57,11 +72,11 @@ test("the Conversations tab lists Visitor and Playground Conversations, Playgrou
     ["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Not rated", "None", "Testing leave"],
     ["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "4 of 5", "2 events", "How much leave do I get?"],
   ]);
-  const table = screen.getByRole("table", { name: "Conversations" });
-  expect(within(table).getByText("Playground")).toHaveAccessibleDescription(
+  const list = screen.getByRole("list", { name: "Conversations" });
+  expect(within(list).getByText("Playground")).toHaveAccessibleDescription(
     "Tried in the Playground by an Editor; left out of analytics.",
   );
-  expect(within(table).getByRole("link", { name: "Testing leave" })).toHaveAttribute(
+  expect(within(list).getByRole("link", { name: "Testing leave" })).toHaveAttribute(
     "href",
     `${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`,
   );
@@ -82,7 +97,7 @@ test("the list is filtered by Agent, Version, dates and Playground", async () =>
   await userEvent.selectOptions(version, "v1");
   await userEvent.type(within(filters()).getByLabelText("From (UTC)"), "2026-11-06");
   await userEvent.type(within(filters()).getByLabelText("To (UTC)"), "2026-11-06");
-  await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Playground only");
+  await userEvent.click(within(filters()).getByRole("radio", { name: "Playground" }));
 
   expect(await rows()).toEqual([["2026-11-07 08:00 UTC", "HR helper", "Playground", "Draft", "2", "None", "Not rated", "None", "Testing leave"]]);
   expect(Object.fromEntries(queries.at(-1) ?? [])).toEqual({
@@ -96,7 +111,7 @@ test("the list is filtered by Agent, Version, dates and Playground", async () =>
     page_size: "25",
   });
 
-  await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Visitors only");
+  await userEvent.click(within(filters()).getByRole("radio", { name: "Visitors" }));
   expect(await rows()).toEqual([["2026-11-06 10:15 UTC", "HR helper", "Visitor", "v1, v2", "4", "1 up · 1 down", "4 of 5", "2 events", "How much leave do I get?"]]);
   expect(queries.at(-1)?.get("playground")).toBe("false");
 
@@ -124,8 +139,8 @@ test("a Project with no Conversations says so", async () => {
   setUp({ conversations: [] });
   renderStudio(conversationsTab);
 
-  expect(await screen.findByText(/No Conversations yet/)).toBeInTheDocument();
-  expect(screen.queryByRole("table", { name: "Conversations" })).not.toBeInTheDocument();
+  expect(await screen.findByText("Visitors' Conversations with this Project's Agents, and the Playground's, will appear here.")).toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "Conversations" })).not.toBeInTheDocument();
 });
 
 test("a list that can't be loaded says so", async () => {
@@ -152,7 +167,7 @@ test("a long list comes in pages", async () => {
   // A new filter starts from the first page again.
   await userEvent.click(screen.getByRole("button", { name: "Next page" }));
   await screen.findByText("Page 2 of 2 · 30 Conversations");
-  await userEvent.selectOptions(within(filters()).getByLabelText("Show"), "Visitors only");
+  await userEvent.click(within(filters()).getByRole("radio", { name: "Visitors" }));
   expect(await screen.findByText("Page 1 of 2 · 30 Conversations")).toBeInTheDocument();
 });
 
@@ -163,36 +178,33 @@ test("one Conversation is counted as one", async () => {
   expect(await screen.findByText("Page 1 of 1 · 1 Conversation")).toBeInTheDocument();
 });
 
-test("an Editor opens a Visitor Conversation and reads each reply's Trace in the drawer", async () => {
+test("an Editor opens a Visitor Conversation beside the list and reads each reply's Trace under it", async () => {
   const { traceReads } = setUp();
   renderStudio(`${conversationsTab}?agent=${hrHelper.id}`);
   await userEvent.click(await screen.findByRole("link", { name: "How much leave do I get?" }));
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Conversation with HR helper" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 3, name: "Conversation with HR helper" })).toBeInTheDocument();
   expect(screen.getByText("Visitor Conversation · started 2026-11-06 10:15 UTC · last active 2026-11-06 10:20 UTC")).toBeInTheDocument();
   const messages = screen.getByRole("list", { name: "Messages" });
   const items = within(messages).getAllByRole("listitem");
   expect(items.map((item) => item.getAttribute("aria-label"))).toEqual(["Visitor", "HR helper", "Visitor", "HR helper"]);
   expect(items[0]).toHaveTextContent("How much leave do I get?");
   expect(items[1]).toHaveTextContent("Twenty-five days.");
-  expect(items[1]).toHaveTextContent("Agent Version v1");
-  expect(items[3]).toHaveTextContent("Agent Version v2 · fallback reply");
+  expect(within(items[1] as HTMLElement).getByLabelText("Version 1")).toBeInTheDocument();
+  expect(within(items[3] as HTMLElement).getByLabelText("Version 2")).toBeInTheDocument();
+  expect(items[3]).toHaveTextContent("Fallback reply");
   // Questions have no Trace.
-  expect(within(items[0] as HTMLElement).queryByRole("button", { name: "Trace" })).not.toBeInTheDocument();
+  expect(within(items[0] as HTMLElement).queryByRole("group", { name: "Trace" })).not.toBeInTheDocument();
 
-  await userEvent.click(within(items[1] as HTMLElement).getByRole("button", { name: "Trace" }));
+  const trace = await openTrace(items[1] as HTMLElement);
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
-  const answeredBy = await within(drawer).findByText("Answered by");
+  const answeredBy = await within(trace).findByText("Answered by");
   expect(answeredBy.nextElementSibling).toHaveTextContent("Agent Version v1");
-  expect(within(drawer).getByText("Instructions").nextElementSibling).toHaveTextContent("Pinned by Agent Version v1");
-  expect(within(drawer).getByRole("table", { name: "Retrieved Chunks" })).toBeInTheDocument();
+  expect(within(trace).getByText("Instructions").nextElementSibling).toHaveTextContent("Pinned by Agent Version v1");
+  expect(within(trace).getByRole("table", { name: "Retrieved Chunks" })).toBeInTheDocument();
   expect(traceReads).toEqual([`${VISITOR_CONVERSATION_ID}/${VISITOR_REPLY_ID}`]);
-  await userEvent.click(within(drawer).getByRole("button", { name: "Close" }));
-  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
 
-  // Back to the list, with the filters it had.
-  await userEvent.click(screen.getByRole("link", { name: "All Conversations" }));
+  // The list stays beside it, with the filters it had.
   expect(await rows()).toHaveLength(2);
   expect(within(filters()).getByLabelText("Agent")).toHaveValue(hrHelper.id);
 });
@@ -210,17 +222,11 @@ test("a Playground Conversation is flagged, and its replies' Traces say the Draf
   expect(items.map((item) => item.getAttribute("aria-label"))).toEqual(["Editor", "HR helper"]);
   expect(items[1]).toHaveTextContent("Draft");
 
-  await userEvent.click(within(items[1] as HTMLElement).getByRole("button", { name: "Trace" }));
+  const trace = await openTrace(items[1] as HTMLElement);
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
-  expect((await within(drawer).findByText("Answered by")).nextElementSibling).toHaveTextContent("Draft");
-  expect(within(drawer).getByText("Instructions").nextElementSibling).toHaveTextContent("Draft");
+  expect((await within(trace).findByText("Answered by")).nextElementSibling).toHaveTextContent("Draft");
+  expect(within(trace).getByText("Instructions").nextElementSibling).toHaveTextContent("Draft");
   expect(traceReads).toEqual([`${PLAYGROUND_CONVERSATION_ID}/${PLAYGROUND_REPLY_ID}`]);
-  // Other keys leave the drawer open; Escape closes it.
-  await userEvent.keyboard("a");
-  expect(screen.getByRole("dialog", { name: "Trace" })).toBeInTheDocument();
-  await userEvent.keyboard("{Escape}");
-  expect(screen.queryByRole("dialog", { name: "Trace" })).not.toBeInTheDocument();
 });
 
 test("a Trace that can't be loaded says so", async () => {
@@ -228,10 +234,9 @@ test("a Trace that can't be loaded says so", async () => {
   renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
   const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
 
-  await userEvent.click(within(items[1] as HTMLElement).getByRole("button", { name: "Trace" }));
+  const trace = await openTrace(items[1] as HTMLElement);
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
-  expect(await within(drawer).findByRole("alert")).toHaveTextContent("The Trace could not be loaded.");
+  expect(await within(trace).findByRole("alert")).toHaveTextContent("The Trace could not be loaded.");
 });
 
 test("a Conversation that doesn't exist says so", async () => {
@@ -239,17 +244,26 @@ test("a Conversation that doesn't exist says so", async () => {
   renderStudio(`${conversationsTab}/c7000000-0000-4000-8000-00000000ffff`);
 
   expect(await screen.findByRole("alert")).toHaveTextContent("The Conversation could not be found.");
-  expect(screen.getByRole("link", { name: "All Conversations" })).toHaveAttribute("href", conversationsTab);
+  // The list is still beside it.
+  expect(await rows()).toHaveLength(2);
 });
 
-test("an Agent page links to that Agent's Conversations", async () => {
-  setUp({ conversations: [playgroundConversation] });
+test("an Agent page's Conversations view lists that Agent's Conversations", async () => {
+  const { queries } = setUp({ conversations: [playgroundConversation] });
   renderStudio(`${projectPage}/agents/${hrHelper.id}`);
 
   await openSection("Agent views", "Conversations");
 
   expect(await rows()).toHaveLength(1);
-  expect(within(filters()).getByLabelText("Agent")).toHaveValue(hrHelper.id);
+  expect(queries.at(-1)?.get("agent_id")).toBe(hrHelper.id);
+});
+
+test("an Agent with no Conversations says so in its view", async () => {
+  setUp({ conversations: [] });
+  renderStudio(`${projectPage}/agents/${hrHelper.id}/conversations`);
+
+  expect(await screen.findByText("Visitors' Conversations with this Agent, and the Playground's, will appear here.")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 4, name: "Choose a Conversation" })).toBeInTheDocument();
 });
 
 test("a Conversation where nothing was asked yet still opens from the list", async () => {
@@ -470,7 +484,7 @@ test("an Owner deletes a Conversation on request after confirming, and its text 
   await screen.findByRole("list", { name: "Messages" });
 
   await userEvent.click(screen.getByRole("button", { name: "Delete Conversation" }));
-  const confirm = screen.getByRole("group", { name: "Delete Conversation" });
+  const confirm = screen.getByRole("alertdialog", { name: "Delete Conversation" });
   expect(confirm).toHaveTextContent(
     "Its Messages' text and feedback comments will be purged now and can't be recovered. Its numbers stay in the metrics.",
   );
@@ -493,8 +507,10 @@ test("an Owner deletes a Conversation on request after confirming, and its text 
   expect(within(items[3] as HTMLElement).getByRole("group", { name: "Visitor feedback" })).toHaveTextContent("Thumbs down");
   expect(screen.getByRole("region", { name: "Conversation Rating" })).toHaveTextContent("Rated 4 of 5");
 
-  await userEvent.click(screen.getByRole("link", { name: "All Conversations" }));
-  expect((await rows()).map((row) => row[8])).toEqual(["Testing leave", "(deleted on request)"]);
+  // The list beside it is read again.
+  await waitFor(async () => {
+    expect((await rows()).map((row) => row[8])).toEqual(["Testing leave", "(deleted on request)"]);
+  });
 });
 
 test("Editors can't delete a Conversation", async () => {
@@ -539,7 +555,7 @@ test("a Trace names a deleted Document's Chunk as a tombstone", async () => {
   setUp({ traces: [{ ...visitorTrace, chunks: [...visitorTrace.chunks, legacy] }] });
   renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
   const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
-  await userEvent.click(within(items[1] as HTMLElement).getByRole("button", { name: "Trace" }));
+  await openTrace(items[1] as HTMLElement);
 
   const table = await screen.findByRole("table", { name: "Retrieved Chunks" });
   const documents = within(table)
@@ -592,8 +608,9 @@ test("the list shows each Conversation's Guardrail events and is filtered by Gua
     ["With a Guardrail event", "any"],
   ] as const) {
     await userEvent.selectOptions(guardrail, option);
-    await screen.findByRole("table", { name: "Conversations" });
-    expect(queries.at(-1)?.get("guardrail")).toBe(value);
+    await waitFor(() => {
+      expect(queries.at(-1)?.get("guardrail")).toBe(value);
+    });
   }
 
   await userEvent.selectOptions(guardrail, "Any or none");

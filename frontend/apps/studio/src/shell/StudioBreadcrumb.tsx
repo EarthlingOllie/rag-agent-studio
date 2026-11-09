@@ -56,14 +56,14 @@ const PROJECT_SECTIONS: { label: string; icon: IconName; to: ProjectPath; also?:
 
 const AGENT = `${PROJECT}/agents/$agentId` as const;
 
-type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed`;
+type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed` | `${typeof AGENT}/conversations`;
 
-/** An Agent's views, in menu order. Conversations opens the Project's Conversations with this Agent. */
-const AGENT_VIEWS: { label: string; icon: IconName; to?: AgentViewPath }[] = [
+/** An Agent's views, in menu order. Conversations also holds the Conversation opened from it. */
+const AGENT_VIEWS: { label: string; icon: IconName; to: AgentViewPath; fuzzy?: boolean }[] = [
   { label: "Playground", icon: "send", to: AGENT },
   { label: "Versions", icon: "history", to: `${AGENT}/versions` },
   { label: "Embed & limits", icon: "external", to: `${AGENT}/embed` },
-  { label: "Conversations", icon: "conversations" },
+  { label: "Conversations", icon: "conversations", to: `${AGENT}/conversations`, fuzzy: true },
 ];
 
 /**
@@ -103,16 +103,11 @@ function AgentBreadcrumb({
     current: candidate.id === agentId,
     renderLink: (props: MenuLinkProps) => <Link to={AGENT} params={{ organisationId, projectId, agentId: candidate.id }} {...props} />,
   }));
-  const views: MenuItem[] = AGENT_VIEWS.map(({ label, icon, to }) => ({
+  const views: MenuItem[] = AGENT_VIEWS.map(({ label, icon, to, fuzzy = false }) => ({
     label,
     icon,
-    current: to !== undefined && matchRoute({ to, params: { organisationId, projectId, agentId } }) !== false,
-    renderLink: (props: MenuLinkProps) =>
-      to === undefined ? (
-        <Link to={`${PROJECT}/conversations`} params={{ organisationId, projectId }} search={{ agent: agentId }} {...props} />
-      ) : (
-        <Link to={to} params={{ organisationId, projectId, agentId }} {...props} />
-      ),
+    current: matchRoute({ to, params: { organisationId, projectId, agentId }, fuzzy }) !== false,
+    renderLink: (props: MenuLinkProps) => <Link to={to} params={{ organisationId, projectId, agentId }} {...props} />,
   }));
   // Every view inside the Agent's route is one of its views.
   const here = views.find((view) => view.current) as MenuItem;

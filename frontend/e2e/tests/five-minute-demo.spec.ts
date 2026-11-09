@@ -93,7 +93,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect(v2).toBeLessThan(v1);
     expect(v1).toBeLessThan(v3);
     const v3Volume = page.getByRole("list", { name: "Key numbers for v3" }).getByRole("listitem", { name: "Volume" });
-    await expect(v3Volume).toContainText("Low confidence (fewer than 30 Conversations)");
+    await expect(v3Volume.getByText("Low sample")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 

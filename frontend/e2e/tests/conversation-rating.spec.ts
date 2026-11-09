@@ -98,11 +98,11 @@ test.describe("Conversation Rating", () => {
     // The Editor sees each Conversation's rating, filters by it, and reads the change log.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/conversations`);
     const filters = page.getByRole("group", { name: "Filter Conversations" });
-    const table = page.getByRole("table", { name: "Conversations" });
-    const loved = table.getByRole("row", { name: /How many days of annual leave/ });
-    const unhappy = table.getByRole("row", { name: /Can I carry leave over/ });
-    await expect(loved.getByRole("cell").nth(6)).toHaveText("4 of 5", { timeout: 15_000 });
-    await expect(unhappy.getByRole("cell").nth(6)).toHaveText("1 of 5");
+    const list = page.getByRole("list", { name: "Conversations" });
+    const loved = list.getByRole("listitem").filter({ hasText: "How many days of annual leave" });
+    const unhappy = list.getByRole("listitem").filter({ hasText: "Can I carry leave over" });
+    await expect(loved.getByRole("definition").nth(6)).toHaveText("4 of 5", { timeout: 15_000 });
+    await expect(unhappy.getByRole("definition").nth(6)).toHaveText("1 of 5");
     await filters.getByLabel("Rating").selectOption("1 of 5");
     await expect(page).toHaveURL(/rating=1/);
     await expect(loved).toHaveCount(0);

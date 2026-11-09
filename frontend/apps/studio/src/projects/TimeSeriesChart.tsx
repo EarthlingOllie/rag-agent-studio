@@ -1,9 +1,10 @@
-import { useState } from "react";
-import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
+import { useId, useState } from "react";
+import { Area, CartesianGrid, ComposedChart, ReferenceArea, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
+
+import { Icon, Notice, Segmented, Skeleton, field, notice, surface, table, text } from "../design";
 
 import { type MetricsRange, type TimeSeries, type TimeSeriesGranularity, type TimeSeriesMetric, useTimeSeries } from "./analytics";
 import { ProjectRequestError } from "./projects";
-import { INPUT } from "./ProjectsPage";
 
 type Point = TimeSeries["points"][number];
 type Marker = TimeSeries["markers"][number];
@@ -58,78 +59,199 @@ function ConfounderNote({ changes }: { changes: TimeSeries["document_changes"] }
   if (changes.changed > 0) parts.push(`${String(changes.changed)} added, replaced or processed again`);
   if (changes.deleted > 0) parts.push(`${String(changes.deleted)} deleted`);
   return (
-    <p role="note" className="mt-4 rounded border border-flag bg-flag-soft p-3 text-sm text-flag">
-      {`Documents changed during this period: ${parts.join(", ")}. The Knowledge Base isn't versioned, so these changes may confound the comparison: a difference across a marker may come from the Documents rather than the Version.`}
+    <p role="note" className={`${notice.warning} flex items-start gap-2`}>
+      <Icon name="warning" className="mt-0.5 shrink-0" />
+      <span>
+        {`Documents changed during this period: ${parts.join(", ")}. The Knowledge Base isn't versioned, so these changes may confound the comparison: a difference across a marker may come from the Documents rather than the Version.`}
+      </span>
     </p>
   );
 }
 
-function Chart({ series }: { series: TimeSeries }) {
-  const { label, format, sample } = METRICS[series.metric];
-  const byPoint = markersByPoint(series.markers);
+// The chart's size and margins; the plot runs between the y-axis and the right margin.
+const WIDTH = 720;
+const HEIGHT = 280;
+const MARGIN = { top: 36, right: 24, bottom: 8, left: 8 };
+const Y_AXIS = 72;
+const TICK = { fill: "var(--ds-muted)", fontSize: 12 };
+
+/** A Live marker's pill, centred on top of its dashed rule. */
+function MarkerLabel({ viewBox, value }: { viewBox?: { x: number; y: number }; value: string }) {
+  const { x, y } = viewBox as { x: number; y: number };
+  const width = value.length * 7 + 16;
   return (
-    <figure className="mt-4">
-      <figcaption className="text-sm text-muted">
-        {`${label} per ${series.granularity}, from ${series.start} until ${series.end} (UTC), today so far included. Every Version of the Agent together; the Playground is left out. Dashed lines mark where the Live Version changed.`}
-      </figcaption>
-      <div className="mt-2 overflow-x-auto">
-        <LineChart
-          width={720}
-          height={280}
-          data={series.points.map((p) => ({ start: p.start, value: p.value }))}
-          margin={{ top: 24, right: 24, bottom: 8, left: 8 }}
-          accessibilityLayer
-        >
-          <CartesianGrid stroke="#e2e8f0" />
-          <XAxis dataKey="start" tick={{ fill: "#334155", fontSize: 12 }} />
-          <YAxis tick={{ fill: "#334155", fontSize: 12 }} tickFormatter={format} width={72} />
-          <Tooltip />
-          <Line type="monotone" dataKey="value" name={label} stroke="#1d4ed8" strokeWidth={2} isAnimationActive={false} />
-          {[...byPoint].map(([start, markers]) => (
-            <ReferenceLine
-              key={start}
-              x={start}
-              stroke="#b45309"
-              strokeDasharray="4 2"
-              label={{ value: markers.map((m) => `v${String(m.to_version.number)}`).join(", "), position: "top", fill: "#78350f", fontSize: 12 }}
-            />
-          ))}
-        </LineChart>
-      </div>
-      <h4 className="mt-4 text-sm font-medium">Live Version changes</h4>
-      {series.markers.length === 0 ? (
-        <p className="text-sm text-muted">None in this period.</p>
-      ) : (
-        <ul aria-label="Live Version changes" className="list-inside list-disc text-sm">
-          {series.markers.map((marker) => (
-            <li key={marker.occurred_at}>{`${marker.day}: ${change(marker)}`}</li>
-          ))}
-        </ul>
-      )}
-      <table className="mt-4 w-full text-left text-sm">
-        <caption className="text-left font-medium">{`${label}, the numbers behind the chart`}</caption>
+    <g>
+      <rect x={x - width / 2} y={y - 26} width={width} height={20} rx={10} fill="var(--ds-surface)" stroke="var(--ds-field)" />
+      <text x={x} y={y - 12} textAnchor="middle" fill="var(--ds-ink-2)" fontSize={12} fontFamily="var(--font-mono)">
+        {value}
+      </text>
+    </g>
+  );
+}
+
+/** The Documents-changed band's label: a warning icon and the words, at the band's top left. */
+function BandLabel({ viewBox }: { viewBox?: { x: number; y: number } }) {
+  const { x, y } = viewBox as { x: number; y: number };
+  return (
+    <g transform={`translate(${String(x + 8)} ${String(y + 8)})`} className="text-flag">
+      <Icon name="warning" size={14} />
+      <text x={20} y={11} fill="var(--ds-flag)" fontSize={12}>
+        Documents changed
+      </text>
+    </g>
+  );
+}
+
+/** The crosshair's horizontal rule across the plot, and the dot where it meets the line. */
+function Crosshair({ cx, cy }: { cx?: number; cy?: number }) {
+  return (
+    <g>
+      <line x1={MARGIN.left + Y_AXIS} x2={WIDTH - MARGIN.right} y1={cy} y2={cy} stroke="var(--ds-field)" strokeDasharray="3 3" />
+      <circle cx={cx} cy={cy} r={4.5} fill="var(--ds-surface)" stroke="var(--ds-chart-1)" strokeWidth={2} />
+    </g>
+  );
+}
+
+/** The hover readout: the period, the value and its sample size. */
+function Readout({
+  active,
+  payload,
+  metric,
+}: {
+  active?: boolean;
+  payload?: { payload: Point }[];
+  metric: (typeof METRICS)[TimeSeriesMetric];
+}) {
+  const point = payload?.[0]?.payload;
+  if (active !== true || point === undefined) return null;
+  return (
+    <div role="status" aria-label="Chart readout" className={`${surface.popover} px-3 py-2 text-xs text-ink-2`}>
+      <p className="font-mono text-ink">{period(point)}</p>
+      <p>
+        {metric.label} <span className="font-mono text-ink">{point.value === null ? "No data" : metric.format(point.value)}</span>
+      </p>
+      <p className="text-muted">{`n = ${String(point.n)} ${metric.sample}`}</p>
+    </div>
+  );
+}
+
+function Chart({ series }: { series: TimeSeries }) {
+  const metric = METRICS[series.metric];
+  const byPoint = markersByPoint(series.markers);
+  const { changed, deleted } = series.document_changes;
+  const first = series.points[0];
+  const last = series.points.at(-1);
+  return (
+    <div className="overflow-x-auto">
+      <ComposedChart width={WIDTH} height={HEIGHT} data={series.points} margin={MARGIN} accessibilityLayer>
+        {changed + deleted > 0 && first !== undefined && last !== undefined && (
+          <ReferenceArea x1={first.start} x2={last.start} fill="var(--ds-flag-soft)" fillOpacity={1} label={<BandLabel />} />
+        )}
+        <CartesianGrid stroke="var(--ds-line-soft)" vertical={false} />
+        <XAxis dataKey="start" tick={TICK} tickLine={false} axisLine={{ stroke: "var(--ds-line)" }} />
+        <YAxis tick={TICK} tickFormatter={metric.format} width={Y_AXIS} tickLine={false} axisLine={false} />
+        <Tooltip
+          cursor={{ stroke: "var(--ds-field)", strokeDasharray: "3 3" }}
+          content={<Readout metric={metric} />}
+          filterNull={false}
+          isAnimationActive={false}
+        />
+        <Area
+          type="monotone"
+          dataKey="value"
+          name={metric.label}
+          stroke="var(--ds-chart-1)"
+          strokeWidth={2}
+          fill="var(--ds-chart-1)"
+          fillOpacity={0.12}
+          activeDot={<Crosshair />}
+          isAnimationActive={false}
+        />
+        {[...byPoint].map(([start, markers]) => (
+          <ReferenceLine
+            key={start}
+            x={start}
+            stroke="var(--ds-muted)"
+            strokeDasharray="4 3"
+            label={<MarkerLabel value={markers.map((m) => `v${String(m.to_version.number)}`).join(", ")} />}
+          />
+        ))}
+      </ComposedChart>
+    </div>
+  );
+}
+
+function NumbersTable({ series }: { series: TimeSeries }) {
+  const { label, format, sample } = METRICS[series.metric];
+  return (
+    <div className={table.wrap}>
+      <table className={table.table}>
+        <caption className="sr-only">{`${label}, the numbers behind the chart`}</caption>
         <thead>
           <tr>
-            <th scope="col">Period</th>
-            <th scope="col">{label}</th>
-            <th scope="col">{`n (${sample})`}</th>
+            <th scope="col" className={table.th}>
+              Period
+            </th>
+            <th scope="col" className={table.thNumeric}>
+              {label}
+            </th>
+            <th scope="col" className={table.thNumeric}>{`n (${sample})`}</th>
           </tr>
         </thead>
         <tbody>
           {series.points.map((point) => (
-            <tr key={point.start}>
-              <th scope="row" className="font-normal">
+            <tr key={point.start} className={table.row}>
+              <th scope="row" className={`${table.td} text-left font-mono text-[13px] font-normal`}>
                 {period(point)}
               </th>
-              <td>{point.value === null ? "No data" : format(point.value)}</td>
-              <td>{point.n}</td>
+              <td className={table.tdNumeric}>{point.value === null ? "No data" : format(point.value)}</td>
+              <td className={table.tdNumeric}>{point.n}</td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** The series as a chart or a table, the Live Version changes, and the Documents note. */
+function Series({ series }: { series: TimeSeries }) {
+  const [view, setView] = useState<"chart" | "table">("chart");
+  const captionId = useId();
+  const { label } = METRICS[series.metric];
+  return (
+    <figure aria-labelledby={captionId} className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <figcaption id={captionId} className={`${text.muted} max-w-2xl`}>
+          {`${label} per ${series.granularity}, from ${series.start} until ${series.end} (UTC), today so far included. Every Version of the Agent together; the Playground is left out. Dashed lines mark where the Live Version changed.`}
+        </figcaption>
+        <Segmented label="Show as" options={VIEWS} value={view} onChange={setView} />
+      </div>
+      {view === "chart" ? <Chart series={series} /> : <NumbersTable series={series} />}
+      <ConfounderNote changes={series.document_changes} />
+      <div>
+        <h4 className="text-sm font-medium text-ink">Live Version changes</h4>
+        {series.markers.length === 0 ? (
+          <p className={text.muted}>None in this period.</p>
+        ) : (
+          <ul aria-label="Live Version changes" className="mt-1 flex flex-col gap-0.5 text-sm text-ink-2">
+            {series.markers.map((marker) => (
+              <li key={marker.occurred_at}>
+                <span className="font-mono text-[13px]">{marker.day}</span>
+                {`: ${change(marker)}`}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </figure>
   );
 }
+
+const VIEWS = [
+  { value: "chart", label: "Chart" },
+  { value: "table", label: "Table" },
+] as const;
 
 function failure(error: Error): string {
   return error instanceof ProjectRequestError && error.status === 422
@@ -158,29 +280,24 @@ export function TimeSeriesChart({
 
   let body;
   if (series.isPending) {
-    body = <p role="status">Loading the time series…</p>;
+    body = <Skeleton label="Loading the time series" />;
   } else if (series.isError) {
-    body = <p role="alert">{failure(series.error)}</p>;
+    body = <Notice tone="error">{failure(series.error)}</Notice>;
   } else {
-    body = (
-      <>
-        <Chart series={series.data} />
-        <ConfounderNote changes={series.data.document_changes} />
-      </>
-    );
+    body = <Series series={series.data} />;
   }
 
   return (
-    <section aria-labelledby="time-series-heading" className="mt-8">
-      <h3 id="time-series-heading" className="text-base font-semibold">
+    <section aria-labelledby="time-series-heading" className="flex flex-col gap-4">
+      <h3 id="time-series-heading" className={text.heading}>
         Over time
       </h3>
-      <fieldset className="mt-2 flex flex-wrap items-end gap-4">
+      <fieldset className="flex flex-wrap items-end gap-3">
         <legend className="sr-only">Choose the time series</legend>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className={field.filter}>
           Metric
           <select
-            className={INPUT}
+            className={field.pill}
             value={metric}
             onChange={(event) => {
               setMetric(event.currentTarget.value as TimeSeriesMetric);
@@ -193,10 +310,10 @@ export function TimeSeriesChart({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className={field.filter}>
           Granularity
           <select
-            className={INPUT}
+            className={field.pill}
             value={granularity}
             onChange={(event) => {
               setGranularity(event.currentTarget.value as TimeSeriesGranularity);

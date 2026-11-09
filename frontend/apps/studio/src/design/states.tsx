@@ -21,10 +21,13 @@ export function EmptyState({
   action?: ReactNode;
   icon?: IconName;
   tone?: "empty" | "error";
-  /** 1 when it stands in for a whole page (a page that was not found), so the page keeps its h1. */
-  level?: 1 | 2;
+  /**
+   * 1 when it stands in for a whole page (a page that was not found), so the page keeps its h1;
+   * deeper inside a section that has its own heading.
+   */
+  level?: 1 | 2 | 3 | 4;
 }) {
-  const Heading = level === 1 ? "h1" : "h2";
+  const Heading = (["h1", "h2", "h3", "h4"] as const)[level - 1] as "h1";
   return (
     <div
       role={tone === "error" ? "alert" : undefined}
