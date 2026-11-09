@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-02: Foundation: tokens, fonts and Appearance](02-foundation.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] A one-off script applies the class-mapping table from the `studio-reskin` skill across `apps/studio/src`; it is committed with the PR and then deleted
 - [ ] Only class lists change: no markup, text, routes or tests change
