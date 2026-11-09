@@ -7,7 +7,7 @@ API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
-	seed seed-reset
+	seed seed-reset link-check
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -76,6 +76,11 @@ seed: ## Create the demo Organisation in the running stack and print its sign-in
 
 seed-reset: ## Erase the demo Organisation (only that one) and seed it again
 	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed --reset"
+
+link-check: ## Check that every relative link (and its #anchor) in the Markdown git tracks resolves; offline, with the checker's tests at 100% coverage
+	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+		scripts/ci/tests/links.test.mjs
+	node scripts/ci/link-check.mjs
 
 TF_ROOTS := $(sort $(dir $(wildcard infra/bootstrap/main.tf infra/modules/*/main.tf infra/envs/*/main.tf)))
 IMAGE_TAG ?= local
