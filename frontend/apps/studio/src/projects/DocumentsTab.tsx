@@ -265,7 +265,7 @@ function DocumentActions({
           onClick={() => {
             retry.onRetry(document);
           }}
-          className="underline disabled:opacity-50"
+          className="min-h-6 underline disabled:opacity-50"
         >
           Retry
         </button>
@@ -289,7 +289,7 @@ function DocumentActions({
           setFailed(false);
           setConfirming(true);
         }}
-        className="text-danger underline"
+        className="min-h-6 text-danger underline"
       >
         Delete
       </button>
