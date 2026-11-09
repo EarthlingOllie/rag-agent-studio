@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -11,7 +12,7 @@ test.describe("Permanent Project deletion", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Retired handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -48,8 +49,8 @@ test.describe("Permanent Project deletion", () => {
     await expect(page.getByText("No archived Projects.")).toBeVisible();
 
     // The deletion is in the Audit tab.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Audit");
     await expect(page.getByRole("table", { name: "Audit Events" }).getByRole("cell", { name: "project.deleted" })).toHaveCount(1);
   });
 });

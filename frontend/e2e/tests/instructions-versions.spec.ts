@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Project Instructions Versions", () => {
   test("an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited", async ({
@@ -6,11 +7,11 @@ test.describe("Project Instructions Versions", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Versioned HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+    await openSection(page, "Project sections", "Instructions");
     await expect(page.getByText("Not published yet. Publish the Draft to make v1, the Current Version.")).toBeVisible({
       timeout: 15_000,
     });

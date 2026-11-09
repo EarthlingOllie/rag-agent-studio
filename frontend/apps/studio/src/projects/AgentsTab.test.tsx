@@ -18,7 +18,8 @@ test("the Agents tab lists the Project's Agents, linking to each", async () => {
   fakeAgentsApi({ agents: [hrHelper, { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Benefits FAQ" }] });
   renderStudio(agentsTab(hrProject.id));
 
-  const list = await screen.findByRole("list", {}, { timeout: 5000 });
+  await screen.findByRole("heading", { level: 2, name: "Agents" });
+  const list = await within(screen.getByRole("main")).findByRole("list", {}, { timeout: 5000 });
   expect(within(list).getAllByRole("link").map((link) => link.textContent)).toEqual(["HR helper", "Benefits FAQ"]);
   expect(within(list).getByRole("link", { name: "HR helper" })).toHaveAttribute(
     "href",

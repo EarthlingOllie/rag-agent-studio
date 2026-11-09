@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Revert an Agent via its Live History", () => {
   test("an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log", async ({
@@ -6,11 +7,11 @@ test.describe("Revert an Agent via its Live History", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Reverting HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });

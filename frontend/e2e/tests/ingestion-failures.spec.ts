@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Ingestion failures", () => {
   test("an unsupported file is refused before upload, and a broken one fails with its category and can be retried", async ({
@@ -6,7 +7,7 @@ test.describe("Ingestion failures", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Broken files");
     await form.getByRole("button", { name: "Create Project" }).click();

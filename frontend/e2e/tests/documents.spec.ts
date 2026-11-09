@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -9,7 +10,7 @@ const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-
 test.describe("Documents", () => {
   test("an Owner uploads the seed handbook and it goes from Queued to Ready", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Northwind handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -36,7 +37,7 @@ test.describe("Documents", () => {
 
   test("an Owner opens the handbook in the Document viewer and downloads the original", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Handbook viewer");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -66,18 +67,18 @@ test.describe("Documents", () => {
 
   test("the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Handbook scan");
     await form.getByRole("button", { name: "Create Project" }).click();
     // The Project quarantines flagged Chunks.
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Settings" }).click();
+    await openSection(page, "Project sections", "Settings");
     const flaggedSetting = page.getByRole("radiogroup", { name: "Flagged Chunks" });
     await expect(flaggedSetting.getByRole("radio", { name: "Mark them, and keep retrieving them" })).toBeChecked();
     await flaggedSetting.getByRole("radio", { name: "Exclude them from retrieval" }).check();
     await expect(flaggedSetting.getByText(/Flagged Chunks are never given to an Agent/)).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Documents" }).click();
+    await openSection(page, "Project sections", "Documents");
     await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });

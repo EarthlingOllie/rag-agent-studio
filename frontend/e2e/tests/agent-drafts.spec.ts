@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Diffs and Draft management", () => {
   test("an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save", async ({
@@ -6,11 +7,11 @@ test.describe("Diffs and Draft management", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Drafts HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });

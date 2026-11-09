@@ -3,15 +3,16 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 import type { MemberCredentials } from "../fixtures/auth";
 import { totpCode, totpStep } from "../fixtures/totp";
+import { openSection } from "../fixtures/navigation";
 
 async function openSecurity(page: Page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Security" }).click();
+  await openSection(page, "Organisation sections", "Security");
   await expect(page.getByRole("heading", { name: "Security", level: 1 })).toBeVisible();
 }
 
 async function signOutAndEnterPassword(page: Page, member: MemberCredentials) {
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await openSection(page, "Account", "Sign out");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.getByLabel("Email").fill(member.email);
   await page.getByLabel("Password").fill(member.password);
@@ -72,7 +73,7 @@ test("a Member enrols in MFA, signs in with a code and a recovery code, then tur
   await turnOff.getByRole("button", { name: "Turn off" }).click();
   await expect(page.getByRole("button", { name: "Set up two-factor authentication" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await openSection(page, "Account", "Sign out");
   await page.getByLabel("Email").fill(member.email);
   await page.getByLabel("Password").fill(member.password);
   await page.getByRole("button", { name: "Sign in" }).click();

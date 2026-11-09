@@ -5,6 +5,7 @@ import { delay, http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeInvitesApi, organisationId } from "../test/invites";
 import { adaMember, charlesMember, fakeMembersApi, graceMember, LAST_OWNER } from "../test/members";
+import { sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -78,9 +79,9 @@ test("an Owner who steps down loses the Owner-only tabs", async () => {
   await userEvent.selectOptions(screen.getByLabelText("Role for Ada Lovelace"), "Editor");
 
   expect(await screen.findByText("Only Owners can manage Members and invites.")).toBeInTheDocument();
-  const tabs = screen.getByRole("navigation", { name: "Organisation settings" });
-  expect(within(tabs).queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
-  expect(within(tabs).queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
+  const sections = await sectionNames("Organisation settings");
+  expect(sections).not.toContain("Members");
+  expect(sections).not.toContain("Audit");
 });
 
 test("an Owner removes a Member after confirming", async () => {

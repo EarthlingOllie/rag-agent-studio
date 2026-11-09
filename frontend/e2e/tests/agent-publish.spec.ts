@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Publish an Agent to its Live Version", () => {
   test("an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log", async ({
@@ -6,11 +7,11 @@ test.describe("Publish an Agent to its Live Version", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Publishing HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });

@@ -2,10 +2,11 @@ import type { Browser, Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
 import { type MemberCredentials, newMember } from "../fixtures/auth";
+import { openSection } from "../fixtures/navigation";
 
 async function openProjects(page: Page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+  await openSection(page, "Organisation sections", "Projects");
   await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 }
 
@@ -21,8 +22,8 @@ async function createProject(page: Page, name: string, description: string) {
 /** The Owner invites a new person with a copied link; they create an account in their own browser. */
 async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCredentials): Promise<Page> {
   await owner.goto("/");
-  await owner.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-  await owner.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Members" }).click();
+  await openSection(owner, "Organisation sections", "Settings");
+  await openSection(owner, "Organisation settings", "Members");
   await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
@@ -47,9 +48,8 @@ test.describe("Projects", () => {
     await createProject(page, "HR handbook", "Policies for the HR Agent");
 
     // The Project page has a tab per area, each a placeholder for now.
-    const tabs = page.getByRole("navigation", { name: "Project" });
     for (const tab of ["Documents", "Instructions", "Agents", "Conversations", "Analytics"]) {
-      await tabs.getByRole("link", { name: tab }).click();
+      await openSection(page, "Project sections", tab);
       await expect(page.getByRole("heading", { level: 2, name: tab })).toBeVisible();
     }
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
@@ -93,8 +93,8 @@ test.describe("Projects", () => {
     await expect(projects.getByRole("link", { name: "People team" })).toBeVisible();
 
     // Create, archive and restore are in the Audit tab.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Audit");
     const audit = page.getByRole("table", { name: "Audit Events" });
     for (const action of ["project.created", "project.archived", "project.restored"]) {
       await expect(audit.getByRole("cell", { name: action })).toHaveCount(1);

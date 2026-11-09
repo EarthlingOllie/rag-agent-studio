@@ -5,6 +5,7 @@ import { delay, http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { expiredInvite, fakeInvitesApi, graceInvite, linkFor, organisationId } from "../test/invites";
 import { fakeMembersApi } from "../test/members";
+import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -45,8 +46,7 @@ test("Owners open Members from Organisation settings and see pending invites", a
   fakeInvitesApi();
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-  await userEvent.click(within(tabs).getByRole("link", { name: "Members" }));
+  await openSection("Organisation settings", "Members");
 
   expect(await screen.findByRole("table", { name: "Pending invites" })).toBeInTheDocument();
   expect(pendingRows()).toEqual([
@@ -60,9 +60,7 @@ test("Editors don't see the Members tab, and its address tells them it is for Ow
   const api = fakeInvitesApi();
   renderStudio(membersPath);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-
-  expect(within(tabs).queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
+  expect(await sectionNames("Organisation settings")).not.toContain("Members");
   expect(screen.getByText("Only Owners can manage Members and invites.")).toBeInTheDocument();
   expect(api.created).toEqual([]);
 });

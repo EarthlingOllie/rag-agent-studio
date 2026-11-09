@@ -4,11 +4,12 @@ import type { Page } from "@playwright/test";
 import { AXE_TAGS, expect, test } from "../fixtures";
 import { newMember, signUp } from "../fixtures/auth";
 import { latestEmailTo, linkPath } from "../fixtures/mailpit";
+import { menuButton, openSection, sectionNames } from "../fixtures/navigation";
 
 async function openMembers(page: Page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-  await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Members" }).click();
+  await openSection(page, "Organisation sections", "Settings");
+  await openSection(page, "Organisation settings", "Members");
   await expect(page.getByRole("form", { name: "Invite someone" })).toBeVisible();
   // Wait for the Members list, so its loading status has gone before the invite's status appears.
   await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
@@ -49,11 +50,11 @@ test.describe("invites", () => {
 
     await expect(invitedPage.getByRole("heading", { name: "Projects" })).toBeVisible();
     await expect(invitedPage.getByText(member.organisationName)).toBeVisible();
-    // An Editor: no Owner-only tabs.
-    await invitedPage.getByRole("link", { name: "Organisation settings" }).click();
-    const tabs = invitedPage.getByRole("navigation", { name: "Organisation settings" });
-    await expect(tabs.getByRole("link", { name: "General" })).toBeVisible();
-    await expect(tabs.getByRole("link", { name: "Members" })).toHaveCount(0);
+    // An Editor: no Owner-only settings.
+    await openSection(invitedPage, "Organisation sections", "Settings");
+    const sections = await sectionNames(invitedPage, "Organisation settings");
+    expect(sections).toContain("General");
+    expect(sections).not.toContain("Members");
 
     // The new Member signs in again with the password they chose.
     await invitedContext.clearCookies();
@@ -71,7 +72,7 @@ test.describe("invites", () => {
     // The Owner sees the invite gone from Pending and the events in the Audit tab.
     await page.reload();
     await expect(page.getByText("No pending invites.")).toBeVisible();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     await expect(page.getByRole("cell", { name: "invite.created" })).toBeVisible();
     await expect(page.getByRole("cell", { name: "invite.accepted" })).toBeVisible();
     await invitedContext.close();
@@ -99,10 +100,8 @@ test.describe("invites", () => {
     await colleaguePage.goto(new URL(link).pathname + new URL(link).search);
     await colleaguePage.getByRole("button", { name: `Join ${member.organisationName}` }).click();
     await expect(colleaguePage.getByRole("heading", { name: "Projects" })).toBeVisible();
-    // The colleague now belongs to two Organisations, so the header's switcher shows the one joined.
-    await expect(colleaguePage.getByRole("combobox", { name: "Organisation" }).locator("option:checked")).toHaveText(
-      member.organisationName,
-    );
+    // The colleague now belongs to two Organisations, so the breadcrumb's switcher shows the one joined.
+    await expect(menuButton(colleaguePage, "Organisations")).toHaveAccessibleName(`${member.organisationName}, Organisations`);
     const me = (await (await colleaguePage.request.get("/api/auth/me")).json()) as { organisations: { name: string; role: string }[] };
     expect(me.organisations.map((o) => [o.name, o.role]).sort()).toEqual(
       [

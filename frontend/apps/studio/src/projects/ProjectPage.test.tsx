@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeProjectsApi, hrProject, NAME_MISMATCH, oldProject, PROJECT_ARCHIVED } from "../test/projects";
+import { currentSection, hasMenu, openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -21,8 +22,7 @@ test("a Project page has a tab for each area, each saying what it holds while it
 
   expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
   expect(screen.getByText("Policies for the HR Agent")).toBeInTheDocument();
-  const tabs = screen.getByRole("navigation", { name: "Project" });
-  expect(within(tabs).getAllByRole("link").map((link) => link.textContent)).toEqual([
+  expect(await sectionNames("Project sections")).toEqual([
     "Documents",
     "Instructions",
     "Agents",
@@ -32,7 +32,7 @@ test("a Project page has a tab for each area, each saying what it holds while it
   ]);
   // Documents is the first tab.
   expect(screen.getByRole("heading", { level: 2, name: "Documents" })).toBeInTheDocument();
-  expect(within(tabs).getByRole("link", { name: "Documents" })).toHaveAttribute("aria-current", "page");
+  expect(await currentSection("Project sections")).toBe("Documents");
 
   const placeholders: [string, RegExp][] = [
     ["Instructions", /the shared rules every Agent in this Project follows/],
@@ -42,10 +42,10 @@ test("a Project page has a tab for each area, each saying what it holds while it
     ["Documents", /No Documents yet\. Upload files/],
   ];
   for (const [tab, placeholder] of placeholders) {
-    await userEvent.click(within(tabs).getByRole("link", { name: tab }));
+    await openSection("Project sections", tab);
     expect(await screen.findByRole("heading", { level: 2, name: tab })).toBeInTheDocument();
     expect(screen.getByText(placeholder)).toBeInTheDocument();
-    expect(within(tabs).getByRole("link", { name: tab })).toHaveAttribute("aria-current", "page");
+    expect(await currentSection("Project sections")).toBe(tab);
   }
 });
 
@@ -57,7 +57,7 @@ test("opening a Project from the list shows its page", async () => {
   await userEvent.click(await screen.findByRole("link", { name: "HR handbook" }));
 
   expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
-  expect(screen.getByRole("navigation", { name: "Project" })).toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(true);
 });
 
 test("an Editor renames a Project and edits its description", async () => {
@@ -142,7 +142,7 @@ test("an Editor sees an archived Project but can't restore it", async () => {
 
   expect(notice).toHaveTextContent("Only Owners can restore it.");
   expect(within(notice).queryByRole("button")).not.toBeInTheDocument();
-  expect(screen.getByRole("navigation", { name: "Project" })).toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(true);
 });
 
 test("a refused archive or restore shows the API's reason", async () => {
@@ -255,7 +255,7 @@ test("an unknown Project is not found", async () => {
   renderStudio(projectPage("00000000-0000-4000-8000-000000000000"));
 
   expect(await screen.findByRole("heading", { level: 1, name: "Project not found" })).toBeInTheDocument();
-  expect(screen.queryByRole("navigation", { name: "Project" })).not.toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(false);
 });
 
 test("a Project page shows its loading and error states", async () => {

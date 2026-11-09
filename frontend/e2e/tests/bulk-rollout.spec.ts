@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 type Versions = { live_version_id: string; versions: { id: string; number: number; instructions_version: { number: number } | null }[] };
 
@@ -17,11 +18,11 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Rollout HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+    await openSection(page, "Project sections", "Instructions");
     await expect(page.getByText("Not published yet. Publish the Draft to make v1, the Current Version.")).toBeVisible({
       timeout: 15_000,
     });
@@ -76,7 +77,7 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     expect(agentBVersions.versions).toHaveLength(1);
 
     // Revert Agent A from the Agent list with multi-select: it serves Instructions v1 again.
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await page.getByRole("checkbox", { name: "Select Agent A" }).check({ timeout: 15_000 });
     await page.getByRole("button", { name: "Revert selected (1)" }).click();
     await page.getByRole("button", { name: "Yes, revert 1 Agent" }).click();
@@ -89,7 +90,7 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
 
     // Roll v2 out to both from the "behind" summary, then revert the Instructions: the Studio
     // offers to bulk-revert the Agents pinned to v2.
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+    await openSection(page, "Project sections", "Instructions");
     await expect(page.getByText("2 Agents behind the Current Version (v2).")).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Roll out v2…" }).click();
     await dialog.getByRole("button", { name: "Publish to 2 Agents" }).click();

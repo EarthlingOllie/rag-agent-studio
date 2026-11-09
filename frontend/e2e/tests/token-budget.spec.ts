@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { expect, test } from "../fixtures";
 import { HOST_URL } from "../fixtures/env";
 import { latestEmailTo } from "../fixtures/mailpit";
+import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), so questions reach the model and use tokens. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -33,14 +34,14 @@ test.describe("Token Budget", () => {
     ).toBe(200);
 
     // A live Agent over the handbook.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Thrifty Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
     await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Thrifty helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
