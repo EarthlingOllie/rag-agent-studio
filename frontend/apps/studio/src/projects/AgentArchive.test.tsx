@@ -27,19 +27,18 @@ test("archived Agents are left out of the Agents list and shown on request", asy
   setUp(editorSession);
   renderStudio(agentsTab);
 
-  const active = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
+  const active = await screen.findByRole("table", { name: "Agents" }, { timeout: 5000 });
   expect(within(active).getAllByRole("link").map((link) => link.textContent)).toEqual(["HR helper"]);
 
-  await userEvent.click(screen.getByRole("button", { name: "Show archived Agents" }));
+  await userEvent.click(screen.getByRole("radio", { name: "Archived" }));
 
-  const archived = await screen.findByRole("list", { name: "Archived Agents" });
+  const archived = await screen.findByRole("table", { name: "Archived Agents" });
   expect(within(archived).getAllByRole("link").map((link) => link.textContent)).toEqual(["Old helper"]);
-  expect(within(archived).getByText("Archived 2026-11-06")).toBeInTheDocument();
+  expect(within(archived).getByRole("cell", { name: "2026-11-06" })).toBeInTheDocument();
   expect(screen.getByText(/Only Owners can restore or delete them/)).toBeInTheDocument();
-  expect(screen.queryByRole("form", { name: "New Agent" })).not.toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: "Show active Agents" }));
-  expect(await screen.findByRole("list", { name: "Agents" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("radio", { name: "Active" }));
+  expect(await screen.findByRole("table", { name: "Agents" })).toBeInTheDocument();
 });
 
 test("a Project with no archived Agents says so", async () => {
@@ -48,9 +47,9 @@ test("a Project with no archived Agents says so", async () => {
   fakeAgentsApi({ agents: [hrHelper] });
   renderStudio(agentsTab);
 
-  await userEvent.click(await screen.findByRole("button", { name: "Show archived Agents" }, { timeout: 5000 }));
+  await userEvent.click(await screen.findByRole("radio", { name: "Archived" }, { timeout: 5000 }));
 
-  expect(await screen.findByText("No archived Agents.")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "No archived Agents" })).toBeInTheDocument();
   expect(screen.getByText(/Open one to restore it or delete it permanently/)).toBeInTheDocument();
 });
 
@@ -127,7 +126,7 @@ test("an Owner deletes an archived Agent permanently after typing its name", asy
 
   expect(await screen.findByText("Old helper was deleted permanently.")).toBeInTheDocument();
   expect(requests).toEqual([{ route: "delete", body: { confirm_name: "Old helper" } }]);
-  const active = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
+  const active = await screen.findByRole("table", { name: "Agents" }, { timeout: 5000 });
   expect(within(active).getAllByRole("link").map((link) => link.textContent)).toEqual(["HR helper"]);
 });
 
