@@ -453,6 +453,10 @@ _Avoid_: Instructions revision
 The Agent Version currently served to Visitors, with the Instructions Version it pins. Only Agents have one. An Agent that has never been published has none and is shown as "Not live": it serves no Visitor.
 _Avoid_: Active, production
 
+**Live state**:
+How an Agent stands with Visitors, shown as badges in the Agents list: "Live v3" (its Live Version), or "Not live", plus "Draft" when it has Unpublished changes. Alerts (a spent Token Budget, a Guardrail block rate spike) are badged beside it.
+_Avoid_: Deployment status, publish state
+
 **Current Version**:
 The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones. Publishing the Instructions makes the new Version Current; reverting them moves Current back to the Version that was Current when the present one was published, so reverting again keeps walking back rather than toggling.
 _Avoid_: Live (for Project Instructions), latest
@@ -473,7 +477,7 @@ To publish a new Version of several Agents at once, each built from that Agent's
 _Avoid_: Mass deploy, publish all
 
 **Bulk revert**:
-To revert several Agents at once, each one step back in its own Live History. Editors start one from the Agent list (multi-select) or from the offer shown after reverting Project Instructions, which lists the Agents still Live with the reverted Instructions Version.
+To revert several Agents at once, each one step back in its own Live History. Editors start one from the Agents list (select Agents, then Revert in the bulk bar) or from the offer shown after reverting Project Instructions, which lists the Agents still Live with the reverted Instructions Version.
 _Avoid_: Mass rollback
 
 **Bulk operation**:
