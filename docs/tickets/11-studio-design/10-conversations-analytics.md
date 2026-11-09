@@ -8,7 +8,7 @@
 - [11-05: Project frame](05-project-frame.md)
 - [11-08: Agent page and its four views](08-agent-views.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Conversations: the list with Agent, Version and date filters and a Visitors/Playground/Both `Segmented`, `Pagination`, and the selected transcript beside it
 - [ ] Transcripts badge guardrail blocks, show the answering Version, rating and feedback, and fold the Trace under each answer
