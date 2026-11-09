@@ -16,7 +16,7 @@ flowchart TB
         QE --> HS["Vector search ∥ keyword search"]
         HS --> RRF[Fuse rankings<br/>+ optional rerank]
         RRF --> TH{Above relevance<br/>threshold?}
-        TH -- no --> IDK(["I don't know" fallback])
+        TH -- no --> IDK(["Fallback: I don't know"])
         TH -- yes --> GEN[Prompt + stream answer<br/>with citations]
         GEN --> TR[(Trace)]
         IDK --> TR
