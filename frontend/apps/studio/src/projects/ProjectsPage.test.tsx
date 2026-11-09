@@ -9,6 +9,7 @@ import {
   oldProject,
   salesProject,
 } from "../test/projects";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -102,7 +103,7 @@ test("an Editor creates a Project and lands on its page", async () => {
       body: { name: "Product support", description: "Answers for customers" },
     },
   ]);
-  await userEvent.click(screen.getByRole("link", { name: "All Projects" }));
+  await openSection("Projects", "All Projects");
   const table = await screen.findByRole("table", { name: "Projects" });
   expect(
     within(table).getByRole("link", { name: "Product support" }),

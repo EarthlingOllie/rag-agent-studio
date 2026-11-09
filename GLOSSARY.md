@@ -33,8 +33,12 @@ The Studio's design system (`docs/design/README.md`, code in `frontend/apps/stud
 _Avoid_: Theme, skin, component library
 
 **Breadcrumb**:
-The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, a Project's sections); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile and Sign out are in the account menu beside it.
+The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, the Project switcher, a Project's sections); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile and Sign out are in the account menu beside it.
 _Avoid_: Tabs, side menu, nav bar
+
+**Project section**:
+One of the six areas of a Project in the Studio, in this order: Documents, Instructions, Agents, Conversations, Analytics and Settings. The Member moves between them with the section switcher, the Breadcrumb's last level inside a Project, which numbers them 1–6. The crumb before it is the Project switcher: the Organisation's open Projects, plus All Projects. Rare actions on the Project itself (Archive, permanent deletion) are in its page header's ⋯ menu, not in a section.
+_Avoid_: Tab, page, area
 
 **Palette ratchet**:
 The CI check that counts Tailwind palette classes (`slate-700`, `dark:`, `bg-white`…) in the Studio's source and fails when the count rises above the committed baseline (`frontend/palette-baseline.json`). Each reskin slice lowers the baseline; at zero the baseline file goes and none are allowed.

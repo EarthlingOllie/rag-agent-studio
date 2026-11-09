@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 export type NavigationMenu =
   | "Organisations"
   | "Organisation sections"
+  | "Projects"
   | "Project sections"
   | "Organisation settings"
   | "Account";
@@ -19,11 +20,19 @@ export type NavigationMenu =
  * that use the helpers do not change.
  */
 const TAB_ROWS: Partial<Record<NavigationMenu, string>> = {
-  "Project sections": "Project",
   "Organisation settings": "Organisation settings",
 };
 
 type User = { click: (element: Element) => Promise<unknown>; keyboard: (text: string) => Promise<unknown> };
+
+/** An item's visible name, without what is hidden from assistive technology (a number hint, an icon). */
+function itemName(item: Element): string {
+  const copy = item.cloneNode(true) as Element;
+  copy.querySelectorAll("[aria-hidden=true]").forEach((hidden) => {
+    hidden.remove();
+  });
+  return copy.textContent;
+}
 
 function escape(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -59,7 +68,7 @@ export async function sectionNames(menu: NavigationMenu, user: User = userEvent)
     const links = within(await screen.findByRole("navigation", { name: row })).getAllByRole("link");
     return links.map((link) => link.textContent);
   }
-  const items = within(await openMenu(menu, user)).getAllByRole("menuitem").map((item) => item.textContent);
+  const items = within(await openMenu(menu, user)).getAllByRole("menuitem").map(itemName);
   await user.keyboard("{Escape}");
   return items;
 }

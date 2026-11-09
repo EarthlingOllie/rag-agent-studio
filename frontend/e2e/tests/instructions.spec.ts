@@ -53,7 +53,8 @@ test.describe("Project Instructions", () => {
     // Archiving the Project with the tab open locks the editor in place; restoring unlocks it.
     await page.getByRole("button", { name: "Markdown" }).click();
     await expect(editor).toHaveAttribute("contenteditable", "true");
-    await page.getByRole("button", { name: "Archive" }).click();
+    await page.getByRole("button", { name: "More Project actions" }).click();
+    await page.getByRole("menu", { name: "Project actions" }).getByRole("menuitem", { name: "Archive" }).click();
     await page.getByRole("button", { name: "Yes, archive Northwind HR" }).click();
     await expect(editor).toHaveAttribute("contenteditable", "false");
     await expect(page.getByRole("button", { name: "Save Instructions" })).toHaveCount(0);

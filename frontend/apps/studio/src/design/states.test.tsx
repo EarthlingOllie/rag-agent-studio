@@ -25,6 +25,14 @@ it("announces an error state, and needs nothing but a title", () => {
   expect(screen.getByRole("heading", { name: "No matches" }).parentElement?.querySelectorAll("p, button, svg")).toHaveLength(0);
 });
 
+it("is a card's level-2 heading, or the page's h1 when it stands in for a whole page", () => {
+  const { rerender } = render(<EmptyState title="No matches" />);
+  expect(screen.getByRole("heading", { level: 2, name: "No matches" })).toBeInTheDocument();
+
+  rerender(<EmptyState level={1} title="Project not found" />);
+  expect(screen.getByRole("heading", { level: 1, name: "Project not found" })).toBeInTheDocument();
+});
+
 it("stands in for loading content and says it is loading", () => {
   const { rerender } = render(<Skeleton label="Loading Documents" lines={4} />);
   const skeleton = screen.getByRole("status", { name: "Loading Documents" });
