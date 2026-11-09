@@ -1,5 +1,53 @@
 # Studio screenshots
 
+## The Studio today, light and dark (ticket 11-13)
+
+The finished Tidepool reskin: every Studio screen in the light and the dark Appearance, at
+1440×900 (the narrow breadcrumb at 390×844, 2× scale). Each screen has a `-light.png` and a
+`-dark.png`. The earlier sets below are kept as a record of how the Studio looked before.
+
+These were captured from the built Studio (`frontend/apps/studio/dist`) with the API answered by
+the unit tests' fakes (`frontend/apps/studio/src/test`: Ada Lovelace in Analytical Engines, the HR
+handbook Project, HR helper with v2 Live), not from a running stack, so the data is the tests'
+rather than the seeded demo's. To recapture them, from `frontend/` after `pnpm build`:
+
+```sh
+SHOTS_DIR=/tmp/shots DOCS_DIR=../docs/screenshots pnpm exec vitest run \
+  --config ../docs/tickets/11-studio-design/11-13-evidence/shots.config.mjs -t "docs/screenshots"
+```
+
+| Files | Screen |
+| --- | --- |
+| `63-sign-in-{light,dark}.png` | Sign in |
+| `64-projects-{light,dark}.png` | Projects |
+| `65-documents-{light,dark}.png` | A Project's Documents: stat cards, toolbar, the table with ⋯ menus |
+| `66-breadcrumb-switcher-{light,dark}.png` | The Project sections switcher open in the breadcrumb |
+| `67-document-viewer-{light,dark}.png` | The Document viewer, a flagged Chunk among the Chunks |
+| `68-instructions-{light,dark}.png` | Instructions: the editor and the Versions |
+| `69-agents-{light,dark}.png` | Agents, with Live state |
+| `70-agent-playground-{light,dark}.png` | An Agent's Playground view beside its configuration |
+| `71-agent-versions-{light,dark}.png` | An Agent's Versions view: Live History, Versions, Compare |
+| `72-agent-embed-{light,dark}.png` | An Agent's Embed & limits view |
+| `73-conversation-{light,dark}.png` | Conversations: the list beside an open transcript |
+| `74-analytics-{light,dark}.png` | Analytics: KPI cards, the comparison and the chart |
+| `75-project-settings-{light,dark}.png` | A Project's Settings |
+| `76-cost-{light,dark}.png` | Organisation cost |
+| `77-settings-general-{light,dark}.png` | Organisation settings: General |
+| `78-members-{light,dark}.png` | Members and pending invites |
+| `79-credentials-{light,dark}.png` | Provider Credentials |
+| `80-models-{light,dark}.png` | Models: the Default Model and prices |
+| `81-theme-{light,dark}.png` | The Theme editor beside the widget preview (the preview shows the Theme, not the Appearance) |
+| `82-audit-{light,dark}.png` | Audit Events |
+| `83-profile-{light,dark}.png` | Profile |
+| `84-security-{light,dark}.png` | Security |
+| `85-status-{light,dark}.png` | The public status page |
+| `86-narrow-breadcrumb-{light,dark}.png` | A narrow window: the breadcrumb keeps the Organisation and the current view and folds the rest into "…", shown open |
+
+The widget shots below (`37-`, `38-`, `55-` to `59-`) still show the widget as it is: the reskin
+styles the Studio only, never the widget.
+
+## The first Studio (ticket 03-06)
+
 Snapshots of the Studio as of ticket 03-06 (Tags), captured with Playwright at 1440×900, 2× scale.
 
 | File | Screen |
