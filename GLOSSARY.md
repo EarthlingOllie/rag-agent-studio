@@ -454,7 +454,7 @@ The Agent Version currently served to Visitors, with the Instructions Version it
 _Avoid_: Active, production
 
 **Current Version**:
-The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones. Publishing the Instructions makes the new Version Current; reverting them moves Current back to the Version that was Current when the present one was published, so reverting again keeps walking back rather than toggling.
+The Project Instructions Version that newly published Agent Versions pin by default. Agents may still pin older ones. Publishing the Instructions makes the new Version Current; reverting them moves Current back to the Version that was Current when the present one was published, so reverting again keeps walking back rather than toggling. The Instructions page shows the Versions as a timeline, newest first, with the Current Version carrying the **Current** badge; any two Versions, or a Version and the saved Draft, can be compared there.
 _Avoid_: Live (for Project Instructions), latest
 
 **Live History**:
@@ -480,7 +480,7 @@ _Avoid_: Mass rollback
 One bulk publish or bulk revert. Each Agent in it is processed in its own transaction, so a failure on one Agent never leaves another half-updated, and the result reports every Agent as succeeded, skipped (with the reason) or failed (with the reason). Its **bulk operation ID** is recorded on each Live History entry and Audit Event it makes.
 
 **Behind**:
-An Agent is behind when it is live but its Live Version doesn't pin the Current Instructions Version. The Project Instructions page shows "N Agents behind" and which Instructions Version each Agent pins, so partial rollouts are visible. An Agent that has never been published is not live, so it is never behind.
+An Agent is behind when it is live but its Live Version doesn't pin the Current Instructions Version. The Project Instructions page shows "N Agents behind" and which Instructions Version each Agent pins, as version chips with an **Instructions behind** badge on each Agent that is behind, so partial rollouts are visible. An Agent that has never been published is not live, so it is never behind.
 _Avoid_: Outdated, stale
 
 **Playground**:

@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
+import { button } from "../design";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject, oldProject, PROJECT_ARCHIVED } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -34,6 +35,19 @@ test("the Project Instructions show formatted in the markdown editor", async () 
   ]);
   expect(within(editor).getByText("British English").tagName).toBe("STRONG");
   expect(screen.getByText(/They come before each Agent's system prompt/)).toBeInTheDocument();
+});
+
+test("the editor counts characters, saving the Draft is secondary and Publish is the page's one primary action", async () => {
+  setUp();
+  renderStudio(instructionsTab(hrProject.id));
+  await screen.findByRole("textbox", { name: "Project Instructions" }, { timeout: 5000 });
+
+  expect(screen.getByText(`${String(RULES.length)} / 20000 characters`)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Save Instructions" })).toHaveClass(...button.secondary.split(" "));
+  const primary = screen.getAllByRole("button").filter((each) => each.className === button.primary);
+  expect(primary.map((each) => each.textContent)).toEqual(["Publish Instructions"]);
+  // The page's sections, each under its own heading.
+  expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual(["Draft", "Publish", "Agents", "Versions"]);
 });
 
 test("an Editor rewrites the Instructions and saves exactly the markdown written", async () => {
@@ -139,5 +153,6 @@ test("Instructions that can't be loaded say so", async () => {
   );
   renderStudio(instructionsTab(hrProject.id));
 
-  expect(await screen.findByText("The Instructions could not be loaded. Try again shortly.", {}, { timeout: 5000 })).toBeInTheDocument();
+  const failure = await screen.findByRole("heading", { name: "The Instructions could not be loaded" }, { timeout: 5000 });
+  expect(failure.closest("[role=alert]")).toHaveTextContent("Try again shortly.");
 });

@@ -151,6 +151,15 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   switcher crumb (`shell/SettingsCrumb.tsx`). Lists there (Members, pending invites, Credentials,
   the price table, the Audit log) are `table.wrap` cards; long ones page with `Pagination`.
   Saved changes confirm with a toast; a destructive one asks with `ConfirmDialog` first.
+- **Project Instructions** (built in 11-07): a `surface.panel` each for the Draft (the markdown
+  editor with its character count, Save Instructions as a secondary button and the conflict offer
+  as a warning notice), Publish (the Note and **Publish Instructions**, the page's one primary),
+  Agents (the "N Agents behind" summary and a `table.wrap` of version chips with an Instructions
+  behind badge) and Versions (a timeline, newest first, each a version chip with the `current`
+  badge on the Current Version, then Compare: two selects and `Diff`). Reverting asks with a
+  destructive `ConfirmDialog`. The rollout offer after publishing and the bulk-revert offer after
+  reverting are `Dialog`s: every eligible Agent pre-selected, Draft changes badged `draft`, and
+  the results counted ("2 succeeded, 0 skipped, 1 failed") then listed per Agent.
 - **Signed-out pages** (sign in, sign up, MFA, reset, invite, the status page, and the shell's
   own loading and error states before the session is known): a centred `surface.panel` on the
   canvas with the wave mark, no top bar (`SignedOutFrame` in `auth/AuthLayout.tsx`). Form errors
@@ -173,7 +182,7 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
 | `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
-| `Badge` | Live, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Working, Check failed, Version chip |
+| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Working, Check failed, Version chip |
 | `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
 | `EmptyState`, `Skeleton` | Empty, error and loading states |
 | `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
@@ -224,6 +233,7 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `kind` | Words | Colour |
 | --- | --- | --- |
 | `live` | Live | `accent-soft` with an accent dot |
+| `current` | Current (the Current Version of the Project Instructions) | `accent-soft` |
 | `draft` | Draft | `sand` |
 | `notLive` | Not live | `sunken`, `muted` |
 | `archived` | Archived | `sunken`, `muted` |

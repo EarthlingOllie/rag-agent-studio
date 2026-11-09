@@ -1,9 +1,13 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject, instructionsVersion } from "../test/projects";
 import { renderStudio } from "../test/render";
+import { server } from "../test/server";
+
+const DRAFT = "*/api/organisations/:organisationId/projects/:projectId/instructions";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const instructionsTab = `/organisations/${organisationId}/projects/${hrProject.id}/instructions`;
@@ -25,10 +29,12 @@ async function compare() {
   return screen.getByRole("region", { name: "Compare" });
 }
 
-function lines(list: HTMLElement) {
-  return within(list)
-    .getAllByRole("listitem")
-    .map((line) => line.textContent);
+/** The diff's rows as text: line before, line after, mark, line. */
+function rows(table: HTMLElement) {
+  return within(table)
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent));
 }
 
 test("by default the saved Draft is compared with the Current Version", async () => {
@@ -43,8 +49,14 @@ test("by default the saved Draft is compared with the Current Version", async ()
     "v2 (Current)",
     "v1",
   ]);
-  const diff = await within(region).findByRole("list", { name: "Changes from v2 to the Draft" }, { timeout: 5000 });
-  expect(lines(diff)).toEqual(["Unchanged:   Be kind.", "Removed: − Never quote salaries.", "Added: + Ask HR."]);
+  // The design system's Diff: both sides' line numbers, + and − marks, and a summary.
+  const diff = await within(region).findByRole("table", { name: "Changes from v2 to the Draft" }, { timeout: 5000 });
+  expect(rows(diff)).toEqual([
+    ["1", "1", "", "Be kind."],
+    ["2", "", "−Removed", "Never quote salaries."],
+    ["", "2", "+Added", "Ask HR."],
+  ]);
+  expect(within(region).getByText("1 added, 1 removed")).toBeInTheDocument();
 });
 
 test("an Editor compares any two Instructions Versions", async () => {
@@ -55,8 +67,11 @@ test("an Editor compares any two Instructions Versions", async () => {
   await userEvent.selectOptions(within(region).getByLabelText("From"), v1.id);
   await userEvent.selectOptions(within(region).getByLabelText("To"), v2.id);
 
-  const diff = await within(region).findByRole("list", { name: "Changes from v1 to v2" }, { timeout: 5000 });
-  expect(lines(diff)).toEqual(["Unchanged:   Be kind.", "Added: + Never quote salaries."]);
+  const diff = await within(region).findByRole("table", { name: "Changes from v1 to v2" }, { timeout: 5000 });
+  expect(rows(diff)).toEqual([
+    ["1", "1", "", "Be kind."],
+    ["", "2", "+Added", "Never quote salaries."],
+  ]);
 });
 
 test("identical sides have no differences", async () => {
@@ -78,12 +93,43 @@ test("Instructions that were never published compare from the Draft", async () =
   expect(await within(region).findByText("No differences: the Draft and the Draft are the same.", {}, { timeout: 5000 })).toBeInTheDocument();
 });
 
-test("a comparison that can't be loaded says so", async () => {
-  setUp({ diffStatus: 500 });
+test("the comparison follows the saved Draft", async () => {
+  setUp();
+  renderStudio(instructionsTab);
+  const region = await compare();
+  await within(region).findByRole("table", { name: "Changes from v2 to the Draft" }, { timeout: 5000 });
+
+  await userEvent.click(screen.getByRole("button", { name: "Markdown" }));
+  const source = screen.getByRole("textbox", { name: "Project Instructions (Markdown)" });
+  await userEvent.clear(source);
+  await userEvent.type(source, "Be kind.\nNever quote salaries.");
+  await userEvent.click(screen.getByRole("button", { name: "Save Instructions" }));
+
+  expect(await within(region).findByText("No differences: v2 and the Draft are the same.", {}, { timeout: 5000 })).toBeInTheDocument();
+});
+
+test("a comparison waits for the saved Draft", async () => {
+  setUp();
+  server.use(
+    http.get(DRAFT, async () => {
+      await delay(1500);
+      return HttpResponse.json({ markdown: "Be kind.", revision: 1 });
+    }),
+  );
   renderStudio(instructionsTab);
   const region = await compare();
 
-  expect(await within(region).findByText(/The comparison could not be loaded/, {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(within(region).getByText("Comparing…")).toBeInTheDocument();
+  expect(await within(region).findByRole("table", { name: "Changes from v2 to the Draft" }, { timeout: 5000 })).toBeInTheDocument();
+});
+
+test("a comparison without the saved Draft says so", async () => {
+  setUp();
+  server.use(http.get(DRAFT, () => HttpResponse.json({ detail: "boom" }, { status: 500 })));
+  renderStudio(instructionsTab);
+  const region = await compare();
+
+  expect(await within(region).findByText("The comparison could not be loaded. Try again shortly.", {}, { timeout: 5000 })).toBeInTheDocument();
 });
 
 test("Instructions without Versions offer nothing to compare", async () => {

@@ -1,0 +1,22 @@
+light       instructions           at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions; body rgb(243, 246, 246); axe violations: 0
+light       compare-v1-v2          at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions; body rgb(243, 246, 246); axe violations: 0
+light       instructions-archived  at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b03/instructions; body rgb(243, 246, 246); axe violations: 0
+light       confirm-revert         at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Revert to v1?"; body rgb(243, 246, 246); axe violations: 0
+light       rollout-dialog         at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Roll out Instructions v2"; body rgb(243, 246, 246); axe violations: 0
+light       rollout-results        at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Roll out Instructions v2"; body rgb(243, 246, 246); axe violations: 0
+light       bulk-revert-offer      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Revert the Agents on Instructions v2?"; body rgb(243, 246, 246); axe violations: 0
+dark        instructions           at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions; body rgb(14, 22, 21); axe violations: 0
+dark        compare-v1-v2          at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions; body rgb(14, 22, 21); axe violations: 0
+dark        instructions-archived  at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b03/instructions; body rgb(14, 22, 21); axe violations: 0
+dark        confirm-revert         at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Revert to v1?"; body rgb(14, 22, 21); axe violations: 0
+dark        rollout-dialog         at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Roll out Instructions v2"; body rgb(14, 22, 21); axe violations: 0
+dark        rollout-results        at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Roll out Instructions v2"; body rgb(14, 22, 21); axe violations: 0
+dark        bulk-revert-offer      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Revert the Agents on Instructions v2?"; body rgb(14, 22, 21); axe violations: 0
+chosen-dark instructions           at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions; body rgb(14, 22, 21); axe violations: 0
+chosen-dark compare-v1-v2          at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions; body rgb(14, 22, 21); axe violations: 0
+chosen-dark instructions-archived  at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b03/instructions; body rgb(14, 22, 21); axe violations: 0
+chosen-dark confirm-revert         at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Revert to v1?"; body rgb(14, 22, 21); axe violations: 0
+chosen-dark rollout-dialog         at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Roll out Instructions v2"; body rgb(14, 22, 21); axe violations: 0
+chosen-dark rollout-results        at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Roll out Instructions v2"; body rgb(14, 22, 21); axe violations: 0
+chosen-dark bulk-revert-offer      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions dialog "Revert the Agents on Instructions v2?"; body rgb(14, 22, 21); axe violations: 0
+total axe violations: 0
