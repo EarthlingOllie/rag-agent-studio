@@ -8,7 +8,7 @@
 - [10-03: Demo host pages](03-demo-host-pages.md)
 - [10-04: Attack panel](04-attack-panel.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The README has the pitch, a Mermaid architecture diagram, the stack, a quickstart, testing and security sections, deploy and destroy instructions with cost, and links to the glossary, ADRs, plan, specs and tickets
 - [ ] The five-minute demo script is in the README, with CI and coverage badges
