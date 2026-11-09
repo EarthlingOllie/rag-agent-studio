@@ -1,6 +1,8 @@
 /** The status badges the Studio shows beside Agents, Versions, Conversations, KPIs and Provider Credentials. */
 const BADGES = {
   live: { label: "Live", className: "bg-accent-soft text-accent-ink", dot: "bg-accent" },
+  /** The Current Version of the Project Instructions: the one Agents are published with. */
+  current: { label: "Current", className: "bg-accent-soft text-accent-ink" },
   draft: { label: "Draft", className: "bg-sand text-sand-ink" },
   notLive: { label: "Not live", className: "bg-sunken text-muted" },
   archived: { label: "Archived", className: "bg-sunken text-muted" },

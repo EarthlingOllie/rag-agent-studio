@@ -4,6 +4,7 @@ import { Badge, BADGE_LABELS, type BadgeKind } from "./Badge";
 
 it.each([
   ["live", "Live"],
+  ["current", "Current"],
   ["draft", "Draft"],
   ["notLive", "Not live"],
   ["archived", "Archived"],

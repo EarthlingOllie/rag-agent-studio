@@ -55,9 +55,13 @@ test("publishing Instructions opens the rollout dialog with the Agents that can 
 
   await publishInstructions("Be curt.");
 
+  // A modal Dialog: focus moves into it, on the first Agent.
   const dialog = await screen.findByRole("dialog", { name: "Roll out Instructions v3" });
-  expect(dialog).toHaveTextContent("built from its Live configuration with Instructions v3");
-  expect(dialog).toHaveTextContent("Unpublished Draft changes are not included.");
+  expect(dialog).toHaveAttribute("aria-modal", "true");
+  expect(dialog).toHaveAccessibleDescription(
+    "Each selected Agent gets a new Version built from its Live configuration with Instructions v3, and it goes Live at once. Unpublished Draft changes are not included.",
+  );
+  expect(within(dialog).getByRole("checkbox", { name: "HR helper" })).toHaveFocus();
   expect(within(dialog).getByRole("checkbox", { name: "HR helper" })).toBeChecked();
   expect(within(dialog).getByRole("checkbox", { name: "Benefits FAQ" })).toBeChecked();
   // Already on v3, or never published: not offered.
@@ -67,10 +71,14 @@ test("publishing Instructions opens the rollout dialog with the Agents that can 
   const rows = within(within(dialog).getByRole("list", { name: "Agents" })).getAllByRole("listitem");
   expect(rows.map((row) => row.textContent)).toEqual([
     "HR helperLive v2, Instructions v2",
-    "Benefits FAQLive v4, Instructions v1Unpublished Draft changes (not included)",
+    "Benefits FAQLive v4, Instructions v1Draftchanges not included",
     "PayrollLive v1, Instructions v3Already on v3.",
     "Draft onlyNot liveNever published: not included. Publish it from its page first.",
   ]);
+  // Versions are chips, and Draft changes and Not live are badges.
+  expect(within(rows[1] as HTMLElement).getByLabelText("Version 4")).toBeInTheDocument();
+  expect(within(rows[1] as HTMLElement).getByText("Draft")).toHaveAttribute("title", "Unpublished Draft changes are not included.");
+  expect(within(rows[3] as HTMLElement).getByText("Not live")).toHaveClass("rounded-full");
 
   await userEvent.click(within(dialog).getByRole("button", { name: "Publish to 2 Agents" }));
 
@@ -82,6 +90,7 @@ test("publishing Instructions opens the rollout dialog with the Agents that can 
     "HR helper — Done: Published v3 with Instructions v3. It is now Live.",
     "Benefits FAQ — Done: Published v5 with Instructions v3. It is now Live.",
   ]);
+  expect(within(dialog).getByText("2 succeeded, 0 skipped, 0 failed")).toBeInTheDocument();
   await userEvent.click(within(dialog).getByRole("button", { name: "Done" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
@@ -100,6 +109,19 @@ test("the Editor can deselect Agents to keep them on older Instructions", async 
   await userEvent.click(within(dialog).getByRole("button", { name: "Publish to 1 Agent" }));
 
   expect(requests).toEqual([{ route: "bulk-publish", body: { agent_ids: [hrHelper.id], instructions_version_id: v3.id } }]);
+});
+
+test("Escape closes the rollout dialog without publishing", async () => {
+  setUp();
+  const { requests } = fakeBulkApi({ rollout: afterV3 });
+  renderStudio(instructionsTab(hrProject.id));
+  await publishInstructions("Be curt.");
+  await screen.findByRole("checkbox", { name: "HR helper" });
+
+  await userEvent.keyboard("{Escape}");
+
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(requests).toEqual([]);
 });
 
 test("the results say which Agents were skipped or failed, and why", async () => {
@@ -126,6 +148,7 @@ test("the results say which Agents were skipped or failed, and why", async () =>
     `HR helper — Skipped: ${NEVER_PUBLISHED}`,
     "Unknown Agent — Failed: Not found.",
   ]);
+  expect(within(dialog).getByText("0 succeeded, 1 skipped, 1 failed")).toBeInTheDocument();
 });
 
 test("a bulk publish refused as a whole says why and shows its progress", async () => {
@@ -158,15 +181,20 @@ test("the Instructions page shows how many Agents are behind and which Version e
   fakeBulkApi({ rollout: { ...v2Live, behind: 2 } });
   renderStudio(instructionsTab(hrProject.id));
 
-  expect(await screen.findByText("2 Agents behind the Current Version (v2).")).toBeInTheDocument();
+  // The summary and the table use version chips and badges.
+  const summary = await screen.findByText(/behind the Current Version/);
+  expect(summary).toHaveTextContent("2 Agents behind the Current Version v2");
+  expect(within(summary).getByLabelText("Version 2")).toBeInTheDocument();
   const table = screen.getByRole("table", { name: "Instructions each Agent runs with" });
   expect(within(table).getAllByRole("row").map((row) => row.textContent)).toEqual([
     "AgentLive VersionInstructions",
     "HR helperv2v2",
-    "Oldv1v1 (behind)",
-    "Barev1None (behind)",
+    "Oldv1v1Instructions behind",
+    "Barev1NoneInstructions behind",
     "Draft onlyNot live",
   ]);
+  expect(within(table).getAllByText("Instructions behind")).toHaveLength(2);
+  expect(within(table).getAllByLabelText("Version 1")).toHaveLength(3);
 
   // Rolling out the Current Version is one click away.
   await userEvent.click(screen.getByRole("button", { name: "Roll out v2…" }));
@@ -179,12 +207,12 @@ test("one Agent behind is singular, and none behind offers no rollout", async ()
   setUp();
   fakeBulkApi({ rollout: { current_version: pinV2, behind: 1, agents: [rolloutAgent(2, "Old", 1, pinV1, { behind: true })] } });
   const { unmount } = renderStudio(instructionsTab(hrProject.id));
-  expect(await screen.findByText("1 Agent behind the Current Version (v2).")).toBeInTheDocument();
+  expect(await screen.findByText(/behind the Current Version/)).toHaveTextContent("1 Agent behind the Current Version v2");
   unmount();
 
   fakeBulkApi({ rollout: { current_version: pinV2, behind: 0, agents: [rolloutAgent(1, "HR helper", 2, pinV2)] } });
   renderStudio(instructionsTab(hrProject.id));
-  expect(await screen.findByText("0 Agents behind the Current Version (v2).")).toBeInTheDocument();
+  expect(await screen.findByText(/behind the Current Version/)).toHaveTextContent("0 Agents behind the Current Version v2");
   expect(screen.queryByRole("button", { name: /Roll out/ })).not.toBeInTheDocument();
 });
 
@@ -202,7 +230,7 @@ test("an archived Project shows who is behind without offering a rollout", async
   fakeBulkApi({ rollout: afterV3 });
   renderStudio(instructionsTab(oldProject.id));
 
-  expect(await screen.findByText("2 Agents behind the Current Version (v3).")).toBeInTheDocument();
+  expect(await screen.findByText(/behind the Current Version/)).toHaveTextContent("2 Agents behind the Current Version v3");
   expect(screen.queryByRole("button", { name: /Roll out/ })).not.toBeInTheDocument();
 });
 
@@ -241,7 +269,7 @@ test("the dialog says while the Agents load", async () => {
   await publishInstructions("Be curt.");
 
   const dialog = await screen.findByRole("dialog", { name: "Roll out Instructions v3" });
-  expect(within(dialog).getByRole("status")).toHaveTextContent("Loading the Agents…");
+  expect(within(dialog).getByRole("status", { name: "Loading the Agents…" })).toBeInTheDocument();
   expect(await within(dialog).findByRole("checkbox", { name: "HR helper" }, { timeout: 5000 })).toBeChecked();
 });
 
@@ -267,6 +295,7 @@ test("reverting Instructions offers to bulk-revert the Agents pinned to the reve
   await revertInstructions();
 
   const dialog = await screen.findByRole("dialog", { name: "Revert the Agents on Instructions v3?" });
+  expect(dialog).toHaveAttribute("aria-modal", "true");
   expect(dialog).toHaveTextContent("These Agents are Live with Instructions v3.");
   expect(within(dialog).getByRole("checkbox", { name: "HR helper (Live v3)" })).toBeChecked();
   await userEvent.click(within(dialog).getByRole("checkbox", { name: "Benefits FAQ (Live v5)" }));
