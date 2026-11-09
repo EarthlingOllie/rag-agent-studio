@@ -27,7 +27,7 @@ async function openProjectTab(page: Page, tab: string) {
 
 /** The Thumbs-up rate a Version's KPI card shows, as a whole percentage. */
 async function thumbsUp(page: Page, version: string): Promise<number> {
-  await page.getByRole("combobox", { name: "Version" }).selectOption({ label: version });
+  await page.getByRole("combobox", { name: /^Version/ }).selectOption({ label: version });
   const card = page
     .getByRole("list", { name: `Key numbers for ${version.replace(/ \(Live\)$/, "")}` })
     .getByRole("listitem", { name: "Thumbs-up rate" });
