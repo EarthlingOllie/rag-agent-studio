@@ -47,7 +47,7 @@ test.describe("Projects", () => {
   }) => {
     await createProject(page, "HR handbook", "Policies for the HR Agent");
 
-    // The Project page has a tab per area, each a placeholder for now.
+    // The Project page has a section per area, each a placeholder for now.
     for (const tab of ["Documents", "Instructions", "Agents", "Conversations", "Analytics"]) {
       await openSection(page, "Project sections", tab);
       await expect(page.getByRole("heading", { level: 2, name: tab })).toBeVisible();
@@ -63,7 +63,7 @@ test.describe("Projects", () => {
     await expect(page.getByRole("heading", { level: 1, name: "People team" })).toBeVisible();
 
     // It is listed with its counts.
-    await page.getByRole("link", { name: "All Projects" }).click();
+    await openSection(page, "Projects", "All Projects");
     const projects = page.getByRole("table", { name: "Projects" });
     await expect(projects.getByRole("row").filter({ hasText: "People team" }).getByRole("cell")).toHaveText([
       "People team",
@@ -75,13 +75,14 @@ test.describe("Projects", () => {
 
     // Archive it: it leaves the main list and refuses changes.
     await projects.getByRole("link", { name: "People team" }).click();
-    await page.getByRole("button", { name: "Archive" }).click();
+    await page.getByRole("button", { name: "More Project actions" }).click();
+    await page.getByRole("menu", { name: "Project actions" }).getByRole("menuitem", { name: "Archive" }).click();
     await page.getByRole("button", { name: "Yes, archive People team" }).click();
     await expect(page.getByText(/This Project is archived/)).toBeVisible();
     const projectUrl = new URL(page.url()).pathname.replace(/^\//, "/api/");
     const refused = await page.request.patch(projectUrl, { data: { name: "Sneaky rename" } });
     expect(refused.status()).toBe(409);
-    await page.getByRole("link", { name: "All Projects" }).click();
+    await openSection(page, "Projects", "All Projects");
     await expect(page.getByText(/No Projects yet/)).toBeVisible();
 
     // Restore it from the archived list.
@@ -105,7 +106,8 @@ test.describe("Projects", () => {
     const editorPage = await inviteNewEditor(page, browser, newMember({ name: "Project Editor" }));
 
     await createProject(editorPage, "Sales enablement", "Decks and pricing");
-    await editorPage.getByRole("button", { name: "Archive" }).click();
+    await editorPage.getByRole("button", { name: "More Project actions" }).click();
+    await editorPage.getByRole("menu", { name: "Project actions" }).getByRole("menuitem", { name: "Archive" }).click();
     await editorPage.getByRole("button", { name: "Yes, archive Sales enablement" }).click();
     await expect(editorPage.getByText("Only Owners can restore it.")).toBeVisible();
     await expect(editorPage.getByRole("button", { name: "Restore Sales enablement" })).toHaveCount(0);
