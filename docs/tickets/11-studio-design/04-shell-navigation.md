@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-03: Colour codemod](03-colour-codemod.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] `OrganisationShell` renders `TopBar` with the mark, the breadcrumb, the Appearance toggle and the account menu; the side menu is gone
 - [ ] The Organisation crumb switches Organisation (with today's error handling); the org-level section switcher offers Projects, Settings and Security, and only Security while MFA enrolment is required
