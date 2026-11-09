@@ -18,14 +18,14 @@ test.describe("Documents", () => {
     await expect(page.getByText(/No Documents yet/)).toBeVisible();
 
     // Presign, PUT straight to the object store (RustFS through the Studio's proxy), confirm.
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     await expect(page.getByRole("list", { name: "Uploads" }).getByText("Uploaded")).toBeVisible();
 
     // The list polls the status endpoint until the Document is Ready, without a reload.
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
-    // Columns: select, Name, Status, Tags, Chunks, Size.
-    const chunks = Number(await row.getByRole("cell").nth(4).textContent());
+    // Columns: select, Name, Type, Tags, Status, Chunks, Flagged, Size, ⋯.
+    const chunks = Number(await row.getByRole("cell").nth(5).textContent());
     expect(chunks).toBeGreaterThan(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
@@ -41,7 +41,7 @@ test.describe("Documents", () => {
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Handbook viewer");
     await form.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
 
@@ -79,12 +79,13 @@ test.describe("Documents", () => {
     await expect(flaggedSetting.getByText(/Flagged Chunks are never given to an Agent/)).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await openSection(page, "Project sections", "Documents");
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
 
-    // Columns: select, Name, Status, Tags, Chunks, Flagged, Size. One Chunk is flagged, by the local ONNX classifier.
-    await expect(row.getByRole("cell").nth(5)).toHaveText("1");
+    // Columns: select, Name, Type, Tags, Status, Chunks, Flagged, Size, ⋯. One Chunk is flagged, by the local ONNX classifier.
+    await expect(row.getByRole("cell").nth(6)).toHaveText("1");
+    await expect(page.getByRole("region", { name: "Knowledge Base" })).toContainText("Flagged chunks1");
     await row.getByRole("link", { name: "northwind-staff-handbook.md" }).click();
 
     await expect(page.getByText("1 Chunk flagged as possible instructions to an AI.")).toBeVisible();

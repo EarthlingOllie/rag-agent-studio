@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { rowAction } from "../fixtures/documents";
 import { openSection } from "../fixtures/navigation";
 
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -18,7 +19,7 @@ test.describe("OCR toggle", () => {
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Scanned contracts");
     await form.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: /Ready/ })).toBeVisible({ timeout: 60_000 });
 
@@ -34,10 +35,10 @@ test.describe("OCR toggle", () => {
 
     // Retry sends the existing Document through ingestion again, with OCR on.
     await openSection(page, "Project sections", "Documents");
-    await row.getByRole("button", { name: "Retry northwind-staff-handbook.md" }).click();
+    await rowAction(page, "northwind-staff-handbook.md", "Retry");
     await expect(row.getByRole("cell", { name: /Ready/ })).toBeVisible({ timeout: 60_000 });
-    // Cells: Select, Name, Status, Tags, Chunks.
-    expect(Number(await row.getByRole("cell").nth(4).textContent())).toBeGreaterThan(0);
+    // Cells: Select, Name, Type, Tags, Status, Chunks.
+    expect(Number(await row.getByRole("cell").nth(5).textContent())).toBeGreaterThan(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 });

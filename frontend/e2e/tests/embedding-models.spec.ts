@@ -52,7 +52,7 @@ test.describe("Embedding Models", () => {
 
     // The worker embeds the upload with the chosen model; changing it now would re-embed.
     await openSection(page, "Project sections", "Documents");
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.reload();
@@ -97,7 +97,7 @@ test.describe("Embedding Models", () => {
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Re-embedded handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     const [, organisationId, projectId] = /organisations\/([^/]+)\/projects\/([^/]+)/.exec(page.url()) ?? [];
