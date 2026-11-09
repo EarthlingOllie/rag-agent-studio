@@ -78,7 +78,8 @@ test("an Owner invites by email with a role and can copy the link", async () => 
 
   await inviteSomeone("grace@example.test", { role: "Owner" });
 
-  const result = await screen.findByRole("status");
+  expect(await screen.findByText("Invited grace@example.test.")).toBeInTheDocument();
+  const result = screen.getByRole("region", { name: "New invite" });
   expect(result).toHaveTextContent("We emailed an invite to grace@example.test.");
   expect(result).toHaveTextContent("expires on 2026-06-08");
   expect(within(result).getByLabelText("Invite link for grace@example.test")).toHaveValue(linkFor("new-token-1"));
@@ -101,7 +102,7 @@ test("an Owner can invite by link only, without sending an email", async () => {
 
   await inviteSomeone("grace@example.test", { sendEmail: false });
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Copy the link and send it to grace@example.test.");
+  expect(await screen.findByRole("region", { name: "New invite" })).toHaveTextContent("Copy the link and send it to grace@example.test.");
   expect(api.created).toEqual([{ email: "grace@example.test", role: "editor", send_email: false }]);
 });
 
@@ -114,7 +115,7 @@ test("when the email can't be sent, the Owner is told to copy the link", async (
 
   await inviteSomeone("grace@example.test");
 
-  const result = await screen.findByRole("status");
+  const result = await screen.findByRole("region", { name: "New invite" });
   expect(result).toHaveTextContent("The email to grace@example.test couldn't be sent. Copy the link and send it yourself.");
   await userEvent.click(within(result).getByRole("button", { name: "Copy link" }));
   expect(await within(result).findByText("Couldn't copy. Select the link and copy it yourself.")).toBeInTheDocument();
@@ -139,7 +140,8 @@ test.each([
   await inviteSomeone("grace@example.test");
 
   expect(await screen.findByRole("alert")).toHaveTextContent(message);
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "New invite" })).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Invited /)).not.toBeInTheDocument();
 });
 
 test("an unreachable API while inviting says to try again", async () => {
@@ -191,6 +193,7 @@ test("an Owner revokes a pending invite", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Revoke invite for grace@example.test" }));
 
   expect(api.revoked).toEqual([graceInvite.id]);
+  expect(await screen.findByText("Revoked the invite for grace@example.test.")).toBeInTheDocument();
   await within(screen.getByRole("table", { name: "Pending invites" })).findByRole("cell", { name: "Owner" });
   await expect.poll(pendingRows).toEqual([["charles@example.test", "Owner", "Ada Lovelace", "Expired"]]);
 });
@@ -203,7 +206,8 @@ test("an Owner gets a new link for an expired invite", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: "New link for charles@example.test" }));
 
-  const result = await screen.findByRole("status");
+  expect(await screen.findByText("New invite link for charles@example.test.")).toBeInTheDocument();
+  const result = screen.getByRole("region", { name: "New invite" });
   expect(result).toHaveTextContent("Copy the link and send it to charles@example.test.");
   expect(within(result).getByLabelText("Invite link for charles@example.test")).toHaveValue(linkFor("renewed-token-1"));
   expect(result).toHaveTextContent("expires on 2026-06-20");

@@ -42,12 +42,15 @@ test("every Member sees the credentials with provider, capabilities, masked key,
       "Voyage AI",
       "Embeddings, Reranking",
       "••••9876",
-      "Check failed: The provider says this key is over its rate limit or quota. Try again later, or check your plan.",
+      "Check failed The provider says this key is over its rate limit or quota. Try again later, or check your plan.",
       "2026-11-04 17:45 UTC",
     ],
     ["Marketing OpenAI", "OpenAI", "Chat, Embeddings", "••••wxyz", "Working", "2026-11-05 09:00 UTC"],
   ]);
   expect(screen.getByLabelText("Key ending wxyz")).toBeInTheDocument();
+  // The check result is a badge: the words say it, the colour repeats it.
+  expect(screen.getByText("Working").className).toContain("bg-accent-soft");
+  expect(screen.getByText("Check failed").className).toContain("bg-danger-soft");
 });
 
 test("Editors see the credentials but none of the Owner controls", async () => {
@@ -220,6 +223,7 @@ test("an Owner re-checks a credential on demand", async () => {
   expect(await screen.findByText("Legal Voyage passed its check.")).toBeInTheDocument();
   expect(api.checked).toEqual([legalVoyage.id]);
   expect(rows()[0]).toEqual(["Legal Voyage", "Voyage AI", "Embeddings, Reranking", "••••9876", "Working", "2026-11-05 12:00 UTC"]);
+  expect(screen.queryByText("Check failed")).not.toBeInTheDocument();
 });
 
 test("a re-check that fails shows the reason on the credential", async () => {
@@ -228,10 +232,9 @@ test("a re-check that fails shows the reason on the credential", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: "Check now: Marketing OpenAI" }));
 
-  expect(
-    await screen.findByText("Check failed: The provider rejected this API key. Check it was copied in full."),
-  ).toBeInTheDocument();
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(await screen.findByText("The provider rejected this API key. Check it was copied in full.")).toBeInTheDocument();
+  expect(rows()[1]?.[4]).toBe("Check failed The provider rejected this API key. Check it was copied in full.");
+  expect(screen.queryByText(/passed its check/)).not.toBeInTheDocument();
 });
 
 test("a re-check the API refuses says something went wrong", async () => {
@@ -277,7 +280,10 @@ test("an Owner deletes an unused credential after confirming", async () => {
   await openAsOwner();
 
   await userEvent.click(screen.getByRole("button", { name: "Delete: Legal Voyage" }));
-  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  const dialog = screen.getByRole("alertdialog", { name: "Delete Legal Voyage?" });
+  expect(dialog).toHaveTextContent("Its key is erased");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(api.deleted).toEqual([]);
   await userEvent.click(screen.getByRole("button", { name: "Delete: Legal Voyage" }));
   await userEvent.click(screen.getByRole("button", { name: "Yes, delete Legal Voyage" }));

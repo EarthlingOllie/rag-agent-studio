@@ -78,12 +78,12 @@ import { AppearanceToggle, Avatar, Breadcrumb, Brand, button, CrumbSwitcher, Ico
   navigates, exactly as `OrganisationSwitcher` does today (keep its error alert). With one
   Organisation, render it as a link to its Projects (`<Link className={crumbClass()}>`).
 - **Org-level section crumb** (`menuLabel="Organisation sections"`): Projects, Cost (Owners only),
-  Settings, Security. While MFA enrolment is required, offer only Security (today's `mustEnrol`
-  rule). Pages outside the menu (Profile, and Cost for an Editor) get a current `CrumbText`.
+  Settings, Security, Profile. While MFA enrolment is required, offer only Security (today's
+  `mustEnrol` rule). The page outside the menu (Cost for an Editor) gets a current `CrumbText`.
 - **AccountMenu**: `Menu` with `label={<Avatar name={session.member.name} />}`,
   `triggerLabel={`${name}, Account`}`, `menuLabel="Account"`, `align="end"`,
-  `triggerClassName="rounded-full"`; items Profile (`renderLink`) and Sign out (`onSelect`, the
-  existing `useSignOut` flow, keep its alert).
+  `triggerClassName="rounded-full"`; items Profile and Security (`renderLink`) and Sign out
+  (`onSelect`, the existing `useSignOut` flow, keep its alert). Security was added in 11-12.
 - **Page actions in the top bar** (the Agent's Saved / History / Publish): add a small portal
   slot (`TopBarActionsSlot` renders a `<div id="top-bar-actions">`; the page renders into it
   with `createPortal`), or a context holding a setter. Keep it to that one job. (Not built in
@@ -339,5 +339,6 @@ with `openSection(page, "Project sections", "Agents")`, and the settings tabs wi
 Both helpers exist since 11-04, with the same names: `e2e/fixtures/navigation.ts` (Playwright, the
 page first) and `apps/studio/src/test/navigation.ts` (Testing Library: `openSection`,
 `sectionNames`, `currentSection`, `hasMenu`, `menuButton`). Menus that are still tab rows
-("Project sections", "Organisation settings") are listed in each helper's `TAB_ROWS`; the slice
-that turns a row into a switcher deletes its entry, and no test changes.
+are listed in each helper's `TAB_ROWS`; the slice that turns a row into a switcher deletes its
+entry, and no test changes. "Organisation settings" is a switcher since 11-11
+(`shell/SettingsCrumb.tsx`).

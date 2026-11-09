@@ -12,6 +12,8 @@ it.each([
   ["blocked", "Blocked by guardrail"],
   ["lowSample", "Low sample"],
   ["flagged", "Flagged"],
+  ["checkPassed", "Working"],
+  ["checkFailed", "Check failed"],
 ] satisfies [BadgeKind, string][])("labels the %s badge %s", (kind, label) => {
   render(<Badge kind={kind} />);
   expect(screen.getByText(label)).toBeInTheDocument();

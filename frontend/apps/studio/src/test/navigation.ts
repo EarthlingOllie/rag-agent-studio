@@ -20,7 +20,6 @@ export type NavigationMenu =
  * that use the helpers do not change.
  */
 const TAB_ROWS: Partial<Record<NavigationMenu, string>> = {
-  "Organisation settings": "Organisation settings",
 };
 
 type User = { click: (element: Element) => Promise<unknown>; keyboard: (text: string) => Promise<unknown> };

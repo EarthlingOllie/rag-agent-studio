@@ -75,3 +75,40 @@ database.
 | `38-widget-guardrail-block.png` | The input Guardrail refusing a prompt-injection message |
 | `39-conversations.png` | Conversations viewer with filters |
 | `40-conversation-detail.png` | One Visitor Conversation, pinned to its Agent Version |
+
+## The Tidepool reskin and the showcase (candidate-reskin, through PR #88)
+
+Captured on `candidate-reskin` after the first seven spec-11 tickets (foundation, colour codemod,
+shell and breadcrumb, Project frame, Organisation settings, signed-out pages) and every feature
+ticket in slices 06–10. Pages whose reskin tickets are still open (Documents table, Agent views,
+Conversations, Analytics) show the new shell around the old content. `capture-reskin.cjs` recaptures
+them on a freshly seeded database with the demo host pages running (`make dev`, `make seed`).
+
+| File | Screen |
+| --- | --- |
+| `41-sign-in-reskin.png` | The reskinned sign-in page |
+| `42-projects-reskin.png` | Projects in the new shell: one top bar with the breadcrumb |
+| `43-documents-reskin.png` | Documents inside the new Project frame |
+| `44-breadcrumb-menu.png` | A breadcrumb level as a switcher menu (Project sections) |
+| `45-flagged-chunk.png` | The planted Chunk with its Guardrail flag in the Document viewer |
+| `46-agents-list.png` | Agents, including the seeded Guardrail demo and Low-budget helper |
+| `47-live-history-seeded.png` | HR helper's seeded Live History: v2 published, reverted, v3 published |
+| `48-analytics-v1.png` | Analytics: v1's KPI cards and the time series |
+| `49-analytics-v2.png` | Analytics: v2, with the lower Thumbs-up rate |
+| `50-analytics-v3-low-confidence.png` | Analytics: v3, marked Low confidence |
+| `51-conversations-seeded.png` | Four weeks of seeded Conversations |
+| `52-organisation-cost.png` | Organisation cost by Project |
+| `53-organisation-settings-reskin.png` | The reskinned Organisation settings |
+| `54-audit-seeded.png` | Audit Events from the seeded history |
+| `55-demo-shop-widget.png` | The demo shop with the Product FAQ bubble |
+| `56-demo-inline.png` | The help centre with the inline layout |
+| `57-disallowed-origin.png` | The same snippet on an origin the Agent doesn't allow |
+| `58-attack-panel.png` | The attack panel after every button (the last result shown) |
+| `59-token-budget-spent.png` | The Low-budget helper after its Token Budget is spent |
+| `60-agents-budget-exhausted.png` | The Studio's Agents list showing Budget exhausted |
+| `61-documents-dark.png` | Dark Appearance: Documents |
+| `62-cost-dark.png` | Dark Appearance: Organisation cost |
+
+These ran with `INJECTION_CLASSIFIER=heuristic` and `INPUT_CLASSIFIER=heuristic` (the local ONNX
+model couldn't be downloaded in the capture environment) and the fake embedder, so the scores and
+which Chunks rank first differ from a stack built with the bundled models.
