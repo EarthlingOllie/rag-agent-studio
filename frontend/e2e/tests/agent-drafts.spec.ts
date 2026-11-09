@@ -12,6 +12,7 @@ test.describe("Diffs and Draft management", () => {
     await newProject.getByLabel("Name").fill("Drafts HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
     await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
