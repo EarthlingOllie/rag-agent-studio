@@ -12,6 +12,7 @@
     "test": "vitest run --coverage",
     "build": "pnpm --filter @studio/studio build && pnpm --filter @studio/widget build",
     "check-embed-size": "pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size",
+    "palette-ratchet": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=scripts/palette-ratchet/ratchet.mjs scripts/palette-ratchet/ratchet.test.mjs && node scripts/palette-ratchet/cli.mjs",
     "dev": "pnpm --filter @studio/studio dev",
     "gen-client": "pnpm --filter @studio/api-client generate",
     "e2e": "playwright test",
