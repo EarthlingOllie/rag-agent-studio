@@ -1,7 +1,7 @@
-$ sh -c cd frontend && pnpm install --frozen-lockfile (at b1d24d2)
+$ sh -c cd frontend && pnpm install --frozen-lockfile (at 34bc17b)
 Scope: all 5 workspace projects
 Lockfile is up to date, resolution step is skipped
 Already up to date
 
-Done in 1s using pnpm v10.28.0
+Done in 825ms using pnpm v10.28.0
 exit 0

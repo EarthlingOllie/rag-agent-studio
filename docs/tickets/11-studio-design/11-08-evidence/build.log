@@ -1,4 +1,4 @@
-$ sh -c cd frontend && pnpm build (at b1d24d2)
+$ sh -c cd frontend && pnpm build (at 34bc17b)
 
 > rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-08/frontend
 > pnpm --filter @studio/studio build && pnpm --filter @studio/widget build
@@ -13,15 +13,15 @@ transforming...
 rendering chunks...
 computing gzip size...
 dist/index.html                     0.70 kB │ gzip:   0.39 kB
-dist/assets/index-PCFEnC9p.css     34.59 kB │ gzip:   7.55 kB
-dist/assets/index-DUfXLYTr.js   1,664.35 kB │ gzip: 481.78 kB
+dist/assets/index-Bh4DVNqe.css     35.44 kB │ gzip:   7.66 kB
+dist/assets/index-BULhxoVI.js   1,672.08 kB │ gzip: 484.42 kB
 
 [plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 1.30s
+✓ built in 800ms
 
 > @studio/widget@ build /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-08/frontend/apps/widget
 > vite build && vite build --config vite.embed.config.ts
@@ -33,12 +33,12 @@ rendering chunks...
 computing gzip size...
 dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
 
-✓ built in 343ms
 [plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 266ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -46,5 +46,5 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 50ms
+✓ built in 26ms
 exit 0

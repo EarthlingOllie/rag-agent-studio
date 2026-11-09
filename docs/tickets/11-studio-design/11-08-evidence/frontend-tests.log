@@ -1,4 +1,4 @@
-$ make test-frontend (at b1d24d2)
+$ make test-frontend (at 34bc17b)
 cd frontend && pnpm test && pnpm check-embed-size && pnpm palette-ratchet
 
 > rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-08/frontend
@@ -9,13 +9,13 @@ cd frontend && pnpm test && pnpm check-embed-size && pnpm palette-ratchet
       Coverage enabled with v8
 
 
- Test Files  76 passed (76)
-      Tests  986 passed (986)
-   Start at  14:42:37
-   Duration  262.70s (tests 73%, environment 12%, import 8%, setup 4%, transform 2%, worker 1%)
+ Test Files  77 passed (77)
+      Tests  1019 passed (1019)
+   Start at  15:04:52
+   Duration  126.95s (tests 70%, environment 14%, import 8%, setup 5%, transform 1%, worker 1%)
 
-    Isolate  76 workers spawned · ~1.38s startup each (spawn + environment, per file)
-             at least ~33.68s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  77 workers spawned · ~771ms startup each (spawn + environment, per file)
+             at least ~19.03s faster with isolate: false — reuses workers across files instead of one per file
 
 [34m % [39m[2mCoverage report from [22m[33mv8[39m
 No files with missing coverage.
@@ -23,10 +23,10 @@ No files with missing coverage.
 2 empty files skipped.
 
 =============================== Coverage summary ===============================
-Statements   : 100% ( 4417/4417 )
-Branches     : 100% ( 3071/3071 )
-Functions    : 100% ( 1592/1592 )
-Lines        : 100% ( 3870/3870 )
+Statements   : 100% ( 4470/4470 )
+Branches     : 100% ( 3156/3156 )
+Functions    : 100% ( 1620/1620 )
+Lines        : 100% ( 3904/3904 )
 ================================================================================
 
 > rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-08/frontend
@@ -43,12 +43,12 @@ rendering chunks...
 computing gzip size...
 dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
 
-✓ built in 413ms
 [plugin builtin:vite-reporter] 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 313ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -56,7 +56,7 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 34ms
+✓ built in 27ms
 
 > @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-08/frontend/apps/widget
 > node scripts/check-size.mjs
@@ -70,49 +70,49 @@ TAP version 13
 # Subtest: counts palette classes, dark: variants and white text or backgrounds under apps/studio/src only
 ok 1 - counts palette classes, dark: variants and white text or backgrounds under apps/studio/src only
   ---
-  duration_ms: 8.197032
+  duration_ms: 7.876319
   type: 'test'
   ...
 # Subtest: token utilities are not palette classes
 ok 2 - token utilities are not palette classes
   ---
-  duration_ms: 0.747381
+  duration_ms: 0.742668
   type: 'test'
   ...
 # Subtest: the same count as the baseline passes
 ok 3 - the same count as the baseline passes
   ---
-  duration_ms: 1.179297
+  duration_ms: 1.16788
   type: 'test'
   ...
 # Subtest: a rise fails and names the files that have them
 ok 4 - a rise fails and names the files that have them
   ---
-  duration_ms: 0.781554
+  duration_ms: 0.937828
   type: 'test'
   ...
 # Subtest: a fall passes and prints the new baseline to commit
 ok 5 - a fall passes and prints the new baseline to commit
   ---
-  duration_ms: 0.682002
+  duration_ms: 0.747948
   type: 'test'
   ...
 # Subtest: --write lowers the baseline to the new count, but never raises it
 ok 6 - --write lowers the baseline to the new count, but never raises it
   ---
-  duration_ms: 1.420177
+  duration_ms: 2.368937
   type: 'test'
   ...
 # Subtest: with no baseline file none are allowed
 ok 7 - with no baseline file none are allowed
   ---
-  duration_ms: 4.486915
+  duration_ms: 0.798169
   type: 'test'
   ...
 # Subtest: an unknown argument is a usage error
 ok 8 - an unknown argument is a usage error
   ---
-  duration_ms: 0.491986
+  duration_ms: 0.492599
   type: 'test'
   ...
 1..8
@@ -123,7 +123,7 @@ ok 8 - an unknown argument is a usage error
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 124.111035
+# duration_ms 84.910682
 # start of coverage report
 # ------------------------------------------------------------------
 # file              | line % | branch % | funcs % | uncovered lines
@@ -135,5 +135,5 @@ ok 8 - an unknown argument is a usage error
 # all files         | 100.00 |   100.00 |  100.00 | 
 # ------------------------------------------------------------------
 # end of coverage report
-24 palette-class uses under apps/studio/src (baseline 24).
+19 palette-class uses under apps/studio/src (baseline 19).
 exit 0

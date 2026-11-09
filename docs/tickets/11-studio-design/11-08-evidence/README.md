@@ -6,7 +6,9 @@ Branch `ticket/11-08-agent-views`, from `origin/candidate-reskin` at `034a445` (
 - `1e4a8f2` is the Agent page: the Agent and view switchers, the three routed views, the top bar actions, the ⋯ menus and their confirmations, the badges. It also updates the unit tests and 18 end-to-end specs.
 - `4158129` adds **Agent view** to `GLOSSARY.md` and updates `docs/design/README.md` and the `studio-reskin` patterns.
 - `d89e978` merges `origin/candidate-reskin` (`0b65fe4`: 11-11, 11-12 and the reskin screenshots). The one conflict was the **Breadcrumb** glossary entry, which now names both tickets' switchers.
-- `001392b` gives the Trace's table cells some room. `b1d24d2` is this folder's scripts. The last commit changes only this folder and the ticket file.
+- `001392b` gives the Trace's table cells some room. `b1d24d2` is this folder's scripts, and `e17d6fd` the first evidence run.
+- `31f8df7` merges `origin/candidate-reskin` `66663ff` (11-06): the breadcrumb now has both the Document crumb and the Agent crumbs, and the design README both pages. `a03ce0d` drops `TextDiff`, unused once 11-07's Instructions Versions show the design `Diff`. `34bc17b` merges `358bfd0` (11-07, 11-09): the Agents list is 11-09's table, so the specs read it, and reach it through the section switcher.
+- The last commit changes only this folder (the logs and screenshots of the run at `34bc17b`).
 
 No backend code, API call or permission changes. Three routes are added under the Agent (below).
 
@@ -109,24 +111,24 @@ The seams were not confirmed with a human (none was available), so the spec's ow
 | 6 | Embed & limits: `CodeBlock` snippet with launcher choice, Allowed Origins as an `EditableList` warning when empty, Unavailable text, Token Budget `Meter` and rate limits, Theme override for Owners | Tests: the three "Embed & limits:" tests and `AgentEmbed.test.tsx`, `AgentBranding.test.tsx` (Editors see it but can't change it). Screenshots `agent-embed-*`, `agent-archived-embed-*`. |
 | 7 | Archive and delete use the ⋯ menu and `ConfirmDialog` | Tests: "the Agent's ⋯ menu archives it after a confirmation", "an archived Agent's ⋯ menu deletes it permanently once its name is typed", and `AgentArchive.test.tsx`. Screenshots `menu-agent-actions-*`, `confirm-archive-*`, `confirm-delete-*`, `confirm-discard-*`. |
 | 8 | Behaviour is unchanged apart from what this ticket names; moved actions are listed in the PR | The moved-actions table is above and in the PR. No API calls or permissions changed. All Studio tests pass (counts below). |
-| 9 | The palette ratchet baseline is lowered to the new count | The new count is **24**, the same as before, and the baseline equals it ([frontend-tests.log](frontend-tests.log)). The Agent page had no palette classes left after 11-03; the new code uses tokens and recipes only. The two matches left in `AgentBranding.tsx` are the words `dark:` in an object (a colour's light and dark values), not classes. |
+| 9 | The palette ratchet baseline is lowered to the new count | The count is **19** (11-06, 11-07 and 11-09 lowered it from 24 on the base), and the baseline equals it ([frontend-tests.log](frontend-tests.log)). This ticket adds none: the Agent page had no palette classes left after 11-03 and the new code uses tokens and recipes only. The two matches in `AgentBranding.tsx` are the words `dark:` in an object (a colour's light and dark values), not classes. |
 | 10 | Light and dark screenshots of every page changed are in the ticket's evidence folder, matching the mockups on the design canvas | [screenshots/](screenshots/): 17 views, each `-light`, `-dark` (system) and `-chosen-dark`. The layout follows the design README's *Agent page* and the `studio-reskin` R4 pattern: the Playground's centred column, the configuration panel of `Section`s, the folded Trace, the top bar actions. |
 | 11 | axe reports zero AA violations on the changed pages in both Appearances | [shots-axe.log](shots-axe.log): tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa`, on every view above × 3 Appearances, **0 violations**. |
-| 12 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams are above. Coverage is in [frontend-tests.log](frontend-tests.log): 100% statements (4417/4417), branches (3071/3071), functions (1592/1592) and lines (3870/3870). |
+| 12 | Tests cover the new behaviour at the highest seam; 100% line and branch coverage holds | Seams are above. Coverage is in [frontend-tests.log](frontend-tests.log): 100% statements (4470/4470), branches (3156/3156), functions (1620/1620) and lines (3904/3904). |
 | 13 | New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed | **Agent view** added, and **Breadcrumb** names the Agent and view switchers. No ADR decision changed: ADR-0013 already says navigation is the breadcrumb, and the spec signed off the views as a crumb. |
 
 ## Results
 
-[run-checks.sh](run-checks.sh) ran these in the ticket's worktree at `b1d24d2`, which contains `origin/candidate-reskin` (`0b65fe4`). Each log's first line names its command and commit. GitHub Actions is down, so these are local.
+[run-checks.sh](run-checks.sh) ran these in the ticket's worktree at `34bc17b`, which contains the latest `origin/candidate-reskin` (`358bfd0`). Each log's first line names its command and commit. GitHub Actions is down, so these are local.
 
 | Check | Command | Result | Log |
 | --- | --- | --- | --- |
 | Install | `pnpm install --frozen-lockfile` | exit 0 | [install.log](install.log) |
 | Lint and type-check | `make lint-frontend` (eslint, tsc, e2e included) | exit 0 | [lint.log](lint.log) |
-| Tests, coverage, embed budget, ratchet | `make test-frontend` | exit 0. 76 files, **986 tests**, 100% statements, branches, functions and lines. `embed.js` is 0.78 kB gzipped. 24 palette-class uses (baseline 24). | [frontend-tests.log](frontend-tests.log) |
+| Tests, coverage, embed budget, ratchet | `make test-frontend` | exit 0. 77 files, **1019 tests**, 100% statements, branches, functions and lines. `embed.js` is 0.78 kB gzipped. 19 palette-class uses (baseline 19). | [frontend-tests.log](frontend-tests.log) |
 | Build | `pnpm build` | exit 0 | [build.log](build.log) |
 | Link check | `make link-check` | exit 0 | [link-check.log](link-check.log) |
-| Playwright harness | `pnpm e2e:harness` (Chrome) | exit 1: 12 passed, 2 failed. The two failures are the tab-row tests of `e2e/harness/navigation.spec.ts`, which fail the same way on `origin/candidate-reskin` `0b65fe4`: 11-11 emptied `TAB_ROWS` (no tab row is left) but the spec still opens one. This ticket does not touch that spec. Not part of the merge gate. | [e2e-harness.log](e2e-harness.log) |
+| Playwright harness | `pnpm e2e:harness` (Chrome) | exit 1: 12 passed, 2 failed. The two failures are the tab-row tests of `e2e/harness/navigation.spec.ts`, which fail the same way on `origin/candidate-reskin` `358bfd0`: 11-11 emptied `TAB_ROWS` (no tab row is left) but the spec still opens one. This ticket does not touch that spec. Not part of the merge gate. | [e2e-harness.log](e2e-harness.log) |
 | Screenshots and axe | [shots.test.ts](shots.test.ts) via [shots.config.mjs](shots.config.mjs) (the built Studio in Chrome) | exit 0. 51 screenshots (17 views × 3 Appearances), 0 axe violations. | [shots.log](shots.log), [shots-axe.log](shots-axe.log) |
 
 ## Gaps
