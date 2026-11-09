@@ -1,7 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
-import { AuthLayout, Field, FormError, formValues, SubmitButton } from "./AuthLayout";
+import { AuthLayout, ErrorNotice, Field, formValues, PANEL_LINK, SubmitButton } from "./AuthLayout";
+import { button, Notice } from "../design";
 import { AuthRequestError, useVerifyMfa } from "./session";
 
 function errorMessage(error: Error | null, recovery: boolean): string | undefined {
@@ -13,7 +14,7 @@ function errorMessage(error: Error | null, recovery: boolean): string | undefine
 }
 
 const SIGN_IN_AGAIN = (
-  <Link to="/sign-in" className="font-medium text-ink underline">
+  <Link to="/sign-in" className={PANEL_LINK}>
     Sign in again
   </Link>
 );
@@ -37,7 +38,7 @@ export function MfaChallengePage() {
   if (expired) {
     return (
       <AuthLayout title="Sign-in expired" footer={SIGN_IN_AGAIN}>
-        <p role="alert">Your sign-in timed out or had too many wrong codes. Sign in again to get a new chance.</p>
+        <Notice tone="error">Your sign-in timed out or had too many wrong codes. Sign in again to get a new chance.</Notice>
       </AuthLayout>
     );
   }
@@ -50,7 +51,7 @@ export function MfaChallengePage() {
             ? "Enter one of the recovery codes you saved when you turned on two-factor authentication. Each code works once."
             : "Enter the 6-digit code from your authenticator app."}
         </p>
-        <FormError message={errorMessage(verify.error, recovery)} />
+        <ErrorNotice message={errorMessage(verify.error, recovery)} />
         {recovery ? (
           <Field key="recovery" label="Recovery code" name="code" autoComplete="off" />
         ) : (
@@ -64,7 +65,7 @@ export function MfaChallengePage() {
           setRecovery(!recovery);
           verify.reset();
         }}
-        className="mt-4 text-sm text-ink underline"
+        className={`${button.quiet} mt-4 underline underline-offset-4`}
       >
         {recovery ? "Use your authenticator app instead" : "Use a recovery code instead"}
       </button>

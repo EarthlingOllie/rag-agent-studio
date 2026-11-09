@@ -1,5 +1,5 @@
 import type { Schemas } from "@studio/api-client";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
@@ -151,3 +151,16 @@ test("links to sign-up and to the system status page", async () => {
 
   expect(await screen.findByRole("heading", { name: "System status" })).toBeInTheDocument();
 });
+
+test.each(["/sign-in", "/sign-up", "/sign-in/mfa", "/forgot-password", "/reset-password", "/accept-invite"])(
+  "%s is a centred panel with the Studio mark and no top bar",
+  async (path) => {
+    renderStudio(path);
+
+    const panel = within(await screen.findByRole("main"));
+    expect(panel.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(panel.getByText("Studio")).toBeInTheDocument();
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
+  },
+);

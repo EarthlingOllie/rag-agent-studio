@@ -114,13 +114,14 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | A Document | `Org ▾ / Projects ▾ / Project ▾ / Documents ▾ / **handbook.md**` |
 | An Agent | `Org ▾ / Projects ▾ / Project ▾ / Agents ▾ / **HR helper ▾**` |
 | Organisation settings | `Org ▾ / Settings ▾ / **Members ▾**` |
-| Security, Cost | `Org ▾ / **Security ▾**` (the Organisation's sections: Projects, Cost for Owners, Settings, Security) |
-| Profile | `Org ▾ / **Profile**` (Profile and Sign out live in the avatar menu) |
+| Security, Cost, Profile | `Org ▾ / **Security ▾**` (the Organisation's sections: Projects, Cost for Owners, Settings, Security, Profile) |
+| Cost for an Editor | `Org ▾ / **Cost**` (a plain crumb: Cost is in the menu for Owners only) |
 
 - Each crumb with siblings is a `CrumbSwitcher` that opens a menu of them: the Organisation
   switcher lists the Member's Organisations (a Member of one sees its name as plain text); the
-  Organisation's section switcher lists Projects, Cost (Owners), Settings and Security, or only
-  Security while the Require MFA policy is waiting for the Member to enrol; the Project switcher lists Projects plus "All
+  Organisation's section switcher lists Projects, Cost (Owners), Settings, Security and Profile, or only
+  Security while the Require MFA policy is waiting for the Member to enrol; the avatar menu holds
+  Profile, Security and Sign out; the Project switcher lists Projects plus "All
   Projects" (archived Projects are opened from the Projects list); a section switcher lists the
   sections with icons and number hints (1–6); an Agent switcher lists the Project's Agents.
 - Inside a Project the Organisation's section switcher stays, as an ancestor crumb, so Cost,
@@ -159,8 +160,15 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   destructive `ConfirmDialog`. The rollout offer after publishing and the bulk-revert offer after
   reverting are `Dialog`s: every eligible Agent pre-selected, Draft changes badged `draft`, and
   the results counted ("2 succeeded, 0 skipped, 1 failed") then listed per Agent.
-- **Signed-out pages** (sign in, sign up, reset, invite): a centred `surface.panel` on the canvas
-  with the wave mark, no top bar.
+- **Signed-out pages** (sign in, sign up, MFA, reset, invite, the status page, and the shell's
+  own loading and error states before the session is known): a centred `surface.panel` on the
+  canvas with the wave mark, no top bar (`SignedOutFrame` in `auth/AuthLayout.tsx`). Form errors
+  are `Notice tone="error"` (`ErrorNotice`); links inside the panel are accent and underlined.
+- **Profile and Security**: `PageHeader`, then a `surface.panel` card per form. MFA enrolment
+  shows the QR code and its fallback key on an inner card, and recovery codes as a grid of mono
+  chips on their own card.
+- **Status page**: a `Status` dot per dependency (Ready for OK, Failed for Unavailable, Working
+  for Checking).
 
 ## Components (`frontend/apps/studio/src/design`)
 

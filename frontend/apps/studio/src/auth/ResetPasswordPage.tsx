@@ -1,26 +1,27 @@
 import { Link, useSearch } from "@tanstack/react-router";
 import type { SubmitEvent } from "react";
 
-import { AuthLayout, Field, FormError, formValues, SubmitButton } from "./AuthLayout";
+import { AuthLayout, ErrorNotice, Field, formValues, PANEL_LINK, SubmitButton } from "./AuthLayout";
+import { Notice } from "../design";
 import { AuthRequestError, useCompletePasswordReset } from "./session";
 import { MIN_PASSWORD_LENGTH } from "./SignUpPage";
 
 const requestNewLink = (
-  <Link to="/forgot-password" className="font-medium text-ink underline">
+  <Link to="/forgot-password" className={PANEL_LINK}>
     Request a new link
   </Link>
 );
 
 function ErrorWithNewLink({ children }: { children: string }) {
   return (
-    <div role="alert" className="rounded border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
+    <Notice tone="error">
       {children} {requestNewLink}
-    </div>
+    </Notice>
   );
 }
 
 const backToSignIn = (
-  <Link to="/sign-in" className="font-medium text-ink underline">
+  <Link to="/sign-in" className={PANEL_LINK}>
     Back to sign in
   </Link>
 );
@@ -43,12 +44,12 @@ export function ResetPasswordPage() {
   if (completeReset.isSuccess) {
     return (
       <AuthLayout title="Choose a new password" footer={backToSignIn}>
-        <p role="status" className="rounded border border-accent-soft bg-accent-soft px-3 py-2 text-sm text-accent-ink">
+        <Notice tone="success">
           Your password has been reset and you've been signed out everywhere.{" "}
-          <Link to="/sign-in" className="font-medium underline">
+          <Link to="/sign-in" className={PANEL_LINK}>
             Sign in with your new password
           </Link>
-        </p>
+        </Notice>
       </AuthLayout>
     );
   }
@@ -67,7 +68,7 @@ export function ResetPasswordPage() {
         {status === 400 ? (
           <ErrorWithNewLink>This reset link is invalid or has expired.</ErrorWithNewLink>
         ) : (
-          <FormError
+          <ErrorNotice
             message={
               error === null
                 ? undefined

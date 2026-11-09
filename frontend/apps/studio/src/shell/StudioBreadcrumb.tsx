@@ -15,14 +15,19 @@ type SectionPath =
   | "/organisations/$organisationId/projects"
   | "/organisations/$organisationId/cost"
   | "/organisations/$organisationId/settings"
-  | "/organisations/$organisationId/security";
+  | "/organisations/$organisationId/security"
+  | "/organisations/$organisationId/profile";
 
-/** The Organisation's sections, in menu order. Cost is for Owners, as the side menu had it. */
+/**
+ * The Organisation's sections, in menu order. Cost is for Owners, as the side menu had it. Profile
+ * is the Member's own page; it is also in the account menu.
+ */
 const SECTIONS: { label: string; icon: IconName; to: SectionPath; ownersOnly?: true }[] = [
   { label: "Projects", icon: "projects", to: "/organisations/$organisationId/projects" },
   { label: "Cost", icon: "analytics", to: "/organisations/$organisationId/cost", ownersOnly: true },
   { label: "Settings", icon: "settings", to: "/organisations/$organisationId/settings" },
   { label: "Security", icon: "security", to: "/organisations/$organisationId/security" },
+  { label: "Profile", icon: "profile", to: "/organisations/$organisationId/profile" },
 ];
 
 type ProjectPath =
@@ -104,9 +109,9 @@ function ProjectBreadcrumb({
 
 /**
  * The top bar's breadcrumb, computed from the route: Organisation / section, then the Project and
- * its section when one is open, the settings area (`SettingsCrumb`), or Profile. Pages register
- * nothing. While the Organisation requires MFA and the Member has none, the section switcher
- * offers only Security.
+ * its section when one is open, or the settings area (`SettingsCrumb`). Pages register nothing.
+ * While the Organisation requires MFA and the Member has none, the section switcher offers only
+ * Security.
  */
 export function StudioBreadcrumb({
   session,
@@ -121,10 +126,8 @@ export function StudioBreadcrumb({
   const organisation = session.organisations.find((candidate) => candidate.id === organisationId);
   const project = matchRoute({ to: PROJECT, params: { organisationId }, fuzzy: true });
   const settings = matchRoute({ to: SETTINGS, params: { organisationId }, fuzzy: true }) !== false;
-  // Pages outside the section menu: the Profile, and Cost for a Member who isn't an Owner.
-  const elsewhere = ["Profile", "Cost"].find(
-    (label) => matchRoute({ to: `${ORGANISATION}/${label.toLowerCase() as "profile" | "cost"}`, params: { organisationId } }) !== false,
-  );
+  // The one page outside the section menu: Cost, for a Member who isn't an Owner.
+  const costElsewhere = matchRoute({ to: `${ORGANISATION}/cost`, params: { organisationId } }) !== false;
 
   const sections: MenuItem[] = SECTIONS.filter(
     (section) => (!mustEnrol || section.label === "Security") && (section.ownersOnly !== true || organisation?.role === "owner"),
@@ -149,7 +152,7 @@ export function StudioBreadcrumb({
     <Breadcrumb>
       {leading}
       {organisation && settings && <SettingsCrumb organisationId={organisationId} isOwner={organisation.role === "owner"} />}
-      {organisation && !here && elsewhere !== undefined && <CrumbText current>{elsewhere}</CrumbText>}
+      {organisation && !here && costElsewhere && <CrumbText current>Cost</CrumbText>}
     </Breadcrumb>
   );
 }
