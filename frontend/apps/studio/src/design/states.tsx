@@ -13,6 +13,7 @@ export function EmptyState({
   action,
   icon,
   tone = "empty",
+  level = 2,
 }: {
   title: string;
   description?: ReactNode;
@@ -20,7 +21,10 @@ export function EmptyState({
   action?: ReactNode;
   icon?: IconName;
   tone?: "empty" | "error";
+  /** 1 when it stands in for a whole page (a page that was not found), so the page keeps its h1. */
+  level?: 1 | 2;
 }) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <div
       role={tone === "error" ? "alert" : undefined}
@@ -31,7 +35,7 @@ export function EmptyState({
           <Icon name={icon} size={20} />
         </span>
       )}
-      <h2 className={tone === "error" ? "text-base font-semibold text-danger" : text.subheading}>{title}</h2>
+      <Heading className={tone === "error" ? "text-base font-semibold text-danger" : text.subheading}>{title}</Heading>
       {description !== undefined && <p className="max-w-md text-sm text-muted">{description}</p>}
       {action !== undefined && <div className="mt-3">{action}</div>}
     </div>

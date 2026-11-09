@@ -116,6 +116,8 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   destructive = false,
   busy = false,
+  body,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: {
@@ -127,6 +129,14 @@ export function ConfirmDialog({
   destructive?: boolean;
   /** The confirmed action is running: both buttons wait. */
   busy?: boolean;
+  /**
+   * What the confirmation asks for beyond a click, under the description: typing a name to delete
+   * something for good, or why the action was refused. It comes before the buttons, so its first
+   * field takes focus.
+   */
+  body?: ReactNode;
+  /** The confirmation isn't ready yet, e.g. the name isn't typed exactly. Cancel still works. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -143,11 +153,18 @@ export function ConfirmDialog({
           <button type="button" className={button.secondary} disabled={busy} onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button type="button" className={destructive ? button.dangerFilled : button.primary} disabled={busy} onClick={onConfirm}>
+          <button
+            type="button"
+            className={destructive ? button.dangerFilled : button.primary}
+            disabled={busy || confirmDisabled}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </>
       }
-    />
+    >
+      {body}
+    </Dialog>
   );
 }
