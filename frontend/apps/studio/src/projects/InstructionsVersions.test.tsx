@@ -48,13 +48,16 @@ async function openMarkdownView() {
   return screen.getByRole("textbox", { name: "Project Instructions (Markdown)" });
 }
 
-test("the history lists every Version newest first and marks the Current one", async () => {
+test("the history is a timeline of every Version newest first, with the Current one badged", async () => {
   setUp();
   renderStudio(instructionsTab(hrProject.id));
 
   const items = within(await versionList()).getAllByRole("listitem");
   expect(items.map((item) => item.getAttribute("aria-label"))).toEqual(["v2", "v1"]);
   const [newest, oldest] = items as [HTMLElement, HTMLElement];
+  // Each Version is a version chip; the Current one also carries the Current badge.
+  expect(within(newest).getByLabelText("Version 2")).toHaveTextContent("v2");
+  expect(within(oldest).getByLabelText("Version 1")).toHaveTextContent("v1");
   expect(within(newest).getByText("Current")).toBeInTheDocument();
   expect(newest).toHaveTextContent("Salaries");
   expect(newest).toHaveTextContent("Ada Lovelace · 2026-11-02 14:30 UTC");
@@ -203,8 +206,10 @@ test("an Editor reverts the Current Version after confirming, and the Draft is u
   await versionList();
 
   await userEvent.click(screen.getByRole("button", { name: "Revert to v1" }));
-  const confirmation = screen.getByRole("group", { name: "Revert to v1?" });
-  expect(confirmation).toHaveTextContent("Agents published from now on use v1. The Draft isn't changed.");
+  // A ConfirmDialog asks first, with focus on Cancel.
+  const confirmation = screen.getByRole("alertdialog", { name: "Revert to v1?" });
+  expect(confirmation).toHaveAccessibleDescription("Revert the Current Version to v1? Agents published from now on use v1. The Draft isn't changed.");
+  expect(within(confirmation).getByRole("button", { name: "Cancel" })).toHaveFocus();
   await userEvent.click(within(confirmation).getByRole("button", { name: "Yes, revert to v1" }));
 
   expect(await screen.findByRole("status")).toHaveTextContent("Reverted to v1");
@@ -221,9 +226,10 @@ test("cancelling a revert changes nothing", async () => {
   await versionList();
 
   await userEvent.click(screen.getByRole("button", { name: "Revert to v1" }));
-  await userEvent.click(within(screen.getByRole("group", { name: "Revert to v1?" })).getByRole("button", { name: "Cancel" }));
+  await userEvent.click(within(screen.getByRole("alertdialog", { name: "Revert to v1?" })).getByRole("button", { name: "Cancel" }));
 
-  expect(screen.getByRole("button", { name: "Revert to v1" })).toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Revert to v1" })).toHaveFocus();
   expect(requests).toEqual([]);
 });
 
