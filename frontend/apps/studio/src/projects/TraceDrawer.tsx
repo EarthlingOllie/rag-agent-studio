@@ -156,7 +156,7 @@ function TraceBody({ trace }: { trace: Trace }) {
           </ul>
         )}
       </section>
-      <table className="w-full text-left text-sm">
+      <table className="w-full text-left text-sm [&_td]:py-1 [&_td]:pr-3 [&_th]:pr-3">
         <caption className="text-left font-medium">Retrieved Chunks</caption>
         <thead>
           <tr className="border-b border-line">
