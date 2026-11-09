@@ -639,6 +639,7 @@ ORGANISATION_SCOPED_ROUTES = [
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets", OWNER),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/cost", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/invites", OWNER),
     ScopedRoute("POST", "/api/organisations/{organisation_id}/invites", OWNER, _new_invite_body),
     ScopedRoute(
