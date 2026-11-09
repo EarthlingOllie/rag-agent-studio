@@ -31,9 +31,9 @@ echo 'studio' >"$work/studio/assets/index-abc123.js"
 echo 'loader' >"$work/widget/embed.js"
 echo 'widget' >"$work/widget/widget/assets/widget.js"
 echo 'chunk' >"$work/widget/widget/assets/chunk-def456.js"
-# The demo pages (ticket 10-03), static HTML uploaded under /demo/.
+# The demo pages (ticket 10-03) and the attack panel (ticket 10-04), static HTML uploaded under /demo/.
 mkdir -p "$work/demo"
-for page in index inline budget; do echo "<h1>$page</h1>" >"$work/demo/$page.html"; done
+for page in index inline budget attacks; do echo "<h1>$page</h1>" >"$work/demo/$page.html"; done
 
 deploy_json() {
   jq -n --arg url "$1" '{
@@ -129,9 +129,9 @@ done
 name=uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader
 ok=1
 uploaded=$(cd "$work/deploys_in_order_at_the_given_tag/uploaded" && find . -type f | sort | tr '\n' ' ')
-[ "$uploaded" = "./assets/index-abc123.js ./demo/budget.html ./demo/index.html ./demo/inline.html ./embed.js ./index.html ./widget/assets/chunk-def456.js ./widget/assets/widget.js " ] || { fail $name "uploaded: $uploaded"; ok=0; }
-grep -qE '^aws s3 sync .* s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js --exclude demo/budget.html --exclude demo/index.html --exclude demo/inline.html$' <<<"$calls" || { fail $name "sync was: $(grep 's3 sync' <<<"$calls")"; ok=0; }
-for f in index.html embed.js widget/assets/widget.js demo/budget.html demo/index.html demo/inline.html; do
+[ "$uploaded" = "./assets/index-abc123.js ./demo/attacks.html ./demo/budget.html ./demo/index.html ./demo/inline.html ./embed.js ./index.html ./widget/assets/chunk-def456.js ./widget/assets/widget.js " ] || { fail $name "uploaded: $uploaded"; ok=0; }
+grep -qE '^aws s3 sync .* s3://studio-demo-static-123456789012 --delete --cache-control public,max-age=31536000,immutable --exclude index.html --exclude embed.js --exclude widget/assets/widget.js --exclude demo/attacks.html --exclude demo/budget.html --exclude demo/index.html --exclude demo/inline.html$' <<<"$calls" || { fail $name "sync was: $(grep 's3 sync' <<<"$calls")"; ok=0; }
+for f in index.html embed.js widget/assets/widget.js demo/attacks.html demo/budget.html demo/index.html demo/inline.html; do
   grep -qE "^aws s3 cp .*/$f s3://studio-demo-static-123456789012/$f --cache-control no-cache$" <<<"$calls" || { fail $name "no no-cache upload of $f"; ok=0; }
 done
 grep -qxF 'aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD --paths / /index.html /embed.js /widget/assets/widget.js /demo/* --query Invalidation.Id --output text' <<<"$calls" || { fail $name "invalidation was: $(grep 'create-invalidation' <<<"$calls")"; ok=0; }

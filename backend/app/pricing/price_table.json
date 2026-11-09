@@ -161,6 +161,14 @@
       "input": "0",
       "output": "0",
       "cached_input": "0"
+    },
+    {
+      "provider": "demo",
+      "model": "demo-naive",
+      "effective_from": "2026-11-08",
+      "input": "0",
+      "output": "0",
+      "cached_input": "0"
     }
   ]
 }

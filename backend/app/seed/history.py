@@ -149,12 +149,15 @@ class _Story:
         version = await self.owner.call(
             "POST", f"{path}/versions", expect=201, body={"note": content.INSTRUCTIONS_V2_NOTE}
         )
-        # Rolled out to the Low-budget helper; the Product FAQ is left behind on v1.
+        # Rolled out to the Low-budget helper and the Guardrail demo Agent; the Product FAQ is
+        # left behind on v1.
         await self.owner.call(
             "POST",
             self.owner.path("projects", self.project, "agents", "bulk-publish"),
             body={
-                "agent_ids": [self.agents[content.BUDGET_AGENT]["id"]],
+                "agent_ids": [
+                    self.agents[name]["id"] for name in (content.BUDGET_AGENT, content.ATTACK_AGENT)
+                ],
                 "instructions_version_id": version["id"],
                 "note": content.BULK_NOTE,
             },
