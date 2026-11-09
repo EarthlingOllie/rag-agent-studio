@@ -55,6 +55,14 @@ test("token utilities are not palette classes", () => {
   assert.equal(countPaletteUses(join(root, "apps/studio/src")).total, 0);
 });
 
+test("a `dark` key or a colour named in prose is not a class; the dark: variant is", () => {
+  const root = fixture({
+    "apps/studio/src/theme.ts": 'const primary = { light: "#4f46e5", dark: "#818cf8" };\nconst { light, dark } = row;\n',
+    "apps/studio/src/Page.tsx": '<div className="dark:bg-black dark:[color:red] dark:!p-0" />\n',
+  });
+  assert.deepEqual(countPaletteUses(join(root, "apps/studio/src")), { total: 3, files: [{ path: "Page.tsx", count: 3 }] });
+});
+
 test("the same count as the baseline passes", () => {
   const { code, out, err } = run(fixture(FIVE, 5));
   assert.equal(code, 0);
