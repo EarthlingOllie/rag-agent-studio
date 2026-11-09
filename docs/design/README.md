@@ -112,7 +112,7 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | Projects list | `Org ▾ / **Projects ▾**` |
 | A Project section | `Org ▾ / Projects ▾ / Project ▾ / **Documents ▾**` |
 | A Document | `Org ▾ / Projects ▾ / Project ▾ / Documents ▾ / **handbook.md**` |
-| An Agent | `Org ▾ / Projects ▾ / Project ▾ / Agents ▾ / **HR helper ▾**` |
+| An Agent | `Org ▾ / Projects ▾ / Project ▾ / Agents ▾ / HR helper ▾ / **Playground ▾**` (the views: Playground, Versions, Embed & limits, Conversations) |
 | Organisation settings | `Org ▾ / Settings ▾ / **Members ▾**` |
 | Security, Cost | `Org ▾ / **Security ▾**` (the Organisation's sections: Projects, Cost for Owners, Settings, Security) |
 | Profile | `Org ▾ / **Profile**` (Profile and Sign out live in the avatar menu) |
@@ -122,7 +122,10 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   Organisation's section switcher lists Projects, Cost (Owners), Settings and Security, or only
   Security while the Require MFA policy is waiting for the Member to enrol; the Project switcher lists Projects plus "All
   Projects" (archived Projects are opened from the Projects list); a section switcher lists the
-  sections with icons and number hints (1–6); an Agent switcher lists the Project's Agents.
+  sections with icons and number hints (1–6); an Agent switcher lists the Project's open Agents
+  (an archived Agent is opened from the Agents list); an Agent's view switcher lists Playground,
+  Versions, Embed & limits and Conversations (which opens the Project's Conversations filtered to
+  the Agent).
 - Inside a Project the Organisation's section switcher stays, as an ancestor crumb, so Cost,
   Settings and Security are one click away from any Project, as they were from the side menu.
 - Number hints are visual labels only (`aria-hidden`), so an item's name is just its label
@@ -140,10 +143,20 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 - **List and data pages** (Documents, Agents, Conversations, Members, Credentials, Audit):
   `PageHeader`, optional `StatCard` row, a toolbar, then a `table.wrap` card. Row actions in a ⋯
   `Menu` (`button.iconBare`), destructive items marked `danger`.
-- **Agent page**: the Playground is the main column (max 720px, centred); configuration is a
-  right-hand panel (360–420px) of collapsible `Section`s (Behaviour open; Retrieval, Experience,
-  Guardrails collapsed with a mono summary). The trace folds open under each answer. Page actions
-  (Saved state, History, Publish) sit in the top bar's right side.
+- **Agent page**: a header with the Agent's name, its `Badge`s (Live with the Version chip, or Not
+  live; Draft while there are unpublished changes) and a ⋯ menu (Discard Draft, Archive, or Delete
+  permanently on an archived Agent), then the view the breadcrumb chose.
+  - **Playground**: the Playground is the main column (max 720px, centred); configuration is a
+    right-hand panel (360–420px) of collapsible `Section`s (Behaviour open; Retrieval, Experience,
+    Guardrails collapsed with a mono summary; a section the API refused a setting in opens). The
+    trace folds open under each answer (a `<details>` card; the cited chunk in `accent`, flagged
+    ones in `flag`).
+  - **Versions**: the Live History as a timeline (Revert in the Live Version's ⋯ menu), the
+    Versions (Start Draft from in each one's ⋯ menu), then Compare with From/To and `Diff`s.
+  - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
+    (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
+  - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with
+    `TopBarActions` (`shell/TopBarActions.tsx`). Publish opens a `Dialog`.
 - **Settings and forms**: a `surface.panel` per group, labels above fields, one primary button.
 - **Signed-out pages** (sign in, sign up, reset, invite): a centred `surface.panel` on the canvas
   with the wave mark, no top bar.

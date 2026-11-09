@@ -86,8 +86,9 @@ import { AppearanceToggle, Avatar, Breadcrumb, Brand, button, CrumbSwitcher, Ico
   existing `useSignOut` flow, keep its alert).
 - **Page actions in the top bar** (the Agent's Saved / History / Publish): add a small portal
   slot (`TopBarActionsSlot` renders a `<div id="top-bar-actions">`; the page renders into it
-  with `createPortal`), or a context holding a setter. Keep it to that one job. (Not built in
-  11-04: no page has top bar actions yet; 11-08 adds the slot.)
+  with `createPortal`), or a context holding a setter. Keep it to that one job. Built in 11-08:
+  `shell/TopBarActions.tsx`. The Organisation shell renders the slot in the top bar and provides
+  it; a page wraps its actions in `<TopBarActions>`.
 
 Built in 11-04: `shell/StudioBreadcrumb.tsx`, `shell/OrganisationSwitcher.tsx` (`OrganisationCrumb`)
 and `shell/AccountMenu.tsx`. A single-Organisation Member's crumb is plain text, not a link: a router
@@ -221,6 +222,25 @@ The Tags panel opens from "Manage tags" (a `button.ghost` in the toolbar) as a `
 ```
 
 - The Agent page drops `layout.page` padding (full-bleed two-column layout); everything else keeps it.
+  (Built in 11-08 inside `layout.page`, as a wrapping two-column row; full bleed is left to 11-13.)
+
+Built in 11-08:
+
+- Routes: `/agents/$agentId` is the Agent page (`AgentPage`: header, archived notice, top bar
+  actions) around its views: `/` Playground (`AgentPlaygroundView`), `/versions`
+  (`AgentVersionsView`), `/embed` (`AgentEmbedView`). Conversations is a link to the Project's
+  Conversations with `?agent=`; 11-10 shows it as a view in place.
+- `shell/StudioBreadcrumb.tsx` (`AgentBreadcrumb`): `… / Agents ▾ / <Agent> ▾ / <view> ▾`. The
+  Agent switcher (`menuLabel="Agents"`) lists the open Agents; the view switcher
+  (`menuLabel="Agent views"`) is current. Until the Agent loads, or if it isn't found, the section
+  switcher is current.
+- Top bar: the Draft's save state (`role="status"`, "Draft status"), History (a link to Versions),
+  Publish (`button.primary`, opens a `Dialog` holding the publish form). An archived Agent has no
+  Publish.
+- The ⋯ menu ("More Agent actions"): Discard Draft, Archive, Delete permanently, each a
+  `ConfirmDialog`. Restore stays in the archived notice.
+- Versions: Revert in "Actions for the Live Version", Start Draft from in "Actions for v<n>", each
+  confirmed in a `ConfirmDialog`. Markdown changes in `AgentDiffView` are the design `Diff`.
 - Visitor message: `self-end rounded-[18px] border border-line bg-surface px-4 py-3`.
 - Answer: avatar circle `bg-accent-soft text-accent-ink`, text at 16px, citations
   `text-accent font-semibold` superscripts.
