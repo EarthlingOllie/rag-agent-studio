@@ -299,7 +299,7 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
       <form
         aria-label="Ask the Draft"
         onSubmit={onSubmit}
-        className="flex items-end gap-2 rounded-[26px] border border-line bg-surface py-1.5 pr-1.5 pl-4 focus-within:border-accent"
+        className="flex items-end gap-2 rounded-[26px] border border-line bg-surface py-1.5 pr-1.5 pl-4 focus-within:border-accent has-[textarea:focus]:outline-2 has-[textarea:focus]:outline-offset-2 has-[textarea:focus]:outline-accent"
       >
         <label htmlFor="question" className="sr-only">
           Question
