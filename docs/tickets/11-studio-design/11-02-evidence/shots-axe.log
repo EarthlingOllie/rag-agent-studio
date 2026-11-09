@@ -1,0 +1,21 @@
+$ sh -c cd frontend && SHOTS_DIR=../docs/tickets/11-studio-design/11-02-evidence/screenshots node ../docs/tickets/11-studio-design/11-02-evidence/shots.mjs (at 9e785b8)
+light       sign-in          font "Instrument Sans"; body rgb(243, 246, 246); data-appearance (none: system); axe violations: 0
+light       sign-up          font "Instrument Sans"; body rgb(243, 246, 246); data-appearance (none: system); axe violations: 0
+light       status           font "Instrument Sans"; body rgb(243, 246, 246); data-appearance (none: system); axe violations: 0
+light       projects         font "Instrument Sans"; body rgb(243, 246, 246); data-appearance (none: system); axe violations: 0
+light       documents        font "Instrument Sans"; body rgb(243, 246, 246); data-appearance (none: system); axe violations: 0
+light       document-viewer  font "Instrument Sans"; body rgb(243, 246, 246); data-appearance (none: system); axe violations: 0
+dark        sign-in          font "Instrument Sans"; body rgb(14, 22, 21); data-appearance (none: system); axe violations: 0
+dark        sign-up          font "Instrument Sans"; body rgb(14, 22, 21); data-appearance (none: system); axe violations: 0
+dark        status           font "Instrument Sans"; body rgb(14, 22, 21); data-appearance (none: system); axe violations: 0
+dark        projects         font "Instrument Sans"; body rgb(14, 22, 21); data-appearance (none: system); axe violations: 0
+dark        documents        font "Instrument Sans"; body rgb(14, 22, 21); data-appearance (none: system); axe violations: 0
+dark        document-viewer  font "Instrument Sans"; body rgb(14, 22, 21); data-appearance (none: system); axe violations: 0
+chosen-dark sign-in          font "Instrument Sans"; body rgb(14, 22, 21); data-appearance dark; axe violations: 0
+chosen-dark sign-up          font "Instrument Sans"; body rgb(14, 22, 21); data-appearance dark; axe violations: 0
+chosen-dark status           font "Instrument Sans"; body rgb(14, 22, 21); data-appearance dark; axe violations: 0
+chosen-dark projects         font "Instrument Sans"; body rgb(14, 22, 21); data-appearance dark; axe violations: 0
+chosen-dark documents        font "Instrument Sans"; body rgb(14, 22, 21); data-appearance dark; axe violations: 0
+chosen-dark document-viewer  font "Instrument Sans"; body rgb(14, 22, 21); data-appearance dark; axe violations: 0
+total axe violations: 0
+exit 0
