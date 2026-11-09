@@ -1,7 +1,9 @@
-import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Navigate, Outlet, useLocation, useParams } from "@tanstack/react-router";
 
-import { type Session, useMe, useSignOut } from "../auth/session";
-import { OrganisationSwitcher } from "./OrganisationSwitcher";
+import { type Session, useMe } from "../auth/session";
+import { AppearanceToggle, Brand, layout, TopBar } from "../design";
+import { AccountMenu } from "./AccountMenu";
+import { StudioBreadcrumb } from "./StudioBreadcrumb";
 
 function Centered({ children, role }: { children: string; role: "status" | "alert" }) {
   return (
@@ -30,37 +32,7 @@ export function HomeRedirect() {
   return <Navigate to="/organisations/$organisationId/projects" params={{ organisationId: active }} />;
 }
 
-function SignOutButton() {
-  const signOut = useSignOut();
-  const navigate = useNavigate();
-  return (
-    <div className="flex items-center gap-3">
-      {signOut.isError && (
-        <p role="alert" className="text-sm text-danger">
-          Sign-out failed. Try again.
-        </p>
-      )}
-      <button
-        type="button"
-        disabled={signOut.isPending}
-        onClick={() => {
-          signOut.mutate(undefined, {
-            onSuccess: () => {
-              void navigate({ to: "/sign-in" });
-            },
-          });
-        }}
-        className="rounded border border-field px-3 py-1 text-sm hover:bg-sunken"
-      >
-        Sign out
-      </button>
-    </div>
-  );
-}
-
-const NAV_LINK = "rounded px-3 py-2 text-sm text-ink-2 hover:bg-sunken [&.active]:bg-sunken [&.active]:font-medium [&.active]:text-ink";
-
-/** The Studio frame for one Organisation: navigation, the Member, and the page. */
+/** The Studio frame for one Organisation: the top bar, whose breadcrumb is the navigation, and the page. */
 export function OrganisationShell() {
   const { data } = useMe();
   const session = data as Session;
@@ -72,65 +44,36 @@ export function OrganisationShell() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3">
-          <div className="flex items-center gap-6">
-            <span className="font-semibold">RAG Agent Studio</span>
-            <OrganisationSwitcher session={session} organisationId={organisationId} />
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted">{session.member.name}</span>
-            {organisation && (
-              <Link
-                to="/organisations/$organisationId/profile"
-                params={{ organisationId }}
-                className="text-sm text-muted underline"
-              >
-                Profile
-              </Link>
-            )}
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
-      {organisation ? (
-        <div className="mx-auto flex max-w-5xl gap-8 px-6 py-8">
-          <nav aria-label="Organisation" className="flex w-48 shrink-0 flex-col gap-1">
-            {!mustEnrol && (
-              <>
-                <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className={NAV_LINK}>
-                  Projects
-                </Link>
-                {organisation.role === "owner" && (
-                  <Link to="/organisations/$organisationId/cost" params={{ organisationId }} className={NAV_LINK}>
-                    Cost
-                  </Link>
-                )}
-                <Link to="/organisations/$organisationId/settings" params={{ organisationId }} className={NAV_LINK}>
-                  Organisation settings
-                </Link>
-              </>
-            )}
-            <Link to="/organisations/$organisationId/security" params={{ organisationId }} className={NAV_LINK}>
-              Security
-            </Link>
-          </nav>
-          <main className="min-w-0 flex-1">
-            {mustEnrol && !onSecurityPage ? (
-              <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
-            ) : (
-              <Outlet />
-            )}
-          </main>
-        </div>
-      ) : (
-        <main className="mx-auto max-w-5xl px-6 py-8">
-          <h1 className="text-2xl font-semibold">Organisation not found</h1>
-          <p className="mt-2 text-muted">
-            It doesn't exist, or you are not a Member of it. <Link to="/" className="underline">Go to your Organisation</Link>
-          </p>
-        </main>
-      )}
+      <TopBar
+        home={
+          <Link to="/" aria-label="Studio home" className="rounded-md">
+            <Brand />
+          </Link>
+        }
+        breadcrumb={<StudioBreadcrumb session={session} organisationId={organisationId} mustEnrol={mustEnrol} />}
+        actions={
+          <>
+            <AppearanceToggle />
+            <AccountMenu session={session} organisationId={organisationId} inOrganisation={organisation !== undefined} />
+          </>
+        }
+      />
+      <main className={layout.page}>
+        {organisation ? (
+          mustEnrol && !onSecurityPage ? (
+            <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
+          ) : (
+            <Outlet />
+          )
+        ) : (
+          <>
+            <h1 className="text-2xl font-semibold">Organisation not found</h1>
+            <p className="mt-2 text-muted">
+              It doesn't exist, or you are not a Member of it. <Link to="/" className="underline">Go to your Organisation</Link>
+            </p>
+          </>
+        )}
+      </main>
     </div>
   );
 }

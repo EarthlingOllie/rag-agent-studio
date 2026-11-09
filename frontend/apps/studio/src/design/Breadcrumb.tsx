@@ -43,6 +43,7 @@ export function CrumbSwitcher({
   menuLabel,
   items,
   current = false,
+  disabled = false,
 }: {
   label: string;
   /**
@@ -54,6 +55,8 @@ export function CrumbSwitcher({
   items: MenuItem[];
   /** True for the last crumb (the page the Member is on). */
   current?: boolean;
+  /** While a switch the menu started is under way. */
+  disabled?: boolean;
 }) {
   return (
     <Menu
@@ -67,6 +70,7 @@ export function CrumbSwitcher({
       triggerLabel={`${label}, ${menuLabel}`}
       menuLabel={menuLabel}
       triggerClassName={crumbClass(current)}
+      disabled={disabled}
       {...(current ? { triggerProps: { "aria-current": "page" } } : {})}
     />
   );

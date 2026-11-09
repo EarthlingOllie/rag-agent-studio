@@ -19,7 +19,9 @@ document.elementFromPoint = () => null;
 // Nor can it scroll an element into view, or answer media queries: no preference matches
 // unless a test stubs `matchMedia`.
 Element.prototype.scrollIntoView = () => undefined;
-window.matchMedia = (query: string) => ({ matches: false, media: query }) as MediaQueryList;
+// The top bar's Appearance toggle listens for a change in the preference, which never comes.
+window.matchMedia = (query: string) =>
+  ({ matches: false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }) as unknown as MediaQueryList;
 
 // The first render of a route loads its modules; on a loaded machine that alone can pass the
 // default one second, so `findBy…` and `waitFor` wait up to five before failing.
