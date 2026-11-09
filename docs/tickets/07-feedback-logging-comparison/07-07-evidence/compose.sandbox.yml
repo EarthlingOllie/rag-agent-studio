@@ -4,7 +4,7 @@
 # on the same Docker daemon. Everything else is docker-compose.yml.
 services:
   postgres:
-    ports: !override ["47742:5432"]
+    ports: !override ["47746:5432"]
   redis:
     ports: !override ["47789:6379"]
   rustfs:

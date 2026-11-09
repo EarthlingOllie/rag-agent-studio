@@ -1,110 +1,110 @@
-$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml' @ ce86a0e (ticket/07-07-retention-tombstones, clean tree: 0 changes) (CI settings: one retry)
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml' @ 108a72e (code unchanged; only the evidence compose override's Postgres host port moved 47742 -> 47746 after two port clashes) (CI settings: one retry)
 docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml up -d --build --wait
  Network rag0707-e2e_default Creating 
- Volume rag0707-e2e_postgres-data Creating 
- Volume rag0707-e2e_postgres-data Creating 
  Network rag0707-e2e_default Creating 
+ Volume rag0707-e2e_postgres-data Creating 
+ Volume rag0707-e2e_postgres-data Creating 
  Volume rag0707-e2e_rustfs-data Creating 
  Volume rag0707-e2e_rustfs-data Creating 
- Volume rag0707-e2e_postgres-data Created 
- Volume rag0707-e2e_postgres-data Created 
  Volume rag0707-e2e_rustfs-data Created 
  Volume rag0707-e2e_rustfs-data Created 
+ Volume rag0707-e2e_postgres-data Created 
+ Volume rag0707-e2e_postgres-data Created 
  Network rag0707-e2e_default Created 
  Network rag0707-e2e_default Created 
- Container rag0707-e2e-host-1 Creating 
- Container rag0707-e2e-postgres-1 Creating 
- Container rag0707-e2e-widget-1 Creating 
- Container rag0707-e2e-rustfs-1 Creating 
  Container rag0707-e2e-redis-1 Creating 
+ Container rag0707-e2e-widget-1 Creating 
  Container rag0707-e2e-mailpit-1 Creating 
+ Container rag0707-e2e-postgres-1 Creating 
+ Container rag0707-e2e-host-1 Creating 
+ Container rag0707-e2e-rustfs-1 Creating 
  Container rag0707-e2e-mailpit-1 Created 
  Container rag0707-e2e-host-1 Created 
- Container rag0707-e2e-widget-1 Created 
  Container rag0707-e2e-rustfs-1 Created 
+ Container rag0707-e2e-widget-1 Created 
  Container rag0707-e2e-postgres-1 Created 
  Container rag0707-e2e-redis-1 Created 
+ Container rag0707-e2e-api-1 Creating 
  Container rag0707-e2e-beat-1 Creating 
  Container rag0707-e2e-worker-1 Creating 
- Container rag0707-e2e-api-1 Creating 
  Container rag0707-e2e-api-1 Created 
  Container rag0707-e2e-studio-1 Creating 
- Container rag0707-e2e-worker-1 Created 
  Container rag0707-e2e-beat-1 Created 
+ Container rag0707-e2e-worker-1 Created 
  Container rag0707-e2e-studio-1 Created 
- Container rag0707-e2e-mailpit-1 Starting 
- Container rag0707-e2e-postgres-1 Starting 
- Container rag0707-e2e-redis-1 Starting 
  Container rag0707-e2e-rustfs-1 Starting 
  Container rag0707-e2e-host-1 Starting 
+ Container rag0707-e2e-postgres-1 Starting 
+ Container rag0707-e2e-mailpit-1 Starting 
+ Container rag0707-e2e-redis-1 Starting 
  Container rag0707-e2e-widget-1 Starting 
- Container rag0707-e2e-mailpit-1 Started 
- Container rag0707-e2e-postgres-1 Started 
- Container rag0707-e2e-redis-1 Started 
  Container rag0707-e2e-rustfs-1 Started 
- Container rag0707-e2e-postgres-1 Waiting 
- Container rag0707-e2e-redis-1 Waiting 
- Container rag0707-e2e-rustfs-1 Waiting 
- Container rag0707-e2e-postgres-1 Waiting 
- Container rag0707-e2e-redis-1 Waiting 
- Container rag0707-e2e-rustfs-1 Waiting 
- Container rag0707-e2e-redis-1 Waiting 
- Container rag0707-e2e-rustfs-1 Waiting 
- Container rag0707-e2e-postgres-1 Waiting 
  Container rag0707-e2e-host-1 Started 
+ Container rag0707-e2e-postgres-1 Started 
+ Container rag0707-e2e-mailpit-1 Started 
+ Container rag0707-e2e-redis-1 Started 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-rustfs-1 Waiting 
  Container rag0707-e2e-widget-1 Started 
- Container rag0707-e2e-redis-1 Healthy 
- Container rag0707-e2e-postgres-1 Healthy 
- Container rag0707-e2e-postgres-1 Healthy 
- Container rag0707-e2e-redis-1 Healthy 
- Container rag0707-e2e-postgres-1 Healthy 
- Container rag0707-e2e-redis-1 Healthy 
  Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-postgres-1 Healthy 
  Container rag0707-e2e-worker-1 Starting 
- Container rag0707-e2e-rustfs-1 Healthy 
- Container rag0707-e2e-beat-1 Starting 
- Container rag0707-e2e-rustfs-1 Healthy 
+ Container rag0707-e2e-postgres-1 Healthy 
  Container rag0707-e2e-api-1 Starting 
+ Container rag0707-e2e-postgres-1 Healthy 
+ Container rag0707-e2e-beat-1 Starting 
  Container rag0707-e2e-worker-1 Started 
- Container rag0707-e2e-beat-1 Started 
  Container rag0707-e2e-api-1 Started 
  Container rag0707-e2e-widget-1 Waiting 
  Container rag0707-e2e-api-1 Waiting 
  Container rag0707-e2e-widget-1 Healthy 
+ Container rag0707-e2e-beat-1 Started 
  Container rag0707-e2e-api-1 Healthy 
  Container rag0707-e2e-studio-1 Starting 
  Container rag0707-e2e-studio-1 Started 
- Container rag0707-e2e-redis-1 Waiting 
- Container rag0707-e2e-beat-1 Waiting 
  Container rag0707-e2e-host-1 Waiting 
- Container rag0707-e2e-widget-1 Waiting 
+ Container rag0707-e2e-redis-1 Waiting 
+ Container rag0707-e2e-postgres-1 Waiting 
+ Container rag0707-e2e-worker-1 Waiting 
+ Container rag0707-e2e-studio-1 Waiting 
  Container rag0707-e2e-mailpit-1 Waiting 
+ Container rag0707-e2e-widget-1 Waiting 
+ Container rag0707-e2e-beat-1 Waiting 
  Container rag0707-e2e-api-1 Waiting 
  Container rag0707-e2e-rustfs-1 Waiting 
- Container rag0707-e2e-postgres-1 Waiting 
- Container rag0707-e2e-studio-1 Waiting 
- Container rag0707-e2e-worker-1 Waiting 
- Container rag0707-e2e-postgres-1 Healthy 
- Container rag0707-e2e-host-1 Healthy 
- Container rag0707-e2e-beat-1 Healthy 
- Container rag0707-e2e-redis-1 Healthy 
- Container rag0707-e2e-worker-1 Healthy 
- Container rag0707-e2e-widget-1 Healthy 
+ Container rag0707-e2e-api-1 Healthy 
  Container rag0707-e2e-rustfs-1 Healthy 
  Container rag0707-e2e-mailpit-1 Healthy 
- Container rag0707-e2e-api-1 Healthy 
+ Container rag0707-e2e-postgres-1 Healthy 
+ Container rag0707-e2e-redis-1 Healthy 
+ Container rag0707-e2e-host-1 Healthy 
+ Container rag0707-e2e-widget-1 Healthy 
+ Container rag0707-e2e-worker-1 Healthy 
+ Container rag0707-e2e-beat-1 Healthy 
  Container rag0707-e2e-studio-1 Healthy 
 make seed
 make[1]: Entering directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707'
 docker compose -p rag0707-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-07-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
- Container rag0707-e2e-api-run-4820c576645e Creating 
- Container rag0707-e2e-api-run-4820c576645e Created 
-2026-11-08 20:38:34.095570802 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier
+ Container rag0707-e2e-api-run-0d5ef800ed45 Creating 
+ Container rag0707-e2e-api-run-0d5ef800ed45 Created 
+[0;93m2026-11-08 23:51:19.523159612 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
 /app/app/main.py:163: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
   logfire.instrument_fastapi(app, capture_headers=True)
-_state": "[]"}, "kind": "SpanKind.CLIENT", "parent_id": "0xe7468832b922fd49", "start_time": "2026-11-08T20:39:42.270704Z", "end_time": "2026-11-08T20:39:42.290321Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "SELECT chunks.org\u2026) AS share FROM chunks JOIN documents ON \u2026 WHERE \u2026", "net.peer.name": "postgres", "net.peer.port": 5432, "db.name": "studio", "db.user": "studio", "db.statement": "SELECT chunks.organisation_id, chunks.project_id, chunks.document_id, chunks.edition, chunks.ordinal, chunks.text, chunks.heading_path, chunks.page_start, chunks.page_end, chunks.embedding, chunks.embedding_model_id, chunks.search_vector, chunks.guardrail_label, chunks.guardrail_score, chunks.guardrail_reason, chunks.id, chunks.created_at, documents.name, (CAST($1::INTEGER AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $2::VARCHAR)) THEN $3::INTEGER ELSE $4::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $5::VARCHAR)) THEN $6::INTEGER ELSE $7::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $8::VARCHAR)) THEN $9::INTEGER ELSE $10::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $11::VARCHAR)) THEN $12::INTEGER ELSE $13::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $14::VARCHAR)) THEN $15::INTEGER ELSE $16::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $17::VARCHAR)) THEN $18::INTEGER ELSE $19::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $20::VARCHAR)) THEN $21::INTEGER ELSE $22::INTEGER END AS FLOAT) + CAST(CASE WHEN (chunks.search_vector @@ plainto_tsquery('simple'::regconfig, $23::VARCHAR)) THEN $24::INTEGER ELSE $25::INTEGER END AS FLOAT)) / CAST($26::INTEGER AS NUMERIC) AS share \nFROM chunks JOIN documents ON documents.id = chunks.document_id \nWHERE chunks.project_id = $27::UUID AND chunks.embedding_model_id = $28::VARCHAR AND chunks.edition = documents.edition AND documents.project_id = $29::UUID AND documents.status = $30::VARCHAR AND documents.id IN (SELECT document_tags.document_id \nFROM document_tags \nWHERE document_tags.tag_id IN ($48::UUID)) AND (chunks.search_vector @@ (((((((plainto_tsquery('simple'::regconfig, $31::VARCHAR) || plainto_tsquery('simple'::regconfig, $32::VARCHAR)) || plainto_tsquery('simple'::regconfig, $33::VARCHAR)) || plainto_tsquery('simple'::regconfig, $34::VARCHAR)) || plainto_tsquery('simple'::regconfig, $35::VARCHAR)) || plainto_tsquery('simple'::regconfig, $36::VARCHAR)) || plainto_tsquery('simple'::regconfig, $37::VARCHAR)) || plainto_tsquery('simple'::regconfig, $38::VARCHAR))) ORDER BY share DESC, ts_rank_cd(chunks.search_vector, ((((((plainto_tsquery('simple'::regconfig, $39::VARCHAR) || plainto_tsquery('simple'::regconfig, $40::VARCHAR)) || plainto_tsquery('simple'::regconfig, $41::VARCHAR)) || plainto_tsquery('simple'::regconfig, $42::VARCHAR)) || plainto_tsquery('simple'::regconfig, $43::VARCHAR)) || plainto_tsquery('simple'::regconfig, $44::VARCHAR)) || plainto_tsquery('simple'::regconfig, $45::VARCHAR)) || plainto_tsquery('simple'::regconfig, $46::VARCHAR)) DESC, chunks.id \n LIMIT $47::INTEGER", "db.system": "postgresql", "db.operation": "SELECT"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "41a73a7993a5", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "874209fb-559e-457a-ab6b-720460a79d24", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
-ublic_id}/messages", "context": {"trace_id": "0x01a1bce3bb8939d5b998e92cf8b82fb9", "span_id": "0x86d87cec54f6db3e", "trace_state": "[]"}, "kind": "SpanKind.SERVER", "parent_id": null, "start_time": "2026-11-08T20:40:03.721823Z", "end_time": "2026-11-08T20:40:04.131927Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "POST /api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.scheme": "https", "http.host": "seed.internal:None", "http.flavor": "1.1", "http.target": "/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.url": "https://seed.internal/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.method": "POST", "http.server_name": "seed.internal", "http.user_agent": "python-httpx/0.28.1", "net.peer.ip": "127.0.0.1", "net.peer.port": 123, "http.route": "/api/widget/agents/{public_id}/messages", "http.request.header.host": ["seed.internal"], "http.request.header.accept": ["*/*"], "http.request.header.accept_encoding": ["gzip, deflate"], "http.request.header.connection": ["keep-alive"], "http.request.header.user_agent": ["python-httpx/0.28.1"], "http.request.header.authorization": ["[Scrubbed due to 'auth']"], "http.request.header.content_length": ["42"], "http.request.header.content_type": ["application/json"], "fastapi.route.name": "send_message", "fastapi.route.operation_id": "sendWidgetMessage", "fastapi.arguments.start_timestamp": "2026-11-08T20:40:03.725097Z", "fastapi.arguments.end_timestamp": "2026-11-08T20:40:03.726816Z", "fastapi.arguments.values": "{\"db\": \"[Scrubbed due to 'session']\", \"signer\": \"<app.embed.tokens.TokenSigner object at 0x7f0ea2e106e0>\", \"clock\": \"<app.seed.history.ShiftedClock object at 0x7f0ea1f74440>\", \"admission\": \"<app.embed.admission.Admission object at 0x7f0e9aa2a810>\", \"ip\": \"127.0.0.1\", \"public_id\": \"agt_1y2hMbiF9XpaPd5f0lmsdooH\", \"authorization\": \"[Scrubbed due to 'auth']\", \"body\": {\"content\": \"[Scrubbed due to 'content']\"}}", "fastapi.arguments.errors": "[]", "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"fastapi.route.name\":{},\"fastapi.route.operation_id\":{},\"fastapi.arguments.values\":{\"type\":\"object\",\"properties\":{\"db\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"signer\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"clock\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"admission\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"body\":{\"type\":\"object\",\"title\":\"WidgetMessageRequest\",\"x-python-datatype\":\"PydanticModel\"}}},\"fastapi.arguments.errors\":{\"type\":\"array\"}}}", "fastapi.endpoint_function.start_timestamp": "2026-11-08T20:40:03.727129Z", "fastapi.endpoint_function.end_timestamp": "2026-11-08T20:40:03.762953Z", "http.response.header.cache_control": ["no-cache"], "http.response.header.x_accel_buffering": ["no"], "http.response.header.content_type": ["text/event-stream; charset=utf-8"], "http.status_code": 200, "logfire.scrubbed": "[{\"path\": [\"attributes\", \"http.request.header.authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"db\"], \"matched_substring\": \"session\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"body\", \"content\"], \"matched_substring\": \"content\"}]"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "41a73a7993a5", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "874209fb-559e-457a-ab6b-720460a79d24", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
-ublic_id}/messages", "context": {"trace_id": "0x01a1bce4169c80eadbd74cb9ded77deb", "span_id": "0xb71e70ccdfce3f1f", "trace_state": "[]"}, "kind": "SpanKind.SERVER", "parent_id": null, "start_time": "2026-11-08T20:40:27.036635Z", "end_time": "2026-11-08T20:40:27.507051Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "POST /api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.scheme": "https", "http.host": "seed.internal:None", "http.flavor": "1.1", "http.target": "/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.url": "https://seed.internal/api/widget/agents/agt_1y2hMbiF9XpaPd5f0lmsdooH/messages", "http.method": "POST", "http.server_name": "seed.internal", "http.user_agent": "python-httpx/0.28.1", "net.peer.ip": "127.0.0.1", "net.peer.port": 123, "http.route": "/api/widget/agents/{public_id}/messages", "http.request.header.host": ["seed.internal"], "http.request.header.accept": ["*/*"], "http.request.header.accept_encoding": ["gzip, deflate"], "http.request.header.connection": ["keep-alive"], "http.request.header.user_agent": ["python-httpx/0.28.1"], "http.request.header.authorization": ["[Scrubbed due to 'auth']"], "http.request.header.content_length": ["39"], "http.request.header.content_type": ["application/json"], "fastapi.route.name": "send_message", "fastapi.route.operation_id": "sendWidgetMessage", "fastapi.arguments.start_timestamp": "2026-11-08T20:40:27.037282Z", "fastapi.arguments.end_timestamp": "2026-11-08T20:40:27.061854Z", "fastapi.arguments.values": "{\"db\": \"[Scrubbed due to 'session']\", \"signer\": \"<app.embed.tokens.TokenSigner object at 0x7f0ea2e106e0>\", \"clock\": \"<app.seed.history.ShiftedClock object at 0x7f0ea1f74440>\", \"admission\": \"<app.embed.admission.Admission object at 0x7f0e9aaaf0b0>\", \"ip\": \"127.0.0.1\", \"public_id\": \"agt_1y2hMbiF9XpaPd5f0lmsdooH\", \"authorization\": \"[Scrubbed due to 'auth']\", \"body\": {\"content\": \"[Scrubbed due to 'content']\"}}", "fastapi.arguments.errors": "[]", "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"fastapi.route.name\":{},\"fastapi.route.operation_id\":{},\"fastapi.arguments.values\":{\"type\":\"object\",\"properties\":{\"db\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"signer\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"clock\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"admission\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"body\":{\"type\":\"object\",\"title\":\"WidgetMessageRequest\",\"x-python-datatype\":\"PydanticModel\"}}},\"fastapi.arguments.errors\":{\"type\":\"array\"}}}", "fastapi.endpoint_function.start_timestamp": "2026-11-08T20:40:27.062286Z", "fastapi.endpoint_function.end_timestamp": "2026-11-08T20:40:27.117512Z", "http.response.header.cache_control": ["no-cache"], "http.response.header.x_accel_buffering": ["no"], "http.response.header.content_type": ["text/event-stream; charset=utf-8"], "http.status_code": 200, "logfire.scrubbed": "[{\"path\": [\"attributes\", \"http.request.header.authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"db\"], \"matched_substring\": \"session\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"body\", \"content\"], \"matched_substring\": \"content\"}]"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "41a73a7993a5", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "874209fb-559e-457a-ab6b-720460a79d24", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
+ublic_id}/messages", "context": {"trace_id": "0x01a1bd93dcc117f162b04d281e821fd5", "span_id": "0x330828488f67aa53", "trace_state": "[]"}, "kind": "SpanKind.SERVER", "parent_id": null, "start_time": "2026-11-08T23:52:26.561565Z", "end_time": "2026-11-08T23:52:27.256646Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "POST /api/widget/agents/agt_EyN894oMSrxiptZYL_Kzzta_/messages", "http.scheme": "https", "http.host": "seed.internal:None", "http.flavor": "1.1", "http.target": "/api/widget/agents/agt_EyN894oMSrxiptZYL_Kzzta_/messages", "http.url": "https://seed.internal/api/widget/agents/agt_EyN894oMSrxiptZYL_Kzzta_/messages", "http.method": "POST", "http.server_name": "seed.internal", "http.user_agent": "python-httpx/0.28.1", "net.peer.ip": "127.0.0.1", "net.peer.port": 123, "http.route": "/api/widget/agents/{public_id}/messages", "http.request.header.host": ["seed.internal"], "http.request.header.accept": ["*/*"], "http.request.header.accept_encoding": ["gzip, deflate"], "http.request.header.connection": ["keep-alive"], "http.request.header.user_agent": ["python-httpx/0.28.1"], "http.request.header.authorization": ["[Scrubbed due to 'auth']"], "http.request.header.content_length": ["39"], "http.request.header.content_type": ["application/json"], "fastapi.route.name": "send_message", "fastapi.route.operation_id": "sendWidgetMessage", "fastapi.arguments.start_timestamp": "2026-11-08T23:52:26.566570Z", "fastapi.arguments.end_timestamp": "2026-11-08T23:52:26.572333Z", "fastapi.arguments.values": "{\"db\": \"[Scrubbed due to 'session']\", \"signer\": \"<app.embed.tokens.TokenSigner object at 0x7ff3fc7102f0>\", \"clock\": \"<app.seed.history.ShiftedClock object at 0x7ff3fbc2be00>\", \"admission\": \"<app.embed.admission.Admission object at 0x7ff3ebd52450>\", \"ip\": \"127.0.0.1\", \"public_id\": \"agt_EyN894oMSrxiptZYL_Kzzta_\", \"authorization\": \"[Scrubbed due to 'auth']\", \"body\": {\"content\": \"[Scrubbed due to 'content']\"}}", "fastapi.arguments.errors": "[]", "logfire.json_schema": "{\"type\":\"object\",\"properties\":{\"fastapi.route.name\":{},\"fastapi.route.operation_id\":{},\"fastapi.arguments.values\":{\"type\":\"object\",\"properties\":{\"db\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"signer\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"clock\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"admission\":{\"type\":\"object\",\"x-python-datatype\":\"unknown\"},\"body\":{\"type\":\"object\",\"title\":\"WidgetMessageRequest\",\"x-python-datatype\":\"PydanticModel\"}}},\"fastapi.arguments.errors\":{\"type\":\"array\"}}}", "fastapi.endpoint_function.start_timestamp": "2026-11-08T23:52:26.572694Z", "fastapi.endpoint_function.end_timestamp": "2026-11-08T23:52:26.628477Z", "http.response.header.cache_control": ["no-cache"], "http.response.header.x_accel_buffering": ["no"], "http.response.header.content_type": ["text/event-stream; charset=utf-8"], "http.status_code": 200, "logfire.scrubbed": "[{\"path\": [\"attributes\", \"http.request.header.authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"db\"], \"matched_substring\": \"session\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"authorization\"], \"matched_substring\": \"auth\"}, {\"path\": [\"attributes\", \"fastapi.arguments.values\", \"body\", \"content\"], \"matched_substring\": \"content\"}]"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "02e7d6439342", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "5de1c559-8285-4c8d-93ea-3ea6ca52fbc8", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 18}, "schema_url": ""}}
+db.user": "studio", "db.statement": "INSERT INTO message_retrievals (organisation_id, message_id, chunk_id, document_id, document_name, position, score, relevance, rank, cited, excluded_reason, id) VALUES ($1::UUID, $2::UUID, $3::UUID, $4::UUID, $5::VARCHAR, $6::INTEGER, $7::FLOAT, $8::FLOAT, $9::INTEGER, $10::BOOLEAN, $11::VARCHAR, $12::UUID), ($13::UUID, $14::UUID, $15::UUID, $16::UUID, $17::VARCHAR, $18::INTEGER, $19::FLOAT, $20::FLOAT, $21::INTEGER, $22::BOOLEAN, $23::VARCHAR, $24::UUID), ($25::UUID, $26::UUID, $27::UUID, $28::UUID, $29::VARCHAR, $30::INTEGER, $31::FLOAT, $32::FLOAT, $33::INTEGER, $34::BOOLEAN, $35::VARCHAR, $36::UUID), ($37::UUID, $38::UUID, $39::UUID, $40::UUID, $41::VARCHAR, $42::INTEGER, $43::FLOAT, $44::FLOAT, $45::INTEGER, $46::BOOLEAN, $47::VARCHAR, $48::UUID), ($49::UUID, $50::UUID, $51::UUID, $52::UUID, $53::VARCHAR, $54::INTEGER, $55::FLOAT, $56::FLOAT, $57::INTEGER, $58::BOOLEAN, $59::VARCHAR, $60::UUID), ($61::UUID, $62::UUID, $63::UUID, $64::UUID, $65::VARCHAR, $66::INTEGER, $67::FLOAT, $68::FLOAT, $69::INTEGER, $70::BOOLEAN, $71::VARCHAR, $72::UUID), ($73::UUID, $74::UUID, $75::UUID, $76::UUID, $77::VARCHAR, $78::INTEGER, $79::FLOAT, $80::FLOAT, $81::INTEGER, $82::BOOLEAN, $83::VARCHAR, $84::UUID), ($85::UUID, $86::UUID, $87::UUID, $88::UUID, $89::VARCHAR, $90::INTEGER, $91::FLOAT, $92::FLOAT, $93::INTEGER, $94::BOOLEAN, $95::VARCHAR, $96::UUID), ($97::UUID, $98::UUID, $99::UUID, $100::UUID, $101::VARCHAR, $102::INTEGER, $103::FLOAT, $104::FLOAT, $105::INTEGER, $106::BOOLEAN, $107::VARCHAR, $108::UUID), ($109::UUID, $110::UUID, $111::UUID, $112::UUID, $113::VARCHAR, $114::INTEGER, $115::FLOAT, $116::FLOAT, $117::INTEGER, $118::BOOLEAN, $119::VARCHAR, $120::UUID), ($121::UUID, $122::UUID, $123::UUID, $124::UUID, $125::VARCHAR, $126::INTEGER, $127::FLOAT, $128::FLOAT, $129::INTEGER, $130::BOOLEAN, $131::VARCHAR, $132::UUID), ($133::UUID, $134::UUID, $135::UUID, $136::UUID, $137::VARCHAR, $138::INTEGER, $139::FLOAT, $140::FLOAT, $141::INTEGER, $142::BOOLEAN, $143::VARCHAR, $144::UUID), ($145::UUID, $146::UUID, $147::UUID, $148::UUID, $149::VARCHAR, $150::INTEGER, $151::FLOAT, $152::FLOAT, $153::INTEGER, $154::BOOLEAN, $155::VARCHAR, $156::UUID), ($157::UUID, $158::UUID, $159::UUID, $160::UUID, $161::VARCHAR, $162::INTEGER, $163::FLOAT, $164::FLOAT, $165::INTEGER, $166::BOOLEAN, $167::VARCHAR, $168::UUID), ($169::UUID, $170::UUID, $171::UUID, $172::UUID, $173::VARCHAR, $174::INTEGER, $175::FLOAT, $176::FLOAT, $177::INTEGER, $178::BOOLEAN, $179::VARCHAR, $180::UUID), ($181::UUID, $182::UUID, $183::UUID, $184::UUID, $185::VARCHAR, $186::INTEGER, $187::FLOAT, $188::FLOAT, $189::INTEGER, $190::BOOLEAN, $191::VARCHAR, $192::UUID), ($193::UUID, $194::UUID, $195::UUID, $196::UUID, $197::VARCHAR, $198::INTEGER, $199::FLOAT, $200::FLOAT, $201::INTEGER, $202::BOOLEAN, $203::VARCHAR, $204::UUID), ($205::UUID, $206::UUID, $207::UUID, $208::UUID, $209::VARCHAR, $210::INTEGER, $211::FLOAT, $212::FLOAT, $213::INTEGER, $214::BOOLEAN, $215::VARCHAR, $216::UUID), ($217::UUID, $218::UUID, $219::UUID, $220::UUID, $221::VARCHAR, $222::INTEGER, $223::FLOAT, $224::FLOAT, $225::INTEGER, $226::BOOLEAN, $227::VARCHAR, $228::UUID), ($229::UUID, $230::UUID, $231::UUID, $232::UUID, $233::VARCHAR, $234::INTEGER, $235::FLOAT, $236::FLOAT, $237::INTEGER, $238::BOOLEAN, $239::VARCHAR, $240::UUID) RETURNING message_retrievals.created_at, message_retrievals.id", "db.system": "postgresql", "db.operation": "INSERT"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "02e7d6439342", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "5de1c559-8285-4c8d-93ea-3ea6ca52fbc8", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 18}, "schema_url": ""}}
+db.user": "studio", "db.statement": "INSERT INTO message_retrievals (organisation_id, message_id, chunk_id, document_id, document_name, position, score, relevance, rank, cited, excluded_reason, id) VALUES ($1::UUID, $2::UUID, $3::UUID, $4::UUID, $5::VARCHAR, $6::INTEGER, $7::FLOAT, $8::FLOAT, $9::INTEGER, $10::BOOLEAN, $11::VARCHAR, $12::UUID), ($13::UUID, $14::UUID, $15::UUID, $16::UUID, $17::VARCHAR, $18::INTEGER, $19::FLOAT, $20::FLOAT, $21::INTEGER, $22::BOOLEAN, $23::VARCHAR, $24::UUID), ($25::UUID, $26::UUID, $27::UUID, $28::UUID, $29::VARCHAR, $30::INTEGER, $31::FLOAT, $32::FLOAT, $33::INTEGER, $34::BOOLEAN, $35::VARCHAR, $36::UUID), ($37::UUID, $38::UUID, $39::UUID, $40::UUID, $41::VARCHAR, $42::INTEGER, $43::FLOAT, $44::FLOAT, $45::INTEGER, $46::BOOLEAN, $47::VARCHAR, $48::UUID), ($49::UUID, $50::UUID, $51::UUID, $52::UUID, $53::VARCHAR, $54::INTEGER, $55::FLOAT, $56::FLOAT, $57::INTEGER, $58::BOOLEAN, $59::VARCHAR, $60::UUID), ($61::UUID, $62::UUID, $63::UUID, $64::UUID, $65::VARCHAR, $66::INTEGER, $67::FLOAT, $68::FLOAT, $69::INTEGER, $70::BOOLEAN, $71::VARCHAR, $72::UUID), ($73::UUID, $74::UUID, $75::UUID, $76::UUID, $77::VARCHAR, $78::INTEGER, $79::FLOAT, $80::FLOAT, $81::INTEGER, $82::BOOLEAN, $83::VARCHAR, $84::UUID), ($85::UUID, $86::UUID, $87::UUID, $88::UUID, $89::VARCHAR, $90::INTEGER, $91::FLOAT, $92::FLOAT, $93::INTEGER, $94::BOOLEAN, $95::VARCHAR, $96::UUID), ($97::UUID, $98::UUID, $99::UUID, $100::UUID, $101::VARCHAR, $102::INTEGER, $103::FLOAT, $104::FLOAT, $105::INTEGER, $106::BOOLEAN, $107::VARCHAR, $108::UUID), ($109::UUID, $110::UUID, $111::UUID, $112::UUID, $113::VARCHAR, $114::INTEGER, $115::FLOAT, $116::FLOAT, $117::INTEGER, $118::BOOLEAN, $119::VARCHAR, $120::UUID), ($121::UUID, $122::UUID, $123::UUID, $124::UUID, $125::VARCHAR, $126::INTEGER, $127::FLOAT, $128::FLOAT, $129::INTEGER, $130::BOOLEAN, $131::VARCHAR, $132::UUID), ($133::UUID, $134::UUID, $135::UUID, $136::UUID, $137::VARCHAR, $138::INTEGER, $139::FLOAT, $140::FLOAT, $141::INTEGER, $142::BOOLEAN, $143::VARCHAR, $144::UUID), ($145::UUID, $146::UUID, $147::UUID, $148::UUID, $149::VARCHAR, $150::INTEGER, $151::FLOAT, $152::FLOAT, $153::INTEGER, $154::BOOLEAN, $155::VARCHAR, $156::UUID), ($157::UUID, $158::UUID, $159::UUID, $160::UUID, $161::VARCHAR, $162::INTEGER, $163::FLOAT, $164::FLOAT, $165::INTEGER, $166::BOOLEAN, $167::VARCHAR, $168::UUID), ($169::UUID, $170::UUID, $171::UUID, $172::UUID, $173::VARCHAR, $174::INTEGER, $175::FLOAT, $176::FLOAT, $177::INTEGER, $178::BOOLEAN, $179::VARCHAR, $180::UUID), ($181::UUID, $182::UUID, $183::UUID, $184::UUID, $185::VARCHAR, $186::INTEGER, $187::FLOAT, $188::FLOAT, $189::INTEGER, $190::BOOLEAN, $191::VARCHAR, $192::UUID), ($193::UUID, $194::UUID, $195::UUID, $196::UUID, $197::VARCHAR, $198::INTEGER, $199::FLOAT, $200::FLOAT, $201::INTEGER, $202::BOOLEAN, $203::VARCHAR, $204::UUID), ($205::UUID, $206::UUID, $207::UUID, $208::UUID, $209::VARCHAR, $210::INTEGER, $211::FLOAT, $212::FLOAT, $213::INTEGER, $214::BOOLEAN, $215::VARCHAR, $216::UUID), ($217::UUID, $218::UUID, $219::UUID, $220::UUID, $221::VARCHAR, $222::INTEGER, $223::FLOAT, $224::FLOAT, $225::INTEGER, $226::BOOLEAN, $227::VARCHAR, $228::UUID), ($229::UUID, $230::UUID, $231::UUID, $232::UUID, $233::VARCHAR, $234::INTEGER, $235::FLOAT, $236::FLOAT, $237::INTEGER, $238::BOOLEAN, $239::VARCHAR, $240::UUID) RETURNING message_retrievals.created_at, message_retrievals.id", "db.system": "postgresql", "db.operation": "INSERT"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "02e7d6439342", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "5de1c559-8285-4c8d-93ea-3ea6ca52fbc8", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 18}, "schema_url": ""}}
 Seeded the demo Organisation 'Northwind Traders'.
 Studio: http://localhost:47783/
   Owner:  owner@northwind.example  password: northwind-owner-demo
@@ -119,100 +119,646 @@ cd frontend && pnpm e2e
 > playwright test
 
 
-Running 91 tests using 2 workers
+Running 92 tests using 2 workers
 
-  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (883ms)
-  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (388ms)
-  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (324ms)
-  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (462ms)
-  ✓   6 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
-  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (2.1s)
-  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (217ms)
-  ✓   7 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.5s)
-  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (230ms)
-  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (216ms)
-  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (17.4s)
-  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (19.4s)
-  ✓  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (38.3s)
-  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (15.8s)
-  ✓  15 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (19.5s)
-  ✓  16 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (6.4s)
-  ✓  17 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (7.0s)
-  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (6.1s)
-  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (15.5s)
-  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (5.0s)
-  ✓  22 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (4.0s)
-  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (4.5s)
-  ✓  21 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (14.8s)
-  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (5.3s)
-  ✓  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (17.6s)
-  ✓  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (22.4s)
-  ✓  27 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (12.8s)
-  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (8.5s)
-  ✓  29 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (5.0s)
-  ✓  31 [studio] › e2e/tests/demo-pages.spec.ts:36:3 › Demo host pages › the help-centre page shows the same Agent inline (2.5s)
-  ✓  32 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (2.6s)
-  ✓  30 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (11.2s)
-  ✓  33 [studio] › e2e/tests/demo-pages.spec.ts:69:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (8.6s)
-  ✓  34 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (13.1s)
-  ✓  35 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (10.3s)
-  ✓  36 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (14.1s)
-  ✓  37 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (11.8s)
-  ✓  38 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (14.4s)
-  ✓  39 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (15.0s)
-  ✓  41 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (11.9s)
-  ✓  40 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (16.4s)
-  ✓  42 [studio] › e2e/tests/instructions-versions.spec.ts:4:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (11.5s)
-  ✓  43 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (13.7s)
-  ✓  44 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (19.7s)
-  ✓  45 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (23.5s)
-  ✓  46 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (14.6s)
-  ✓  47 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (21.1s)
-  ✓  48 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (16.2s)
-  ✓  49 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (16.5s)
-  ✓  50 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (22.0s)
-  ✓  52 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (6.2s)
-  ✓  51 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (16.8s)
-  ✓  54 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (11.8s)
-  ✓  53 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (16.5s)
-  ✓  56 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (11.7s)
-  ✓  55 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (20.3s)
-  ✓  57 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (11.9s)
-  ✓  59 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (5.0s)
-  ✓  60 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.9s)
-  ✓  61 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (5.5s)
-  ✓  58 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (26.0s)
-  ✓  62 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (15.7s)
-  ✓  64 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (9.6s)
-  ✓  65 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (9.1s)
-  ✓  63 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (33.9s)
-  ✓  66 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (11.0s)
-  ✓  67 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (16.3s)
-  ✓  68 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (16.5s)
-  ✓  69 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (20.1s)
-  ✓  70 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (18.3s)
-  ✓  72 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (6.3s)
-  ✓  71 [studio] › e2e/tests/retention.spec.ts:8:3 › Retention and tombstones › an Owner sets the Retention Window, and the change is audited (9.8s)
-  ✓  73 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (5.0s)
-  ✓  75 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (3.1s)
-  ✓  76 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (4.0s)
-  ✓  74 [studio] › e2e/tests/retention.spec.ts:32:3 › Retention and tombstones › a Trace keeps a deleted Document's name as a tombstone, and an Owner deletes a Conversation on request (20.0s)
-  ✓  78 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (13.5s)
-  ✓  77 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (24.2s)
-  ✓  79 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (10.9s)
-  ✓  81 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (8.8s)
-  ✓  80 [studio] › e2e/tests/time-series.spec.ts:13:3 › Time series › the Editor sees a Visitor's Conversation over time, markers where the Live Version changed, and a confounder note once a Document is added (21.9s)
-  ✓  82 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (15.3s)
-  ✓  84 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (13.6s)
-  ✓  83 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (24.9s)
-  ✓  86 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (15.4s)
-  ✓  85 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (16.9s)
-  ✓  88 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (13.1s)
-  ✓  87 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (14.9s)
-  ✓  89 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (6.1s)
-  ✓  90 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (12.1s)
-  ✓  91 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (6.5s)
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (1.1s)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (491ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (2.4s)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (596ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (401ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (3ms)
+  ✓   5 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.8s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (175ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (271ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (205ms)
+  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (19.6s)
+  ✓  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (37.5s)
+  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (20.6s)
+  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (17.5s)
+  ✓  15 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (22.3s)
+  ✓  16 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (8.7s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (7.6s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (5.4s)
+  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (15.0s)
+  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (6.0s)
+  ✓  22 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (4.1s)
+  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.3s)
+  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (6.3s)
+  ✓  21 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (22.6s)
+  ✘  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (31.1s)
+  ✘  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (39.6s)
+  ✘  27 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (retry #1) (38.2s)
+  ✘  29 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (1.1m)
+  ✘  30 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (retry #1) (1.1m)
+  ✘  28 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (retry #1) (3.3m)
+  ✘  31 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (38.4s)
+  ✘  32 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (36.1s)
+  ✘  34 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (retry #1) (1.2m)
+  ✘  33 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (retry #1) (1.1m)
+  ✘  35 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (23.4s)
+  ✓  36 [studio] › e2e/tests/demo-pages.spec.ts:36:3 › Demo host pages › the help-centre page shows the same Agent inline (26.0s)
+  ✘  37 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (retry #1) (37.5s)
+  ✘  38 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (38.2s)
+  ✘  39 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (45.1s)
+  ✘  40 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (retry #1) (45.2s)
+  ✘  41 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (retry #1) (39.6s)
+  ✘  43 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (36.3s)
+  ✓  42 [studio] › e2e/tests/demo-pages.spec.ts:69:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (1.4m)
+  ✓  44 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (retry #1) (9.8s)
+  ✓  45 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (16.1s)
+  ✓  46 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (12.0s)
+  ✓  47 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (15.4s)
+  ✓  48 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (12.6s)
+  ✘  50 [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome (12.6s)
+  ✓  49 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (19.4s)
+  ✓  52 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (12.3s)
+  ✓  51 [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome (retry #1) (21.9s)
+  ✓  53 [studio] › e2e/tests/instructions-versions.spec.ts:4:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (11.6s)
+  ✓  54 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (13.6s)
+  ✓  55 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (16.9s)
+  ✓  57 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (8.2s)
+  ✓  56 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (19.9s)
+  ✓  58 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (14.0s)
+  ✓  59 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (13.1s)
+  ✓  60 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (12.1s)
+  ✓  61 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (18.6s)
+  ✓  62 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (14.4s)
+  ✓  63 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (10.1s)
+  ✓  64 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (15.0s)
+  ✓  65 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (13.5s)
+  ✓  67 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (9.7s)
+  ✓  66 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (17.2s)
+  ✓  68 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (8.7s)
+  ✓  70 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (3.4s)
+  ✓  71 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.3s)
+  ✓  72 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (5.4s)
+  ✓  69 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (25.5s)
+  ✓  73 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (15.3s)
+  ✓  75 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (9.6s)
+  ✓  76 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (9.8s)
+  ✓  74 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (32.4s)
+  ✓  77 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (10.1s)
+  ✘  78 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (22.3s)
+  ✓  80 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (retry #1) (9.8s)
+  ✘  79 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (30.1s)
+  ✓  81 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (13.1s)
+  ✓  82 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (retry #1) (13.6s)
+  ✓  84 [studio] › e2e/tests/retention.spec.ts:8:3 › Retention and tombstones › an Owner sets the Retention Window, and the change is audited (7.0s)
+  ✓  83 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (14.3s)
+  ✓  86 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (3.7s)
+  ✓  87 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (3.5s)
+  ✓  88 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (2.1s)
+  ✓  89 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.0s)
+  ✓  85 [studio] › e2e/tests/retention.spec.ts:32:3 › Retention and tombstones › a Trace keeps a deleted Document's name as a tombstone, and an Owner deletes a Conversation on request (16.6s)
+  ✓  91 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (11.9s)
+  ✓  90 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (16.3s)
+  ✓  92 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (7.4s)
+  ✓  94 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (5.2s)
+  ✓  93 [studio] › e2e/tests/time-series.spec.ts:13:3 › Time series › the Editor sees a Visitor's Conversation over time, markers where the Live Version changed, and a confounder note once a Document is added (13.9s)
+  ✓  95 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (8.8s)
+  ✓  97 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (7.8s)
+  ✓  96 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (16.7s)
+  ✓  98 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (9.5s)
+  ✓  99 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (8.9s)
+  ✓  100 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (8.6s)
+  ✓  102 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (3.2s)
+  ✓  101 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (9.2s)
+  ✓  103 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (7.1s)
+  ✓  104 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (10.8s)
 
-  91 passed (9.3m)
-exit 0
-(telemetry JSON lines printed by the seed step are dropped from this copy: 19559 lines)
+
+  1) [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('2 Agents behind the Current Version (v2).')
+    Expected: visible
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('2 Agents behind the Current Version (v2).') with timeout 15000ms
+      - waiting for getByText('2 Agents behind the Current Version (v2).')
+      - Target crashed
+
+
+      91 |     // offers to bulk-revert the Agents pinned to v2.
+      92 |     await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+    > 93 |     await expect(page.getByText("2 Agents behind the Current Version (v2).")).toBeVisible({ timeout: 15_000 });
+         |                                                                               ^
+      94 |     await page.getByRole("button", { name: "Roll out v2…" }).click();
+      95 |     await dialog.getByRole("button", { name: "Publish to 2 Agents" }).click();
+      96 |     await expect(results.getByRole("listitem")).toHaveCount(2, { timeout: 15_000 });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/bulk-rollout.spec.ts:93:79
+
+    Error Context: test-results/tests-bulk-rollout-Bulk-pu-40d65--reverting-the-Instructions-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-bulk-rollout-Bulk-pu-40d65--reverting-the-Instructions-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-bulk-rollout-Bulk-pu-40d65--reverting-the-Instructions-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('navigation', { name: 'Project' }).getByRole('link', { name: 'Instructions' })
+        - locator resolved to <a href="/organisations/52261ab0-40e3-4e48-89a0-2ac82fd4c9e4/projects/e7040302-18fd-476f-8796-9500cafacb7a/instructions" class="rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900">Instructions</a>
+      - attempting click action
+        - waiting for element to be visible, enabled and stable
+
+
+      22 |     await newProject.getByLabel("Name").fill("Rollout HR");
+      23 |     await newProject.getByRole("button", { name: "Create Project" }).click();
+    > 24 |     await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+         |                                                                                                         ^
+      25 |     await expect(page.getByText("Not published yet. Publish the Draft to make v1, the Current Version.")).toBeVisible({
+      26 |       timeout: 15_000,
+      27 |     });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/bulk-rollout.spec.ts:24:105
+
+    Error Context: test-results/tests-bulk-rollout-Bulk-pu-40d65--reverting-the-Instructions-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-bulk-rollout-Bulk-pu-40d65--reverting-the-Instructions-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-bulk-rollout-Bulk-pu-40d65--reverting-the-Instructions-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating 
+
+    Error: page.goto: Page crashed
+    Call log:
+      - navigating to "http://localhost:47783/organisations/33c27c57-ea89-46a8-8a41-e9f2e34d397a/projects/6731240a-1195-4059-ab5f-7350ef977a8c/conversations", waiting until "load"
+
+
+       97 |
+       98 |     // The Editor sees each Conversation's rating, filters by it, and reads the change log.
+    >  99 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/conversations`);
+          |                ^
+      100 |     const filters = page.getByRole("group", { name: "Filter Conversations" });
+      101 |     const table = page.getByRole("table", { name: "Conversations" });
+      102 |     const loved = table.getByRole("row", { name: /How many days of annual leave/ });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/conversation-rating.spec.ts:99:16
+
+    Error Context: test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 180000ms exceeded.
+
+    Error: locator.fill: Test ended.
+    Call log:
+      - waiting for locator('iframe[title="Chat"]').contentFrame().getByLabel('Message')
+
+
+      46 |       const widget = host.frameLocator('iframe[title="Chat"]');
+      47 |       const ask = async (question: string, replies: number) => {
+    > 48 |         await widget.getByLabel("Message").fill(question);
+         |                                            ^
+      49 |         await widget.getByRole("button", { name: "Send" }).click();
+      50 |         await expect(widget.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "HR helper" })).toHaveCount(replies, {
+      51 |           timeout: 15_000,
+        at Object.ask (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/conversation-rating.spec.ts:48:44)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/conversation-rating.spec.ts:62:17
+
+    Error Context: test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversation-rating--f3c1f-nds-Conversations-by-rating-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace 
+
+    Test timeout of 30000ms exceeded while setting up "page".
+
+    Tearing down "context" exceeded the test timeout of 30000ms.
+
+    Error Context: test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded while setting up "page".
+
+    Tearing down "context" exceeded the test timeout of 30000ms.
+
+    Error Context: test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-conversations-Conver-449e1-t-and-reads-a-reply-s-Trace-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown 
+
+    Test timeout of 30000ms exceeded while setting up "signedInPage".
+
+    Error Context: test-results/tests-credentials-provider-92ced--why-the-key-is-never-shown-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-credentials-provider-92ced--why-the-key-is-never-shown-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-credentials-provider-92ced--why-the-key-is-never-shown-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded while setting up "page".
+
+    Tearing down "context" exceeded the test timeout of 30000ms.
+
+    Fixture "trace recording" timeout of 30000ms exceeded during teardown.
+
+    Error Context: test-results/tests-credentials-provider-92ced--why-the-key-is-never-shown-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-credentials-provider-92ced--why-the-key-is-never-shown-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-credentials-provider-92ced--why-the-key-is-never-shown-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them 
+
+    Error: page.goto: Page crashed
+    Call log:
+      - navigating to "http://localhost:47783/", waiting until "load"
+
+
+      10 |
+      11 | async function openCredentials(page: Page) {
+    > 12 |   await page.goto("/");
+         |              ^
+      13 |   await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+      14 |   await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+      15 |   await expect(page.getByRole("heading", { name: "Provider Credentials" })).toBeVisible();
+        at openCredentials (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/credentials.spec.ts:12:14)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/credentials.spec.ts:82:11
+
+    Error Context: test-results/tests-credentials-provider-e3250-tials-but-can-t-manage-them-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-credentials-provider-e3250-tials-but-can-t-manage-them-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-credentials-provider-e3250-tials-but-can-t-manage-them-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:47783/", waiting until "load"
+
+
+      10 |
+      11 | async function openCredentials(page: Page) {
+    > 12 |   await page.goto("/");
+         |              ^
+      13 |   await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+      14 |   await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+      15 |   await expect(page.getByRole("heading", { name: "Provider Credentials" })).toBeVisible();
+        at openCredentials (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/credentials.spec.ts:12:14)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/credentials.spec.ts:82:11
+
+    Error Context: test-results/tests-credentials-provider-e3250-tials-but-can-t-manage-them-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-credentials-provider-e3250-tials-but-can-t-manage-them-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-credentials-provider-e3250-tials-but-can-t-manage-them-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it 
+
+    Test timeout of 30000ms exceeded while setting up "page".
+
+    Error Context: test-results/tests-demo-pages-Demo-host-18157-and-a-Visitor-chats-with-it-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-demo-pages-Demo-host-18157-and-a-Visitor-chats-with-it-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-demo-pages-Demo-host-18157-and-a-Visitor-chats-with-it-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded while setting up "page".
+
+    Tearing down "context" exceeded the test timeout of 30000ms.
+
+    Fixture "trace recording" timeout of 30000ms exceeded during teardown.
+
+    Error Context: test-results/tests-demo-pages-Demo-host-18157-and-a-Visitor-chats-with-it-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-demo-pages-Demo-host-18157-and-a-Visitor-chats-with-it-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-demo-pages-Demo-host-18157-and-a-Visitor-chats-with-it-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.evaluate: Test timeout of 30000ms exceeded.
+     Please check out https://github.com/dequelabs/axe-core-npm/blob/develop/packages/playwright/error-handling.md
+
+      64 |       .toBe("chrome-error://chromewebdata/");
+      65 |     await expect(page.frameLocator('iframe[title="Chat"]').getByRole("heading", { name: "Product FAQ" })).toHaveCount(0);
+    > 66 |     expect((await makeAxeBuilder().exclude('iframe[title="Chat"]').analyze()).violations).toEqual([]);
+         |             ^
+      67 |   });
+      68 |
+      69 |   test("one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert", async ({
+        at AxeBuilder.analyze (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:219:13)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/demo-pages.spec.ts:66:13
+    [cause]: Error: page.evaluate: Test timeout of 30000ms exceeded.
+        at AxeBuilder.finishRun (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:320:21)
+        at AxeBuilder.analyze (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/node_modules/.pnpm/@axe-core+playwright@4.14.0_playwright-core@1.64.1/node_modules/@axe-core/playwright/dist/index.mjs:217:14)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/demo-pages.spec.ts:66:13
+
+    Error Context: test-results/tests-demo-pages-Demo-host-3580d--refuses-to-show-the-widget-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-demo-pages-Demo-host-3580d--refuses-to-show-the-widget-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-demo-pages-Demo-host-3580d--refuses-to-show-the-widget-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: Test timeout of 30000ms exceeded
+
+      62 |     await expect
+      63 |       .poll(async () => (await (await iframe.elementHandle()).contentFrame())?.url(), { timeout: 15_000 })
+    > 64 |       .toBe("chrome-error://chromewebdata/");
+         |        ^
+      65 |     await expect(page.frameLocator('iframe[title="Chat"]').getByRole("heading", { name: "Product FAQ" })).toHaveCount(0);
+      66 |     expect((await makeAxeBuilder().exclude('iframe[title="Chat"]').analyze()).violations).toEqual([]);
+      67 |   });
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/demo-pages.spec.ts:64:8
+
+    Error Context: test-results/tests-demo-pages-Demo-host-3580d--refuses-to-show-the-widget-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-demo-pages-Demo-host-3580d--refuses-to-show-the-widget-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-demo-pages-Demo-host-3580d--refuses-to-show-the-widget-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:47783/", waiting until "load"
+
+
+      11 |     makeAxeBuilder,
+      12 |   }) => {
+    > 13 |     await page.goto("/");
+         |                ^
+      14 |     await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+      15 |     const form = page.getByRole("form", { name: "New Project" });
+      16 |     await form.getByLabel("Name").fill("Editions");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/document-editions.spec.ts:13:16
+
+    Error Context: test-results/tests-document-editions-Do-3ad07-place-and-delete-removes-it-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-document-editions-Do-3ad07-place-and-delete-removes-it-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-document-editions-Do-3ad07-place-and-delete-removes-it-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Call log:
+      - navigating to "http://localhost:47783/", waiting until "load"
+
+
+      11 |     makeAxeBuilder,
+      12 |   }) => {
+    > 13 |     await page.goto("/");
+         |                ^
+      14 |     await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+      15 |     const form = page.getByRole("form", { name: "New Project" });
+      16 |     await form.getByLabel("Name").fill("Editions");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/document-editions.spec.ts:13:16
+
+    Error Context: test-results/tests-document-editions-Do-3ad07-place-and-delete-removes-it-studio-retry1/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-document-editions-Do-3ad07-place-and-delete-removes-it-studio-retry1/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-document-editions-Do-3ad07-place-and-delete-removes-it-studio-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready 
+
+    Test timeout of 30000ms exceeded while setting up "signedInPage".
+
+    Error: apiRequestContext.post: Test timeout of 30000ms exceeded.
+    Call log:
+      - → POST http://localhost:47783/api/auth/sign-in
+        - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+        - content-type: application/json
+        - content-length: 125
+        - cookie: studio_session=D0NuKufgB9DVhbvSasdQ5FIxhmJAMdaOpM1gt02bnks
+
+
+       at fixtures/auth.ts:36
+
+      34 |
+      35 | async function post(request: APIRequestContext, route: string, data: Record<string, string>): Promise<void> {
+    > 36 |   const response = await request.post(route, { data });
+         |                                  ^
+      37 |   if (!response.ok()) {
+      38 |     throw new Error(`POST ${route} answered ${String(response.status())}: ${await response.text()}`);
+      39 |   }
+        at post (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/fixtures/auth.ts:36:34)
+        at signIn (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/fixtures/auth.ts:54:9)
+        at signInAs (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/fixtures/auth.ts:59:9)
+        at Object.signedInPage (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/fixtures/index.ts:43:11)
+
+    Error Context: test-results/tests-documents-Documents--080b9-t-goes-from-Queued-to-Ready-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-documents-Documents--080b9-t-goes-from-Queued-to-Ready-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-documents-Documents--080b9-t-goes-from-Queued-to-Ready-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome 
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator: getByLabel('Version')
+    Expected: "v1 (Live)"
+    Error: strict mode violation: getByLabel('Version') resolved to 2 elements:
+        1) <select class="mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900">…</select> aka getByLabel('Versionv1 (Live)')
+        2) <ul aria-label="Live Version changes" class="list-inside list-disc text-sm">…</ul> aka getByRole('list', { name: 'Live Version changes' })
+
+    Call log:
+      - Expect "toHaveText" getByLabel('Version') with timeout 5000ms
+      - waiting for getByLabel('Version')
+
+
+      67 |     // The Editor reads the Live Version's block rate: one of its three replies was a refusal.
+      68 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
+    > 69 |     await expect(page.getByLabel("Version")).toHaveText("v1 (Live)");
+         |                                              ^
+      70 |     const card = page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name: "Guardrail block rate" });
+      71 |     await expect(card).toContainText("33%", { timeout: 15_000 });
+      72 |     await expect(card).toContainText("1 of 3 replies were blocked by the input Guardrail");
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/guardrail-analytics.spec.ts:69:46
+
+    Error Context: test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-guardrail-analytics--6aeee-ltered-by-Guardrail-outcome-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('navigation', { name: 'Organisation' }).getByRole('link', { name: 'Organisation settings' })
+
+
+      22 | async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCredentials): Promise<Page> {
+      23 |   await owner.goto("/");
+    > 24 |   await owner.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+         |                                                                                                                      ^
+      25 |   await owner.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Members" }).click();
+      26 |   await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+      27 |   const form = owner.getByRole("form", { name: "Invite someone" });
+        at inviteNewEditor (/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/projects.spec.ts:24:118)
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/projects.spec.ts:105:24
+
+    Error Context: test-results/tests-projects-Projects-an-55e2a-t-only-an-Owner-restores-it-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-projects-Projects-an-55e2a-t-only-an-Owner-restores-it-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-projects-Projects-an-55e2a-t-only-an-Owner-restores-it-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('region', { name: 'Embed', exact: true }).getByText('Saved. Messages over a limit get the unavailable text from now on.')
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('region', { name: 'Embed', exact: true }).getByText('Saved. Messages over a limit get the unavailable text from now on.') with timeout 15000ms
+      - waiting for getByRole('region', { name: 'Embed', exact: true }).getByText('Saved. Messages over a limit get the unavailable text from now on.')
+
+
+      60 |     await perConversation.fill("1");
+      61 |     await embed.getByRole("button", { name: "Save rate limits" }).click();
+    > 62 |     await expect(embed.getByText("Saved. Messages over a limit get the unavailable text from now on.")).toBeVisible({
+         |                                                                                                         ^
+      63 |       timeout: 15_000,
+      64 |     });
+      65 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+        at /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0707/frontend/e2e/tests/rate-limits.spec.ts:62:105
+
+    Error Context: test-results/tests-rate-limits-Rate-lim-55f54-nd-the-Playground-is-exempt-studio/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/tests-rate-limits-Rate-lim-55f54-nd-the-Playground-is-exempt-studio/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/tests-rate-limits-Rate-lim-55f54-nd-the-Playground-is-exempt-studio/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8 failed
+    [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions 
+    [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating 
+    [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace 
+    [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown 
+    [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them 
+    [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it 
+    [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget 
+    [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it 
+  4 flaky
+    [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready 
+    [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome 
+    [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it 
+    [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt 
+  80 passed (20.2m)
+ ELIFECYCLE  Command failed with exit code 1.
+make: *** [Makefile:130: e2e] Error 1

@@ -1,8 +1,0 @@
-$ pytest -n 3 test_retention.py test_version_metrics.py (the 13 failed tests' modules) @ 18679f6 + uncommitted fix, then the same with Celery's join guard forced on
-
-..................................                                       [100%]
-34 passed in 101.00s (0:01:40)
-exit 0
-warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
-...........                                                              [100%]
-11 passed, 23 deselected in 21.43s
