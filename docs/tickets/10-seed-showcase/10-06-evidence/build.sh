@@ -14,7 +14,7 @@ TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 inject "$WT/backend/Dockerfile" "$CA" > "$TMP/Dockerfile.backend"
 inject "$WT/frontend/Dockerfile" "$CA" > "$TMP/Dockerfile.frontend"
 echo "+ docker build -t rag-agent-studio/api:$TAG backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)"
-docker build --progress plain --network host --build-context sandboxca=/root/.ccr --build-arg WITH_PDF=false --build-arg BUNDLE_MODELS=true \
+docker build --progress plain --network host --build-context sandboxca=/root/.ccr --build-context seed="$WT/seed" --build-arg WITH_PDF=false --build-arg BUNDLE_MODELS=true \
   -f "$TMP/Dockerfile.backend" -t rag-agent-studio/api:$TAG "$WT/backend"
 echo "+ docker run: the bundled classifier loads with no network and flags an attack"
 docker run --rm --network none -e HF_HUB_OFFLINE=1 rag-agent-studio/api:$TAG python -c "
