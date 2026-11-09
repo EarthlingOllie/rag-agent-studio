@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-01: Palette ratchet and design system round 2](01-ratchet-design-system-round-2.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] `index.css` imports `design/tokens.css`; `index.html` loads Instrument Sans and IBM Plex Mono
 - [ ] `initAppearance()` runs before the first render, so no page flashes the other Appearance
