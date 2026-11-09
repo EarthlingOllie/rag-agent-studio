@@ -1,7 +1,6 @@
-commit d624191
+commit f97d199
 $ make check-client
 cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
-warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 cd frontend && pnpm gen-client
 
 > rag-agent-studio-frontend@ gen-client /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0708/frontend
@@ -12,6 +11,6 @@ cd frontend && pnpm gen-client
 > openapi-typescript ./openapi.json --output ./src/schema.gen.ts
 
 ✨ openapi-typescript 7.13.0
-🚀 ./openapi.json → ./src/schema.gen.ts [832.1ms]
+🚀 ./openapi.json → ./src/schema.gen.ts [453.8ms]
 API client is up to date.
 exit 0
