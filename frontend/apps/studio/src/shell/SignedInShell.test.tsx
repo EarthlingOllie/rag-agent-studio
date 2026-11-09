@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { menuButton, openSection, sectionNames } from "../test/navigation";
+import { currentSection, menuButton, openSection, sectionNames } from "../test/navigation";
+import { fakeInvitesApi } from "../test/invites";
+import { fakeMembersApi } from "../test/members";
 import { fakeProjectsApi } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -75,6 +77,50 @@ test("the breadcrumb follows the route and marks the current page", async () => 
   await openSection("Organisation sections", "Security");
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
   expect(breadcrumb().getByRole("button", { name: "Security, Organisation sections" })).toHaveAttribute("aria-current", "page");
+});
+
+test("Organisation settings are a Settings switcher crumb: the area is the current crumb, its siblings are links", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeMembersApi();
+  fakeInvitesApi();
+  renderStudio(`/organisations/${organisationId}/settings`);
+  const breadcrumb = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+
+  expect(await screen.findByRole("heading", { name: "Organisation settings", level: 1 })).toBeInTheDocument();
+  expect(screen.queryByRole("navigation", { name: "Organisation settings" })).not.toBeInTheDocument();
+  expect(breadcrumb().getByRole("button", { name: "Settings, Organisation sections" })).not.toHaveAttribute("aria-current");
+  expect(breadcrumb().getByRole("button", { name: "General, Organisation settings" })).toHaveAttribute("aria-current", "page");
+
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
+  await userEvent.click(await menuButton("Organisation settings"));
+  const menu = within(screen.getByRole("menu", { name: "Organisation settings" }));
+  expect(menu.getByRole("menuitem", { name: "Members" })).toHaveAttribute("href", `/organisations/${organisationId}/settings/members`);
+  expect(menu.getByRole("menuitem", { name: "General" })).toHaveAttribute("aria-current", "page");
+  await userEvent.keyboard("{Escape}");
+
+  await openSection("Organisation settings", "Members");
+
+  expect(await screen.findByRole("table", { name: "Members" })).toBeInTheDocument();
+  expect(await currentSection("Organisation settings")).toBe("Members");
+  expect(breadcrumb().getByRole("button", { name: "Members, Organisation settings" })).toHaveAttribute("aria-current", "page");
+});
+
+test("an Editor's Settings crumb leaves out Members and Audit", async () => {
+  fakeAuthApi({
+    signedInAs: { ...adaSession, organisations: adaSession.organisations.map((o) => ({ ...o, role: "editor" as const })) },
+  });
+  renderStudio(`/organisations/${organisationId}/settings/theme`);
+
+  expect(await currentSection("Organisation settings")).toBe("Theme");
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme"]);
+});
+
+test("an unknown settings address says so in the Settings crumb, which still offers every area", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(`/organisations/${organisationId}/settings/bogus`);
+
+  expect(await currentSection("Organisation settings")).toBe("Not found");
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
 });
 
 test("a Project that can't be loaded is a plain crumb", async () => {

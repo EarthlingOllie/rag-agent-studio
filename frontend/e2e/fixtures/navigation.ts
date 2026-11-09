@@ -20,7 +20,6 @@ export type NavigationMenu =
  */
 const TAB_ROWS: Partial<Record<NavigationMenu, string>> = {
   "Project sections": "Project",
-  "Organisation settings": "Organisation settings",
 };
 
 function escape(text: string) {

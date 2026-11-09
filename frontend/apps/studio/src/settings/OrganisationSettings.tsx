@@ -1,8 +1,9 @@
-import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
+import { button, ConfirmDialog, layout, PageHeader, surface, text, ToastProvider } from "../design";
 import { AuditPage } from "./AuditPage";
 import { CredentialsPage } from "./CredentialsPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
@@ -11,8 +12,6 @@ import { ModelsPage } from "./ModelsPage";
 import { RetentionWindow } from "./RetentionWindow";
 import { ThemePage } from "./ThemePage";
 import { useSetMfaPolicy } from "./mfaPolicy";
-
-const TAB = "rounded px-3 py-2 text-sm text-ink-2 hover:bg-sunken [&.active]:bg-sunken [&.active]:font-medium [&.active]:text-ink";
 
 function useOrganisation() {
   const { organisationId } = useParams({ from: "/signed-in/organisations/$organisationId" });
@@ -28,17 +27,15 @@ function useOrganisation() {
   };
 }
 
-const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
-
 /** The Require MFA policy: Owners turn it on or off; everyone else sees which it is. */
 function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: string; mfaRequired: boolean; isOwner: boolean }) {
   const setPolicy = useSetMfaPolicy(organisationId);
   return (
-    <section aria-labelledby="mfa-policy-heading" className="max-w-md space-y-3">
-      <h2 id="mfa-policy-heading" className="text-lg font-semibold">
+    <section aria-labelledby="mfa-policy-heading" className={`${surface.panel} space-y-3`}>
+      <h2 id="mfa-policy-heading" className={text.heading}>
         Two-factor authentication
       </h2>
-      <p className="text-sm text-muted">
+      <p className={text.muted}>
         {mfaRequired
           ? "Every Member must use two-factor authentication. Members without it are asked to set it up before they can do anything else here."
           : "Members choose whether to use two-factor authentication."}
@@ -48,7 +45,7 @@ function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: s
           <FormError message={memberFailure(setPolicy.error)} />
           <button
             type="button"
-            className={BUTTON}
+            className={button.secondary}
             disabled={setPolicy.isPending}
             onClick={() => {
               setPolicy.mutate(!mfaRequired);
@@ -62,117 +59,80 @@ function MfaPolicy({ organisationId, mfaRequired, isOwner }: { organisationId: s
           </button>
         </>
       ) : (
-        <p className="text-sm text-muted">Only Owners can change this.</p>
+        <p className={text.muted}>Only Owners can change this.</p>
       )}
     </section>
   );
 }
 
-/** Any Member can leave; the last Owner is refused by the API and told why. */
+/** Any Member can leave, after confirming; the last Owner is refused by the API and told why. */
 function LeaveOrganisation({ organisationId, organisationName }: { organisationId: string; organisationName: string }) {
   const leave = useLeaveOrganisation(organisationId);
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
   return (
-    <section aria-labelledby="leave-heading" className="max-w-md space-y-3">
-      <h2 id="leave-heading" className="text-lg font-semibold">
+    <section aria-labelledby="leave-heading" className={`${surface.panel} space-y-3`}>
+      <h2 id="leave-heading" className={text.heading}>
         Leave this Organisation
       </h2>
       <FormError message={memberFailure(leave.error)} />
-      {confirming ? (
-        <>
-          <p className="text-sm text-muted">You will lose access to {organisationName} until someone invites you again.</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={BUTTON}
-              disabled={leave.isPending}
-              onClick={() => {
-                leave.mutate(undefined, {
-                  onSuccess: () => {
-                    void navigate({ to: "/" });
-                  },
-                  onError: () => {
-                    setConfirming(false);
-                  },
-                });
-              }}
-            >
-              Yes, leave {organisationName}
-            </button>
-            <button
-              type="button"
-              className={BUTTON}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </>
-      ) : (
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            leave.reset();
-            setConfirming(true);
-          }}
-        >
-          Leave {organisationName}
-        </button>
-      )}
+      <button
+        type="button"
+        className={button.danger}
+        onClick={() => {
+          leave.reset();
+          setConfirming(true);
+        }}
+      >
+        Leave {organisationName}
+      </button>
+      <ConfirmDialog
+        open={confirming}
+        title={`Leave ${organisationName}?`}
+        confirmLabel={`Yes, leave ${organisationName}`}
+        destructive
+        busy={leave.isPending}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+        onConfirm={() => {
+          leave.mutate(undefined, {
+            onSuccess: () => {
+              void navigate({ to: "/" });
+            },
+            onError: () => {
+              setConfirming(false);
+            },
+          });
+        }}
+      >
+        You will lose access to {organisationName} until someone invites you again.
+      </ConfirmDialog>
     </section>
   );
 }
 
 /**
- * Organisation settings, with a tab per area. Every Member sees General, Credentials, Models and Theme
- * (Editors view the Theme without editing it); the Members and Audit tabs are shown to Owners only.
+ * Organisation settings. The area (General, Credentials, Models, Theme, and Members and Audit for
+ * Owners) is chosen from the Settings switcher crumb in the top bar (`shell/SettingsCrumb.tsx`);
+ * Editors view the Theme without editing it. Changes here confirm with a toast.
  */
 export function OrganisationSettingsLayout() {
-  const { organisationId, isOwner } = useOrganisation();
+  const { organisationName } = useOrganisation();
   return (
-    <section aria-labelledby="page-heading">
-      <h1 id="page-heading" className="text-2xl font-semibold">
-        Organisation settings
-      </h1>
-      <nav aria-label="Organisation settings" className="mt-4 flex gap-2 border-b border-line pb-2">
-        <Link to="/organisations/$organisationId/settings" params={{ organisationId }} activeOptions={{ exact: true }} className={TAB}>
-          General
-        </Link>
-        <Link to="/organisations/$organisationId/settings/credentials" params={{ organisationId }} className={TAB}>
-          Credentials
-        </Link>
-        <Link to="/organisations/$organisationId/settings/models" params={{ organisationId }} className={TAB}>
-          Models
-        </Link>
-        <Link to="/organisations/$organisationId/settings/theme" params={{ organisationId }} className={TAB}>
-          Theme
-        </Link>
-        {isOwner && (
-          <>
-            <Link to="/organisations/$organisationId/settings/members" params={{ organisationId }} className={TAB}>
-              Members
-            </Link>
-            <Link to="/organisations/$organisationId/settings/audit" params={{ organisationId }} className={TAB}>
-              Audit
-            </Link>
-          </>
-        )}
-      </nav>
-      <div className="mt-6">
+    <ToastProvider>
+      <div className={layout.stack}>
+        <PageHeader title="Organisation settings" description={`How ${organisationName} works for every Project and Member.`} />
         <Outlet />
       </div>
-    </section>
+    </ToastProvider>
   );
 }
 
 export function GeneralSettingsPage() {
   const { organisationId, organisationName, isOwner, mfaRequired } = useOrganisation();
   return (
-    <div className="space-y-8">
+    <div className="grid max-w-2xl gap-6">
       <MfaPolicy key={`mfa-${organisationId}`} organisationId={organisationId} mfaRequired={mfaRequired} isOwner={isOwner} />
       <RetentionWindow key={`retention-${organisationId}`} organisationId={organisationId} isOwner={isOwner} />
       <LeaveOrganisation key={organisationId} organisationId={organisationId} organisationName={organisationName} />
@@ -186,8 +146,8 @@ export function AuditSettingsPage() {
 }
 
 export function MembersSettingsPage() {
-  const { organisationId, memberId, isOwner } = useOrganisation();
-  return <MembersPage organisationId={organisationId} memberId={memberId} isOwner={isOwner} />;
+  const { organisationId, organisationName, memberId, isOwner } = useOrganisation();
+  return <MembersPage organisationId={organisationId} organisationName={organisationName} memberId={memberId} isOwner={isOwner} />;
 }
 
 export function CredentialsSettingsPage() {
