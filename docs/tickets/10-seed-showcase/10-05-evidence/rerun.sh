@@ -1,6 +1,7 @@
 # Re-runs, per the test policy, only what failed in the full-suite runs, plus the touched modules, on the images
 # run-e2e.sh built (rag-agent-studio/*:1005) and on fresh rag1005-* backend services.
-# 1. e2e: the two analytics specs whose `getByLabel("Version")` was made exact, and the spec that was flaky.
+# 1. e2e: the two analytics specs whose Version locator was fixed, and the spec that was flaky.
+# RERUN_BACKEND=0 skips step 2 when it already passed on the same backend code.
 # 2. backend: tests/integration/test_logging.py (4 subprocess-startup timeouts under load in the full run), the
 #    touched settings test and the seed tests.
 set -u
@@ -15,6 +16,7 @@ SPECS="tests/guardrail-analytics.spec.ts tests/version-kpis.spec.ts tests/member
  $COMPOSE up -d --wait 2>&1 && make seed COMPOSE="$COMPOSE" 2>&1 && (cd frontend && CI=1 timeout 1800 pnpm e2e $SPECS 2>&1); echo "exit $?") > $L/e2e-rerun.log
 $COMPOSE down -v >/dev/null 2>&1
 grep -aq '^exit 0' $L/e2e-rerun.log && docker rmi rag-agent-studio/api:1005 rag-agent-studio/studio:1005 >/dev/null 2>&1
+if [ "${RERUN_BACKEND:-1}" = 1 ]; then
 export TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:48952/studio_test
 export TEST_REDIS_URL=redis://localhost:48979/15
 export TEST_OBJECT_STORE_URL=http://localhost:48991
@@ -27,4 +29,5 @@ docker exec rag1005-pg psql -U studio -c "CREATE DATABASE studio_test" >/dev/nul
 T="tests/integration/test_logging.py tests/unit/test_aws_task_settings.py tests/integration/test_seed.py tests/integration/test_seeded_history.py"
 (echo "\$ cd backend && pytest --no-cov $T $H"; cd backend && timeout 3600 uv run pytest --no-cov $T 2>&1 | grep -Eav '^\{"(name|timestamp)"' | tail -15; echo "exit ${PIPESTATUS[0]}") > $L/backend-rerun.log
 docker rm -f rag1005-pg rag1005-redis rag1005-rustfs >/dev/null 2>&1
+fi
 echo "e2e-rerun: $(grep -a '^exit' $L/e2e-rerun.log) backend-rerun: $(grep -a '^exit' $L/backend-rerun.log)"
