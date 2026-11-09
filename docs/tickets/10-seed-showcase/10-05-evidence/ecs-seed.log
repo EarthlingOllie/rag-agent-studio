@@ -1,0 +1,37 @@
+# Columns: organisations members projects documents tags agents agent_versions instructions_versions conversations messages feedback ratings audit_events credentials
+$ counts on the fresh database
+0 0 0 0 0 0 0 0 0 0 0 0 0 0
+$ docker compose -p rag1005-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-05-evidence/compose.sandbox.yml run --rm --no-deps -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 api python -m app.seed   # run 1: the seed task's command, no seed folder mounted @ e42ea6e (ticket/10-05-seed-in-aws in wt1005, clean tree: 0 changes)
+ Container rag1005-e2e-api-run-c409d8dfdd36 Creating 
+ Container rag1005-e2e-api-run-c409d8dfdd36 Created 
+[0;93m2026-11-09 00:11:26.778803884 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:161: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:31583/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:31575/demo/
+exit 0
+$ counts after run 1
+1 2 1 4 2 3 6 2 224 752 261 98 24 1
+$ docker compose -p rag1005-e2e -f docker-compose.yml -f docs/tickets/10-seed-showcase/10-05-evidence/compose.sandbox.yml run --rm --no-deps -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 api python -m app.seed   # run 2: the same command again
+ Container rag1005-e2e-api-run-d10cdda2af20 Creating 
+ Container rag1005-e2e-api-run-d10cdda2af20 Created 
+[0;93m2026-11-09 00:14:09.491929422 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:161: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:31583/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:31575/demo/
+exit 0
+$ counts after run 2
+1 2 1 4 2 3 6 2 224 752 261 98 24 1
+idempotent: run 2 changed no counts
+exit 0

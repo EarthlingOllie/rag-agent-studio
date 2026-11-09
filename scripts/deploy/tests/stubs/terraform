@@ -2,7 +2,7 @@
 # Stand-in for terraform in the deploy script tests: logs each call, prints the deploy output, fails on request.
 echo "terraform $*" >>"$STUB_CALLS"
 case "$*" in
-  *"output -json deploy"*) cat "$STUB_DEPLOY_JSON" ;;
+  *"output -json deploy"*) [ "${STUB_TF_OUTPUT_EXIT:-0}" = 0 ] || exit "$STUB_TF_OUTPUT_EXIT"; cat "$STUB_DEPLOY_JSON" ;;
   *destroy*) exit "${STUB_TF_DESTROY_EXIT:-0}" ;;
   *apply*) exit "${STUB_TF_APPLY_EXIT:-0}" ;;
 esac
