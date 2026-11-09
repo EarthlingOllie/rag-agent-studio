@@ -1,0 +1,37 @@
+$ make install @ e42ea6e (ticket/10-05-seed-in-aws in wt1005, clean tree: 0 changes)
+cd backend && uv sync --frozen
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+Checked 174 packages in 1ms
+cd frontend && pnpm install --frozen-lockfile
+Scope: all 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +519
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 519, reused 518, downloaded 0, added 123
+Progress: resolved 519, reused 518, downloaded 0, added 519, done
+
+devDependencies:
++ @axe-core/playwright 4.14.0
++ @eslint/js 10.0.1
++ @playwright/test 1.64.1
++ @testing-library/jest-dom 7.0.1
++ @testing-library/react 16.3.3
++ @testing-library/user-event 14.6.8
++ @types/node 22.20.5
++ @types/react 19.3.0
++ @types/react-dom 19.3.0
++ @vitejs/plugin-react 6.2.1
++ @vitest/coverage-v8 5.1.0
++ eslint 10.14.0
++ eslint-plugin-react-hooks 7.1.1
++ globals 17.14.0
++ jsdom 30.1.3
++ msw 3.0.3
++ typescript 6.0.3
++ typescript-eslint 8.72.1
++ vite 8.3.5
++ vitest 5.1.0
+
+Done in 2.2s using pnpm v10.28.0
+exit 0
