@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { currentSection, menuButton, openSection, sectionNames } from "../test/navigation";
+import { currentSection, hasMenu, menuButton, openSection, sectionNames } from "../test/navigation";
 import { fakeInvitesApi } from "../test/invites";
 import { fakeMembersApi } from "../test/members";
-import { fakeProjectsApi } from "../test/projects";
+import { fakeProjectsApi, hrProject, oldProject, salesProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -71,7 +71,8 @@ test("the breadcrumb follows the route and marks the current page", async () => 
 
   await userEvent.click(await screen.findByRole("link", { name: "HR handbook" }));
 
-  expect(await breadcrumb().findByText("HR handbook")).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb().findByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
+  expect(breadcrumb().getByRole("button", { name: "HR handbook, Projects" })).not.toHaveAttribute("aria-current");
   expect(breadcrumb().getByRole("button", { name: "Projects, Organisation sections" })).not.toHaveAttribute("aria-current");
 
   await openSection("Organisation sections", "Security");
@@ -123,16 +124,100 @@ test("an unknown settings address says so in the Settings crumb, which still off
   expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
 });
 
-test("a Project that can't be loaded is a plain crumb", async () => {
+const projectPage = (projectId: string, section = "") => `/organisations/${organisationId}/projects/${projectId}${section}`;
+
+test("inside a Project the breadcrumb is the Organisation's sections, a Project switcher and a section switcher", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
-  renderStudio(`/organisations/${organisationId}/projects/00000000-0000-4000-8000-000000000000`);
+  renderStudio(projectPage(hrProject.id));
+  const breadcrumb = within(await screen.findByRole("navigation", { name: "Breadcrumb" }));
+
+  expect(await breadcrumb.findByRole("button", { name: "HR handbook, Projects" })).toBeInTheDocument();
+  expect(breadcrumb.getAllByRole("listitem").map((crumb) => crumb.textContent)).toEqual([
+    "Analytical Engines",
+    "/Projects",
+    "/HR handbook",
+    "/Documents",
+  ]);
+  // The Organisation's sections stay one click away from any Project.
+  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security"]);
+});
+
+test("the Project switcher lists the open Projects as links, plus All Projects", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id, "/agents"));
+  await screen.findByRole("button", { name: "HR handbook, Projects" });
+
+  // Archived Projects are not offered: they are opened from the Projects list.
+  expect(await sectionNames("Projects")).toEqual(["HR handbook", "Sales enablement", "All Projects"]);
+  await userEvent.click(await menuButton("Projects"));
+  const projects = within(screen.getByRole("menu", { name: "Projects" }));
+  expect(projects.getByRole("menuitem", { name: "HR handbook" })).toHaveAttribute("aria-current", "page");
+  expect(projects.getByRole("menuitem", { name: "Sales enablement" })).toHaveAttribute("href", projectPage(salesProject.id));
+  expect(projects.getByRole("menuitem", { name: "Sales enablement" })).not.toHaveAttribute("aria-current");
+  expect(projects.getByRole("menuitem", { name: "All Projects" })).toHaveAttribute("href", `/organisations/${organisationId}/projects`);
+  await userEvent.keyboard("{Escape}");
+
+  await openSection("Projects", "Sales enablement");
+  expect(await screen.findByRole("heading", { level: 1, name: "Sales enablement" })).toBeInTheDocument();
+  expect(await currentSection("Project sections")).toBe("Documents");
+
+  await openSection("Projects", "All Projects");
+  expect(await screen.findByRole("table", { name: "Projects" })).toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(false);
+});
+
+test("the section switcher lists the Project's sections with icons and number hints, as links", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+  await screen.findByRole("button", { name: "Documents, Project sections" });
+
+  await userEvent.click(await menuButton("Project sections"));
+  const menu = within(screen.getByRole("menu", { name: "Project sections" }));
+  const sections = ["Documents", "Instructions", "Agents", "Conversations", "Analytics", "Settings"];
+  const paths = ["", "/instructions", "/agents", "/conversations", "/analytics", "/settings"];
+  sections.forEach((section, index) => {
+    const item = menu.getByRole("menuitem", { name: section });
+    expect(item).toHaveAttribute("href", projectPage(hrProject.id, paths[index]));
+    // The number hint is a visual label: it is not part of the item's name.
+    expect(within(item).getByText(String(index + 1))).toHaveAttribute("aria-hidden", "true");
+    expect(item.querySelector("svg")).not.toBeNull();
+  });
+  expect(menu.getByRole("menuitem", { name: "Documents" })).toHaveAttribute("aria-current", "page");
+  await userEvent.keyboard("{Escape}");
+
+  await openSection("Project sections", "Conversations");
+  expect(await screen.findByRole("heading", { level: 2, name: "Conversations" })).toBeInTheDocument();
+  expect(await currentSection("Project sections")).toBe("Conversations");
+});
+
+test("a section's inner pages keep their section current", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id, "/documents/0e8f6a52-7d2b-4c8e-9f1a-3b5c7d9e1f20"));
+
+  expect(await screen.findByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
+});
+
+test("an archived Project still has its switchers; the Project switcher offers the open Projects", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(oldProject.id, "/settings"));
+
+  expect(await screen.findByRole("button", { name: "Settings, Project sections" })).toHaveAttribute("aria-current", "page");
+  expect(await sectionNames("Projects")).toEqual(["HR handbook", "Sales enablement", "All Projects"]);
+});
+
+test("a Project that can't be loaded keeps the Project switcher as the current crumb, with no sections", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage("00000000-0000-4000-8000-000000000000"));
 
   expect(await screen.findByRole("heading", { name: "Project not found" })).toBeInTheDocument();
-  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Project")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  expect(screen.getByRole("button", { name: "Project, Projects" })).toHaveAttribute("aria-current", "page");
+  expect(hasMenu("Project sections")).toBe(false);
 });
 
 test("the account menu opens the Profile, which is then the current crumb", async () => {

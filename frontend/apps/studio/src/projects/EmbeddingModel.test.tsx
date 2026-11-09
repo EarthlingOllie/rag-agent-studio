@@ -18,8 +18,9 @@ import { server } from "../test/server";
 configure({ asyncUtilTimeout: 5000 });
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
+// The Embedding Model is set in the Project's Settings section.
 const projectPage = (projectId: string) =>
-  `/organisations/${organisationId}/projects/${projectId}`;
+  `/organisations/${organisationId}/projects/${projectId}/settings`;
 const editorSession: Session = {
   ...adaSession,
   organisations: adaSession.organisations.map((organisation) => ({

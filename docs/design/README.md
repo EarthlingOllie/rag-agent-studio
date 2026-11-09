@@ -110,9 +110,9 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | Where you are | Breadcrumb |
 | --- | --- |
 | Projects list | `Org ▾ / **Projects ▾**` |
-| A Project section | `Org ▾ / Project ▾ / **Documents ▾**` |
-| A Document | `Org ▾ / Project ▾ / Documents ▾ / **handbook.md**` |
-| An Agent | `Org ▾ / Project ▾ / Agents ▾ / **HR helper ▾**` |
+| A Project section | `Org ▾ / Projects ▾ / Project ▾ / **Documents ▾**` |
+| A Document | `Org ▾ / Projects ▾ / Project ▾ / Documents ▾ / **handbook.md**` |
+| An Agent | `Org ▾ / Projects ▾ / Project ▾ / Agents ▾ / **HR helper ▾**` |
 | Organisation settings | `Org ▾ / Settings ▾ / **Members ▾**` |
 | Security, Cost | `Org ▾ / **Security ▾**` (the Organisation's sections: Projects, Cost for Owners, Settings, Security) |
 | Profile | `Org ▾ / **Profile**` (Profile and Sign out live in the avatar menu) |
@@ -121,8 +121,12 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   switcher lists the Member's Organisations (a Member of one sees its name as plain text); the
   Organisation's section switcher lists Projects, Cost (Owners), Settings and Security, or only
   Security while the Require MFA policy is waiting for the Member to enrol; the Project switcher lists Projects plus "All
-  Projects"; a section switcher lists the sections with icons and number hints (1–6); an Agent
-  switcher lists the Project's Agents.
+  Projects" (archived Projects are opened from the Projects list); a section switcher lists the
+  sections with icons and number hints (1–6); an Agent switcher lists the Project's Agents.
+- Inside a Project the Organisation's section switcher stays, as an ancestor crumb, so Cost,
+  Settings and Security are one click away from any Project, as they were from the side menu.
+- Number hints are visual labels only (`aria-hidden`), so an item's name is just its label
+  ("Agents", not "Agents 3"). Binding the keys is a later polish ticket.
 - Ancestor crumbs are `muted`; the last crumb is the current page, in `accent`, with
   `aria-current="page"`. An open switcher turns soft green.
 - A menu that navigates renders router `<Link>`s (`MenuItem.renderLink`) so items are real links.
@@ -190,6 +194,9 @@ keyboard-complete and tested in `design/*.test.tsx`.
   and the like: it becomes an `alertdialog`, a stray click outside does not dismiss it, focus starts
   on Cancel and the confirm button is the filled danger button (`button.dangerFilled`, `bg-danger
   text-on-danger`). `busy` disables both buttons while the action runs.
+- When a confirmation asks for more than a click (type a Project's name to delete it for good),
+  put the field and any refusal in `body`, under the description, and pass `confirmDisabled` until
+  it is ready. The body's first field takes focus; wrap it in a `<form>` so Enter confirms.
 
 ### Toast
 

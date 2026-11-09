@@ -2,6 +2,7 @@ import { useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { EmbeddingModelSetting } from "./EmbeddingModel";
 import {
   type Project,
   projectFailure,
@@ -129,7 +130,10 @@ function FlaggedChunkSetting({
   );
 }
 
-/** The Project's settings: whether ingestion runs OCR, and what happens to flagged Chunks. */
+/**
+ * The Project's settings: its Embedding Model (not while archived, when nothing can be re-embedded),
+ * whether ingestion runs OCR, and what happens to flagged Chunks.
+ */
 export function ProjectSettingsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useParams({
@@ -143,6 +147,7 @@ export function ProjectSettingsTab() {
       </h2>
       {project.data && (
         <>
+          {project.data.archived_at === null && <EmbeddingModelSetting project={project.data} organisationId={organisationId} />}
           <OcrSetting project={project.data} organisationId={organisationId} />
           <FlaggedChunkSetting project={project.data} organisationId={organisationId} />
         </>

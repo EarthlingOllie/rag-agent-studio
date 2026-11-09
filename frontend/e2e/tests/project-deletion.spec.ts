@@ -27,12 +27,16 @@ test.describe("Permanent Project deletion", () => {
     const stored = download.headers().location ?? "";
     expect((await page.request.get(stored)).status()).toBe(200);
 
-    // Only an archived Project offers permanent deletion.
-    await expect(page.getByRole("button", { name: "Delete permanently" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Archive" }).click();
+    // Only an archived Project offers permanent deletion, in the page header's ⋯ menu.
+    const actions = page.getByRole("menu", { name: "Project actions" });
+    await page.getByRole("button", { name: "More Project actions" }).click();
+    await expect(actions.getByRole("menuitem")).toHaveText(["Archive"]);
+    await actions.getByRole("menuitem", { name: "Archive" }).click();
     await page.getByRole("button", { name: "Yes, archive Retired handbook" }).click();
-    await page.getByRole("button", { name: "Delete permanently" }).click();
-    const confirm = page.getByRole("form", { name: "Delete Retired handbook permanently" });
+    await expect(page.getByText(/This Project is archived/)).toBeVisible();
+    await page.getByRole("button", { name: "More Project actions" }).click();
+    await actions.getByRole("menuitem", { name: "Delete permanently" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "Delete Retired handbook permanently" });
     const button = confirm.getByRole("button", { name: "Delete Retired handbook permanently" });
     await confirm.getByLabel("Type Retired handbook to confirm").fill("retired handbook");
     await expect(button).toBeDisabled();

@@ -23,7 +23,10 @@ export interface MenuItem {
    */
   renderLink?: (props: MenuLinkProps) => ReactNode;
   icon?: IconName;
-  /** A hint shown on the right, e.g. a keyboard shortcut or a count. */
+  /**
+   * A hint shown on the right, e.g. a section's number. It is a visual label only, hidden from
+   * assistive technology, so it is not part of the item's name.
+   */
   hint?: string;
   /** Marks where the Member is now (a breadcrumb switcher's current option). */
   current?: boolean;
@@ -151,7 +154,11 @@ export function Menu({
               <>
                 {item.icon && <Icon name={item.icon} className={item.current === true ? "text-accent" : "text-muted"} />}
                 <span className="flex-1">{item.label}</span>
-                {item.hint !== undefined && <span className="font-mono text-xs text-muted">{item.hint}</span>}
+                {item.hint !== undefined && (
+                  <span aria-hidden="true" className="font-mono text-xs text-muted">
+                    {item.hint}
+                  </span>
+                )}
               </>
             );
             const current = item.current === true ? "page" : undefined;
