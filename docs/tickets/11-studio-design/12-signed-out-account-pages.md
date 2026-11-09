@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-04: Shell, breadcrumb and navigation test helpers](04-shell-navigation.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Signed-out pages are a centred panel with the wave mark and no top bar; `FormError` becomes `Notice`
 - [ ] Profile and Security are reachable from the account menu and the breadcrumb; MFA enrolment shows the QR code and recovery codes on cards
