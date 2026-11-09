@@ -7,7 +7,7 @@
 **Blocked by:**
 - [11-05: Project frame](05-project-frame.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Instructions editor, character count, Draft actions and Publish (the one primary) follow the recipes
 - [ ] Versions are a timeline with the Current Version badged; any two can be compared and the diff uses `Diff`
