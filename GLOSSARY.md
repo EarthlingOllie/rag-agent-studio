@@ -32,6 +32,10 @@ _Avoid_: Theme, Theme Mode, dark mode
 The Studio's design system (`docs/design/README.md`, code in `frontend/apps/studio/src/design`): colour tokens with a light and a dark value, class recipes, and the shared components every Studio page is built from (top bar and breadcrumb, menus, dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list). It styles the Studio only, never the widget, which shows the Organisation's Theme.
 _Avoid_: Theme, skin, component library
 
+**Breadcrumb**:
+The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, a Project's sections); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile and Sign out are in the account menu beside it.
+_Avoid_: Tabs, side menu, nav bar
+
 **Palette ratchet**:
 The CI check that counts Tailwind palette classes (`slate-700`, `dark:`, `bg-white`…) in the Studio's source and fails when the count rises above the committed baseline (`frontend/palette-baseline.json`). Each reskin slice lowers the baseline; at zero the baseline file goes and none are allowed.
 _Avoid_: Lint rule, colour check
@@ -72,7 +76,7 @@ A Member's place in one Organisation, with a role: Owner or Editor. Signing up c
 _Avoid_: Seat, account
 
 **Active Organisation**:
-The Organisation a Member is working in. A Member of several Organisations picks it with the Organisation switcher; the Studio remembers the choice and opens it next time, and otherwise opens their first Organisation. It never grants access: every Organisation page and API route names its Organisation, and a Member reaches only Organisations they have a Membership in.
+The Organisation a Member is working in. A Member of several Organisations picks it with the Organisation switcher, the first crumb of the Breadcrumb; the Studio remembers the choice and opens it next time, and otherwise opens their first Organisation. It never grants access: every Organisation page and API route names its Organisation, and a Member reaches only Organisations they have a Membership in.
 _Avoid_: Current tenant, workspace, default Organisation
 
 **Invite**:

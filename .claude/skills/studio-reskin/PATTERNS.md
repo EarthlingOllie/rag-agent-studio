@@ -77,14 +77,21 @@ import { AppearanceToggle, Avatar, Breadcrumb, Brand, button, CrumbSwitcher, Ico
   `session.organisations`, `onSelect` calls the existing `useSwitchOrganisation` mutation then
   navigates, exactly as `OrganisationSwitcher` does today (keep its error alert). With one
   Organisation, render it as a link to its Projects (`<Link className={crumbClass()}>`).
-- **Org-level section crumb** (`menuLabel="Organisation"`): Projects, Settings, Security. While
-  MFA enrolment is required, offer only Security (today's `mustEnrol` rule).
+- **Org-level section crumb** (`menuLabel="Organisation sections"`): Projects, Cost (Owners only),
+  Settings, Security. While MFA enrolment is required, offer only Security (today's `mustEnrol`
+  rule). Pages outside the menu (Profile, and Cost for an Editor) get a current `CrumbText`.
 - **AccountMenu**: `Menu` with `label={<Avatar name={session.member.name} />}`,
-  `triggerLabel="Account"`, `align="end"`, `triggerClassName="rounded-full"`; items Profile and
-  Security (`renderLink`) and Sign out (`onSelect`, the existing `useSignOut` flow, keep its alert).
+  `triggerLabel={`${name}, Account`}`, `menuLabel="Account"`, `align="end"`,
+  `triggerClassName="rounded-full"`; items Profile (`renderLink`) and Sign out (`onSelect`, the
+  existing `useSignOut` flow, keep its alert).
 - **Page actions in the top bar** (the Agent's Saved / History / Publish): add a small portal
   slot (`TopBarActionsSlot` renders a `<div id="top-bar-actions">`; the page renders into it
-  with `createPortal`), or a context holding a setter. Keep it to that one job.
+  with `createPortal`), or a context holding a setter. Keep it to that one job. (Not built in
+  11-04: no page has top bar actions yet; 11-08 adds the slot.)
+
+Built in 11-04: `shell/StudioBreadcrumb.tsx`, `shell/OrganisationSwitcher.tsx` (`OrganisationCrumb`)
+and `shell/AccountMenu.tsx`. A single-Organisation Member's crumb is plain text, not a link: a router
+`<Link>` to the current page would claim `aria-current="page"`.
 
 A navigating switcher item:
 
@@ -279,5 +286,11 @@ export async function openSection(page: Page, menu: string, item: string) {
 Replace `getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click()`
 with `openSection(page, "Project sections", "Agents")`, and the settings tabs with
 `openSection(page, "Organisation settings", "Members")` (give the Settings switcher
-`menuLabel="Organisation settings"`). For "Editor can't see Members", open the menu and expect
-`getByRole("menuitem", { name: "Members" })` to have count 0.
+`menuLabel="Organisation settings"`). For "Editor can't see Members", expect
+`sectionNames(page, "Organisation settings")` not to contain "Members".
+
+Both helpers exist since 11-04, with the same names: `e2e/fixtures/navigation.ts` (Playwright, the
+page first) and `apps/studio/src/test/navigation.ts` (Testing Library: `openSection`,
+`sectionNames`, `currentSection`, `hasMenu`, `menuButton`). Menus that are still tab rows
+("Project sections", "Organisation settings") are listed in each helper's `TAB_ROWS`; the slice
+that turns a row into a switcher deletes its entry, and no test changes.
