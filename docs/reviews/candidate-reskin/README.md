@@ -229,7 +229,7 @@ disappears while the form is open.
 | B | **Top tabs under the header** (Org tabs in the top bar; a Project tab row under the Project title; Agent view tabs under the Agent title) | Visible. Keeps full width. Small change. | Three tab rows on an Agent page. Org-level tabs crowd the top bar alongside the page's actions (Publish, History). |
 | C | **Keep the breadcrumb, add a ⌘K command palette** | Smallest change. | Discoverability stays poor. A palette helps power users, not first-time Members. |
 
-**Recommendation: A, a contextual left sidebar, with a plain (non-menu) breadcrumb in the top bar.**
+**Decision: A, a contextual left sidebar, with a plain (non-menu) breadcrumb in the top bar.** Chosen 2026-11-09. The draft ADR is [0014-sidebar-navigation.md](0014-sidebar-navigation.md).
 
 - **Sidebar, top to bottom:**
   - The Organisation switcher (name + ▾; plain text for a Member of one).
@@ -253,16 +253,13 @@ disappears while the form is open.
 - **Numbers:** drop the 1–6 hints. If shortcuts are wanted, make them real (e.g. `g d` for
   Documents) and show them as `kbd` hints in the sidebar.
 - **Docs and decisions:** this reverses design principle 3 ("Navigation lives in the top bar's
-  breadcrumb") and the README's *Navigation: the breadcrumb* section, so the spec needs a new ADR
-  (0014, "Sidebar navigation replaces breadcrumb switchers", amending ADR-0013) and README/GLOSSARY updates (Breadcrumb
-  fold, Crumb switcher).
+  breadcrumb") and the README's *Navigation: the breadcrumb* section. The draft
+  [ADR-0014](0014-sidebar-navigation.md) moves to `docs/adr/` with the ticket. Update the design
+  README (principle 3, the navigation table, *Navigation: the breadcrumb*) and GLOSSARY (Breadcrumb
+  fold and Crumb switcher go; add Sidebar and Sidebar drawer).
 - **Tests:** the e2e navigation helpers (`fixtures/`) and `breadcrumb`/`shell` unit tests move from
   opening crumb menus to clicking sidebar links. The 11-13 axe and keyboard pass is rerun for the
   sidebar and drawer.
-
-If a sidebar is too big a change for this round, **B** is the fallback. Make the Project's sections
-a visible tab row under the Project header, and make the Organisation's sections (Projects, Cost,
-Settings) visible links in the top bar. That fixes problems 1–3 and keeps today's layout.
 
 ---
 
@@ -286,4 +283,5 @@ Settings) visible links in the top bar. That fixes problems 1–3 and keeps toda
 | Organisation cost reskin | 2 | Select chevron |
 | Invite dialog | 4 | — |
 | Project Settings reskin | 6 | Projects list reskin (removes `BUTTON`/`INPUT`) |
-| Navigation ADR + sidebar | 8 | — (land last; touches every page's e2e helpers) |
+| Sidebar navigation (ADR-0014) | 8: sidebar, drawer, plain breadcrumb, account menu cleanup | — (land last; touches every page's e2e helpers) |
+| Agent view tabs | 8: Agent views as tabs, Agent switcher on the title, one h1 on Agent pages | Sidebar navigation |
