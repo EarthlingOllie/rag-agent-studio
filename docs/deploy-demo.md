@@ -33,23 +33,48 @@ To deploy from a laptop instead, with credentials for the account: build the fro
 | `cloudfront_url` | The public HTTPS URL of the Studio, widget and API |
 | `bedrock_trust_principal` | The API task role ARN: the principal an Organisation trusts, with its external ID, in its Bedrock role (spec 02) |
 | `ecr_repository_urls` | Where images are pushed |
-| `deploy` | What `deploy.sh` reads: cluster, services, task definitions, migration task, static bucket, distribution, URL |
+| `deploy` | What `deploy.sh` and `seed.sh` read: cluster, services, task definitions, migration task, seed task, static bucket, distribution, URL |
 
 The GitHub deploy role ARN (the principal GitHub Actions assumes) is the bootstrap's `deploy_role_arn` output.
 
 ### What the tasks are given
 
-The API, worker, Beat and migration task run the same backend image, and their settings are validated at start (`backend/app/core/settings.py`). The ecs module gives each container plain values as environment variables and secrets by reference to Secrets Manager:
+The API, worker, Beat, migration task and seed task run the same backend image, and their settings are validated at start (`backend/app/core/settings.py`). The ecs module gives each container plain values as environment variables and secrets by reference to Secrets Manager:
 
 | Container | Environment | Secrets |
 |---|---|---|
-| all four | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true` | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
-| API and worker | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
+| all five | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true` | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
+| API, worker and seed | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
 | API only | `BEDROCK_PLATFORM_PRINCIPAL` (its own task role) | `SESSION_SECRET` |
 | Beat | | `REDIS_AUTH_TOKEN` |
 | migration | | `DATABASE_PASSWORD` |
+| seed | | `SESSION_SECRET` (it runs the API in process) |
 
 The settings build `DATABASE_URL` (`postgresql+asyncpg://…?ssl=require`) and `REDIS_URL` (`rediss://…?ssl_cert_reqs=required`) from the parts. Beat and the migration task get the addresses they never connect to because every process loads the same settings. [`infra/modules/ecs/tests/task-settings.json`](../infra/modules/ecs/tests/task-settings.json) records this table; the ecs module's `terraform test` and the backend's `tests/unit/test_aws_task_settings.py` both check against it, so a change on either side that would stop the tasks starting fails a test. Bump the ecs module's `key_wrapper_secret_version` for a new `LOCAL_KEY_WRAPPER_KEY` (issued widget tokens stop working).
+
+## Seed (fill the demo with data)
+
+An empty Studio shows nothing, so after a deploy, seed the demo with the same Demo Organisation `make seed` builds locally (spec 10 story 4; ticket 10-05):
+
+1. Deploy first (above). The seed runs on the image the deploy applied, needs the migrations it ran, and relies on the worker service to ingest the demo Documents.
+2. Actions, **seed**, Run workflow. Leave `reset` unticked to seed (or complete) the demo; tick it to erase the Demo Organisation, and only that one, and build it again, like `make seed-reset`.
+3. Wait for the run: a fresh seed plays four weeks of Seeded history, which takes a few minutes. The run log and the job summary show the seed's output: the CloudFront URL, the demo Owner's and Editor's sign-in details, and the demo pages' address (`<cloudfront_url>/demo/`).
+4. Sign in at the CloudFront URL as the demo Owner or Editor, or open `/demo/` to meet the Product FAQ as a Visitor.
+
+Running it again is safe: the seed finds the Demo Organisation through the demo Owner's account, adds only what is missing, puts back what was changed, and never replays the history, so nothing is duplicated.
+
+The job runs [`scripts/deploy/seed.sh`](../scripts/deploy/seed.sh), which applies nothing:
+
+1. `terraform init` against the state bucket and `terraform output -json deploy`. An environment that is not deployed, or was deployed before the seed task existed, stops here with "run the deploy workflow first".
+2. `aws ecs run-task` with the ecs module's seed task: `python -m app.seed` on the backend image (`--reset` as a container command override), in the private subnets with no public IP. The demo Documents are in the image at `/seed`: `make images` and `docker compose` pass the repository's `seed` folder as the `seed` build context.
+3. `aws ecs wait tasks-stopped`, repeated up to `SEED_WAIT_ROUNDS` times (default 6, about an hour), then the `seed` container's exit code. Anything but 0 fails the run.
+4. The task's log (`/ecs/studio-demo-ecs/seed`, stream `seed/seed/<task ID>`) is printed and added to the job summary.
+
+The seed task has its own roles and security group. Its task role may use the documents bucket and the credentials key as the API's does (it uploads the demo Documents through presigned URLs and seals the demo credential), but not assume customer Bedrock roles. Its security group reaches HTTPS, Postgres and Redis, and the database and cache admit it. It runs 1 vCPU and 4 GB (`seed_task_size`), because it runs the API in process with the Guardrail classifier. The AWS seed always answers with the Demo model: a real credential would have to be passed as a run-task override, which ECS shows in the task's description, so add a real Provider Credential in the Studio instead.
+
+From a laptop, with credentials for the account: `TF_STATE_BUCKET=<state_bucket_name> AWS_REGION=eu-west-2 scripts/deploy/seed.sh` (add `--reset` to erase and seed again).
+
+Seeds, deploys and destroys share the `demo-environment` concurrency group, so they never overlap.
 
 ## Destroy (stop paying)
 
@@ -78,5 +103,5 @@ Rough on-demand list prices for `eu-west-2` (London), in USD, with the default v
 | **Total** | | **about 0.33** | **about 240** |
 
 - **Always on:** about 240 USD a month. The worker (sized for Docling) and the interface endpoints are about 60% of it.
-- **Apply for a day:** about 8 USD for 24 hours, plus a few cents for each migration task (0.25 vCPU for a minute or two). Destroy afterwards and the only remaining cost is the bootstrap's state bucket and key, about 1 USD a month ([infra-bootstrap.md](infra-bootstrap.md#cost)).
+- **Apply for a day:** about 8 USD for 24 hours, plus a few cents for each migration task (0.25 vCPU for a minute or two) and each seed (1 vCPU and 4 GB for a few minutes, about 0.01 USD). Destroy afterwards and the only remaining cost is the bootstrap's state bucket and key, about 1 USD a month ([infra-bootstrap.md](infra-bootstrap.md#cost)).
 - **Cheaper:** every size is a variable. Setting `desired_counts.worker = 0` between uses saves about 78 USD a month (no ingestion while it is 0). The endpoints could be dropped in favour of NAT traffic, at the price of slower image pulls through `fck-nat`.

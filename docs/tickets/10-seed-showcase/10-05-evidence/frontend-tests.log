@@ -1,0 +1,65 @@
+$ make test-frontend @ e42ea6e (ticket/10-05-seed-in-aws in wt1005, clean tree: 0 changes)
+cd frontend && pnpm test && pnpm check-embed-size
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend
+      Coverage enabled with v8
+
+
+ Test Files  58 passed (58)
+      Tests  794 passed (794)
+   Start at  22:42:09
+   Duration  309.30s (tests 67%, environment 14%, import 10%, setup 6%, transform 1%, worker 1%)
+
+    Isolate  58 workers spawned · ~2.53s startup each (spawn + environment, per file)
+             at least ~46.47s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+86 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 3826/3826 )
+Branches     : 100% ( 2559/2559 )
+Functions    : 100% ( 1380/1380 )
+Lines        : 100% ( 3381/3381 )
+================================================================================
+
+> rag-agent-studio-frontend@ check-embed-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend
+> pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size
+
+
+> @studio/widget@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend/apps/widget
+> vite build && vite build --config vite.embed.config.ts
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 78 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 650ms
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/embed.js  1.36 kB │ gzip: 0.77 kB
+
+✓ built in 26ms
+
+> @studio/widget@ check-size /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt1005/frontend/apps/widget
+> node scripts/check-size.mjs
+
+embed.js: 1367 bytes, 778 gzipped (budget 2048 and 1024)
+exit 0

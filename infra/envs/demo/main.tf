@@ -1,7 +1,8 @@
 # Demo environment (ticket 01-02 stub; ticket 09-02 adds the AWS provider and the real network module;
 # ticket 09-03 adds the real database, cache, storage and kms modules; ticket 09-04 adds ecr and the real ecs module;
 # ticket 09-05 adds the real cdn module; ticket 09-06 adds the migration task and the deploy output that
-# scripts/deploy/deploy.sh reads). State is in S3 (backend.tf).
+# scripts/deploy/deploy.sh reads; ticket 10-05 adds the seed task that scripts/deploy/seed.sh runs).
+# State is in S3 (backend.tf).
 # The GitHub OIDC deploy role is not here: infra/bootstrap creates it once, before this environment can be planned.
 locals {
   name_prefix = "studio-${var.environment}"
@@ -24,7 +25,7 @@ module "network" {
   availability_zones = ["${var.aws_region}a", "${var.aws_region}b"]
 }
 
-# Only the API, the worker and the one-off migration task connect to Postgres; Beat only needs Redis.
+# Only the API, the worker and the one-off migration and seed tasks connect to Postgres; Beat only needs Redis.
 module "database" {
   source      = "../../modules/database"
   name_prefix = local.name_prefix
@@ -34,18 +35,22 @@ module "database" {
   kms_key_arn = module.kms.data_key_arn
   client_security_group_ids = merge(
     { for k in ["api", "worker"] : k => module.ecs.service_security_group_ids[k] },
-    { migrate = module.ecs.migration_security_group_id },
+    { migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id },
   )
 }
 
 module "cache" {
-  source                    = "../../modules/cache"
-  name_prefix               = local.name_prefix
-  tags                      = local.tags
-  vpc_id                    = module.network.vpc_id
-  subnet_ids                = module.network.private_subnet_ids
-  kms_key_arn               = module.kms.data_key_arn
-  client_security_group_ids = { for k in ["api", "worker", "beat"] : k => module.ecs.service_security_group_ids[k] }
+  source      = "../../modules/cache"
+  name_prefix = local.name_prefix
+  tags        = local.tags
+  vpc_id      = module.network.vpc_id
+  subnet_ids  = module.network.private_subnet_ids
+  kms_key_arn = module.kms.data_key_arn
+  # The seed task (ticket 10-05) queues the demo Documents' ingestion for the worker.
+  client_security_group_ids = merge(
+    { for k in ["api", "worker", "beat"] : k => module.ecs.service_security_group_ids[k] },
+    { seed = module.ecs.seed_security_group_id },
+  )
 }
 
 # Browsers upload Documents only from the CloudFront origin, and only the distribution reads static assets.

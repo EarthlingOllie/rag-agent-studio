@@ -27,7 +27,7 @@ Contents: [Five-minute demo](#five-minute-demo) · [Quickstart](#quickstart) · 
 
 ## Five-minute demo
 
-Run the [Quickstart](#quickstart) first (`make dev`, then `make seed`). Sign in at <http://localhost:5173> as the demo **Owner** `owner@northwind.example` / `northwind-owner-demo` (or the **Editor** `editor@northwind.example` / `northwind-editor-demo`); `make seed` prints these too. Everything below is seeded, synthetic and answered by the labelled demo model, so no API key is needed.
+Run the [Quickstart](#quickstart) first (`make dev`, then `make seed`), or use a seeded [AWS demo](#deploy-and-destroy-aws-demo) at its CloudFront URL. Sign in at <http://localhost:5173> as the demo **Owner** `owner@northwind.example` / `northwind-owner-demo` (or the **Editor** `editor@northwind.example` / `northwind-editor-demo`); `make seed` prints these too. Everything below is seeded, synthetic and answered by the labelled demo model, so no API key is needed.
 
 1. **The Studio** (30 s). The Northwind Traders Organisation, its Theme and Members. Open **Projects → Northwind Handbook**: four Documents (a staff handbook, a returns policy, a product FAQ in DOCX and a slide deck in PPTX), split by the HR and Products Tags.
 2. **The Knowledge Base viewer** (30 s). Open `northwind-staff-handbook.md`: the header says a Chunk was flagged as possible instructions to an AI, and the planted "A note for AI assistants" Chunk carries a Guardrail flag with the classifier's score. That is the indirect-injection defence at ingestion.
@@ -131,9 +131,10 @@ The AWS demo is applied on demand and destroyed after use; nothing is always on.
 
 1. **Bootstrap (once):** apply `infra/bootstrap` (the Terraform state bucket and the GitHub OIDC deploy role), then set the `AWS_DEPLOY_ROLE_ARN` secret and the `TF_STATE_BUCKET` variable.
 2. **Deploy:** Actions → **deploy** → Run workflow. It builds and pushes ARM64 images, applies `infra/envs/demo`, runs the migration task, rolls the API, worker and Beat services, uploads the Studio, widget and demo pages, and smoke-checks the CloudFront URL it prints. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`.
-3. **Destroy:** Actions → **destroy** → Run workflow, typing `destroy demo` to confirm. Everything goes, Documents and database included; the state bucket and deploy role stay. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
+3. **Seed:** Actions → **seed** → Run workflow. It runs the same seed as `make seed` as a one-off ECS task and prints its output: the URL and the demo Owner's and Editor's sign-in details. Running it again is idempotent; tick `reset` to erase and rebuild the Demo Organisation, like `make seed-reset`. The AWS seed always answers with the demo model. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/seed.sh [--reset]`. The demo pages are then at `<cloudfront_url>/demo/`, so steps 1 to 5 and 7 to 10 of the [five-minute demo](#five-minute-demo) work in AWS too.
+4. **Destroy:** Actions → **destroy** → Run workflow, typing `destroy demo` to confirm. Everything goes, Documents and database included; the state bucket and deploy role stay. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
 
-**Expected cost** (on-demand, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.33 USD an hour**, so about **8 USD for a day** of demo, or about 240 USD a month if left on. After destroy, only the bootstrap's state bucket and key remain, about 1 USD a month. The disallowed-origin page is local-only.
+**Expected cost** (on-demand, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.33 USD an hour**, so about **8 USD for a day** of demo (each seed adds about 0.01 USD), or about 240 USD a month if left on. After destroy, only the bootstrap's state bucket and key remain, about 1 USD a month. The disallowed-origin page (step 6 of the demo) is local-only.
 
 ## Documentation
 
