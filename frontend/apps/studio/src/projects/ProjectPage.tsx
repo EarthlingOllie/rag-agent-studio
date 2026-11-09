@@ -14,7 +14,7 @@ import {
 } from "./projects";
 import { BUTTON, INPUT, ProjectFields, projectDetails, useOrganisationRole } from "./ProjectsPage";
 
-const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
+const TAB = "rounded px-3 py-2 text-sm text-ink-2 hover:bg-sunken [&.active]:bg-sunken [&.active]:font-medium [&.active]:text-ink";
 
 const PROJECT = "/organisations/$organisationId/projects/$projectId";
 
@@ -54,7 +54,7 @@ function ArchiveProject({ project, organisationId }: { project: Project; organis
       <FormError message={projectFailure(archive.error)} />
       {confirming ? (
         <div className="space-y-2">
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-muted">
             {project.name} will be hidden from the Projects list and stop serving. An Owner can restore it.
           </p>
           <div className="flex gap-2">
@@ -133,7 +133,7 @@ function DeletePermanently({ project, organisationId }: { project: Project; orga
   }
 
   return (
-    <form aria-label={title} onSubmit={onSubmit} className="space-y-2 rounded border border-red-300 bg-white p-3 text-slate-900">
+    <form aria-label={title} onSubmit={onSubmit} className="space-y-2 rounded border border-danger bg-surface p-3 text-ink">
       <p>
         Deleting {project.name} removes its Documents, stored files, Agents and Conversations for good. This can&apos;t be undone.
       </p>
@@ -155,7 +155,7 @@ function DeletePermanently({ project, organisationId }: { project: Project; orga
       <div className="flex gap-2">
         <button
           type="submit"
-          className="rounded border border-red-800 bg-red-700 px-3 py-1 text-sm text-white hover:bg-red-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-600"
+          className="rounded border border-danger bg-danger px-3 py-1 text-sm text-on-danger hover:bg-danger/90 disabled:border-field disabled:bg-sunken disabled:text-muted"
           disabled={typed !== project.name || remove.isPending}
         >
           {title}
@@ -177,7 +177,7 @@ function DeletePermanently({ project, organisationId }: { project: Project; orga
 function ArchivedNotice({ project, organisationId, isOwner }: { project: Project; organisationId: string; isOwner: boolean }) {
   const restore = useArchiveOrRestore(organisationId, "restore");
   return (
-    <div role="status" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+    <div role="status" className="space-y-2 rounded border border-flag bg-flag-soft p-3 text-sm text-flag">
       <p>
         This Project is archived. It is hidden from the Projects list and doesn't serve.{" "}
         {isOwner ? "Restore it to use it again." : "Only Owners can restore it."}
@@ -210,7 +210,7 @@ function ProjectHeader({ project, organisationId, isOwner }: { project: Project;
           <h1 id="page-heading" className="text-2xl font-semibold">
             {project.name}
           </h1>
-          {project.description && <p className="mt-1 text-slate-700">{project.description}</p>}
+          {project.description && <p className="mt-1 text-muted">{project.description}</p>}
         </div>
         {!archived && !editing && (
           <button
@@ -270,7 +270,7 @@ export function ProjectLayout() {
           <h1 id="page-heading" className="text-2xl font-semibold">
             Project not found
           </h1>
-          <p className="text-slate-700">It doesn't exist in this Organisation.</p>
+          <p className="text-muted">It doesn't exist in this Organisation.</p>
         </>
       ) : (
         <p role="alert">The Project could not be loaded. Try again shortly.</p>
@@ -279,7 +279,7 @@ export function ProjectLayout() {
     body = (
       <>
         <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
-        <nav aria-label="Project" className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+        <nav aria-label="Project" className="flex flex-wrap gap-2 border-b border-line pb-2">
           {TABS.map((tab) => (
             <Link key={tab.label} to={tab.to} params={{ organisationId, projectId }} activeOptions={{ exact: true }} className={TAB}>
               {tab.label}
@@ -293,7 +293,7 @@ export function ProjectLayout() {
 
   return (
     <section aria-labelledby="page-heading" className="space-y-6">
-      <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className="text-sm text-slate-700 underline">
+      <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className="text-sm text-muted underline">
         All Projects
       </Link>
       {body}

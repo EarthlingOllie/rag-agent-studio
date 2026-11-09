@@ -29,7 +29,7 @@ function Snippet({ agent }: { agent: Agent }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Paste this into the pages where Visitors should chat with the Agent&apos;s Live Version.
       </p>
       <div className="flex flex-wrap items-end gap-3">
@@ -65,7 +65,7 @@ function Snippet({ agent }: { agent: Agent }) {
       </div>
       <pre
         aria-label="Embed Snippet"
-        className="overflow-x-auto rounded border border-slate-300 bg-slate-50 p-2 text-xs"
+        className="overflow-x-auto rounded border border-field bg-canvas p-2 text-xs"
       >
         <code>{snippet}</code>
       </pre>
@@ -79,7 +79,7 @@ function Snippet({ agent }: { agent: Agent }) {
         >
           Copy snippet
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           {copied}
         </p>
       </div>
@@ -118,13 +118,13 @@ function AllowedOrigins({ path }: { path: SettingsPath }) {
       <label htmlFor="allowed-origins" className="block text-sm font-medium">
         Allowed Origins
       </label>
-      <p id="allowed-origins-hint" className="text-sm text-slate-700">
+      <p id="allowed-origins-hint" className="text-sm text-muted">
         One site per line, such as https://www.example.com, https://*.example.com for all its
         subdomains, or http://localhost:3000 (http://localhost:* for any port) while developing.
         Only pages on these sites can show the Agent.
       </p>
       {settings.isError && (
-        <p className="text-sm text-slate-700">The Operational Settings could not be loaded.</p>
+        <p className="text-sm text-muted">The Operational Settings could not be loaded.</p>
       )}
       <textarea
         id="allowed-origins"
@@ -143,7 +143,7 @@ function AllowedOrigins({ path }: { path: SettingsPath }) {
         <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
           Save Allowed Origins
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           {save.isSuccess ? "Saved. Pages on these sites can show the Agent now." : ""}
         </p>
       </div>
@@ -177,7 +177,7 @@ function UnavailableText({ path }: { path: SettingsPath }) {
       <label htmlFor="unavailable-text" className="block text-sm font-medium">
         Unavailable text
       </label>
-      <p id="unavailable-text-hint" className="text-sm text-slate-700">
+      <p id="unavailable-text-hint" className="text-sm text-muted">
         What Visitors see when the Agent can&apos;t answer. Leave it empty for the default.
       </p>
       <textarea
@@ -198,7 +198,7 @@ function UnavailableText({ path }: { path: SettingsPath }) {
         <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
           Save unavailable text
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           {save.isSuccess ? "Saved. Visitors see it from their next message." : ""}
         </p>
       </div>
@@ -242,7 +242,7 @@ function RateLimits({ path }: { path: SettingsPath }) {
     <form onSubmit={onSubmit} className="space-y-2">
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Rate limits</legend>
-        <p id="rate-limits-hint" className="text-sm text-slate-700">
+        <p id="rate-limits-hint" className="text-sm text-muted">
           How many messages Visitors may send in any one minute. Messages over a limit get the
           unavailable text instead of an answer. The Playground has no limits.
         </p>
@@ -288,7 +288,7 @@ function RateLimits({ path }: { path: SettingsPath }) {
         <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
           Save rate limits
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           {save.isSuccess ? "Saved. Messages over a limit get the unavailable text from now on." : ""}
         </p>
       </div>
@@ -301,7 +301,7 @@ const tokens = new Intl.NumberFormat("en-GB");
 /** Today's usage against the Token Budget. */
 function BudgetMeter({ path }: { path: SettingsPath }) {
   const usage = useTokenUsage(path);
-  if (usage.isError) return <p className="text-sm text-slate-700">Today&apos;s usage could not be loaded.</p>;
+  if (usage.isError) return <p className="text-sm text-muted">Today&apos;s usage could not be loaded.</p>;
   if (!usage.data) return null;
   const { tokens_used: used, daily_token_budget: budget, exhausted } = usage.data;
   const shown = Math.min(used, budget);
@@ -314,18 +314,18 @@ function BudgetMeter({ path }: { path: SettingsPath }) {
         aria-valuemin={0}
         aria-valuemax={budget}
         aria-valuenow={shown}
-        className="h-2 w-full max-w-md overflow-hidden rounded bg-slate-200"
+        className="h-2 w-full max-w-md overflow-hidden rounded bg-sunken"
       >
         <div
-          className={`h-full ${exhausted ? "bg-red-700" : "bg-slate-700"}`}
+          className={`h-full ${exhausted ? "bg-danger" : "bg-chart-1"}`}
           style={{ width: `${String(percent)}%` }}
         />
       </div>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         {`${tokens.format(used)} of ${tokens.format(budget)} tokens used today (${String(percent)}%).`}
       </p>
       {exhausted && (
-        <p className="text-sm font-medium text-red-800">
+        <p className="text-sm font-medium text-danger">
           Today&apos;s Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you
           raise the budget.
         </p>
@@ -357,7 +357,7 @@ function TokenBudget({ path }: { path: SettingsPath }) {
     <form onSubmit={onSubmit} className="space-y-2">
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Token Budget</legend>
-        <p id="token-budget-hint" className="text-sm text-slate-700">
+        <p id="token-budget-hint" className="text-sm text-muted">
           The budget resets at midnight UTC. The Playground doesn&apos;t count.
         </p>
         <BudgetMeter path={path} />
@@ -385,7 +385,7 @@ function TokenBudget({ path }: { path: SettingsPath }) {
         <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
           Save Token Budget
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           {save.isSuccess ? "Saved. The new budget applies to the next message." : ""}
         </p>
       </div>
@@ -406,10 +406,10 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
       {agent.live_version ? (
         <Snippet agent={agent} />
       ) : (
-        <p className="text-sm text-slate-700">Publish the Agent to get its Embed Snippet.</p>
+        <p className="text-sm text-muted">Publish the Agent to get its Embed Snippet.</p>
       )}
       <h3 className="font-semibold">Operational Settings</h3>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         These apply straight away, without publishing, and every change is recorded in the Audit
         log.
       </p>

@@ -37,7 +37,7 @@ export function SignUpPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/sign-in" className="font-medium text-slate-900 underline">
+          <Link to="/sign-in" className="font-medium text-ink underline">
             Sign in
           </Link>
         </>
@@ -48,7 +48,7 @@ export function SignUpPage() {
         <Field label="Your name" name="name" autoComplete="name" />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} />
-        <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p className="-mt-2 text-sm text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
         <Field label="Organisation name" name="organisation_name" autoComplete="organization" />
         <SubmitButton pending={signUp.isPending} label="Create account" pendingLabel="Creating account…" />
       </form>

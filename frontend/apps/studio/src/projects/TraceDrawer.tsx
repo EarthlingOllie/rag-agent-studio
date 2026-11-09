@@ -120,13 +120,13 @@ function TraceBody({ trace }: { trace: Trace }) {
         ))}
       </dl>
       {trace.fallback && (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           No Chunk reached the minimum score, so the Agent replied with its
           fallback text and the model wasn't asked.
         </p>
       )}
       {blocked(trace) && (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           The input Guardrail blocked the question, so the Agent replied with
           its refusal text and the model wasn't asked.
         </p>
@@ -136,7 +136,7 @@ function TraceBody({ trace }: { trace: Trace }) {
           Guardrails
         </h3>
         {trace.guardrail_outcomes.length === 0 ? (
-          <p className="text-slate-700">No Guardrail stepped in.</p>
+          <p className="text-muted">No Guardrail stepped in.</p>
         ) : (
           <ul aria-labelledby="trace-guardrails" className="list-disc pl-5">
             {trace.guardrail_outcomes.map((outcome, index) => (
@@ -151,7 +151,7 @@ function TraceBody({ trace }: { trace: Trace }) {
       <table className="w-full text-left text-sm">
         <caption className="text-left font-medium">Retrieved Chunks</caption>
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-line">
             <th scope="col">Chunk</th>
             <th scope="col">Document</th>
             <th scope="col">Excerpt</th>
@@ -165,11 +165,11 @@ function TraceBody({ trace }: { trace: Trace }) {
             <tr
               // A deleted Document's Chunk has no ID left; the Trace's order is fixed.
               key={index}
-              className="border-b border-slate-100 align-top"
+              className="border-b border-line-soft align-top"
             >
               <td>{chunk.rank === null ? "—" : `C${String(chunk.rank)}`}</td>
               <td>{documentText(chunk)}</td>
-              <td className="text-xs whitespace-pre-wrap text-slate-700">
+              <td className="text-xs whitespace-pre-wrap text-muted">
                 {chunk.text ?? "—"}
               </td>
               <td>{chunk.score.toFixed(3)}</td>
@@ -227,7 +227,7 @@ export function TraceDrawerFrame({
     <aside
       role="dialog"
       aria-labelledby="trace-heading"
-      className="fixed inset-y-0 right-0 z-10 w-full max-w-xl space-y-4 overflow-y-auto border-l border-slate-200 bg-white p-6 shadow-lg"
+      className="fixed inset-y-0 right-0 z-10 w-full max-w-xl space-y-4 overflow-y-auto border-l border-line bg-surface p-6 shadow-lg"
     >
       <div className="flex items-center justify-between">
         <h2 id="trace-heading" className="text-lg font-semibold">

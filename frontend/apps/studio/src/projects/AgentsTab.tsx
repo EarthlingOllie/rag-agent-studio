@@ -87,7 +87,7 @@ function BulkRevert({
           <button
             type="button"
             disabled={revert.isPending}
-            className="rounded bg-red-700 px-2 py-1 text-white"
+            className="rounded bg-danger px-2 py-1 text-on-danger"
             onClick={() => {
               revert.mutate(selected, {
                 onSuccess: onDone,
@@ -150,9 +150,9 @@ function AgentList({
     );
   if (agents.data.length === 0)
     return archived ? (
-      <p className="text-slate-700">No archived Agents.</p>
+      <p className="text-muted">No archived Agents.</p>
     ) : (
-      <p className="text-slate-700">
+      <p className="text-muted">
         No Agents yet. Create one to answer questions from this Project's
         Documents.
       </p>
@@ -160,7 +160,7 @@ function AgentList({
   const list = (
     <ul
       aria-label={archived ? "Archived Agents" : "Agents"}
-      className="divide-y divide-slate-200 rounded border border-slate-200 bg-white"
+      className="divide-y divide-line rounded border border-line bg-surface"
     >
       {agents.data.map((agent) => (
         <li key={agent.id} className="flex justify-between gap-4 px-4 py-3">
@@ -190,7 +190,7 @@ function AgentList({
           <span className="flex items-center gap-3">
             <LiveStatus agent={agent} />
             {agent.archived_at && (
-              <span className="text-sm text-slate-700">
+              <span className="text-sm text-muted">
                 Archived {agent.archived_at.slice(0, 10)}
               </span>
             )}
@@ -245,12 +245,12 @@ export function AgentsTab() {
         </button>
       </div>
       {deleted && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {deleted} was deleted permanently.
         </p>
       )}
       {showArchived && (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           Archived Agents are hidden from this list and the Playground, but
           keep their Draft and Conversations.{" "}
           {isOwner

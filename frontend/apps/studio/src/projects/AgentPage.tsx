@@ -66,7 +66,7 @@ function Sources({
         <li key={citation.chunk_id}>
           <a
             href={chunkHref(organisationId, projectId, citation)}
-            className="inline-flex gap-1 rounded-full border border-slate-300 px-2 py-0.5 text-xs text-slate-900 underline-offset-2 hover:underline"
+            className="inline-flex gap-1 rounded-full border border-field px-2 py-0.5 text-xs text-ink underline-offset-2 hover:underline"
           >
             <span className="font-semibold">{citation.label}</span>{" "}
             <span>{citation.document_name}</span>
@@ -123,7 +123,7 @@ function InstructionsPicker({
           </option>
         ))}
       </select>
-      <p id="playground-instructions-hint" className="text-xs text-slate-700">
+      <p id="playground-instructions-hint" className="text-xs text-muted">
         {hint}
       </p>
     </div>
@@ -247,7 +247,7 @@ function Playground({
       <h2 id="playground-heading" className="text-lg font-semibold">
         Playground
       </h2>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Chat with this Draft. Playground Conversations are recorded but kept out
         of metrics.
       </p>
@@ -264,11 +264,11 @@ function Playground({
           onClick={() => {
             void reset();
           }}
-          className="text-sm text-slate-900 underline disabled:opacity-50"
+          className="text-sm text-ink underline disabled:opacity-50"
         >
           Reset conversation
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           {wasReset ? "Started a new conversation." : ""}
         </p>
       </div>
@@ -281,11 +281,11 @@ function Playground({
           <li
             key={index}
             aria-label={message.role === "user" ? "You" : agent.name}
-            className={`rounded px-3 py-2 text-sm ${message.role === "user" ? "bg-slate-100" : "border border-slate-200 bg-white"}`}
+            className={`rounded px-3 py-2 text-sm ${message.role === "user" ? "bg-sunken" : "border border-line bg-surface"}`}
           >
             <p className="whitespace-pre-wrap">{message.content}</p>
             {message.refused && (
-              <p className="mt-1 text-xs font-medium text-amber-900">
+              <p className="mt-1 text-xs font-medium text-flag">
                 Blocked by the input Guardrail: the model wasn&apos;t asked.
               </p>
             )}
@@ -297,10 +297,10 @@ function Playground({
               />
             )}
             {message.usage && (
-              <p className="mt-1 text-xs text-slate-700">{message.usage}</p>
+              <p className="mt-1 text-xs text-muted">{message.usage}</p>
             )}
             {message.instructions && (
-              <p className="text-xs text-slate-700">{message.instructions}</p>
+              <p className="text-xs text-muted">{message.instructions}</p>
             )}
             {message.messageId && (
               <button
@@ -309,7 +309,7 @@ function Playground({
                 onClick={(event) => {
                   setTracing(event.currentTarget.value);
                 }}
-                className="mt-1 text-xs text-slate-700 underline"
+                className="mt-1 text-xs text-muted underline"
               >
                 Trace
               </button>
@@ -373,7 +373,7 @@ function ArchiveAgent({
       <FormError message={agentFailure(archive.error)} />
       {confirming ? (
         <div className="space-y-2">
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-muted">
             {agent.name} will be hidden from the Agents list and the Playground
             will be off. Its Draft and Conversations are kept. An Owner can
             restore it.
@@ -467,7 +467,7 @@ function DeleteAgentPermanently({
     <form
       aria-label={title}
       onSubmit={onSubmit}
-      className="space-y-2 rounded border border-red-300 bg-white p-3 text-slate-900"
+      className="space-y-2 rounded border border-danger bg-surface p-3 text-ink"
     >
       <p>
         Deleting {agent.name} removes its Draft and Conversations for good.
@@ -494,7 +494,7 @@ function DeleteAgentPermanently({
       <div className="flex gap-2">
         <button
           type="submit"
-          className="rounded border border-red-800 bg-red-700 px-3 py-1 text-sm text-white hover:bg-red-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-600"
+          className="rounded border border-danger bg-danger px-3 py-1 text-sm text-on-danger hover:bg-danger/90 disabled:border-field disabled:bg-sunken disabled:text-muted"
           disabled={typed !== agent.name || remove.isPending}
         >
           {title}
@@ -531,7 +531,7 @@ function ArchivedAgentNotice({
     <div
       role="status"
       aria-label="Archived"
-      className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+      className="space-y-2 rounded border border-flag bg-flag-soft p-3 text-sm text-flag"
     >
       <p>
         This Agent is archived. It is hidden from the Agents list and the
@@ -587,7 +587,7 @@ export function AgentPage() {
               <LiveStatus agent={agent.data} />
             </div>
             {!agent.data.live_version && (
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-muted">
                 Visitors can&apos;t use it until you publish it.
               </p>
             )}
@@ -657,7 +657,7 @@ export function AgentPage() {
       <Link
         to="/organisations/$organisationId/projects/$projectId/agents"
         params={{ organisationId, projectId }}
-        className="text-sm text-slate-700 underline"
+        className="text-sm text-muted underline"
       >
         All Agents
       </Link>
@@ -666,7 +666,7 @@ export function AgentPage() {
         to="/organisations/$organisationId/projects/$projectId/conversations"
         params={{ organisationId, projectId }}
         search={{ agent: agentId }}
-        className="block text-sm text-slate-700 underline"
+        className="block text-sm text-muted underline"
       >
         Conversations with this Agent
       </Link>

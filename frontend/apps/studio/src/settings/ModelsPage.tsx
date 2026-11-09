@@ -6,8 +6,8 @@ import { type Credential, credentialFailure, type ProviderId, useCredentials } f
 import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
 import { PriceTable } from "./PriceTable";
 
-const INPUT = "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
-const PRIMARY = "rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:bg-slate-600";
+const INPUT = "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
+const PRIMARY = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
 
 const PROVIDER_NAMES: Record<ProviderId, string> = {
   anthropic: "Anthropic",
@@ -23,8 +23,8 @@ const label = (name: string, provider: ProviderId) => `${name} (${PROVIDER_NAMES
 function Current({ organisationId }: { organisationId: string }) {
   const current = useDefaultModel(organisationId);
   if (current.isError) return <p role="alert">The Default Model could not be loaded. Try again shortly.</p>;
-  if (current.isPending) return <p className="text-sm text-slate-700">Loading…</p>;
-  if (current.data === null) return <p className="text-sm text-slate-700">No Default Model yet. New Agents need one to answer.</p>;
+  if (current.isPending) return <p className="text-sm text-muted">Loading…</p>;
+  if (current.data === null) return <p className="text-sm text-muted">No Default Model yet. New Agents need one to answer.</p>;
   const { model_name: modelName, credential_name: credentialName, provider } = current.data;
   return (
     <p className="text-sm">
@@ -71,7 +71,7 @@ function Picker({
     >
       <FormError message={credentialFailure(save.error)} />
       {saved && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {saved}
         </p>
       )}
@@ -129,7 +129,7 @@ function OwnerControls({ organisationId }: { organisationId: string }) {
   const [first, ...rest] = chat;
   if (first === undefined) {
     return (
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         No credential can be used for chat yet.{" "}
         <Link to="/organisations/$organisationId/settings/credentials" params={{ organisationId }} className="underline">
           Add one on the Credentials tab
@@ -161,7 +161,7 @@ function DefaultModelSection({ organisationId, isOwner }: { organisationId: stri
         <h2 id="default-model-heading" className="text-lg font-semibold">
           Default Model
         </h2>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           New Agents answer with this model unless they choose their own. Only chat-capable credentials and their chat models can be
           chosen.
         </p>
@@ -170,7 +170,7 @@ function DefaultModelSection({ organisationId, isOwner }: { organisationId: stri
       {isOwner ? (
         <OwnerControls organisationId={organisationId} />
       ) : (
-        <p className="text-sm text-slate-700">Only Owners can change the Default Model.</p>
+        <p className="text-sm text-muted">Only Owners can change the Default Model.</p>
       )}
     </section>
   );

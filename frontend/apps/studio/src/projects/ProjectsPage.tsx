@@ -12,9 +12,9 @@ import {
 } from "./projects";
 
 export const INPUT =
-  "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
+  "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
 export const BUTTON =
-  "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
+  "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
 
 /** The Organisation in the path and whether the signed-in Member is one of its Owners. */
 export function useOrganisationRole() {
@@ -122,7 +122,7 @@ function ActiveProjects({ organisationId }: { organisationId: string }) {
     );
   if (projects.data.length === 0) {
     return (
-      <p className="text-slate-700">
+      <p className="text-muted">
         No Projects yet. Create one to start collecting knowledge for a purpose.
       </p>
     );
@@ -139,7 +139,7 @@ function ActiveProjects({ organisationId }: { organisationId: string }) {
       </thead>
       <tbody>
         {projects.data.map((project) => (
-          <tr key={project.id} className="border-t border-slate-200 align-top">
+          <tr key={project.id} className="border-t border-line align-top">
             <td className="py-2 pr-4">
               <Link
                 to="/organisations/$organisationId/projects/$projectId"
@@ -149,7 +149,7 @@ function ActiveProjects({ organisationId }: { organisationId: string }) {
                 {project.name}
               </Link>
             </td>
-            <td className="py-2 pr-4 text-slate-700">{project.description}</td>
+            <td className="py-2 pr-4 text-muted">{project.description}</td>
             <td className="py-2 pr-4 text-right">{project.document_count}</td>
             <td className="py-2 text-right">{project.agent_count}</td>
           </tr>
@@ -179,7 +179,7 @@ function ArchivedProjects({
     );
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Archived Projects are hidden from the Projects list and don't serve.{" "}
         {isOwner
           ? "Restore one to bring it back."
@@ -187,12 +187,12 @@ function ArchivedProjects({
       </p>
       <FormError message={projectFailure(restore.error)} />
       {restored && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {restored} was restored.
         </p>
       )}
       {projects.data.length === 0 ? (
-        <p className="text-slate-700">No archived Projects.</p>
+        <p className="text-muted">No archived Projects.</p>
       ) : (
         <table
           className="w-full text-left text-sm"
@@ -211,7 +211,7 @@ function ArchivedProjects({
             {projects.data.map((project) => (
               <tr
                 key={project.id}
-                className="border-t border-slate-200 align-top"
+                className="border-t border-line align-top"
               >
                 <td className="py-2 pr-4">
                   <Link
@@ -276,7 +276,7 @@ export function ProjectsPage() {
         </button>
       </div>
       {deleted && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {deleted} is being deleted permanently.
         </p>
       )}

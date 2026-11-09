@@ -59,7 +59,7 @@ const versionsText = (conversation: ConversationSummary) =>
 function Kind({ conversation }: { conversation: ConversationSummary }) {
   if (!conversation.is_playground) return <>Visitor</>;
   return (
-    <span title={`T${PLAYGROUND_WHY.slice(1)}.`} className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+    <span title={`T${PLAYGROUND_WHY.slice(1)}.`} className="rounded bg-flag-soft px-2 py-0.5 text-xs font-medium text-flag">
       Playground
     </span>
   );
@@ -243,7 +243,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
   if (data.items.length === 0) {
     const filtered = Object.keys(filters).some((key) => key !== "page");
     return (
-      <p className="mt-6 text-slate-700">
+      <p className="mt-6 text-muted">
         {filtered
           ? "No Conversations match these filters."
           : "No Conversations yet. Visitors' Conversations with this Project's Agents, and the Playground's, will appear here."}
@@ -254,7 +254,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
     <div className="mt-6 overflow-x-auto">
       <table className="w-full text-left text-sm" aria-label="Conversations">
         <thead>
-          <tr className="text-slate-700">
+          <tr className="text-muted">
             <th scope="col" className="py-2 pr-4 font-medium">Started</th>
             <th scope="col" className="py-2 pr-4 font-medium">Agent</th>
             <th scope="col" className="py-2 pr-4 font-medium">With</th>
@@ -268,7 +268,7 @@ function Results({ data, filters }: { data: ConversationPage; filters: Conversat
         </thead>
         <tbody>
           {data.items.map((conversation) => (
-            <tr key={conversation.id} className="border-t border-slate-200 align-top">
+            <tr key={conversation.id} className="border-t border-line align-top">
               <td className="whitespace-nowrap py-2 pr-4">{formatTime(conversation.created_at)}</td>
               <td className="py-2 pr-4">{conversation.agent_name}</td>
               <td className="py-2 pr-4">
@@ -304,7 +304,7 @@ function Pager({ data, onPage }: { data: ConversationPage; onPage: (page: number
       <button type="button" className={BUTTON} disabled={data.page <= 1} onClick={() => { onPage(data.page - 1); }}>
         Previous page
       </button>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Page {data.page} of {pages} · {data.total} {data.total === 1 ? "Conversation" : "Conversations"}
       </p>
       <button type="button" className={BUTTON} disabled={data.page >= pages} onClick={() => { onPage(data.page + 1); }}>
@@ -370,19 +370,19 @@ function ConversationTrace({ path, onClose }: { path: ConversationPath & { messa
 function FeedbackNote({ message, visitor }: { message: ConversationMessage; visitor: boolean }) {
   const feedback = message.feedback;
   if (feedback === null) {
-    return visitor ? <p className="mt-2 text-xs text-slate-700">No feedback</p> : null;
+    return visitor ? <p className="mt-2 text-xs text-muted">No feedback</p> : null;
   }
   const version = versionText(feedback.agent_version_number);
   return (
-    <div role="group" aria-label="Visitor feedback" className="mt-2 rounded bg-slate-50 p-2 text-sm">
+    <div role="group" aria-label="Visitor feedback" className="mt-2 rounded bg-canvas p-2 text-sm">
       <p>
-        <span className={feedback.rating === "up" ? "font-medium text-emerald-800" : "font-medium text-red-800"}>
+        <span className={feedback.rating === "up" ? "font-medium text-accent-ink" : "font-medium text-danger"}>
           {feedback.rating === "up" ? "Thumbs up" : "Thumbs down"}
         </span>
         {` · for ${version} · ${formatTime(feedback.updated_at)}`}
       </p>
       {feedback.comment !== null && (
-        <blockquote className="mt-1 whitespace-pre-wrap border-l-2 border-slate-300 pl-2 text-slate-800">{feedback.comment}</blockquote>
+        <blockquote className="mt-1 whitespace-pre-wrap border-l-2 border-field pl-2 text-ink">{feedback.comment}</blockquote>
       )}
     </div>
   );
@@ -396,7 +396,7 @@ const versionText = (number: number | null) => (number === null ? "the Draft" : 
  */
 function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
   return (
-    <section aria-label="Conversation Rating" className="rounded border border-slate-200 p-3 text-sm">
+    <section aria-label="Conversation Rating" className="rounded border border-line p-3 text-sm">
       <h3 className="font-medium">Conversation Rating</h3>
       {rating?.score == null ? (
         <p>Not rated</p>
@@ -407,7 +407,7 @@ function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
         </p>
       )}
       {rating?.prompt_dismissed_at != null && (
-        <p className="text-slate-700">{`The Visitor dismissed the rating prompt · ${formatTime(rating.prompt_dismissed_at)}`}</p>
+        <p className="text-muted">{`The Visitor dismissed the rating prompt · ${formatTime(rating.prompt_dismissed_at)}`}</p>
       )}
       {rating !== null && rating.changes.length > 0 && (
         <>
@@ -434,7 +434,7 @@ function MessageText({ message, deletedAt }: { message: ConversationMessage; del
   // The daily purge may have cleared it before the Conversation was deleted.
   const why =
     message.purged_at === deletedAt ? "the Conversation was deleted on request" : "it was older than the Retention Window";
-  return <p className="text-sm italic text-slate-700">{`Text purged ${formatTime(message.purged_at)}: ${why}.`}</p>;
+  return <p className="text-sm italic text-muted">{`Text purged ${formatTime(message.purged_at)}: ${why}.`}</p>;
 }
 
 function MessageItem({
@@ -452,15 +452,15 @@ function MessageItem({
 }) {
   if (message.role === "user") {
     return (
-      <li aria-label={asker} className="rounded bg-slate-100 p-3">
-        <p className="text-xs font-medium text-slate-700">{asker}</p>
+      <li aria-label={asker} className="rounded bg-sunken p-3">
+        <p className="text-xs font-medium text-ink-2">{asker}</p>
         <MessageText message={message} deletedAt={deletedAt} />
       </li>
     );
   }
   return (
-    <li aria-label={agentName} className="rounded border border-slate-200 p-3">
-      <p className="text-xs font-medium text-slate-700">
+    <li aria-label={agentName} className="rounded border border-line p-3">
+      <p className="text-xs font-medium text-ink-2">
         {agentName} · {answeredBy(message)}
         {message.fallback && " · fallback reply"}
       </p>
@@ -497,7 +497,7 @@ function DeleteConversation({ path }: { path: ConversationPath }) {
     );
   }
   return (
-    <div role="group" aria-label="Delete Conversation" className="space-y-2 rounded border border-red-200 bg-red-50 p-3 text-sm">
+    <div role="group" aria-label="Delete Conversation" className="space-y-2 rounded border border-danger-soft bg-danger-soft p-3 text-sm">
       <p>
         Its Messages&apos; text and feedback comments will be purged now and can&apos;t be recovered. Its numbers stay in the
         metrics. The deletion is recorded in the Audit log.
@@ -553,7 +553,7 @@ export function ConversationPage() {
     body = (
       <>
         <h2 className="text-xl font-semibold">Conversation with {data.agent_name}</h2>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           {kind} · started {formatTime(data.created_at)} · last active {formatTime(data.last_activity_at)}
         </p>
         {data.deleted_at === null ? (
@@ -595,7 +595,7 @@ export function ConversationPage() {
         to="/organisations/$organisationId/projects/$projectId/conversations"
         params={{ organisationId, projectId }}
         search={filters}
-        className="text-sm text-slate-700 underline"
+        className="text-sm text-muted underline"
       >
         All Conversations
       </Link>

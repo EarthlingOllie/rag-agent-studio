@@ -18,7 +18,7 @@ import { InstructionsVersions, PublishInstructionsForm } from "./InstructionsVer
 import { useProject } from "./projects";
 import { BUTTON, useOrganisationRole } from "./ProjectsPage";
 
-const CONFLICT_BUTTON = "rounded border border-slate-400 bg-white px-3 py-1 text-sm text-slate-900 hover:bg-slate-100";
+const CONFLICT_BUTTON = "rounded border border-field bg-surface px-3 py-1 text-sm text-ink hover:bg-sunken";
 
 function InstructionsForm({
   organisationId,
@@ -69,7 +69,7 @@ function InstructionsForm({
       <form aria-label="Project Instructions" onSubmit={onSubmit} className="space-y-3">
         <FormError message={save.error instanceof StaleInstructionsError ? undefined : instructionsFailure(save.error)} />
         {conflict && (
-          <div role="alert" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <div role="alert" className="space-y-2 rounded border border-flag bg-flag-soft p-3 text-sm text-flag">
             <p>Someone else saved these Instructions while you were editing. Yours aren&apos;t saved. Load theirs, or save yours over them.</p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -105,14 +105,14 @@ function InstructionsForm({
           }}
         />
         {archived ? (
-          <p className="text-sm text-slate-700">This Project is archived. Restore the Project to edit its Instructions.</p>
+          <p className="text-sm text-muted">This Project is archived. Restore the Project to edit its Instructions.</p>
         ) : (
           <div className="flex items-center gap-3">
             <button type="submit" disabled={save.isPending} className={BUTTON}>
               {save.isPending ? "Saving…" : "Save Instructions"}
             </button>
             {save.isSuccess && (
-              <span role="status" className="text-sm text-slate-700">
+              <span role="status" className="text-sm text-muted">
                 Instructions saved
               </span>
             )}
@@ -180,7 +180,7 @@ export function InstructionsTab() {
       <h2 id="tab-heading" className="text-lg font-semibold">
         Instructions
       </h2>
-      <p className="text-slate-700">
+      <p className="text-muted">
         Project Instructions are the shared rules every Agent in this Project follows. They come before each Agent's system prompt.
       </p>
       {body}

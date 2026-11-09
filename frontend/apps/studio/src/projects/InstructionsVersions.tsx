@@ -63,13 +63,13 @@ export function PublishInstructionsForm({
   }
 
   return (
-    <form aria-label="Publish Instructions" onSubmit={onSubmit} className="space-y-2 rounded border border-slate-300 p-3">
+    <form aria-label="Publish Instructions" onSubmit={onSubmit} className="space-y-2 rounded border border-field p-3">
       <FormError message={latest && !(publish.error instanceof StaleInstructionsError) ? versionFailure(publish.error) : undefined} />
       <label className="block">
         Note
         <input name="note" required maxLength={500} className={INPUT} />
       </label>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Publishing saves the Draft and freezes it as a new Version, which becomes the Current Version that Agents are published with.
       </p>
       <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ export function PublishInstructionsForm({
           {publish.isPending ? "Publishing…" : "Publish Instructions"}
         </button>
         {publish.isSuccess && latest && (
-          <span role="status" className="text-sm text-slate-700">
+          <span role="status" className="text-sm text-muted">
             Published v{publish.data.number}
           </span>
         )}
@@ -88,18 +88,18 @@ export function PublishInstructionsForm({
 
 function VersionItem({ version, current }: { version: InstructionsVersion; current: boolean }) {
   return (
-    <li aria-label={`v${String(version.number)}`} className="space-y-1 border-t border-slate-200 py-2">
+    <li aria-label={`v${String(version.number)}`} className="space-y-1 border-t border-line py-2">
       <div className="flex items-center gap-2">
         <span className="font-semibold">v{version.number}</span>
-        {current && <span className="rounded bg-emerald-100 px-2 text-sm text-emerald-900">Current</span>}
+        {current && <span className="rounded bg-accent-soft px-2 text-sm text-accent-ink">Current</span>}
       </div>
       <p>{version.note}</p>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         {version.author ? version.author.name : "No author"} · {formatTime(version.created_at)}
       </p>
       <details>
         <summary className="cursor-pointer text-sm underline">Show the Instructions</summary>
-        <pre className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm">{version.markdown || "(empty)"}</pre>
+        <pre className="mt-1 whitespace-pre-wrap rounded bg-canvas p-2 text-sm">{version.markdown || "(empty)"}</pre>
       </details>
     </li>
   );
@@ -137,11 +137,11 @@ function CompareInstructions({ organisationId, projectId, versions, currentId }:
     </div>
   );
   let body;
-  if (diff.isPending) body = <p className="text-sm text-slate-700">Comparing…</p>;
-  else if (diff.isError) body = <p className="text-sm text-slate-700">The comparison could not be loaded. Try again shortly.</p>;
+  if (diff.isPending) body = <p className="text-sm text-muted">Comparing…</p>;
+  else if (diff.isError) body = <p className="text-sm text-muted">The comparison could not be loaded. Try again shortly.</p>;
   else if (diff.data.lines.every((line) => line.op === "equal"))
     body = (
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         No differences: {name(diff.data.from)} and {name(diff.data.to)} are the same.
       </p>
     );
@@ -198,7 +198,7 @@ export function InstructionsVersions({
             });
           }}
           disabled={revert.isPending}
-          className="rounded bg-red-700 px-2 py-1 text-white"
+          className="rounded bg-danger px-2 py-1 text-on-danger"
         >
           Yes, revert to {label}
         </button>
@@ -235,7 +235,7 @@ export function InstructionsVersions({
       </p>
       <FormError message={latest ? versionFailure(revert.error) : undefined} />
       {revert.isSuccess && latest && (
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className="text-sm text-muted">
           Reverted to v{revert.data.number}
         </p>
       )}

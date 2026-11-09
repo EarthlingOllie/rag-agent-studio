@@ -52,7 +52,7 @@ function RevertAgent({
   let control;
   if (!label) {
     control = (
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         There&apos;s no earlier Live Version to revert to: v{live.number} was the first.
       </p>
     );
@@ -72,7 +72,7 @@ function RevertAgent({
               },
             });
           }}
-          className="rounded bg-red-700 px-2 py-1 text-white"
+          className="rounded bg-danger px-2 py-1 text-on-danger"
         >
           {revert.isPending ? "Reverting…" : `Yes, revert to ${label}`}
         </button>
@@ -106,7 +106,7 @@ function RevertAgent({
     <div className="space-y-2">
       {control}
       <FormError message={agentFailure(revert.error)} />
-      <p role="status" className="text-sm text-slate-700">
+      <p role="status" className="text-sm text-muted">
         {revert.data ? outcome(revert.data) : ""}
       </p>
     </div>
@@ -127,7 +127,7 @@ export function LiveHistory({ agent, organisationId, archived }: { agent: Agent;
   } else if (history.isPending) {
     body = <p>Loading the Live History…</p>;
   } else if (!latest) {
-    body = <p className="text-sm text-slate-700">Nothing has been Live yet. Publish the Draft to make v1 Live.</p>;
+    body = <p className="text-sm text-muted">Nothing has been Live yet. Publish the Draft to make v1 Live.</p>;
   } else {
     body = (
       <>
@@ -136,11 +136,11 @@ export function LiveHistory({ agent, organisationId, archived }: { agent: Agent;
         )}
         <ol aria-label="Live History" className="space-y-1">
           {history.data.map((entry, index) => (
-            <li key={`${String(index)}-${entry.occurred_at}`} className="border-t border-slate-200 py-2">
+            <li key={`${String(index)}-${entry.occurred_at}`} className="border-t border-line py-2">
               <p>
                 <span className="font-medium">{ACTIONS[entry.action]}</span> {move(entry)}
               </p>
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-muted">
                 {entry.actor.name} · {formatTime(entry.occurred_at)}
               </p>
             </li>
@@ -151,7 +151,7 @@ export function LiveHistory({ agent, organisationId, archived }: { agent: Agent;
   }
 
   return (
-    <section aria-labelledby="live-history-heading" className="space-y-2 rounded border border-slate-200 bg-white p-3">
+    <section aria-labelledby="live-history-heading" className="space-y-2 rounded border border-line bg-surface p-3">
       <h3 id="live-history-heading" className="font-semibold">
         Live History
       </h3>

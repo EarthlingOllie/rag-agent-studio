@@ -21,7 +21,7 @@ function CostTable({ cost }: { cost: OrgCost }) {
     <div className="mt-4 overflow-x-auto">
       <table className="w-full text-left text-sm" aria-label={`Cost by ${name}`}>
         <thead>
-          <tr className="text-slate-700">
+          <tr className="text-muted">
             <th scope="col" className={`${CELL} font-medium`}>{name}</th>
             {byAgent && <th scope="col" className={`${CELL} font-medium`}>Project</th>}
             <th scope="col" className={`${AMOUNT} font-medium`}>Visitors</th>
@@ -31,7 +31,7 @@ function CostTable({ cost }: { cost: OrgCost }) {
         </thead>
         <tbody>
           {cost.rows.map((row) => (
-            <tr key={row.agent_id ?? row.project_id} className="border-t border-slate-200">
+            <tr key={row.agent_id ?? row.project_id} className="border-t border-line">
               <th scope="row" className={`${CELL} font-normal`}>{byAgent ? row.agent_name : row.project_name}</th>
               {byAgent && <td className={CELL}>{row.project_name}</td>}
               <td className={AMOUNT}>{dollars(row.visitor_usd)}</td>
@@ -41,7 +41,7 @@ function CostTable({ cost }: { cost: OrgCost }) {
           ))}
         </tbody>
         <tfoot>
-          <tr className="border-t-2 border-slate-400 font-medium">
+          <tr className="border-t-2 border-field font-medium">
             <th scope="row" className={CELL}>{`All ${name}s`}</th>
             {byAgent && <td className={CELL} />}
             <td className={AMOUNT}>{dollars(cost.total.visitor_usd)}</td>
@@ -66,14 +66,14 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
   if (cost.isPending) {
     body = <p role="status" className="mt-4">Loading the cost…</p>;
   } else if (cost.isError) {
-    body = <p role="alert" className="mt-4 text-red-800">{failure(cost.error)}</p>;
+    body = <p role="alert" className="mt-4 text-danger">{failure(cost.error)}</p>;
   } else {
     body = (
       <>
-        <p className="mt-4 text-sm text-slate-700">
+        <p className="mt-4 text-sm text-muted">
           {`${cost.data.start} to ${cost.data.end} (UTC days), including today so far, at the prices of the time.`}
         </p>
-        {cost.data.rows.length === 0 ? <p className="mt-4 text-slate-700">Nothing was spent in this period.</p> : <CostTable cost={cost.data} />}
+        {cost.data.rows.length === 0 ? <p className="mt-4 text-muted">Nothing was spent in this period.</p> : <CostTable cost={cost.data} />}
       </>
     );
   }
@@ -120,13 +120,13 @@ export function CostPage() {
       </h1>
       {isOwner ? (
         <>
-          <p className="mt-2 text-slate-700">
+          <p className="mt-2 text-muted">
             What Visitors' Conversations and Playground testing cost, at the prices frozen when each reply was made.
           </p>
           <OrgCostReport organisationId={organisationId} />
         </>
       ) : (
-        <p className="mt-2 text-slate-700">Only Owners can see what the Organisation spends.</p>
+        <p className="mt-2 text-muted">Only Owners can see what the Organisation spends.</p>
       )}
     </section>
   );

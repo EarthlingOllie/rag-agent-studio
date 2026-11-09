@@ -1,0 +1,8 @@
+$ node scripts/colour-codemod/cli.mjs (from frontend/, at 1cb2d98)
+Changed 49 files, left 3 classes:
+  apps/studio/src/projects/DocumentsTab.tsx:131 border-slate-700 (pinned by a test)
+  apps/studio/src/projects/DocumentsTab.tsx:170 text-slate-700 (pinned by a test; text-muted! applied over it)
+  apps/studio/src/projects/VersionComparison.tsx:63 bg-amber-50 (pinned by a test; bg-flag-soft! applied over it)
+$ node scripts/palette-ratchet/cli.mjs --write
+24 palette-class uses under apps/studio/src, down from the baseline of 636. Commit the lower baseline:
+palette-baseline.json: { "count": 24 }

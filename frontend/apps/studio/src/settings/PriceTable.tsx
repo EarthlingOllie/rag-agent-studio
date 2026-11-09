@@ -4,21 +4,21 @@ import { FormError } from "../auth/AuthLayout";
 import { type Credential, credentialFailure, useCredentials } from "./credentials";
 import { formatPrice, type ModelPrices, parsePrice, PRICE_KINDS, type PriceKind, useCredentialPrices, useOverridePrices } from "./prices";
 
-const INPUT = "mt-1 block w-full rounded border border-slate-400 bg-white px-3 py-2 focus:outline-2 focus:outline-slate-900";
-const PRIMARY = "rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:bg-slate-600";
-const SECONDARY = "rounded border border-slate-400 px-3 py-1.5 text-sm font-medium hover:bg-slate-100";
+const INPUT = "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
+const PRIMARY = "rounded bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:bg-muted";
+const SECONDARY = "rounded border border-field px-3 py-1.5 text-sm font-medium hover:bg-sunken";
 const INVALID = "Prices are amounts in US dollars per million tokens, like 3 or 0.075, with at most six decimal places.";
 
 function PriceCell({ row, kind }: { row: ModelPrices; kind: PriceKind }) {
   const effective = row.effective[kind];
-  if (effective === null) return <span className="text-slate-700">No price</span>;
+  if (effective === null) return <span className="text-muted">No price</span>;
   const overridden = row.override?.[kind] != null;
   const platform = row.platform?.[kind];
   return (
     <span>
       {formatPrice(effective)}
       {overridden && (
-        <span className="ml-2 inline-block rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-950">
+        <span className="ml-2 inline-block rounded bg-flag-soft px-1.5 text-xs font-medium text-flag">
           {platform === undefined ? "Override" : `Override (platform ${formatPrice(platform)})`}
         </span>
       )}
@@ -50,7 +50,7 @@ function OverrideForm({
   return (
     <form
       aria-label={`Override prices for ${row.model_name}`}
-      className="max-w-md space-y-3 rounded border border-slate-300 p-4"
+      className="max-w-md space-y-3 rounded border border-field p-4"
       onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         const parsed = { input: parsePrice(typed.input), output: parsePrice(typed.output), cached_input: parsePrice(typed.cached_input) };
@@ -64,7 +64,7 @@ function OverrideForm({
       }}
     >
       <h3 className="font-medium">{`Override prices for ${row.model_name}`}</h3>
-      <p className="text-sm text-slate-700">US dollars per million tokens. Leave a price blank to keep the platform price.</p>
+      <p className="text-sm text-muted">US dollars per million tokens. Leave a price blank to keep the platform price.</p>
       <FormError message={invalid ? INVALID : credentialFailure(save.error)} />
       {PRICE_KINDS.map(({ kind, name }) => {
         const platform = row.platform?.[kind];
@@ -119,23 +119,23 @@ function CredentialPriceTable({ organisationId, credential, isOwner }: { organis
   const [editing, setEditing] = useState<string | null>(null);
   const [saved, setSaved] = useState("");
   if (listed.isError) return <p role="alert">The prices could not be loaded. Try again shortly.</p>;
-  if (!listed.data) return <p className="text-sm text-slate-700">Loading…</p>;
+  if (!listed.data) return <p className="text-sm text-muted">Loading…</p>;
   const rows = listed.data.models;
   const editingRow = rows.find((row) => row.model === editing);
   return (
     <div className="space-y-3">
       {saved && (
-        <p role="status" className="text-sm text-green-900">
+        <p role="status" className="text-sm text-accent-ink">
           {saved}
         </p>
       )}
       {rows.length === 0 ? (
-        <p className="text-sm text-slate-700">This credential offers no models.</p>
+        <p className="text-sm text-muted">This credential offers no models.</p>
       ) : (
         <div className="overflow-x-auto">
           <table aria-label={`Prices for ${credential.name}`} className="min-w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-300">
+              <tr className="border-b border-field">
                 <th scope="col" className="py-2 pr-4">
                   Model
                 </th>
@@ -153,7 +153,7 @@ function CredentialPriceTable({ organisationId, credential, isOwner }: { organis
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.model} className="border-b border-slate-200">
+                <tr key={row.model} className="border-b border-line">
                   <th scope="row" className="py-2 pr-4 font-medium">
                     {row.model_name}
                   </th>
@@ -231,12 +231,12 @@ export function PriceTable({ organisationId, isOwner }: { organisationId: string
   const credentials = useCredentials(organisationId);
   let body;
   if (credentials.isError) body = <p role="alert">The prices could not be loaded. Try again shortly.</p>;
-  else if (!credentials.data) body = <p className="text-sm text-slate-700">Loading…</p>;
+  else if (!credentials.data) body = <p className="text-sm text-muted">Loading…</p>;
   else {
     const [first, ...rest] = [...credentials.data].sort((a, b) => a.name.localeCompare(b.name));
     body =
       first === undefined ? (
-        <p className="text-sm text-slate-700">No credentials yet, so there is nothing to price.</p>
+        <p className="text-sm text-muted">No credentials yet, so there is nothing to price.</p>
       ) : (
         <CredentialChoice organisationId={organisationId} credentials={[first, ...rest]} isOwner={isOwner} />
       );
@@ -247,7 +247,7 @@ export function PriceTable({ organisationId, isOwner }: { organisationId: string
         <h2 id="prices-heading" className="text-lg font-semibold">
           Prices
         </h2>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           What each model costs, in US dollars per million tokens. Cost reporting uses the platform price table unless an Owner
           overrides a price for one credential, for example a negotiated rate.
           {isOwner ? "" : " Only Owners can override prices."}

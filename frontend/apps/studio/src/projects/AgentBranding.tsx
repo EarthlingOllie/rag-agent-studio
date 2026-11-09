@@ -59,7 +59,7 @@ function Colours({
 
   return (
     <form onSubmit={onSubmit} aria-label="Colour override" className="space-y-2">
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         Tick a colour to give this Agent its own; the others follow the Organisation&apos;s Theme.
       </p>
       <fieldset disabled={!isOwner} className="grid gap-2 sm:grid-cols-2">
@@ -67,7 +67,7 @@ function Colours({
         {COLOUR_TOKENS.map(({ token, label }) => {
           const row = rows[token];
           return (
-            <div key={token} className="space-y-1 rounded border border-slate-200 p-2">
+            <div key={token} className="space-y-1 rounded border border-line p-2">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input
                   type="checkbox"
@@ -100,14 +100,14 @@ function Colours({
           );
         })}
       </fieldset>
-      {!valid && <p className="text-sm text-red-800">Use colours like #1a2b3c.</p>}
+      {!valid && <p className="text-sm text-danger">Use colours like #1a2b3c.</p>}
       <FormError message={save.error?.message} />
       {isOwner && (
         <div className="flex items-center gap-3">
           <button type="submit" className={BUTTON} disabled={!valid || save.isPending}>
             Save colours
           </button>
-          <p role="status" className="text-sm text-slate-700">
+          <p role="status" className="text-sm text-muted">
             {save.isSuccess ? "Saved. The widget uses these colours now." : ""}
           </p>
         </div>
@@ -140,9 +140,9 @@ function Avatar({
       <h3 className="text-sm font-medium">Avatar</h3>
       <div className="flex min-h-12 items-center gap-3">
         {image ? (
-          <img src={image.url} alt="The Agent's avatar" className="h-12 w-12 rounded-full border border-slate-200 object-cover" />
+          <img src={image.url} alt="The Agent's avatar" className="h-12 w-12 rounded-full border border-line object-cover" />
         ) : (
-          <span className="text-sm text-slate-700">No avatar of its own: the widget shows the Live Version&apos;s or the Theme&apos;s.</span>
+          <span className="text-sm text-muted">No avatar of its own: the widget shows the Live Version&apos;s or the Theme&apos;s.</span>
         )}
       </div>
       {isOwner && (
@@ -165,14 +165,14 @@ function Avatar({
           )}
         </div>
       )}
-      <p role="status" aria-label="Avatar" className="text-sm text-slate-700">
+      <p role="status" aria-label="Avatar" className="text-sm text-muted">
         {action.phase === "uploading" && "Uploading…"}
         {action.phase === "removing" && "Removing…"}
         {action.phase === "uploaded" && "Avatar saved. The widget uses it now."}
         {action.phase === "removed" && "Avatar removed."}
       </p>
       {action.phase === "failed" && (
-        <p role="alert" className="text-sm text-red-800">
+        <p role="alert" className="text-sm text-danger">
           {action.message}
         </p>
       )}
@@ -206,7 +206,7 @@ export function AgentBranding({ agent, organisationId, isOwner }: { agent: Agent
       <h2 id="branding-heading" className="text-lg font-semibold">
         Widget branding
       </h2>
-      <p className="text-sm text-slate-700">
+      <p className="text-sm text-muted">
         {isOwner
           ? "Changes apply to the widget at once, without publishing."
           : "Only Owners can change the widget branding. Changes apply without publishing."}

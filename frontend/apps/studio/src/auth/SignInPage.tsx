@@ -43,7 +43,7 @@ export function SignInPage() {
       footer={
         <>
           New to RAG Agent Studio?{" "}
-          <Link to="/sign-up" className="font-medium text-slate-900 underline">
+          <Link to="/sign-up" className="font-medium text-ink underline">
             Create an account
           </Link>
         </>
@@ -54,7 +54,7 @@ export function SignInPage() {
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="current-password" />
         <p className="-mt-2 text-sm">
-          <Link to="/forgot-password" className="text-slate-700 underline">
+          <Link to="/forgot-password" className="text-muted underline">
             Forgot your password?
           </Link>
         </p>

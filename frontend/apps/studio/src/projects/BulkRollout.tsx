@@ -35,7 +35,7 @@ export function BulkResults({ result, verb }: { result: BulkResult; verb: "Publi
         <li key={outcome.agent_id} className="text-sm">
           <span className="font-medium">{outcome.name ?? "Unknown Agent"}</span>
           {" — "}
-          <span className={outcome.status === "failed" ? "text-red-800" : undefined}>
+          <span className={outcome.status === "failed" ? "text-danger" : undefined}>
             {label[outcome.status]}: {outcome.status === "succeeded" ? succeeded(outcome, verb) : outcome.reason}
           </span>
         </li>
@@ -57,7 +57,7 @@ function pinnedLabel(agent: RolloutAgent): string {
 
 function DraftBadge() {
   return (
-    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+    <span className="rounded-full bg-flag-soft px-2 py-0.5 text-xs font-medium text-flag">
       Unpublished Draft changes (not included)
     </span>
   );
@@ -92,7 +92,7 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
     const selected = eligible.filter((agent) => !deselected.has(agent.id)).map((agent) => agent.id);
     body = (
       <>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           Each selected Agent gets a new Version built from its Live configuration with Instructions {v(version)}, and it goes Live at
           once. Unpublished Draft changes are not included.
         </p>
@@ -119,9 +119,9 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
                     />
                     {agent.name}
                   </label>
-                  <span className="text-sm text-slate-700">{pinnedLabel(agent)}</span>
+                  <span className="text-sm text-muted">{pinnedLabel(agent)}</span>
                   {agent.has_draft_changes && <DraftBadge />}
-                  {reason && <span className="text-sm text-slate-700">{reason}</span>}
+                  {reason && <span className="text-sm text-muted">{reason}</span>}
                 </li>
               );
             })}
@@ -147,7 +147,7 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
   }
 
   return (
-    <section role="dialog" aria-labelledby={headingId} className="space-y-3 rounded border border-slate-400 bg-white p-4">
+    <section role="dialog" aria-labelledby={headingId} className="space-y-3 rounded border border-field bg-surface p-4">
       <h3 id={headingId} className="font-semibold">
         Roll out Instructions {v(version)}
       </h3>
@@ -170,7 +170,7 @@ export function BulkRevertOffer({
   const selected = candidates.filter((agent) => !deselected.has(agent.id)).map((agent) => agent.id);
 
   return (
-    <section role="dialog" aria-labelledby={headingId} className="space-y-3 rounded border border-slate-400 bg-white p-4">
+    <section role="dialog" aria-labelledby={headingId} className="space-y-3 rounded border border-field bg-surface p-4">
       <h3 id={headingId} className="font-semibold">
         Revert the Agents on Instructions {v(reverted)}?
       </h3>
@@ -183,7 +183,7 @@ export function BulkRevertOffer({
         </>
       ) : (
         <>
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-muted">
             These Agents are Live with Instructions {v(reverted)}. Reverting each one moves its Live Version back one step in its Live
             History, restoring the configuration and Instructions it ran with before.
           </p>
@@ -234,7 +234,7 @@ export function AgentsBehind({ organisationId, projectId, archived, onRollOut }:
   if (rollout.isError) return <p role="alert">The Agents' Instructions could not be loaded. Try again shortly.</p>;
   if (rollout.isPending) return <p>Loading the Agents' Instructions…</p>;
   const { current_version: current, behind, agents: list } = rollout.data;
-  if (list.length === 0) return <p className="text-slate-700">This Project has no Agents yet.</p>;
+  if (list.length === 0) return <p className="text-muted">This Project has no Agents yet.</p>;
   return (
     <div className="space-y-2">
       {current && (

@@ -43,7 +43,7 @@ interface DocumentRef {
 function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk: Chunk; at: DocumentRef }) {
   const clear = useClearChunkFlag(at.organisationId, at.projectId, at.documentId);
   return (
-    <div className="space-y-2 rounded bg-amber-50 p-2 text-amber-900">
+    <div className="space-y-2 rounded bg-flag-soft p-2 text-flag">
       <p role="note" aria-label="Guardrail flag">
         <strong>Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
       </p>
@@ -65,14 +65,14 @@ function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk
 
 function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
   const pages = pageLabel(chunk);
-  const border = chunk.flag ? "border-amber-500" : "border-slate-200";
+  const border = chunk.flag ? "border-flag" : "border-line";
   return (
     <li className={`space-y-1 rounded border p-3 text-sm ${border}`}>
-      <p className="text-xs font-medium text-slate-700">Chunk {chunk.ordinal + 1}</p>
-      {chunk.heading_path.length > 0 && <p className="font-medium text-slate-900">{chunk.heading_path.join(" › ")}</p>}
-      {pages && <p className="text-xs text-slate-700">{pages}</p>}
+      <p className="text-xs font-medium text-ink-2">Chunk {chunk.ordinal + 1}</p>
+      {chunk.heading_path.length > 0 && <p className="font-medium text-ink">{chunk.heading_path.join(" › ")}</p>}
+      {pages && <p className="text-xs text-muted">{pages}</p>}
       {chunk.flag && <FlagNote flag={chunk.flag} chunk={chunk} at={at} />}
-      <p className="whitespace-pre-wrap text-slate-900">{chunk.text}</p>
+      <p className="whitespace-pre-wrap text-ink">{chunk.text}</p>
     </li>
   );
 }
@@ -87,13 +87,13 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
   } else if (chunks.data === undefined) {
     body = <p role="status">Loading Chunks…</p>;
   } else if (chunks.data.total === 0) {
-    body = <p className="text-slate-700">This Document has no Chunks yet.</p>;
+    body = <p className="text-muted">This Document has no Chunks yet.</p>;
   } else {
     const { items, total, offset } = chunks.data;
     const pageCount = Math.ceil(total / CHUNK_PAGE_SIZE);
     body = (
       <>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           Chunks {offset + 1}–{offset + items.length} of {total}
         </p>
         <ol className="space-y-2">
@@ -144,12 +144,12 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
     <div className="flex flex-wrap items-baseline justify-between gap-3">
       <div>
         <h2 className="text-lg font-semibold">{document.name}</h2>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           {STATUS_LABELS[document.status]}
           {document.error_message && `: ${document.error_message}`}
         </p>
         {document.flagged_chunk_count > 0 && (
-          <p className="text-sm font-medium text-amber-900">
+          <p className="text-sm font-medium text-flag">
             {document.flagged_chunk_count} {document.flagged_chunk_count === 1 ? "Chunk" : "Chunks"} flagged as possible
             instructions to an AI.
           </p>
@@ -188,10 +188,10 @@ export function DocumentViewer() {
               Converted markdown
             </h3>
             {document.data.markdown === null ? (
-              <p className="text-slate-700">There is no converted markdown yet.</p>
+              <p className="text-muted">There is no converted markdown yet.</p>
             ) : (
               // It scrolls on its own, so it takes focus for keyboard scrolling (WCAG 2.1.1).
-              <div tabIndex={0} className="markdown max-h-[70vh] overflow-auto rounded border border-slate-200 p-4 text-sm">
+              <div tabIndex={0} className="markdown max-h-[70vh] overflow-auto rounded border border-line p-4 text-sm">
                 <Markdown remarkPlugins={[remarkGfm]}>{document.data.markdown}</Markdown>
               </div>
             )}

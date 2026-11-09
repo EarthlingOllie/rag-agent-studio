@@ -41,7 +41,7 @@ function ComparisonTable({ rows, a, b }: { rows: MetricRow[]; a: VersionKpis; b:
   return (
     <table aria-label={`${name.a} compared with ${name.b}`} className="w-full text-left text-sm">
       <thead>
-        <tr className="border-b border-slate-300">
+        <tr className="border-b border-field">
           <th scope="col" className="py-1 pr-3">
             Metric
           </th>
@@ -60,13 +60,13 @@ function ComparisonTable({ rows, a, b }: { rows: MetricRow[]; a: VersionKpis; b:
       <tbody>
         {rows.map((row) => (
           // Rows whose values differ are highlighted; the difference and the better Version are in words too.
-          <tr key={row.metric} className={row.changed ? "border-b border-slate-200 bg-amber-50" : "border-b border-slate-200"}>
+          <tr key={row.metric} className={row.changed ? "border-b border-line bg-amber-50 bg-flag-soft!" : "border-b border-line"}>
             <th scope="row" className="py-1 pr-3 font-normal">
               {row.label}
               {row.low_confidence && (
                 <>
                   {" "}
-                  <span className="text-slate-700">(small sample)</span>
+                  <span className="text-muted">(small sample)</span>
                 </>
               )}
             </th>
@@ -96,7 +96,7 @@ function Compared({
 }) {
   const comparison = useVersionComparison(organisationId, projectId, agentId, sides, range);
   const names = useTagNames(organisationId, projectId);
-  if (sides.a === sides.b) return <p className="mt-3 text-sm text-slate-700">Pick two different Versions to compare.</p>;
+  if (sides.a === sides.b) return <p className="mt-3 text-sm text-muted">Pick two different Versions to compare.</p>;
   if (comparison.isPending) return <p role="status">Comparing the Versions…</p>;
   if (comparison.isError) return <p role="alert">The comparison could not be loaded. Try again shortly.</p>;
   const { a, b, metrics, config_diff: diff } = comparison.data;
@@ -104,7 +104,7 @@ function Compared({
     <>
       <p className="mt-3">
         <a
-          className="text-sm font-medium text-slate-900 underline"
+          className="text-sm font-medium text-ink underline"
           href={comparisonCsvUrl(organisationId, projectId, agentId, sides, range)}
           download
         >
@@ -151,7 +151,7 @@ export function VersionComparison({
 
   let body;
   if (first === undefined || second === undefined) {
-    body = <p className="mt-2 text-sm text-slate-700">Publish another Version of this Agent to compare two.</p>;
+    body = <p className="mt-2 text-sm text-muted">Publish another Version of this Agent to compare two.</p>;
   } else {
     const sides = { a: chosen.a ?? first.version_id, b: chosen.b ?? second.version_id };
     const picker = (side: "a" | "b", title: string) => (

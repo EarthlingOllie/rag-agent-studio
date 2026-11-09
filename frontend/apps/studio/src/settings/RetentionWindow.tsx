@@ -9,8 +9,8 @@ import {
   useSetRetentionWindow,
 } from "./retention";
 
-const BUTTON = "rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100 disabled:text-slate-600";
-const INPUT = "w-28 rounded border border-slate-400 px-2 py-1 text-sm";
+const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
+const INPUT = "w-28 rounded border border-field px-2 py-1 text-sm";
 const RANGE = `Choose from ${String(MIN_RETENTION_DAYS)} to ${String(MAX_RETENTION_DAYS)} days.`;
 
 function failure(error: Error | null): string | undefined {
@@ -53,11 +53,11 @@ function RetentionForm({ organisationId, days }: { organisationId: string; days:
           {save.isPending ? "Saving…" : "Save"}
         </button>
       </div>
-      <p id="retention-range" className="text-sm text-slate-700">
+      <p id="retention-range" className="text-sm text-muted">
         {RANGE} Changes are recorded in the Audit log.
       </p>
       {save.isSuccess && (
-        <p role="status" className="text-sm text-emerald-800">
+        <p role="status" className="text-sm text-accent-ink">
           Saved.
         </p>
       )}
@@ -80,13 +80,13 @@ export function RetentionWindow({ organisationId, isOwner }: { organisationId: s
     const days = organisation.data.retention_days;
     body = (
       <>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-muted">
           {`Message text and feedback comments are kept for ${String(days)} days, then purged every night. Metrics are kept.`}
         </p>
         {isOwner ? (
           <RetentionForm organisationId={organisationId} days={days} />
         ) : (
-          <p className="text-sm text-slate-700">Only Owners can change this.</p>
+          <p className="text-sm text-muted">Only Owners can change this.</p>
         )}
       </>
     );
