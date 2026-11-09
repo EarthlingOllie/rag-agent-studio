@@ -10,7 +10,7 @@ it("shows the code and copies exactly that text, confirming it", async () => {
   render(<CodeBlock label="Embed snippet" code={SNIPPET} />);
   expect(screen.getByText(SNIPPET).tagName).toBe("CODE");
   // A long line scrolls sideways, so the box takes keyboard focus (WCAG 2.1.1).
-  expect(screen.getByRole("region", { name: "Embed snippet" })).toHaveAttribute("tabindex", "0");
+  expect(screen.getByRole("region", { name: "Embed snippet code" })).toHaveAttribute("tabindex", "0");
 
   await user.click(screen.getByRole("button", { name: "Copy Embed snippet" }));
   expect(await navigator.clipboard.readText()).toBe(SNIPPET);

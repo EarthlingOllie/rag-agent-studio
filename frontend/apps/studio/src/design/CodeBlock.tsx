@@ -28,7 +28,7 @@ export function CodeBlock({ label, code }: { label: string; code: string }) {
     <div className="flex flex-col gap-2">
       <div className="relative rounded-xl border border-line bg-sunken">
         {/* A focusable region, so a long line can be scrolled sideways with the keyboard. */}
-        <pre role="region" aria-label={label} tabIndex={0} className="overflow-x-auto py-3 pr-28 pl-4 font-mono text-[13px] leading-relaxed text-ink">
+        <pre role="region" aria-label={`${label} code`} tabIndex={0} className="overflow-x-auto py-3 pr-28 pl-4 font-mono text-[13px] leading-relaxed text-ink">
           <code>{code}</code>
         </pre>
         <button

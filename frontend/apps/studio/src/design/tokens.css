@@ -134,7 +134,10 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  :focus-visible,
+  :focus-visible {
+    outline: 2px solid var(--ds-accent);
+    outline-offset: 2px;
+  }
   /* A date or time input's focus is on a field inside it, which :focus-visible doesn't reach. */
   input:is([type="date"], [type="datetime-local"], [type="time"]):focus-within {
     outline: 2px solid var(--ds-accent);
