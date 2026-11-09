@@ -1,5 +1,6 @@
 """Studio routes for the Conversations viewer: a Project's Conversations, filtered, and one
-Conversation with its Messages and each reply's Trace. Editors and Owners may use them.
+Conversation with its Messages and each reply's Trace. Editors and Owners may use them; only
+Owners may delete a Conversation on request.
 
 Playground Conversations are listed beside Visitor ones and flagged with ``is_playground``."""
 
@@ -7,12 +8,13 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import AwareDatetime, BaseModel
 
 from app.agents.api import NOT_FOUND_RESPONSE, not_found
 from app.auth.api import Db
 from app.conversations import service
+from app.core.clock import Clock, get_clock
 from app.feedback.models import MessageFeedback
 from app.playground.api import (
     MessageOut,
@@ -22,8 +24,9 @@ from app.playground.api import (
     trace_out,
 )
 from app.projects.service import ProjectNotFoundError
+from app.retention import service as retention
 from app.tenancy.api import ORGANISATION_PREFIX
-from app.tenancy.policy import Scope
+from app.tenancy.policy import OwnerScope, Scope
 
 router = APIRouter(
     prefix=ORGANISATION_PREFIX + "/projects/{project_id}/conversations", tags=["conversations"]
@@ -50,6 +53,8 @@ class ConversationSummaryOut(BaseModel):
     thumbs_down: int
     # Its current Conversation Rating, 1 to 5; null when the Visitor hasn't rated it.
     rating: int | None
+    # When an Owner deleted it on request (its text is purged); null otherwise.
+    deleted_at: datetime | None
     # How many of its replies have a Guardrail outcome (blocked, flagged, logged, replaced or
     # allowed).
     guardrail_events: int
@@ -144,6 +149,7 @@ async def list_conversations(
                 thumbs_up=row.thumbs_up,
                 thumbs_down=row.thumbs_down,
                 rating=row.rating,
+                deleted_at=row.conversation.deleted_at,
                 guardrail_events=row.guardrail_events,
             )
             for row in result.rows
@@ -170,6 +176,9 @@ class ConversationMessageOut(MessageOut):
     fallback: bool
     # The Visitor's Message Feedback on a reply; null when none was given.
     feedback: MessageFeedbackRead | None
+    # When its text (and any feedback comment) was purged, by the Retention Window or the
+    # Conversation's deletion: ``content`` is then empty. Null while it is kept.
+    purged_at: datetime | None
 
 
 class RatingChangeRead(BaseModel):
@@ -205,6 +214,8 @@ class ConversationDetailOut(BaseModel):
     messages: list[ConversationMessageOut]
     # The Visitor's Conversation Rating; null when they neither rated nor dismissed the prompt.
     rating: ConversationRatingRead | None
+    # When an Owner deleted it on request (its text is purged); null otherwise.
+    deleted_at: datetime | None
 
 
 def _number(version_id: uuid.UUID | None, numbers: dict[uuid.UUID, int]) -> int | None:
@@ -280,11 +291,36 @@ async def get_conversation(
                 ),
                 fallback=m.fallback,
                 feedback=_feedback_read(read.feedback.get(m.id), read.version_numbers),
+                purged_at=m.purged_at,
             )
             for m in read.messages
         ],
         rating=_rating_read(read),
+        deleted_at=conversation.deleted_at,
     )
+
+
+@router.delete(
+    "/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    operation_id="deleteConversation",
+    responses=NOT_FOUND_RESPONSE,
+)
+async def delete_conversation(
+    project_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+    scope: OwnerScope,
+    db: Db,
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> None:
+    """Deletes the Conversation on request (Owners only): its Messages' text and feedback
+    comments are purged at once and its Conversation token stops working; its numbers stay in
+    the metrics. Recorded as ``conversation.deleted``."""
+    try:
+        await retention.delete_conversation(db, scope, project_id, conversation_id, now=clock.now())
+    except (ProjectNotFoundError, service.ConversationNotFoundError):
+        raise not_found() from None
 
 
 @router.get(

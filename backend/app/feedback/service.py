@@ -11,7 +11,7 @@ is saved, so the widget doesn't ask again."""
 
 import uuid
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from sqlalchemy import delete, select
@@ -60,8 +60,12 @@ async def give(
     *,
     now: datetime,
 ) -> Feedback:
-    """Gives (or replaces) the feedback on the Conversation's reply ``message_id``."""
+    """Gives (or replaces) the feedback on the Conversation's reply ``message_id``. A reply
+    already purged (``app.retention``) keeps the rating but takes no comment, so no text is
+    kept past the Retention Window."""
     message = await _reply(session, conversation, message_id)
+    if message.purged_at is not None:
+        feedback = replace(feedback, comment=None)
     values = {
         "rating": feedback.rating.value,
         "comment": feedback.comment,

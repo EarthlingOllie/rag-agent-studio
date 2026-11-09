@@ -90,6 +90,8 @@ async def prepare_turn(
             Conversation.id == conversation_id,
             Conversation.agent_id == found.agent.id,
             Conversation.is_playground.is_(False),
+            # Deleted on request: it takes no more questions.
+            Conversation.deleted_at.is_(None),
         )
     )
     if conversation is None:

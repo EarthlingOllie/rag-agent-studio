@@ -110,7 +110,7 @@ test("the Trace drawer shows the model, usage, cost, latency and every Chunk ret
     ["C1", "leave-policy.md", "Everyone gets 25 days of annual leave a year.", "0.920", "0.810", "Cited"],
     ["C2", "expenses.md", "Claim expenses within 30 days.", "0.510", "0.400", "Given, not cited"],
     ["—", "parking.md", "Visitors park in the north car park.", "0.300", "0.100", "Excluded: below the minimum score"],
-    ["—", "Deleted Document", "—", "0.200", "0.500", "Excluded: outside top-k"],
+    ["—", "Chunk from deleted Document old-handbook.md", "—", "0.200", "0.500", "Excluded: outside top-k"],
     ["—", "price-list.md", "Model SKU-4471 ships with a two-year warranty.", "0.150", "0.600", "Excluded: outside the Agent's Tags"],
   ]);
   expect(within(drawer).getByText("No Guardrail stepped in.")).toBeInTheDocument();

@@ -101,6 +101,7 @@ async def test_owners_turn_the_policy_on_and_off_in_organisation_settings(
         "name": owner.organisation_name,
         "role": "owner",
         "require_mfa": True,
+        "retention_days": 90,
     }
     organisation = await owner.client.get(f"/api/organisations/{owner.organisation_id}")
     assert organisation.json()["require_mfa"] is True

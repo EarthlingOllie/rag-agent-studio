@@ -8,6 +8,7 @@ import { CredentialsPage } from "./CredentialsPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
 import { MembersPage } from "./MembersPage";
 import { ModelsPage } from "./ModelsPage";
+import { RetentionWindow } from "./RetentionWindow";
 import { ThemePage } from "./ThemePage";
 import { useSetMfaPolicy } from "./mfaPolicy";
 
@@ -173,6 +174,7 @@ export function GeneralSettingsPage() {
   return (
     <div className="space-y-8">
       <MfaPolicy key={`mfa-${organisationId}`} organisationId={organisationId} mfaRequired={mfaRequired} isOwner={isOwner} />
+      <RetentionWindow key={`retention-${organisationId}`} organisationId={organisationId} isOwner={isOwner} />
       <LeaveOrganisation key={organisationId} organisationId={organisationId} organisationName={organisationName} />
     </div>
   );
