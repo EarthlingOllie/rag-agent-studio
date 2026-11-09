@@ -11,6 +11,7 @@ it.each([
   ["budgetSpent", "Budget spent"],
   ["blocked", "Blocked by guardrail"],
   ["lowSample", "Low sample"],
+  ["flagged", "Flagged"],
 ] satisfies [BadgeKind, string][])("labels the %s badge %s", (kind, label) => {
   render(<Badge kind={kind} />);
   expect(screen.getByText(label)).toBeInTheDocument();
@@ -25,6 +26,7 @@ it("colours a badge by what it means: Live in the accent, warnings in flag, bloc
       <Badge kind="instructionsBehind" />
       <Badge kind="budgetSpent" />
       <Badge kind="archived" />
+      <Badge kind="flagged" />
     </>,
   );
   expect(screen.getByText("Live").className).toContain("bg-accent-soft");
@@ -32,6 +34,7 @@ it("colours a badge by what it means: Live in the accent, warnings in flag, bloc
   expect(screen.getByText("Instructions behind").className).toContain("bg-flag-soft");
   expect(screen.getByText("Budget spent").className).toContain("bg-danger-soft");
   expect(screen.getByText("Archived").className).toContain("bg-sunken");
+  expect(screen.getByText("Flagged").className).toContain("bg-flag-soft");
 });
 
 it("explains a badge on hover when given a reason", () => {

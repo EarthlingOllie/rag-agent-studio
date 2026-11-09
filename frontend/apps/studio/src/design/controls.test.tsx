@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { BulkBar, Pagination, Segmented } from "./controls";
+import { Menu } from "./Menu";
 
 const SOURCES = [
   { value: "visitors", label: "Visitors" },
@@ -174,5 +175,37 @@ describe("BulkBar", () => {
     expect(onClear).toHaveBeenCalledOnce();
     await user.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(onClear).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a menu's own keys to the menu: arrows move inside it and Escape closes it, not the selection", async () => {
+    const user = userEvent.setup();
+    const onClear = vi.fn();
+    const onTag = vi.fn();
+    render(
+      <BulkBar count={2} noun={["Document", "Documents"]} onClear={onClear}>
+        <Menu
+          label="Add Tag"
+          triggerClassName=""
+          menuLabel="Tags"
+          items={[
+            { label: "HR", onSelect: onTag },
+            { label: "Policy", onSelect: onTag },
+          ]}
+        />
+      </BulkBar>,
+    );
+    screen.getByRole("button", { name: "Add Tag" }).focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "HR" })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "Policy" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Tag" })).toHaveFocus();
+    expect(onClear).not.toHaveBeenCalled();
+
+    // Outside the menu, the bar's keys work as before.
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Clear selection" })).toHaveFocus();
   });
 });
