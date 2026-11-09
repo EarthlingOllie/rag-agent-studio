@@ -33,7 +33,7 @@ test.describe("models", () => {
     await expect(page.getByText("No Default Model yet. New Agents need one to answer.")).toBeVisible();
     await expect(page.getByText(/No credential can be used for chat yet/)).toBeVisible();
 
-    await page.getByRole("link", { name: "Add one on the Credentials tab" }).click();
+    await page.getByRole("link", { name: "Add one in Credentials" }).click();
     await addCredential(page, "Voyage AI", "Search embeddings", EMBEDDINGS_KEY);
     await addCredential(page, "Anthropic", "Support Claude", CHAT_KEY);
 

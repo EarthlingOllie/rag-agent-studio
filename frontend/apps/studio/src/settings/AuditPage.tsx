@@ -1,10 +1,11 @@
 import { useState } from "react";
 
+import { field, Pagination, table, text } from "../design";
 import { type AuditEventPage, type AuditFilters, NO_FILTERS, PAGE_SIZE, useAuditEvents, useAuditFacets } from "./audit";
 
 type AuditEvent = AuditEventPage["items"][number];
 
-const INPUT = "rounded border border-field bg-surface px-2 py-1 text-sm";
+const FILTER = "block h-10 min-w-40 rounded-xl border border-field bg-surface px-3 text-sm font-normal text-ink";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 export function formatTime(iso: string): string {
@@ -17,13 +18,13 @@ function formatValues(values: AuditEvent["before"]): string {
 
 function EventRow({ event }: { event: AuditEvent }) {
   return (
-    <tr className="border-t border-line align-top">
-      <td className="whitespace-nowrap py-2 pr-4">{formatTime(event.occurred_at)}</td>
-      <td className="py-2 pr-4">{event.actor?.name ?? "System"}</td>
-      <td className="py-2 pr-4 font-mono text-xs">{event.action}</td>
-      <td className="py-2 pr-4">{event.target.id ? `${event.target.type} ${event.target.id}` : event.target.type}</td>
-      <td className="break-all py-2 pr-4 font-mono text-xs">{formatValues(event.before)}</td>
-      <td className="break-all py-2 font-mono text-xs">{formatValues(event.after)}</td>
+    <tr className={`${table.row} align-top`}>
+      <td className={`${table.tdMuted} font-mono text-[13px] whitespace-nowrap`}>{formatTime(event.occurred_at)}</td>
+      <td className={table.td}>{event.actor?.name ?? "System"}</td>
+      <td className={`${table.td} font-mono text-xs`}>{event.action}</td>
+      <td className={`${table.td} break-all`}>{event.target.id ? `${event.target.type} ${event.target.id}` : event.target.type}</td>
+      <td className={`${table.tdMuted} font-mono text-xs break-all`}>{formatValues(event.before)}</td>
+      <td className={`${table.tdMuted} font-mono text-xs break-all`}>{formatValues(event.after)}</td>
     </tr>
   );
 }
@@ -42,11 +43,11 @@ function Filters({
     onChange({ ...filters, [key]: event.currentTarget.value });
   };
   return (
-    <fieldset className="mt-6 flex flex-wrap items-end gap-4">
+    <fieldset className="flex flex-wrap items-end gap-3">
       <legend className="sr-only">Filter Audit Events</legend>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className={`${field.label} flex flex-col gap-1.5`}>
         Actor
-        <select className={INPUT} value={filters.actorId} onChange={set("actorId")}>
+        <select className={FILTER} value={filters.actorId} onChange={set("actorId")}>
           <option value="">Anyone</option>
           {facets.data?.actors.map((actor) => (
             <option key={actor.id} value={actor.id}>
@@ -55,9 +56,9 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className={`${field.label} flex flex-col gap-1.5`}>
         Action
-        <select className={INPUT} value={filters.action} onChange={set("action")}>
+        <select className={FILTER} value={filters.action} onChange={set("action")}>
           <option value="">Any action</option>
           {facets.data?.actions.map((action) => (
             <option key={action} value={action}>
@@ -66,31 +67,31 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className={`${field.label} flex flex-col gap-1.5`}>
         From (UTC)
-        <input type="date" className={INPUT} value={filters.from} onChange={set("from")} />
+        <input type="date" className={FILTER} value={filters.from} onChange={set("from")} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className={`${field.label} flex flex-col gap-1.5`}>
         To (UTC)
-        <input type="date" className={INPUT} value={filters.to} onChange={set("to")} />
+        <input type="date" className={FILTER} value={filters.to} onChange={set("to")} />
       </label>
     </fieldset>
   );
 }
 
 function Results({ data }: { data: AuditEventPage }) {
-  if (data.items.length === 0) return <p className="mt-6 text-muted">No Audit Events match these filters.</p>;
+  if (data.items.length === 0) return <p className={text.muted}>No Audit Events match these filters.</p>;
   return (
-    <div className="mt-6 overflow-x-auto">
-      <table className="w-full text-left text-sm" aria-label="Audit Events">
+    <div className={table.wrap}>
+      <table className={`${table.table} min-w-[880px]`} aria-label="Audit Events">
         <thead>
-          <tr className="text-muted">
-            <th scope="col" className="py-2 pr-4 font-medium">When</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Actor</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Action</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Target</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Before</th>
-            <th scope="col" className="py-2 font-medium">After</th>
+          <tr>
+            <th scope="col" className={table.th}>When</th>
+            <th scope="col" className={table.th}>Actor</th>
+            <th scope="col" className={table.th}>Action</th>
+            <th scope="col" className={table.th}>Target</th>
+            <th scope="col" className={table.th}>Before</th>
+            <th scope="col" className={table.th}>After</th>
           </tr>
         </thead>
         <tbody>
@@ -103,21 +104,16 @@ function Results({ data }: { data: AuditEventPage }) {
   );
 }
 
+/** Where the Owner is in the history, then the pages (shown when there is more than one). */
 function Pager({ data, onPage }: { data: AuditEventPage; onPage: (page: number) => void }) {
   if (data.total === 0) return null;
   const pages = Math.ceil(data.total / PAGE_SIZE);
-  const BUTTON = "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:opacity-50";
   return (
-    <div className="mt-4 flex items-center gap-4">
-      <button type="button" className={BUTTON} disabled={data.page <= 1} onClick={() => { onPage(data.page - 1); }}>
-        Previous page
-      </button>
-      <p className="text-sm text-muted">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <p className={text.muted}>
         Page {data.page} of {pages} · {data.total} {data.total === 1 ? "event" : "events"}
       </p>
-      <button type="button" className={BUTTON} disabled={data.page >= pages} onClick={() => { onPage(data.page + 1); }}>
-        Next page
-      </button>
+      <Pagination label="Audit Events pages" page={data.page} pageCount={pages} onPageChange={onPage} />
     </div>
   );
 }
@@ -138,12 +134,12 @@ function AuditLog({ organisationId }: { organisationId: string }) {
         }}
       />
       {events.isPending && (
-        <p role="status" className="mt-6 text-muted">
+        <p role="status" className={text.muted}>
           Loading Audit Events…
         </p>
       )}
       {events.isError && (
-        <p role="alert" className="mt-6 text-danger">
+        <p role="alert" className="text-sm text-danger">
           Audit Events could not be loaded. Try again shortly.
         </p>
       )}
@@ -157,20 +153,20 @@ function AuditLog({ organisationId }: { organisationId: string }) {
   );
 }
 
-/** The Audit tab: Owners browse and filter the Organisation's Audit Events. */
+/** Audit settings: Owners browse and filter the Organisation's Audit Events. */
 export function AuditPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   return (
-    <section aria-labelledby="audit-heading">
-      <h2 id="audit-heading" className="text-xl font-semibold">
+    <section aria-labelledby="audit-heading" className="flex flex-col gap-5">
+      <h2 id="audit-heading" className={text.heading}>
         Audit
       </h2>
       {isOwner ? (
         <>
-          <p className="mt-2 text-muted">Every security and configuration change in this Organisation, newest first.</p>
+          <p className={`${text.muted} -mt-3`}>Every security and configuration change in this Organisation, newest first.</p>
           <AuditLog organisationId={organisationId} />
         </>
       ) : (
-        <p className="mt-2 text-muted">Only Owners can view Audit Events.</p>
+        <p className={`${text.muted} -mt-3`}>Only Owners can view Audit Events.</p>
       )}
     </section>
   );
