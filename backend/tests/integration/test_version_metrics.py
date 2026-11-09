@@ -109,7 +109,10 @@ async def roll_up(at: datetime) -> None:
     """Runs the rollup Beat task as Beat would at ``at`` (in a thread: the task runs its own
     event loop)."""
     result = await asyncio.to_thread(roll_up_usage.apply, kwargs={"at": at.isoformat()})
-    result.get()
+    # disable_sync_subtasks=False: this test isn't inside a task, but Celery's "inside a task" guard
+    # is a process-wide flag that eager tasks run concurrently in other threads (by earlier tests
+    # in the same xdist worker) can leave set.
+    result.get(disable_sync_subtasks=False)
 
 
 async def chat(
@@ -346,7 +349,10 @@ async def test_without_a_time_the_task_rolls_up_now(
     await chat(visitor, agent, "Now words:4")
 
     result = await asyncio.to_thread(roll_up_usage.apply)
-    result.get()
+    # disable_sync_subtasks=False: this test isn't inside a task, but Celery's "inside a task" guard
+    # is a process-wide flag that eager tasks run concurrently in other threads (by earlier tests
+    # in the same xdist worker) can leave set.
+    result.get(disable_sync_subtasks=False)
 
     today = datetime.now(UTC).date().isoformat()
     kpis = await version_kpis(owner, agent, agent["v1"], start=today, end=today)

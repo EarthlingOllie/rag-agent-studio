@@ -1,0 +1,152 @@
+$ docs/tickets/07-feedback-logging-comparison/07-07-evidence/build.sh . 0707 @ b15afe7
+
+#13 [install  6/12] COPY apps/studio/package.json apps/studio/
+#13 DONE 0.0s
+
+#14 [install  7/12] COPY apps/widget/package.json apps/widget/
+#14 DONE 0.0s
+
+#15 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#15 DONE 0.0s
+
+#16 [install  9/12] COPY packages/ui/package.json packages/ui/
+#16 DONE 0.0s
+
+#17 [install 10/12] RUN pnpm install --frozen-lockfile
+#17 0.235 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.28.0.tgz
+#17 1.752 Scope: all 5 workspace projects
+#17 1.887 Lockfile is up to date, resolution step is skipped
+#17 1.939 Progress: resolved 1, reused 0, downloaded 0, added 0
+#17 2.030 Packages: +519
+#17 2.030 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#17 2.450 
+#17 2.450    ╭───────────────────────────────────────────────╮
+#17 2.450    │                                               │
+#17 2.450    │     Update available! 10.28.0 → 12.18.0.      │
+#17 2.450    │     Changelog: https://pnpm.io/v/12.18.0      │
+#17 2.450    │   To update, run: corepack use pnpm@12.18.0   │
+#17 2.450    │                                               │
+#17 2.450    ╰───────────────────────────────────────────────╯
+#17 2.450 
+#17 2.940 Progress: resolved 519, reused 0, downloaded 16, added 16
+#17 3.941 Progress: resolved 519, reused 0, downloaded 59, added 59
+#17 4.942 Progress: resolved 519, reused 0, downloaded 95, added 95
+#17 5.942 Progress: resolved 519, reused 0, downloaded 130, added 130
+#17 6.996 Progress: resolved 519, reused 0, downloaded 163, added 163
+#17 ...
+
+#9 [stage-1 3/6] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#9 1.177 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#9 1.177 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#9 1.180 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#9 3.178 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#9 3.178 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#9 3.178 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#9 7.182 Err:1 http://deb.debian.org/debian bookworm InRelease
+#9 7.183   Could not resolve 'deb.debian.org'
+#9 7.183 Err:2 http://deb.debian.org/debian bookworm-updates InRelease
+#9 7.183   Could not resolve 'deb.debian.org'
+#9 7.183 Err:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#9 7.183   Could not resolve 'deb.debian.org'
+#9 7.203 Reading package lists...
+#9 7.231 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Could not resolve 'deb.debian.org'
+#9 7.231 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm-updates/InRelease  Could not resolve 'deb.debian.org'
+#9 7.231 W: Failed to fetch http://deb.debian.org/debian-security/dists/bookworm-security/InRelease  Could not resolve 'deb.debian.org'
+#9 7.231 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#9 7.352 Reading package lists...
+#9 7.352 Building dependency tree...
+#9 7.352 Reading state information...
+#9 7.352 Calculating upgrade...
+#9 7.352 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#9 DONE 7.6s
+
+#18 [stage-1 4/6] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#18 DONE 1.8s
+
+#17 [install 10/12] RUN pnpm install --frozen-lockfile
+#17 8.000 Progress: resolved 519, reused 0, downloaded 183, added 184
+#17 9.019 Progress: resolved 519, reused 0, downloaded 213, added 214
+#17 10.03 Progress: resolved 519, reused 0, downloaded 249, added 246
+#17 11.05 Progress: resolved 519, reused 0, downloaded 278, added 279
+#17 12.04 Progress: resolved 519, reused 0, downloaded 314, added 314
+#17 13.04 Progress: resolved 519, reused 0, downloaded 354, added 355
+#17 14.04 Progress: resolved 519, reused 0, downloaded 385, added 386
+#17 15.04 Progress: resolved 519, reused 0, downloaded 423, added 422
+#17 16.05 Progress: resolved 519, reused 0, downloaded 459, added 460
+#17 17.05 Progress: resolved 519, reused 0, downloaded 502, added 503
+#17 17.50 Progress: resolved 519, reused 0, downloaded 518, added 519, done
+#17 18.07 
+#17 18.07 devDependencies:
+#17 18.07 + @axe-core/playwright 4.14.0
+#17 18.07 + @eslint/js 10.0.1
+#17 18.07 + @playwright/test 1.64.1
+#17 18.07 + @testing-library/jest-dom 7.0.1
+#17 18.07 + @testing-library/react 16.3.3
+#17 18.07 + @testing-library/user-event 14.6.8
+#17 18.07 + @types/node 22.20.5
+#17 18.07 + @types/react 19.3.0
+#17 18.07 + @types/react-dom 19.3.0
+#17 18.07 + @vitejs/plugin-react 6.2.1
+#17 18.07 + @vitest/coverage-v8 5.1.0
+#17 18.07 + eslint 10.14.0
+#17 18.07 + eslint-plugin-react-hooks 7.1.1
+#17 18.07 + globals 17.14.0
+#17 18.07 + jsdom 30.1.3
+#17 18.07 + msw 3.0.3
+#17 18.07 + typescript 6.0.3
+#17 18.07 + typescript-eslint 8.72.1
+#17 18.07 + vite 8.3.5
+#17 18.07 + vitest 5.1.0
+#17 18.07 
+#17 18.11 Done in 16.7s using pnpm v10.28.0
+#17 DONE 18.4s
+
+#19 [install 11/12] COPY . .
+#19 DONE 0.4s
+
+#20 [install 12/12] RUN pnpm --filter @studio/widget build
+#20 0.627 
+#20 0.627 > @studio/widget@ build /app/apps/widget
+#20 0.627 > vite build && vite build --config vite.embed.config.ts
+#20 0.627 
+#20 0.938 vite v8.3.5 building client environment for production...
+#20 1.029 transforming...
+#20 1.356 ✓ 78 modules transformed.
+#20 1.567 rendering chunks...
+#20 1.842 computing gzip size...
+#20 1.856 dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
+#20 1.856 
+#20 1.857 [plugin builtin:vite-reporter] 
+#20 1.857 (!) Some chunks are larger than 500 kB after minification. Consider:
+#20 1.857 - Using dynamic import() to code-split the application
+#20 1.857 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#20 1.857 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#20 1.858 ✓ built in 921ms
+#20 2.156 vite v8.3.5 building client environment for production...
+#20 2.173 transforming...
+#20 2.180 ✓ 3 modules transformed.
+#20 2.188 rendering chunks...
+#20 2.193 computing gzip size...
+#20 2.194 dist/embed.js  1.36 kB │ gzip: 0.77 kB
+#20 2.194 
+#20 2.194 ✓ built in 35ms
+#20 DONE 2.2s
+
+#21 [stage-1 5/6] COPY --from=install --chown=node:node /app /app
+#21 DONE 2.8s
+
+#22 [stage-1 6/6] WORKDIR /app/apps/studio
+#22 DONE 0.3s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 13.0s done
+#23 exporting manifest sha256:ec4606df82474bb30d34b27cbc5f36676a9b7336c782aa41565075b5d7684b3d done
+#23 exporting config sha256:31a47c707154607765295a243f26a4c92be13264916eceb9c20bc14559f8b8a6 0.0s done
+#23 exporting attestation manifest sha256:2511da8a88d99ffc1455ec693063a1e389c1bf44f0d7a2bf050f1c51a65fd8e8 0.0s done
+#23 exporting manifest list sha256:13da1affb8d31150788557f2a143b7296c2fafb57f7502b94bd76410a34cb380 0.0s done
+#23 naming to docker.io/rag-agent-studio/studio:0707 done
+#23 unpacking to docker.io/rag-agent-studio/studio:0707
+#23 unpacking to docker.io/rag-agent-studio/studio:0707 3.9s done
+#23 DONE 17.0s
+exit 0

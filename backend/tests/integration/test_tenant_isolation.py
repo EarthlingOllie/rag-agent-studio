@@ -609,6 +609,7 @@ PROJECT_SCOPED_ROUTES = [
     ),
     ScopedRoute("GET", _CONVERSATIONS, EDITOR, _a_project),
     ScopedRoute("GET", _CONVERSATIONS + "/{conversation_id}", EDITOR, _a_playground_conversation),
+    ScopedRoute("DELETE", _CONVERSATIONS + "/{conversation_id}", OWNER, _a_playground_conversation),
     ScopedRoute(
         "GET",
         _CONVERSATIONS + "/{conversation_id}/messages/{message_id}/trace",
@@ -623,12 +624,19 @@ async def _policy_left_off(owner: SignedUpMember, add_member: MemberFactory) -> 
     return {}, {"require_mfa": False}
 
 
+async def _a_retention_window(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"retention_days": 30}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS, EDITOR),
     ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
     *PROJECT_SCOPED_ROUTES,
     ScopedRoute("GET", "/api/organisations/{organisation_id}", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/mfa-policy", OWNER, _policy_left_off),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/retention-window", OWNER, _a_retention_window
+    ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/audit-events/facets", OWNER),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/cost", OWNER),

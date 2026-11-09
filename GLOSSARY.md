@@ -41,7 +41,7 @@ A notice that a pair of Colour Tokens falls below WCAG AA contrast (4.5:1 for te
 _Avoid_: Contrast error, accessibility check
 
 **Retention Window**:
-How long an Organisation keeps Message text before it is purged. Aggregate metrics are kept.
+How long an Organisation keeps Message text and Message Feedback comments before the Purge clears them: 90 days by default, from 7 to 3650, set by Owners in Organisation settings (General). Changes are recorded as Audit Events (`organisation.retention_window_changed`). It applies to every Conversation, Visitors' and the Playground's, archived Agents' and Projects' included. Aggregate metrics are kept.
 
 **Member**:
 A person who signs in to the Studio and belongs to one or more Organisations.
@@ -642,6 +642,18 @@ _Avoid_: Attack alarm, spike warning
 **Wilson interval**:
 The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from its counts when the Version KPIs are read; shown with the sample size so a few lucky votes don't look like a winner.
 _Avoid_: Error bars, margin
+
+**Purge**:
+Clearing a Message's text, the reasons in its Guardrail outcomes and the comment of any Message Feedback on it, and stamping it purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, each Guardrail outcome's verdict) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
+_Avoid_: Deletion, cleanup, expiry
+
+**Deleting a Conversation**:
+An Owner's removal of one Conversation's text on request (a Visitor's deletion request), from the Conversations viewer: its Messages are Purged at once, its Conversation token stops working, and it is recorded as an Audit Event (`conversation.deleted`). The Conversation stays in the list, marked deleted on request, so its numbers stay in the metrics.
+_Avoid_: Erasing a Conversation, removing a chat
+
+**Tombstone**:
+What a Trace keeps of a Message retrieval whose Document was deleted: the Document's name when the answer was given (its Chunk and Document IDs are cleared). The Trace drawer shows "Chunk from deleted Document <name>", so history stays readable.
+_Avoid_: Broken reference, orphan
 
 **Low confidence**:
 The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings or Conversations): its card is muted and dashed and labelled "Low confidence" with the reason. A deliberate product choice: keep it when redesigning.

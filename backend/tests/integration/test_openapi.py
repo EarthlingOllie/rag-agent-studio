@@ -41,6 +41,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "completePasswordReset": ("/api/auth/password-reset/complete", "post"),
         "getOrganisation": ("/api/organisations/{organisation_id}", "get"),
         "setMfaPolicy": ("/api/organisations/{organisation_id}/mfa-policy", "put"),
+        "setRetentionWindow": ("/api/organisations/{organisation_id}/retention-window", "put"),
         "listAuditEvents": ("/api/organisations/{organisation_id}/audit-events", "get"),
         "getAuditFacets": ("/api/organisations/{organisation_id}/audit-events/facets", "get"),
         "listInvites": ("/api/organisations/{organisation_id}/invites", "get"),
@@ -167,6 +168,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         ),
         "listConversations": (f"{_PROJECT}/conversations", "get"),
         "getConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "get"),
+        "deleteConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "delete"),
         "getConversationTrace": (
             f"{_PROJECT}/conversations/{{conversation_id}}/messages/{{message_id}}/trace",
             "get",
