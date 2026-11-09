@@ -33,7 +33,7 @@ The Studio's design system (`docs/design/README.md`, code in `frontend/apps/stud
 _Avoid_: Theme, skin, component library
 
 **Breadcrumb**:
-The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, a Project's sections); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile and Sign out are in the account menu beside it.
+The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, the Organisation settings areas, a Project's sections); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile and Sign out are in the account menu beside it.
 _Avoid_: Tabs, side menu, nav bar
 
 **Palette ratchet**:
