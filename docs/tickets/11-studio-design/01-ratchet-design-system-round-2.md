@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The latest `candidate` is merged into `candidate-reskin` before any other change, and every check passes on the merge; the merged commit is named in the evidence
 - [ ] `frontend/scripts/palette-ratchet` counts palette-class uses under `apps/studio/src` against a committed `palette-baseline.json`; CI fails when the count rises and prints the new baseline when it falls
