@@ -62,7 +62,7 @@ function ComparisonTable({ rows, a, b }: { rows: MetricRow[]; a: VersionKpis; b:
         {rows.map((row) => (
           // Rows whose values differ are highlighted; the difference and the better Version are in words too.
           <tr key={row.metric} className={row.changed ? `${table.row} bg-flag-soft` : table.row}>
-            <th scope="row" className={`${table.td} font-normal`}>
+            <th scope="row" className={`${table.td} text-left font-normal`}>
               {row.label}
               {row.low_confidence && (
                 <>

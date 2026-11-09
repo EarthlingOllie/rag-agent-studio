@@ -201,7 +201,7 @@ function NumbersTable({ series }: { series: TimeSeries }) {
         <tbody>
           {series.points.map((point) => (
             <tr key={point.start} className={table.row}>
-              <th scope="row" className={`${table.td} font-mono text-[13px] font-normal`}>
+              <th scope="row" className={`${table.td} text-left font-mono text-[13px] font-normal`}>
                 {period(point)}
               </th>
               <td className={table.tdNumeric}>{point.value === null ? "No data" : format(point.value)}</td>
