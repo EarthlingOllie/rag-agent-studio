@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
@@ -39,7 +39,7 @@ test("a Project page has a section for each area, each saying what it holds whil
     ["Agents", /No Agents yet/],
     ["Conversations", /No Conversations yet/],
     ["Analytics", /No Agents to measure yet/],
-    ["Documents", /No Documents yet\. Upload files/],
+    ["Documents", /Upload files to build this Project's Knowledge Base/],
   ];
   for (const [tab, placeholder] of placeholders) {
     await openSection("Project sections", tab);
@@ -149,7 +149,12 @@ test("archiving is in the ⋯ menu and asks first, then shows the Project as arc
   await chooseProjectAction("Archive");
   await userEvent.click(screen.getByRole("button", { name: "Yes, archive HR handbook" }));
 
-  const notice = await screen.findByRole("status");
+  // The Documents section's toasts have their own status region, so the notice is found by what it says.
+  const notice = await waitFor(() => {
+    const found = screen.getAllByRole("status").find((status) => status.textContent.includes("This Project is archived."));
+    expect(found).toBeDefined();
+    return found as HTMLElement;
+  });
   expect(notice).toHaveTextContent("This Project is archived. It is hidden from the Projects list and doesn't serve.");
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();

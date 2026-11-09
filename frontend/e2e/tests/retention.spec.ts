@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { rowAction } from "../fixtures/documents";
 import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
@@ -54,7 +55,7 @@ test.describe("Retention and tombstones", () => {
 
     // A leave policy Document, uploaded and Ready.
     await page.goto(projectPage);
-    await page.getByLabel("Choose files to upload").setInputFiles({
+    await page.getByLabel("Upload", { exact: true }).setInputFiles({
       name: "leave-policy.md",
       mimeType: "text/markdown",
       buffer: Buffer.from(`# Leave\n\nEveryone gets 25 days of annual leave a year. ${String(Date.now())}\n`),
@@ -88,8 +89,8 @@ test.describe("Retention and tombstones", () => {
 
     // The Document is deleted after the answer.
     await page.goto(projectPage);
-    await documentRow.getByRole("button", { name: "Delete leave-policy.md" }).click();
-    await page.getByRole("group", { name: "Delete leave-policy.md?" }).getByRole("button", { name: "Delete" }).click();
+    await rowAction(page, "leave-policy.md", "Delete");
+    await page.getByRole("alertdialog", { name: "Delete leave-policy.md?" }).getByRole("button", { name: "Delete leave-policy.md" }).click();
     await expect(page.getByText(/No Documents yet/)).toBeVisible();
 
     // The reply's Trace still lists the Chunk, as a tombstone with the Document's name.

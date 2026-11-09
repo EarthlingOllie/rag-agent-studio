@@ -1,9 +1,7 @@
 import { type SubmitEvent, useState } from "react";
 
+import { button, field, Notice, Skeleton } from "../design";
 import { type Tag, tagFailure, useTagChange, useTags } from "./tags";
-
-const BUTTON = "rounded border border-field px-2 py-1 text-sm";
-const PRIMARY = "rounded bg-accent px-3 py-1 text-sm font-medium text-on-accent";
 
 function documentCount(count: number): string {
   return count === 1 ? "1 Document" : `${String(count)} Documents`;
@@ -48,26 +46,24 @@ function NewTag({
 
   const message = blank ? "Give the Tag a name." : tagFailure(create.error);
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
-      <label className="flex flex-col text-sm">
-        New Tag
-        <input
-          value={name}
-          maxLength={50}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-          className="rounded border border-field px-2 py-1"
-        />
-      </label>
-      <button type="submit" className={PRIMARY} disabled={create.isPending}>
-        Add Tag
-      </button>
-      {message && (
-        <p role="alert" className="w-full text-sm text-danger">
-          {message}
-        </p>
-      )}
+    <form onSubmit={onSubmit} className="flex flex-col gap-2 border-t border-line-soft pt-4">
+      <div className="flex items-end gap-2">
+        <label className={`${field.label} flex-1`}>
+          New Tag
+          <input
+            value={name}
+            maxLength={50}
+            onChange={(event) => {
+              setName(event.target.value);
+            }}
+            className={field.input}
+          />
+        </label>
+        <button type="submit" className={button.secondary} disabled={create.isPending}>
+          Add Tag
+        </button>
+      </div>
+      {message && <Notice tone="error">{message}</Notice>}
     </form>
   );
 }
@@ -102,7 +98,7 @@ function TagRow({
   if (mode === "rename") {
     return (
       <li>
-        <form onSubmit={rename} className="flex flex-wrap items-center gap-2">
+        <form onSubmit={rename} className="flex flex-wrap items-center gap-2 py-2">
           <input
             aria-label={`Name for ${tag.name}`}
             value={name}
@@ -111,14 +107,14 @@ function TagRow({
             onChange={(event) => {
               setName(event.target.value);
             }}
-            className="rounded border border-field px-2 py-1 text-sm"
+            className={`${field.input} mt-0 w-auto flex-1`}
           />
-          <button type="submit" className={PRIMARY}>
+          <button type="submit" className={button.secondary}>
             Save
           </button>
           <button
             type="button"
-            className={BUTTON}
+            className={button.ghost}
             onClick={() => {
               change.reset();
               setMode("view");
@@ -127,9 +123,9 @@ function TagRow({
             Cancel
           </button>
           {message && (
-            <p role="alert" className="w-full text-sm text-danger">
-              {message}
-            </p>
+            <div className="w-full">
+              <Notice tone="error">{message}</Notice>
+            </div>
           )}
         </form>
       </li>
@@ -137,18 +133,18 @@ function TagRow({
   }
 
   return (
-    <li className="flex flex-wrap items-center gap-2 text-sm">
-      <span data-testid="tag-name" className="font-medium">
+    <li className="flex flex-wrap items-center gap-2 py-2 text-sm">
+      <span data-testid="tag-name" className="inline-flex rounded-full bg-sand px-2.5 py-0.5 text-xs text-sand-ink">
         {tag.name}
       </span>
-      <span className="text-muted">
+      <span className="mr-auto text-muted">
         {documentCount(tag.document_count)}
       </span>
       {editable && mode === "view" && (
         <>
           <button
             type="button"
-            className={BUTTON}
+            className={button.quiet}
             aria-label={`Rename ${tag.name}`}
             onClick={() => {
               setName(tag.name);
@@ -159,7 +155,7 @@ function TagRow({
           </button>
           <button
             type="button"
-            className={BUTTON}
+            className={`${button.quiet} text-danger hover:text-danger`}
             aria-label={`Delete ${tag.name}`}
             onClick={() => {
               setMode("delete");
@@ -170,8 +166,8 @@ function TagRow({
         </>
       )}
       {mode === "delete" && (
-        <span className="flex flex-wrap items-center gap-2">
-          <span>
+        <span className="flex w-full flex-wrap items-center gap-2 rounded-xl bg-sunken p-3">
+          <span className="w-full text-ink">
             Delete {tag.name}? It is taken off{" "}
             {documentCount(tag.document_count)}. The Documents stay.
           </span>
@@ -182,7 +178,7 @@ function TagRow({
           )}
           <button
             type="button"
-            className="rounded bg-danger px-2 py-1 text-on-danger"
+            className={button.dangerFilled}
             onClick={() => {
               change.mutate({ kind: "delete", tagId: tag.id }, done);
             }}
@@ -191,7 +187,7 @@ function TagRow({
           </button>
           <button
             type="button"
-            className={BUTTON}
+            className={button.secondary}
             onClick={() => {
               setMode("view");
             }}
@@ -209,7 +205,10 @@ function TagRow({
   );
 }
 
-/** The Project's Tags: create, rename and delete them. Read-only while the Project is archived. */
+/**
+ * The Project's Tags: create, rename and delete them. Read-only while the Project is archived.
+ * Opened from Manage tags on the Documents toolbar, inside the "Tags" dialog.
+ */
 export function TagsPanel({
   organisationId,
   projectId,
@@ -223,18 +222,14 @@ export function TagsPanel({
 
   let list;
   if (tags.isError) {
-    list = <p role="alert">The Tags could not be loaded. Try again shortly.</p>;
+    list = <Notice tone="error">The Tags could not be loaded. Try again shortly.</Notice>;
   } else if (tags.data === undefined) {
-    list = <p role="status">Loading Tags…</p>;
+    list = <Skeleton label="Loading Tags" lines={2} />;
   } else if (tags.data.length === 0) {
-    list = (
-      <p className="text-sm text-muted">
-        No Tags yet. Tags organise Documents by topic or audience.
-      </p>
-    );
+    list = <p className="text-sm text-muted">No Tags yet.</p>;
   } else {
     list = (
-      <ul className="space-y-1">
+      <ul aria-label="Tags" className="flex flex-col divide-y divide-line-soft">
         {tags.data.map((tag) => (
           <TagRow
             key={tag.id}
@@ -249,17 +244,11 @@ export function TagsPanel({
   }
 
   return (
-    <section
-      aria-labelledby="tags-heading"
-      className="space-y-2 rounded border border-line p-4"
-    >
-      <h3 id="tags-heading" className="font-semibold">
-        Tags
-      </h3>
+    <div className="flex flex-col gap-3">
       {list}
       {editable && (
         <NewTag organisationId={organisationId} projectId={projectId} />
       )}
-    </section>
+    </div>
   );
 }
