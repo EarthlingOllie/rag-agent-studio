@@ -28,7 +28,7 @@ test("signing up opens the new Organisation in the signed-in shell", async () =>
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
   expect(screen.getByText("Analytical Engines")).toBeInTheDocument();
-  expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Ada Lovelace, Account" })).toBeInTheDocument();
   expect(requests).toEqual([
     {
       route: "sign-up",

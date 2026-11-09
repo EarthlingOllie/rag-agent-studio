@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and calls provider models through the
 // gateway's offline fakes, in the API and the worker. No real provider is called.
@@ -19,8 +20,8 @@ test.describe("Embedding Models", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Credentials");
     const add = page.getByRole("region", { name: "Add a credential" });
     await add.getByLabel("Provider").selectOption("Voyage AI");
     await add.getByLabel("Name").fill("Search embeddings");
@@ -28,7 +29,7 @@ test.describe("Embedding Models", () => {
     await add.getByRole("button", { name: "Check and save" }).click();
     await expect(page.getByText("Search embeddings was checked and saved.")).toBeVisible();
 
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Voyage handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -67,8 +68,8 @@ test.describe("Embedding Models", () => {
     expect(answer.chunks.map((chunk) => chunk.document_name)).toEqual(Array(3).fill("northwind-staff-handbook.md"));
 
     // The Project's credential is a reference: deleting it is refused and says why.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Credentials");
     await page.getByRole("button", { name: "Delete: Search embeddings" }).click();
     await page.getByRole("button", { name: "Yes, delete Search embeddings" }).click();
     await expect(page.getByText("Voyage handbook (Embedding Model voyage-3.5)")).toBeVisible();
@@ -79,8 +80,8 @@ test.describe("Embedding Models", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Credentials");
     const add = page.getByRole("region", { name: "Add a credential" });
     await add.getByLabel("Provider").selectOption("Voyage AI");
     await add.getByLabel("Name").fill("Re-embed target");
@@ -89,7 +90,7 @@ test.describe("Embedding Models", () => {
     await expect(page.getByText("Re-embed target was checked and saved.")).toBeVisible();
 
     // A Project on the built-in model, with the handbook Ready.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Re-embedded handbook");
     await form.getByRole("button", { name: "Create Project" }).click();

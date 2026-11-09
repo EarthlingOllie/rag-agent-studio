@@ -162,7 +162,7 @@ test("choosing another Agent shows its Versions; one not yet published has none"
     await screen.findByText("This Agent has no Versions yet. Publish it, and Visitors' Conversations with each Version are measured here."),
   ).toBeInTheDocument();
   expect(screen.getByLabelText("Version")).toBeDisabled();
-  expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  expect(within(screen.getByRole("main")).queryByRole("list")).not.toBeInTheDocument();
   expect(queries.map(({ agentId }) => agentId)).toEqual([hrHelper.id, payHelper.id]);
 });
 

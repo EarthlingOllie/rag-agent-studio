@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures";
 import { HOST_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -28,11 +29,11 @@ test.describe("Rate limits", () => {
     ).toBe(200);
 
     // A live Agent.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Busy Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Busy helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();

@@ -5,6 +5,7 @@ import { delay, http, HttpResponse } from "msw";
 import { adaSession, type Session } from "../test/auth";
 import { fakeMfaApi, GOOD_CODE, PASSWORD } from "../test/mfa";
 import { fakeMfaPolicyApi, OWNER_WITHOUT_MFA } from "../test/mfaPolicy";
+import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -24,10 +25,6 @@ function session({ mfaEnabled, mfaRequired, role = "owner" }: {
   };
 }
 
-function organisationNav() {
-  return screen.findByRole("navigation", { name: "Organisation" });
-}
-
 test("a Member without MFA opening an Organisation that requires it is guided through enrolment first", async () => {
   const { requests } = fakeMfaApi();
   // MFA is on once the enrolment has been confirmed with a good code.
@@ -40,9 +37,7 @@ test("a Member without MFA opening an Organisation that requires it is guided th
 
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
   expect(screen.getByText(REQUIRED_NOTICE)).toBeInTheDocument();
-  const nav = await organisationNav();
-  expect(within(nav).queryByRole("link", { name: "Projects" })).not.toBeInTheDocument();
-  expect(within(nav).queryByRole("link", { name: "Organisation settings" })).not.toBeInTheDocument();
+  expect(await sectionNames("Organisation sections", user)).toEqual(["Security"]);
 
   await user.click(screen.getByRole("button", { name: "Set up two-factor authentication" }));
   const form = within(await screen.findByRole("form", { name: "Confirm your authenticator app" }));
@@ -50,7 +45,7 @@ test("a Member without MFA opening an Organisation that requires it is guided th
   await user.click(form.getByRole("button", { name: "Turn on" }));
   await user.click(await screen.findByRole("button", { name: "I've saved my recovery codes" }));
 
-  await user.click(await within(await organisationNav()).findByRole("link", { name: "Projects" }));
+  await openSection("Organisation sections", "Projects", user);
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
   expect(screen.queryByText(REQUIRED_NOTICE)).not.toBeInTheDocument();
 });

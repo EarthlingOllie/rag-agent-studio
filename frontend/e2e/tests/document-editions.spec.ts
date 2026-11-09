@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 /** A small handbook, uploaded from memory so each run has its own content. */
 function handbook(name: string, body: string) {
@@ -11,7 +12,7 @@ test.describe("Document editions", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Editions");
     await form.getByRole("button", { name: "Create Project" }).click();

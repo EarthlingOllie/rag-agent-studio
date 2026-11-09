@@ -114,10 +114,13 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | A Document | `Org ▾ / Project ▾ / Documents ▾ / **handbook.md**` |
 | An Agent | `Org ▾ / Project ▾ / Agents ▾ / **HR helper ▾**` |
 | Organisation settings | `Org ▾ / Settings ▾ / **Members ▾**` |
-| Security, Profile | `Org ▾ / **Security**` (Profile and Sign out also live in the avatar menu) |
+| Security, Cost | `Org ▾ / **Security ▾**` (the Organisation's sections: Projects, Cost for Owners, Settings, Security) |
+| Profile | `Org ▾ / **Profile**` (Profile and Sign out live in the avatar menu) |
 
 - Each crumb with siblings is a `CrumbSwitcher` that opens a menu of them: the Organisation
-  switcher lists the Member's Organisations; the Project switcher lists Projects plus "All
+  switcher lists the Member's Organisations (a Member of one sees its name as plain text); the
+  Organisation's section switcher lists Projects, Cost (Owners), Settings and Security, or only
+  Security while the Require MFA policy is waiting for the Member to enrol; the Project switcher lists Projects plus "All
   Projects"; a section switcher lists the sections with icons and number hints (1–6); an Agent
   switcher lists the Project's Agents.
 - Ancestor crumbs are `muted`; the last crumb is the current page, in `accent`, with

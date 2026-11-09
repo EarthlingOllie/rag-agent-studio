@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures";
 import { signInAs } from "../fixtures/auth";
+import { openSection } from "../fixtures/navigation";
 
 // `make seed` runs before the suite (`make e2e`); these are the accounts it prints.
 const OWNER = { email: "owner@northwind.example", password: "northwind-owner-demo" };
@@ -12,7 +13,7 @@ test.describe("Seeded demo Organisation", () => {
     await page.goto("/");
     await expect(page.getByText("Northwind Traders").first()).toBeVisible();
 
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     await page.getByRole("link", { name: "Northwind Handbook" }).click();
     const documents = page.getByRole("table", { name: "Documents" });
     for (const [name, tag] of [
@@ -27,7 +28,7 @@ test.describe("Seeded demo Organisation", () => {
     }
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
-    await page.getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await expect(page.getByRole("link", { name: "HR helper" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Product FAQ" })).toBeVisible();
   });
@@ -35,8 +36,8 @@ test.describe("Seeded demo Organisation", () => {
   test("the demo model is the Default Model, labelled as a demo", async ({ page, makeAxeBuilder }) => {
     await signInAs(page, EDITOR);
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Models" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Models");
 
     await expect(page.getByText(`Demo model, using Northwind demo model (${DEMO_LABEL})`)).toBeVisible();
     await expect(page.getByText("Only Owners can change the Default Model.")).toBeVisible();

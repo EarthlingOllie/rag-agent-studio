@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and builds models with the fake
 // gateway adapters. No real provider is called and no real key is used.
@@ -8,7 +9,7 @@ const CHAT_KEY = "sk-ant-e2e-test-only-not-a-real-key-h4n1";
 const EMBEDDINGS_KEY = "pa-e2e-test-only-not-a-real-key-v8c3";
 
 async function settingsTab(page: Page, tab: string) {
-  await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: tab }).click();
+  await openSection(page, "Organisation settings", tab);
 }
 
 async function addCredential(page: Page, provider: string, name: string, apiKey: string) {
@@ -26,7 +27,7 @@ test.describe("models", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+    await openSection(page, "Organisation sections", "Settings");
     await settingsTab(page, "Models");
     await expect(page.getByRole("heading", { name: "Default Model" })).toBeVisible();
     await expect(page.getByText("No Default Model yet. New Agents need one to answer.")).toBeVisible();

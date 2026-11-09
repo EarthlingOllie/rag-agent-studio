@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeMfaApi, GOOD_CODE, PASSWORD, QR_CODE, recoveryCodes, SECRET } from "../test/mfa";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -31,8 +32,8 @@ test("the Security page is in the Organisation navigation", async () => {
   fakeMfaApi();
   renderStudio("/");
 
-  const nav = await screen.findByRole("navigation", { name: "Organisation" });
-  await userEvent.click(within(nav).getByRole("link", { name: "Security" }));
+  await screen.findByRole("heading", { name: "Projects" });
+  await openSection("Organisation sections", "Security");
 
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
 });

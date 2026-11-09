@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeCredentialsApi, legalVoyage, marketingOpenAi } from "../test/credentials";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -66,7 +67,7 @@ test("the Credentials tab is shown to every Member", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  await userEvent.click(await screen.findByRole("link", { name: "Credentials" }));
+  await openSection("Organisation settings", "Credentials");
 
   expect(await screen.findByRole("heading", { name: "Provider Credentials" })).toBeInTheDocument();
 });

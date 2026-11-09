@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -22,10 +23,10 @@ test.describe("Retention and tombstones", () => {
     await expect(retention).toContainText("kept for 30 days");
 
     // The Audit tab lists the change.
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     await expect(page.getByRole("table").getByText("organisation.retention_window_changed")).toBeVisible();
     await page.reload();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "General" }).click();
+    await openSection(page, "Organisation settings", "General");
     await expect(page.getByRole("region", { name: "Retention" })).toContainText("kept for 30 days");
   });
 

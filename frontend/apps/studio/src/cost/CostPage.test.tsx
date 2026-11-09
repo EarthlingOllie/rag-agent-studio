@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeCostApi } from "../test/cost";
 import { fakeProjectsApi } from "../test/projects";
+import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -106,19 +107,23 @@ test("Owners find the cost page in the navigation; Editors neither see it nor ca
   fakeProjectsApi();
   fakeCostApi();
   const { unmount } = renderStudio(`/organisations/${organisationId}/projects`);
-  const nav = await screen.findByRole("navigation", { name: "Organisation" });
+  await screen.findByRole("heading", { name: "Projects" });
 
-  await userEvent.click(within(nav).getByRole("link", { name: "Cost" }));
+  await openSection("Organisation sections", "Cost");
 
   expect(await screen.findByRole("table", { name: "Cost by Project" })).toBeInTheDocument();
   unmount();
 
   fakeAuthApi({ signedInAs: editorSession });
   const { queries } = fakeCostApi();
+  const editor = renderStudio(`/organisations/${organisationId}/projects`);
+  await screen.findByRole("heading", { name: "Projects" });
+  expect(await sectionNames("Organisation sections")).not.toContain("Cost");
+  editor.unmount();
   renderStudio(costPage);
 
   expect(await screen.findByText("Only Owners can see what the Organisation spends.")).toBeInTheDocument();
-  expect(within(screen.getByRole("navigation", { name: "Organisation" })).queryByRole("link", { name: "Cost" })).not.toBeInTheDocument();
+  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Cost")).toHaveAttribute("aria-current", "page");
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
   expect(queries).toEqual([]);
 });

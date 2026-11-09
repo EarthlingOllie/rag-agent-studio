@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { legalVoyage, marketingOpenAi } from "../test/credentials";
 import { chatModels, claudeDefault, demoCredential, demoDefault, embeddingsOnlyOpenAi, fakeModelsApi, legalClaude } from "../test/models";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -32,7 +33,7 @@ test("the Models tab is shown to every Member", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  await userEvent.click(await screen.findByRole("link", { name: "Models" }));
+  await openSection("Organisation settings", "Models");
 
   expect(await screen.findByRole("heading", { name: "Default Model" })).toBeInTheDocument();
 });

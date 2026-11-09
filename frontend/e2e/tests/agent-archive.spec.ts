@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Agent Archive and delete", () => {
   test("an Owner archives an Agent, restores it, then deletes it permanently after typing its name", async ({
@@ -6,11 +7,11 @@ test.describe("Agent Archive and delete", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Agent archive");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     for (const name of ["Old helper", "HR helper"]) {
       await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill(name);
       await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
@@ -59,8 +60,8 @@ test.describe("Agent Archive and delete", () => {
     await expect(page.getByText("No archived Agents.")).toBeVisible();
 
     // Every step is in the Audit tab.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Audit");
     const audit = page.getByRole("table", { name: "Audit Events" });
     await expect(audit.getByRole("cell", { name: "agent.archived" })).toHaveCount(2);
     await expect(audit.getByRole("cell", { name: "agent.restored" })).toHaveCount(1);

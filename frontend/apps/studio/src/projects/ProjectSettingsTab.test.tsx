@@ -9,6 +9,7 @@ import {
   oldProject,
   PROJECT_ARCHIVED,
 } from "../test/projects";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -31,12 +32,7 @@ test("the Settings tab shows OCR off by default, and why it is off", async () =>
 
   await screen.findByRole("heading", { level: 1, name: "HR handbook" });
 
-  await userEvent.click(
-    within(screen.getByRole("navigation", { name: "Project" })).getByRole(
-      "link",
-      { name: "Settings" },
-    ),
-  );
+  await openSection("Project sections", "Settings");
 
   expect(
     await screen.findByRole("heading", { level: 2, name: "Settings" }),

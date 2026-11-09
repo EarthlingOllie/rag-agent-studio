@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 function markdown(name: string, text: string) {
   return { name, mimeType: "text/markdown", buffer: Buffer.from(text) };
@@ -24,7 +25,7 @@ test.describe("Tags", () => {
     // A long journey: three uploads through the real worker, then every Tag action and filter.
     test.slow();
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Tagged handbook");
     await form.getByRole("button", { name: "Create Project" }).click();

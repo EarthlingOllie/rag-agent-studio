@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -30,7 +31,7 @@ test.describe("Agent and Playground", () => {
     expect(chosen.status()).toBe(200);
 
     // A Project whose Knowledge Base holds the seed handbook.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
@@ -39,7 +40,7 @@ test.describe("Agent and Playground", () => {
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
 
     // Create the Agent and write its system prompt.
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     await expect(page.getByText(/No Agents yet/)).toBeVisible({ timeout: 15_000 });
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("HR helper");

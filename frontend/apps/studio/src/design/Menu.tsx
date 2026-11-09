@@ -45,6 +45,7 @@ export function Menu({
   menuLabel,
   align = "start",
   triggerProps,
+  disabled = false,
 }: {
   /** The trigger's content. */
   label: ReactNode;
@@ -56,6 +57,8 @@ export function Menu({
   menuLabel?: string;
   align?: "start" | "end";
   triggerProps?: { "aria-current"?: "page" };
+  /** Disables the button, e.g. while the action an item started is under way. */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -120,6 +123,7 @@ export function Menu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={triggerLabel}
+        disabled={disabled}
         className={triggerClassName}
         onClick={() => {
           setOpen(!open);

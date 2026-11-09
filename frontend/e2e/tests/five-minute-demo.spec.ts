@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 import { signInAs } from "../fixtures/auth";
 import { BLOCKED_HOST_URL, HOST_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 // The README's five-minute demo, automated as one test, in the README's order. `make seed` runs
 // before the suite (`make e2e`); the stack answers with the demo model and the real local classifier.
@@ -22,7 +23,7 @@ const ATTACKS = [
 ];
 
 async function openProjectTab(page: Page, tab: string) {
-  await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: tab }).click();
+  await openSection(page, "Project sections", tab);
 }
 
 /** The Thumbs-up rate a Version's KPI card shows, as a whole percentage. */
@@ -42,7 +43,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await signInAs(page, OWNER);
     await page.goto("/");
     await expect(page.getByText("Northwind Traders").first()).toBeVisible();
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     await page.getByRole("link", { name: "Northwind Handbook" }).click();
     const handbook = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(handbook.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 120_000 });
@@ -152,7 +153,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
   });
 
   await test.step("10. Organisation cost: what each Project and Agent spent, the Playground apart", async () => {
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Cost" }).click();
+    await openSection(page, "Organisation sections", "Cost");
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
     await expect(byProject.getByRole("row", { name: /^Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
@@ -163,8 +164,8 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
   });
 
   await test.step("11. The Audit tab is already full of the seeded history", async () => {
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Audit");
     const events = page.getByRole("table", { name: "Audit Events" });
     await expect(events.getByRole("row").nth(1)).toBeVisible({ timeout: 15_000 });
     for (const action of ["agent.reverted", "agent.bulk_published", "project.instructions_published"]) {

@@ -1,10 +1,11 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Audit tab", () => {
   test("an Owner finds their Organisation's creation in the Audit tab", async ({ signedInPage, member, makeAxeBuilder }) => {
     await signedInPage.goto("/");
-    await signedInPage.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await signedInPage.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(signedInPage, "Organisation sections", "Settings");
+    await openSection(signedInPage, "Organisation settings", "Audit");
 
     await expect(signedInPage.getByRole("heading", { name: "Audit" })).toBeVisible();
     const table = signedInPage.getByRole("table", { name: "Audit Events" });

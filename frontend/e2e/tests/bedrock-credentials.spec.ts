@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks Bedrock credentials with the fake verifier: a role passes unless its
 // name starts `fake-fail-<reason>`, and access keys pass unless the secret does. No AWS account
@@ -10,8 +11,8 @@ const SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
 
 async function openCredentials(page: Page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-  await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+  await openSection(page, "Organisation sections", "Settings");
+  await openSection(page, "Organisation settings", "Credentials");
   await expect(page.getByRole("heading", { name: "Provider Credentials" })).toBeVisible();
 }
 

@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures";
 import { HOST_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 const UNAVAILABLE = "Our helper is having a break. Call us on 0123 456 789.";
 
@@ -15,11 +16,11 @@ test.describe("Operational Settings", () => {
     const organisation = `/api/organisations/${me.organisations[0]?.id ?? ""}`;
 
     // A live Agent. The Organisation has no Default Model, so the Agent can't answer.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Support");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Support helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();

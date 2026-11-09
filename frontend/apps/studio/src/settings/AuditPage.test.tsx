@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { type AuditEvent, fakeAuditApi, grace, lockedOut, organisationCreated, roleChanged } from "../test/audit";
 import { adaSession, fakeAuthApi } from "../test/auth";
+import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -24,8 +25,7 @@ test("Owners open the Audit tab from Organisation settings and see who changed w
   fakeAuditApi();
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-  await userEvent.click(within(tabs).getByRole("link", { name: "Audit" }));
+  await openSection("Organisation settings", "Audit");
 
   expect(await screen.findByRole("heading", { name: "Audit" })).toBeInTheDocument();
   expect(await screen.findByRole("cell", { name: "member.locked_out" })).toBeInTheDocument();
@@ -48,10 +48,10 @@ test("Editors don't see the Audit tab", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
+  const sections = await sectionNames("Organisation settings");
 
-  expect(within(tabs).getByRole("link", { name: "General" })).toBeInTheDocument();
-  expect(within(tabs).queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
+  expect(sections).toContain("General");
+  expect(sections).not.toContain("Audit");
   expect(screen.getByRole("button", { name: "Leave Analytical Engines" })).toBeInTheDocument();
 });
 

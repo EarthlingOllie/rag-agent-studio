@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Project Instructions", () => {
   test("an Owner formats Instructions in the markdown editor and the markdown is saved and audited", async ({
@@ -6,11 +7,11 @@ test.describe("Project Instructions", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+    await openSection(page, "Project sections", "Instructions");
 
     // Write formatted text the way an Editor would: toolbar buttons and typing.
     const editor = page.getByRole("textbox", { name: "Project Instructions" });
