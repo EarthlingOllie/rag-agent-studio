@@ -461,7 +461,7 @@ function DocumentRows({
   const allSelected = documents.every((document) => selected.has(document.id));
   return (
     <div className={table.wrap}>
-      <table className={table.table}>
+      <table className={`${table.table} min-w-[820px]`}>
         <caption className="sr-only">Documents</caption>
         <thead>
           <tr>
