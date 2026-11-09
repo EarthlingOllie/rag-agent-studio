@@ -30,7 +30,7 @@ test.describe("Documents", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // The Project's Document count, and its Chunks through the API.
-    await page.getByRole("link", { name: "All Projects" }).click();
+    await openSection(page, "Projects", "All Projects");
     const projectRow = page.getByRole("row", { name: /Northwind handbook/ });
     await expect(projectRow.getByRole("cell", { name: "1", exact: true }).first()).toBeVisible();
   });

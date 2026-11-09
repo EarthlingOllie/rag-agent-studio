@@ -149,7 +149,24 @@ The Project page body becomes:
 />
 ```
 
-Confirmation steps that exist today stay; they render below the header as a `surface.panel`.
+Confirmation steps that exist today become `ConfirmDialog`s.
+
+Built in 11-05:
+
+- `shell/StudioBreadcrumb.tsx` (`ProjectBreadcrumb`): inside a Project the breadcrumb is
+  `Org / Projects ▾ / <Project> ▾ / <section> ▾`. The Organisation's section switcher stays as an
+  ancestor. The Project switcher (`menuLabel="Projects"`) lists the open Projects, then All
+  Projects. While the Project is loading or not found it is the current crumb and there is no
+  section switcher. The Document viewer belongs to Documents; Agent and Conversation pages belong to
+  their sections.
+- `projects/ProjectPage.tsx`: `PageHeader` with Edit details and the ⋯ menu ("More Project
+  actions", menu "Project actions"): Archive on an active Project; Delete permanently (Owners) on an
+  archived one; no menu when it would be empty. Both confirm in a destructive `ConfirmDialog`;
+  deletion types the name in the dialog's `body`. Restore stays in the archived notice.
+- The Embedding Model is in the Settings section (`ProjectSettingsTab`), above OCR, and not shown
+  for an archived Project (as before).
+- Loading is `<Skeleton label="Loading the Project" />`; not found is `<EmptyState level={1}>`;
+  a failed load is `<EmptyState tone="error">`.
 
 ## R3: Documents
 

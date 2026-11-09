@@ -33,6 +33,7 @@ test.describe("Embedding Models", () => {
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Voyage handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
+    await openSection(page, "Project sections", "Settings");
     const setting = page.getByRole("region", { name: "Embedding Model" });
     await expect(setting).toContainText("Documents are embedded with multilingual-e5-small.");
 
@@ -50,10 +51,12 @@ test.describe("Embedding Models", () => {
     await expect(setting).toContainText("Documents are embedded with voyage-3.5.");
 
     // The worker embeds the upload with the chosen model; changing it now would re-embed.
+    await openSection(page, "Project sections", "Documents");
     await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.reload();
+    await openSection(page, "Project sections", "Settings");
     await expect(setting).toContainText("Changing it re-embeds every Document in the background");
 
     // The retrieval probe finds the handbook's Chunks by their Voyage vectors.
@@ -107,6 +110,7 @@ test.describe("Embedding Models", () => {
     expect((await probe()).embedding_model_id).toBe("multilingual-e5-small");
 
     await page.reload();
+    await openSection(page, "Project sections", "Settings");
     const setting = page.getByRole("region", { name: "Embedding Model" });
     await expect(setting).toContainText("Changing it re-embeds every Document in the background");
     await setting.getByRole("button", { name: "Change Embedding Model" }).click();
@@ -127,6 +131,7 @@ test.describe("Embedding Models", () => {
     expect([answer.embedding_model_id, answer.dimension]).toEqual(["voyage-3.5", 1024]);
     expect(answer.chunks.map((chunk) => chunk.document_name)).toEqual(Array(3).fill("northwind-staff-handbook.md"));
     // The Documents table counts each Chunk once.
+    await openSection(page, "Project sections", "Documents");
     await expect(row).toBeVisible();
 
     // The change is in the Audit log.
