@@ -150,7 +150,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await budget.close();
 
     await openProjectTab(page, "Agents");
-    const listed = page.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Low-budget helper" });
+    const listed = page.getByRole("table", { name: "Agents" }).getByRole("row").filter({ hasText: "Low-budget helper" });
     await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
   });
 

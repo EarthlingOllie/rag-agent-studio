@@ -35,6 +35,7 @@ test.describe("Rate limits", () => {
     await newProject.getByLabel("Name").fill("Northwind Busy Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
     await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Busy helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();

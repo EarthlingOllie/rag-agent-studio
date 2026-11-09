@@ -1,0 +1,92 @@
+$ sh -c cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e:harness (at c36bb1e)
+
+> rag-agent-studio-frontend@ e2e:harness /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-09/frontend
+> playwright test --project=harness
+
+
+Running 14 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (770ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (363ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (413ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.9s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (218ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (14ms)
+  ✓   8 [harness] › e2e/harness/navigation.spec.ts:38:3 › navigation helpers › openSection opens a switcher and follows its item (757ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.8s)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (103ms)
+  ✓  11 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (211ms)
+  ✓  12 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (203ms)
+  ✘   9 [harness] › e2e/harness/navigation.spec.ts:44:3 › navigation helpers › openSection follows a tab in a row not yet replaced by a switcher (30.1s)
+  ✓  13 [harness] › e2e/harness/navigation.spec.ts:50:3 › navigation helpers › sectionNames lists a switcher's items, without their hidden number hints, and closes it (724ms)
+  ✘  14 [harness] › e2e/harness/navigation.spec.ts:56:3 › navigation helpers › sectionNames lists a tab row's tabs (30.1s)
+
+
+  1) [harness] › e2e/harness/navigation.spec.ts:44:3 › navigation helpers › openSection follows a tab in a row not yet replaced by a switcher 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('banner').getByRole('button', { name: /^(.+, )?Organisation settings$/ })
+
+
+       at fixtures/navigation.ts:41
+
+      39 |     return;
+      40 |   }
+    > 41 |   await menuButton(page, menu).click();
+         |                                ^
+      42 |   await page.getByRole("menu", { name: menu }).getByRole("menuitem", { name: item, exact: true }).click();
+      43 | }
+      44 |
+        at openSection (/tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-09/frontend/e2e/fixtures/navigation.ts:41:32)
+        at /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-09/frontend/e2e/harness/navigation.spec.ts:45:11
+
+    Error Context: test-results/harness-navigation-navigat-8775f--yet-replaced-by-a-switcher-harness/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/harness-navigation-navigat-8775f--yet-replaced-by-a-switcher-harness/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/harness-navigation-navigat-8775f--yet-replaced-by-a-switcher-harness/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [harness] › e2e/harness/navigation.spec.ts:56:3 › navigation helpers › sectionNames lists a tab row's tabs 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('banner').getByRole('button', { name: /^(.+, )?Organisation settings$/ })
+
+
+       at fixtures/navigation.ts:56
+
+      54 |     return (await links.allTextContents()).map((text) => text.trim());
+      55 |   }
+    > 56 |   await menuButton(page, menu).click();
+         |                                ^
+      57 |   const items = page.getByRole("menu", { name: menu }).getByRole("menuitem");
+      58 |   await items.first().waitFor();
+      59 |   // An item's name without what is hidden from assistive technology (a number hint, an icon).
+        at sectionNames (/tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-09/frontend/e2e/fixtures/navigation.ts:56:32)
+        at /tmp/claude-0/-home-user-rag-agent-studio/2b8ea3b1-27b8-5cef-8c98-e00fe4455a11/scratchpad/wt/t11-09/frontend/e2e/harness/navigation.spec.ts:57:18
+
+    Error Context: test-results/harness-navigation-navigat-e76e5-ames-lists-a-tab-row-s-tabs-harness/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/harness-navigation-navigat-e76e5-ames-lists-a-tab-row-s-tabs-harness/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/harness-navigation-navigat-e76e5-ames-lists-a-tab-row-s-tabs-harness/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [harness] › e2e/harness/navigation.spec.ts:44:3 › navigation helpers › openSection follows a tab in a row not yet replaced by a switcher 
+    [harness] › e2e/harness/navigation.spec.ts:56:3 › navigation helpers › sectionNames lists a tab row's tabs 
+  12 passed (1.1m)
+ ELIFECYCLE  Command failed with exit code 1.
+exit 1

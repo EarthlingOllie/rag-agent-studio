@@ -17,6 +17,12 @@ it("heads a page with a title, description and actions, each optional but the ti
   expect(screen.getByRole("heading", { level: 1 }).parentElement?.querySelector("p")).toBeNull();
 });
 
+it("heads a section inside a page at level 2, so the page keeps its one h1", () => {
+  render(<PageHeader level={2} title="Agents" actions={<button type="button">New Agent</button>} />);
+  expect(screen.getByRole("heading", { level: 2, name: "Agents" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+});
+
 it("shows a stat with an optional unit, in the flag colour when asked", () => {
   render(
     <>

@@ -22,6 +22,7 @@ test.describe("Operational Settings", () => {
     await newProject.getByLabel("Name").fill("Northwind Support");
     await newProject.getByRole("button", { name: "Create Project" }).click();
     await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Support helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();

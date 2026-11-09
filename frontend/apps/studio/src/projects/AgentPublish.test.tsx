@@ -50,8 +50,8 @@ test("the Agents list shows which Agents are live and which aren't", async () =>
   setUp({ agents: [hrHelper, other] });
   renderStudio(agentsTab);
 
-  const list = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
-  const [first, second] = within(list).getAllByRole("listitem") as [HTMLElement, HTMLElement];
+  const table = await screen.findByRole("table", { name: "Agents" }, { timeout: 5000 });
+  const [first, second] = within(table).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement];
   expect(first).toHaveTextContent("HR helper");
   expect(first).toHaveTextContent("Not live");
   expect(second).toHaveTextContent("Benefits FAQ");

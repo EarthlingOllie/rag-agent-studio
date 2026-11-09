@@ -3,20 +3,27 @@ import type { ReactNode } from "react";
 import { Icon } from "./Icon";
 import { notice, text } from "./recipes";
 
-/** A page's title block: title, one-line description, and its actions on the right. */
+/**
+ * A page's title block: title, one-line description, and its actions on the right. A section
+ * inside a page that already has its h1 (a Project section under the Project's header) passes
+ * `level={2}`.
+ */
 export function PageHeader({
   title,
   description,
   actions,
+  level = 1,
 }: {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
+  level?: 1 | 2;
 }) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        <h1 className={text.title}>{title}</h1>
+        <Heading className={level === 1 ? text.title : "text-2xl font-medium tracking-[-0.01em] text-ink"}>{title}</Heading>
         {description !== undefined && <p className="text-[15px] text-muted">{description}</p>}
       </div>
       {actions !== undefined && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

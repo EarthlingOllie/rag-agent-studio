@@ -43,6 +43,7 @@ test.describe("Token Budget", () => {
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Thrifty helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
@@ -110,7 +111,7 @@ test.describe("Token Budget", () => {
     await expect(embed.getByRole("meter", { name: "Tokens used today" })).toHaveAttribute("aria-valuenow", "1");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await openSection(page, "Project sections", "Agents");
-    const listed = page.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Thrifty helper" });
+    const listed = page.getByRole("table", { name: "Agents" }).getByRole("row").filter({ hasText: "Thrifty helper" });
     await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
 
     // The Owner got one email about it.

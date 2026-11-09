@@ -43,6 +43,7 @@ test.describe("Agent and Playground", () => {
     // Create the Agent and write its system prompt.
     await openSection(page, "Project sections", "Agents");
     await expect(page.getByText(/No Agents yet/)).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("HR helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
