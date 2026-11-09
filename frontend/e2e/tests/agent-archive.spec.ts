@@ -13,6 +13,7 @@ test.describe("Agent Archive and delete", () => {
     await newProject.getByRole("button", { name: "Create Project" }).click();
     await openSection(page, "Project sections", "Agents");
     for (const name of ["Old helper", "HR helper"]) {
+      await page.getByRole("button", { name: "New Agent" }).click();
       await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill(name);
       await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
       await expect(page.getByRole("heading", { level: 2, name })).toBeVisible({ timeout: 15_000 });
@@ -20,7 +21,7 @@ test.describe("Agent Archive and delete", () => {
     }
 
     // Archive: the Agent leaves the list, its page turns read only and the Playground goes.
-    await page.getByRole("list", { name: "Agents" }).getByRole("link", { name: "Old helper" }).click();
+    await page.getByRole("table", { name: "Agents" }).getByRole("link", { name: "Old helper" }).click();
     await expect(page.getByRole("heading", { name: "Playground" })).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Archive Agent" }).click();
     await page.getByRole("button", { name: "Yes, archive Old helper" }).click();
@@ -31,13 +32,13 @@ test.describe("Agent Archive and delete", () => {
     await expect(page.getByLabel("Chunks per answer (top-k)")).toBeDisabled();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await page.getByRole("link", { name: "All Agents" }).click();
-    await expect(page.getByRole("list", { name: "Agents" }).getByRole("link")).toHaveText(["HR helper"]);
-    await page.getByRole("button", { name: "Show archived Agents" }).click();
-    await expect(page.getByRole("list", { name: "Archived Agents" }).getByRole("link")).toHaveText(["Old helper"]);
+    await expect(page.getByRole("table", { name: "Agents" }).getByRole("link")).toHaveText(["HR helper"]);
+    await page.getByRole("radio", { name: "Archived" }).click();
+    await expect(page.getByRole("table", { name: "Archived Agents" }).getByRole("link")).toHaveText(["Old helper"]);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // Restore brings it back with its Playground.
-    await page.getByRole("list", { name: "Archived Agents" }).getByRole("link", { name: "Old helper" }).click();
+    await page.getByRole("table", { name: "Archived Agents" }).getByRole("link", { name: "Old helper" }).click();
     await notice.getByRole("button", { name: "Restore Old helper" }).click();
     await expect(page.getByRole("heading", { name: "Playground" })).toBeVisible();
     await expect(notice).toHaveCount(0);
@@ -55,9 +56,9 @@ test.describe("Agent Archive and delete", () => {
     await button.click();
 
     await expect(page.getByText("Old helper was deleted permanently.")).toBeVisible();
-    await expect(page.getByRole("list", { name: "Agents" }).getByRole("link")).toHaveText(["HR helper"]);
-    await page.getByRole("button", { name: "Show archived Agents" }).click();
-    await expect(page.getByText("No archived Agents.")).toBeVisible();
+    await expect(page.getByRole("table", { name: "Agents" }).getByRole("link")).toHaveText(["HR helper"]);
+    await page.getByRole("radio", { name: "Archived" }).click();
+    await expect(page.getByRole("heading", { name: "No archived Agents" })).toBeVisible();
 
     // Every step is in the Audit tab.
     await openSection(page, "Organisation sections", "Settings");

@@ -152,6 +152,11 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
     and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
     edged in `flag` and badged Flagged, paged with `Pagination`.
+- **A Project section** (built for Agents in 11-09) is the same under the Project's own header:
+  `PageHeader level={2}` (the Project keeps the page's one h1) with the section's primary action
+  on the right (New Agent opens a `Dialog`). The Agents list is a `table.wrap` card with a
+  `Segmented` Active / Archived filter, the Live state as `Badge`s (Live + version chip, Not
+  live, Draft, Budget spent, Blocked by guardrail) and checkboxes that bring up the `BulkBar`.
 - **Agent page**: the Playground is the main column (max 720px, centred); configuration is a
   right-hand panel (360–420px) of collapsible `Section`s (Behaviour open; Retrieval, Experience,
   Guardrails collapsed with a mono summary). The trace folds open under each answer. Page actions

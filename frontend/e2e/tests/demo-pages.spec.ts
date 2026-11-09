@@ -95,8 +95,8 @@ test.describe("Demo host pages", () => {
     await openSection(studio, "Organisation sections", "Projects");
     await studio.getByRole("link", { name: "Northwind Handbook" }).click();
     await openSection(studio, "Project sections", "Agents");
-    const listed = studio.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Low-budget helper" });
-    await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
+    const listed = studio.getByRole("table", { name: "Agents" }).getByRole("row").filter({ hasText: "Low-budget helper" });
+    await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
     await studio.context().close();
   });
 });

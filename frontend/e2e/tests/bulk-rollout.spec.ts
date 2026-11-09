@@ -81,7 +81,7 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
     // Revert Agent A from the Agent list with multi-select: it serves Instructions v1 again.
     await openSection(page, "Project sections", "Agents");
     await page.getByRole("checkbox", { name: "Select Agent A" }).check({ timeout: 15_000 });
-    await page.getByRole("button", { name: "Revert selected (1)" }).click();
+    await page.getByRole("toolbar", { name: "Bulk actions" }).getByRole("button", { name: "Revert" }).click();
     await page.getByRole("button", { name: "Yes, revert 1 Agent" }).click();
     await expect(page.getByRole("list", { name: "Results" })).toContainText(
       "Agent A — Done: Reverted to v1 with Instructions v1. It is now Live.",

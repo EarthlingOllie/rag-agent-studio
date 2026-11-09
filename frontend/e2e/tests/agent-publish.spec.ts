@@ -12,6 +12,7 @@ test.describe("Publish an Agent to its Live Version", () => {
     await newProject.getByLabel("Name").fill("Publishing HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
     await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
@@ -41,7 +42,7 @@ test.describe("Publish an Agent to its Live Version", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     await page.getByRole("link", { name: "All Agents" }).click();
-    await expect(page.getByRole("list", { name: "Agents" }).getByRole("listitem")).toContainText("Live v1");
+    await expect(page.getByRole("table", { name: "Agents" }).getByRole("row", { name: /HR helper/ })).toContainText("Live v1");
 
     // The API agrees: v1 is Live, pins Instructions v1, and the Live History and Audit log record it.
     const versions = (await (await page.request.get(`${agentApi}/versions`)).json()) as {
