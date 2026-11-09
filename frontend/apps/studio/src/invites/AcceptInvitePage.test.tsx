@@ -259,7 +259,7 @@ test("the page shows loading, then a lookup failure", async () => {
   );
   renderStudio(path);
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Loading…");
+  expect(await screen.findByRole("status", { name: "Loading the invite" })).toHaveAttribute("aria-busy", "true");
   expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
 });
 
