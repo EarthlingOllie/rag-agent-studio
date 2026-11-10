@@ -6,3 +6,31 @@
  RUN  v5.1.0 /home/user/wt-13-03/frontend
       Coverage enabled with v8
 
+ ❯ apps/studio/src/projects/DocumentsTab.test.tsx (48 tests | 1 failed) 109431ms
+   × a refused retry shows the API's reason 1763ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/studio/src/projects/DocumentsTab.test.tsx > a refused retry shows the API's reason
+AssertionError: expected [ 'Retry', 'New edition', …(2) ] to include 'Retry (disabled)'
+ ❯ apps/studio/src/projects/DocumentsTab.test.tsx:999:43
+    997|
+    998|   // While the retry is under way, Retry waits.
+    999|   expect(await actionsOf("handbook.pdf")).toContain("Retry (disabled)"…
+       |                                           ^
+    1000|   expect(await screen.findByRole("alert")).toHaveTextContent(BUSY);
+    1001|   expect(rowOf(table, "handbook.pdf").getByText("Ready")).toBeInTheDoc…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 83 passed (84)
+      Tests  1 failed | 1093 passed (1094)
+   Start at  16:46:13
+   Duration  861.37s (tests 70%, environment 14%, import 8%, setup 5%, transform 1%, worker 1%)
+
+    Isolate  84 workers spawned · ~4.57s startup each (spawn + environment, per file)
+             at least ~123.33s faster with isolate: false — reuses workers across files instead of one per file
+
+ ELIFECYCLE  Test failed. See above for more details.
+exit 1
