@@ -1,4 +1,4 @@
-$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/invites.spec.ts e2e/tests/members.spec.ts e2e/tests/credentials.spec.ts e2e/tests/projects.spec.ts e2e/tests/require-mfa.spec.ts (at d18b92a4)
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/invites.spec.ts e2e/tests/members.spec.ts e2e/tests/credentials.spec.ts e2e/tests/projects.spec.ts e2e/tests/require-mfa.spec.ts (at 9690c827)
 Listing tests:
   [studio] › tests/credentials.spec.ts:20:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown
   [studio] › tests/credentials.spec.ts:82:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them
