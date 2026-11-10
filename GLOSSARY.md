@@ -211,7 +211,7 @@ The chat model an Organisation's Agents use unless an Agent overrides it: one ch
 _Avoid_: Global model, org model
 
 **Demo model**:
-The demo provider's only chat model. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
@@ -413,6 +413,14 @@ _Avoid_: Vector search (for the whole), combined search
 How an Agent gets Chunks for a reply, chosen in its AgentConfig and so fixed per Version. **Automatic** runs one Hybrid search on the Visitor input before the model is asked. **Agentic** gives the model Knowledge Search and lets it decide whether, how often and with what query to search. Agentic answers more accurately; Automatic costs less. New Agents start Agentic.
 _Avoid_: Basic RAG, agentic RAG, RAG mode, naive RAG
 
+**Search**:
+One Knowledge Search call in an Agent's reply: the query the model wrote, the Chunks it found and the ones it excluded. A reply in Agentic Retrieval Mode has zero or more; the Trace lists them in order.
+_Avoid_: Tool call (for the record), lookup, step
+
+**Search limit**:
+The most Searches an Agentic Agent may make in one reply, set in its Retrieval settings. Once it is reached the model must answer from what it has, and the Trace says the limit was hit.
+_Avoid_: Max iterations, tool budget
+
 **Knowledge Search**:
 The one tool an Agent in Agentic Retrieval Mode has: a read-only Hybrid search of its Project's Knowledge Base for a query the model writes, with every other setting (Tags, Minimum Score, Reranker, Top-k) taken from the Agent's Retrieval settings. It changes nothing outside the Conversation (ADR-0015).
 _Avoid_: Search tool, retrieval tool, RAG tool
@@ -429,7 +437,7 @@ The Relevance a Chunk needs to be given to an Agent's model. When no Chunk reach
 _Avoid_: Cut-off, similarity threshold
 
 **Fallback Text**:
-What an Agent replies, in its own words, when retrieval finds nothing relevant. The model isn't asked.
+What an Agent replies, in its own words, when retrieval finds nothing relevant. In Automatic Retrieval Mode the model isn't asked; in Agentic mode it is sent instead of the model's answer when the model searched and no Search found a Chunk reaching the Minimum Score.
 _Avoid_: Default answer, "I don't know" message
 
 **Excluded Chunk**:
@@ -444,18 +452,18 @@ The Studio's editor for prompt fields (an Agent's system prompt, Project Instruc
 _Avoid_: Rich text editor, WYSIWYG field, HTML
 
 **Spotlighting**:
-Putting retrieved Chunks and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.
+Putting retrieved Chunks (whether retrieved up front or returned by Knowledge Search) and Visitor input into labelled, delimited data blocks, which the platform preamble tells the model to treat as data and never as instructions.
 _Avoid_: Sandboxing, quoting
 
 **Chunk label**:
-The name a retrieved Chunk is given to the model with, by its rank: [C1], [C2] and so on. The model cites Chunks by their labels.
+The name a retrieved Chunk is given to the model with: [C1], [C2] and so on, numbered in the order the reply's Searches first found them, so a Chunk found twice keeps its first label. The model cites Chunks by their labels.
 
 **Citation**:
 A Chunk an Agent's answer cites. Where the model supports structured output it lists the Chunk labels it used beside the answer; otherwise the labels written in the answer are parsed. Each resolves back to its Chunk, and the Studio shows it as a chip linking to that Chunk in the Document viewer.
 _Avoid_: Reference, footnote, source link
 
 **Message retrieval**:
-One Chunk retrieval found for an Agent Message, saved with its score, relevance, rank (when it was given to the model), whether it was cited and, for an Excluded Chunk, the reason. The Trace's list of Chunks.
+One Chunk retrieval found for an Agent Message (in Agentic Retrieval Mode, under the Search that found it), saved with its score, relevance, rank (when it was given to the model), whether it was cited and, for an Excluded Chunk, the reason. The Trace's list of Chunks.
 
 **Version**:
 An immutable, numbered snapshot of a Draft, created by publishing it with a note. Numbers start at 1 for each Agent and each Project's Instructions, and concurrent publishes get consecutive, unique numbers. An Agent's Version (an Agent Version) holds the AgentConfig and pins one Project Instructions Version: the Current Version unless the Editor chooses another, or none while the Project has never published its Instructions, in which case it runs with no Project Instructions.
@@ -652,7 +660,7 @@ A Visitor's thumbs-up or thumbs-down, with an optional comment (up to 1000 chara
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use, Cost and latency, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
+The record of why an Agent Message said what it did: the model, token use (summed over every model call in the reply), Cost and latency, its Searches in Agentic Retrieval Mode, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:

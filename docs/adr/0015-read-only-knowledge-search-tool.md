@@ -12,6 +12,12 @@ This narrows the earlier "Agents have no tools" wording in specs 04 and 08 to wh
 
 A successful injection can still at worst produce a bad answer, or a few wasted searches.
 
+Two limits stay with the runtime rather than the model:
+- **The Fallback Text stays guaranteed.** If the model searched and no Search found a Chunk reaching the Minimum Score, the runtime sends the Fallback Text instead of the model's answer. It decides before the answer starts streaming, so nothing is sent and then replaced.
+- **A versioned Search limit (1–5, default 3) bounds each reply.** This stops a looping or injected model from searching without end.
+
+Search queries are model output, so the Canary check runs on them as well. The Attack evaluation suite runs in both modes.
+
 In Agentic mode there is no upfront search. The model may answer a greeting or a follow-up without searching, so Agentic is not always the more expensive mode.
 
 ## Considered options
