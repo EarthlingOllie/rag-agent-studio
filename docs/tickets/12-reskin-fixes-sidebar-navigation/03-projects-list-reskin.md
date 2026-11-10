@@ -7,7 +7,7 @@
 **Blocked by:**
 - [12-02: Project details dialog (New Project and Edit details)](02-project-details-dialog.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The page opens with a page header titled Projects, a one-line description and New Project as its one primary action, top right
 - [ ] A segmented "Projects shown" filter (Active / Archived) replaces the Show archived Projects button; New Project is hidden while Archived is shown
