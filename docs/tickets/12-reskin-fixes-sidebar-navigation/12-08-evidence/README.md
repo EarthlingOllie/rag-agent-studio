@@ -81,7 +81,7 @@ The seams were not confirmed with a human (none was available), so the spec's sh
 
 ## Gaps
 
-- **Light stack.** The stack ran without PDF support or the bundled models (see Results), so the two specs that check the ONNX classifier's wording can't pass here; they fail the same way before this ticket. The spec-12 run in [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md) used the bundled models, and both pass there. The backend's own tests were not run: this ticket changes no backend code.
-- **Pre-existing stack failures.** 12 `studio` specs fail on `candidate-reskin` at `63a7569` too (see Results); fixing them is outside this ticket. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
+- **Light stack.** The stack ran without PDF support or the bundled models (see Results), so the two specs that check the ONNX classifier's wording can't pass here; they fail the same way before this ticket. The spec-12 run in [12-e2e-evidence](../12-e2e-evidence/README.md) used the bundled models, and both pass there. The backend's own tests were not run: this ticket changes no backend code.
+- **Pre-existing stack failures.** 12 `studio` specs fail on `candidate-reskin` at `63a7569` too (see Results); fixing them is outside this ticket. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [12-e2e-evidence](../12-e2e-evidence/README.md).
 - **Narrow screens** hide the sidebar; the drawer is ticket 12-09. The narrow screenshots show the breadcrumb navigation that remains.
 - **No pixel comparison** against the design canvas; the layout follows the spec and `docs/design/README.md`.

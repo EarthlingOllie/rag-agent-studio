@@ -4,17 +4,17 @@ Every spec-12 ticket (12-01 to 12-11) listed "no compose stack" as a gap: the Pl
 
 ## Result
 
-**118 passed, 0 failed, 0 skipped, 0 flaky** (both Playwright projects, `harness` and `studio`; no retries: `CI` unset, as `make e2e` runs it). Log: [spec12-e2e/e2e.log](spec12-e2e/e2e.log).
+**118 passed, 0 failed, 0 skipped, 0 flaky** (both Playwright projects, `harness` and `studio`; no retries: `CI` unset, as `make e2e` runs it). Log: [spec12-e2e/e2e.log](e2e.log).
 
-Frontend checks at the same tree: `make lint-frontend && make test-frontend` exit 0: ESLint, `tsc`, 84 Vitest files / 1086 tests at 100% coverage, the embed size budget and the palette ratchet (0 uses). Log: [spec12-e2e/frontend-checks.log](spec12-e2e/frontend-checks.log).
+Frontend checks at the same tree: `make lint-frontend && make test-frontend` exit 0: ESLint, `tsc`, 84 Vitest files / 1086 tests at 100% coverage, the embed size budget and the palette ratchet (0 uses). Log: [spec12-e2e/frontend-checks.log](frontend-checks.log).
 
 ## Command
 
 `make e2e`'s three steps (`compose up --wait`, `make seed`, `pnpm e2e`), with the stack built from this worktree:
 
 ```sh
-SCRATCH/spec12-e2e/build.sh "$PWD" 12e2e      # make images, plus the sandbox proxy CA, minus the apt upgrade
-C="docker compose -p rag12e2e -f docker-compose.yml -f SCRATCH/spec12-e2e/compose.e2e.yml"
+docs/tickets/12-reskin-fixes-sidebar-navigation/12-e2e-evidence/build.sh "$PWD" 12e2e      # make images, plus the sandbox proxy CA, minus the apt upgrade
+C="docker compose -p rag12e2e -f docker-compose.yml -f docs/tickets/12-reskin-fixes-sidebar-navigation/12-e2e-evidence/compose.e2e.yml"
 $C up -d --no-build --wait
 make seed COMPOSE="$C"                        # make seed-reset before a rerun
 cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e --trace off
@@ -22,13 +22,13 @@ cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e
 
 Sandbox-only differences from `make e2e`, and why:
 
-- [build.sh](spec12-e2e/build.sh) builds the committed Dockerfiles with the agent proxy's CA added to each stage and the `apt-get upgrade` step left out (the proxy refuses plain-HTTP apt), as 12-08 did. `WITH_PDF=false` (disk); **`BUNDLE_MODELS=true`**, so the real local Embedding Model and the ONNX classifiers run, unlike 12-08's light stack (no heuristic overrides, so `documents` and `playground` see the bundled classifier's wording).
-- [compose.e2e.yml](spec12-e2e/compose.e2e.yml) runs the stack as its own compose project, `rag12e2e`, using those images, with its Postgres, Redis and RustFS unpublished: the shared `rag-agent-studio` Postgres, Redis and RustFS (used by 13-01's backend suite) hold 5432, 6379 and 9000/9001 and were not touched. Every other port is the default, so no `E2E_*` URL overrides are needed.
+- [build.sh](build.sh) builds the committed Dockerfiles with the agent proxy's CA added to each stage and the `apt-get upgrade` step left out (the proxy refuses plain-HTTP apt), as 12-08 did. `WITH_PDF=false` (disk); **`BUNDLE_MODELS=true`**, so the real local Embedding Model and the ONNX classifiers run, unlike 12-08's light stack (no heuristic overrides, so `documents` and `playground` see the bundled classifier's wording).
+- [compose.e2e.yml](compose.e2e.yml) runs the stack as its own compose project, `rag12e2e`, using those images, with its Postgres, Redis and RustFS unpublished: the shared `rag-agent-studio` Postgres, Redis and RustFS (used by 13-01's backend suite) hold 5432, 6379 and 9000/9001 and were not touched. Every other port is the default, so no `E2E_*` URL overrides are needed.
 - Docker Hub answered some image-metadata requests with 429 Too Many Requests; the rebuilds were retried until they went through.
 
 ## Failures and fixes
 
-Run 1 ([spec12-e2e/e2e-run1-cut-off.log](spec12-e2e/e2e-run1-cut-off.log)) was cut off by the harness's 10-minute limit after 96 of 118 tests: 14 failed. Run 2 ([spec12-e2e/e2e-run2-4-failed.log](spec12-e2e/e2e-run2-4-failed.log)), after the first fixes, ran to the end: 114 passed, 4 failed (the 22 tests run 1 never reached). Each failure was reproduced on its own against the stack, fixed, and rerun green before the final full run.
+Run 1 ([spec12-e2e/e2e-run1-cut-off.log](e2e-run1-cut-off.log)) was cut off by the harness's 10-minute limit after 96 of 118 tests: 14 failed. Run 2 ([spec12-e2e/e2e-run2-4-failed.log](e2e-run2-4-failed.log)), after the first fixes, ran to the end: 114 passed, 4 failed (the 22 tests run 1 never reached). Each failure was reproduced on its own against the stack, fixed, and rerun green before the final full run.
 
 ### App bugs (fixed in the Studio, each with a unit test that failed first)
 

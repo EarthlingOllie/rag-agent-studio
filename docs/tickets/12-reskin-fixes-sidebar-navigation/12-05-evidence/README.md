@@ -60,6 +60,6 @@ The spec's network seam (`renderStudio` with MSW, `MembersPage.test.tsx`); the s
 
 ## Gaps
 
-- **No compose stack.** The backend and the Playwright `studio` suite (including the five specs updated to open the dialog) were not run; they lint, type-check and list. `shots.test.ts` stands in for the axe sweep on the page this ticket touches. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
+- **No compose stack.** The backend and the Playwright `studio` suite (including the five specs updated to open the dialog) were not run; they lint, type-check and list. `shots.test.ts` stands in for the axe sweep on the page this ticket touches. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [12-e2e-evidence](../12-e2e-evidence/README.md).
 - **The row role select** (story 42, `field.selectCompact`) belongs to 12-01 ("Members' role select … move onto recipes") and is not in this ticket's criteria; it is unchanged here.
 - **No pixel comparison** with the design canvas (not reachable from the sandbox).

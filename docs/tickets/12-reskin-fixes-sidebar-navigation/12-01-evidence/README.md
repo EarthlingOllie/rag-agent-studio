@@ -53,6 +53,6 @@ Run by [run-checks.sh](run-checks.sh) in the ticket's worktree (each log's first
 
 ## Gaps
 
-- **No compose stack:** no Docker daemon in this sandbox, so the backend, the Playwright suite (including the new `select-chevron.spec.ts`) and the e2e axe sweep were not run. [shots.test.ts](shots.test.ts) stands in, as in 11-13: the built Studio with the unit tests' MSW fakes, the same axe tags, and the spec's select check on every select. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
+- **No compose stack:** no Docker daemon in this sandbox, so the backend, the Playwright suite (including the new `select-chevron.spec.ts`) and the e2e axe sweep were not run. [shots.test.ts](shots.test.ts) stands in, as in 11-13: the built Studio with the unit tests' MSW fakes, the same axe tags, and the spec's select check on every select. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [12-e2e-evidence](../12-e2e-evidence/README.md).
 - **Overlap with parallel tickets:** Embedding Model (12-06) and Cost (12-04) each had one select line moved from the legacy `INPUT` to `field.select`; those tickets rewrite the pages, so a merge keeps their version as long as it uses a select recipe.
 - Test seams not confirmed with a human.
