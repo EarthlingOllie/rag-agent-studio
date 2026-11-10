@@ -23,6 +23,17 @@ it("heads a section inside a page at level 2, so the page keeps its one h1", () 
   expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
 });
 
+it("puts what is beside the title on its line, and gives the heading an id to name a region by", () => {
+  render(
+    <section aria-labelledby="agent-heading">
+      <PageHeader title="HR helper" headingId="agent-heading" beside={<button type="button">HR helper, Agents</button>} />
+    </section>,
+  );
+  const heading = screen.getByRole("heading", { level: 1, name: "HR helper" });
+  expect(screen.getByRole("region", { name: "HR helper" })).toContainElement(heading);
+  expect(heading.parentElement).toContainElement(screen.getByRole("button", { name: "HR helper, Agents" }));
+});
+
 it("shows a stat with an optional unit, in the flag colour when asked", () => {
   render(
     <>

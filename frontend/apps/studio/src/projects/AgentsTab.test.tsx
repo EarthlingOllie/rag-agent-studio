@@ -85,7 +85,7 @@ test("New Agent opens from the primary button in the page header, and the new Ag
   expect(within(form).getByLabelText("Name")).toHaveFocus();
   await userEvent.type(within(form).getByLabelText("Name"), "Helper{Enter}");
 
-  expect(await screen.findByRole("heading", { level: 2, name: "Helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 1, name: "Helper" }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.getByRole("textbox", { name: "System prompt" })).toHaveTextContent("");
   expect(requests).toEqual([{ route: "create", body: { name: "Helper" } }]);
 });
@@ -299,7 +299,7 @@ test("an Agent whose Token Budget is spent is badged in the list, and still on i
 
   await userEvent.click(within(table).getByRole("link", { name: "HR helper" }));
 
-  expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.getByText("Budget spent")).toBeInTheDocument();
 });
 
@@ -321,6 +321,6 @@ test("an Agent whose Guardrail block rate spiked is badged in the list, and stil
 
   await userEvent.click(within(table).getByRole("link", { name: "HR helper" }));
 
-  expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.getByText("Block rate spike")).toBeInTheDocument();
 });

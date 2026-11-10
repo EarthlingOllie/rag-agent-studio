@@ -18,7 +18,7 @@ test.describe("Agent Archive and delete", () => {
       await page.getByRole("button", { name: "New Agent" }).click();
       await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill(name);
       await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
-      await expect(page.getByRole("heading", { level: 2, name })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole("heading", { level: 1, name })).toBeVisible({ timeout: 15_000 });
       await openSection(page, "Project sections", "Agents");
     }
 
