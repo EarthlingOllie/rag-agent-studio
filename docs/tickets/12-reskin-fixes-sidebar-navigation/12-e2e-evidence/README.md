@@ -4,9 +4,9 @@ Every spec-12 ticket (12-01 to 12-11) listed "no compose stack" as a gap: the Pl
 
 ## Result
 
-**118 passed, 0 failed, 0 skipped, 0 flaky** (both Playwright projects, `harness` and `studio`; no retries: `CI` unset, as `make e2e` runs it). Log: [spec12-e2e/e2e.log](e2e.log).
+**118 passed, 0 failed, 0 skipped, 0 flaky** (both Playwright projects, `harness` and `studio`; no retries: `CI` unset, as `make e2e` runs it). Log: [e2e.log](e2e.log).
 
-Frontend checks at the same tree: `make lint-frontend && make test-frontend` exit 0: ESLint, `tsc`, 84 Vitest files / 1086 tests at 100% coverage, the embed size budget and the palette ratchet (0 uses). Log: [spec12-e2e/frontend-checks.log](frontend-checks.log).
+Frontend checks at the same tree: `make lint-frontend && make test-frontend` exit 0: ESLint, `tsc`, 84 Vitest files / 1086 tests at 100% coverage, the embed size budget and the palette ratchet (0 uses). Log: [frontend-checks.log](frontend-checks.log).
 
 ## Command
 
@@ -28,7 +28,7 @@ Sandbox-only differences from `make e2e`, and why:
 
 ## Failures and fixes
 
-Run 1 ([spec12-e2e/e2e-run1-cut-off.log](e2e-run1-cut-off.log)) was cut off by the harness's 10-minute limit after 96 of 118 tests: 14 failed. Run 2 ([spec12-e2e/e2e-run2-4-failed.log](e2e-run2-4-failed.log)), after the first fixes, ran to the end: 114 passed, 4 failed (the 22 tests run 1 never reached). Each failure was reproduced on its own against the stack, fixed, and rerun green before the final full run.
+Run 1 ([e2e-run1-cut-off.log](e2e-run1-cut-off.log)) was cut off by the harness's 10-minute limit after 96 of 118 tests: 14 failed. Run 2 ([e2e-run2-4-failed.log](e2e-run2-4-failed.log)), after the first fixes, ran to the end: 114 passed, 4 failed (the 22 tests run 1 never reached). Each failure was reproduced on its own against the stack, fixed, and rerun green before the final full run.
 
 ### App bugs (fixed in the Studio, each with a unit test that failed first)
 
