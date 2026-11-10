@@ -1,7 +1,7 @@
 #!/bin/sh
 # Ticket 12-08 checks, from the repository root of a clean checkout. Each log's first line names
-# its command and commit. The backend and the compose-stack e2e suite are not run: this ticket
-# changes no backend code, and there is no Docker daemon in the sandbox. The new and changed
+# its command and commit. The backend tests are not run: this ticket changes no backend code. The
+# compose-stack suite is run-stack-e2e.sh. Here the new and changed
 # stack specs are listed (they parse and type-check), the harness project runs, and shots.test.ts
 # stands in for the axe sweep against the built Studio (see README); it builds on `pnpm build`.
 set -u
