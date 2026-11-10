@@ -12,6 +12,9 @@ import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 
+/** The top bar's breadcrumb. Its switchers stay until the breadcrumb becomes plain links; the sidebar is the navigation. */
+const breadcrumbNav = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+
 test("a visitor who is not signed in is sent to sign in", async () => {
   renderStudio("/");
 
@@ -37,26 +40,22 @@ test("one top bar holds the mark, the breadcrumb, the Appearance toggle and the 
   expect(screen.queryByRole("navigation", { name: "Organisation" })).not.toBeInTheDocument();
 });
 
-test("the section switcher offers the Organisation's sections as links and opens them", async () => {
+test("the breadcrumb's section switcher still offers the Organisation's sections as links and opens them", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/");
   expect(await screen.findByText(/No Projects yet/)).toBeInTheDocument();
 
-  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
-  await userEvent.click(await menuButton("Organisation sections"));
+  await userEvent.click(breadcrumbNav().getByRole("button", { name: "Projects, Organisation sections" }));
   const sections = within(screen.getByRole("menu", { name: "Organisation sections" }));
+  expect(sections.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
   expect(sections.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
     "href",
     `/organisations/${organisationId}/settings`,
   );
   expect(sections.getByRole("menuitem", { name: "Projects" })).toHaveAttribute("aria-current", "page");
-  await userEvent.keyboard("{Escape}");
-
-  await openSection("Organisation sections", "Settings");
+  await userEvent.click(sections.getByRole("menuitem", { name: "Settings" }));
 
   expect(await screen.findByRole("heading", { name: "Organisation settings" })).toBeInTheDocument();
-  await openSection("Organisation sections", "Projects");
-  expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
 });
 
 test("the breadcrumb follows the route and marks the current page", async () => {
@@ -75,7 +74,7 @@ test("the breadcrumb follows the route and marks the current page", async () => 
   expect(breadcrumb().getByRole("button", { name: "HR handbook, Projects" })).not.toHaveAttribute("aria-current");
   expect(breadcrumb().getByRole("button", { name: "Projects, Organisation sections" })).not.toHaveAttribute("aria-current");
 
-  await openSection("Organisation sections", "Security");
+  await openSection("Account", "Security");
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
   expect(breadcrumb().getByRole("button", { name: "Security, Organisation sections" })).toHaveAttribute("aria-current", "page");
 });
@@ -141,8 +140,8 @@ test("inside a Project the breadcrumb is the Organisation's sections, a Project 
     "/HR handbook",
     "/Documents",
   ]);
-  // The Organisation's sections stay one click away from any Project.
-  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
+  // The Organisation's sections stay one click away from any Project, in the sidebar.
+  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings"]);
 });
 
 test("on a narrow screen the middle crumbs fold into a … menu; the Organisation and the current page stay", async () => {
@@ -195,33 +194,28 @@ test("a breadcrumb of two crumbs has nothing to fold", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio("/");
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  await menuButton("Organisation sections");
+  expect(breadcrumbNav().getByRole("button", { name: "Projects, Organisation sections" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Show the whole path" })).not.toBeInTheDocument();
 });
 
-test("the Project switcher lists the open Projects as links, plus All Projects", async () => {
+test("the breadcrumb's Project switcher lists the open Projects as links, plus All Projects", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   renderStudio(projectPage(hrProject.id, "/agents"));
-  await screen.findByRole("button", { name: "HR handbook, Projects" });
+  const crumb = await within(await screen.findByRole("navigation", { name: "Breadcrumb" })).findByRole("button", { name: "HR handbook, Projects" });
 
-  // Archived Projects are not offered: they are opened from the Projects list.
-  expect(await sectionNames("Projects")).toEqual(["HR handbook", "Sales enablement", "All Projects"]);
-  await userEvent.click(await menuButton("Projects"));
+  await userEvent.click(crumb);
   const projects = within(screen.getByRole("menu", { name: "Projects" }));
+  // Archived Projects are not offered: they are opened from the Projects list.
+  expect(projects.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["HR handbook", "Sales enablement", "All Projects"]);
   expect(projects.getByRole("menuitem", { name: "HR handbook" })).toHaveAttribute("aria-current", "page");
   expect(projects.getByRole("menuitem", { name: "Sales enablement" })).toHaveAttribute("href", projectPage(salesProject.id));
   expect(projects.getByRole("menuitem", { name: "Sales enablement" })).not.toHaveAttribute("aria-current");
   expect(projects.getByRole("menuitem", { name: "All Projects" })).toHaveAttribute("href", `/organisations/${organisationId}/projects`);
-  await userEvent.keyboard("{Escape}");
+  await userEvent.click(projects.getByRole("menuitem", { name: "Sales enablement" }));
 
-  await openSection("Projects", "Sales enablement");
   expect(await screen.findByRole("heading", { level: 1, name: "Sales enablement" })).toBeInTheDocument();
-  expect(await currentSection("Project sections")).toBe("Documents");
-
-  await openSection("Projects", "All Projects");
-  expect(await screen.findByRole("table", { name: "Projects" })).toBeInTheDocument();
-  expect(hasMenu("Project sections")).toBe(false);
+  expect(breadcrumbNav().getByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
 });
 
 test("the section switcher lists the Project's sections with icons and number hints, as links", async () => {
@@ -230,7 +224,7 @@ test("the section switcher lists the Project's sections with icons and number hi
   renderStudio(projectPage(hrProject.id));
   await screen.findByRole("button", { name: "Documents, Project sections" });
 
-  await userEvent.click(await menuButton("Project sections"));
+  await userEvent.click(breadcrumbNav().getByRole("button", { name: "Documents, Project sections" }));
   const menu = within(screen.getByRole("menu", { name: "Project sections" }));
   const sections = ["Documents", "Instructions", "Agents", "Conversations", "Analytics", "Settings"];
   const paths = ["", "/instructions", "/agents", "/conversations", "/analytics", "/settings"];
@@ -280,7 +274,7 @@ test("a Project that can't be loaded keeps the Project switcher as the current c
   renderStudio(projectPage("00000000-0000-4000-8000-000000000000"));
 
   expect(await screen.findByRole("heading", { name: "Project not found" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Project, Projects" })).toHaveAttribute("aria-current", "page");
+  expect(breadcrumbNav().getByRole("button", { name: "Project, Projects" })).toHaveAttribute("aria-current", "page");
   expect(hasMenu("Project sections")).toBe(false);
 });
 
@@ -293,13 +287,12 @@ test("the account menu opens the Profile and Security, which are then the curren
   await openSection("Account", "Profile");
 
   expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
-  expect(await currentSection("Organisation sections")).toBe("Profile");
-  expect(await menuButton("Organisation sections")).toHaveAttribute("aria-current", "page");
+  expect(breadcrumbNav().getByRole("button", { name: "Profile, Organisation sections" })).toHaveAttribute("aria-current", "page");
 
   await openSection("Account", "Security");
 
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
-  expect(await currentSection("Organisation sections")).toBe("Security");
+  expect(breadcrumbNav().getByRole("button", { name: "Security, Organisation sections" })).toHaveAttribute("aria-current", "page");
 });
 
 test("the breadcrumb's section switcher reaches the Profile", async () => {
@@ -307,7 +300,8 @@ test("the breadcrumb's section switcher reaches the Profile", async () => {
   renderStudio("/");
   await screen.findByRole("heading", { name: "Projects" });
 
-  await openSection("Organisation sections", "Profile");
+  await userEvent.click(breadcrumbNav().getByRole("button", { name: "Projects, Organisation sections" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Profile" }));
 
   expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
 });

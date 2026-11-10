@@ -6,6 +6,7 @@ import { type Session, useMe } from "../auth/session";
 import { AppearanceToggle, Brand, button, EmptyState, layout, Notice, Skeleton, TopBar } from "../design";
 import { AccountMenu } from "./AccountMenu";
 import { StudioBreadcrumb } from "./StudioBreadcrumb";
+import { StudioSidebar } from "./StudioSidebar";
 import { TopBarSlot } from "./TopBarActions";
 
 /** Everything a signed-in Member sees. Signed-out visitors are sent to the sign-in screen. */
@@ -48,7 +49,10 @@ export function HomeRedirect() {
   return <Navigate to="/organisations/$organisationId/projects" params={{ organisationId: active }} />;
 }
 
-/** The Studio frame for one Organisation: the top bar, whose breadcrumb is the navigation, and the page. */
+/**
+ * The Studio frame for one Organisation: the top bar (the mark, the breadcrumb, the page's actions
+ * and the Member's controls), then the sidebar, which is the navigation, beside the page.
+ */
 export function OrganisationShell() {
   const { data } = useMe();
   const session = data as Session;
@@ -77,28 +81,32 @@ export function OrganisationShell() {
           </>
         }
       />
-      <main className={layout.page}>
-        {organisation ? (
-          mustEnrol && !onSecurityPage ? (
-            <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
+      <div className="md:flex">
+        <StudioSidebar session={session} organisationId={organisationId} mustEnrol={mustEnrol} />
+        {/* The page keeps its 1160 px column, centred in the space beside the sidebar. */}
+        <main className={`${layout.page} min-w-0`}>
+          {organisation ? (
+            mustEnrol && !onSecurityPage ? (
+              <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
+            ) : (
+              <TopBarSlot.Provider value={slot}>
+                <Outlet />
+              </TopBarSlot.Provider>
+            )
           ) : (
-            <TopBarSlot.Provider value={slot}>
-              <Outlet />
-            </TopBarSlot.Provider>
-          )
-        ) : (
-          <EmptyState
-            icon="warning"
-            title="Organisation not found"
-            description="It doesn't exist, or you are not a Member of it."
-            action={
-              <Link to="/" className={button.primary}>
-                Go to your Organisation
-              </Link>
-            }
-          />
-        )}
-      </main>
+            <EmptyState
+              icon="warning"
+              title="Organisation not found"
+              description="It doesn't exist, or you are not a Member of it."
+              action={
+                <Link to="/" className={button.primary}>
+                  Go to your Organisation
+                </Link>
+              }
+            />
+          )}
+        </main>
+      </div>
     </div>
   );
 }

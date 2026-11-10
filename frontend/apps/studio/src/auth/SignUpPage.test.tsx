@@ -1,9 +1,10 @@
 import type { Schemas } from "@studio/api-client";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
+import { sidebar } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -27,7 +28,7 @@ test("signing up opens the new Organisation in the signed-in shell", async () =>
   await fillInSignUp();
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(screen.getByText("Analytical Engines")).toBeInTheDocument();
+  expect(within(await sidebar()).getByText("Analytical Engines")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Ada Lovelace, Account" })).toBeInTheDocument();
   expect(requests).toEqual([
     {
