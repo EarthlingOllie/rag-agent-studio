@@ -28,6 +28,8 @@ type Message = {
   feedback: Feedback | null;
   // The input Guardrail blocked the Visitor's message: the text is the Agent's refusal.
   refused?: boolean;
+  // The Agent is searching its knowledge base for this reply (shown until its text streams).
+  searching?: boolean;
 };
 
 /**
@@ -40,6 +42,9 @@ type Message = {
 type Phase = "loading" | "chat" | "ending" | "ended" | "retired";
 
 const GENERIC = "Something went wrong. Please try again.";
+
+/** The built-in searching status, unless the Agent's UI text overrides it. */
+export const SEARCHING = "Searching the knowledge base…";
 
 /** What Tab can reach inside the open chat. */
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), summary, a[href], [tabindex]:not([tabindex="-1"])';
@@ -227,7 +232,15 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         store.save(token.current);
       }
       let answer = "";
+      let searched = false;
       const id = await ask(boot, token.current, question, {
+        onSearch: () => {
+          updateReply((reply) => ({ ...reply, searching: true }));
+          // Announced once per reply, however many Searches it makes.
+          if (searched) return;
+          searched = true;
+          setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text: boot.ui_text.searching_status ?? SEARCHING }));
+        },
         onToken: (text) => {
           answer += text;
           updateReply((reply) => ({ ...reply, text: reply.text + text }));
@@ -440,7 +453,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
                   label={message.role === "visitor" ? "You" : name}
                   {...(message.refused ? { className: "refusal" } : {})}
                 >
-                  <p>{message.text}</p>
+                  {message.searching && !message.text ? <p className="searching">{boot.ui_text.searching_status ?? SEARCHING}</p> : <p>{message.text}</p>}
                   {boot.citations && message.citations.length > 0 && <Sources citations={message.citations} />}
                   {message.role === "agent" && message.id !== undefined && (
                     <FeedbackControls

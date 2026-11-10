@@ -51,7 +51,15 @@ test.describe("Token Budget", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
     const agentPage = page.url();
     const agentApi = agentPage.replace(/^https?:\/\/[^/]+/, "/api");
-    const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
+    const { public_id: publicId, draft } = (await (await page.request.get(agentApi)).json()) as {
+      public_id: string;
+      draft: { retrieval: Record<string, unknown> };
+    };
+    // Agentic (the editor's control is ticket 13-05): each reply is a Search's model call plus the
+    // answer's, and the budget counts both.
+    const agentic = await page.request.put(`${agentApi}/draft`, { data: { ...draft, retrieval: { ...draft.retrieval, mode: "agentic" } } });
+    expect(agentic.status()).toBe(200);
+    await page.reload();
     await publishAgent(page, "First release");
     await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
@@ -87,6 +95,8 @@ test.describe("Token Budget", () => {
     await widget.getByLabel("Message").fill("How many days of annual leave do I get?");
     await widget.getByRole("button", { name: "Send" }).click();
     await expect(log.getByRole("listitem", { name: "Thrifty helper" })).toContainText(ANSWER, { timeout: 15_000 });
+    // The Visitor was told of the Search, but never sent the query the model wrote.
+    await expect.poll(() => bodies[0]?.startsWith("event: search\ndata: {}\n\n")).toBe(true);
     await widget.getByLabel("Message").fill("And how do I book it?");
     await widget.getByRole("button", { name: "Send" }).click();
     await expect(widget.getByRole("alert")).toHaveText(UNAVAILABLE, { timeout: 15_000 });

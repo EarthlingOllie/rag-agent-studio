@@ -17,7 +17,7 @@ const boot: Boot = {
   avatar_url: null,
   greeting: "Hi!",
   starter_questions: [],
-  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null },
   citations: true,
   rating_prompt_after: 0,
 };
@@ -105,6 +105,72 @@ test("a screen reader hears each reply once, when it is complete, not token by t
   expect(announcements).not.toHaveTextContent("How much leave?");
 });
 
+test("while an Agentic Agent searches the Visitor sees a status, announced once per reply, until the answer streams", async () => {
+  const user = userEvent.setup();
+  const reply = controlledReply();
+  render(<Widget boot={boot} launcher="inline" />);
+  const announcements = screen.getByRole("status", { name: "Announcements" });
+  const log = screen.getByRole("log", { name: "Conversation" });
+
+  await user.type(screen.getByLabelText("Message"), "How much leave?{Enter}");
+  reply.send("search", {});
+
+  const answer = await within(log).findByRole("listitem", { name: "HR helper" });
+  expect(await within(answer).findByText("Searching the knowledge base…")).toBeInTheDocument();
+  const announced = await within(announcements).findByText("Searching the knowledge base…");
+  // A second Search in the same reply keeps the status and is not announced again.
+  reply.send("search", {});
+  reply.send("search", {});
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(within(answer).getByText("Searching the knowledge base…")).toBeInTheDocument();
+  expect(within(announcements).getByText("Searching the knowledge base…")).toBe(announced);
+  expect(announcements.childElementCount).toBe(1);
+
+  // The answer replaces the status as soon as it starts streaming.
+  reply.send("token", { text: "Twenty-five days." });
+  expect(await within(answer).findByText("Twenty-five days.")).toBeInTheDocument();
+  expect(within(answer).queryByText("Searching the knowledge base…")).not.toBeInTheDocument();
+  reply.send("done", { message_id: "m1" });
+  reply.end();
+  expect(await within(announcements).findByText("HR helper: Twenty-five days.")).toBeInTheDocument();
+});
+
+test("each reply that searches announces the status again", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.post("*/api/widget/agents/agt_hr/conversations", () => HttpResponse.json({ conversation_token: "wc1.t" }, { status: 201 })),
+    http.post("*/api/widget/agents/agt_hr/messages", () => {
+      // The Search, then a moment later (as the model reads what it found) the answer.
+      const encoder = new TextEncoder();
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode("event: search\ndata: {}\n\n"));
+          setTimeout(() => {
+            controller.enqueue(encoder.encode('event: token\ndata: {"text":"Yes."}\n\nevent: done\ndata: {"message_id":"m"}\n\n'));
+            controller.close();
+          }, 50);
+        },
+      });
+      return new HttpResponse(body, { headers: { "Content-Type": "text/event-stream" } });
+    }),
+  );
+  render(<Widget boot={boot} launcher="inline" />);
+  const announcements = screen.getByRole("status", { name: "Announcements" });
+  const said: string[] = [];
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) said.push(node.textContent ?? "");
+  }).observe(announcements, { childList: true });
+
+  await user.type(screen.getByLabelText("Message"), "One{Enter}");
+  await within(announcements).findByText("HR helper: Yes.");
+  await user.type(screen.getByLabelText("Message"), "Two{Enter}");
+  await waitFor(() => {
+    expect(said).toHaveLength(4);
+  });
+
+  expect(said).toEqual(["Searching the knowledge base…", "HR helper: Yes.", "Searching the knowledge base…", "HR helper: Yes."]);
+});
+
 test("the same reply twice is announced twice, and a failed reply is left to the alert", async () => {
   const user = userEvent.setup();
   server.use(
@@ -167,4 +233,24 @@ test("the Conversation log holds a list of Messages, so each is announced as a l
   const log = screen.getByRole("log", { name: "Conversation" });
   const list = within(log).getByRole("list");
   expect(within(list).getByRole("listitem", { name: "HR helper's greeting" })).toHaveTextContent("Hi!");
+});
+
+test("the searching status override is what the reply shows and what is announced", async () => {
+  const user = userEvent.setup();
+  const reply = controlledReply();
+  const ui_text = { ...boot.ui_text, searching_status: "Hana is looking that up…" };
+  render(<Widget boot={{ ...boot, ui_text }} launcher="inline" />);
+  const announcements = screen.getByRole("status", { name: "Announcements" });
+
+  await user.type(screen.getByLabelText("Message"), "How much leave?{Enter}");
+  reply.send("search", {});
+
+  const answer = await within(screen.getByRole("log", { name: "Conversation" })).findByRole("listitem", { name: "HR helper" });
+  expect(await within(answer).findByText("Hana is looking that up…")).toBeInTheDocument();
+  expect(await within(announcements).findByText("Hana is looking that up…")).toBeInTheDocument();
+  expect(screen.queryByText("Searching the knowledge base…")).not.toBeInTheDocument();
+  reply.send("token", { text: "Twenty-five days." });
+  reply.send("done", { message_id: "m1" });
+  reply.end();
+  expect(await within(announcements).findByText("HR helper: Twenty-five days.")).toBeInTheDocument();
 });

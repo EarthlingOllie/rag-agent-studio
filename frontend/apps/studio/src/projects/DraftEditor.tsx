@@ -811,6 +811,15 @@ export function DraftEditor({
             setUiText({ unavailable_message: orNull(text) });
           }}
         />
+        <TextField
+          label="Searching status"
+          hint="Shown to Visitors while an Agentic Agent searches. Empty keeps “Searching the knowledge base…”."
+          errors={at("experience.ui_text.searching_status")}
+          value={experience.ui_text.searching_status ?? ""}
+          onChange={(text) => {
+            setUiText({ searching_status: orNull(text) });
+          }}
+        />
         <NumberField
           label="Rating prompt after this many replies (0: only at the end)"
           min={0}

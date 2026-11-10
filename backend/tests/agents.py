@@ -40,7 +40,12 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
         "avatar_url": None,
         "greeting": "",
         "starter_questions": [],
-        "ui_text": {"send_button": None, "rate_conversation": None, "unavailable_message": None},
+        "ui_text": {
+            "send_button": None,
+            "rate_conversation": None,
+            "unavailable_message": None,
+            "searching_status": None,
+        },
         "rating_prompt_after": 3,
     },
     "guardrails": {
