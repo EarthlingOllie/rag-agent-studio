@@ -1,4 +1,3 @@
-# commit 0f07f7b0; TEST_WORKERS=auto make test-backend against docker-compose.yml postgres, redis, rustfs (4 xdist workers)
 cd backend && uv run pytest -n auto
 warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
 ============================= test session starts ==============================
@@ -266,5 +265,5 @@ app/worker/tasks.py                       4      0      0      0   100%
 TOTAL                                 11999      0   1464      0   100%
 Coverage XML written to file coverage.xml
 Required test coverage of 100.0% reached. Total coverage: 100.00%
-====================== 2547 passed in 1487.89s (0:24:47) =======================
+====================== 2547 passed in 2003.57s (0:33:23) =======================
 EXIT 0
