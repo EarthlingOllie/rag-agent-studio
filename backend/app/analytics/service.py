@@ -21,6 +21,7 @@ from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, aliased
 
+from app.agents.config import AgentConfig, RetrievalMode
 from app.agents.models import Agent, AgentVersion, LiveHistoryEntry
 from app.agents.service import get_agent
 from app.analytics.models import UsageDaily
@@ -79,6 +80,17 @@ class VersionKpis:
         question."""
         usage = self.usage
         return usage.guardrail_blocks / usage.messages if usage.messages else None
+
+    @property
+    def retrieval_mode(self) -> RetrievalMode:
+        """The Version's Retrieval Mode, from the configuration it was published with."""
+        return AgentConfig.model_validate(self.version.config).retrieval.mode
+
+    @property
+    def mean_searches(self) -> float | None:
+        """Knowledge Searches per reply: none in Automatic mode."""
+        usage = self.usage
+        return usage.searches / usage.messages if usage.messages else None
 
     @property
     def cost_total(self) -> Decimal:

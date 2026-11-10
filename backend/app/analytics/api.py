@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from app.agents import versions
+from app.agents.config import RetrievalMode
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
 from app.agents.models import AgentVersion
 from app.agents.service import AgentNotFoundError
@@ -84,6 +85,14 @@ class GuardrailBlocksOut(BaseModel):
     rate: float | None
 
 
+class SearchesOut(BaseModel):
+    # Knowledge Searches the replies ran (Agentic Retrieval Mode only; a call the Search limit
+    # refused searched nothing).
+    total: int
+    # Searches per reply; null without a reply.
+    mean_per_reply: float | None
+
+
 class LatencyOut(BaseModel):
     n: int
     # p95 milliseconds to the first token, and to the whole reply.
@@ -95,6 +104,8 @@ class VersionKpisOut(BaseModel):
     version_id: uuid.UUID
     number: int
     is_live: bool
+    # The Retrieval Mode the Version was published with.
+    retrieval_mode: RetrievalMode
     # Visitor Conversations the Version replied in, and its replies.
     conversations: int
     messages: int
@@ -106,6 +117,7 @@ class VersionKpisOut(BaseModel):
     rating: RatingOut
     fallback: FallbackOut
     guardrail_blocks: GuardrailBlocksOut
+    searches: SearchesOut
     latency: LatencyOut
 
 
@@ -124,6 +136,7 @@ def _out(kpis: service.VersionKpis) -> VersionKpisOut:
         version_id=kpis.version.id,
         number=kpis.version.number,
         is_live=kpis.is_live,
+        retrieval_mode=kpis.retrieval_mode,
         conversations=usage.conversations,
         messages=usage.messages,
         low_confidence=service.low_confidence(usage.conversations),
@@ -149,6 +162,7 @@ def _out(kpis: service.VersionKpis) -> VersionKpisOut:
         ),
         fallback=FallbackOut(count=usage.fallback_count, rate=kpis.fallback_rate),
         guardrail_blocks=GuardrailBlocksOut(count=usage.guardrail_blocks, rate=kpis.block_rate),
+        searches=SearchesOut(total=usage.searches, mean_per_reply=kpis.mean_searches),
         latency=LatencyOut(
             n=usage.latency_histogram.count,
             first_token_p95_ms=usage.first_token_histogram.percentile(0.95),
