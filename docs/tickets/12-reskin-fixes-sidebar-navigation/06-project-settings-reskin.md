@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Settings opens with a section header and a short description; Embedding Model, OCR and Flagged Chunk mode are each a card with a title and explanation
 - [ ] The current Embedding Model shows in mono with Change; Change opens a dialog with the model choice and a warning that every Document is re-embedded, then Cancel and Use this model
