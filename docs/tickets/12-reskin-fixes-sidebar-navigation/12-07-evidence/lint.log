@@ -1,4 +1,4 @@
-$ sh -c cd frontend && pnpm lint (at c9da16b4)
+$ sh -c cd frontend && pnpm lint (at 3777a673)
 
 > rag-agent-studio-frontend@ lint /home/user/wt-12-07/frontend
 > eslint . --max-warnings=0

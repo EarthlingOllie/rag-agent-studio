@@ -1,4 +1,4 @@
-$ sh -c cd frontend && pnpm check-embed-size (at c9da16b4)
+$ sh -c cd frontend && pnpm check-embed-size (at 3777a673)
 
 > rag-agent-studio-frontend@ check-embed-size /home/user/wt-12-07/frontend
 > pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size
@@ -14,7 +14,7 @@ rendering chunks...
 computing gzip size...
 dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
 
-✓ built in 539ms
+✓ built in 504ms
 vite v8.3.5 building client environment for production...
 transforming...
 ✓ 3 modules transformed.
@@ -22,7 +22,7 @@ rendering chunks...
 computing gzip size...
 dist/embed.js  1.36 kB │ gzip: 0.77 kB
 
-✓ built in 87ms
+✓ built in 31ms
 
 > @studio/widget@ check-size /home/user/wt-12-07/frontend/apps/widget
 > node scripts/check-size.mjs

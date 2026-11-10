@@ -1,4 +1,4 @@
-$ sh -c cd frontend && pnpm typecheck (at c9da16b4)
+$ sh -c cd frontend && pnpm typecheck (at 3777a673)
 
 > rag-agent-studio-frontend@ typecheck /home/user/wt-12-07/frontend
 > tsc

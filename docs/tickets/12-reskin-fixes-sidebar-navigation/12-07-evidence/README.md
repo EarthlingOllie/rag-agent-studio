@@ -4,7 +4,9 @@ Branch `t/12-07`, from `t/12-03` at `d91484d` (12-03 on top of `claude/gallant-e
 
 - `1752fc2` is the change: `projects/AgentBranding.tsx` on the `button` and `field` recipes, `projects/ProjectsPage.tsx` without its `BUTTON` / `INPUT` exports, `projects/DraftEditor.tsx` without its `CONFLICT_BUTTON` alias, and a test in `projects/ProjectsPage.test.tsx`.
 - `9c13646` holds this folder's scripts, and `c9da16b` makes [run-checks.sh](run-checks.sh) write one log per frontend check.
-- The last commit changes only this folder and the ticket file (Status `done`, every box ticked).
+- `3d9dcf5` was the first evidence commit (Status `done`).
+- `3777a67` fixes a page-local input string the first round missed: `settings/ThemePage.tsx` had `SHORT` (a copy of `field.inputMono`) and `FIELD_ERROR`. Both are gone; a guard test is added (`design/recipes.test.ts`), and [shots.test.ts](shots.test.ts) now covers the Theme page.
+- The last commit changes only this folder and the ticket file.
 
 No backend code, route, API call, query shape, permission or visible text changes.
 
@@ -20,13 +22,16 @@ No backend code, route, API call, query shape, permission or visible text change
   - the hex colour fields: `field.inputMono` (`aria-invalid` gives the danger border), under `field.hint`-sized labels;
   - the Override checkboxes: `field.checkbox`;
   - "Use colours like #1a2b3c." and a failed avatar action: `field.error`; muted lines: `text.muted`.
-- **No page-local button or input strings.** A search of `frontend/apps/studio/src` for module-level class constants finds none for buttons or inputs outside `design/`. `DraftEditor.tsx`'s `CONFLICT_BUTTON` (an alias of `button.secondary`) is inlined. The Theme page's colour swatch input is a native colour picker styled in place, not a shared string.
+- **No page-local button or input strings.** `DraftEditor.tsx`'s `CONFLICT_BUTTON` (an alias of `button.secondary`) is inlined. The Theme page (`settings/ThemePage.tsx`) defined `SHORT`, a copy of `field.inputMono` used by its hex colour fields and its corner-radius field, and `FIELD_ERROR` for their errors. The first round missed them; `3777a67` moves both fields to `field.inputMono` and their errors to `field.error`, and deletes both constants. The recipe is full width, so each field sits in a `w-28` box (a `w-28` on the input itself loses to the recipe's `w-full` in the built CSS, which also left Agent branding's hex fields full width; they get the same box on their label). The Theme page's colour swatch (`<input type="color">`) is a native picker styled in place, with no shared string to replace. A guard test (below) now finds no module-level control class string outside `design/`; `cost/CostPage.tsx`'s `TOTAL_ROW` is a table-row style, not a button or input.
 
 ## Test seams
 
 The spec's network seam (`renderStudio` with MSW). Behaviour is frozen, so the existing `AgentBranding.test.tsx` (colours, invalid hex, 422, avatar upload / replace / remove, Editor view) and `DraftEditor` tests pass unchanged. One test was added first and failed (red), then passed after the change:
 
 - `projects/ProjectsPage.test.tsx`, "the Projects page leaves button and field styling to the design system's recipes": the module exports neither `BUTTON` nor `INPUT`. Type-checking pins that no importer is left.
+- `design/recipes.test.ts`, "no Studio page defines its own button or input class string": reads every non-test module under `apps/studio/src` outside `design/` and fails on a module-level class string that draws a control's box (a fixed `h-8` to `h-11` height and `rounded`). Red with `["settings/ThemePage.tsx"]` before `3777a67`, green after.
+
+The Theme page's behaviour is unchanged: `settings/ThemePage.test.tsx` (invalid hex, radius out of range, save, Editor view) passes unchanged.
 
 The seams were not confirmed with a human (none was available), so the spec's own seams were used.
 
@@ -35,29 +40,29 @@ The seams were not confirmed with a human (none was available), so the spec's ow
 | # | Criterion | Evidence |
 | --- | --- | --- |
 | 1 | Agent branding and any remaining importer use the design system's button and field recipes | `AgentBranding.tsx` imports `button`, `field`, `surface`, `text` from `../design` and nothing from `./ProjectsPage`. No other file imported `BUTTON` / `INPUT`: [typecheck.log](typecheck.log) (`tsc`, exit 0) would fail on a dangling import. Screenshots `branding-*`. |
-| 2 | The Projects page no longer exports BUTTON and INPUT; nothing in the Studio defines its own button or input class string | `ProjectsPage.tsx`; the new `ProjectsPage.test.tsx` test; `DraftEditor.tsx` alias removed. |
+| 2 | The Projects page no longer exports BUTTON and INPUT; nothing in the Studio defines its own button or input class string | `ProjectsPage.tsx` and the new `ProjectsPage.test.tsx` test; `DraftEditor.tsx` alias removed; `settings/ThemePage.tsx`'s `SHORT` and `FIELD_ERROR` replaced by `field.inputMono` and `field.error` (`3777a67`); the guard test `design/recipes.test.ts`. Screenshots `theme-*`. |
 | 3 | Agent branding is checked in both Appearances, wide and narrow | [screenshots/](screenshots/) and [shots-axe.log](shots-axe.log): 4 views × wide and narrow × light, dark and chosen dark. |
 | 4 | Design system only, no palette classes or `dark:`; the palette ratchet passes | Only recipes plus layout utilities. [palette-ratchet.log](palette-ratchet.log): "0 palette-class uses under apps/studio/src (none allowed)", exit 0. |
-| 5 | Light and dark screenshots, wide (1440) and narrow (390), and the axe sweep in both Appearances | [screenshots/](screenshots/): Agent branding on the Agent's Embed view as an Owner with no override, with a saved colour override and an avatar, with a colour that isn't hex (the error and invalid field), and as an Editor = 24 images. [shots-axe.log](shots-axe.log): tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`, **0 violations**, no horizontal scroll. |
-| 6 | Tests at the highest seam; 100% line and branch coverage holds | Seams above. [test.log](test.log): 81 files, 1073 tests passed; statements 4612/4612, branches 3261/3261, lines 4036/4036 (100%). |
+| 5 | Light and dark screenshots, wide (1440) and narrow (390), and the axe sweep in both Appearances | [screenshots/](screenshots/): Agent branding on the Agent's Embed view as an Owner with no override, with a saved colour override and an avatar, with a colour that isn't hex (the error and invalid field), and as an Editor; and the Theme page (Organisation settings, Theme) as an Owner, with a hex colour and a corner radius that aren't valid (both errors and invalid fields), and as an Editor (read-only) = 7 views × 2 widths × 3 Appearances = 42 images. [shots-axe.log](shots-axe.log): tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`, **0 violations**, no horizontal scroll. |
+| 6 | Tests at the highest seam; 100% line and branch coverage holds | Seams above. [test.log](test.log): 82 files, 1074 tests passed; statements 4610/4610, branches 3261/3261, lines 4034/4034 (100%). |
 | 7 | New domain terms in `GLOSSARY.md`; ADRs updated if a decision changed | No new domain term (Agent, Theme override, Owner, Editor are defined). No decision changed. |
 
 ## Results
 
-[run-checks.sh](run-checks.sh) ran these in the ticket's worktree at `c9da16b`, the commit before the evidence commit (which changes only Markdown and logs). `make link-check` was rerun after the evidence was on disk. Each log's first line names its command and commit. GitHub Actions is not used, so these are local.
+[run-checks.sh](run-checks.sh) ran these in the ticket's worktree at `3777a67`, the commit before the evidence commit (which changes only Markdown and logs). `make link-check` was rerun after the evidence was on disk. Each log's first line names its command and commit. GitHub Actions is not used, so these are local.
 
 | Check | Command | Result | Log |
 | --- | --- | --- | --- |
 | Install | `pnpm install --frozen-lockfile` | exit 0 | [install.log](install.log) |
 | Lint | `pnpm lint` (eslint, `--max-warnings=0`, e2e included) | exit 0 | [lint.log](lint.log) |
 | Type-check | `pnpm typecheck` (`tsc`) | exit 0 | [typecheck.log](typecheck.log) |
-| Tests and coverage | `pnpm test` (`vitest run --coverage`) | exit 0. 81 files, 1073 tests passed, 100% statements, branches, lines | [test.log](test.log) |
+| Tests and coverage | `pnpm test` (`vitest run --coverage`) | exit 0. 82 files, 1074 tests passed, 100% statements, branches, lines | [test.log](test.log) |
 | Embed budget | `pnpm check-embed-size` | exit 0. `embed.js` 1367 bytes, 778 gzipped (budget 2048 and 1024) | [check-embed-size.log](check-embed-size.log) |
 | Palette ratchet | `pnpm palette-ratchet` | exit 0. 0 palette-class uses; ratchet tests at 100% | [palette-ratchet.log](palette-ratchet.log) |
 | Build | `pnpm build` | exit 0 | [build.log](build.log) |
 | Link check | `make link-check` | exit 0 | [link-check.log](link-check.log) |
 | Playwright harness | `pnpm e2e:harness` (Chrome) | exit 0. 14 passed | [e2e-harness.log](e2e-harness.log) |
-| Screenshots and axe | [shots.test.ts](shots.test.ts) via [shots.config.mjs](shots.config.mjs) (the built Studio in Chrome) | exit 0. 24 screenshots, 0 axe violations, no horizontal scroll. | [shots.log](shots.log), [shots-axe.log](shots-axe.log) |
+| Screenshots and axe | [shots.test.ts](shots.test.ts) via [shots.config.mjs](shots.config.mjs) (the built Studio in Chrome) | exit 0. 42 screenshots, 0 axe violations, no horizontal scroll. | [shots.log](shots.log), [shots-axe.log](shots-axe.log) |
 
 ## Gaps
 
