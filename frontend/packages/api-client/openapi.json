@@ -5733,7 +5733,7 @@
           },
           "mode": {
             "$ref": "#/components/schemas/RetrievalMode",
-            "default": "automatic"
+            "default": "agentic"
           },
           "reranker": {
             "anyOf": [
@@ -5796,7 +5796,7 @@
           },
           "mode": {
             "$ref": "#/components/schemas/RetrievalMode",
-            "default": "automatic"
+            "default": "agentic"
           },
           "reranker": {
             "anyOf": [

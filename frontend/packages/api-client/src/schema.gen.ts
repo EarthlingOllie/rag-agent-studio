@@ -4501,7 +4501,7 @@ export interface components {
              * @default 0
              */
             min_score: number;
-            /** @default automatic */
+            /** @default agentic */
             mode: components["schemas"]["RetrievalMode"];
             reranker?: components["schemas"]["ModelChoice"] | null;
             /**
@@ -4534,7 +4534,7 @@ export interface components {
              * @default 0
              */
             min_score: number;
-            /** @default automatic */
+            /** @default agentic */
             mode: components["schemas"]["RetrievalMode"];
             reranker: components["schemas"]["ModelChoice"] | null;
             /**
