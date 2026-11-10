@@ -7,7 +7,7 @@
 **Blocked by:**
 - [13-02: Agentic tracer: one Knowledge Search, end to end](02-agentic-tracer.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Usage rollups record a search count per Agent Version per UTC day
 - [ ] Version KPIs and Version comparison show mean searches per reply
