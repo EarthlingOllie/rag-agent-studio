@@ -5,9 +5,6 @@ import { type AuditEventPage, type AuditFilters, NO_FILTERS, PAGE_SIZE, useAudit
 
 type AuditEvent = AuditEventPage["items"][number];
 
-/** A toolbar filter, as on Cost, Conversations and Analytics; wide enough for "Any action". */
-const FILTER = `${field.pill} min-w-40`;
-
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 export function formatTime(iso: string): string {
   return `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -48,7 +45,7 @@ function Filters({
       <legend className="sr-only">Filter Audit Events</legend>
       <label className={field.filter}>
         Actor
-        <select className={FILTER} value={filters.actorId} onChange={set("actorId")}>
+        <select className={`${field.pill} min-w-40`} value={filters.actorId} onChange={set("actorId")}>
           <option value="">Anyone</option>
           {facets.data?.actors.map((actor) => (
             <option key={actor.id} value={actor.id}>
@@ -59,7 +56,7 @@ function Filters({
       </label>
       <label className={field.filter}>
         Action
-        <select className={FILTER} value={filters.action} onChange={set("action")}>
+        <select className={`${field.pill} min-w-40`} value={filters.action} onChange={set("action")}>
           <option value="">Any action</option>
           {facets.data?.actions.map((action) => (
             <option key={action} value={action}>
@@ -70,11 +67,11 @@ function Filters({
       </label>
       <label className={field.filter}>
         From (UTC)
-        <input type="date" className={FILTER} value={filters.from} onChange={set("from")} />
+        <input type="date" className={`${field.pill} min-w-40`} value={filters.from} onChange={set("from")} />
       </label>
       <label className={field.filter}>
         To (UTC)
-        <input type="date" className={FILTER} value={filters.to} onChange={set("to")} />
+        <input type="date" className={`${field.pill} min-w-40`} value={filters.to} onChange={set("to")} />
       </label>
     </fieldset>
   );
