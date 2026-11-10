@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI
 from pydantic_ai.messages import ModelMessage
-from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.models.function import AgentInfo, DeltaToolCalls, FunctionModel
 
 from app.credentials.registry import Provider
 from app.gateway.fakes import FakeModelAdapters
@@ -32,6 +32,8 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
         "tag_ids": [],
         "reranker": None,
         "citations": True,
+        "mode": "automatic",
+        "search_limit": 3,
     },
     "experience": {
         "display_name": "",
@@ -49,7 +51,8 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
     },
 }
 
-StreamFunction = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str]]
+# Streams the answer's text; or, to call a tool (Knowledge Search), the tool call.
+StreamFunction = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str | DeltaToolCalls]]
 
 
 def agents_path(member: SignedUpMember, project_id: str, *rest: str) -> str:

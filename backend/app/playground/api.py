@@ -5,7 +5,9 @@ A question is answered with the Project Instructions Draft, or with the Instruct
 it names (``instructions_version_id``, any of the Project's Versions). Each answer records
 which: ``instructions_source`` is ``draft`` or ``version``, with the Version's ID and number.
 
-The stream sends ``token`` events (``{"text": …}``) as the answer arrives, then a ``citation``
+In Agentic Retrieval Mode a ``search`` event (``{"query": …, "order": …}``) is sent as each
+Knowledge Search starts, before the answer streams. The stream sends ``token`` events
+(``{"text": …}``) as the answer arrives, then a ``citation``
 event per Chunk the answer cites, then one ``done`` event with the saved Message's ID, the
 Instructions it ran with, its token counts and latency, whether the answer is the Agent's
 fallback text, the Chunks the model was given and the Chunks retrieval left out (with
@@ -27,6 +29,7 @@ from typing import Annotated, Any, Literal, cast
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, PlainSerializer, StringConstraints
+from sqlalchemy import select
 
 from app.agents.api import (
     AGENT_ARCHIVED_RESPONSE,
@@ -37,7 +40,7 @@ from app.agents.api import (
 )
 from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
-from app.conversations.models import Conversation, Message
+from app.conversations.models import Conversation, Message, Search
 from app.conversations.service import MessageNotFoundError, TracedChunk
 from app.core.clock import Clock, get_clock
 from app.documents.ports import IngestionPorts
@@ -48,7 +51,7 @@ from app.projects.instructions import InstructionsVersionNotFoundError, version_
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.retrieval.service import ExcludedReason
 from app.runtime.errors import ErrorEvent
-from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
+from app.runtime.runtime import CitationEvent, ReplaceEvent, SearchEvent, TokenEvent
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 
@@ -129,6 +132,19 @@ class TracedChunkOut(BaseModel):
     excluded_reason: ExcludedReason | None
 
 
+class SearchOut(BaseModel):
+    """One Knowledge Search the answer made (Agentic Retrieval Mode), with the Chunks it found,
+    given to the model or left out, in Trace order. A Chunk's ``rank`` is the number in its
+    Chunk label, which continues across the reply's Searches."""
+
+    order: int
+    query: str
+    latency_ms: int
+    # True when the Search limit refused the call, so nothing was searched.
+    limit_refused: bool
+    chunks: list[TracedChunkOut]
+
+
 class GuardrailOutcomeOut(BaseModel):
     """What one Guardrail layer decided about the answer, and what it did."""
 
@@ -162,7 +178,12 @@ class TraceOut(BaseModel):
     latency_ms: int | None
     # True when no Chunk reached the minimum score, so the answer is the fallback text.
     fallback: bool
+    # Automatic Retrieval Mode: the Chunks the one search up front found. Agentic: empty; each
+    # of the ``searches`` holds the Chunks it found.
     chunks: list[TracedChunkOut]
+    # How many Knowledge Searches the answer made, and each of them in order (Agentic mode).
+    search_count: int
+    searches: list[SearchOut]
     guardrail_outcomes: list[GuardrailOutcomeOut]
 
 
@@ -225,10 +246,28 @@ def _out(
     )
 
 
+def _traced(chunk: TracedChunk) -> TracedChunkOut:
+    return TracedChunkOut(
+        chunk_id=chunk.retrieval.chunk_id,
+        document_id=chunk.retrieval.document_id,
+        document_name=chunk.document_name,
+        document_deleted=chunk.document_deleted,
+        text=chunk.text,
+        score=chunk.retrieval.score,
+        relevance=chunk.retrieval.relevance,
+        rank=chunk.retrieval.rank,
+        cited=chunk.retrieval.cited,
+        excluded_reason=cast(ExcludedReason | None, chunk.retrieval.excluded_reason),
+    )
+
+
 async def trace_out(
     db: Db, message: Message, agent_version_number: int | None, chunks: list[TracedChunk]
 ) -> TraceOut:
     """The Trace of an answer, as the Studio reads it."""
+    searches = await db.scalars(
+        select(Search).where(Search.message_id == message.id).order_by(Search.order)
+    )
     return TraceOut(
         message_id=message.id,
         config_source=message.config_source,
@@ -246,20 +285,17 @@ async def trace_out(
         guardrail_outcomes=[
             GuardrailOutcomeOut.model_validate(o) for o in message.guardrail_outcomes
         ],
-        chunks=[
-            TracedChunkOut(
-                chunk_id=c.retrieval.chunk_id,
-                document_id=c.retrieval.document_id,
-                document_name=c.document_name,
-                document_deleted=c.document_deleted,
-                text=c.text,
-                score=c.retrieval.score,
-                relevance=c.retrieval.relevance,
-                rank=c.retrieval.rank,
-                cited=c.retrieval.cited,
-                excluded_reason=cast(ExcludedReason | None, c.retrieval.excluded_reason),
+        chunks=[_traced(c) for c in chunks if c.retrieval.search_id is None],
+        search_count=message.search_count,
+        searches=[
+            SearchOut(
+                order=search.order,
+                query=search.query,
+                latency_ms=search.latency_ms,
+                limit_refused=search.limit_refused,
+                chunks=[_traced(c) for c in chunks if c.retrieval.search_id == search.id],
             )
-            for c in chunks
+            for search in searches
         ],
     )
 
@@ -342,7 +378,9 @@ _STREAM: dict[int | str, dict[str, Any]] = {
     200: {
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
         "description": (
-            "Server-Sent Events: `token` events, then `citation` events and one `done` event; "
+            "Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) "
+            "as each Knowledge Search starts; `token` events, then `citation` events and one "
+            "`done` event; "
             "or, when the answer leaks the Canary token, a `replace` event then `done`; "
             "or, when the input Guardrail blocks the question, a `refusal` event (`text`, the "
             "Agent's refusal text) then `done`, and no model is asked; "
@@ -413,8 +451,11 @@ async def send_message(
             guardrails=request.app.state.guardrails,
             embedders=ingestion.embedders,
             clock=request.app.state.clock,
+            searches=True,
         ):
-            if isinstance(event, TokenEvent):
+            if isinstance(event, SearchEvent):
+                yield _sse("search", {"query": event.query, "order": event.order})
+            elif isinstance(event, TokenEvent):
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
@@ -450,6 +491,7 @@ async def send_message(
                         "first_token_ms": event.first_token_ms,
                         "latency_ms": event.latency_ms,
                         "fallback": event.event.fallback,
+                        "search_count": len(event.event.searches),
                         "chunks": [
                             {
                                 "chunk_id": str(c.chunk_id),

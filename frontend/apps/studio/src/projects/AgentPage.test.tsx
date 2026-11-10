@@ -5,6 +5,7 @@ import { HttpResponse } from "msw";
 import {
   CONVERSATION_ID,
   RESET_CONVERSATION_ID,
+  agenticTrace,
   fakeAgentsApi,
   hrHelper,
   hrTrace,
@@ -116,6 +117,59 @@ test("the Trace folded under an answer shows the model, usage, cost, latency and
   // It folds away again under the answer.
   await userEvent.click(within(drawer).getByText("Trace"));
   expect(within(drawer).getByRole("table", { name: "Retrieved Chunks", hidden: true })).not.toBeVisible();
+});
+
+test("each Search the model makes shows as a Searching line, in reply order, above the answer", async () => {
+  const { answer } = await askLeave({
+    answer: () =>
+      streamedAnswer(["Twenty-five days ", "[C1]."], {
+        citations: [leaveCitation],
+        searches: ["annual leave allowance", "carry over unused leave"],
+      }),
+  });
+
+  const searches = within(answer).getByRole("list", { name: "Searches" });
+  expect(within(searches).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+    "Searching: annual leave allowance",
+    "Searching: carry over unused leave",
+  ]);
+  expect(within(answer).getByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(within(answer).getByRole("link", { name: "C1 leave-policy.md" })).toBeInTheDocument();
+});
+
+test("an answer that made no Search shows no Searching line", async () => {
+  const { answer } = await askLeave();
+
+  expect(within(answer).queryByRole("list", { name: "Searches" })).not.toBeInTheDocument();
+});
+
+test("the Trace lists each Search in order, with its query, latency and the Chunks it found", async () => {
+  const { answer } = await askLeave({ trace: () => HttpResponse.json(agenticTrace) });
+
+  await userEvent.click(within(answer).getByText("Trace"));
+
+  const drawer = await screen.findByRole("group", { name: "Trace" });
+  const searches = await within(drawer).findByRole("list", { name: "Searches" });
+  const items = within(searches).getAllByRole("listitem");
+  expect(items.map((item) => within(item).getByRole("heading").textContent)).toEqual([
+    "Search 1: annual leave allowance",
+    "Search 2: carry over unused leave",
+  ]);
+  expect(within(items[1] as HTMLElement).getByText("27 ms")).toBeInTheDocument();
+  const rows = (index: number) =>
+    within(within(items[index] as HTMLElement).getByRole("table", { name: `Chunks found by Search ${String(index + 1)}` }))
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => Array.from(row.querySelectorAll("td"), (cell) => cell.textContent));
+  expect(rows(0)).toEqual([["C1", "leave-policy.md", "Everyone gets 25 days of annual leave a year.", "0.920", "0.810", "Cited"]]);
+  // A Chunk found again keeps its first label.
+  expect(rows(1)).toEqual([
+    ["C2", "expenses.md", "Carry over up to 5 days.", "0.510", "0.400", "Given, not cited"],
+    ["C1", "leave-policy.md", "Everyone gets 25 days of annual leave a year.", "0.920", "0.810", "Cited"],
+    ["—", "price-list.md", "Model SKU-4471 ships with a two-year warranty.", "0.150", "0.600", "Excluded: outside the Agent's Tags"],
+  ]);
+  // With Searches there is no separate table of Chunks retrieved up front.
+  expect(within(drawer).queryByRole("table", { name: "Retrieved Chunks" })).not.toBeInTheDocument();
 });
 
 test("an answer that leaked the Canary token is replaced by the fallback text, with no sources", async () => {
