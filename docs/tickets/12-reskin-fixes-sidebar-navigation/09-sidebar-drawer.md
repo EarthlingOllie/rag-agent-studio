@@ -7,7 +7,7 @@
 **Blocked by:**
 - [12-08: Sidebar navigation on desktop](08-sidebar.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Below `md` the sidebar is hidden and an "Open navigation" button in the top bar opens it as a drawer
 - [ ] Opening focuses the current link; focus stays inside the drawer while it is open
