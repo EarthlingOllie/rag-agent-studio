@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] First, the shared navigation helpers (Playwright and Testing Library) learn to follow sidebar links, keeping their names and menu vocabulary so existing specs change little
 - [ ] The sidebar is a navigation landmark named "Studio": the Organisation switcher (plain text for a Member of one Organisation), then Projects, Cost (Owners only) and Settings
