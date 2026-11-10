@@ -2,11 +2,10 @@ import { COLOUR_TOKENS, type ColourToken } from "@studio/ui";
 import { type ChangeEvent, type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { surface, text } from "../design";
+import { button, field, surface, text } from "../design";
 import { useTheme } from "../settings/theme";
 import type { Agent } from "./agents";
 import { type ColourValue, type ThemeOverride, useAgentAvatar, useSaveOverrideColours, useThemeOverride } from "./branding";
-import { BUTTON, INPUT } from "./ProjectsPage";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const ACCEPT = "image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp";
@@ -60,7 +59,7 @@ function Colours({
 
   return (
     <form onSubmit={onSubmit} aria-label="Colour override" className="space-y-2">
-      <p className="text-sm text-muted">
+      <p className={text.muted}>
         Tick a colour to give this Agent its own; the others follow the Organisation&apos;s Theme.
       </p>
       <fieldset disabled={!isOwner} className="grid gap-2 sm:grid-cols-2">
@@ -68,10 +67,11 @@ function Colours({
         {COLOUR_TOKENS.map(({ token, label }) => {
           const row = rows[token];
           return (
-            <div key={token} className="space-y-1 rounded border border-line p-2">
-              <label className="flex items-center gap-2 text-sm font-medium">
+            <div key={token} className="space-y-2 rounded-xl border border-line p-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-ink-2">
                 <input
                   type="checkbox"
+                  className={field.checkbox}
                   checked={row.on}
                   onChange={(event) => {
                     change(token, { on: event.target.checked });
@@ -80,9 +80,9 @@ function Colours({
                 Override {label.toLowerCase()}
               </label>
               {row.on && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-3">
                   {(["light", "dark"] as const).map((scheme) => (
-                    <label key={scheme} className="text-xs">
+                    <label key={scheme} className={field.hint}>
                       {`${label}, ${scheme}`}
                       <input
                         value={row[scheme]}
@@ -91,7 +91,7 @@ function Colours({
                         onChange={(event) => {
                           change(token, { [scheme]: event.target.value });
                         }}
-                        className={`${INPUT} mt-0.5 block w-24 font-mono`}
+                        className={`${field.inputMono} w-28`}
                       />
                     </label>
                   ))}
@@ -101,14 +101,14 @@ function Colours({
           );
         })}
       </fieldset>
-      {!valid && <p className="text-sm text-danger">Use colours like #1a2b3c.</p>}
+      {!valid && <p className={field.error}>Use colours like #1a2b3c.</p>}
       <FormError message={save.error?.message} />
       {isOwner && (
         <div className="flex items-center gap-3">
-          <button type="submit" className={BUTTON} disabled={!valid || save.isPending}>
+          <button type="submit" className={button.primary} disabled={!valid || save.isPending}>
             Save colours
           </button>
-          <p role="status" className="text-sm text-muted">
+          <p role="status" className={text.muted}>
             {save.isSuccess ? "Saved. The widget uses these colours now." : ""}
           </p>
         </div>
@@ -138,24 +138,24 @@ function Avatar({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium">Avatar</h3>
+      <h3 className={field.label}>Avatar</h3>
       <div className="flex min-h-12 items-center gap-3">
         {image ? (
           <img src={image.url} alt="The Agent's avatar" className="h-12 w-12 rounded-full border border-line object-cover" />
         ) : (
-          <span className="text-sm text-muted">No avatar of its own: the widget shows the Live Version&apos;s or the Theme&apos;s.</span>
+          <span className={text.muted}>No avatar of its own: the widget shows the Live Version&apos;s or the Theme&apos;s.</span>
         )}
       </div>
       {isOwner && (
         <div className="flex flex-wrap items-center gap-2">
-          <label className={`${BUTTON} cursor-pointer has-[:disabled]:cursor-not-allowed has-[:focus-visible]:outline-2`}>
+          <label className={`${button.secondary} cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent`}>
             {image ? "Replace avatar" : "Upload avatar"}
             <input type="file" accept={ACCEPT} disabled={busy} onChange={onChange} className="sr-only" />
           </label>
           {image && (
             <button
               type="button"
-              className={BUTTON}
+              className={button.danger}
               disabled={busy}
               onClick={() => {
                 void remove();
@@ -166,14 +166,14 @@ function Avatar({
           )}
         </div>
       )}
-      <p role="status" aria-label="Avatar" className="text-sm text-muted">
+      <p role="status" aria-label="Avatar" className={text.muted}>
         {action.phase === "uploading" && "Uploading…"}
         {action.phase === "removing" && "Removing…"}
         {action.phase === "uploaded" && "Avatar saved. The widget uses it now."}
         {action.phase === "removed" && "Avatar removed."}
       </p>
       {action.phase === "failed" && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className={field.error}>
           {action.message}
         </p>
       )}

@@ -409,18 +409,16 @@ function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () =
         changes aren&apos;t saved. Load their Draft, or save yours over it.
       </p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={CONFLICT_BUTTON} onClick={onLoad}>
+        <button type="button" className={button.secondary} onClick={onLoad}>
           Load their changes
         </button>
-        <button type="button" className={CONFLICT_BUTTON} onClick={onKeep}>
+        <button type="button" className={button.secondary} onClick={onKeep}>
           Save mine over theirs
         </button>
       </div>
     </div>
   );
 }
-
-const CONFLICT_BUTTON = button.secondary;
 
 /**
  * The Agent's Draft, every group of its AgentConfig. Each change is saved automatically once
