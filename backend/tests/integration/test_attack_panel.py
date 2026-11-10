@@ -16,6 +16,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from pydantic_ai.exceptions import ModelHTTPError
+from pydantic_ai.models.function import FunctionModel
 
 from app.embed.admission import Admission
 from app.embed.service import DEFAULT_UNAVAILABLE_TEXT
@@ -24,6 +25,8 @@ from app.seed import content
 from app.seed.runner import erase_demo, seed
 from tests.agents import parse_sse
 from tests.conftest import ClientFactory, SignedUpMember
+from tests.integration.test_agent_versions import published
+from tests.integration.test_agentic_retrieval import agentic, searching
 from tests.integration.test_seed import ASSETS, demo_project, get, signed_in
 
 pytestmark = pytest.mark.usefixtures("quiet_seed_history")
@@ -325,3 +328,34 @@ async def test_once_the_agents_budget_is_spent_the_panel_says_so(
     assert events == [
         ("unavailable", {"reason": "budget_exhausted", "message": DEFAULT_UNAVAILABLE_TEXT})
     ]
+
+
+async def test_an_agentic_guardrail_demo_agent_searches_but_the_panel_streams_no_search(
+    seeded: FastAPI,
+    visitor: httpx.AsyncClient,
+    new_client: ClientFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The panel streams what the widget did before ticket 13-06; Searches are not its subject."""
+    owner = await signed_in(new_client, content.OWNER)
+    project = await demo_project(owner)
+    agents = {a["name"]: a for a in await get(owner, "projects", project["id"], "agents")}
+    target = agents["Guardrail demo"]
+    await agentic(owner, project["id"], target["id"])
+    await published(owner, project["id"], target["id"])
+    built: list[str] = []
+
+    def chat_model(*args: object) -> FunctionModel:
+        built.append("searching")
+        return FunctionModel(
+            stream_function=searching("leave policy", answer="Leave is 25 days."),
+            profile={"supports_json_schema_output": False},
+        )
+
+    monkeypatch.setattr(seeded.state.model_gateway, "chat_model", chat_model)
+
+    events = await fire(visitor, "benign-control")
+
+    assert built  # the scripted model answered, and it searched first
+    assert [kind for kind, _ in events] == ["token", "trace", "done"], events
+    assert streamed(events) == "Leave is 25 days."
