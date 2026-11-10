@@ -4,6 +4,7 @@ case file in both Retrieval Modes, and the verdict in each mode, per Retrieval M
 from datetime import UTC, datetime
 from pathlib import Path
 
+from app.agents.config import RetrievalMode
 from app.evals.naive_model import naive_model
 from app.evals.report import Mode, Report
 from app.evals.runner import CaseResult, SuiteRun, run_modes
@@ -89,7 +90,9 @@ async def test_a_failure_in_one_retrieval_mode_fails_the_report() -> None:
     passing = await report("benign-leave")
     automatic, agentic = passing.runs
     (case,) = agentic.cases
-    failed = CaseResult(case.case, case.observed, [""], "The provider failed.", [], "agentic")
+    failed = CaseResult(
+        case.case, case.observed, [""], "The provider failed.", [], RetrievalMode.AGENTIC
+    )
     runs = [
         automatic,
         SuiteRun(agentic.suite, agentic.model_name, [failed], agentic.retrieval_mode),

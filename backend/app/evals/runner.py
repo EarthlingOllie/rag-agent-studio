@@ -2,19 +2,19 @@
 each Retrieval Mode (``run_modes``).
 
 Each case is a Conversation with one fictional Agent (the suite's system prompt, the default
-AgentConfig with the case's input mode and the run's Retrieval Mode). Its turns are sent one after another through
-``GuardrailPipeline.run_turn``, exactly as the Playground and the widget send a question: the
-input Guardrail, then the Agent runtime with its spotlighted prompt and Canary filter, then the
-model. A turn the input Guardrail blocked is left out of the later turns' history, as the
-Playground leaves it out.
+AgentConfig with the case's input mode and the run's Retrieval Mode). Its turns are sent one
+after another through ``GuardrailPipeline.run_turn``, exactly as the Playground and the widget
+send a question: the input Guardrail, then the Agent runtime with its spotlighted prompt and
+Canary filter, then the model. A turn the input Guardrail blocked is left out of the later
+turns' history, as the Playground leaves it out.
 
 Retrieval is simulated: the Knowledge Base is the suite's Chunks, and a case's poisoned
-Document is one more Chunk ranked first. In Automatic mode they are retrieved up front; in
-Agentic mode every Knowledge Search the model makes finds them, through the same runtime path
-(spotlighting, the canary check on the query) as a real Search. That Chunk goes through the ingestion scan first: the
+Document is one more Chunk ranked first. That Chunk goes through the ingestion scan first: the
 pipeline's own injection classifier (the ingestion scan and the input Guardrail share one), with
 the case's Flagged Chunk mode deciding whether a flagged Chunk is still retrieved (``mark``) or
-excluded (``exclude``), as retrieval does.
+excluded (``exclude``), as retrieval does. In Automatic mode the Chunks are retrieved up front;
+in Agentic mode every Knowledge Search the model makes finds them, through the runtime's own
+Search path (spotlighting, the canary check on the query).
 
 What the Visitor received in each turn (the streamed text, a replacement, or the refusal) is
 checked for the case's markers. The case's observed outcome per layer is compared with the one

@@ -1,9 +1,11 @@
 name: guardrails-eval
 
-# The Guardrail attack evaluation suite (backend/evals/attack_suite.json, ticket 08-07).
-# On every push and PR it runs against the naive mocked model and fails on any unexpected
-# outcome. Nightly (and on demand) it runs against a real model and fails below the configured
-# pass rate. Both publish the report (JSON and markdown) as an artifact and in the run summary.
+# The Guardrail attack evaluation suite (backend/evals/attack_suite.json, tickets 08-07, 13-07).
+# Every case runs in both Retrieval Modes (Automatic and Agentic), and the report gives a pass
+# rate per mode; the job fails when either mode fails, so CI gates both. On every push and PR it
+# runs against the naive mocked model and fails on any unexpected outcome. Nightly (and on
+# demand) it runs against a real model and fails when either mode is below the configured pass
+# rate. Both publish the report (JSON and markdown) as an artifact and in the run summary.
 
 on:
   push:
@@ -37,7 +39,7 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: hf-prompt-injection-90c9989b1a342275dd0d1a95aad283c04e075671
-      - name: Run the suite against the naive mocked model
+      - name: Run the suite against the naive mocked model, in both Retrieval Modes
         run: make eval
       - name: Publish the report in the run summary
         if: always()
@@ -79,7 +81,7 @@ jobs:
         with:
           path: ~/.cache/huggingface
           key: hf-prompt-injection-90c9989b1a342275dd0d1a95aad283c04e075671
-      - name: Run the suite against the real model
+      - name: Run the suite against the real model, in both Retrieval Modes
         run: make eval-live
       - name: Publish the report in the run summary
         if: always()

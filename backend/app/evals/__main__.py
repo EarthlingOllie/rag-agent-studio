@@ -6,8 +6,9 @@ model; live mode (``make eval-live``, the nightly job) answers with a real chat 
 needs none). Both use the production injection classifier (the local ONNX model) unless told
 otherwise. Every case runs in each Retrieval Mode, Automatic and Agentic, and the report gives
 each mode its verdict and Pass rate. The report is written to ``--out`` as
-``attack-eval-report.json`` and ``attack-eval-report.md``, and the markdown is printed. The exit status is 0 when the report
-passes in every Retrieval Mode, 1 when it fails in any, 2 when the command is used wrongly.
+``attack-eval-report.json`` and ``attack-eval-report.md``, and the markdown is printed. The exit
+status is 0 when the report passes in every Retrieval Mode, 1 when it fails in any, 2 when the
+command is used wrongly.
 """
 
 import argparse

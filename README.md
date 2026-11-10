@@ -105,7 +105,7 @@ A Visitor's message goes widget → API → admission control (Allowed Origin, r
 - **100% line and branch coverage, enforced** for the backend and frontend ([ADR-0008](docs/adr/0008-full-line-and-branch-coverage.md)); a build below it fails. Live-model tests are marked `live` and sit outside the gate.
 - **Tests at seams, not internals.** Behaviour is tested at the highest seam: the HTTP API in process against real Postgres and Redis, components through the DOM with MSW, the whole stack through Playwright. Model providers, classifiers and clocks are swapped for test doubles at their ports. See the [shared test seams](docs/specs/README.md#shared-test-seams).
 - **End to end.** `make e2e` starts the compose stack, seeds it and runs every Playwright spec with axe accessibility scans (WCAG 2.2 AA), including the automated [five-minute demo](#five-minute-demo).
-- **Guardrail evaluation.** `make eval` runs the Attack evaluation suite (`backend/evals/attack_suite.json`) through the real Guardrail pipeline on every push; `make eval-live` runs it nightly against a real model with a minimum pass rate.
+- **Guardrail evaluation.** `make eval` runs the Attack evaluation suite (`backend/evals/attack_suite.json`) through the real Guardrail pipeline in both Retrieval Modes on every push; `make eval-live` runs it nightly against a real model with a minimum pass rate.
 - **Infrastructure and links.** `make infra-check` runs `terraform test` with mocked providers, TFLint and Checkov; `make link-check` checks every relative link and anchor in the Markdown.
 
 | Command | What it runs |

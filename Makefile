@@ -136,14 +136,15 @@ e2e: ## Start the stack, wait for health checks, seed the demo and run the Playw
 	cd frontend && pnpm e2e
 
 # The attack evaluation suite (backend/evals/attack_suite.json) through the real Guardrail
-# pipeline with the local classifier (fetched from Hugging Face on first use). Reports go to
-# EVAL_OUT as attack-eval-report.json and attack-eval-report.md.
+# pipeline with the local classifier (fetched from Hugging Face on first use), every case in both
+# Retrieval Modes; either mode failing fails the target. Reports (a pass rate per Retrieval Mode)
+# go to EVAL_OUT as attack-eval-report.json and attack-eval-report.md.
 EVAL_OUT ?= $(CURDIR)/backend/eval-report
 EVAL_MIN_PASS_RATE ?= 0.85
 
-eval: ## Guardrail attack evaluation suite against the naive mocked model; fails on any unexpected outcome
+eval: ## Guardrail attack evaluation suite against the naive mocked model, both Retrieval Modes; fails on any unexpected outcome
 	cd backend && uv run python -m app.evals --mode mocked --out "$(EVAL_OUT)"
 
-eval-live: ## The suite against a real model (EVAL_PROVIDER, EVAL_MODEL, EVAL_API_KEY); fails below EVAL_MIN_PASS_RATE
+eval-live: ## The suite against a real model (EVAL_PROVIDER, EVAL_MODEL, EVAL_API_KEY), both Retrieval Modes; fails if either is below EVAL_MIN_PASS_RATE
 	cd backend && uv run python -m app.evals --mode live --provider "$(EVAL_PROVIDER)" \
 		--model "$(EVAL_MODEL)" --min-pass-rate "$(EVAL_MIN_PASS_RATE)" --out "$(EVAL_OUT)"

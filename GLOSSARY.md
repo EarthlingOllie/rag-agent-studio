@@ -611,7 +611,7 @@ The sites permitted to display an Agent through its Embed Snippet, each a scheme
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
 
 **Canary token**:
-A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
+A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent. A Knowledge Search query is checked for it, in any of those forms, before the Search runs: a query carrying it is never run or recorded, and the reply is the fallback text, recorded as a canary leak.
 _Avoid_: Canary, honeytoken, tripwire
 
 **Input Guardrail**:
@@ -644,15 +644,15 @@ _Avoid_: Block message, rejection text
 What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak, or unchecked when the LLM classifier couldn't judge), action (blocked, flagged, logged, replaced or allowed: the input Guardrail blocks, flags or logs by its Input mode; the Canary token replaces a leak, or flags an encoded one found after sending; allowed when an Agent failing open let an unchecked message through), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
 **Attack evaluation suite**:
-The versioned set of attack and benign cases (`backend/evals/attack_suite.json`) run through the real Guardrail pipeline to show the defences work: each case declares its expected outcome per layer (ingestion scan, input Guardrail, Canary token, and whether the answer stayed harmless). It runs on every PR against the Naive model, where any unexpected outcome fails, and nightly against a real model, where it fails below the configured pass rate.
+The versioned set of attack and benign cases (`backend/evals/attack_suite.json`) run through the real Guardrail pipeline to show the defences work: each case declares its expected outcome per layer (ingestion scan, input Guardrail, Canary token, and whether the answer stayed harmless). Every case runs once in each Retrieval Mode (a case can expect different outcomes in Agentic mode, for an attack only an Agent with Knowledge Search can make), and the report gives a Pass rate per mode. It runs on every PR against the Naive model, where any unexpected outcome in either mode fails, and nightly against a real model, where either mode below the configured pass rate fails.
 _Avoid_: Red-team suite, jailbreak tests
 
 **Naive model**:
-The mocked chat model the Attack evaluation suite runs against in CI: it obeys whatever instructions it finds (in the Visitor's message, the history or a retrieved Chunk, disguised or not), so the suite tests the Guardrails rather than a model's own refusals.
+The mocked chat model the Attack evaluation suite runs against in CI: it obeys whatever instructions it finds (in the Visitor's message, the history or a retrieved Chunk, disguised or not), so the suite tests the Guardrails rather than a model's own refusals. Given Knowledge Search, it searches once with the Visitor's question, and again with its Canary token if a Chunk tells it to search for its secret token.
 _Avoid_: Dumb model, evil model
 
 **Pass rate**:
-In an Attack evaluation suite report, the share of cases defended: an attack got none of its markers into a reply and sent no encoded Canary token; a benign question was answered without being blocked, flagged or cut off.
+In an Attack evaluation suite report, the share of cases defended: an attack got none of its markers into a reply and sent no encoded Canary token; a benign question was answered without being blocked, flagged or cut off. The report gives one per Retrieval Mode.
 
 ## Conversations
 

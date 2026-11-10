@@ -216,4 +216,5 @@ async def test_a_chunk_asking_for_a_search_with_the_canary_is_stopped_in_agentic
     # Each mode's outcome is the one the case expects in that mode.
     assert answered.as_expected
     assert stopped.as_expected
-    assert answered.defended and stopped.defended
+    assert answered.defended
+    assert stopped.defended
