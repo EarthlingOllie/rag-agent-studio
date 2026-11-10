@@ -7,7 +7,7 @@
 **Blocked by:**
 - [13-01: Prefactor: Chunk labels assigned per reply](01-per-reply-chunk-labels.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] AgentConfig Retrieval gains `mode` (`automatic` | `agentic`) and `search_limit` (1–5, default 3); `mode` defaults to **Automatic** until 13-09. The JSON Schema and generated client are updated and the client drift check passes
 - [ ] In Agentic mode the runtime registers exactly one tool, Knowledge Search (argument: `query`), which calls the unchanged `retrieve` with the Agent's Retrieval settings and returns spotlighted, labelled data blocks; there is no upfront search
