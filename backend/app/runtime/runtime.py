@@ -8,9 +8,9 @@ fallback text and the model isn't asked. The Pydantic AI agent it builds registe
 (ADR-0007).
 
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
-the answer cites (``app.runtime.citations``). The reply keeps one record of the Chunks given to
-the model (``app.runtime.prompt.GivenChunks``), which assigns their Chunk labels and resolves
-the Citations, then one ``DoneEvent``. If the model's provider
+the answer cites (``app.runtime.citations``), then one ``DoneEvent``. The reply keeps one record
+of the Chunks given to the model (``app.runtime.prompt.GivenChunks``), which assigns their Chunk
+labels and resolves the Citations. If the model's provider
 fails (or the Embedding Model's, retrieving), the turn ends instead with an ``ErrorEvent`` saying
 why (``app.runtime.errors``), whatever was streamed before it. A model that supports
 structured output is asked for a ``CitedAnswer`` through the provider's native JSON schema
