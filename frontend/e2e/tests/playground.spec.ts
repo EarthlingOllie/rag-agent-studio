@@ -212,4 +212,82 @@ test.describe("Agent and Playground", () => {
     await expect(found.getByRole("cell").last()).toHaveText("Cited");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
+
+  test("an Agentic Agent whose Default Model can't use tools answers as Automatic, and the Trace says so", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    // Ingestion and a streamed answer: more than the default 30 seconds.
+    test.setTimeout(120_000);
+    await page.goto("/");
+    const me = (await (await page.request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
+    const organisation = `/api/organisations/${me.organisations[0]?.id ?? ""}`;
+    const claude = await page.request.post(`${organisation}/credentials`, {
+      data: { name: "Support Claude", provider: "anthropic", api_key: CHAT_KEY },
+    });
+    expect(claude.status()).toBe(201);
+    const { id } = (await claude.json()) as { id: string };
+    expect((await page.request.put(`${organisation}/default-model`, { data: { credential_id: id, model: "claude-haiku-4-5" } })).status()).toBe(200);
+    // Bedrock access keys (AWS's documentation example, checked by the fake verifier) for chat.
+    const bedrock = await page.request.post(`${organisation}/credentials/bedrock`, {
+      data: {
+        auth_kind: "aws_access_keys",
+        name: "Bedrock chat",
+        access_key_id: "AKIAIOSFODNN7EXAMPLE",
+        secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        region: "us-east-1",
+        capabilities: ["chat"],
+      },
+    });
+    expect(bedrock.status()).toBe(201);
+    const { id: bedrockId } = (await bedrock.json()) as { id: string };
+
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
+    const newProject = page.getByRole("form", { name: "New Project" });
+    await newProject.getByLabel("Name").fill("Northwind HR");
+    await newProject.getByRole("button", { name: "Create Project" }).click();
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
+    const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
+    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
+    await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
+    const newAgent = page.getByRole("form", { name: "New Agent" });
+    await newAgent.getByLabel("Name").fill("HR searcher");
+    await newAgent.getByRole("button", { name: "Create Agent" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "HR searcher" })).toBeVisible({ timeout: 15_000 });
+
+    // Agentic through the Draft API, while the Default Model supports tools.
+    const [, projectId, agentId] = /\/projects\/([0-9a-f-]+)\/agents\/([0-9a-f-]+)/.exec(page.url()) ?? [];
+    const agentPath = `${organisation}/projects/${projectId ?? ""}/agents/${agentId ?? ""}`;
+    const { draft } = (await (await page.request.get(agentPath)).json()) as { draft: { retrieval: Record<string, unknown> } };
+    const agentic = { ...draft, retrieval: { ...draft.retrieval, mode: "agentic" } };
+    expect((await page.request.put(`${agentPath}/draft`, { data: agentic })).status()).toBe(200);
+
+    // The Default Model moves to Mistral 7B Instruct, which can't use tools: Agentic Drafts are
+    // now refused, but this Agent keeps answering.
+    const mistral = "mistral.mistral-7b-instruct-v0:2";
+    expect((await page.request.put(`${organisation}/default-model`, { data: { credential_id: bedrockId, model: mistral } })).status()).toBe(200);
+    const refused = await page.request.put(`${agentPath}/draft`, { data: agentic });
+    expect(refused.status()).toBe(422);
+    expect(JSON.stringify(await refused.json())).toContain("needs a model that supports tools");
+    await page.reload();
+
+    // The model picker marks which of the Bedrock models support tools (choosing none saves nothing).
+    const override = page.getByRole("group", { name: "Model override" });
+    await override.getByLabel("Credential").selectOption("Bedrock chat (Amazon Bedrock)");
+    await expect(override.getByRole("group", { name: "No tools: Automatic only" }).getByRole("option")).toHaveText(["Mistral 7B Instruct"]);
+
+    // No Search: the answer comes from the one search up front, and the Trace warns of it.
+    await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
+    await page.getByRole("button", { name: "Send" }).click();
+    const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR searcher" });
+    await expect(answer).toContainText(`Fake reply from bedrock:${mistral}.`, { timeout: 15_000 });
+    await expect(answer.getByRole("list", { name: "Searches" })).toHaveCount(0);
+    await answer.getByText("Trace", { exact: true }).click();
+    const trace = answer.getByRole("group", { name: "Trace" });
+    await expect(trace.getByText(/its model can't use tools, so it answered as Automatic/)).toBeVisible({ timeout: 15_000 });
+    await expect(trace.getByRole("table", { name: "Retrieved Chunks" })).toBeVisible();
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+  });
 });

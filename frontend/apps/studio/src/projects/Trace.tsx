@@ -1,7 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { type ReactNode, useId, useState } from "react";
 
-import { Icon, surface } from "../design";
+import { Icon, Notice, surface } from "../design";
 import { type Trace, instructionsUsed, useTrace } from "./agents";
 
 type TraceChunk = Trace["chunks"][number];
@@ -189,6 +189,13 @@ function TraceBody({ trace }: { trace: Trace }) {
           </div>
         ))}
       </dl>
+      {trace.automatic_fallback && (
+        <Notice tone="warning">
+          This Agent is Agentic, but its model can't use tools, so it answered as Automatic: it
+          searched once with the question, before the model. Choose a model that supports tools,
+          or set the Retrieval Mode to Automatic.
+        </Notice>
+      )}
       {trace.fallback && (
         <p className="text-sm text-muted">
           No Chunk reached the minimum score, so the Agent replied with its

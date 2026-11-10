@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 
 
 import { button, field as fields, Section } from "../design";
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
+import { ChatModelOptions, withoutTools } from "../settings/ModelOptions";
 import { type Agent, StaleDraftError, useSaveDraft, useStoreAgent } from "./agents";
 import { type Draft, DraftRequestError, errorsFor, type FieldError, type ModelChoice, useCredentialModels } from "./draft";
 import { useTags } from "./tags";
@@ -219,7 +220,10 @@ function ModelChoiceField({
   field,
   onChange,
   onIncomplete,
+  chat = false,
 }: {
+  /** A chat model that answers: its models are marked by whether they support tools. */
+  chat?: boolean;
   field: string;
   legend: string;
   noneLabel: string;
@@ -243,6 +247,7 @@ function ModelChoiceField({
   const options = models.data ?? [];
   const model = value?.credential_id === credentialId ? value.model : "";
   const incomplete = credentialId !== "" && value?.credential_id !== credentialId;
+  const plain = withoutTools(options, model);
   useEffect(() => {
     onIncomplete(field, incomplete);
   }, [field, incomplete, onIncomplete]);
@@ -295,13 +300,22 @@ function ModelChoiceField({
                   <option value="" disabled>
                     Choose a model…
                   </option>
-                  {options.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
+                  {chat ? (
+                    <ChatModelOptions models={options} />
+                  ) : (
+                    options.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 {incomplete && <p className="text-sm text-muted">Choose a model to use this credential.</p>}
+                {chat && plain && (
+                  <p className="text-sm text-muted">
+                    {`${plain.name} can't use tools, so this Agent can only use Automatic Retrieval Mode.`}
+                  </p>
+                )}
               </>
             ))}
         </>
@@ -604,6 +618,7 @@ export function DraftEditor({
         </div>
         <ModelChoiceField
           legend="Model override"
+          chat
           noneLabel="None: use the Default Model"
           hint="Answer with a model of a chat credential instead of the Organisation's Default Model."
           empty="No credential can be used for chat yet. The Default Model answers."

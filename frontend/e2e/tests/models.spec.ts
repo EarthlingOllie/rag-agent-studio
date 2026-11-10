@@ -43,6 +43,12 @@ test.describe("models", () => {
     const credential = form.getByLabel("Credential");
     await expect(credential.getByRole("option")).toHaveText(["Support Claude (Anthropic)"]);
     await expect(form.getByLabel("Model").getByRole("option")).toHaveText(["Claude Opus 4.1", "Claude Sonnet 4.5", "Claude Haiku 4.5"]);
+    // Each of them supports tools, as Agentic Retrieval Mode needs.
+    await expect(form.getByLabel("Model").getByRole("group", { name: "Supports tools: Agentic or Automatic" }).getByRole("option")).toHaveText([
+      "Claude Opus 4.1",
+      "Claude Sonnet 4.5",
+      "Claude Haiku 4.5",
+    ]);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     await form.getByLabel("Model").selectOption("Claude Haiku 4.5");

@@ -89,19 +89,31 @@ export const voyage = credential(
   ["embeddings", "rerank"],
 );
 
+export const bedrock = credential(
+  "c1000000-0000-4000-8000-000000000004",
+  "Bedrock",
+  "bedrock",
+  ["chat"],
+);
+
 /** Models per credential and capability, as `GET …/credentials/{id}/models/{capability}` answers. */
 export const offeredModels: Record<string, ModelOut[]> = {
   [`${openAi.id}/chat`]: [
-    { id: "gpt-4.1", name: "GPT-4.1" },
-    { id: "gpt-4.1-mini", name: "GPT-4.1 mini" },
+    { id: "gpt-4.1", name: "GPT-4.1", supports_tools: true },
+    { id: "gpt-4.1-mini", name: "GPT-4.1 mini", supports_tools: true },
   ],
   [`${claude.id}/chat`]: [
-    { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
-    { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
+    { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5", supports_tools: true },
+    { id: "claude-haiku-4-5", name: "Claude Haiku 4.5", supports_tools: true },
+  ],
+  // Mistral 7B Instruct can't use tools.
+  [`${bedrock.id}/chat`]: [
+    { id: "amazon.nova-pro-v1:0", name: "Amazon Nova Pro", supports_tools: true },
+    { id: "mistral.mistral-7b-instruct-v0:2", name: "Mistral 7B Instruct", supports_tools: false },
   ],
   [`${voyage.id}/rerank`]: [
-    { id: "rerank-2.5", name: "rerank-2.5" },
-    { id: "rerank-2.5-lite", name: "rerank-2.5-lite" },
+    { id: "rerank-2.5", name: "rerank-2.5", supports_tools: false },
+    { id: "rerank-2.5-lite", name: "rerank-2.5-lite", supports_tools: false },
   ],
 };
 
@@ -259,6 +271,7 @@ export const hrTrace: Schemas["TraceOut"] = {
   guardrail_outcomes: [],
   search_count: 0,
   searches: [],
+  automatic_fallback: false,
   chunks: [
     {
       chunk_id: leaveCitation.chunk_id,

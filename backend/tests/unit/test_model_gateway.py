@@ -625,8 +625,10 @@ def test_the_demo_provider_is_labelled_as_a_demo_model() -> None:
     assert spec.name == "Demo (not a real model)"
     assert spec.models == {
         Capability.CHAT: (
-            RegistryModel("demo-chat", "Demo model"),
-            RegistryModel("demo-naive", "Naive demo model (obeys injected instructions)"),
+            RegistryModel("demo-chat", "Demo model", supports_tools=True),
+            RegistryModel(
+                "demo-naive", "Naive demo model (obeys injected instructions)", supports_tools=True
+            ),
         )
     }
     assert spec.auth_kinds == (AuthKind.API_KEY,)

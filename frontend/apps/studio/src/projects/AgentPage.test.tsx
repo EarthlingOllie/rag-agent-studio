@@ -318,6 +318,32 @@ test("a question the input Guardrail blocked gets the Agent's refusal text, mark
   expect(within(answer).getByText("Trace")).toBeInTheDocument();
 });
 
+test("the Trace warns when an Agentic Agent answered as Automatic because its model can't use tools", async () => {
+  const { answer } = await askLeave({
+    trace: () => HttpResponse.json({ ...hrTrace, automatic_fallback: true }),
+  });
+
+  await userEvent.click(within(answer).getByText("Trace"));
+
+  const drawer = await screen.findByRole("group", { name: "Trace" });
+  const warning = await within(drawer).findByRole("status");
+  expect(warning).toHaveTextContent(
+    "This Agent is Agentic, but its model can't use tools, so it answered as Automatic: it searched once with the question, before the model. Choose a model that supports tools, or set the Retrieval Mode to Automatic.",
+  );
+  // The one search up front is listed as in Automatic mode.
+  expect(within(drawer).getByRole("table", { name: "Retrieved Chunks" })).toBeInTheDocument();
+});
+
+test("the Trace of an answer on a model with tools has no Automatic fallback warning", async () => {
+  const { answer } = await askLeave({ trace: () => HttpResponse.json(agenticTrace) });
+
+  await userEvent.click(within(answer).getByText("Trace"));
+
+  const drawer = await screen.findByRole("group", { name: "Trace" });
+  expect(await within(drawer).findByText("Search 1:", { exact: false })).toBeInTheDocument();
+  expect(within(drawer).queryByText(/answered as Automatic/)).not.toBeInTheDocument();
+});
+
 test("the Trace of a refusal says the input Guardrail blocked the question and no model was asked", async () => {
   const { answer } = await askLeave({
     answer: () => streamedAnswer([], { refusal: "I can only answer questions about our HR policies." }),

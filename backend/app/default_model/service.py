@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import audit
 from app.credentials.models import ProviderCredential
 from app.credentials.references import CredentialReference
-from app.credentials.registry import Capability, Provider, models_for
+from app.credentials.registry import Capability, Provider, models_for, supports_tools
 from app.default_model.models import DefaultModel
 from app.gateway.gateway import ModelGateway, check_offered
 from app.tenancy.repository import OrganisationScope
@@ -44,6 +44,10 @@ class CurrentDefault:
         )
         # A model since dropped from the registry is shown by its ID.
         return {m.id: m.name for m in offered}.get(self.model, self.model)
+
+    @property
+    def supports_tools(self) -> bool:
+        return supports_tools(Provider(self.credential.provider), self.model)
 
     def summary(self) -> dict[str, Any]:
         return {

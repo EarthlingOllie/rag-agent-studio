@@ -37,6 +37,8 @@ class DefaultModelOut(BaseModel):
     # The model's ID, as the provider knows it, and its display name.
     model: str
     model_name: str
+    # Whether the model can call tools, as Agentic Retrieval Mode needs.
+    supports_tools: bool
     updated_at: datetime
 
 
@@ -47,6 +49,7 @@ def _out(current: service.CurrentDefault) -> DefaultModelOut:
         provider=Provider(current.credential.provider),
         model=current.model,
         model_name=current.model_name,
+        supports_tools=current.supports_tools,
         updated_at=current.updated_at,
     )
 

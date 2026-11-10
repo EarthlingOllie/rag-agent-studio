@@ -34,6 +34,14 @@ class Capability(enum.StrEnum):
 class Model:
     id: str
     name: str
+    # Whether the model can call tools, which Agentic Retrieval Mode's Knowledge Search needs.
+    # A property of the model, not a Capability: only chat models call tools.
+    supports_tools: bool = False
+
+
+def chat(id: str, name: str, *, supports_tools: bool = True) -> Model:
+    """A chat model; most support tools."""
+    return Model(id, name, supports_tools)
 
 
 @dataclass(frozen=True)
@@ -57,9 +65,9 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
             (AuthKind.API_KEY,),
             {
                 Capability.CHAT: (
-                    Model("claude-opus-4-1", "Claude Opus 4.1"),
-                    Model("claude-sonnet-4-5", "Claude Sonnet 4.5"),
-                    Model("claude-haiku-4-5", "Claude Haiku 4.5"),
+                    chat("claude-opus-4-1", "Claude Opus 4.1"),
+                    chat("claude-sonnet-4-5", "Claude Sonnet 4.5"),
+                    chat("claude-haiku-4-5", "Claude Haiku 4.5"),
                 ),
             },
         ),
@@ -69,9 +77,9 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
             (AuthKind.API_KEY,),
             {
                 Capability.CHAT: (
-                    Model("gpt-4.1", "GPT-4.1"),
-                    Model("gpt-4.1-mini", "GPT-4.1 mini"),
-                    Model("gpt-4o-mini", "GPT-4o mini"),
+                    chat("gpt-4.1", "GPT-4.1"),
+                    chat("gpt-4.1-mini", "GPT-4.1 mini"),
+                    chat("gpt-4o-mini", "GPT-4o mini"),
                 ),
                 Capability.EMBEDDINGS: (
                     Model("text-embedding-3-small", "text-embedding-3-small"),
@@ -85,9 +93,15 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
             (AuthKind.AWS_ROLE, AuthKind.AWS_ACCESS_KEYS),
             {
                 Capability.CHAT: (
-                    Model("anthropic.claude-sonnet-4-5-20250929-v1:0", "Claude Sonnet 4.5"),
-                    Model("anthropic.claude-haiku-4-5-20251001-v1:0", "Claude Haiku 4.5"),
-                    Model("amazon.nova-pro-v1:0", "Amazon Nova Pro"),
+                    chat("anthropic.claude-sonnet-4-5-20250929-v1:0", "Claude Sonnet 4.5"),
+                    chat("anthropic.claude-haiku-4-5-20251001-v1:0", "Claude Haiku 4.5"),
+                    chat("amazon.nova-pro-v1:0", "Amazon Nova Pro"),
+                    # Bedrock's Converse API gives Mistral 7B Instruct no tool use.
+                    chat(
+                        "mistral.mistral-7b-instruct-v0:2",
+                        "Mistral 7B Instruct",
+                        supports_tools=False,
+                    ),
                 ),
                 Capability.EMBEDDINGS: (
                     Model("amazon.titan-embed-text-v2:0", "Titan Text Embeddings V2"),
@@ -118,13 +132,20 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
             (AuthKind.API_KEY,),
             {
                 Capability.CHAT: (
-                    Model("demo-chat", "Demo model"),
-                    Model("demo-naive", "Naive demo model (obeys injected instructions)"),
+                    chat("demo-chat", "Demo model"),
+                    chat("demo-naive", "Naive demo model (obeys injected instructions)"),
                 )
             },
         ),
     )
 }
+
+
+def supports_tools(provider: Provider, model: str) -> bool:
+    """Whether the provider's chat model can call tools; False for a model the registry
+    doesn't list (one since dropped from it)."""
+    offered = PROVIDERS[provider].models.get(Capability.CHAT, ())
+    return any(m.supports_tools for m in offered if m.id == model)
 
 
 def models_for(

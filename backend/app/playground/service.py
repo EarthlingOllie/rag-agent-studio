@@ -26,7 +26,7 @@ from typing import Literal, overload
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.config import AgentConfig, ModelChoice, Retrieval
+from app.agents.config import AgentConfig, ModelChoice, Retrieval, RetrievalMode
 from app.agents.service import active_agent, get_agent
 from app.conversations.models import (
     DRAFT,
@@ -45,6 +45,7 @@ from app.conversations.service import (
 )
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
+from app.credentials.registry import Provider, supports_tools
 from app.default_model.service import read_default
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
@@ -196,6 +197,8 @@ class PreparedTurn:
     classifier: ChosenModel | None = None
     # The Agent Version answering; None for the Draft.
     agent_version_id: uuid.UUID | None = None
+    # The Agent is Agentic but its chat model can't use tools, so ``config`` is Automatic.
+    automatic_fallback: bool = False
 
     @property
     def instructions_source(self) -> InstructionsSource:
@@ -265,6 +268,14 @@ async def save_question(
         raise ConversationNotFoundError
     organisation_id = conversation.organisation_id
     chat = await _chat_model(session, organisation_id, config)
+    # Saving the Draft checked its model supports tools, but the Default Model may have changed
+    # since: such an Agentic Agent answers as Automatic rather than not at all.
+    automatic_fallback = config.retrieval.mode is RetrievalMode.AGENTIC and not supports_tools(
+        Provider(chat.credential.provider), chat.model
+    )
+    if automatic_fallback:
+        retrieval = config.retrieval.model_copy(update={"mode": RetrievalMode.AUTOMATIC})
+        config = config.model_copy(update={"retrieval": retrieval})
     reranker_choice = config.retrieval.reranker
     reranker = (
         None
@@ -305,6 +316,7 @@ async def save_question(
         reranker=reranker,
         classifier=classifier,
         agent_version_id=agent_version_id,
+        automatic_fallback=automatic_fallback,
     )
 
 
@@ -530,6 +542,7 @@ async def answer(
                 fallback=event.fallback,
                 guardrail_outcomes=[o.as_dict() for o in event.guardrail_outcomes],
                 search_count=len(event.searches),
+                automatic_fallback=prepared.automatic_fallback,
             )
             session.add(message)
             await session.flush()

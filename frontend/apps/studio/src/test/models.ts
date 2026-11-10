@@ -10,8 +10,8 @@ type ModelOut = Schemas["ModelOut"];
 /** Chat models per credential ID, as `GET …/credentials/{id}/models/chat` answers them. */
 export const chatModels: Record<string, ModelOut[]> = {
   [marketingOpenAi.id]: [
-    { id: "gpt-4.1", name: "GPT-4.1" },
-    { id: "gpt-4.1-mini", name: "GPT-4.1 mini" },
+    { id: "gpt-4.1", name: "GPT-4.1", supports_tools: true },
+    { id: "gpt-4.1-mini", name: "GPT-4.1 mini", supports_tools: true },
   ],
 };
 
@@ -24,8 +24,8 @@ export const legalClaude: Credential = {
   capabilities: ["chat"],
 };
 chatModels[legalClaude.id] = [
-  { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
-  { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
+  { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5", supports_tools: true },
+  { id: "claude-haiku-4-5", name: "Claude Haiku 4.5", supports_tools: true },
 ];
 
 export const embeddingsOnlyOpenAi: Credential = {
@@ -44,7 +44,7 @@ export const demoCredential: Credential = {
   masked_suffix: "eded",
   capabilities: ["chat"],
 };
-chatModels[demoCredential.id] = [{ id: "demo-chat", name: "Demo model" }];
+chatModels[demoCredential.id] = [{ id: "demo-chat", name: "Demo model", supports_tools: true }];
 
 export const demoDefault: DefaultModel = {
   credential_id: demoCredential.id,
@@ -52,6 +52,7 @@ export const demoDefault: DefaultModel = {
   provider: "demo",
   model: "demo-chat",
   model_name: "Demo model",
+  supports_tools: true,
   updated_at: "2026-11-06T09:00:00Z",
 };
 
@@ -61,6 +62,7 @@ export const claudeDefault: DefaultModel = {
   provider: "anthropic",
   model: "claude-haiku-4-5",
   model_name: "Claude Haiku 4.5",
+  supports_tools: true,
   updated_at: "2026-11-05T09:00:00Z",
 };
 
@@ -93,6 +95,7 @@ export function fakeModelsApi(options: { defaultModel?: DefaultModel | null; cre
         provider: credential.provider,
         model: model.id,
         model_name: model.name,
+        supports_tools: model.supports_tools,
         updated_at: "2026-11-05T10:00:00Z",
       };
       return HttpResponse.json(current);

@@ -2239,6 +2239,10 @@
           "provider": {
             "$ref": "#/components/schemas/Provider"
           },
+          "supports_tools": {
+            "title": "Supports Tools",
+            "type": "boolean"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -2251,6 +2255,7 @@
           "provider",
           "model",
           "model_name",
+          "supports_tools",
           "updated_at"
         ],
         "title": "DefaultModelOut",
@@ -4636,11 +4641,16 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "supports_tools": {
+            "title": "Supports Tools",
+            "type": "boolean"
           }
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "supports_tools"
         ],
         "title": "ModelOut",
         "type": "object"
@@ -6907,6 +6917,10 @@
             ],
             "title": "Agent Version Number"
           },
+          "automatic_fallback": {
+            "title": "Automatic Fallback",
+            "type": "boolean"
+          },
           "chunks": {
             "items": {
               "$ref": "#/components/schemas/TracedChunkOut"
@@ -7087,6 +7101,7 @@
           "chunks",
           "search_count",
           "searches",
+          "automatic_fallback",
           "guardrail_outcomes"
         ],
         "title": "TraceOut",
