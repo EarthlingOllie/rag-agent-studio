@@ -108,7 +108,7 @@ export function AgentDiffView({
 }: {
   diff: AgentDiff;
   names?: Record<string, string>;
-  modes?: { from: RetrievalMode; to: RetrievalMode };
+  modes?: { from: RetrievalMode; to: RetrievalMode } | undefined;
 }) {
   const title = `Changes from ${side(diff.from)} to ${side(diff.to)}`;
   const pinned = diff.instructions;
