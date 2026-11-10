@@ -1,13 +1,18 @@
 import { useState } from "react";
 
-import { field } from "../design";
+import { EmptyState, field, layout, Notice, PageHeader, Segmented, Skeleton, StatCard, table, text } from "../design";
 import { dollars } from "../projects/format";
 import { ProjectRequestError } from "../projects/projects";
-import { INPUT, useOrganisationRole } from "../projects/ProjectsPage";
+import { useOrganisationRole } from "../projects/ProjectsPage";
 import { type CostGroup, type CostQuery, type OrgCost, useOrgCost } from "./cost";
 
-const CELL = "py-2 pr-4";
-const AMOUNT = "py-2 pr-4 text-right tabular-nums";
+const BREAKDOWNS = [
+  { value: "project", label: "Project" },
+  { value: "agent", label: "Agent" },
+] as const satisfies readonly { value: CostGroup; label: string }[];
+
+/** The total row, set apart from the rows above it. */
+const TOTAL_ROW = "border-t border-line bg-sunken font-medium";
 
 function failure(error: Error): string {
   return error instanceof ProjectRequestError && error.status === 422
@@ -15,40 +20,72 @@ function failure(error: Error): string {
     : "The cost could not be loaded. Try again shortly.";
 }
 
+/** The period's headline figures: everything, then Visitors and the Playground apart. */
+function CostStats({ cost }: { cost: OrgCost }) {
+  const figures = [
+    { label: "Total", value: cost.total.total_usd },
+    { label: "Visitors", value: cost.total.visitor_usd },
+    { label: "Playground", value: cost.total.playground_usd },
+  ];
+  return (
+    <ul aria-label="Spend for the period" className={layout.stats}>
+      {figures.map((figure) => (
+        <li key={figure.label}>
+          <StatCard label={figure.label} value={dollars(figure.value)} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CostTable({ cost }: { cost: OrgCost }) {
   const byAgent = cost.group_by === "agent";
   const name = byAgent ? "Agent" : "Project";
   return (
     // A focusable region, so the table can be scrolled sideways with the keyboard on a narrow screen.
-    <div className="relative mt-4 overflow-x-auto" role="region" aria-label={`Cost by ${name}`} tabIndex={0}>
-      <table className="w-full text-left text-sm" aria-label={`Cost by ${name}`}>
+    <div className={table.wrap} role="region" aria-label={`Cost by ${name}`} tabIndex={0}>
+      <table className={table.table} aria-label={`Cost by ${name}`}>
         <thead>
-          <tr className="text-muted">
-            <th scope="col" className={`${CELL} font-medium`}>{name}</th>
-            {byAgent && <th scope="col" className={`${CELL} font-medium`}>Project</th>}
-            <th scope="col" className={`${AMOUNT} font-medium`}>Visitors</th>
-            <th scope="col" className={`${AMOUNT} font-medium`}>Playground</th>
-            <th scope="col" className={`${AMOUNT} font-medium`}>Total</th>
+          <tr>
+            <th scope="col" className={table.th}>
+              {name}
+            </th>
+            {byAgent && (
+              <th scope="col" className={table.th}>
+                Project
+              </th>
+            )}
+            <th scope="col" className={table.thNumeric}>
+              Visitors
+            </th>
+            <th scope="col" className={table.thNumeric}>
+              Playground
+            </th>
+            <th scope="col" className={table.thNumeric}>
+              Total
+            </th>
           </tr>
         </thead>
         <tbody>
           {cost.rows.map((row) => (
-            <tr key={row.agent_id ?? row.project_id} className="border-t border-line">
-              <th scope="row" className={`${CELL} font-normal`}>{byAgent ? row.agent_name : row.project_name}</th>
-              {byAgent && <td className={CELL}>{row.project_name}</td>}
-              <td className={AMOUNT}>{dollars(row.visitor_usd)}</td>
-              <td className={AMOUNT}>{dollars(row.playground_usd)}</td>
-              <td className={AMOUNT}>{dollars(row.total_usd)}</td>
+            <tr key={row.agent_id ?? row.project_id} className={table.row}>
+              <th scope="row" className={`${table.td} text-left font-medium`}>
+                {byAgent ? row.agent_name : row.project_name}
+              </th>
+              {byAgent && <td className={table.tdMuted}>{row.project_name}</td>}
+              <td className={table.tdNumeric}>{dollars(row.visitor_usd)}</td>
+              <td className={table.tdNumeric}>{dollars(row.playground_usd)}</td>
+              <td className={table.tdNumeric}>{dollars(row.total_usd)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="border-t-2 border-field font-medium">
-            <th scope="row" className={CELL}>{`All ${name}s`}</th>
-            {byAgent && <td className={CELL} />}
-            <td className={AMOUNT}>{dollars(cost.total.visitor_usd)}</td>
-            <td className={AMOUNT}>{dollars(cost.total.playground_usd)}</td>
-            <td className={AMOUNT}>{dollars(cost.total.total_usd)}</td>
+          <tr className={TOTAL_ROW}>
+            <th scope="row" className={`${table.td} text-left`}>{`All ${name}s`}</th>
+            {byAgent && <td className={table.td} />}
+            <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.visitor_usd)}</td>
+            <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.playground_usd)}</td>
+            <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.total_usd)}</td>
           </tr>
         </tfoot>
       </table>
@@ -66,45 +103,56 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
 
   let body;
   if (cost.isPending) {
-    body = <p role="status" className="mt-4">Loading the cost…</p>;
+    body = <Skeleton label="Loading the cost" />;
   } else if (cost.isError) {
-    body = <p role="alert" className="mt-4 text-danger">{failure(cost.error)}</p>;
+    body = <Notice tone="error">{failure(cost.error)}</Notice>;
   } else {
     body = (
       <>
-        <p className="mt-4 text-sm text-muted">
+        <p className={text.muted}>
           {`${cost.data.start} to ${cost.data.end} (UTC days), including today so far, at the prices of the time.`}
         </p>
-        {cost.data.rows.length === 0 ? <p className="mt-4 text-muted">Nothing was spent in this period.</p> : <CostTable cost={cost.data} />}
+        {cost.data.rows.length === 0 ? (
+          <EmptyState
+            icon="analytics"
+            title="Nothing was spent in this period"
+            description="Visitors' Conversations and Playground testing in any Project show up here, with what they cost."
+          />
+        ) : (
+          <>
+            <CostStats cost={cost.data} />
+            <CostTable cost={cost.data} />
+          </>
+        )}
       </>
     );
   }
 
   return (
     <>
-      <fieldset className="mt-4 flex flex-wrap items-end gap-4">
+      <fieldset className="flex flex-wrap items-end gap-3">
         <legend className="sr-only">Choose what to show</legend>
-        <label className="flex flex-col gap-1 text-sm">
-          Break down by
-          <select
-            className={field.select}
-            value={query.groupBy}
-            onChange={(event) => {
-              const groupBy = event.currentTarget.value as CostGroup;
-              setQuery((current) => ({ ...current, groupBy }));
-            }}
-          >
-            <option value="project">Project</option>
-            <option value="agent">Agent</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
+        {/* The visible label sits above, like the date filters'; the group is named by its aria-label. */}
+        <div className={field.filter}>
+          <span aria-hidden="true">Break down by</span>
+          <div>
+            <Segmented
+              label="Break down by"
+              options={BREAKDOWNS}
+              value={query.groupBy}
+              onChange={(groupBy) => {
+                setQuery((current) => ({ ...current, groupBy }));
+              }}
+            />
+          </div>
+        </div>
+        <label className={field.filter}>
           From (UTC)
-          <input type="date" className={INPUT} value={query.from ?? ""} onChange={day("from")} />
+          <input type="date" className={field.pill} value={query.from ?? ""} onChange={day("from")} />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className={field.filter}>
           To (UTC)
-          <input type="date" className={INPUT} value={query.to ?? ""} onChange={day("to")} />
+          <input type="date" className={field.pill} value={query.to ?? ""} onChange={day("to")} />
         </label>
       </fieldset>
       {body}
@@ -116,20 +164,24 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
 export function CostPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   return (
-    <section aria-labelledby="page-heading">
-      <h1 id="page-heading" className="text-2xl font-semibold">
-        Organisation cost
-      </h1>
+    <div className={layout.stack}>
+      <PageHeader
+        title="Organisation cost"
+        description={
+          isOwner
+            ? "What Visitors' Conversations and Playground testing cost, at the prices frozen when each reply was made."
+            : undefined
+        }
+      />
       {isOwner ? (
-        <>
-          <p className="mt-2 text-muted">
-            What Visitors' Conversations and Playground testing cost, at the prices frozen when each reply was made.
-          </p>
-          <OrgCostReport organisationId={organisationId} />
-        </>
+        <OrgCostReport organisationId={organisationId} />
       ) : (
-        <p className="mt-2 text-muted">Only Owners can see what the Organisation spends.</p>
+        <EmptyState
+          icon="members"
+          title="Only Owners see the Organisation's spend"
+          description="Ask an Owner of this Organisation if you need to know what it spent."
+        />
       )}
-    </section>
+    </div>
   );
 }

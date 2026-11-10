@@ -191,6 +191,16 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   mono value, interval and n under it; a small sample is dashed and muted with a `lowSample` badge
   whose title says why), Compare two Versions (`table.wrap`, changed rows on `flag-soft`), and
   Over time (the chart; see *Charts*).
+- **Organisation cost** (built in 12-04): `PageHeader` ("Organisation cost", the frozen-prices
+  sentence as its description), then a toolbar: "Break down by" as a `Segmented` (Project /
+  Agent) and From and To as `field.filter` / `field.pill` date filters. The period line sits under
+  it, then the `StatCard` row (Total, Visitors, Playground; a list named "Spend for the period")
+  and the `table.wrap` card (a focusable region, so it scrolls sideways inside the card on a phone):
+  names in `table.td`, amounts in `table.thNumeric` / `table.tdNumeric` (right-aligned, mono), and
+  the "All Projects" / "All Agents" total row set apart on `sunken` above a `line` border. Nothing
+  spent is an `EmptyState`; bad dates (the 422) and a failed load are `Notice tone="error"`;
+  loading is a `Skeleton`. An Editor sees an `EmptyState`, "Only Owners see the Organisation's
+  spend", under the header. The Audit page's filters use the same `field.filter` / `field.pill`.
 - **Agent page**: a header with the Agent's name, its `Badge`s (Live with the Version chip, or Not
   live; Draft while there are unpublished changes), "Analytics for this Agent" (a ghost link to
   Analytics filtered to it) and a ⋯ menu (Discard Draft, Archive, or Delete permanently on an

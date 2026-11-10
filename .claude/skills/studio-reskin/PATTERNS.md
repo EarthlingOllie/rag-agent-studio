@@ -331,6 +331,15 @@ toast.show(`Archived ${agent.name}.`, { onUndo: () => { restore.mutate(); } });
   emptyWarning="No site can embed this Agent until you add an origin." />
 ```
 
+A summary row of figures (Organisation cost, 12-04): a list, so tests and screen readers read
+each card as one item.
+
+```tsx
+<ul aria-label="Spend for the period" className={layout.stats}>
+  {figures.map((f) => <li key={f.label}><StatCard label={f.label} value={dollars(f.value)} /></li>)}
+</ul>
+```
+
 Old → new: a page's `confirm()` or inline "Are you sure?" panel → `ConfirmDialog`; a status
 `<span>` with palette colours → `Badge`; a `<pre>` plus "Copy" button → `CodeBlock`; a progress
 `<div>` → `Meter`; "Nothing here yet." text → `EmptyState`; "Loading…" text → `Skeleton`; a
