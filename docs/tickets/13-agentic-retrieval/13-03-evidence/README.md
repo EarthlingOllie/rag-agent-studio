@@ -1,6 +1,6 @@
 # Evidence: ticket 13-03, Models that support tools
 
-Branch `t/13-03`, from `0823a537` (the integration branch: all of spec 12, plus merged `t/13-01` and `t/13-02`). The change is one commit; every check below ran on its tree, and only this folder was written afterwards.
+Branch `t/13-03`, from `0823a537` (the integration branch: all of spec 12, plus merged `t/13-01` and `t/13-02`). The work was resumed after a container restart killed the first job mid-work: its uncommitted tree was reviewed, kept as sound and committed (`92fea3fc`); every check below ran on that code, and later commits only add files to this folder and tick the ticket.
 
 **Status: done.** Every criterion is met and evidenced below. The Playwright run is deferred to the integrated branch (see [End-to-end](#end-to-end-deferred)).
 
@@ -43,13 +43,24 @@ The [shared test seams](../../../specs/README.md#shared-test-seams); spec 13 add
 | 2 | Agentic Draft save refused, with field and reason, when the effective model lacks tool support | `validation._tool_problems`; the two refusal tests (Default Model at `retrieval.mode`, override at `behaviour.model.model`). |
 | 3 | At reply time an Agentic Agent whose effective model lacks tool support runs as Automatic and the Trace warns, in the Trace drawer | `save_question`, `Message.automatic_fallback`, `TraceOut.automatic_fallback`; Playground and widget API tests; `AgentPage.test.tsx` warning test. |
 | 4 | The model picker marks models that support tools | `ChatModelOptions` in the Model override and Default Model pickers; `DraftEditor.test.tsx`, `ModelsPage.test.tsx`. |
-| 5 | Design system; palette ratchet passes | `Notice`, `text.muted`, `text-muted`; no palette classes; [frontend-checks.log](frontend-checks.log): "0 palette-class uses". |
-| 6 | Tests at the highest seam; 100% line and branch coverage | Seams above; [backend-tests.log](backend-tests.log), [frontend-checks.log](frontend-checks.log). |
+| 5 | Design system; palette ratchet passes | `Notice`, `text.muted`, `text-muted`; no palette classes; [frontend-static-checks.log](frontend-static-checks.log): "0 palette-class uses". |
+| 6 | Tests at the highest seam; 100% line and branch coverage | Seams above; [backend-tests.log](backend-tests.log), [frontend-tests.log](frontend-tests.log). |
 | 7 | Glossary / ADRs | `GLOSSARY.md`: new **Tool support** and **Automatic fallback**; **Trace** mentions the warning. ADR-0015 is unchanged: the decision is as the spec states it. |
 
 ## Results
 
-RESULTS_TABLE
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t03 TEST_REDIS_URL=redis://localhost:6379/15 uv run pytest -n 3` (shared compose Postgres/Redis, four tickets running at once, load average ~20 on 4 CPUs) | **2571 passed**, 4 failed (load timeouts, see below) in 77 min; coverage **100.00%** (12251 statements, 1530 branches), gate reached | [backend-tests.log](backend-tests.log) |
+| Load-timeout rerun | `uv run pytest tests/integration/test_logging.py` alone | 8 passed, exit 0 | [backend-logging-rerun.log](backend-logging-rerun.log) |
+| Backend lint and types | `make lint-backend` (ruff check, ruff format --check, mypy) | exit 0 (397 files) | [lint-backend.log](lint-backend.log) |
+| API client drift | `make check-client` | up to date, exit 0 | [check-client.log](check-client.log) |
+| Frontend tests + coverage | `pnpm test` | **1094 passed**, 100% statements, branches, functions and lines, exit 0 | [frontend-tests.log](frontend-tests.log) |
+| Frontend static checks | `pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | 0 palette-class uses, exit 0 | [frontend-static-checks.log](frontend-static-checks.log) |
+| Links | `make link-check` | exit 0 | [link-check.log](link-check.log) |
+| e2e listing | `pnpm e2e --list` | 120 tests in 65 files, exit 0 | [e2e-list.log](e2e-list.log) |
+
+**Failures under load, not caused by this ticket.** The four backend failures are `tests/integration/test_logging.py` (the API server, worker and beat subprocesses did not print their start-up line within the test's wait while the machine ran four suites at once); alone they pass. Two earlier full frontend runs ([run 1](frontend-checks-run1-flake.log), [run 2](frontend-checks-run2-flake.log)) each failed one test, `DocumentsTab.test.tsx` › "a refused retry shows the API's reason" (it reads the ⋯ menu during a 200 ms delayed response, a race under heavy CPU load; this ticket touches neither the Documents tab nor its fixtures); alone it passes ([documents-tab-rerun.log](documents-tab-rerun.log)), and the third full run is entirely green.
 
 ## End-to-end (deferred)
 
