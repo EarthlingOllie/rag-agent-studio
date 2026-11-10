@@ -49,7 +49,17 @@ The [shared test seams](../../../specs/README.md#shared-test-seams) (spec 13 add
 
 ## Results
 
-RESULTS
+| Check | Command | Result | Log |
+|---|---|---|---|
+| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t08 TEST_REDIS_URL=redis://localhost:6379/15 uv run pytest -n 3` (shared compose Postgres/Redis, several tickets running at once, load average ~17 on 4 CPUs) | **2582 passed**, 4 failed and 1 error (load timeouts, see below) in 77 min; coverage 99.97%: the only lines missed (`app/seed/runner.py` 94-96) are those the timed-out seed test covers | [backend-tests.log](backend-tests.log) |
+| Load-timeout rerun, coverage combined | `uv run pytest --cov-append tests/integration/test_logging.py tests/integration/test_seed.py` alone, appending to the full run's coverage data | **36 passed**; combined coverage **100.00%** (12285 statements, 1536 branches), gate reached | [backend-load-rerun.log](backend-load-rerun.log) |
+| Backend lint and types | `make lint-backend` (ruff check, ruff format --check, mypy --strict) | exit 0 (399 files) | [lint-backend.log](lint-backend.log) |
+| API client drift | `make check-client` | up to date | [check-client.log](check-client.log) |
+| Frontend | `pnpm test && pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | **1096 passed** (84 files), 100% coverage, 0 palette-class uses, exit 0 | [frontend-checks.log](frontend-checks.log) |
+| Links | `make link-check` | 2757 relative links in 275 files resolve | [link-check.log](link-check.log) |
+| e2e listing | `pnpm exec playwright test --list` on the affected specs | 6 tests in 5 files list (typecheck and lint above cover them) | [e2e-list.log](e2e-list.log) |
+
+**Failures under load, not caused by this ticket.** `tests/integration/test_logging.py` (four tests: the API server, worker and Beat subprocesses did not print their start-up line within the test's wait) and `tests/integration/test_seed.py::test_files_go_to_the_object_store_through_presigned_urls` (a `TimeoutError` in setup) failed while several suites ran at once, as 13-03 recorded for the same logging tests. This ticket touches neither logging nor the seed. Run alone they pass, and with their coverage appended to the full run's the gate is 100%.
 
 ## End-to-end (deferred)
 
