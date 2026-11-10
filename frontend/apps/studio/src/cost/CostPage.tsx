@@ -69,7 +69,7 @@ function CostTable({ cost }: { cost: OrgCost }) {
         <tbody>
           {cost.rows.map((row) => (
             <tr key={row.agent_id ?? row.project_id} className={table.row}>
-              <th scope="row" className={`${table.td} font-medium`}>
+              <th scope="row" className={`${table.td} text-left font-medium`}>
                 {byAgent ? row.agent_name : row.project_name}
               </th>
               {byAgent && <td className={table.tdMuted}>{row.project_name}</td>}
@@ -132,14 +132,20 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
     <>
       <fieldset className="flex flex-wrap items-end gap-3">
         <legend className="sr-only">Choose what to show</legend>
-        <Segmented
-          label="Break down by"
-          options={BREAKDOWNS}
-          value={query.groupBy}
-          onChange={(groupBy) => {
-            setQuery((current) => ({ ...current, groupBy }));
-          }}
-        />
+        {/* The visible label sits above, like the date filters'; the group is named by its aria-label. */}
+        <div className={field.filter}>
+          <span aria-hidden="true">Break down by</span>
+          <div className="mt-1">
+            <Segmented
+              label="Break down by"
+              options={BREAKDOWNS}
+              value={query.groupBy}
+              onChange={(groupBy) => {
+                setQuery((current) => ({ ...current, groupBy }));
+              }}
+            />
+          </div>
+        </div>
         <label className={field.filter}>
           From (UTC)
           <input type="date" className={field.pill} value={query.from ?? ""} onChange={day("from")} />
