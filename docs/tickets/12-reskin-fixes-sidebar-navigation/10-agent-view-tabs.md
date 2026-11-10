@@ -7,7 +7,7 @@
 **Blocked by:**
 - [12-08: Sidebar navigation on desktop](08-sidebar.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Playground, Versions, Embed & limits and Conversations are a tab row under the Agent's header; the current one is marked, and stays marked on a Conversation opened from it
 - [ ] The Agent's name carries a ▾ that switches to another of the Project's Agents
