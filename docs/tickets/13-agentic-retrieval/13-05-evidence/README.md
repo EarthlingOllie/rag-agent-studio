@@ -1,6 +1,6 @@
 # Evidence: ticket 13-05, Retrieval Mode in the Agent editor
 
-Branch `t/13-05`, from `0823a537` (all of spec 12, plus merged `t/13-01` and `t/13-02`). A container restart stopped the first job before it committed; its uncommitted work was reviewed, kept and committed as `6695e5bb`, and the checks below ran on that tree. Only this folder and the ticket's Status were written afterwards.
+Branch `t/13-05`, from `0823a537` (all of spec 12, plus merged `t/13-01` and `t/13-02`). A container restart stopped the first job before it committed; its uncommitted work was reviewed, kept and committed as `6695e5bb`, and the checks below ran on that tree. Only this folder was written afterwards (the ticket's ticks and Status were in `6695e5bb`).
 
 **Status: done.** Every criterion is met and evidenced below; the e2e run is deferred to the integrated stack (see "End to end").
 
@@ -36,11 +36,11 @@ The [shared test seams](../../../specs/README.md#shared-test-seams); spec 13 add
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t05 TEST_REDIS_URL=redis://localhost:6379/7 uv run pytest -n 3` | BACKEND_RESULT | [backend-tests.log](backend-tests.log) |
+| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t05 TEST_REDIS_URL=redis://localhost:6379/7 uv run pytest -n 3` | 2569 collected: **2565 passed**, 4 failed under load (rerun alone: 9 passed, see Notes) in 1 h 14 min; coverage **100.00%** (12218 statements, 1520 branches), gate reached | [backend-tests.log](backend-tests.log) |
 | Backend lint and types | `uv run ruff check . && uv run ruff format --check . && uv run mypy` | exit 0 (396 files) | [lint-backend.log](lint-backend.log) |
 | API client drift | `make check-client` | up to date, exit 0 | [check-client.log](check-client.log) |
 | Links | `make link-check` | all resolve, exit 0 | [link-check.log](link-check.log) |
-| Frontend | `pnpm test && pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | FRONTEND_RESULT | [frontend-checks.log](frontend-checks.log) |
+| Frontend | `pnpm test && pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | `pnpm test --maxWorkers=1` (see Notes): **1101 passed**, 85 files; coverage 100% statements/branches/functions/lines; embed 1367 B / 778 B gzipped; 0 palette-class uses; lint and typecheck clean; exit 0 | [frontend-checks.log](frontend-checks.log) |
 | e2e specs list | `pnpm e2e --list` | 119 tests in 65 files, both updated specs listed, exit 0 | [e2e-list.log](e2e-list.log) |
 
 ## End to end
@@ -49,4 +49,7 @@ Not run here (four tickets share the machine; no Docker builds). The integrated 
 
 ## Notes
 
-NOTES_PLACEHOLDER
+- **Backend failures under load.** Four other ticket suites shared the 4 CPUs and 16 GB; two earlier full runs were killed by the out-of-memory killer near the end (not kept). The completed run failed `test_logging.py` (3 tests: the spawned API server, worker and beat did not log their start line in time) and `test_agent_versions.py::test_deleting_the_agent_or_erasing_the_organisation_removes_its_versions` (a foreign-key race on `messages` during deletion). None touches this ticket's code; rerun alone, all 9 tests in `test_logging.py` plus that test pass ([backend-failures-rerun.log](backend-failures-rerun.log), [test-logging-rerun.log](test-logging-rerun.log)). The coverage gate counts the whole run and reached 100%.
+- **Frontend timing flake under load.** `DocumentsTab.test.tsx` "a refused retry shows the API's reason" (untouched here; it relies on a 200 ms MSW delay) failed in three full runs at the default worker count with the machine's load average at 11–15 ([frontend-checks-run1-flake.log](frontend-checks-run1-flake.log), [frontend-checks-run2-flake.log](frontend-checks-run2-flake.log), [frontend-checks-run3-flake.log](frontend-checks-run3-flake.log)). It passes alone and with its file ([documents-tab-rerun.log](documents-tab-rerun.log)), and the full chain passed with one Vitest worker ([frontend-checks.log](frontend-checks.log)). No test was changed.
+- 13-03 edits the model picker in `DraftEditor.tsx` in parallel; this ticket changes only the Retrieval section, the imports and `localErrors`.
+- New Agents still start Automatic: the Agentic default is 13-09.
