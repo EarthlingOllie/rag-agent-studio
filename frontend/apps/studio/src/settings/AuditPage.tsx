@@ -5,7 +5,8 @@ import { type AuditEventPage, type AuditFilters, NO_FILTERS, PAGE_SIZE, useAudit
 
 type AuditEvent = AuditEventPage["items"][number];
 
-const FILTER = "block h-10 min-w-40 rounded-xl border border-field bg-surface px-3 text-sm font-normal text-ink";
+/** A toolbar filter, as on Cost, Conversations and Analytics; wide enough for "Any action". */
+const FILTER = `${field.pill} min-w-40`;
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 export function formatTime(iso: string): string {
@@ -45,7 +46,7 @@ function Filters({
   return (
     <fieldset className="flex flex-wrap items-end gap-3">
       <legend className="sr-only">Filter Audit Events</legend>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         Actor
         <select className={FILTER} value={filters.actorId} onChange={set("actorId")}>
           <option value="">Anyone</option>
@@ -56,7 +57,7 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         Action
         <select className={FILTER} value={filters.action} onChange={set("action")}>
           <option value="">Any action</option>
@@ -67,11 +68,11 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         From (UTC)
         <input type="date" className={FILTER} value={filters.from} onChange={set("from")} />
       </label>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         To (UTC)
         <input type="date" className={FILTER} value={filters.to} onChange={set("to")} />
       </label>

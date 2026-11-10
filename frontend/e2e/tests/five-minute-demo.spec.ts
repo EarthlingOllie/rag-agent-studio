@@ -159,7 +159,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
     await expect(byProject.getByRole("row", { name: /^Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
-    await page.getByLabel("Break down by").selectOption("Agent");
+    await page.getByRole("radiogroup", { name: "Break down by" }).getByRole("radio", { name: "Agent" }).click();
     const byAgent = page.getByRole("table", { name: "Cost by Agent" });
     await expect(byAgent.getByRole("row", { name: /^HR helper Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);

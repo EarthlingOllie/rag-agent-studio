@@ -45,9 +45,10 @@ test.describe("Organisation cost", () => {
     await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Total"]);
     await expect(byProject.getByRole("row", { name: /^Cost HR/ })).toBeVisible();
     await expect(byProject.getByRole("row", { name: /^All Projects/ })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Spend for the period" }).getByRole("listitem")).toHaveCount(3);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
-    await page.getByLabel("Break down by").selectOption("Agent");
+    await page.getByRole("radiogroup", { name: "Break down by" }).getByRole("radio", { name: "Agent" }).click();
     const byAgent = page.getByRole("table", { name: "Cost by Agent" });
     await expect(byAgent.getByRole("row", { name: /^Cost helper Cost HR/ })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
