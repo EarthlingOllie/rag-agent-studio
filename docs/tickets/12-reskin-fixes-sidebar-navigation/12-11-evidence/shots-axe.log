@@ -1,0 +1,97 @@
+light        projects             crumbs [Projects*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        documents            crumbs [HR handbook / Documents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        document-viewer      crumbs [HR handbook / Documents / handbook.pdf*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        instructions         crumbs [HR handbook / Instructions*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        agents               crumbs [HR handbook / Agents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        agent-playground     crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        agent-versions       crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        agent-embed          crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        agent-conversations  crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        agent-conversation   crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        conversations        crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        conversation         crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        analytics            crumbs [HR handbook / Analytics*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        project-settings     crumbs [HR handbook / Settings*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        cost                 crumbs [Cost*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        settings-general     crumbs [Settings / General*]; breadcrumb buttons 0; top bar 61px; settings tabs [General*, Credentials, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+light        settings-members     crumbs [Settings / Members*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members*, Audit]; horizontal overflow 0px; axe violations: 0
+light        settings-credentials crumbs [Settings / Credentials*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials*, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+light        settings-models      crumbs [Settings / Models*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models*, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+light        settings-theme       crumbs [Settings / Theme*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme*, Members, Audit]; horizontal overflow 0px; axe violations: 0
+light        settings-audit       crumbs [Settings / Audit*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members, Audit*]; horizontal overflow 0px; axe violations: 0
+light        profile              crumbs [Profile*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        security             crumbs [Security*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+light        account-menu-open    crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; account menu [Profile, Security, Sign out]; horizontal overflow 0px; axe violations: 0
+narrow-light projects             crumbs [Projects*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light documents            crumbs [HR handbook / Documents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light document-viewer      crumbs [Documents / handbook.pdf*] (1 hidden); breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light instructions         crumbs [HR handbook / Instructions*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light agents               crumbs [HR handbook / Agents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light agent-playground     crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 125px; horizontal overflow 0px; axe violations: 0
+narrow-light agent-versions       crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-light agent-embed          crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-light agent-conversations  crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-light agent-conversation   crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-light conversations        crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light conversation         crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light analytics            crumbs [HR handbook / Analytics*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light project-settings     crumbs [HR handbook / Settings*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light cost                 crumbs [Cost*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light settings-general     crumbs [Settings / General*]; breadcrumb buttons 0; top bar 61px; settings tabs [General*, Credentials, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-light settings-members     crumbs [Settings / Members*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members*, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-light settings-credentials crumbs [Settings / Credentials*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials*, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-light settings-models      crumbs [Settings / Models*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models*, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-light settings-theme       crumbs [Settings / Theme*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme*, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-light settings-audit       crumbs [Settings / Audit*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members, Audit*]; horizontal overflow 0px; axe violations: 0
+narrow-light profile              crumbs [Profile*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light security             crumbs [Security*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-light account-menu-open    crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 125px; account menu [Profile, Security, Sign out]; horizontal overflow 0px; axe violations: 0
+dark         projects             crumbs [Projects*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         documents            crumbs [HR handbook / Documents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         document-viewer      crumbs [HR handbook / Documents / handbook.pdf*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         instructions         crumbs [HR handbook / Instructions*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         agents               crumbs [HR handbook / Agents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         agent-playground     crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         agent-versions       crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         agent-embed          crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         agent-conversations  crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         agent-conversation   crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         conversations        crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         conversation         crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         analytics            crumbs [HR handbook / Analytics*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         project-settings     crumbs [HR handbook / Settings*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         cost                 crumbs [Cost*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         settings-general     crumbs [Settings / General*]; breadcrumb buttons 0; top bar 61px; settings tabs [General*, Credentials, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+dark         settings-members     crumbs [Settings / Members*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members*, Audit]; horizontal overflow 0px; axe violations: 0
+dark         settings-credentials crumbs [Settings / Credentials*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials*, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+dark         settings-models      crumbs [Settings / Models*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models*, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+dark         settings-theme       crumbs [Settings / Theme*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme*, Members, Audit]; horizontal overflow 0px; axe violations: 0
+dark         settings-audit       crumbs [Settings / Audit*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members, Audit*]; horizontal overflow 0px; axe violations: 0
+dark         profile              crumbs [Profile*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         security             crumbs [Security*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+dark         account-menu-open    crumbs [HR handbook / Agents / HR helper*]; breadcrumb buttons 0; top bar 61px; account menu [Profile, Security, Sign out]; horizontal overflow 0px; axe violations: 0
+narrow-dark  projects             crumbs [Projects*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  documents            crumbs [HR handbook / Documents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  document-viewer      crumbs [Documents / handbook.pdf*] (1 hidden); breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  instructions         crumbs [HR handbook / Instructions*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  agents               crumbs [HR handbook / Agents*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  agent-playground     crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 125px; horizontal overflow 0px; axe violations: 0
+narrow-dark  agent-versions       crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-dark  agent-embed          crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-dark  agent-conversations  crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-dark  agent-conversation   crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 101px; horizontal overflow 0px; axe violations: 0
+narrow-dark  conversations        crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  conversation         crumbs [HR handbook / Conversations*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  analytics            crumbs [HR handbook / Analytics*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  project-settings     crumbs [HR handbook / Settings*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  cost                 crumbs [Cost*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  settings-general     crumbs [Settings / General*]; breadcrumb buttons 0; top bar 61px; settings tabs [General*, Credentials, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-dark  settings-members     crumbs [Settings / Members*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members*, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-dark  settings-credentials crumbs [Settings / Credentials*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials*, Models, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-dark  settings-models      crumbs [Settings / Models*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models*, Theme, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-dark  settings-theme       crumbs [Settings / Theme*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme*, Members, Audit]; horizontal overflow 0px; axe violations: 0
+narrow-dark  settings-audit       crumbs [Settings / Audit*]; breadcrumb buttons 0; top bar 61px; settings tabs [General, Credentials, Models, Theme, Members, Audit*]; horizontal overflow 0px; axe violations: 0
+narrow-dark  profile              crumbs [Profile*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  security             crumbs [Security*]; breadcrumb buttons 0; top bar 61px; horizontal overflow 0px; axe violations: 0
+narrow-dark  account-menu-open    crumbs [Agents / HR helper*] (1 hidden); breadcrumb buttons 0; top bar 125px; account menu [Profile, Security, Sign out]; horizontal overflow 0px; axe violations: 0
+total axe violations, overflows and breadcrumb buttons: 0

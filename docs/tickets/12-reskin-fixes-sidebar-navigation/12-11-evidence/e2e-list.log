@@ -1,0 +1,14 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/sidebar.spec.ts e2e/tests/members.spec.ts e2e/tests/require-mfa.spec.ts e2e/tests/five-minute-demo.spec.ts e2e/tests/seed.spec.ts (at 9807b095)
+Listing tests:
+  [studio] › tests/five-minute-demo.spec.ts:40:1 › the five-minute demo
+  [studio] › tests/members.spec.ts:43:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends
+  [studio] › tests/members.spec.ts:101:3 › members and roles › an Editor leaves, and the last Owner can't
+  [studio] › tests/require-mfa.spec.ts:46:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit
+  [studio] › tests/seed.spec.ts:11:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents
+  [studio] › tests/seed.spec.ts:36:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo
+  [studio] › tests/sidebar.spec.ts:5:3 › Sidebar › an Owner moves around the Organisation and a Project from the sidebar, which marks where they are
+  [studio] › tests/sidebar.spec.ts:52:3 › Sidebar › the main content keeps its 1160 px column beside a sidebar of about 240 px
+  [studio] › tests/sidebar.spec.ts:68:3 › Sidebar › on a phone the sidebar is a drawer behind Open navigation, which holds focus and closes on Escape, outside or a link
+  [studio] › tests/sidebar.spec.ts:115:3 › Sidebar › the breadcrumb is a plain path of links, and on a phone shows only its last two crumbs on one row
+Total: 10 tests in 5 files
+exit 0
