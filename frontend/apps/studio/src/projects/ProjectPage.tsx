@@ -1,8 +1,9 @@
 import { Outlet, useNavigate, useParams } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
+import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { button, ConfirmDialog, EmptyState, field, Icon, Menu, type MenuItem, PageHeader, Skeleton } from "../design";
+import { button, ConfirmDialog, EmptyState, field, Icon, Menu, type MenuItem, PageHeader, Skeleton, ToastProvider } from "../design";
+import { EditProjectDialog } from "./ProjectDetailsDialog";
 import {
   type Project,
   ProjectRequestError,
@@ -10,36 +11,11 @@ import {
   useArchiveOrRestore,
   useDeleteProject,
   useProject,
-  useUpdateProject,
 } from "./projects";
-import { ProjectFields, projectDetails, useOrganisationRole } from "./ProjectsPage";
+import { useOrganisationRole } from "./ProjectsPage";
 
 function useProjectParams() {
   return useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId" });
-}
-
-function EditDetails({ project, organisationId, onDone }: { project: Project; organisationId: string; onDone: () => void }) {
-  const update = useUpdateProject(organisationId, project.id);
-
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    update.mutate(projectDetails(event.currentTarget), { onSuccess: onDone });
-  }
-
-  return (
-    <form aria-label="Project details" onSubmit={onSubmit} className="max-w-md space-y-3">
-      <FormError message={projectFailure(update.error)} />
-      <ProjectFields idPrefix="project" project={project} />
-      <div className="flex gap-2">
-        <button type="button" className={button.secondary} onClick={onDone}>
-          Cancel
-        </button>
-        <button type="submit" disabled={update.isPending} className={button.primary}>
-          {update.isPending ? "Saving…" : "Save"}
-        </button>
-      </div>
-    </form>
-  );
 }
 
 /** Archive, from the ⋯ menu: asked first, in a destructive confirmation. */
@@ -153,7 +129,8 @@ function ArchivedNotice({ project, organisationId, isOwner }: { project: Project
 }
 
 /**
- * The page header: the Project's name and description, Edit details, and a ⋯ menu for the rare
+ * The page header: the Project's name and description, Edit details (which opens the Project
+ * details dialog, leaving the header as it is), and a ⋯ menu for the rare
  * actions: Archive, or, on an archived Project, permanent deletion (Owners only).
  */
 function ProjectHeader({ project, organisationId, isOwner }: { project: Project; organisationId: string; isOwner: boolean }) {
@@ -186,7 +163,7 @@ function ProjectHeader({ project, organisationId, isOwner }: { project: Project;
         description={project.description === "" ? undefined : project.description}
         actions={
           <>
-            {!archived && !editing && (
+            {!archived && (
               <button
                 type="button"
                 className={button.secondary}
@@ -213,18 +190,16 @@ function ProjectHeader({ project, organisationId, isOwner }: { project: Project;
       {archived ? (
         <ArchivedNotice project={project} organisationId={organisationId} isOwner={isOwner} />
       ) : (
-        <>
-          <FormError message={confirming === null ? projectFailure(archive.error) : undefined} />
-          {editing && (
-            <EditDetails
-              project={project}
-              organisationId={organisationId}
-              onDone={() => {
-                setEditing(false);
-              }}
-            />
-          )}
-        </>
+        <FormError message={confirming === null ? projectFailure(archive.error) : undefined} />
+      )}
+      {editing && (
+        <EditProjectDialog
+          project={project}
+          organisationId={organisationId}
+          onClose={() => {
+            setEditing(false);
+          }}
+        />
       )}
       {confirming === "archive" && <ArchiveDialog project={project} archive={archive} onDone={done} />}
       {confirming === "delete" && <DeleteDialog project={project} organisationId={organisationId} onDone={done} />}
@@ -251,7 +226,9 @@ export function ProjectLayout() {
   }
   return (
     <div className="space-y-6">
-      <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
+      <ToastProvider>
+        <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
+      </ToastProvider>
       <Outlet />
     </div>
   );

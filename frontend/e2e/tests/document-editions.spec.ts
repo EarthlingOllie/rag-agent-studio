@@ -14,6 +14,7 @@ test.describe("Document editions", () => {
   }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Editions");
     await form.getByRole("button", { name: "Create Project" }).click();

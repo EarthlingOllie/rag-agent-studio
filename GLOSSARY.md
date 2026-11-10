@@ -259,6 +259,10 @@ _Avoid_: Search endpoint, retriever
 An isolated container of a Knowledge Base, Project Instructions and Agents. Nothing crosses a Project boundary.
 _Avoid_: Workspace, context repository, collection
 
+**Project details dialog**:
+The one dialog for a Project's name and description: New Project opens it empty to create a Project (which then opens), and Edit details on a Project's header opens it filled in to change them (a toast confirms the save). A refusal shows inside it and keeps what was typed; Cancel and Escape close it without saving. Nothing about a Project's details is edited inline.
+_Avoid_: Edit form, new project form
+
 **Knowledge Base**:
 All the Documents and Chunks in a Project.
 _Avoid_: Corpus, index, vector store

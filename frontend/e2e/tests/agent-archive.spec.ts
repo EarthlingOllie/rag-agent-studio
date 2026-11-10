@@ -9,6 +9,7 @@ test.describe("Agent Archive and delete", () => {
   }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Agent archive");
     await newProject.getByRole("button", { name: "Create Project" }).click();

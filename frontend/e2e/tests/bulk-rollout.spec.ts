@@ -19,6 +19,7 @@ test.describe("Bulk publish, bulk revert and the Instructions rollout", () => {
   }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Rollout HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();

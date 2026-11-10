@@ -30,6 +30,7 @@ test.describe("Embedding Models", () => {
     await expect(page.getByText("Search embeddings was checked and saved.")).toBeVisible();
 
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Voyage handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -94,6 +95,7 @@ test.describe("Embedding Models", () => {
 
     // A Project on the built-in model, with the handbook Ready.
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Re-embedded handbook");
     await form.getByRole("button", { name: "Create Project" }).click();

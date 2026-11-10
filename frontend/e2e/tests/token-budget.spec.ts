@@ -36,6 +36,7 @@ test.describe("Token Budget", () => {
 
     // A live Agent over the handbook.
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Thrifty Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
