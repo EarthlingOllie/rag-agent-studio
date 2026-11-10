@@ -60,6 +60,7 @@ test("an Editor sees the Live Version's KPI cards, with the interval and sample 
   expect(card("Mean rating")).toBe("Mean ratingLow sample3.5 of 5n = 2 ratings");
   expect(card("Fallback rate")).toBe("Fallback rate25%1 of 4 replies were the fallback text");
   expect(card("Guardrail block rate")).toBe("Guardrail block rate50%2 of 4 replies were blocked by the input Guardrail");
+  expect(card("Searches per reply")).toBe("Searches per reply1.5 meanRetrieval Mode: Agentic6 Searches in 4 replies");
   expect(card("p95 latency")).toBe("p95 latency1.5 sFirst token 320 msn = 4 replies");
   // Every Version is fetched at once, for the last 30 days.
   expect(queries.map(({ agentId, query }) => [agentId, query.toString()])).toEqual([[hrHelper.id, ""]]);
@@ -82,6 +83,7 @@ test("a Version with enough evidence has no low-confidence marks", async () => {
   expect(card("Fallback rate")).toBe("Fallback rate0%0 of 400 replies were the fallback text");
   // Under one percent shows a decimal, so a small block rate doesn't read as none.
   expect(card("Guardrail block rate")).toBe("Guardrail block rate0.8%3 of 400 replies were blocked by the input Guardrail");
+  expect(card("Searches per reply")).toBe("Searches per reply0.0 meanRetrieval Mode: Automatic0 Searches in 400 replies");
   expect(card("p95 latency")).toBe("p95 latency2.4 sFirst token 950 msn = 400 replies");
 });
 
@@ -97,6 +99,7 @@ test("a Version with no Visitor use yet says so on every card", async () => {
   expect(card("Mean rating")).toBe("Mean ratingLow sampleNo ratings yetn = 0 ratings");
   expect(card("Fallback rate")).toBe("Fallback rateNo replies yet0 of 0 replies were the fallback text");
   expect(card("Guardrail block rate")).toBe("Guardrail block rateNo replies yet0 of 0 replies were blocked by the input Guardrail");
+  expect(card("Searches per reply")).toBe("Searches per replyNo replies yetRetrieval Mode: Automatic0 Searches in 0 replies");
   expect(card("p95 latency")).toBe("p95 latencyNo replies yetn = 0 replies");
 });
 
@@ -110,6 +113,7 @@ test("one of each is counted in the singular", async () => {
     rating: { n: 1, mean: 5, low_confidence: true },
     fallback: { count: 0, rate: 0 },
     guardrail_blocks: { count: 1, rate: 1 },
+    searches: { total: 1, mean_per_reply: 1 },
     latency: { n: 1, first_token_p95_ms: 0.4, total_p95_ms: 999 },
   });
   setUp({ versions: { [hrHelper.id]: [one] } });
@@ -123,6 +127,7 @@ test("one of each is counted in the singular", async () => {
   expect(card("Thumbs-up rate")).toBe("Thumbs-up rateLow sample100%95% interval 21% to 100%n = 1 vote (1 up, 0 down)");
   expect(card("Mean rating")).toBe("Mean ratingLow sample5.0 of 5n = 1 rating");
   expect(card("Guardrail block rate")).toBe("Guardrail block rate100%1 of 1 reply was blocked by the input Guardrail");
+  expect(card("Searches per reply")).toBe("Searches per reply1.0 meanRetrieval Mode: Automatic1 Search in 1 reply");
   expect(card("p95 latency")).toBe("p95 latency999 msFirst token 0 msn = 1 reply");
 });
 
@@ -231,6 +236,7 @@ test("an Editor compares two Versions side by side, with the differences highlig
     "Mean rating (small sample)",
     "Ratings (small sample)",
     "Fallback rate",
+    "Mean searches per reply (small sample)",
     "p95 time to first token (ms)",
     "p95 total latency (ms)",
   ]);
@@ -241,6 +247,8 @@ test("an Editor compares two Versions side by side, with the differences highlig
   expect(compared("Thumbs-up rate (small sample)")).toEqual(["80%", "67%", "−13 pts", "v1"]);
   expect(compared("Mean rating (small sample)")).toEqual(["4.25", "3.50", "−0.75", "v1"]);
   expect(compared("Fallback rate")).toEqual(["0%", "25%", "+25 pts", "v1"]);
+  // More searching costs more but may answer better: neither Version is favoured.
+  expect(compared("Mean searches per reply (small sample)")).toEqual(["0.00", "1.50", "+1.50", ""]);
   expect(compared("p95 time to first token (ms)")).toEqual(["950 ms", "320 ms", "−630 ms", "v2"]);
   expect(compared("p95 total latency (ms)")).toEqual(["2.4 s", "1.5 s", "−920 ms", "v2"]);
   // Rows that differ are highlighted; the Version a metric favours is named in words too.
@@ -258,6 +266,9 @@ test("the configuration diff between the two Versions is shown alongside", async
   expect(within(changes).getByRole("table", { name: "Behaviour › System prompt changes" })).toHaveTextContent(
     "1−RemovedAnswer fully.1+AddedAnswer in one sentence.",
   );
+  // Each Version's Retrieval Mode, from its KPIs, once.
+  expect(within(changes).getByText("Retrieval Mode: Automatic → Agentic")).toBeInTheDocument();
+  expect(within(changes).queryByText(/Retrieval › Mode/)).not.toBeInTheDocument();
 });
 
 test("the comparison is exported as CSV for the chosen Versions and days", async () => {

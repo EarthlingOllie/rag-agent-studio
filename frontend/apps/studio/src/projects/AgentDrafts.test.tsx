@@ -288,6 +288,16 @@ test("the Version history lists each Version with its author, note, Instructions
   expect(first).not.toHaveTextContent("Live");
 });
 
+test("each Version in the history shows its Retrieval Mode", async () => {
+  const agentic = { ...v2, config: { ...v2.config, retrieval: { ...v2.config.retrieval, mode: "agentic" as const } } };
+  setUp({ versions: { [hrHelper.id]: [agentic, v1] } });
+  await openVersions();
+
+  const [second, first] = within(await versionsList()).getAllByRole("listitem") as [HTMLElement, HTMLElement];
+  expect(second).toHaveTextContent("Retrieval Mode: Agentic");
+  expect(first).toHaveTextContent("Retrieval Mode: Automatic");
+});
+
 test("an Agent that has never been published has no Versions yet", async () => {
   setUp({ agents: [hrHelper], versions: {} });
   await openVersions();
@@ -408,6 +418,42 @@ test("a comparison of Versions whose only change is the pinned Instructions show
 
   expect(await within(compare).findByText("Project Instructions: v2 → none", {}, { timeout: 5000 })).toBeInTheDocument();
   expect(within(compare).queryByRole("list", { name: /Changes from/ })).not.toBeInTheDocument();
+});
+
+test("a Version Diff shows the Retrieval Mode of both Versions, once", async () => {
+  const agentic = { ...v2, config: { ...v2.config, retrieval: { ...v2.config.retrieval, mode: "agentic" as const } } };
+  setUp({
+    versions: { [hrHelper.id]: [agentic, v1] },
+    diff: (from, to) =>
+      from === v1.id && to === v2.id
+        ? {
+            from: { kind: "version", version: { id: v1.id, number: 1 } },
+            to: { kind: "version", version: { id: v2.id, number: 2 } },
+            changes: [{ path: "retrieval.mode", before: "automatic", after: "agentic", added: null, removed: null, lines: null }],
+            instructions: null,
+          }
+        : emptyDiff(from, to),
+  });
+  await openVersions();
+  await versionsList();
+  const compare = screen.getByRole("region", { name: "Compare" });
+
+  await userEvent.selectOptions(within(compare).getByLabelText("From"), v1.id);
+  await userEvent.selectOptions(within(compare).getByLabelText("To"), v2.id);
+
+  expect(await within(compare).findByText("Retrieval Mode: Automatic → Agentic", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(within(compare).queryByText(/Retrieval › Mode/)).not.toBeInTheDocument();
+
+  // Two Versions in the same mode say so beside their other differences.
+  await userEvent.selectOptions(within(compare).getByLabelText("From"), v2.id);
+  await userEvent.selectOptions(within(compare).getByLabelText("To"), v2.id);
+  expect(await within(compare).findByText("Retrieval Mode: Agentic in both", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(within(compare).getByText(/No differences: v2 and v2/)).toBeInTheDocument();
+
+  // A Draft Diff has no Retrieval Mode row.
+  await userEvent.selectOptions(within(compare).getByLabelText("To"), "draft");
+  expect(await within(compare).findByText(/No differences: v2 and the Draft/, {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(within(compare).queryByText(/^Retrieval Mode:/)).not.toBeInTheDocument();
 });
 
 test("a comparison that can't be loaded says so", async () => {

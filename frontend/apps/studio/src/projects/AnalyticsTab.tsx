@@ -3,6 +3,7 @@ import { type ReactNode, useState } from "react";
 
 import { Badge, EmptyState, Icon, Notice, Skeleton, button, field, text } from "../design";
 
+import { retrievalModeName } from "./AgentDiff";
 import { useAgents } from "./agents";
 import { type MetricsRange, type VersionKpis, useVersionMetrics } from "./analytics";
 import { dollars, duration } from "./format";
@@ -56,7 +57,7 @@ function KpiCard({
 }
 
 function Kpis({ kpis }: { kpis: VersionKpis }) {
-  const { tokens, cost, thumbs_up: thumbs, rating, fallback, guardrail_blocks: blocks, latency } = kpis;
+  const { tokens, cost, thumbs_up: thumbs, rating, fallback, guardrail_blocks: blocks, searches, latency } = kpis;
   return (
     <ul aria-label={`Key numbers for v${String(kpis.number)}`} className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
       <KpiCard
@@ -107,6 +108,16 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
         value={blocks.rate === null ? "No replies yet" : finePercent(blocks.rate)}
         details={
           <p>{`${String(blocks.count)} of ${plural(kpis.messages, "reply was", "replies were")} blocked by the input Guardrail`}</p>
+        }
+      />
+      <KpiCard
+        title="Searches per reply"
+        value={searches.mean_per_reply === null ? "No replies yet" : `${searches.mean_per_reply.toFixed(1)} mean`}
+        details={
+          <>
+            <p>{`Retrieval Mode: ${retrievalModeName(kpis.retrieval_mode)}`}</p>
+            <p>{`${plural(searches.total, "Search", "Searches")} in ${plural(kpis.messages, "reply", "replies")}`}</p>
+          </>
         }
       />
       <KpiCard

@@ -16,6 +16,7 @@ function value(unit: MetricRow["unit"], amount: number): string {
     case "rate":
       return percent(amount);
     case "rating":
+    case "searches":
       return amount.toFixed(2);
     case "ms":
       return duration(amount);
@@ -116,7 +117,7 @@ function Compared({
           <h4 id="config-changes-heading" className="mb-2 text-sm font-medium text-ink">
             Configuration changes
           </h4>
-          <AgentDiffView diff={diff} names={names} />
+          <AgentDiffView diff={diff} names={names} modes={{ from: a.retrieval_mode, to: b.retrieval_mode }} />
         </section>
       </div>
     </>
