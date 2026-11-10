@@ -491,7 +491,7 @@ async def send_message(
                         "first_token_ms": event.first_token_ms,
                         "latency_ms": event.latency_ms,
                         "fallback": event.event.fallback,
-                        "search_count": len(event.event.searches),
+                        "search_count": event.event.search_count,
                         "chunks": [
                             {
                                 "chunk_id": str(c.chunk_id),

@@ -115,15 +115,17 @@ class Message(IdMixin, Base):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     # US dollars, from ``app.pricing.table.cost``; None when no price is known.
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
-    # True when no Chunk reached the minimum score, so the answer is the fallback text and no
-    # model was asked (its model is then null).
+    # True when no Chunk reached the minimum score, so the answer is the fallback text. In
+    # Automatic Retrieval Mode no model was asked (its model is then null); in Agentic mode the
+    # model searched, found nothing, and its answer was discarded.
     fallback: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # What the Guardrails decided about the answer: a list of
     # {layer, verdict, action, reason, score}.
     guardrail_outcomes: Mapped[list[dict[str, str | float | None]]] = mapped_column(
         JSONB, default=list, server_default=text("'[]'::jsonb")
     )
-    # How many Knowledge Searches the answer made (Agentic Retrieval Mode); 0 in Automatic mode.
+    # How many Knowledge Searches the answer ran (Agentic Retrieval Mode); 0 in Automatic mode.
+    # A call the Search limit refused ran no Search and isn't counted.
     search_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     # When its text (and any feedback comment on it) was purged, by the Retention Window or a
     # Conversation deleted on request (``app.retention``); ``content`` is then empty. Every

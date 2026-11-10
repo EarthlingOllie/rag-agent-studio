@@ -16,6 +16,13 @@ when the model asks for several at once. Tool calls finish before the answer str
 of each model response is held until the response ends, so text a model writes before calling
 the tool is never sent. Token use is summed over every model call of the reply.
 
+A reply makes at most the Agent's Search limit of Searches: a call beyond it searches nothing,
+streams no ``SearchEvent`` and tells the model "search limit reached; answer from what you
+have"; it is recorded as a ``Searched`` with ``limit_refused``, so the Trace shows the limit was
+hit. If the model searched and no Search found a Chunk reaching the minimum score, the model's
+answer is discarded before any of it streams, and the reply is the Agent's fallback text with
+``fallback`` true. A reply that made no Search (a greeting) is never a fallback.
+
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
 the answer cites (``app.runtime.citations``), then one ``DoneEvent``. The reply keeps one record
 of the Chunks given to the model (``app.runtime.prompt.GivenChunks``), which assigns their Chunk
@@ -64,6 +71,7 @@ from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import (
     KNOWLEDGE_SEARCH,
     KNOWLEDGE_SEARCH_DESCRIPTION,
+    SEARCH_LIMIT_REACHED,
     GivenChunks,
     Turn,
     data_blocks,
@@ -123,8 +131,10 @@ class Searched:
 class DoneEvent:
     """The end of the turn: the full answer, token usage, the Chunks the model was given and
     the Chunks retrieval left out. ``fallback`` is true when no Chunk reached the minimum score,
-    so the answer is the fallback text and the model wasn't asked. ``guardrail_outcomes`` holds
-    what the Guardrails decided (a canary leak replaced or flagged, a question blocked)."""
+    so the answer is the fallback text: in Automatic Retrieval Mode the model wasn't asked; in
+    Agentic mode it searched, found nothing, and its answer was discarded unsent.
+    ``guardrail_outcomes`` holds what the Guardrails decided (a canary leak replaced or
+    flagged, a question blocked)."""
 
     answer: str
     input_tokens: int
@@ -140,6 +150,11 @@ class DoneEvent:
     # In Agentic Retrieval Mode, the reply's Searches in order; ``retrieved`` is then every Chunk
     # given to the model, in label order, and ``excluded`` every Chunk the Searches left out.
     searches: list[Searched] = field(default_factory=list)
+
+    @property
+    def search_count(self) -> int:
+        """How many Searches the reply ran: a call the Search limit refused searched nothing."""
+        return sum(not search.limit_refused for search in self.searches)
 
 
 TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | SearchEvent | DoneEvent | ErrorEvent
@@ -256,13 +271,17 @@ def _knowledge_search(
 ) -> Tool[None]:
     """Knowledge Search for one reply: the model writes the query; everything else comes from
     the Agent's Retrieval settings. Each Search is reported to ``started`` as it starts and
-    recorded in ``searches`` once it ends."""
+    recorded in ``searches`` once it ends. Once ``settings.search_limit`` Searches have run, a
+    further call is refused: it searches nothing, and is recorded as refused."""
 
     # Numbered as they start: the model may ask for several Searches at once.
     orders = itertools.count(1)
 
     async def knowledge_search(query: str) -> str:
         order = next(orders)
+        if order > settings.search_limit:
+            searches.append(Searched(order, query, 0, [], [], limit_refused=True))
+            return SEARCH_LIMIT_REACHED
         started(SearchEvent(query, order))
         began = time.perf_counter()
         found = await retrieve(query, settings)
@@ -291,6 +310,12 @@ def _knowledge_search(
         # share one database session, which can't run two queries concurrently.
         sequential=True,
     )
+
+
+def _found_nothing(given: GivenChunks, searches: list[Searched]) -> bool:
+    """Whether the reply searched and no Search gave the model a Chunk: no Chunk reached the
+    minimum score."""
+    return bool(searches) and not given.entries()
 
 
 def _searched_result(given: GivenChunks, searches: list[Searched]) -> RetrievalResult:
@@ -432,6 +457,10 @@ async def _turn(
             if isinstance(text, SearchEvent):
                 yield text
                 continue
+            if _found_nothing(given, searches):
+                # The answer only streams once every Search has run, so it is discarded before
+                # any of it is sent. Leaving the loop stops the model.
+                break
             safe = canary_filter.feed(text)
             if canary_filter.leaked:
                 # Leaving the loop closes the stream, which stops the model.
@@ -440,6 +469,19 @@ async def _turn(
                 yield TokenEvent(safe)
     if agentic:
         retrieved = _searched_result(given, searches)
+    if _found_nothing(given, searches):
+        # Searched, and nothing relevant was found: the Agent's words, not the model's guess.
+        yield TokenEvent(behaviour.fallback_text)
+        yield DoneEvent(
+            answer=behaviour.fallback_text,
+            input_tokens=streamed.usage.input_tokens,
+            output_tokens=streamed.usage.output_tokens,
+            retrieved=[],
+            excluded=retrieved.excluded,
+            fallback=True,
+            searches=searches,
+        )
+        return
     if canary_filter.leaked:
         yield ReplaceEvent(behaviour.fallback_text)
         yield DoneEvent(

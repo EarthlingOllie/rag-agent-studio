@@ -434,7 +434,7 @@ One Knowledge Search call in an Agent's reply: the query the model wrote, the Ch
 _Avoid_: Tool call (for the record), lookup, step
 
 **Search limit**:
-The most Searches an Agentic Agent may make in one reply, set in its Retrieval settings. Once it is reached the model must answer from what it has, and the Trace says the limit was hit.
+The most Searches an Agentic Agent may make in one reply, set in its Retrieval settings. Once it is reached, a further call is refused (it searches nothing, and doesn't count as a Search) and the model must answer from what it has; the Trace lists the refused call, so it says the limit was hit.
 _Avoid_: Max iterations, tool budget
 
 **Knowledge Search**:
