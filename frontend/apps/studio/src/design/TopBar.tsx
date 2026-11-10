@@ -5,14 +5,17 @@ import { Icon, WaveMark } from "./Icon";
 import { button } from "./recipes";
 
 /**
- * The Studio's one navigation bar: the mark, the breadcrumb (which carries every level of
- * navigation, sections included), then page actions and the Member's controls on the right.
+ * The Studio's one navigation bar: on a narrow screen the button that opens the sidebar drawer,
+ * the mark, the breadcrumb, then page actions and the Member's controls on the right.
  */
 export function TopBar({
+  menu,
   home,
   breadcrumb,
   actions,
 }: {
+  /** The sidebar drawer's button (`SidebarButton`), before the mark. */
+  menu?: ReactNode;
   /** The mark and product name, usually wrapped in a router <Link> to "/". */
   home: ReactNode;
   breadcrumb?: ReactNode;
@@ -22,7 +25,10 @@ export function TopBar({
     <header className="border-b border-line bg-surface">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-8">
         <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
-          {home}
+          <div className="flex items-center gap-2">
+            {menu}
+            {home}
+          </div>
           {breadcrumb}
         </div>
         <div className="flex items-center gap-3">{actions}</div>

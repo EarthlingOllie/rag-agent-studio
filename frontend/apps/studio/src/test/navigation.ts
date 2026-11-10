@@ -116,3 +116,14 @@ export function hasMenu(menu: NavigationMenu): boolean {
   const scope = SIDEBAR_SWITCHERS.includes(menu) ? nav : document.body;
   return scope !== null && within(scope).queryByRole("button", { name: buttonName(menu) }) !== null;
 }
+
+/** The top bar's "Open navigation" button, which opens the sidebar as a drawer on a narrow screen. */
+export function navigationButton() {
+  return within(screen.getByRole("banner")).findByRole("button", { name: "Open navigation" });
+}
+
+/** Opens the sidebar drawer from the top bar, as a Member on a phone does, and returns it. */
+export async function openDrawer(user: User = userEvent) {
+  await user.click(await navigationButton());
+  return screen.findByRole("dialog", { name: "Navigation" });
+}

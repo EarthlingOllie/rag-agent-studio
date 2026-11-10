@@ -107,3 +107,16 @@ export async function currentSection(page: Page, menu: NavigationMenu): Promise<
   const name = (await menuButton(page, menu).getAttribute("aria-label")) ?? "";
   return name.slice(0, name.length - `, ${menu}`.length);
 }
+
+/** The top bar's "Open navigation" button, shown below `md`, where the sidebar is a drawer. */
+export function navigationButton(page: Page) {
+  return page.getByRole("banner").getByRole("button", { name: "Open navigation" });
+}
+
+/** Opens the sidebar drawer from the top bar, as a Member on a phone does, and returns it. */
+export async function openDrawer(page: Page): Promise<Locator> {
+  await navigationButton(page).click();
+  const drawer = page.getByRole("dialog", { name: "Navigation" });
+  await drawer.getByRole("navigation", { name: "Studio" }).waitFor();
+  return drawer;
+}

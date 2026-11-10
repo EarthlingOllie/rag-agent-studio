@@ -10,6 +10,7 @@ import {
   SidebarGroup,
   SidebarLabel,
   sidebarLink,
+  type SidebarDrawer,
   sidebarSwitcher,
 } from "../design";
 import { useProject } from "../projects/projects";
@@ -100,10 +101,15 @@ export function StudioSidebar({
   session,
   organisationId,
   mustEnrol,
+  id,
+  drawer,
 }: {
   session: Session;
   organisationId: string;
   mustEnrol: boolean;
+  /** For the top bar's button that opens it as a drawer below `md`. */
+  id: string;
+  drawer: SidebarDrawer;
 }) {
   const matchRoute = useMatchRoute();
   const organisation = session.organisations.find((candidate) => candidate.id === organisationId);
@@ -113,7 +119,7 @@ export function StudioSidebar({
     : ORGANISATION_LINKS.filter((link) => link.ownersOnly !== true || organisation?.role === "owner");
 
   return (
-    <Sidebar label="Studio">
+    <Sidebar label="Studio" id={id} drawer={drawer}>
       <SidebarOrganisation session={session} organisationId={organisationId} />
       {organisation && (
         <SidebarGroup label="Organisation sections">
