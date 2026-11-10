@@ -184,6 +184,9 @@ class TraceOut(BaseModel):
     # How many Knowledge Searches the answer made, and each of them in order (Agentic mode).
     search_count: int
     searches: list[SearchOut]
+    # True when the Agent is Agentic but its model can't use tools (the Default Model changed
+    # since the Draft was saved), so the answer ran as Automatic: the Trace warns of it.
+    automatic_fallback: bool
     guardrail_outcomes: list[GuardrailOutcomeOut]
 
 
@@ -287,6 +290,7 @@ async def trace_out(
         ],
         chunks=[_traced(c) for c in chunks if c.retrieval.search_id is None],
         search_count=message.search_count,
+        automatic_fallback=message.automatic_fallback,
         searches=[
             SearchOut(
                 order=search.order,

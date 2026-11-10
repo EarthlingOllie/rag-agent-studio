@@ -3216,6 +3216,8 @@ export interface components {
             /** Model Name */
             model_name: string;
             provider: components["schemas"]["Provider"];
+            /** Supports Tools */
+            supports_tools: boolean;
             /**
              * Updated At
              * Format: date-time
@@ -4093,6 +4095,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Supports Tools */
+            supports_tools: boolean;
         };
         /** ModelPricesOut */
         ModelPricesOut: {
@@ -4990,6 +4994,8 @@ export interface components {
             agent_version_id: string | null;
             /** Agent Version Number */
             agent_version_number: number | null;
+            /** Automatic Fallback */
+            automatic_fallback: boolean;
             /** Chunks */
             chunks: components["schemas"]["TracedChunkOut"][];
             /** Config Source */

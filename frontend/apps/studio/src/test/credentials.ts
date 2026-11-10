@@ -8,17 +8,18 @@ type Provider = Schemas["ProviderOut"];
 type Reference = Schemas["CredentialReferenceOut"];
 type CheckFailure = Schemas["CheckFailedResponse"]["reason"];
 
-const models = (...ids: string[]) => ids.map((id) => ({ id, name: id }));
+const models = (...ids: string[]) => ids.map((id) => ({ id, name: id, supports_tools: false }));
+const chat = (...ids: string[]) => ids.map((id) => ({ id, name: id, supports_tools: true }));
 
 /** The capability registry as `GET /api/providers` answers it. */
 export const providers: Provider[] = [
-  { id: "anthropic", name: "Anthropic", auth_kinds: ["api_key"], capabilities: [{ capability: "chat", models: models("claude-sonnet-4-5") }] },
+  { id: "anthropic", name: "Anthropic", auth_kinds: ["api_key"], capabilities: [{ capability: "chat", models: chat("claude-sonnet-4-5") }] },
   {
     id: "openai",
     name: "OpenAI",
     auth_kinds: ["api_key"],
     capabilities: [
-      { capability: "chat", models: models("gpt-4.1") },
+      { capability: "chat", models: chat("gpt-4.1") },
       { capability: "embeddings", models: models("text-embedding-3-small") },
     ],
   },
@@ -27,7 +28,7 @@ export const providers: Provider[] = [
     name: "Amazon Bedrock",
     auth_kinds: ["aws_role", "aws_access_keys"],
     capabilities: [
-      { capability: "chat", models: models("anthropic.claude-sonnet-4-5-20250929-v1:0") },
+      { capability: "chat", models: chat("anthropic.claude-sonnet-4-5-20250929-v1:0") },
       { capability: "embeddings", models: models("amazon.titan-embed-text-v2:0") },
       { capability: "rerank", models: models("cohere.rerank-v3-5:0") },
     ],

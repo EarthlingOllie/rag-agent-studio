@@ -1,0 +1,14 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/user/wt-13-03/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, xdist-3.8.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 8 items
+
+tests/integration/test_logging.py ........                               [100%]
+
+============================== 8 passed in 38.09s ==============================
+{"timestamp": "2026-11-10T17:47:56.096954+00:00", "level": "ERROR", "logger": "opentelemetry.sdk._shared_internal", "message": "Exception while exporting Span.", "service": "worker", "exception": "Traceback (most recent call last):\n  File \"/home/user/wt-13-03/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/_shared_internal/__init__.py\", line 187, in _export\n    self._exporter.export(batch)\n    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"/home/user/wt-13-03/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/trace/export/__init__.py\", line 311, in export\n    self.out.write(self.formatter(span))\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\nValueError: I/O operation on closed file."}
+exit 0

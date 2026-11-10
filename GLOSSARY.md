@@ -441,6 +441,14 @@ _Avoid_: Max iterations, tool budget
 The one tool an Agent in Agentic Retrieval Mode has: a read-only Hybrid search of its Project's Knowledge Base for a query the model writes, with every other setting (Tags, Minimum Score, Reranker, Top-k) taken from the Agent's Retrieval settings. It changes nothing outside the Conversation (ADR-0015).
 _Avoid_: Search tool, retrieval tool, RAG tool
 
+**Tool support**:
+Whether a chat model can call tools, as Knowledge Search needs: the `supports_tools` flag of each Model in the capability registry, a property of the model rather than a Capability. Every chat model the registry offers supports tools except Bedrock's Mistral 7B Instruct; the Demo models do. The Studio's model pickers group models by it, and saving an Agentic Draft whose effective model (its Model override, else the Default Model) lacks it is refused.
+_Avoid_: Function calling (for the flag), tool capability, agentic model
+
+**Automatic fallback**:
+An Agentic Agent's reply run as Automatic because its effective model lacks Tool support, which happens when the Default Model is changed after the Draft was saved (that change doesn't revalidate Drafts). The Agent keeps answering, with one search up front, and the reply's Trace carries a warning. Not the Fallback Text.
+_Avoid_: Fallback (alone), degraded mode
+
 **Hybrid weighting**:
 The share of the fused score an Agent gives semantic search, from 0 (keyword search alone) to 1 (semantic search alone); keyword search has the rest.
 _Avoid_: Alpha, semantic ratio
@@ -676,7 +684,7 @@ A Visitor's thumbs-up or thumbs-down, with an optional comment (up to 1000 chara
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use (summed over every model call in the reply), Cost and latency, its Searches in Agentic Retrieval Mode, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
+The record of why an Agent Message said what it did: the model, token use (summed over every model call in the reply), Cost and latency, its Searches in Agentic Retrieval Mode (or the Automatic fallback warning), its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:

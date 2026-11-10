@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
-import { claude, defaultDraft, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, voyage } from "../test/agents";
+import { bedrock, claude, defaultDraft, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, voyage } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -223,6 +223,37 @@ test("the model override, reranker and classifier offer only credentials with th
   await userEvent.selectOptions(within(model).getByLabelText("Credential"), "");
   await saved();
   expect((saves(requests).at(-1) as Draft).behaviour.model).toBeNull();
+});
+
+test("the model override marks the models that support tools", async () => {
+  const { requests } = setUp({ credentials: [openAi, claude, bedrock] });
+  await openEditor();
+  const model = within(group("Behaviour")).getByRole("group", { name: "Model override" });
+  await within(model).findByRole("option", { name: "Bedrock (Amazon Bedrock)" });
+
+  await userEvent.selectOptions(within(model).getByLabelText("Credential"), bedrock.id);
+
+  const tools = await within(model).findByRole("group", { name: "Supports tools: Agentic or Automatic" });
+  expect(within(tools).getAllByRole("option").map((option) => option.textContent)).toEqual(["Amazon Nova Pro"]);
+  const plain = within(model).getByRole("group", { name: "No tools: Automatic only" });
+  expect(within(plain).getAllByRole("option").map((option) => option.textContent)).toEqual(["Mistral 7B Instruct"]);
+  expect(within(model).queryByText(/can't use tools/)).not.toBeInTheDocument();
+
+  await userEvent.selectOptions(within(model).getByLabelText("Model"), "mistral.mistral-7b-instruct-v0:2");
+
+  expect(
+    await within(model).findByText("Mistral 7B Instruct can't use tools, so this Agent can only use Automatic Retrieval Mode."),
+  ).toBeInTheDocument();
+  await saved();
+  expect((saves(requests).at(-1) as Draft).behaviour.model).toEqual({
+    credential_id: bedrock.id,
+    model: "mistral.mistral-7b-instruct-v0:2",
+  });
+  // The reranker and the classifier don't call tools, so their models aren't marked.
+  const classifier = within(group("Guardrails")).getByRole("group", { name: "LLM classifier" });
+  await userEvent.selectOptions(within(classifier).getByLabelText("Credential"), bedrock.id);
+  await within(classifier).findByRole("option", { name: "Mistral 7B Instruct" });
+  expect(within(classifier).queryByRole("group", { name: /tools/ })).not.toBeInTheDocument();
 });
 
 test("a saved model override is shown, even when no credential offers that capability", async () => {

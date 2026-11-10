@@ -127,6 +127,9 @@ class Message(IdMixin, Base):
     # How many Knowledge Searches the answer ran (Agentic Retrieval Mode); 0 in Automatic mode.
     # A call the Search limit refused ran no Search and isn't counted.
     search_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    # True when the Agent is Agentic but its effective model can't use tools (the Default Model
+    # changed since the Draft was saved), so the answer ran as Automatic: the Automatic fallback.
+    automatic_fallback: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     # When its text (and any feedback comment on it) was purged, by the Retention Window or a
     # Conversation deleted on request (``app.retention``); ``content`` is then empty. Every
     # number and attribution stays.

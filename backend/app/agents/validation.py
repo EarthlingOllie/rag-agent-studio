@@ -5,6 +5,10 @@ capability registry, that each credential it names belongs to the Organisation a
 chosen model for the setting's capability, and that its Tags are the Project's. Every problem
 is reported at once, located like a request validation error, so the Studio can show each
 message beside its field.
+
+An Agentic Draft also needs an effective chat model (its Model override, else the Default
+Model) that supports tools. Changing the Default Model later doesn't revalidate Drafts: the
+runtime answers such an Agent as Automatic instead (``app.playground.service``).
 """
 
 import uuid
@@ -13,11 +17,12 @@ from dataclasses import dataclass
 from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.config import AgentConfig, ModelChoice
+from app.agents.config import AgentConfig, ModelChoice, RetrievalMode
 from app.agents.models import Agent, AgentDraft, AgentVersion
 from app.credentials.models import ProviderCredential
 from app.credentials.references import CredentialReference
-from app.credentials.registry import Capability
+from app.credentials.registry import Capability, Provider, models_for, supports_tools
+from app.default_model.service import read_default
 from app.gateway.gateway import CapabilityNotGrantedError, ModelUnavailableError, check_offered
 from app.projects.models import Project
 from app.tags.models import Tag
@@ -25,6 +30,10 @@ from app.tenancy.repository import OrganisationScope
 
 UNKNOWN_CREDENTIAL = "Choose a Provider Credential from this Organisation."
 UNKNOWN_TAG = "Choose Tags from this Project."
+NEEDS_TOOLS = (
+    "Agentic Retrieval Mode needs a model that supports tools, and {model} doesn't. "
+    "Choose Automatic, or a model that supports tools."
+)
 
 
 @dataclass(frozen=True)
@@ -72,6 +81,8 @@ async def check_draft(
 ) -> None:
     """Raises ``InvalidDraftError`` listing every problem."""
     problems = await credential_problems(session, scope, config)
+    if config.retrieval.mode is RetrievalMode.AGENTIC:
+        problems.extend(await _tool_problems(session, scope, config, problems))
     tag_ids = config.retrieval.tag_ids
     if tag_ids:
         known = set(
@@ -86,6 +97,37 @@ async def check_draft(
         )
     if problems:
         raise InvalidDraftError(problems)
+
+
+def _model_name(credential: ProviderCredential, model: str) -> str:
+    offered = models_for(Provider(credential.provider), credential.capabilities, Capability.CHAT)
+    return next(m.name for m in offered if m.id == model)
+
+
+async def _tool_problems(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    config: AgentConfig,
+    found: list[DraftProblem],
+) -> list[DraftProblem]:
+    """An Agentic Draft's effective chat model without tool support: the Model override (unless
+    it was refused already), else the Default Model. None when there is no model at all yet."""
+    override = config.behaviour.model
+    if override is not None:
+        if any(problem.loc[0] == "behaviour" for problem in found):
+            return []
+        credential = await session.get_one(ProviderCredential, override.credential_id)
+        if supports_tools(Provider(credential.provider), override.model):
+            return []
+        name = _model_name(credential, override.model)
+        loc: tuple[str, ...] = ("behaviour", "model", "model")
+    else:
+        default = await read_default(session, scope.organisation_id)
+        if default is None or default.supports_tools:
+            return []
+        name = f"the Default Model ({default.model_name})"
+        loc = ("retrieval", "mode")
+    return [DraftProblem(loc, NEEDS_TOOLS.format(model=name), "model_without_tools")]
 
 
 async def credential_problems(
