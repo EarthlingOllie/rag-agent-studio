@@ -7,10 +7,10 @@
 **Blocked by:**
 - None
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] The runtime assigns Chunk labels from a per-reply record of Chunks given to the model, in the order they were first given
-- [ ] Citations (structured output and label parsing) resolve through the same record
-- [ ] Automatic mode behaves exactly as before: the existing Playground, prompt-assembly, citation and canary tests pass unchanged
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The runtime assigns Chunk labels from a per-reply record of Chunks given to the model, in the order they were first given
+- [x] Citations (structured output and label parsing) resolve through the same record
+- [x] Automatic mode behaves exactly as before: the existing Playground, prompt-assembly, citation and canary tests pass unchanged
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
