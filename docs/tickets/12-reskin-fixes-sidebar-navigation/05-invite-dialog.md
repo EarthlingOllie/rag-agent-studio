@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The Members section has a header with Invite someone as its primary action, top right; the inline invite panel is gone
 - [ ] Invite someone opens a dialog with Email, Role and "Email the invite link"; an invalid email or an existing Member is reported inside it
