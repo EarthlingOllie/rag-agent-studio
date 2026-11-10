@@ -299,7 +299,7 @@ test("the Embedding Model is set in the Project's Settings section, not on every
   await openSection("Project sections", "Settings");
 
   expect(await screen.findByRole("region", { name: "Embedding Model" })).toBeInTheDocument();
-  expect(screen.getByRole("group", { name: "OCR" })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "OCR" })).toBeInTheDocument();
 });
 
 test("an archived Project's Settings section has no Embedding Model to change", async () => {
@@ -307,7 +307,7 @@ test("an archived Project's Settings section has no Embedding Model to change", 
   fakeProjectsApi();
   renderStudio(projectPage(oldProject.id, "/settings"));
 
-  expect(await screen.findByRole("group", { name: "OCR" })).toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "OCR" })).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Embedding Model" })).not.toBeInTheDocument();
 });
 

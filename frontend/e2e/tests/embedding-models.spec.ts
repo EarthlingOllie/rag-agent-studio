@@ -38,7 +38,9 @@ test.describe("Embedding Models", () => {
     await expect(setting).toContainText("Documents are embedded with multilingual-e5-small.");
 
     await setting.getByRole("button", { name: "Change Embedding Model" }).click();
-    const choose = setting.getByRole("form", { name: "Choose the Embedding Model" });
+    const dialog = page.getByRole("dialog", { name: "Change the Embedding Model" });
+    await expect(dialog.getByText("This Project has no Documents yet, so the new model is used at once.")).toBeVisible();
+    const choose = dialog.getByRole("form", { name: "Choose the Embedding Model" });
     await expect(choose.getByLabel("Embedding Model").getByRole("option")).toHaveText([
       "multilingual-e5-small (built in)",
       "voyage-3.5 (Search embeddings)",
@@ -48,6 +50,7 @@ test.describe("Embedding Models", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await choose.getByLabel("Embedding Model").selectOption("voyage-3.5 (Search embeddings)");
     await choose.getByRole("button", { name: "Use this model" }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(setting).toContainText("Documents are embedded with voyage-3.5.");
 
     // The worker embeds the upload with the chosen model; changing it now would re-embed.
@@ -114,7 +117,9 @@ test.describe("Embedding Models", () => {
     const setting = page.getByRole("region", { name: "Embedding Model" });
     await expect(setting).toContainText("Changing it re-embeds every Document in the background");
     await setting.getByRole("button", { name: "Change Embedding Model" }).click();
-    const choose = setting.getByRole("form", { name: "Choose the Embedding Model" });
+    const dialog = page.getByRole("dialog", { name: "Change the Embedding Model" });
+    await expect(dialog.getByText("Every Document in this Project is re-embedded with the new model in the background.")).toBeVisible();
+    const choose = dialog.getByRole("form", { name: "Choose the Embedding Model" });
     await choose.getByLabel("Embedding Model").selectOption("voyage-3.5 (Re-embed target)");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await choose.getByRole("button", { name: "Use this model" }).click();
