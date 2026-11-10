@@ -1,0 +1,3 @@
+uv run pytest tests/integration/test_attack_panel.py --cov=app.playground.service --cov-report=term-missing (branch coverage; 500->502 is not among the missed branches)
+app/playground/service.py               195     33     34      5    82%   113, 125-138, 148-161, 202-204, 222-232, 265, 387-389, 461-465, 501, 549
+15 passed in 162.06s (0:02:42)
