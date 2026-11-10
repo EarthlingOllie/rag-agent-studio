@@ -45,14 +45,16 @@ Standing criteria: Studio UI uses the design system (`TextField`, palette ratche
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage | `cd backend && TEST_DATABASE_URL=…/studio_test_t06 TEST_REDIS_URL=redis://localhost:6379/3 uv run pytest -n 3` | BACKEND_RESULT | [backend-tests.summary.log](backend-tests.summary.log) |
+| Backend tests + coverage | `cd backend && TEST_DATABASE_URL=…/studio_test_t06 TEST_REDIS_URL=redis://localhost:6379/3 uv run pytest -n 3` | 2569 tests: 2564 passed, 5 failed under load (each passes alone, below); coverage **100.00%** (12212 statements, 1520 branches), gate reached | [backend-tests.summary.log](backend-tests.summary.log) |
 | Backend lint and types | `make lint-backend` | exit 0 | [lint-backend.log](lint-backend.log) |
 | Client drift, links | `make check-client`, `make link-check` | up to date; all links resolve | [check-client-and-links.log](check-client-and-links.log) |
 | Frontend tests | `pnpm test` | 1093 passed, 84 files; 100% statements, branches, functions, lines | [frontend-checks.log](frontend-checks.log) |
 | Frontend static | `pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | exit 0 | [frontend-static-checks.log](frontend-static-checks.log) |
 | e2e listing | `pnpm exec playwright test --list …` | 12 tests in 7 files list | [e2e-list.log](e2e-list.log) |
 
-The first backend run ([backend-tests-run1.summary.log](backend-tests-run1.summary.log), at `a8bfb5e3`, load average about 25 with four tickets sharing 4 CPUs) had 2564 passed and 4 failed: the four `test_logging.py` subprocess tests timed out waiting for uvicorn/celery to start; rerun alone they pass ([backend-test-logging-rerun.log](backend-test-logging-rerun.log), 8 passed). It also showed coverage 99.99%: `app/playground/service.py` 500->502, the path that drops SearchEvents for a caller that did not ask for them, lost its only test when the widget began asking. `f6a4f8b4` adds the attack-panel test that takes it.
+The first backend run ([backend-tests-run1.summary.log](backend-tests-run1.summary.log), at `a8bfb5e3`, load average about 25 with four tickets sharing 4 CPUs) had 2564 passed and 4 failed: the four `test_logging.py` subprocess tests timed out waiting for uvicorn/celery to start; rerun alone they pass ([backend-test-logging-rerun.log](backend-test-logging-rerun.log), 8 passed). It also showed coverage 99.99%: `app/playground/service.py` 500->502, the path that drops SearchEvents for a caller that did not ask for them, lost its only test when the widget began asking. `f6a4f8b4` adds the attack-panel test that takes it ([backend-attack-panel-coverage.log](backend-attack-panel-coverage.log)).
+
+The run at `f6a4f8b4` ([backend-tests.summary.log](backend-tests.summary.log)) reached the 100% coverage gate. Its five failures are load, not this change: the same four `test_logging.py` start-up timeouts, and `test_agent_versions.py::test_deleting_the_agent_or_erasing_the_organisation_removes_its_versions` (a foreign-key violation deleting the Agent; the test calls `answer()` directly with its default arguments and runs no Agentic Agent, so nothing in this ticket reaches it). Rerun alone, all nine pass, and the whole `test_agent_versions.py` passes, 28 tests ([backend-rerun-alone.log](backend-rerun-alone.log)). Two other full runs between these were killed by the kernel for lack of memory (four suites ran at once on the machine) and left no result.
 
 ## End-to-end (deferred to the integrated run)
 
