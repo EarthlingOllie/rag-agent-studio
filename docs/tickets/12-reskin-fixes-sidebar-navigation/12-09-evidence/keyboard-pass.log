@@ -1,0 +1,352 @@
+Keyboard only (Playwright keyboard.press, no mouse except the one press outside), 390x844.
+light projects (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Projects" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Cost" → link "Settings" → link "Projects" → link "Cost" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Cost" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/cost, closes the drawer, focus back on the button
+light documents (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Documents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Instructions" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions, closes the drawer, focus back on the button
+light document-viewer (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/documents/d0c00000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Documents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Instructions" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions, closes the drawer, focus back on the button
+light instructions (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Instructions" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Agents" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents, closes the drawer, focus back on the button
+light agents (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+light agent-playground (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+light agent-versions (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/versions)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+light agent-embed (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/embed)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+light agent-conversations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/conversations)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+light agent-conversation (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/conversations/c7000000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+light conversations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Conversations" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Analytics" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics, closes the drawer, focus back on the button
+light conversation (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations/c7000000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Conversations" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Analytics" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics, closes the drawer, focus back on the button
+light analytics (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Analytics" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Settings" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/settings, closes the drawer, focus back on the button
+light project-settings (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/settings)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light cost (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/cost)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Cost" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Settings" → link "Projects" → link "Cost" → link "Settings" → link "Projects"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Settings" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings, closes the drawer, focus back on the button
+light settings-general (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light settings-members (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/members)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light settings-credentials (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/credentials)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light settings-models (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/models)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light settings-theme (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/theme)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light settings-audit (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/audit)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light profile (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Projects" (no link is current: the first stop)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Cost" → link "Settings" → link "Projects" → link "Cost" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light security (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Projects" (no link is current: the first stop)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Cost" → link "Settings" → link "Projects" → link "Cost" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+light require-mfa-enrol (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Security" (the current link)
+    ok: Tab 3 times and Shift+Tab as many stay inside its 1 stops: link "Security" → link "Security" → link "Security"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Security" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security (the same page), closes the drawer, focus back on the button
+light two-organisations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 13 times and Shift+Tab as many stay inside its 11 stops: link "Conversations" → link "Analytics" → link "Settings" → button "Analytical Engines, Organisations" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark projects (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Projects" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Cost" → link "Settings" → link "Projects" → link "Cost" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Cost" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/cost, closes the drawer, focus back on the button
+dark documents (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Documents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Instructions" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions, closes the drawer, focus back on the button
+dark document-viewer (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/documents/d0c00000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Documents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Instructions" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions, closes the drawer, focus back on the button
+dark instructions (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Instructions" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Agents" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents, closes the drawer, focus back on the button
+dark agents (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark agent-playground (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark agent-versions (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/versions)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark agent-embed (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/embed)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark agent-conversations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/conversations)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark agent-conversation (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/conversations/c7000000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+dark conversations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Conversations" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Analytics" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics, closes the drawer, focus back on the button
+dark conversation (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations/c7000000-0000-4000-8000-000000000001)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Conversations" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Analytics" → link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Analytics" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics, closes the drawer, focus back on the button
+dark analytics (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Analytics" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Settings" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Settings" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/settings, closes the drawer, focus back on the button
+dark project-settings (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/settings)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 12 times and Shift+Tab as many stay inside its 10 stops: link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark cost (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/cost)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Cost" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Settings" → link "Projects" → link "Cost" → link "Settings" → link "Projects"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Settings" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings, closes the drawer, focus back on the button
+dark settings-general (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark settings-members (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/members)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark settings-credentials (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/credentials)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark settings-models (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/models)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark settings-theme (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/theme)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark settings-audit (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/audit)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Settings" (the current link)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Projects" → link "Cost" → link "Settings" → link "Projects" → link "Cost"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark profile (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Projects" (no link is current: the first stop)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Cost" → link "Settings" → link "Projects" → link "Cost" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark security (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Projects" (no link is current: the first stop)
+    ok: Tab 5 times and Shift+Tab as many stay inside its 3 stops: link "Cost" → link "Settings" → link "Projects" → link "Cost" → link "Settings"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Projects" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects, closes the drawer, focus back on the button
+dark require-mfa-enrol (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Security" (the current link)
+    ok: Tab 3 times and Shift+Tab as many stay inside its 1 stops: link "Security" → link "Security" → link "Security"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Security" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security (the same page), closes the drawer, focus back on the button
+dark two-organisations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents)
+    ok: Tab reaches button "Open navigation" after 1 stops, drawing a focus indicator
+    ok: Enter opens the drawer, focus on link "Agents" (the current link)
+    ok: Tab 13 times and Shift+Tab as many stay inside its 11 stops: link "Conversations" → link "Analytics" → link "Settings" → button "Analytical Engines, Organisations" → link "Projects" → link "Cost" → link "Settings" → button "HR handbook, Projects" → link "Documents" → link "Instructions" → link "Agents" → link "Conversations" → link "Analytics"
+    ok: Escape closes it, focus back on the button
+    ok: a press outside closes it, focus back on the button
+    ok: Enter on link "Conversations" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations, closes the drawer, focus back on the button
+problems: 0
