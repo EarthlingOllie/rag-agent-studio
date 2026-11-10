@@ -173,14 +173,16 @@ From the [candidate-reskin design review](../reviews/candidate-reskin/README.md)
 
 ## 13: Agentic retrieval
 
-Retrieval Mode (Automatic or Agentic) and the read-only Knowledge Search tool ([ADR-0015](../adr/0015-read-only-knowledge-search-tool.md)). Built on the `candidate-reskin` branch.
+Retrieval Mode (Automatic or Agentic) and the read-only Knowledge Search tool ([ADR-0015](../adr/0015-read-only-knowledge-search-tool.md)). Worked on the `candidate-reskin` branch: each ticket branches from it and merges back into it.
 
 | Ticket | Title | Blocked by |
 |---|---|---|
-| `13-01` | [Agentic tracer: one Knowledge Search, end to end](./13-agentic-retrieval/01-agentic-tracer.md) | none |
-| `13-02` | [Search limit, Fallback Text and turn-wide Chunk labels](./13-agentic-retrieval/02-search-limit-fallback-labels.md) | 13-01 |
-| `13-03` | [Widget searching status](./13-agentic-retrieval/03-widget-searching-status.md) | 13-01 |
-| `13-04` | [Retrieval Mode and Search limit in the Agent editor](./13-agentic-retrieval/04-retrieval-mode-editor.md) | 13-01 |
-| `13-05` | [Guardrails in Agentic mode](./13-agentic-retrieval/05-guardrails-both-modes.md) | 13-02 |
-| `13-06` | [Searches per reply in Version metrics](./13-agentic-retrieval/06-searches-metrics.md) | 13-01 |
-| `13-07` | [Demo model and seed in both modes](./13-agentic-retrieval/07-demo-seed.md) | 13-02 |
+| `13-01` | [Prefactor: Chunk labels assigned per reply](./13-agentic-retrieval/01-per-reply-chunk-labels.md) | none |
+| `13-02` | [Agentic tracer: one Knowledge Search, end to end](./13-agentic-retrieval/02-agentic-tracer.md) | 13-01 |
+| `13-03` | [Models that support tools](./13-agentic-retrieval/03-tool-capable-models.md) | 13-02 |
+| `13-04` | [Search limit and Fallback Text](./13-agentic-retrieval/04-search-limit-fallback.md) | 13-02 |
+| `13-05` | [Retrieval Mode in the Agent editor](./13-agentic-retrieval/05-retrieval-mode-editor.md) | 13-02 |
+| `13-06` | [Widget searching status and Token Budget](./13-agentic-retrieval/06-widget-searching-status.md) | 13-02 |
+| `13-07` | [Guardrails in both modes](./13-agentic-retrieval/07-guardrails-both-modes.md) | 13-04 |
+| `13-08` | [Searches in metrics and retention](./13-agentic-retrieval/08-searches-metrics-retention.md) | 13-02 |
+| `13-09` | [Agentic by default, with the demo and seed](./13-agentic-retrieval/09-agentic-default-demo-seed.md) | 13-03, 13-04, 13-07 |
