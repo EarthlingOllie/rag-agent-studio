@@ -94,6 +94,7 @@ test.describe("Rate limits", () => {
     await visitor.close();
 
     // The Playground has no limits: two questions in a row are both answered.
+    await openAgentView(page, "Playground");
     const messages = page.getByRole("list", { name: "Playground messages" });
     for (const [index, question] of ["What are your opening hours?", "And at weekends?"].entries()) {
       await page.getByLabel("Question", { exact: true }).fill(question);

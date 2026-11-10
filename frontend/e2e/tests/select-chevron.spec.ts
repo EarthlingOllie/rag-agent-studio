@@ -26,6 +26,8 @@ async function openMembers(page: Page) {
 
 test("selects draw the design system's chevron, inset like their text, in both Appearances", async ({ signedInPage: page, member }) => {
   await openMembers(page);
+  // The invite form is in the Invite someone dialog.
+  await page.getByRole("button", { name: "Invite someone" }).click();
   // A form field (the invite's Role) and a table-cell select (the Member's own role).
   const selects = [
     page.getByRole("form", { name: "Invite someone" }).getByLabel("Role"),

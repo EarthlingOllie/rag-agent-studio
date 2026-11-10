@@ -35,7 +35,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 

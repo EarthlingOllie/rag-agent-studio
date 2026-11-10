@@ -61,7 +61,7 @@ The seams were not confirmed with a human (none was available), so the spec's sh
 
 ## Gaps
 
-- **No compose stack here.** No Docker daemon was running in this sandbox for this run, so the changed stack specs (`sidebar`, `accessibility`) were listed, not run; shots.test.ts runs the same checks (drawer at 390 px, axe in both Appearances, the keyboard path) against the built Studio with the unit tests' MSW fakes.
+- **No compose stack here.** No Docker daemon was running in this sandbox for this run, so the changed stack specs (`sidebar`, `accessibility`) were listed, not run; shots.test.ts runs the same checks (drawer at 390 px, axe in both Appearances, the keyboard path) against the built Studio with the unit tests' MSW fakes. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
 - **The keyboard pass is scripted** (Playwright key presses, plus one mouse press for "outside"), not a person at a keyboard; the log records each stop so a reviewer can repeat it by hand.
 - **The Breadcrumb glossary entry** still calls its switchers the only navigation where the Sidebar is hidden; 12-11 rewrites the Breadcrumb and its entry, so it was left to avoid a conflict with 12-10.
 - **No pixel comparison** against the design canvas.

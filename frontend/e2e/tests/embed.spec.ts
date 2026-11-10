@@ -61,7 +61,7 @@ test.describe("Embed an Agent", () => {
     await expect(embed.locator("code")).toHaveText(snippet);
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: STUDIO_URL });
     await embed.getByRole("button", { name: "Copy Embed Snippet" }).click();
-    await expect(embed.getByRole("button", { name: "Copy Embed Snippet" })).toHaveText("Copied");
+    await expect(embed.getByRole("button", { name: "Copied Embed Snippet" })).toHaveText("Copied");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippet);
 
     // Allow the demo host page's origin.

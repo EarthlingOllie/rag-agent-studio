@@ -19,11 +19,11 @@ const API_DOCUMENT =
 // The first render of a test file is slow on a busy machine (the markdown renderer warms up).
 const LOAD = { timeout: 5000 };
 
-const MARKDOWN = `## Northwind staff handbook
+const MARKDOWN = `# Northwind staff handbook
 
 Welcome to **Northwind Traders**.
 
-### Annual leave
+## Annual leave
 
 | Years | Days |
 | --- | --- |
@@ -89,11 +89,13 @@ test("an Editor opens a Document from the list and sees its markdown beside its 
   const markdown = within(
     screen.getByRole("region", { name: "Converted markdown" }),
   );
+  // The Document's own headings sit below the page's (the Project's h1, the Document's h2 and this
+  // section's h3), so a Document's "# Title" is not a second h1 on the page.
   expect(
-    markdown.getByRole("heading", { name: "Northwind staff handbook" }),
+    markdown.getByRole("heading", { level: 4, name: "Northwind staff handbook" }),
   ).toBeInTheDocument();
   expect(
-    markdown.getByRole("heading", { name: "Annual leave" }),
+    markdown.getByRole("heading", { level: 5, name: "Annual leave" }),
   ).toBeInTheDocument();
   expect(markdown.getByText("Northwind Traders").tagName).toBe("STRONG");
   expect(markdown.getByRole("cell", { name: "25" })).toBeInTheDocument();

@@ -60,7 +60,7 @@ The open-switcher views run axe without `target-size`: on a phone the open menu 
 
 ## Gaps
 
-- **No compose-stack run.** The Docker daemon isn't running in this sandbox, so the Agent specs were listed and type-checked but not run against the stack; the harness and the browser run above stand in. The changes to them are one locator each (the Agent's name at level 1 instead of 2).
+- **No compose-stack run.** The Docker daemon isn't running in this sandbox, so the Agent specs were listed and type-checked but not run against the stack; the harness and the browser run above stand in. The changes to them are one locator each (the Agent's name at level 1 instead of 2). **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
 - **Breadcrumb switchers remain.** The breadcrumb still has its Agent and view switchers (now built from the same shared lists); 12-11 makes it plain.
 - **Narrow tab row scrolls.** At 390 px the four tabs are wider than the column, so the row scrolls sideways inside itself (Conversations is partly behind the edge until scrolled); the page doesn't.
 - **No pixel comparison** against the design canvas.

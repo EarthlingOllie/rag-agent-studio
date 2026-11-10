@@ -96,6 +96,6 @@ The first full run in this sandbox hit a timing flake in an unrelated test (`Age
 
 ## Gaps
 
-- **No compose stack.** There is no Docker daemon in this sandbox, so the updated `embedding-models` spec and the other stack specs were not run. They type-check and lint. [shots.test.ts](shots.test.ts) stands in for the axe run against the stack: it serves the built Studio and answers the API with the unit tests' MSW fakes.
+- **No compose stack.** There is no Docker daemon in this sandbox, so the updated `embedding-models` spec and the other stack specs were not run. They type-check and lint. [shots.test.ts](shots.test.ts) stands in for the axe run against the stack: it serves the built Studio and answers the API with the unit tests' MSW fakes. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
 - **Select chevron.** The dialog's select uses `field.select`. Its chevron is 12-01's, which is built in parallel.
 - **Concurrent tickets.** 12-01, 12-02 and 12-08 are in flight on their own branches. 12-02 changes the New Project form that `embedding-models.spec.ts` also uses. Whichever lands second merges the other in.

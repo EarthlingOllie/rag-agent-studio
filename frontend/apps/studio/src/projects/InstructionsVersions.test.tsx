@@ -111,6 +111,10 @@ test("an Editor publishes the Draft as written with a note, and it becomes the C
   await screen.findByText("Current Version: v3.");
   expect(items.map((item) => item.getAttribute("aria-label"))).toEqual(["v3", "v2", "v1"]);
   expect(within(screen.getByRole("listitem", { name: "v3" })).getByText("Current")).toBeInTheDocument();
+  // Compare follows the new Current Version: the Draft is what v3 froze.
+  const compare = screen.getByRole("region", { name: "Compare" });
+  expect(await within(compare).findByText("No differences: v3 and the Draft are the same.")).toBeInTheDocument();
+  expect(within(compare).getByRole("combobox", { name: "From" })).toHaveDisplayValue("v3 (Current)");
 });
 
 test("the note is required", async () => {

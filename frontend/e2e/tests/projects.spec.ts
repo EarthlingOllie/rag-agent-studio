@@ -38,7 +38,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 
@@ -52,7 +52,7 @@ test.describe("Projects", () => {
     // The Project page has a section per area, each a placeholder for now.
     for (const tab of ["Documents", "Instructions", "Agents", "Conversations", "Analytics"]) {
       await openSection(page, "Project sections", tab);
-      await expect(page.getByRole("heading", { level: 2, name: tab })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: tab, exact: true })).toBeVisible();
     }
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 

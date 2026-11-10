@@ -49,7 +49,7 @@ test.describe("invites", () => {
     await invitedPage.getByLabel("Password").fill(invited.password);
     await invitedPage.getByRole("button", { name: "Create account and join" }).click();
 
-    await expect(invitedPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(invitedPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     await expect(sidebar(invitedPage).getByText(member.organisationName)).toBeVisible();
     // An Editor: no Owner-only settings.
     await openSection(invitedPage, "Organisation sections", "Settings");
@@ -101,7 +101,7 @@ test.describe("invites", () => {
 
     await colleaguePage.goto(new URL(link).pathname + new URL(link).search);
     await colleaguePage.getByRole("button", { name: `Join ${member.organisationName}` }).click();
-    await expect(colleaguePage.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(colleaguePage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     // The colleague now belongs to two Organisations, so the sidebar's switcher shows the one joined.
     await expect(menuButton(colleaguePage, "Organisations")).toHaveAccessibleName(`${member.organisationName}, Organisations`);
     const me = (await (await colleaguePage.request.get("/api/auth/me")).json()) as { organisations: { name: string; role: string }[] };
@@ -114,6 +114,8 @@ test.describe("invites", () => {
 
     // A second invite, revoked before it is used.
     const late = newMember();
+    // The dialog closed on the first invite; open it again.
+    await page.getByRole("button", { name: "Invite someone" }).click();
     await form.getByLabel("Email", { exact: true }).fill(late.email);
     await form.getByRole("button", { name: "Invite" }).click();
     const lateLink = await page.getByLabel(`Invite link for ${late.email}`).inputValue();

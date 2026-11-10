@@ -60,5 +60,5 @@ The spec's network seam (`renderStudio` with MSW); the seams were not confirmed 
 
 ## Gaps
 
-- **No compose stack.** The backend and the Playwright `studio` suite (including the 20 specs updated to open the dialog) were not run; they lint, type-check and list. `shots.test.ts` stands in for the axe sweep on the pages this ticket touches.
+- **No compose stack.** The backend and the Playwright `studio` suite (including the 20 specs updated to open the dialog) were not run; they lint, type-check and list. `shots.test.ts` stands in for the axe sweep on the pages this ticket touches. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
 - **No pixel comparison** with the design canvas (not reachable from the sandbox); the layout follows `docs/design/README.md` and the `NewAgentDialog` pattern.

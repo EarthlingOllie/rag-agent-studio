@@ -77,6 +77,6 @@ The seams were not confirmed with a human (none was available), so the spec's ow
 
 ## Gaps
 
-- **No compose stack.** The Docker daemon is not running in this sandbox, so the backend, the `projects` and `project-deletion` Playwright specs and `e2e/harness/axe.spec.ts` against the stack were not run. The specs type-check and lint. [shots.test.ts](shots.test.ts) stands in for the axe run: it serves the built Studio, answers the API with the unit tests' MSW fakes, and runs the same axe tags. No backend code changed.
+- **No compose stack.** The Docker daemon is not running in this sandbox, so the backend, the `projects` and `project-deletion` Playwright specs and `e2e/harness/axe.spec.ts` against the stack were not run. The specs type-check and lint. [shots.test.ts](shots.test.ts) stands in for the axe run: it serves the built Studio, answers the API with the unit tests' MSW fakes, and runs the same axe tags. No backend code changed. **Closed after spec 12 merged:** the whole compose-stack suite (`make e2e`'s steps, 118 tests) passed against a stack built from the integration branch, with the fixes it needed; see [SCRATCH/spec12-e2e.md](../../../../SCRATCH/spec12-e2e.md).
 - **No pixel comparison** with the design canvas; the comparison is against `docs/design/README.md` and the Agents list.
 - **Concurrent tickets.** 12-07 removes the `BUTTON` / `INPUT` exports this file still carries. 12-09 and 12-10 change the shell and Agent pages, not this page.

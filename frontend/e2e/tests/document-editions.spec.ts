@@ -37,9 +37,10 @@ test.describe("Document editions", () => {
     const chooser = page.waitForEvent("filechooser");
     await rowAction(page, "handbook-2026.md", "New edition");
     await (await chooser).setFiles(handbook("handbook-2027.md", `Everyone gets 28 days of annual leave. ${String(Date.now())}`));
+    // While edition 2 is processing, the old edition's row (Ready) names it too, so wait for it to finish first.
     const replaced = table.getByRole("row", { name: /handbook-2027\.md/ });
-    await expect(replaced.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
-    await expect(replaced).not.toContainText("New edition 2");
+    await expect(replaced).not.toContainText("New edition 2", { timeout: 60_000 });
+    await expect(replaced.getByRole("cell", { name: "Ready" })).toBeVisible();
     await expect(table.getByRole("row")).toHaveCount(2);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 

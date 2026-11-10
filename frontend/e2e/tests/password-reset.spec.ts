@@ -31,7 +31,7 @@ test.describe("password reset and change password", () => {
     await page.getByLabel("Email").fill(member.email);
     await page.getByLabel("Password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 
     // The link worked once; opening it again is refused.
     await page.goto(resetLink);

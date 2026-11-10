@@ -39,7 +39,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 
@@ -86,7 +86,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
   // Once enrolled, the Organisation opens as usual.
   const { secret, step } = await enrol(editorPage);
   await openSection(editorPage, "Organisation sections", "Projects");
-  await expect(editorPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(editorPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   expect((await editorPage.request.get(`/api/organisations/${organisationId ?? ""}`)).status()).toBe(200);
 
   // While the Organisation requires MFA, the Editor can't turn it off.

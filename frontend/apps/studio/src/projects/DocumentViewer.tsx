@@ -1,6 +1,6 @@
 import { useParams } from "@tanstack/react-router";
-import { useState } from "react";
-import Markdown from "react-markdown";
+import { type ComponentProps, useState } from "react";
+import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { Badge, button, EmptyState, FlagCount, Notice, Pagination, Skeleton, Status, surface, text } from "../design";
@@ -17,6 +17,29 @@ import {
 import { fileType, formatSize, STATUS_LABELS, STATUS_TONES } from "./DocumentsTab";
 
 type Chunk = ChunkPage["items"][number];
+
+/** A heading of the Document's markdown, rendered as `Tag` but looking like the level it was written at. */
+function demoted(Tag: "h4" | "h5" | "h6", look: string) {
+  return function DemotedHeading(props: ComponentProps<"h1"> & { node?: unknown }) {
+    // react-markdown also passes its syntax-tree node, which is not an HTML attribute.
+    const attributes = { ...props };
+    delete attributes.node;
+    return <Tag {...attributes} className={look} />;
+  };
+}
+
+/**
+ * The Document's headings sit below the page's own (the Project's h1, the Document's h2 and the
+ * "Converted markdown" h3), so a Document's "# Title" never makes a second h1 on the page (WCAG 1.3.1).
+ */
+const DOCUMENT_HEADINGS: Components = {
+  h1: demoted("h4", "text-xl font-semibold"),
+  h2: demoted("h5", "text-lg font-semibold"),
+  h3: demoted("h6", "font-semibold"),
+  h4: demoted("h6", "font-semibold"),
+  h5: demoted("h6", "font-semibold"),
+  h6: demoted("h6", "font-semibold"),
+};
 
 /** "Page 3", "Pages 3–4", or nothing for formats without pages. */
 function pageLabel({ page_start: start, page_end: end }: Chunk): string | null {
@@ -192,7 +215,9 @@ export function DocumentViewer() {
             ) : (
               // It scrolls on its own, so it takes focus for keyboard scrolling (WCAG 2.1.1).
               <div tabIndex={0} className={`${surface.panel} markdown max-h-[70vh] overflow-auto text-sm`}>
-                <Markdown remarkPlugins={[remarkGfm]}>{document.data.markdown}</Markdown>
+                <Markdown remarkPlugins={[remarkGfm]} components={DOCUMENT_HEADINGS}>
+                  {document.data.markdown}
+                </Markdown>
               </div>
             )}
           </section>

@@ -14,7 +14,7 @@ test.describe("sign up, sign in, sign out", () => {
     await page.getByLabel("Organisation name").fill(member.organisationName);
     await page.getByRole("button", { name: "Create account" }).click();
 
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
     await expect(menuButton(page, "Account")).toHaveAccessibleName(`${member.name}, Account`);
     await openSection(page, "Organisation sections", "Settings");
@@ -50,14 +50,14 @@ test.describe("sign up, sign in, sign out", () => {
     await page.getByLabel("Password").fill(member.password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
   });
 
   test("the signedInPage fixture opens the Member's Organisation", async ({ signedInPage, member }) => {
     await signedInPage.goto("/");
 
-    await expect(signedInPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(signedInPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     await expect(sidebar(signedInPage).getByText(member.organisationName)).toBeVisible();
   });
 });
@@ -74,7 +74,7 @@ test.describe("accessibility", () => {
 
   test("the signed-in shell has no WCAG 2.2 AA violations", async ({ signedInPage, makeAxeBuilder }) => {
     await signedInPage.goto("/");
-    await expect(signedInPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(signedInPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     const results = await makeAxeBuilder().analyze();
     expect(results.violations).toEqual([]);
   });
