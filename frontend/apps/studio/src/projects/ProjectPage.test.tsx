@@ -273,10 +273,11 @@ test("an Owner permanently deletes an archived Project from the ⋯ menu after t
 
   // Back on the Projects list, where the Project is gone, archived or not.
   expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  // A success notice says so, above the list.
   expect(await screen.findByText("Old launch is being deleted permanently.")).toHaveAttribute("role", "status");
   expect(requests).toEqual([{ route: "delete", projectId: oldProject.id, body: { confirm_name: "Old launch" } }]);
-  await userEvent.click(screen.getByRole("button", { name: "Show archived Projects" }));
-  expect(await screen.findByText("No archived Projects.")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("radio", { name: "Archived" }));
+  expect(await screen.findByRole("heading", { name: "No archived Projects" })).toBeInTheDocument();
 });
 
 test("typing the name and pressing Enter deletes, too", async () => {

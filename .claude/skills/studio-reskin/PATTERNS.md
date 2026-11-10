@@ -341,6 +341,15 @@ each card as one item.
 </ul>
 ```
 
+A free-text cell kept to one line (a Project's Description, 12-03): the span truncates, the
+cell keeps the `table` recipe, and the full text is in its `title`.
+
+```tsx
+<td className={table.tdMuted}>
+  <span className="block max-w-md truncate" title={project.description || undefined}>{project.description}</span>
+</td>
+```
+
 Old → new: a page's `confirm()` or inline "Are you sure?" panel → `ConfirmDialog`; a status
 `<span>` with palette colours → `Badge`; a `<pre>` plus "Copy" button → `CodeBlock`; a progress
 `<div>` → `Meter`; "Nothing here yet." text → `EmptyState`; "Loading…" text → `Skeleton`; a

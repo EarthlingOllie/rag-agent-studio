@@ -85,14 +85,14 @@ test.describe("Projects", () => {
     const refused = await page.request.patch(projectUrl, { data: { name: "Sneaky rename" } });
     expect(refused.status()).toBe(409);
     await openSection(page, "Projects", "All Projects");
-    await expect(page.getByText(/No Projects yet/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No Projects yet" })).toBeVisible();
 
     // Restore it from the archived list.
-    await page.getByRole("button", { name: "Show archived Projects" }).click();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Archived" }).click();
     await page.getByRole("button", { name: "Restore People team" }).click();
     await expect(page.getByText("People team was restored.")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await page.getByRole("button", { name: "Show active Projects" }).click();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Active" }).click();
     await expect(projects.getByRole("link", { name: "People team" })).toBeVisible();
 
     // Create, archive and restore are in the Audit tab.
@@ -117,7 +117,7 @@ test.describe("Projects", () => {
     expect((await editorPage.request.post(restoreUrl)).status()).toBe(403);
 
     await openProjects(page);
-    await page.getByRole("button", { name: "Show archived Projects" }).click();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Archived" }).click();
     await page.getByRole("button", { name: "Restore Sales enablement" }).click();
     await expect(page.getByText("Sales enablement was restored.")).toBeVisible();
 
