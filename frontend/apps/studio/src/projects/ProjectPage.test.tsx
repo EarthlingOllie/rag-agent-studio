@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
+import { fakeAgentsApi, hrHelper } from "../test/agents";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeProjectsApi, hrProject, NAME_MISMATCH, oldProject, PROJECT_ARCHIVED } from "../test/projects";
 import { currentSection, hasMenu, openSection, sectionNames } from "../test/navigation";
@@ -368,4 +369,34 @@ test("a Project page shows its loading and error states", async () => {
   expect(alert).toHaveTextContent("The Project could not be loaded");
   expect(alert).toHaveTextContent("Try again shortly.");
   expect(screen.queryByRole("status", { name: "Loading the Project" })).not.toBeInTheDocument();
+});
+
+test("an Agent's pages leave out the Project's header, so the Agent's name is the one h1", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [hrHelper] });
+  renderStudio(projectPage(hrProject.id, `/agents/${hrHelper.id}`));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  expect(screen.queryByRole("heading", { name: "HR handbook" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Policies for the HR Agent")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();
+
+  // Back on the Agents list, the Project's header returns.
+  await openSection("Project sections", "Agents");
+  expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
+});
+
+test("an archived Project's Agent still says the Project is archived, without the Project's header", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  const archivedHelper = { ...hrHelper, project_id: oldProject.id };
+  fakeAgentsApi({ agents: [archivedHelper] });
+  renderStudio(projectPage(oldProject.id, `/agents/${hrHelper.id}`));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  const notice = (await screen.findByText(/This Project is archived/)).closest("[role=status]") as HTMLElement;
+  expect(notice).toHaveTextContent("Only Owners can restore it.");
+  expect(screen.queryByRole("heading", { name: oldProject.name })).not.toBeInTheDocument();
 });

@@ -40,7 +40,7 @@ test.describe("Rate limits", () => {
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Busy helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Busy helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Busy helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
     await publishAgent(page, "First release");

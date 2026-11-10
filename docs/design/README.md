@@ -201,10 +201,15 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   spent is an `EmptyState`; bad dates (the 422) and a failed load are `Notice tone="error"`;
   loading is a `Skeleton`. An Editor sees an `EmptyState`, "Only Owners see the Organisation's
   spend", under the header. The Audit page's filters use the same `field.filter` / `field.pill`.
-- **Agent page**: a header with the Agent's name, its `Badge`s (Live with the Version chip, or Not
-  live; Draft while there are unpublished changes), "Analytics for this Agent" (a ghost link to
-  Analytics filtered to it) and a ⋯ menu (Discard Draft, Archive, or Delete permanently on an
-  archived Agent), then the view the breadcrumb chose.
+- **Agent page** (tabs built in 12-10): the Project's `PageHeader` is left out, so the Agent's
+  `PageHeader` is the page's one h1: its name, then (`beside`) a ▾ Agent switcher (a `Menu` of the
+  Project's open Agents, `button.iconBare`, named "<Agent>, Agents") and its `Badge`s (Live with
+  the Version chip, or Not live; Draft while there are unpublished changes); on the right
+  "Analytics for this Agent" (a ghost link to Analytics filtered to it) and a ⋯ menu (Discard
+  Draft, Archive, or Delete permanently on an archived Agent). Under it a `TabRow` "Agent views"
+  of `tabLink`s (Playground, Versions, Embed & limits, Conversations; the current one has
+  `aria-current="page"`, an `accent` underline and `ink` text, and Conversations stays current on
+  a Conversation opened from it), then the view. An archived Project's notice stays above it.
   - **Playground**: the Playground is the main column (max 720px, centred); configuration is a
     right-hand panel (360–420px) of collapsible `Section`s (Behaviour open; Retrieval, Experience,
     Guardrails collapsed with a mono summary; a section the API refused a setting in opens). The
@@ -270,6 +275,7 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `button`, `field`, `surface`, `table`, `text`, `notice`, `layout` | Class recipes |
 | `TopBar`, `Brand`, `AppearanceToggle`, `Avatar` | The frame |
 | `Breadcrumb`, `CrumbSwitcher`, `CrumbText`, `crumbClass()` | Navigation |
+| `TabRow`, `tabLink` | An Agent's views as a row of tab links under its header |
 | `Menu`, `MenuItem`, `MenuLinkProps` | Switchers and ⋯ menus, keyboard-complete |
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |

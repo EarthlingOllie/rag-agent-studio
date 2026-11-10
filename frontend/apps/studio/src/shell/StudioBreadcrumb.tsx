@@ -3,11 +3,19 @@ import type { ReactNode } from "react";
 
 import type { Session } from "../auth/session";
 import { Breadcrumb, CrumbSwitcher, CrumbText, type IconName, type MenuItem, type MenuLinkProps } from "../design";
-import { useAgent, useAgents } from "../projects/agents";
+import { useAgent } from "../projects/agents";
 import { useDocument } from "../projects/documents";
 import { useProject } from "../projects/projects";
 import { OrganisationCrumb } from "./OrganisationSwitcher";
-import { ORGANISATION, PROJECT, useProjectSections, useProjectSwitcherItems } from "./projectNavigation";
+import {
+  AGENT,
+  ORGANISATION,
+  PROJECT,
+  useAgentSwitcherItems,
+  useAgentViews,
+  useProjectSections,
+  useProjectSwitcherItems,
+} from "./projectNavigation";
 import { SettingsCrumb } from "./SettingsCrumb";
 
 const SETTINGS = "/organisations/$organisationId/settings";
@@ -31,18 +39,6 @@ const SECTIONS: { label: string; icon: IconName; to: SectionPath; ownersOnly?: t
   { label: "Profile", icon: "profile", to: "/organisations/$organisationId/profile" },
 ];
 
-const AGENT = `${PROJECT}/agents/$agentId` as const;
-
-type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed` | `${typeof AGENT}/conversations`;
-
-/** An Agent's views, in menu order. Conversations also holds the Conversation opened from it. */
-const AGENT_VIEWS: { label: string; icon: IconName; to: AgentViewPath; fuzzy?: boolean }[] = [
-  { label: "Playground", icon: "send", to: AGENT },
-  { label: "Versions", icon: "history", to: `${AGENT}/versions` },
-  { label: "Embed & limits", icon: "external", to: `${AGENT}/embed` },
-  { label: "Conversations", icon: "conversations", to: `${AGENT}/conversations`, fuzzy: true },
-];
-
 /**
  * Inside an Agent: the crumbs `before` it, its section crumb (`section`), the Agent crumb, a
  * switcher of the Project's open Agents, then the view switcher (Playground, Versions, Embed &
@@ -62,8 +58,13 @@ function AgentBreadcrumb({
   before: ReactNode[];
   section: (current: boolean) => ReactNode;
 }) {
-  const matchRoute = useMatchRoute();
-  const agents = useAgents(organisationId, projectId);
+  const switcher = useAgentSwitcherItems(organisationId, projectId, agentId);
+  const views: MenuItem[] = useAgentViews(organisationId, projectId, agentId).map(({ label, icon, to, current }) => ({
+    label,
+    icon,
+    current,
+    renderLink: (props: MenuLinkProps) => <Link to={to} params={{ organisationId, projectId, agentId }} {...props} />,
+  }));
   const agent = useAgent(organisationId, projectId, agentId);
   if (!agent.data) {
     return (
@@ -73,19 +74,6 @@ function AgentBreadcrumb({
       </Breadcrumb>
     );
   }
-  const switcher: MenuItem[] = (agents.data ?? []).map((candidate) => ({
-    id: candidate.id,
-    label: candidate.name,
-    icon: "agents" as const,
-    current: candidate.id === agentId,
-    renderLink: (props: MenuLinkProps) => <Link to={AGENT} params={{ organisationId, projectId, agentId: candidate.id }} {...props} />,
-  }));
-  const views: MenuItem[] = AGENT_VIEWS.map(({ label, icon, to, fuzzy = false }) => ({
-    label,
-    icon,
-    current: matchRoute({ to, params: { organisationId, projectId, agentId }, fuzzy }) !== false,
-    renderLink: (props: MenuLinkProps) => <Link to={to} params={{ organisationId, projectId, agentId }} {...props} />,
-  }));
   // Every view inside the Agent's route is one of its views.
   const here = views.find((view) => view.current) as MenuItem;
   return (

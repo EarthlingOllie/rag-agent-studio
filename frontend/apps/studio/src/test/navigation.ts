@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 /**
@@ -9,6 +9,9 @@ import userEvent from "@testing-library/user-event";
  *   landmark named "Studio"): lists of links, the current one marked `aria-current="page"`.
  * - "Organisations" and "Projects" are the sidebar's switchers: a button named
  *   "<label>, <menu>" ("HR handbook, Projects") that opens a menu.
+ * - "Agent views" is the tab row under an Agent's header (the navigation landmark named "Agent
+ *   views"): a list of links, the current one marked `aria-current="page"`, like a sidebar group.
+ * - "Agents" is the ▾ switcher on the Agent's name, in the page's main content, named the same way.
  * - The rest are top bar menus: breadcrumb switchers named the same way, and the account menu,
  *   "<Member>, Account".
  */
@@ -33,6 +36,16 @@ const SIDEBAR_SWITCHERS: readonly NavigationMenu[] = ["Organisations", "Projects
 
 function isGroup(menu: NavigationMenu): menu is SidebarGroup {
   return SIDEBAR_GROUPS.includes(menu);
+}
+
+/** Lists of links: the sidebar's groups and an Agent's tab row. */
+type LinkList = SidebarGroup | "Agent views";
+
+/** The switchers in the page's main content rather than the sidebar or the top bar. */
+const MAIN_SWITCHERS: readonly NavigationMenu[] = ["Agents"];
+
+function isLinkList(menu: NavigationMenu): menu is LinkList {
+  return isGroup(menu) || menu === "Agent views";
 }
 
 type User = { click: (element: Element) => Promise<unknown>; keyboard: (text: string) => Promise<unknown> };
@@ -62,11 +75,22 @@ export function sidebar() {
 /** The button that opens `menu`, whatever its current label: in the sidebar, or in the top bar. */
 export async function menuButton(menu: SwitcherMenu) {
   if (SIDEBAR_SWITCHERS.includes(menu)) return within(await sidebar()).findByRole("button", { name: buttonName(menu) });
+  // The main landmark is replaced once the Studio has loaded, so it is looked up on every try.
+  if (MAIN_SWITCHERS.includes(menu)) return waitFor(() => within(screen.getByRole("main")).getByRole("button", { name: buttonName(menu) }));
   return screen.findByRole("button", { name: buttonName(menu) });
 }
 
 async function group(menu: SidebarGroup) {
   return within(await sidebar()).findByRole("list", { name: menu });
+}
+
+/** An Agent's tab row: the navigation landmark named "Agent views". */
+export function agentTabs() {
+  return screen.findByRole("navigation", { name: "Agent views" });
+}
+
+async function linkList(menu: LinkList) {
+  return menu === "Agent views" ? agentTabs() : group(menu);
 }
 
 async function openMenu(menu: SwitcherMenu, user: User) {
@@ -76,8 +100,8 @@ async function openMenu(menu: SwitcherMenu, user: User) {
 
 /** Follows the sidebar link `item` in a group, or opens a menu and follows (or chooses) `item`, as a Member does. */
 export async function openSection(menu: NavigationMenu, item: string, user: User = userEvent) {
-  if (isGroup(menu)) {
-    await user.click(within(await group(menu)).getByRole("link", { name: item }));
+  if (isLinkList(menu)) {
+    await user.click(within(await linkList(menu)).getByRole("link", { name: item }));
     return;
   }
   await user.click(within(await openMenu(menu, user)).getByRole("menuitem", { name: item }));
@@ -88,7 +112,7 @@ export async function openSection(menu: NavigationMenu, item: string, user: User
  * again). Role-based hiding is asserted as an item missing from this list.
  */
 export async function sectionNames(menu: NavigationMenu, user: User = userEvent): Promise<string[]> {
-  if (isGroup(menu)) return within(await group(menu)).getAllByRole("link").map(itemName);
+  if (isLinkList(menu)) return within(await linkList(menu)).getAllByRole("link").map(itemName);
   const items = within(await openMenu(menu, user)).getAllByRole("menuitem").map(itemName);
   await user.keyboard("{Escape}");
   return items;
@@ -99,8 +123,8 @@ export async function sectionNames(menu: NavigationMenu, user: User = userEvent)
  * is), or a switcher's label.
  */
 export async function currentSection(menu: NavigationMenu): Promise<string> {
-  if (isGroup(menu)) {
-    const current = within(await group(menu))
+  if (isLinkList(menu)) {
+    const current = within(await linkList(menu))
       .getAllByRole("link")
       .find((link) => link.getAttribute("aria-current") === "page");
     return current === undefined ? "" : itemName(current);
@@ -112,8 +136,9 @@ export async function currentSection(menu: NavigationMenu): Promise<string> {
 /** Whether `menu` is on screen at all, e.g. not on a page that was not found. */
 export function hasMenu(menu: NavigationMenu): boolean {
   const nav = screen.queryByRole("navigation", { name: "Studio" });
+  if (menu === "Agent views") return screen.queryByRole("navigation", { name: "Agent views" }) !== null;
   if (isGroup(menu)) return nav !== null && within(nav).queryByRole("list", { name: menu }) !== null;
-  const scope = SIDEBAR_SWITCHERS.includes(menu) ? nav : document.body;
+  const scope = SIDEBAR_SWITCHERS.includes(menu) ? nav : MAIN_SWITCHERS.includes(menu) ? screen.queryByRole("main") : document.body;
   return scope !== null && within(scope).queryByRole("button", { name: buttonName(menu) }) !== null;
 }
 
