@@ -60,6 +60,11 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
 StreamFunction = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str | DeltaToolCalls]]
 
 
+# Automatic Retrieval Mode: one search on the Visitor input before the model is asked. A new
+# Agent is Agentic, so tests about Automatic mode set it explicitly, in every Draft they save.
+AUTOMATIC: dict[str, Any] = {"mode": "automatic"}
+
+
 def agents_path(member: SignedUpMember, project_id: str, *rest: str) -> str:
     return "/".join([f"{project_path(member, project_id)}/agents", *rest])
 
@@ -67,6 +72,16 @@ def agents_path(member: SignedUpMember, project_id: str, *rest: str) -> str:
 async def create_agent(member: SignedUpMember, project_id: str, name: str = "HR helper") -> Any:
     response = await member.client.post(agents_path(member, project_id), json={"name": name})
     assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def create_automatic_agent(
+    member: SignedUpMember, project_id: str, name: str = "HR helper"
+) -> Any:
+    """A new Agent, its Draft saved in Automatic Retrieval Mode."""
+    agent = await create_agent(member, project_id, name)
+    response = await save_draft(member, project_id, agent["id"], {"retrieval": AUTOMATIC})
+    assert response.status_code == 200, response.text
     return response.json()
 
 

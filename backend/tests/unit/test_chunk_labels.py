@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelMessage, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.profiles import ModelProfile
 
-from app.agents.config import AgentConfig, Retrieval
+from app.agents.config import AgentConfig, Retrieval, RetrievalMode
 from app.retrieval.service import Candidate, RetrievalResult
 from app.runtime.runtime import CitationEvent, DoneEvent, TurnEvent, run_turn
 
@@ -36,13 +36,17 @@ def question_of(messages: list[ModelMessage]) -> str:
     return str(part.content)
 
 
+# The labels of Chunks retrieved up front: Automatic Retrieval Mode.
+AUTOMATIC = AgentConfig(retrieval=Retrieval(mode=RetrievalMode.AUTOMATIC))
+
+
 async def turn(chunks: list[Candidate], model: FunctionModel) -> list[TurnEvent]:
     async def retrieve(query: str, settings: Retrieval) -> RetrievalResult:
         return RetrievalResult(chunks)
 
     return [
         event
-        async for event in run_turn([], AgentConfig(), "", "Leave?", model=model, retrieve=retrieve)
+        async for event in run_turn([], AUTOMATIC, "", "Leave?", model=model, retrieve=retrieve)
     ]
 
 

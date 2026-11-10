@@ -14,7 +14,15 @@ import pytest
 from fastapi import FastAPI
 
 from tests import theme_images as images
-from tests.agents import agents_path, answer_with, create_agent, parse_sse, save_draft
+from tests.agents import (
+    AUTOMATIC,
+    agents_path,
+    answer_with,
+    create_agent,
+    create_automatic_agent,
+    parse_sse,
+    save_draft,
+)
 from tests.conftest import MemberFactory, SignedUpMember
 from tests.documents import create_project
 from tests.fakes.clock import ControllableClock
@@ -541,7 +549,7 @@ async def test_citations_carry_the_passage_and_follow_the_live_versions_setting(
 ) -> None:
     project_id = await knowledgeable_project(app, owner)
     answer_with(app, cites)
-    agent = await create_agent(owner, project_id)
+    agent = await create_automatic_agent(owner, project_id)
     await published(owner, project_id, agent["id"])
     token = await conversation_token(visitor, agent["public_id"])
 
@@ -553,7 +561,7 @@ async def test_citations_carry_the_passage_and_follow_the_live_versions_setting(
     )
 
     # A Live Version that hides citations streams the answer without them.
-    off = {"retrieval": {"citations": False}}
+    off = {"retrieval": {**AUTOMATIC, "citations": False}}
     assert (await save_draft(owner, project_id, agent["id"], off)).status_code == 200
     await published(owner, project_id, agent["id"])
 

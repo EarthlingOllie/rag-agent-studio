@@ -25,7 +25,14 @@ from pydantic_ai.models.function import AgentInfo
 
 from app.analytics.tasks import roll_up_usage
 from app.worker.celery_app import ROLL_UP_TASK, celery_app
-from tests.agents import answer_with, create_agent, save_draft, use_default_model
+from tests.agents import (
+    AUTOMATIC,
+    answer_with,
+    create_agent,
+    create_automatic_agent,
+    save_draft,
+    use_default_model,
+)
 from tests.conftest import ClientFactory, MemberFactory, SignedUpMember
 from tests.documents import create_project, project_path, upload
 from tests.fakes.clock import ControllableClock
@@ -60,13 +67,13 @@ async def wordy(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[
 
 
 async def live_agent(app: FastAPI, owner: SignedUpMember) -> dict[str, Any]:
-    """A live Agent (v1) in a Project holding the leave policy, answered by ``wordy`` through
-    an OpenAI credential; with its ``project_id`` and ``credential_id``."""
+    """A live Automatic Agent (v1) in a Project holding the leave policy, answered by ``wordy``
+    through an OpenAI credential; with its ``project_id`` and ``credential_id``."""
     answer_with(app, wordy)
     credential_id = await use_default_model(owner)
     project_id = await create_project(owner)
     await upload(app, owner, project_id, "leave.txt", LEAVE.encode())
-    agent: dict[str, Any] = await create_agent(owner, project_id)
+    agent: dict[str, Any] = await create_automatic_agent(owner, project_id)
     agent["project_id"] = project_id
     agent["credential_id"] = credential_id
     agent["v1"] = await published(owner, project_id, agent["id"])
@@ -440,7 +447,7 @@ async def test_fallback_replies_count_in_the_fallback_rate_but_not_in_tokens(
     clock.advance(timedelta(days=1))
     # v2 needs a relevance no Chunk reaches, so it always replies with its fallback text.
     saved = await save_draft(
-        owner, agent["project_id"], agent["id"], {"retrieval": {"min_score": 1}}
+        owner, agent["project_id"], agent["id"], {"retrieval": {**AUTOMATIC, "min_score": 1}}
     )
     assert saved.status_code == 200, saved.text
     v2 = await published(owner, agent["project_id"], agent["id"])

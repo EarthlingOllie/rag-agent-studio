@@ -17,6 +17,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
 from pydantic_ai.models.function import AgentInfo
 
 from tests.agents import (
+    AUTOMATIC,
     agents_path,
     answer_with,
     ask,
@@ -152,15 +153,17 @@ async def test_the_caution_is_for_the_flagged_turn_only(
 async def test_a_flagged_message_that_falls_back_is_still_flagged(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
-    # A Project with no Documents: nothing is retrieved, so the reply is the fallback text and
-    # no model is asked, but the verdict is still recorded on the Message.
+    # A Project with no Documents and an Automatic Agent: nothing is retrieved up front, so the
+    # reply is the fallback text and no model is asked, but the verdict is still recorded on the
+    # Message.
     model = Model()
     answer_with(app, model)
     guard(app)
     await use_default_model(owner)
     project_id = await create_project(owner)
     agent_id = (await create_agent(owner, project_id))["id"]
-    await save_draft(owner, project_id, agent_id, {"guardrails": {"input_mode": "warn"}})
+    warn = {"guardrails": {"input_mode": "warn"}, "retrieval": AUTOMATIC}
+    await save_draft(owner, project_id, agent_id, warn)
     conversation_id = (await start_conversation(owner, project_id, agent_id))["id"]
 
     response = await ask(owner, project_id, agent_id, conversation_id, ATTACK)

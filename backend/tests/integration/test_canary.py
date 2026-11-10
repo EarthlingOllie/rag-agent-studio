@@ -19,6 +19,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart
 from pydantic_ai.models.function import AgentInfo
 
 from tests.agents import (
+    AUTOMATIC,
     answer_with,
     ask,
     create_agent,
@@ -76,7 +77,10 @@ async def leaky_agent(app: FastAPI, owner: SignedUpMember) -> tuple[str, str, st
     await upload(app, owner, project_id, "leave.txt", LEAVE.encode())
     agent_id = (await create_agent(owner, project_id))["id"]
     saved = await save_draft(
-        owner, project_id, agent_id, {"behaviour": {"fallback_text": FALLBACK}}
+        owner,
+        project_id,
+        agent_id,
+        {"behaviour": {"fallback_text": FALLBACK}, "retrieval": AUTOMATIC},
     )
     assert saved.status_code == 200, saved.text
     conversation = await start_conversation(owner, project_id, agent_id)

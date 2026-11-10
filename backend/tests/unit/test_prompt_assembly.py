@@ -62,7 +62,7 @@ async def test_the_prompt_is_assembled_in_a_fixed_order_with_spotlighted_data() 
 
     config = AgentConfig(
         behaviour=Behaviour(system_prompt="You are the HR helper."),
-        retrieval=Retrieval(top_k=2),
+        retrieval=Retrieval(top_k=2, mode=RetrievalMode.AUTOMATIC),
     )
     events = [
         event
@@ -119,7 +119,7 @@ async def test_empty_instructions_and_system_prompt_are_left_out() -> None:
         event
         async for event in run_turn(
             [],
-            AgentConfig(),
+            AgentConfig(retrieval=Retrieval(mode=RetrievalMode.AUTOMATIC)),
             "",
             "Hi",
             model=FunctionModel(stream_function=echo, profile=TEXT_ONLY),
@@ -145,7 +145,7 @@ async def test_structured_output_uses_the_providers_json_schema_output_not_a_too
         event
         async for event in run_turn(
             [],
-            AgentConfig(),
+            AgentConfig(retrieval=Retrieval(mode=RetrievalMode.AUTOMATIC)),
             "",
             "Leave?",
             model=FunctionModel(stream_function=cited),

@@ -31,6 +31,7 @@ from tests.agents import (
     answer_with,
     ask,
     create_agent,
+    create_automatic_agent,
     parse_sse,
     save_draft,
     start_conversation,
@@ -288,7 +289,7 @@ async def test_the_default_fake_chat_model_answers_without_searching_in_automati
     await use_default_model(owner)
     project_id = await create_project(owner)
     await upload(app, owner, project_id, "leave.txt", LEAVE.encode())
-    agent_id = (await create_agent(owner, project_id))["id"]
+    agent_id = (await create_automatic_agent(owner, project_id))["id"]
 
     events, trace = await asked(owner, project_id, agent_id, LEAVE)
 
