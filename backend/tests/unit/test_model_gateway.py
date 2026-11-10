@@ -15,9 +15,15 @@ from typing import Any
 
 import httpx2
 import pytest
-from pydantic_ai import Agent
+from pydantic_ai import Agent, Tool
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.core.clock import SystemClock
@@ -41,7 +47,7 @@ from app.gateway.live import BedrockClients, LiveModelAdapters
 from app.guardrails.canary import new_canary
 from app.guardrails.classifier import InjectionFlag
 from app.guardrails.llm import LlmClassifier, LlmClassifierError
-from app.runtime.prompt import preamble
+from app.runtime.prompt import KNOWLEDGE_SEARCH, preamble, visitor_block
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
 ANTHROPIC_KEY = "sk-ant-gateway-test-only-aaaa"
@@ -427,6 +433,33 @@ async def test_the_fake_chat_model_cites_the_first_chunk_it_is_given() -> None:
         streamed = await result.get_output()
 
     assert streamed == "Fake reply from openai:gpt-4.1. [C1]"
+
+
+async def test_the_fake_chat_model_searches_with_the_visitors_question_whatever_else_is_asked() -> (
+    None
+):
+    """In Agentic Retrieval Mode the fake makes one Knowledge Search with the text of the
+    Visitor input block, even when the request carries other user content beside it."""
+    gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
+    model = gateway.chat_model(credential(Provider.OPENAI, OPENAI_KEY), "gpt-4.1")
+    queries: list[str] = []
+
+    def knowledge_search(query: str) -> str:
+        queries.append(query)
+        return "<<<RETRIEVED_CHUNKS>>>\n[C1] a.md\nText\n<<<END_RETRIEVED_CHUNKS>>>"
+
+    agent = Agent(model, tools=[Tool(knowledge_search, name=KNOWLEDGE_SEARCH)])
+    asked = ModelRequest(
+        parts=[UserPromptPart("Be careful."), UserPromptPart(visitor_block("How much leave?"))]
+    )
+    async with agent.run_stream(message_history=[asked]) as result:
+        output = await result.get_output()
+    # Asked without an input block, it searches with all it was asked.
+    async with agent.run_stream("Parking?") as result:
+        await result.get_output()
+
+    assert queries == ["How much leave?", "Parking?"]
+    assert output == "Fake reply from openai:gpt-4.1. [C1]"
 
 
 async def test_the_fake_chat_model_leaks_its_canary_when_asked_to_repeat_its_secret() -> None:

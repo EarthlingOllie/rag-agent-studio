@@ -320,3 +320,113 @@ async def test_a_visitor_of_an_agentic_live_version_gets_an_answer_and_its_searc
     (search,) = trace.json()["searches"]
     assert search["query"] == "annual leave"
     assert [(c["document_name"], c["cited"]) for c in search["chunks"]] == [("leave.txt", True)]
+
+
+async def test_searches_the_model_makes_at_once_each_run_and_are_traced(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    async def searches_twice_at_once(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        if _searches_made(messages):
+            yield "Leave is 25 days [C1]; claim expenses within 30 days [C2]."
+            return
+        # Both Knowledge Searches in one model response.
+        yield {
+            0: DeltaToolCall(name="knowledge_search", json_args='{"query": "' + LEAVE + '"}'),
+            1: DeltaToolCall(name="knowledge_search", json_args='{"query": "' + EXPENSES + '"}'),
+        }
+
+    answer_with(app, searches_twice_at_once)
+    await use_default_model(owner)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    await agentic(owner, project_id, agent_id, top_k=1)
+
+    events, trace = await asked(owner, project_id, agent_id, "Leave and expenses?")
+
+    assert sorted(data["query"] for event, data in events if event == "search") == sorted(
+        [LEAVE, EXPENSES]
+    )
+    cited = [(d["label"], d["document_name"]) for event, d in events if event == "citation"]
+    assert cited == [("C1", "leave.txt"), ("C2", "expenses.txt")]
+    assert trace["search_count"] == 2
+    found = {
+        search["query"]: [c["text"] for c in search["chunks"] if c["excluded_reason"] is None]
+        for search in trace["searches"]
+    }
+    assert found == {LEAVE: [LEAVE], EXPENSES: [EXPENSES]}
+
+
+async def test_text_the_model_writes_before_searching_is_kept_out_of_the_answer(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    async def says_it_will_search(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        if _searches_made(messages):
+            yield "You get 25 days [C1]."
+            return
+        yield "Let me search the knowledge base."
+        args = json.dumps({"query": "annual leave"})
+        yield {1: DeltaToolCall(name="knowledge_search", json_args=args, tool_call_id="1")}
+
+    answer_with(app, says_it_will_search)
+    project_id, agent_id = await agentic_agent(app, owner)
+
+    events, trace = await asked(owner, project_id, agent_id, "How much leave do I get?")
+
+    # The model searches although it wrote text first, and only its answer is sent.
+    assert events[0] == ("search", {"query": "annual leave", "order": 1})
+    answer = "".join(data["text"] for event, data in events if event == "token")
+    assert answer == "You get 25 days [C1]."
+    assert [data["label"] for event, data in events if event == "citation"] == ["C1"]
+    assert trace["search_count"] == 1
+
+
+async def test_a_structured_output_model_searches_then_answers_with_citations_alone(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    async def searches_then_cites(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        if _searches_made(messages):
+            yield '{"answer": "You get 25 days.", '
+            yield '"citations": ["C1"]}'
+            return
+        yield "I'll look that up."
+        args = json.dumps({"query": "annual leave"})
+        yield {1: DeltaToolCall(name="knowledge_search", json_args=args, tool_call_id="1")}
+
+    answer_with(app, searches_then_cites, structured=True)
+    project_id, agent_id = await agentic_agent(app, owner)
+
+    events, _ = await asked(owner, project_id, agent_id, "How much leave do I get?")
+
+    assert events[0] == ("search", {"query": "annual leave", "order": 1})
+    answer = "".join(data["text"] for event, data in events if event == "token")
+    assert answer == "You get 25 days."
+    assert [data["label"] for event, data in events if event == "citation"] == ["C1"]
+
+
+async def test_a_chunk_one_search_left_out_and_another_gave_is_not_listed_as_left_out(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # Top-k 1: the first Search gives LEAVE and leaves EXPENSES out; the second gives EXPENSES.
+    answer_with(app, searching(LEAVE, EXPENSES, answer="See [C1] and [C2]."))
+    await use_default_model(owner)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    await agentic(owner, project_id, agent_id, top_k=1)
+
+    events, trace = await asked(owner, project_id, agent_id, "Leave and expenses?")
+
+    done = events[-1][1]
+    given = [c["chunk_id"] for c in done["chunks"]]
+    left_out = [e["chunk_id"] for e in done["excluded"]]
+    assert len(given) == 2
+    assert set(given).isdisjoint(left_out)
+    assert len(left_out) == len(set(left_out))
+    # Each Search's own Trace still says what it left out.
+    first = trace["searches"][0]
+    assert EXPENSES in [c["text"] for c in first["chunks"] if c["excluded_reason"] is not None]

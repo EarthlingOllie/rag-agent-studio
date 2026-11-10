@@ -96,8 +96,12 @@ def _search_first(messages: list[ModelMessage], info: AgentInfo) -> DeltaToolCal
     searched = any(isinstance(part, ToolReturnPart) for part in messages[-1].parts)
     if not offered or searched:
         return None
-    (prompt,) = [p for p in _asked(messages).parts if isinstance(p, UserPromptPart)]
-    question = str(prompt.content).removeprefix(f"{INPUT_OPEN}\n").removesuffix(f"\n{INPUT_CLOSE}")
+    prompts = "\n".join(
+        str(part.content) for part in _asked(messages).parts if isinstance(part, UserPromptPart)
+    )
+    # The Visitor input block's text, wherever it is among what was asked; all of it, if none.
+    block = re.search(f"{re.escape(INPUT_OPEN)}\n(.*)\n{re.escape(INPUT_CLOSE)}", prompts, re.S)
+    question = prompts if block is None else block.group(1)
     args = json.dumps({"query": question})
     return {0: DeltaToolCall(name=KNOWLEDGE_SEARCH, json_args=args, tool_call_id="search-1")}
 
