@@ -4,49 +4,49 @@ TAP version 13
 # Subtest: links to files and folders that exist pass, relative to the linking file or to the root
 ok 1 - links to files and folders that exist pass, relative to the linking file or to the root
   ---
-  duration_ms: 6.416766
+  duration_ms: 3.321873
   type: 'test'
   ...
 # Subtest: a link to a missing file is reported with its file and line
 ok 2 - a link to a missing file is reported with its file and line
   ---
-  duration_ms: 1.103171
+  duration_ms: 0.596677
   type: 'test'
   ...
 # Subtest: external links, mail links and links in code are not checked
 ok 3 - external links, mail links and links in code are not checked
   ---
-  duration_ms: 0.588626
+  duration_ms: 0.314284
   type: 'test'
   ...
 # Subtest: reference-style link definitions are checked; footnotes are not links
 ok 4 - reference-style link definitions are checked; footnotes are not links
   ---
-  duration_ms: 1.290209
+  duration_ms: 0.283813
   type: 'test'
   ...
 # Subtest: anchors must name a heading in the target Markdown file, or in the same file
 ok 5 - anchors must name a heading in the target Markdown file, or in the same file
   ---
-  duration_ms: 5.778003
+  duration_ms: 2.630081
   type: 'test'
   ...
 # Subtest: slugs follow GitHub's rules
 ok 6 - slugs follow GitHub's rules
   ---
-  duration_ms: 0.724943
+  duration_ms: 0.212528
   type: 'test'
   ...
 # Subtest: the files come from git: tracked Markdown only
 ok 7 - the files come from git: tracked Markdown only
   ---
-  duration_ms: 21.093942
+  duration_ms: 16.25963
   type: 'test'
   ...
 # Subtest: main prints each broken link and fails, or says how many links it checked
 ok 8 - main prints each broken link and fails, or says how many links it checked
   ---
-  duration_ms: 1.506087
+  duration_ms: 1.149852
   type: 'test'
   ...
 1..8
@@ -57,7 +57,7 @@ ok 8 - main prints each broken link and fails, or says how many links it checked
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 212.673658
+# duration_ms 112.95494
 # start of coverage report
 # ------------------------------------------------------------------
 # file              | line % | branch % | funcs % | uncovered lines
@@ -72,4 +72,4 @@ ok 8 - main prints each broken link and fails, or says how many links it checked
 # ------------------------------------------------------------------
 # end of coverage report
 node scripts/ci/link-check.mjs
-Checked 2814 relative links in 281 Markdown files: all resolve.
+Checked 2815 relative links in 281 Markdown files: all resolve.
