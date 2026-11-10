@@ -173,8 +173,11 @@ where the Member is: from the Organisation's page they are under down to the pag
 - An Agent is the last crumb on every one of its views (the tab row says which); until the Agent,
   Document or Project has loaded, the path ends at the level above it.
 - Below `md` only the last two crumbs are shown (`Breadcrumb` hides the rest and the separator
-  before the first one shown), so the top bar stays one row. There is no "…" fold.
-- A long name is cut short with an ellipsis rather than wrapping.
+  before the first one shown), and the top bar's mark drops its "Studio" name (`Brand compact`),
+  so the mark and the path share one row. There is no "…" fold.
+- A long name is cut short with an ellipsis rather than wrapping. The page's own actions
+  (`TopBarActions`) join that row while it leaves the path at least 12rem, and drop under it
+  otherwise (an Agent's History and Publish on a phone).
 
 ### Pages
 

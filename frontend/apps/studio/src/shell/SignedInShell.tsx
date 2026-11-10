@@ -88,7 +88,7 @@ export function OrganisationShell() {
         }
         home={
           <Link to="/" aria-label="Studio home" className="rounded-md">
-            <Brand />
+            <Brand compact />
           </Link>
         }
         breadcrumb={organisation && <StudioBreadcrumb organisationId={organisationId} />}

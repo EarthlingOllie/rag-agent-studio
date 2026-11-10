@@ -141,15 +141,21 @@ test.describe("Sidebar", () => {
     await expect(page.getByRole("table", { name: "Agents" })).toBeVisible();
     expect(await breadcrumb(page)).toEqual({ crumbs: ["Northwind HR", "Agents"], current: "Agents" });
 
-    // On a phone: the last two crumbs, the top bar one row high, and no sideways scroll.
+    // On a phone: the last two crumbs on one line beside the mark, and no sideways scroll. The
+    // Agent's own actions (History, Publish) drop under them.
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
     await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible();
     expect(await breadcrumb(page)).toEqual({ crumbs: ["Agents", "HR helper"], current: "HR helper" });
     await expect(page.getByRole("button", { name: "Show the whole path" })).toHaveCount(0);
-    const bar = await page.getByRole("banner").boundingBox();
-    expect(bar?.height ?? 0).toBeLessThanOrEqual(64);
+    expect((await crumbs.boundingBox())?.height ?? 0).toBeLessThanOrEqual(40);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // A page without actions of its own keeps the whole top bar on one row.
+    await crumbs.getByRole("link", { name: "Agents", exact: true }).click();
+    await expect(page.getByRole("table", { name: "Agents" })).toBeVisible();
+    expect(await breadcrumb(page)).toEqual({ crumbs: ["Northwind HR", "Agents"], current: "Agents" });
+    expect((await page.getByRole("banner").boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
   });
 });
