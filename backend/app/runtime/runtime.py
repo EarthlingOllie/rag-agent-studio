@@ -8,7 +8,9 @@ fallback text and the model isn't asked. The Pydantic AI agent it builds registe
 (ADR-0007).
 
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
-the answer cites (``app.runtime.citations``), then one ``DoneEvent``. If the model's provider
+the answer cites (``app.runtime.citations``), then one ``DoneEvent``. The reply keeps one record
+of the Chunks given to the model (``app.runtime.prompt.GivenChunks``), which assigns their Chunk
+labels and resolves the Citations. If the model's provider
 fails (or the Embedding Model's, retrieving), the turn ends instead with an ``ErrorEvent`` saying
 why (``app.runtime.errors``), whatever was streamed before it. A model that supports
 structured output is asked for a ``CitedAnswer`` through the provider's native JSON schema
@@ -42,7 +44,7 @@ from app.guardrails.outcomes import GuardrailOutcome
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.citations import CitedAnswer, labels_in, resolve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
-from app.runtime.prompt import Turn, chunk_label, data_blocks, history
+from app.runtime.prompt import GivenChunks, Turn, data_blocks, history
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +205,9 @@ async def _turn(
     messages = history(
         instructions, behaviour.system_prompt, remembered, canary=canary, cautioned=cautioned
     )
-    question = data_blocks(retrieved.candidates, visitor_input)
+    # The reply's record of the Chunks given to the model: it labels them and resolves Citations.
+    given = GivenChunks()
+    question = data_blocks(retrieved.candidates, visitor_input, given)
     settings = ModelSettings(
         temperature=behaviour.temperature, max_tokens=behaviour.max_output_tokens
     )
@@ -239,15 +243,15 @@ async def _turn(
         reason = CANARY_ENCODED.format(encoding=encoding)
         logger.warning(reason)
         outcomes.append(GuardrailOutcome("canary", "leak", "flagged", f"{reason}."))
-    cited = resolve(streamed.labels, retrieved.candidates)
-    for chunk in cited:
-        yield CitationEvent(chunk_label(chunk.rank), chunk)
+    cited = resolve(streamed.labels, given)
+    for entry in cited:
+        yield CitationEvent(entry.label, entry.chunk)
     yield DoneEvent(
         answer=streamed.text,
         input_tokens=streamed.usage.input_tokens,
         output_tokens=streamed.usage.output_tokens,
         retrieved=retrieved.candidates,
         excluded=retrieved.excluded,
-        cited=cited,
+        cited=[entry.chunk for entry in cited],
         guardrail_outcomes=outcomes,
     )
