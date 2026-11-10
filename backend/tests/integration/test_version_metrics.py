@@ -81,9 +81,9 @@ async def live_agent(app: FastAPI, owner: SignedUpMember) -> dict[str, Any]:
 
 
 async def publish_next(owner: SignedUpMember, agent: dict[str, Any], prompt: str) -> Any:
-    saved = await save_draft(
-        owner, agent["project_id"], agent["id"], {"behaviour": {"system_prompt": prompt}}
-    )
+    """Publishes the next Version with a new system prompt, still Automatic."""
+    draft = {"behaviour": {"system_prompt": prompt}, "retrieval": AUTOMATIC}
+    saved = await save_draft(owner, agent["project_id"], agent["id"], draft)
     assert saved.status_code == 200, saved.text
     return await published(owner, agent["project_id"], agent["id"])
 
