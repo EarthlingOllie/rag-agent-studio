@@ -1,6 +1,8 @@
 // Sandbox-only: light and dark screenshots, and axe in both Appearances, of Agent branding (12-07)
 // on the Agent's Embed view at 1440 and 390 wide: an Owner's view with no override, with a saved
-// colour override and an avatar, with a colour that isn't a hex colour, and an Editor's view.
+// colour override and an avatar, with a colour that isn't a hex colour, and an Editor's view. Also
+// the Theme page, whose hex and corner-radius fields moved to the recipes: an Owner's view, with
+// a hex colour and a radius that aren't valid, and an Editor's view.
 // There is no Docker daemon here, so instead of the compose stack it serves the built Studio
 // (apps/studio/dist) and answers the API with the unit tests' own MSW fakes (apps/studio/src/test),
 // run through MSW's getResponse instead of a mocked fetch. See shots.config.mjs for the command.
@@ -13,6 +15,7 @@ import { fakeAccountApi } from "../../../../frontend/apps/studio/src/test/accoun
 import { adaSession, fakeAuthApi, type Session } from "../../../../frontend/apps/studio/src/test/auth";
 import { fakeAgentsApi, hrHelper } from "../../../../frontend/apps/studio/src/test/agents";
 import { anAvatar, fakeBrandingApi } from "../../../../frontend/apps/studio/src/test/branding";
+import { fakeThemeApi } from "../../../../frontend/apps/studio/src/test/theme";
 import { fakeProjectsApi, hrProject } from "../../../../frontend/apps/studio/src/test/projects";
 import { server } from "../../../../frontend/apps/studio/src/test/server";
 
@@ -43,6 +46,10 @@ interface Target {
   act?: (page: Page) => Promise<void>;
 }
 
+const THEME = `/organisations/${ORG}/settings/theme`;
+const theme = async (page: Page) => {
+  await page.getByRole("form", { name: "Theme" }).waitFor();
+};
 const EMBED = `/organisations/${ORG}/projects/${hrProject.id}/agents/${hrHelper.id}/embed`;
 // The avatar's image: a small PNG (a green square), so the screenshot shows a real image.
 const PNG = Buffer.from(
@@ -72,6 +79,22 @@ const PAGES: Target[] = [
     },
   },
   { name: "branding-editor", path: EMBED, session: editorSession, setup: overridden, ready: branding },
+  { name: "theme-owner", path: THEME, setup: () => fakeThemeApi(), ready: theme },
+  {
+    name: "theme-invalid",
+    path: THEME,
+    setup: () => fakeThemeApi(),
+    act: async (page) => {
+      await theme(page);
+      await page.getByLabel("Primary (light)", { exact: true }).fill("#12");
+      await page.getByLabel("Corner radius (px)").fill("99");
+    },
+    ready: async (page) => {
+      await page.getByText("Use a colour like #1a2b3c.").waitFor();
+      await page.getByText("Use a whole number from 0 to 24.").waitFor();
+    },
+  },
+  { name: "theme-editor", path: THEME, session: editorSession, setup: () => fakeThemeApi(), ready: theme },
 ];
 
 function signedIn(target: Target) {

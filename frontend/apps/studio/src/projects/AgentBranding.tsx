@@ -82,7 +82,7 @@ function Colours({
               {row.on && (
                 <div className="flex flex-wrap gap-3">
                   {(["light", "dark"] as const).map((scheme) => (
-                    <label key={scheme} className={field.hint}>
+                    <label key={scheme} className={`${field.hint} w-28`}>
                       {`${label}, ${scheme}`}
                       <input
                         value={row[scheme]}
@@ -91,7 +91,7 @@ function Colours({
                         onChange={(event) => {
                           change(token, { [scheme]: event.target.value });
                         }}
-                        className={`${field.inputMono} w-28`}
+                        className={field.inputMono}
                       />
                     </label>
                   ))}
