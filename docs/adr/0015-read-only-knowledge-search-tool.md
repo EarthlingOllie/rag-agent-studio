@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Agentic Retrieval Mode gives the model one read-only tool, Knowledge Search

@@ -170,3 +170,17 @@ From the [candidate-reskin design review](../reviews/candidate-reskin/README.md)
 | `12-09` | [Sidebar drawer on narrow screens](./12-reskin-fixes-sidebar-navigation/09-sidebar-drawer.md) | 12-08 |
 | `12-10` | [Agent view tabs](./12-reskin-fixes-sidebar-navigation/10-agent-view-tabs.md) | 12-08 |
 | `12-11` | [Plain breadcrumb, account menu cleanup and docs](./12-reskin-fixes-sidebar-navigation/11-plain-breadcrumb-docs.md) | 12-08, 12-09, 12-10 |
+
+## 13: Agentic retrieval
+
+Retrieval Mode (Automatic or Agentic) and the read-only Knowledge Search tool ([ADR-0015](../adr/0015-read-only-knowledge-search-tool.md)). Built on the `candidate-reskin` branch.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `13-01` | [Agentic tracer: one Knowledge Search, end to end](./13-agentic-retrieval/01-agentic-tracer.md) | none |
+| `13-02` | [Search limit, Fallback Text and turn-wide Chunk labels](./13-agentic-retrieval/02-search-limit-fallback-labels.md) | 13-01 |
+| `13-03` | [Widget searching status](./13-agentic-retrieval/03-widget-searching-status.md) | 13-01 |
+| `13-04` | [Retrieval Mode and Search limit in the Agent editor](./13-agentic-retrieval/04-retrieval-mode-editor.md) | 13-01 |
+| `13-05` | [Guardrails in Agentic mode](./13-agentic-retrieval/05-guardrails-both-modes.md) | 13-02 |
+| `13-06` | [Searches per reply in Version metrics](./13-agentic-retrieval/06-searches-metrics.md) | 13-01 |
+| `13-07` | [Demo model and seed in both modes](./13-agentic-retrieval/07-demo-seed.md) | 13-02 |
