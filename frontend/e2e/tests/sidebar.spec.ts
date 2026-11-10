@@ -38,7 +38,8 @@ test.describe("Sidebar", () => {
     // An Agent keeps Agents current.
     await openSection(page, "Project sections", "Agents");
     await page.getByRole("table", { name: "Agents" }).getByRole("link", { name: "HR helper" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible();
+    // The Agent page keeps the Project as its h1 and names the Agent at level 2.
+    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible();
     expect(await currentSection(page, "Project sections")).toBe("Agents");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
