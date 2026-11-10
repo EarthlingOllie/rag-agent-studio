@@ -37,7 +37,7 @@ test("selects draw the design system's chevron, inset like their text, in both A
     expect(style.appearance).toBe("none");
     expect(style.paddingRight).toBeGreaterThanOrEqual(36);
     expect(style.chevron).toContain("data:image/svg+xml");
-    expect(style.chevronX).toBe(`right ${style.paddingLeft}`);
+    expect(style.chevronX).toBe(`calc(100% - ${style.paddingLeft})`);
     chevrons.push(style.chevron);
   }
 
