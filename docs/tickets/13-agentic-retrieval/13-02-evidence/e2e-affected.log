@@ -1,0 +1,12 @@
+
+Running 7 tests using 1 worker
+
+  ✓  1 [studio] › e2e/tests/conversations.spec.ts:9:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (10.2s)
+  ✓  2 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (14.5s)
+  ✓  3 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (5.4s)
+  ✓  4 [studio] › e2e/tests/playground.spec.ts:14:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (17.3s)
+  ✓  5 [studio] › e2e/tests/playground.spec.ts:155:3 › Agent and Playground › an Agent set to Agentic searches the Knowledge Base, cites what it found and the Trace lists the Search (11.5s)
+  ✓  6 [studio] › e2e/tests/reranker.spec.ts:24:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (14.7s)
+  ✓  7 [studio] › e2e/tests/tag-scoping.spec.ts:20:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (11.2s)
+
+  7 passed (1.4m)
