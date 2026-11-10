@@ -34,12 +34,40 @@ function rowTexts(table: HTMLElement) {
     );
 }
 
+/** Switches the "Projects shown" filter to Archived. */
+async function showArchived() {
+  const shown = await screen.findByRole("radiogroup", { name: "Projects shown" });
+  await userEvent.click(within(shown).getByRole("radio", { name: "Archived" }));
+}
+
 test("Members see the active Projects with their Document and Agent counts", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   renderStudio(projectsPage);
 
   const table = await screen.findByRole("table", { name: "Projects" });
+  expect(screen.getByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  expect(
+    screen.getByText("Each Project holds the Documents its Agents answer from."),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "New Project" })).toBeInTheDocument();
+  const shown = screen.getByRole("radiogroup", { name: "Projects shown" });
+  expect(
+    within(shown)
+      .getAllByRole("radio")
+      .map((radio) => [radio.textContent, radio.getAttribute("aria-checked")]),
+  ).toEqual([
+    ["Active", "true"],
+    ["Archived", "false"],
+  ]);
+  expect(
+    screen.queryByRole("button", { name: "Show archived Projects" }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(table)
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent),
+  ).toEqual(["Name", "Description", "Documents", "Agents"]);
 
   expect(rowTexts(table)).toEqual([
     ["HR handbook", "Policies for the HR Agent", "12", "2"],
@@ -54,7 +82,14 @@ test("an Organisation without Projects says so", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio(projectsPage);
 
-  expect(await screen.findByText(/No Projects yet/)).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { name: "No Projects yet" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "Create one with New Project to start collecting knowledge for a purpose.",
+    ),
+  ).toBeInTheDocument();
   expect(
     screen.queryByRole("table", { name: "Projects" }),
   ).not.toBeInTheDocument();
@@ -70,12 +105,16 @@ test("the Projects list shows its loading and error states", async () => {
   );
   renderStudio(projectsPage);
 
-  expect(await screen.findByText("Loading Projects…")).toBeInTheDocument();
   expect(
-    await screen.findByText(
-      "The Projects could not be loaded. Try again shortly.",
-    ),
+    await screen.findByRole("status", { name: "Loading Projects" }),
   ).toBeInTheDocument();
+  const failure = await screen.findByRole("alert");
+  expect(
+    within(failure).getByRole("heading", {
+      name: "The Projects could not be loaded",
+    }),
+  ).toBeInTheDocument();
+  expect(failure).toHaveTextContent("Try again shortly.");
 });
 
 /** Opens the New Project dialog from the Projects page and returns it. */
@@ -149,9 +188,7 @@ test("New Project is not offered while archived Projects are shown", async () =>
   renderStudio(projectsPage);
   await screen.findByRole("button", { name: "New Project" });
 
-  await userEvent.click(
-    screen.getByRole("button", { name: "Show archived Projects" }),
-  );
+  await showArchived();
 
   expect(screen.queryByRole("button", { name: "New Project" })).not.toBeInTheDocument();
 });
@@ -213,26 +250,39 @@ test("archived Projects are listed apart, and Owners restore them to the main li
   renderStudio(projectsPage);
   await screen.findByRole("table", { name: "Projects" });
 
-  await userEvent.click(
-    screen.getByRole("button", { name: "Show archived Projects" }),
-  );
+  await showArchived();
 
   const archived = await screen.findByRole("table", {
     name: "Archived Projects",
   });
+  expect(
+    screen.getByText(/Archived Projects are hidden from the Projects list/),
+  ).toHaveTextContent("Restore one to bring it back.");
+  expect(
+    within(archived)
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent),
+  ).toEqual(["Name", "Archived", "Actions"]);
   expect(rowTexts(archived)).toEqual([["Old launch", "2026-10-20", "Restore"]]);
   await userEvent.click(
     within(archived).getByRole("button", { name: "Restore Old launch" }),
   );
+  // A toast confirms it, and the Project leaves the archived list.
+  expect(await screen.findByText("Old launch was restored.")).toHaveAttribute(
+    "aria-live",
+    "polite",
+  );
   expect(
-    await screen.findByText("Old launch was restored."),
+    await screen.findByRole("heading", { name: "No archived Projects" }),
   ).toBeInTheDocument();
-  expect(await screen.findByText("No archived Projects.")).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      "A Project you archive is kept here, with its Documents and Agents.",
+    ),
+  ).toBeInTheDocument();
   expect(requests).toEqual([{ route: "restore", projectId: oldProject.id }]);
 
-  await userEvent.click(
-    screen.getByRole("button", { name: "Show active Projects" }),
-  );
+  await userEvent.click(screen.getByRole("radio", { name: "Active" }));
   const table = await screen.findByRole("table", { name: "Projects" });
   expect(
     within(table)
@@ -245,9 +295,7 @@ test("Editors see archived Projects but can't restore them", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();
   renderStudio(projectsPage);
-  await userEvent.click(
-    await screen.findByRole("button", { name: "Show archived Projects" }),
-  );
+  await showArchived();
 
   const archived = await screen.findByRole("table", {
     name: "Archived Projects",
@@ -257,7 +305,9 @@ test("Editors see archived Projects but can't restore them", async () => {
     within(archived).getByRole("link", { name: "Old launch" }),
   ).toBeInTheDocument();
   expect(within(archived).queryByRole("button")).not.toBeInTheDocument();
-  expect(screen.getByText(/Only Owners can restore them/)).toBeInTheDocument();
+  expect(screen.getByText(/Only Owners can restore them/)).toHaveTextContent(
+    "Archived Projects are hidden from the Projects list and don't serve. Only Owners can restore them.",
+  );
 });
 
 test("a restore that never reaches the API says to try again", async () => {
@@ -271,9 +321,7 @@ test("a restore that never reaches the API says to try again", async () => {
     ),
   );
   renderStudio(projectsPage);
-  await userEvent.click(
-    await screen.findByRole("button", { name: "Show archived Projects" }),
-  );
+  await showArchived();
 
   await userEvent.click(
     await screen.findByRole("button", { name: "Restore Old launch" }),
@@ -302,16 +350,16 @@ test("the archived list shows its loading and error states", async () => {
   );
   renderStudio(projectsPage);
 
-  await userEvent.click(
-    await screen.findByRole("button", { name: "Show archived Projects" }),
-  );
+  await showArchived();
 
   expect(
-    await screen.findByText("Loading archived Projects…"),
+    await screen.findByRole("status", { name: "Loading archived Projects" }),
   ).toBeInTheDocument();
+  const failure = await screen.findByRole("alert");
   expect(
-    await screen.findByText(
-      "The archived Projects could not be loaded. Try again shortly.",
-    ),
+    within(failure).getByRole("heading", {
+      name: "The archived Projects could not be loaded",
+    }),
   ).toBeInTheDocument();
+  expect(failure).toHaveTextContent("Try again shortly.");
 });

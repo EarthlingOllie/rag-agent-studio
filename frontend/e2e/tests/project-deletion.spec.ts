@@ -50,8 +50,8 @@ test.describe("Permanent Project deletion", () => {
     // The worker's cascade removes the Project, then its stored files.
     await expect.poll(async () => (await page.request.get(projectApi)).status(), { timeout: 30_000 }).toBe(404);
     await expect.poll(async () => (await page.request.get(stored)).status(), { timeout: 30_000 }).toBe(404);
-    await page.getByRole("button", { name: "Show archived Projects" }).click();
-    await expect(page.getByText("No archived Projects.")).toBeVisible();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Archived" }).click();
+    await expect(page.getByRole("heading", { name: "No archived Projects" })).toBeVisible();
 
     // The deletion is in the Audit tab.
     await openSection(page, "Organisation sections", "Settings");

@@ -165,6 +165,17 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
     and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
     edged in `flag` and badged Flagged, paged with `Pagination`.
+- **Projects list** (built in 12-03): the Organisation's page, laid out like the Agents list.
+  `PageHeader` "Projects" (the page's one h1, "Each Project holds the Documents its Agents answer
+  from.") with New Project, the one primary, on the right; it is hidden while Archived is shown.
+  The toolbar is a `Segmented` "Projects shown" (Active / Archived). Active Projects are a
+  `table.wrap` card: the name as `table.link`, the Description muted and cut to one line (the full
+  text in its `title`), then Documents and Agents in `table.thNumeric` / `table.tdNumeric`.
+  Archived Projects are a card with the archived date in mono and, for Owners, a secondary
+  Restore in the row, confirmed by a toast; a line above says Owners restore them (or that only
+  Owners can). Loading is a `Skeleton`, a failed load an error `EmptyState`, and no Projects or no
+  archived Projects an `EmptyState`. After a Project is deleted, "… is being deleted permanently."
+  is a success `Notice`.
 - **Project details dialog** (12-02): New Project and a Project header's Edit details open one
   `Dialog` (no corner ✕) holding a form named "New Project" or "Project details": `FormError`,
   Name (`field.input`, required) and Description (`field.textarea`), then Cancel and the primary

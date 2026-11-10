@@ -1,0 +1,25 @@
+$ sh -c cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e:harness (at be70569f)
+
+> rag-agent-studio-frontend@ e2e:harness /home/user/wt-12-03/frontend
+> playwright test --project=harness
+
+
+Running 14 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (597ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (391ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (506ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.6s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (255ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (3ms)
+  ✓   8 [harness] › e2e/harness/navigation.spec.ts:63:3 › navigation helpers › openSection follows a sidebar link, not the breadcrumb switcher's item of the same name (675ms)
+  ✓   9 [harness] › e2e/harness/navigation.spec.ts:70:3 › navigation helpers › sectionNames lists a sidebar group's links, without their hidden icons (568ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.6s)
+  ✓  10 [harness] › e2e/harness/navigation.spec.ts:75:3 › navigation helpers › the Organisations switcher is the sidebar's (681ms)
+  ✓  12 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (193ms)
+  ✓  13 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (225ms)
+  ✓  11 [harness] › e2e/harness/navigation.spec.ts:84:3 › navigation helpers › a top bar menu opens, is listed and closes as before (905ms)
+  ✓  14 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (229ms)
+
+  14 passed (7.1s)
+exit 0
