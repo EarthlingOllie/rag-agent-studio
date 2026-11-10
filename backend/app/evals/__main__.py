@@ -4,9 +4,10 @@ Mocked mode (``make eval``, the Guardrail evaluation CI job on every PR) answers
 model; live mode (``make eval-live``, the nightly job) answers with a real chat model named by
 ``--provider`` and ``--model``, its API key read from ``EVAL_API_KEY`` (the ``demo`` provider
 needs none). Both use the production injection classifier (the local ONNX model) unless told
-otherwise. The report is written to ``--out`` as ``attack-eval-report.json`` and
-``attack-eval-report.md``, and the markdown is printed. The exit status is 0 when the report
-passes, 1 when it fails, 2 when the command is used wrongly.
+otherwise. Every case runs in each Retrieval Mode, Automatic and Agentic, and the report gives
+each mode its verdict and Pass rate. The report is written to ``--out`` as
+``attack-eval-report.json`` and ``attack-eval-report.md``, and the markdown is printed. The exit status is 0 when the report
+passes in every Retrieval Mode, 1 when it fails in any, 2 when the command is used wrongly.
 """
 
 import argparse
@@ -28,7 +29,7 @@ from app.credentials.bedrock_verifier import AssumedRoleSessions, boto3_client
 from app.credentials.registry import Provider
 from app.evals.naive_model import naive_model
 from app.evals.report import Mode, Report
-from app.evals.runner import run_suite
+from app.evals.runner import run_modes
 from app.evals.suite import CASE_FILE, load_suite
 from app.gateway.live import BedrockClients, LiveModelAdapters
 from app.guardrails import onnx_model
@@ -81,8 +82,8 @@ def _parser() -> argparse.ArgumentParser:
 
 async def _run(args: argparse.Namespace, model: Model) -> Report:
     pipeline = GuardrailPipeline(build_classifier(args.classifier, args.threshold))
-    run = await run_suite(load_suite(args.cases), pipeline, model)
-    return Report(run, Mode(args.mode), args.classifier, datetime.now(UTC), args.min_pass_rate)
+    runs = await run_modes(load_suite(args.cases), pipeline, model)
+    return Report(runs, Mode(args.mode), args.classifier, datetime.now(UTC), args.min_pass_rate)
 
 
 async def _main(args: argparse.Namespace) -> Report:

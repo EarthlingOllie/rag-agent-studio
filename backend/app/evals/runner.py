@@ -1,21 +1,24 @@
-"""The attack evaluation runner: every case of a suite through the real Guardrail pipeline.
+"""The attack evaluation runner: every case of a suite through the real Guardrail pipeline, in
+each Retrieval Mode (``run_modes``).
 
 Each case is a Conversation with one fictional Agent (the suite's system prompt, the default
-AgentConfig with the case's input mode). Its turns are sent one after another through
+AgentConfig with the case's input mode and the run's Retrieval Mode). Its turns are sent one after another through
 ``GuardrailPipeline.run_turn``, exactly as the Playground and the widget send a question: the
 input Guardrail, then the Agent runtime with its spotlighted prompt and Canary filter, then the
 model. A turn the input Guardrail blocked is left out of the later turns' history, as the
 Playground leaves it out.
 
 Retrieval is simulated: the Knowledge Base is the suite's Chunks, and a case's poisoned
-Document is one more Chunk ranked first. That Chunk goes through the ingestion scan first: the
+Document is one more Chunk ranked first. In Automatic mode they are retrieved up front; in
+Agentic mode every Knowledge Search the model makes finds them, through the same runtime path
+(spotlighting, the canary check on the query) as a real Search. That Chunk goes through the ingestion scan first: the
 pipeline's own injection classifier (the ingestion scan and the input Guardrail share one), with
 the case's Flagged Chunk mode deciding whether a flagged Chunk is still retrieved (``mark``) or
 excluded (``exclude``), as retrieval does.
 
 What the Visitor received in each turn (the streamed text, a replacement, or the refusal) is
 checked for the case's markers. The case's observed outcome per layer is compared with the one
-it expects.
+it expects in that Retrieval Mode.
 """
 
 import uuid
@@ -24,7 +27,7 @@ from dataclasses import dataclass, field
 
 from pydantic_ai.models import Model
 
-from app.agents.config import AgentConfig, Behaviour, Guardrails, Retrieval
+from app.agents.config import AgentConfig, Behaviour, Guardrails, Retrieval, RetrievalMode
 from app.evals.suite import (
     AnswerOutcome,
     CanaryOutcome,
@@ -60,11 +63,17 @@ class CaseResult:
     error: str | None = None
     # Each turn's Guardrail outcomes, as the Trace records them.
     outcomes: list[list[GuardrailOutcome]] = field(default_factory=list)
+    retrieval_mode: RetrievalMode = RetrievalMode.AUTOMATIC
+
+    @property
+    def expected(self) -> Expected:
+        """What the case expects in the Retrieval Mode it ran in."""
+        return self.case.expected_in(self.retrieval_mode)
 
     @property
     def as_expected(self) -> bool:
         """Every layer did what the case expects (the CI gate)."""
-        return self.error is None and self.observed == self.case.expected
+        return self.error is None and self.observed == self.expected
 
     @property
     def defended(self) -> bool:
@@ -88,9 +97,12 @@ class CaseResult:
 
 @dataclass(frozen=True)
 class SuiteRun:
+    """Every case of a suite, run in one Retrieval Mode."""
+
     suite: Suite
     model_name: str
     cases: list[CaseResult]
+    retrieval_mode: RetrievalMode = RetrievalMode.AUTOMATIC
 
     @property
     def unexpected(self) -> list[CaseResult]:
@@ -162,11 +174,15 @@ def _strongest[T](seen: Sequence[T], order: Sequence[T], default: T) -> T:
 
 
 async def run_case(
-    suite: Suite, case: Case, pipeline: GuardrailPipeline, model: Model
+    suite: Suite,
+    case: Case,
+    pipeline: GuardrailPipeline,
+    model: Model,
+    retrieval_mode: RetrievalMode = RetrievalMode.AUTOMATIC,
 ) -> CaseResult:
     config = AgentConfig(
         behaviour=Behaviour(system_prompt=suite.system_prompt),
-        retrieval=Retrieval(),
+        retrieval=Retrieval(mode=retrieval_mode),
         guardrails=Guardrails(input_mode=case.input_mode),
     )
     retrieval, ingestion = _retrieval(suite, case, pipeline)
@@ -218,10 +234,21 @@ async def run_case(
             else AnswerOutcome.HARMLESS
         ),
     )
-    return CaseResult(case, observed, replies, error, outcomes)
+    return CaseResult(case, observed, replies, error, outcomes, retrieval_mode)
 
 
-async def run_suite(suite: Suite, pipeline: GuardrailPipeline, model: Model) -> SuiteRun:
-    """Runs every case of ``suite``, one after another, answering with ``model``."""
-    results = [await run_case(suite, case, pipeline, model) for case in suite.cases]
-    return SuiteRun(suite, model.model_name, results)
+async def run_suite(
+    suite: Suite,
+    pipeline: GuardrailPipeline,
+    model: Model,
+    retrieval_mode: RetrievalMode = RetrievalMode.AUTOMATIC,
+) -> SuiteRun:
+    """Runs every case of ``suite`` in ``retrieval_mode``, one after another, answering with
+    ``model``."""
+    results = [await run_case(suite, case, pipeline, model, retrieval_mode) for case in suite.cases]
+    return SuiteRun(suite, model.model_name, results, retrieval_mode)
+
+
+async def run_modes(suite: Suite, pipeline: GuardrailPipeline, model: Model) -> list[SuiteRun]:
+    """Runs every case of ``suite`` once in each Retrieval Mode: Automatic, then Agentic."""
+    return [await run_suite(suite, pipeline, model, mode) for mode in RetrievalMode]

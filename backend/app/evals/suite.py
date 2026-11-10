@@ -11,6 +11,10 @@ poisoned Document content (retrieved first, like a relevant Document an attacker
 input mode and Flagged Chunk mode it runs with, the markers whose appearance in a reply means
 the attack worked, whether it is a benign control, and what each Guardrail layer is expected to
 do (``Expected``).
+
+Every case runs once in each Retrieval Mode (ADR-0015). It is expected to do the same in both,
+unless it gives ``expected_agentic``: what each layer should do in Agentic mode instead, for an
+attack only an Agent with Knowledge Search can attempt.
 """
 
 import enum
@@ -19,7 +23,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from app.agents.config import InputMode
+from app.agents.config import InputMode, RetrievalMode
 from app.projects.models import FlaggedChunkMode
 
 SCHEMA_VERSION = 1
@@ -113,10 +117,18 @@ class Case(_Strict):
     # A known weakness or false positive the expected outcome records: shown in the report.
     note: NonEmpty | None = None
     expected: Expected
+    # What each layer should do in Agentic Retrieval Mode, when that differs from ``expected``.
+    expected_agentic: Expected | None = None
 
     @property
     def benign(self) -> bool:
         return self.category is Category.BENIGN
+
+    def expected_in(self, mode: RetrievalMode) -> Expected:
+        """What each layer should do when the case runs in Retrieval Mode ``mode``."""
+        if mode is RetrievalMode.AGENTIC and self.expected_agentic is not None:
+            return self.expected_agentic
+        return self.expected
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -124,10 +136,14 @@ class Case(_Strict):
             raise ValueError(f"{self.id}: a benign case has no markers")
         if not self.benign and not self.markers:
             raise ValueError(f"{self.id}: an attack case needs a marker that shows it worked")
-        if (self.document is None) != (self.expected.ingestion is None):
-            raise ValueError(
-                f"{self.id}: expected.ingestion is given exactly when the case has a document"
-            )
+        for name, expected in (
+            ("expected", self.expected),
+            ("expected_agentic", self.expected_agentic),
+        ):
+            if expected is not None and (self.document is None) != (expected.ingestion is None):
+                raise ValueError(
+                    f"{self.id}: {name}.ingestion is given exactly when the case has a document"
+                )
         return self
 
 
