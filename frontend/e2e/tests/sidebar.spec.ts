@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { currentSection, openSection, sectionNames, sidebar } from "../fixtures/navigation";
+import { currentSection, navigationButton, openDrawer, openSection, sectionNames, sidebar } from "../fixtures/navigation";
 
 test.describe("Sidebar", () => {
   test("an Owner moves around the Organisation and a Project from the sidebar, which marks where they are", async ({
@@ -63,5 +63,52 @@ test.describe("Sidebar", () => {
     const left = (main?.x ?? 0) - 240;
     const right = 1440 - ((main?.x ?? 0) + (main?.width ?? 0));
     expect(Math.abs(left - right)).toBeLessThanOrEqual(2);
+  });
+
+  test("on a phone the sidebar is a drawer behind Open navigation, which holds focus and closes on Escape, outside or a link", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+
+    // The content gets the full width; the sidebar waits behind the button.
+    await expect(sidebar(page)).toBeHidden();
+    const main = await page.getByRole("main").boundingBox();
+    expect(main?.x ?? 0).toBeLessThan(40);
+    const button = navigationButton(page);
+    await expect(button).toBeVisible();
+
+    // Opening focuses the current link; Tab and Shift+Tab stay inside.
+    await button.focus();
+    await page.keyboard.press("Enter");
+    const drawer = page.getByRole("dialog", { name: "Navigation" });
+    await expect(drawer.getByRole("link", { name: "Projects", exact: true })).toBeFocused();
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    for (let step = 0; step < 6; step++) {
+      await page.keyboard.press(step < 3 ? "Tab" : "Shift+Tab");
+      expect(await drawer.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+    }
+
+    // Escape closes it and focus returns to the button.
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(button).toBeFocused();
+
+    // A press outside it closes it too.
+    await openDrawer(page);
+    await page.mouse.click(380, 600);
+    await expect(drawer).toHaveCount(0);
+    await expect(button).toBeFocused();
+
+    // Following a link opens its page and closes it.
+    await (await openDrawer(page)).getByRole("link", { name: "Settings", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Organisation settings" })).toBeVisible();
+    await expect(drawer).toHaveCount(0);
+    await expect(button).toBeFocused();
+    const reopened = await openDrawer(page);
+    await expect(reopened.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(reopened.getByRole("link", { name: "Settings", exact: true })).toBeFocused();
   });
 });
