@@ -1,7 +1,7 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { button, field, surface, table, text, useToast } from "../design";
+import { button, Dialog, field, surface, table, text, useToast } from "../design";
 import {
   type Invite,
   InviteRequestError,
@@ -71,52 +71,74 @@ function InviteLink({ issued, emailRequested }: { issued: IssuedInvite; emailReq
   );
 }
 
-function InviteForm({ organisationId, onIssued }: { organisationId: string; onIssued: (issued: IssuedInvite, emailed: boolean) => void }) {
+/**
+ * The invite dialog: Email, Role and "Email the invite link". A refusal (an invalid email, an
+ * existing Member, a pending invite) shows inside it and keeps what was typed; Cancel and Escape
+ * close it without inviting.
+ */
+function InviteDialog({
+  organisationId,
+  onIssued,
+  onClose,
+}: {
+  organisationId: string;
+  onIssued: (issued: IssuedInvite, emailed: boolean) => void;
+  onClose: () => void;
+}) {
   const createInvite = useCreateInvite(organisationId);
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
+    const data = new FormData(event.currentTarget);
     const sendEmail = data.get("send_email") === "on";
     createInvite.mutate(
       { email: data.get("email") as string, role: data.get("role") as Role, send_email: sendEmail },
       {
         onSuccess: (issued) => {
-          form.reset();
           onIssued(issued, sendEmail);
         },
       },
     );
   }
 
+  // Closing mid-request would drop the issued link, so wait for the answer.
+  function close() {
+    if (!createInvite.isPending) onClose();
+  }
+
   return (
-    <form onSubmit={onSubmit} aria-label="Invite someone" className={`${surface.panel} flex flex-col gap-4`}>
-      <h2 className={text.heading}>Invite someone</h2>
-      <FormError message={failure(createInvite.error)} />
-      <div>
-        <label htmlFor="invite-email" className={field.label}>
-          Email
+    <Dialog open title="Invite someone" onClose={close} closeButton={false}>
+      <form onSubmit={onSubmit} aria-label="Invite someone" className="flex flex-col gap-4">
+        <FormError message={failure(createInvite.error)} />
+        <div>
+          <label htmlFor="invite-email" className={field.label}>
+            Email
+          </label>
+          <input id="invite-email" name="email" type="email" required autoComplete="off" className={field.input} />
+        </div>
+        <div>
+          <label htmlFor="invite-role" className={field.label}>
+            Role
+          </label>
+          <select id="invite-role" name="role" defaultValue="editor" className={field.select}>
+            <option value="editor">Editor</option>
+            <option value="owner">Owner</option>
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-ink-2">
+          <input type="checkbox" name="send_email" defaultChecked className={field.checkbox} />
+          Email the invite link
         </label>
-        <input id="invite-email" name="email" type="email" required autoComplete="off" className={field.input} />
-      </div>
-      <div>
-        <label htmlFor="invite-role" className={field.label}>
-          Role
-        </label>
-        <select id="invite-role" name="role" defaultValue="editor" className={field.select}>
-          <option value="editor">Editor</option>
-          <option value="owner">Owner</option>
-        </select>
-      </div>
-      <label className="flex items-center gap-2 text-sm text-ink-2">
-        <input type="checkbox" name="send_email" defaultChecked className={field.checkbox} />
-        Email the invite link
-      </label>
-      <button type="submit" disabled={createInvite.isPending} className={`${button.primary} self-start`}>
-        {createInvite.isPending ? "Inviting…" : "Invite"}
-      </button>
-    </form>
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <button type="button" disabled={createInvite.isPending} className={button.secondary} onClick={close}>
+            Cancel
+          </button>
+          <button type="submit" disabled={createInvite.isPending} className={button.primary}>
+            {createInvite.isPending ? "Inviting…" : "Invite"}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -215,8 +237,10 @@ function PendingInvites({ organisationId, onIssued }: { organisationId: string; 
 }
 
 /**
- * Members: Owners see and manage Members, invite people and manage pending invites. Invites and
- * member changes are confirmed by a toast; a new invite's link stays on the page to copy.
+ * Members: Owners see and manage Members, invite people and manage pending invites. Invite someone
+ * (the header's primary action) opens the invite dialog, so Members and Pending invites stay in
+ * view. Invites and member changes are confirmed by a toast; the link to copy for a new invite or
+ * a new link stays on the page above Pending invites.
  */
 export function MembersPage({
   organisationId,
@@ -230,26 +254,33 @@ export function MembersPage({
   isOwner: boolean;
 }) {
   const [issued, setIssued] = useState<{ invite: IssuedInvite; emailed: boolean } | null>(null);
+  const [inviting, setInviting] = useState(false);
   const toast = useToast();
   if (!isOwner) return <p className={text.muted}>Only Owners can manage Members and invites.</p>;
   return (
     <section aria-labelledby="members-heading" className="flex flex-col gap-7">
       <div className="flex flex-col gap-3">
-        <h2 id="members-heading" className={text.heading}>
-          Members
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="members-heading" className={text.heading}>
+            Members
+          </h2>
+          <button
+            type="button"
+            className={button.primary}
+            onClick={() => {
+              setInviting(true);
+            }}
+          >
+            Invite someone
+          </button>
+        </div>
         <MembersList organisationId={organisationId} organisationName={organisationName} memberId={memberId} />
       </div>
-      <div className="grid max-w-2xl gap-4">
-        <InviteForm
-          organisationId={organisationId}
-          onIssued={(invite, emailed) => {
-            toast.show(`Invited ${invite.invite.email}.`);
-            setIssued({ invite, emailed });
-          }}
-        />
-        {issued && <InviteLink key={issued.invite.link} issued={issued.invite} emailRequested={issued.emailed} />}
-      </div>
+      {issued && (
+        <div className="max-w-2xl">
+          <InviteLink key={issued.invite.link} issued={issued.invite} emailRequested={issued.emailed} />
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         <h2 className={text.heading}>Pending invites</h2>
         <PendingInvites
@@ -259,6 +290,19 @@ export function MembersPage({
           }}
         />
       </div>
+      {inviting && (
+        <InviteDialog
+          organisationId={organisationId}
+          onClose={() => {
+            setInviting(false);
+          }}
+          onIssued={(invite, emailed) => {
+            setInviting(false);
+            toast.show(`Invited ${invite.invite.email}.`);
+            setIssued({ invite, emailed });
+          }}
+        />
+      )}
     </section>
   );
 }

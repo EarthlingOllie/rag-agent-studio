@@ -1,0 +1,25 @@
+light         members                  h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+light         invite-dialog            h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+light         invite-refused           h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+light         invite-link              h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+light         new-link                 h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+light         keyboard: Invite someone (Enter) opens the dialog with focus on "email"; Escape closes it; focus back on "Invite someone": ok
+dark          members                  h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+dark          invite-dialog            h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+dark          invite-refused           h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+dark          invite-link              h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+dark          new-link                 h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+dark          keyboard: Invite someone (Enter) opens the dialog with focus on "email"; Escape closes it; focus back on "Invite someone": ok
+narrow-light  members                  h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-light  invite-dialog            h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+narrow-light  invite-refused           h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+narrow-light  invite-link              h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-light  new-link                 h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-light  keyboard: Invite someone (Enter) opens the dialog with focus on "email"; Escape closes it; focus back on "Invite someone": ok
+narrow-dark   members                  h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-dark   invite-dialog            h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+narrow-dark   invite-refused           h1 "Organisation settings"; dialog "Invite someone"; horizontal overflow 0px; axe violations: 0
+narrow-dark   invite-link              h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-dark   new-link                 h1 "Organisation settings"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-dark   keyboard: Invite someone (Enter) opens the dialog with focus on "email"; Escape closes it; focus back on "Invite someone": ok
+total axe violations, overflows and focus problems: 0

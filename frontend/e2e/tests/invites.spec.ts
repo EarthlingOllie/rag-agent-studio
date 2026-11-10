@@ -10,7 +10,7 @@ async function openMembers(page: Page) {
   await page.goto("/");
   await openSection(page, "Organisation sections", "Settings");
   await openSection(page, "Organisation settings", "Members");
-  await expect(page.getByRole("form", { name: "Invite someone" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Invite someone" })).toBeVisible();
   // Wait for the Members list, so its loading status has gone before the invite's status appears.
   await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
 }
@@ -24,6 +24,7 @@ test.describe("invites", () => {
   }) => {
     const invited = newMember({ name: "Invited Editor" });
     await openMembers(page);
+    await page.getByRole("button", { name: "Invite someone" }).click();
     const form = page.getByRole("form", { name: "Invite someone" });
     await form.getByLabel("Email", { exact: true }).fill(invited.email);
     await form.getByLabel("Role").selectOption("Editor");
@@ -89,6 +90,7 @@ test.describe("invites", () => {
     await signUp(colleaguePage.request, colleague);
 
     await openMembers(page);
+    await page.getByRole("button", { name: "Invite someone" }).click();
     const form = page.getByRole("form", { name: "Invite someone" });
     await form.getByLabel("Email", { exact: true }).fill(colleague.email);
     await form.getByLabel("Role").selectOption("Owner");

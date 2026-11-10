@@ -1,0 +1,13 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/invites.spec.ts e2e/tests/members.spec.ts e2e/tests/credentials.spec.ts e2e/tests/projects.spec.ts e2e/tests/require-mfa.spec.ts (at 9690c827)
+Listing tests:
+  [studio] › tests/credentials.spec.ts:20:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown
+  [studio] › tests/credentials.spec.ts:82:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them
+  [studio] › tests/invites.spec.ts:19:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account
+  [studio] › tests/invites.spec.ts:82:3 › invites › an existing Member accepts a copied link, and a revoked link stops working
+  [studio] › tests/members.spec.ts:43:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends
+  [studio] › tests/members.spec.ts:101:3 › members and roles › an Editor leaves, and the last Owner can't
+  [studio] › tests/projects.spec.ts:45:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited
+  [studio] › tests/projects.spec.ts:106:3 › Projects › an Editor creates and archives a Project but only an Owner restores it
+  [studio] › tests/require-mfa.spec.ts:46:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit
+Total: 9 tests in 5 files
+exit 0

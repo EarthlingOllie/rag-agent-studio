@@ -26,6 +26,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await openSection(owner, "Organisation sections", "Settings");
   await openSection(owner, "Organisation settings", "Members");
   await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+  await owner.getByRole("button", { name: "Invite someone" }).click();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
   await form.getByLabel("Role").selectOption("Editor");

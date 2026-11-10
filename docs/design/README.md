@@ -222,6 +222,13 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   switcher crumb (`shell/SettingsCrumb.tsx`). Lists there (Members, pending invites, Credentials,
   the price table, the Audit log) are `table.wrap` cards; long ones page with `Pagination`.
   Saved changes confirm with a toast; a destructive one asks with `ConfirmDialog` first.
+  - **Members** (invite dialog in 12-05): the Members heading row carries **Invite someone**
+    (`button.primary`) on the right; it opens a `Dialog` (no corner ✕) holding the form
+    "Invite someone": `FormError`, Email (`field.input`), Role (`field.select`), "Email the
+    invite link" (`field.checkbox`), then Cancel and the primary Invite. Nothing about inviting is
+    inline. On success the dialog closes, a toast confirms, and the copy-link panel
+    (`surface.panel`, "New invite") shows above Pending invites; New link on a pending invite
+    shows the same panel. Cancel or Escape returns focus to Invite someone.
 - **Project Instructions** (built in 11-07): a `surface.panel` each for the Draft (the markdown
   editor with its character count, Save Instructions as a secondary button and the conflict offer
   as a warning notice), Publish (the Note and **Publish Instructions**, the page's one primary),
