@@ -32,7 +32,7 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
         "tag_ids": [],
         "reranker": None,
         "citations": True,
-        "mode": "automatic",
+        "mode": "agentic",
         "search_limit": 3,
     },
     "experience": {

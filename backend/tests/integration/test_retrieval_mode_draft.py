@@ -40,12 +40,13 @@ async def test_changing_the_retrieval_mode_and_search_limit_is_audited(
     project_id = await create_project(owner)
     agent_id = (await create_agent(owner, project_id))["id"]
 
-    first = await save_draft(editor, project_id, agent_id, {"retrieval": {"mode": "agentic"}})
+    # A new Agent is Agentic.
+    first = await save_draft(editor, project_id, agent_id, {"retrieval": {"mode": "automatic"}})
     second = await save_draft(
-        editor, project_id, agent_id, {"retrieval": {"mode": "agentic", "search_limit": 2}}
+        editor, project_id, agent_id, {"retrieval": {"mode": "automatic", "search_limit": 2}}
     )
     third = await save_draft(
-        editor, project_id, agent_id, {"retrieval": {"mode": "automatic", "search_limit": 4}}
+        editor, project_id, agent_id, {"retrieval": {"mode": "agentic", "search_limit": 4}}
     )
 
     assert [r.status_code for r in (first, second, third)] == [200, 200, 200]
@@ -55,8 +56,8 @@ async def test_changing_the_retrieval_mode_and_search_limit_is_audited(
         (
             editor.member_id,
             {"type": "agent", "id": agent_id},
-            {"retrieval_mode": "agentic", "search_limit": 2},
-            {"retrieval_mode": "automatic", "search_limit": 4},
+            {"retrieval_mode": "automatic", "search_limit": 2},
+            {"retrieval_mode": "agentic", "search_limit": 4},
         ),
         (
             editor.member_id,
@@ -67,8 +68,8 @@ async def test_changing_the_retrieval_mode_and_search_limit_is_audited(
         (
             editor.member_id,
             {"type": "agent", "id": agent_id},
-            {"retrieval_mode": "automatic"},
             {"retrieval_mode": "agentic"},
+            {"retrieval_mode": "automatic"},
         ),
     ]
 
@@ -95,7 +96,7 @@ async def test_discarding_the_draft_back_to_another_mode_is_audited(
     project_id = await create_project(owner)
     agent_id = (await create_agent(owner, project_id))["id"]
     await published(owner, project_id, agent_id)
-    await save_draft(owner, project_id, agent_id, {"retrieval": {"mode": "agentic"}})
+    await save_draft(owner, project_id, agent_id, {"retrieval": {"mode": "automatic"}})
 
     response = await discard(owner, project_id, agent_id)
 
@@ -103,6 +104,6 @@ async def test_discarding_the_draft_back_to_another_mode_is_audited(
     assert response.json()["draft"]["retrieval"] == FULL_DEFAULT_DRAFT["retrieval"]
     events = await audit_events(owner, CHANGED)
     assert [(e["before"], e["after"]) for e in events] == [
-        ({"retrieval_mode": "agentic"}, {"retrieval_mode": "automatic"}),
         ({"retrieval_mode": "automatic"}, {"retrieval_mode": "agentic"}),
+        ({"retrieval_mode": "agentic"}, {"retrieval_mode": "automatic"}),
     ]

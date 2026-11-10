@@ -9,7 +9,7 @@
 - [13-04: Search limit and Fallback Text](04-search-limit-fallback.md)
 - [13-07: Guardrails in both modes](07-guardrails-both-modes.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] `mode` defaults to Agentic for new Agents
 - [ ] In Agentic mode the Demo model and the Naive demo model make one Knowledge Search with the Visitor's question, then answer from the first Chunk it returned

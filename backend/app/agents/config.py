@@ -106,8 +106,8 @@ class Retrieval(BaseModel):
     reranker: ModelChoice | None = None
     # Whether Visitors see the citations of an answer.
     citations: bool = True
-    # The Retrieval Mode. Automatic until the default switches to Agentic (ticket 13-09).
-    mode: RetrievalMode = RetrievalMode.AUTOMATIC
+    # The Retrieval Mode: Agentic for a new Agent, the more accurate of the two (spec 13).
+    mode: RetrievalMode = RetrievalMode.AGENTIC
     # The Search limit: the most Searches an Agentic reply may make. Ignored when Automatic.
     search_limit: int = Field(default=3, ge=1, le=SEARCH_LIMIT_MAX)
 
