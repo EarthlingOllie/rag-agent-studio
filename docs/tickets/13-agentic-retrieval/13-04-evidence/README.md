@@ -1,6 +1,6 @@
 # Evidence: ticket 13-04, Search limit and Fallback Text
 
-Branch `t/13-04`, from `0823a537`: the integration branch with all of spec 12, plus merged `t/13-01` and `t/13-02`. The change is a single commit. This folder holds the logs from the checks run on it.
+Branch `t/13-04`, from `0823a537`: the integration branch with all of spec 12, plus merged `t/13-01` and `t/13-02`. The change was committed after a container restart interrupted the first run, and the evidence was added in the commit after it. This folder holds the logs from the checks run on it.
 
 **Status: done.** Every criterion is met and evidenced below.
 
@@ -41,7 +41,7 @@ Standing criteria: there is no new Studio UI, so no frontend file changed and th
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t04 TEST_REDIS_URL=redis://localhost:6379/11 uv run pytest -n 3` | see the log's summary line | [backend-tests.log](backend-tests.log) |
+| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t04 TEST_REDIS_URL=redis://localhost:6379/11 uv run pytest -n 3` | 2565 passed, 4 failed; coverage 100.00% (12224 statements, 1524 branches), gate reached. The 4 failures are all in `tests/integration/test_logging.py`: each subprocess (API server, worker, beat) did not log its start line within 20 s under the load of four concurrent ticket suites (load average about 25 on 4 CPUs). Rerun alone, all 8 tests in that file pass. | [backend-tests.log](backend-tests.log), [rerun](backend-tests-rerun-logging.log) |
 | Backend lint and types | `make lint-backend` (ruff check, ruff format --check, mypy) | exit 0 (395 files) | [lint-backend.log](lint-backend.log) |
 | API client drift | `make check-client` | "API client is up to date.", exit 0 | [check-client.log](check-client.log) |
 | Markdown links | `make link-check` | all resolve, exit 0 | [link-check.log](link-check.log) |
