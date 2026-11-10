@@ -1,0 +1,10 @@
+
+> rag-agent-studio-frontend@ test /home/user/wt-13-03/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /home/user/wt-13-03/frontend
+      Coverage enabled with v8
+
+ ❯ apps/studio/src/projects/DocumentsTab.test.tsx (48 tests | 1 failed) 118212ms
+   × a refused retry shows the API's reason 2016ms
