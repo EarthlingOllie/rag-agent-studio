@@ -628,7 +628,7 @@ function Toolbar({
           onChange={(event) => {
             onChange({ ...filters, status: event.target.value as DocumentStatus | "" });
           }}
-          className="h-9 rounded-full border border-line bg-surface px-3.5 text-sm text-ink"
+          className={field.pill}
         >
           <option value="">Any status</option>
           {Object.entries(STATUS_LABELS).map(([value, label]) => (

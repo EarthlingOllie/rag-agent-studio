@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { field } from "../design";
 import { dollars } from "../projects/format";
 import { ProjectRequestError } from "../projects/projects";
 import { INPUT, useOrganisationRole } from "../projects/ProjectsPage";
@@ -86,7 +87,7 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
         <label className="flex flex-col gap-1 text-sm">
           Break down by
           <select
-            className={INPUT}
+            className={field.select}
             value={query.groupBy}
             onChange={(event) => {
               const groupBy = event.currentTarget.value as CostGroup;

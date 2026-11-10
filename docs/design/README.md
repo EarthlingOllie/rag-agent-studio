@@ -86,6 +86,12 @@ Nowhere else: not headings, not table text, not borders, not backgrounds of whol
 
 - Cards and panels: `rounded-2xl` (16px), 1px `line` border, no shadow.
 - Inputs: `rounded-xl` (12px), 40px tall. Buttons and pills: fully rounded, 36px tall.
+- Selects: every single-value select draws the design system's chevron-down (the `--ds-chevron`
+  token, stroked in `muted` for each Appearance) instead of the browser's arrow, from one base rule
+  in `tokens.css`. The chevron sits as far from the right edge as the text from the left (each
+  select recipe sets `--select-inset` to its left padding), the right padding never drops below
+  36px, and a disabled select dims with its chevron. Use `field.select` in forms, `field.pill` in
+  toolbars and `field.selectCompact` in table cells; never a select class string of a page's own.
 - Menus and popovers: `rounded-2xl`, soft shadow (`surface.popover`).
 - Page content: max width 1160px, 32px side padding (16px on phones), 28px between blocks.
 
