@@ -9,7 +9,7 @@
 - [12-09: Sidebar drawer on narrow screens](09-sidebar-drawer.md)
 - [12-10: Agent view tabs](10-agent-view-tabs.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The breadcrumb's crumbs are plain links with no menus; the current crumb is marked `aria-current="page"`
 - [ ] Below `md` the breadcrumb shows only its last two crumbs; the "…" fold is gone
