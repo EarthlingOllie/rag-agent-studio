@@ -1,6 +1,6 @@
 # Evidence: ticket 13-07, Guardrails in both modes
 
-Branch `t/13-07`, from `ec59f1f5`: the integration branch with all of spec 12, plus merged `t/13-01`, `t/13-02` and `t/13-04`. The claim commit `a5e13cea` set Status `in-progress`; the change is commits `fd4aa91c`, `9a3c0fea` and `58085a70`. Every check below ran at `58085a70`; only this folder and the ticket file were written afterwards.
+Branch `t/13-07`, from `ec59f1f5`: the integration branch with all of spec 12, plus merged `t/13-01`, `t/13-02` and `t/13-04`. The claim commit `a5e13cea` set Status `in-progress`; the change is commits `fd4aa91c`, `9a3c0fea` and `58085a70`. Every check below ran on the code at `58085a70`. Only this folder and the ticket file were written afterwards.
 
 **Status: done.** Every criterion is met and evidenced below.
 
@@ -50,7 +50,7 @@ Standing criterion on Studio UI: no frontend file changed, so the palette ratche
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t07 TEST_REDIS_URL=redis://localhost:6379/11 uv run pytest -n 3` | RESULT_PLACEHOLDER | [backend-tests.log](backend-tests.log) |
+| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t07 TEST_REDIS_URL=redis://localhost:6379/11 uv run pytest -n 3` | **2581 passed**, 4 failed in 58 min 34 s; coverage **100.00%** (12296 statements, 1548 branches), gate reached. The 4 failures are all in `tests/integration/test_logging.py`: each subprocess (API server, worker, beat) did not log its start line in time, under the load of four concurrent ticket suites. The same happened in 13-04. Rerun alone, all 8 tests in that file pass. An earlier full run was killed (exit 137, out of memory on the shared host) at 97% with no failures; the run here is the repeat. | [backend-tests.log](backend-tests.log) (span lines stripped), [rerun](backend-tests-rerun-logging.log) |
 | Backend lint and types | `make lint-backend` (ruff check, ruff format --check, mypy) | exit 0 | [lint-backend.log](lint-backend.log) |
 | API client drift | `make check-client` | "API client is up to date.", exit 0 | [check-client.log](check-client.log) |
 | Markdown links | `make link-check` | all resolve, exit 0 | [link-check.log](link-check.log) |
