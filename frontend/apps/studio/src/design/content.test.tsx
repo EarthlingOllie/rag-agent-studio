@@ -104,6 +104,19 @@ it("frames the Studio with a top bar, brand and avatar", () => {
   expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
 });
 
+it("a compact Brand keeps its name for wider screens only", () => {
+  render(
+    <>
+      <Brand />
+      <Brand compact />
+    </>,
+  );
+  // jsdom applies no stylesheet, so the breakpoint is read from the classes; the screenshots at 390 px show it.
+  const [full, compact] = screen.getAllByText("Studio");
+  expect(full).not.toHaveClass("hidden");
+  expect(compact).toHaveClass("hidden", "md:inline");
+});
+
 it("draws icons and the mark, decoratively", () => {
   const { container } = render(
     <>

@@ -66,14 +66,14 @@ export const AGENT = `${PROJECT}/agents/$agentId` as const;
 type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed` | `${typeof AGENT}/conversations`;
 
 /**
- * An Agent's views, in order: the tabs under its header (and the breadcrumb's view switcher).
+ * An Agent's views, in order: the tabs under its header.
  * Conversations also holds the Conversation opened from it.
  */
-export const AGENT_VIEWS: { label: string; icon: IconName; to: AgentViewPath; fuzzy?: boolean }[] = [
-  { label: "Playground", icon: "send", to: AGENT },
-  { label: "Versions", icon: "history", to: `${AGENT}/versions` },
-  { label: "Embed & limits", icon: "external", to: `${AGENT}/embed` },
-  { label: "Conversations", icon: "conversations", to: `${AGENT}/conversations`, fuzzy: true },
+export const AGENT_VIEWS: { label: string; to: AgentViewPath; fuzzy?: boolean }[] = [
+  { label: "Playground", to: AGENT },
+  { label: "Versions", to: `${AGENT}/versions` },
+  { label: "Embed & limits", to: `${AGENT}/embed` },
+  { label: "Conversations", to: `${AGENT}/conversations`, fuzzy: true },
 ];
 
 /** An Agent's views, each with whether the Member is in it now. Every page inside an Agent is one of them. */

@@ -11,7 +11,7 @@ export {
   useAppearance,
 } from "./appearance";
 export { Badge, BADGE_LABELS, type BadgeKind } from "./Badge";
-export { Breadcrumb, crumbClass, CrumbSwitcher, CrumbText } from "./Breadcrumb";
+export { Breadcrumb, crumbLink } from "./Breadcrumb";
 export { CodeBlock } from "./CodeBlock";
 export { FlagCount, Notice, PageHeader, Section, StatCard, Status, Tag } from "./content";
 export { BulkBar, Pagination, Segmented } from "./controls";

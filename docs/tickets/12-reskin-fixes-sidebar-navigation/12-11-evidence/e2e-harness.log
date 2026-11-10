@@ -1,0 +1,31 @@
+$ sh -c cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e:harness (at 9807b095)
+
+> rag-agent-studio-frontend@ e2e:harness /home/user/wt-12-11/frontend
+> playwright test --project=harness
+
+
+Running 20 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (743ms)
+  ✓   1 [harness] › e2e/harness/agent-navigation.spec.ts:59:3 › navigation helpers on an Agent › Agent views are read from the tab row (991ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (473ms)
+  ✓   4 [harness] › e2e/harness/agent-navigation.spec.ts:70:3 › navigation helpers on an Agent › the Agents switcher is the ▾ on the Agent's name (802ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (477ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (245ms)
+  ✓   8 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (4ms)
+  ✓   9 [harness] › e2e/harness/drawer.spec.ts:36:3 › drawer helpers › navigationButton is the top bar's Open navigation button (700ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.2s)
+  ✓  10 [harness] › e2e/harness/drawer.spec.ts:40:3 › drawer helpers › openDrawer presses it and returns the drawer once its navigation is shown (805ms)
+  ✓  12 [harness] › e2e/harness/navigation.spec.ts:69:3 › navigation helpers › openSection follows a sidebar link, not a crumb of the same name (755ms)
+  ✓  11 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.5s)
+  ✓  13 [harness] › e2e/harness/navigation.spec.ts:76:3 › navigation helpers › sectionNames lists a sidebar group's links, without their hidden icons (488ms)
+  ✓  14 [harness] › e2e/harness/navigation.spec.ts:81:3 › navigation helpers › the Organisations switcher is the sidebar's (737ms)
+  ✓  15 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (118ms)
+  ✓  17 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (225ms)
+  ✓  16 [harness] › e2e/harness/navigation.spec.ts:90:3 › navigation helpers › Organisation settings are read from the tab row in the page (504ms)
+  ✓  18 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (206ms)
+  ✓  19 [harness] › e2e/harness/navigation.spec.ts:99:3 › navigation helpers › breadcrumb reads the crumbs shown and the current one (433ms)
+  ✓  20 [harness] › e2e/harness/navigation.spec.ts:103:3 › navigation helpers › a top bar menu opens, is listed and closes as before (606ms)
+
+  20 passed (9.6s)
+exit 0

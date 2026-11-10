@@ -24,7 +24,6 @@ test("a Member of one Organisation sees its name, not a switcher", async () => {
   renderStudio("/");
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Analytical Engines")).toBeInTheDocument();
   expect(within(screen.getByRole("navigation", { name: "Studio" })).getByText("Analytical Engines")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /, Organisations$/ })).not.toBeInTheDocument();
 });
@@ -139,17 +138,4 @@ test("choosing the open Organisation again changes nothing", async () => {
 
   expect(screen.getByRole("heading", { name: "Organisation settings" })).toBeInTheDocument();
   expect(switches).toEqual([]);
-});
-
-test("the breadcrumb's Organisation switcher still switches, and says when switching failed", async () => {
-  fakeSwitcherApi(adaInTwo(), { failWith: 500 });
-  renderStudio("/");
-  await screen.findByRole("heading", { name: "Projects" });
-  const breadcrumb = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
-
-  await userEvent.click(breadcrumb.getByRole("button", { name: "Analytical Engines, Organisations" }));
-  await userEvent.click(screen.getByRole("menuitem", { name: "Difference Engines" }));
-
-  expect(await breadcrumb.findByRole("alert")).toHaveTextContent("Couldn't switch Organisation. Try again.");
-  expect(breadcrumb.getByRole("button", { name: "Analytical Engines, Organisations" })).toBeInTheDocument();
 });

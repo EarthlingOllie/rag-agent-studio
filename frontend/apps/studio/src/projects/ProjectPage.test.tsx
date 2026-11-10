@@ -152,7 +152,7 @@ async function chooseProjectAction(action: string) {
   await userEvent.click(within(screen.getByRole("menu", { name: "Project actions" })).getByRole("menuitem", { name: action }));
 }
 
-test("the Project frame has no tab row and no All Projects link: the breadcrumb does both", async () => {
+test("the Project frame has no tab row and no All Projects link: the sidebar does both", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));

@@ -1,24 +1,18 @@
-import { currentSection, menuButton, openSection, sectionNames } from "../fixtures/navigation";
+import { breadcrumb, currentSection, menuButton, openSection, sectionNames } from "../fixtures/navigation";
 import { expect, test } from "./test";
 
 /**
- * A stand-in for an Agent page: the breadcrumb still holds an Agent switcher and a view switcher
- * (until the breadcrumb becomes plain links), and the main content holds the Agent's header with
- * its ▾ switcher and the tab row "Agent views". Following a link writes it into the page's heading
+ * A stand-in for an Agent page: the breadcrumb is plain links ending at the Agent, and the main
+ * content holds the Agent's header with its ▾ switcher and the tab row "Agent views". Following a link writes it into the page's heading
  * and marks the followed tab current, so a spec can see which one was followed.
  */
 const FRAME = `<!doctype html><html lang="en"><title>Agent</title>
 <header>
-  <nav aria-label="Breadcrumb">
-    <button type="button" aria-label="HR helper, Agents" aria-haspopup="menu" data-menu="crumb-agents">HR helper</button>
-    <div role="menu" id="crumb-agents" aria-label="Agents" hidden>
-      <a role="menuitem" href="#Crumb HR helper">HR helper</a>
-    </div>
-    <button type="button" aria-label="Playground, Agent views" aria-haspopup="menu" data-menu="crumb-views">Playground</button>
-    <div role="menu" id="crumb-views" aria-label="Agent views" hidden>
-      <a role="menuitem" href="#Crumb Versions">Versions</a>
-    </div>
-  </nav>
+  <nav aria-label="Breadcrumb"><ol>
+    <li><a href="#HR handbook">HR handbook</a></li>
+    <li><span aria-hidden="true">/</span><a href="#Agents">Agents</a></li>
+    <li><span aria-hidden="true">/</span><a href="#Playground" aria-current="page">HR helper</a></li>
+  </ol></nav>
 </header>
 <main>
   <section aria-labelledby="agent">
@@ -62,13 +56,15 @@ test.describe("navigation helpers on an Agent", () => {
     await page.setContent(FRAME);
   });
 
-  test("Agent views are read from the tab row, not the breadcrumb's view switcher", async ({ page }) => {
+  test("Agent views are read from the tab row", async ({ page }) => {
     expect(await sectionNames(page, "Agent views")).toEqual(["Playground", "Versions", "Embed & limits", "Conversations"]);
     expect(await currentSection(page, "Agent views")).toBe("Playground");
 
     await openSection(page, "Agent views", "Versions");
     await expect(page.locator("#followed")).toHaveText("Versions");
     expect(await currentSection(page, "Agent views")).toBe("Versions");
+    // The breadcrumb still ends at the Agent.
+    expect(await breadcrumb(page)).toEqual({ crumbs: ["HR handbook", "Agents", "HR helper"], current: "HR helper" });
   });
 
   test("the Agents switcher is the ▾ on the Agent's name", async ({ page }) => {

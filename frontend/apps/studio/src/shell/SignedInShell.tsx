@@ -88,10 +88,10 @@ export function OrganisationShell() {
         }
         home={
           <Link to="/" aria-label="Studio home" className="rounded-md">
-            <Brand />
+            <Brand compact />
           </Link>
         }
-        breadcrumb={<StudioBreadcrumb session={session} organisationId={organisationId} mustEnrol={mustEnrol} />}
+        breadcrumb={organisation && <StudioBreadcrumb organisationId={organisationId} />}
         actions={
           <>
             <div ref={setSlot} className="flex items-center gap-3 empty:hidden" />

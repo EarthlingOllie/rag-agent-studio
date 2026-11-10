@@ -1,6 +1,6 @@
 # Spec 12: Reskin fixes and sidebar navigation
 
-**Status:** ready-for-agent · **Builds on:** [Spec 11](./11-studio-design-spec.md) (on `candidate-reskin`) · **Review:** [candidate-reskin design review](../reviews/candidate-reskin/README.md) · **Decision:** [draft ADR-0014](../reviews/candidate-reskin/0014-sidebar-navigation.md)
+**Status:** ready-for-agent · **Builds on:** [Spec 11](./11-studio-design-spec.md) (on `candidate-reskin`) · **Review:** [candidate-reskin design review](../reviews/candidate-reskin/README.md) · **Decision:** [ADR-0014](../adr/0014-sidebar-navigation.md)
 
 ## Problem Statement
 

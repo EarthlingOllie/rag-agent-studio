@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { agentVersion, fakeAgentsApi, hrHelper, oldHelper, streamedAnswer } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { currentSection, menuButton, openSection, sectionNames } from "../test/navigation";
+import { breadcrumb, currentSection, menuButton, openSection, sectionNames } from "../test/navigation";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -115,25 +115,33 @@ test("the ▾ on the Agent's name lists the Project's open Agents and switches b
   expect(await currentSection("Agent views")).toBe("Playground");
 });
 
-test("the breadcrumb's view switcher, until it becomes a plain path, offers the same views", async () => {
+test("the breadcrumb is the Project, Agents and the Agent, which stays the current crumb on each of its views", async () => {
   setUp();
   renderStudio(agentPage(hrHelper.id, "/embed"));
+  await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 });
 
-  const views = await screen.findByRole("button", { name: "Embed & limits, Agent views" }, { timeout: 5000 });
-  expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toContainElement(views);
-  expect(views).toHaveAttribute("aria-current", "page");
-  await userEvent.click(views);
-  const menu = screen.getByRole("menu", { name: "Agent views" });
-  expect(
-    within(menu)
-      .getAllByRole("menuitem")
-      .map((item) => [item.textContent, item.getAttribute("href")]),
-  ).toEqual([
-    ["Playground", agentPage(hrHelper.id)],
-    ["Versions", agentPage(hrHelper.id, "/versions")],
-    ["Embed & limits", agentPage(hrHelper.id, "/embed")],
-    ["Conversations", agentPage(hrHelper.id, "/conversations")],
-  ]);
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Agents", "HR helper"], current: "HR helper" });
+  const crumbs = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
+  expect(crumbs.getByRole("link", { name: "HR helper" })).toHaveAttribute("href", agentPage(hrHelper.id));
+  expect(crumbs.getByRole("link", { name: "Agents" })).toHaveAttribute("href", agents);
+  // The views are the tab row's; the breadcrumb offers no menu of them.
+  expect(crumbs.queryAllByRole("button")).toEqual([]);
+
+  await openSection("Agent views", "Versions");
+  expect(await currentSection("Agent views")).toBe("Versions");
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Agents", "HR helper"], current: "HR helper" });
+
+  await userEvent.click(crumbs.getByRole("link", { name: "Agents" }));
+  expect(await screen.findByRole("table", { name: "Agents" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Agents"], current: "Agents" });
+});
+
+test("until the Agent has loaded, or when it can't be found, the breadcrumb ends at Agents", async () => {
+  setUp();
+  renderStudio(agentPage("a0000000-0000-4000-8000-00000000dead"));
+
+  expect(await screen.findByRole("heading", { name: "Agent not found" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Agents"], current: "Agents" });
 });
 
 test("when the Agents can't be listed, the ▾ still names the Agent", async () => {

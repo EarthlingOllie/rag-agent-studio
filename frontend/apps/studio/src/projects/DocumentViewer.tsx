@@ -202,6 +202,6 @@ export function DocumentViewer() {
     );
   }
 
-  // The breadcrumb's Document crumb names it, and its Documents switcher leads back to the list.
+  // The breadcrumb's Document crumb names it, and its Documents crumb leads back to the list.
   return <div className="flex flex-col gap-6">{content}</div>;
 }
