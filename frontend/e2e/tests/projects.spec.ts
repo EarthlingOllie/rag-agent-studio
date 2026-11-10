@@ -12,6 +12,7 @@ async function openProjects(page: Page) {
 
 async function createProject(page: Page, name: string, description: string) {
   await openProjects(page);
+  await page.getByRole("button", { name: "New Project" }).click();
   const form = page.getByRole("form", { name: "New Project" });
   await form.getByLabel("Name").fill(name);
   await form.getByLabel("Description").fill(description);

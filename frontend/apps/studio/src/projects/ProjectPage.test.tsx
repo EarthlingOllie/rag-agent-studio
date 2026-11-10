@@ -60,13 +60,23 @@ test("opening a Project from the list shows its page", async () => {
   expect(hasMenu("Project sections")).toBe(true);
 });
 
-test("an Editor renames a Project and edits its description", async () => {
+/** Opens the Project details dialog from the header and returns it. */
+async function openDetails() {
+  await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
+  return screen.getByRole("dialog", { name: "Project details" });
+}
+
+test("an Editor renames a Project and edits its description in a dialog, and a toast confirms it", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   const { requests } = fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));
-  await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
-  const form = screen.getByRole("form", { name: "Project details" });
+  const dialog = await openDetails();
+  const form = within(dialog).getByRole("form", { name: "Project details" });
   expect(within(form).getByLabelText("Name")).toHaveValue("HR handbook");
+  expect(within(form).getByLabelText("Name")).toHaveFocus();
+  // The header doesn't rearrange: Edit details stays put and nothing opens inline under it.
+  expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
+  expect(screen.getByRole("main")).not.toContainElement(form);
 
   await userEvent.clear(within(form).getByLabelText("Name"));
   await userEvent.type(within(form).getByLabelText("Name"), "People team");
@@ -76,13 +86,36 @@ test("an Editor renames a Project and edits its description", async () => {
 
   expect(await screen.findByRole("heading", { level: 1, name: "People team" })).toBeInTheDocument();
   expect(screen.getByText("Policies and benefits")).toBeInTheDocument();
-  expect(screen.queryByRole("form", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.getByText("Project details saved")).toBeInTheDocument();
   expect(requests).toEqual([
     { route: "update", projectId: hrProject.id, body: { name: "People team", description: "Policies and benefits" } },
   ]);
 });
 
-test("editing can be cancelled, and a failed save says why", async () => {
+test("Cancel and Escape close the details dialog without saving, and focus returns to Edit details", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const { requests } = fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+
+  let dialog = await openDetails();
+  await userEvent.type(within(dialog).getByLabelText("Name"), " draft");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Edit details" })).toHaveFocus();
+
+  dialog = await openDetails();
+  // Reopened, it shows the saved values again, not what was typed before Cancel.
+  expect(within(dialog).getByLabelText("Name")).toHaveValue("HR handbook");
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Edit details" })).toHaveFocus();
+
+  expect(screen.getByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
+  expect(requests).toEqual([]);
+});
+
+test("a refused save says why inside the dialog and keeps what was typed", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   server.use(
@@ -92,15 +125,14 @@ test("editing can be cancelled, and a failed save says why", async () => {
     }),
   );
   renderStudio(projectPage(hrProject.id));
-  await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
-  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(screen.queryByRole("form", { name: "Project details" })).not.toBeInTheDocument();
+  const dialog = await openDetails();
+  await userEvent.clear(within(dialog).getByLabelText("Name"));
+  await userEvent.type(within(dialog).getByLabelText("Name"), "People team");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
-  await userEvent.click(screen.getByRole("button", { name: "Edit details" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-  expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
-  expect(await screen.findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
+  expect(await within(dialog).findByRole("button", { name: "Saving…" })).toBeDisabled();
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
+  expect(within(dialog).getByLabelText("Name")).toHaveValue("People team");
   expect(screen.getByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
 });
 

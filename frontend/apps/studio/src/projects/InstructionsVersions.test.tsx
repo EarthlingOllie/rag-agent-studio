@@ -212,7 +212,7 @@ test("an Editor reverts the Current Version after confirming, and the Draft is u
   expect(within(confirmation).getByRole("button", { name: "Cancel" })).toHaveFocus();
   await userEvent.click(within(confirmation).getByRole("button", { name: "Yes, revert to v1" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Reverted to v1");
+  expect(await screen.findByText("Reverted to v1")).toHaveAttribute("role", "status");
   expect(await screen.findByText("Current Version: v1.")).toBeInTheDocument();
   expect(within(screen.getByRole("listitem", { name: "v1" })).getByText("Current")).toBeInTheDocument();
   // v1 has nothing before it.

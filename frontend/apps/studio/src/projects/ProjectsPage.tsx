@@ -1,15 +1,11 @@
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
 
-import { FormError, formValues } from "../auth/AuthLayout";
+import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
-import {
-  type Project,
-  projectFailure,
-  useArchiveOrRestore,
-  useCreateProject,
-  useProjects,
-} from "./projects";
+import { button } from "../design";
+import { NewProjectDialog } from "./ProjectDetailsDialog";
+import { projectFailure, useArchiveOrRestore, useProjects } from "./projects";
 
 export const INPUT =
   "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
@@ -27,90 +23,6 @@ export function useOrganisationRole() {
     (candidate) => candidate.id === organisationId,
   ) as Session["organisations"][number];
   return { organisationId, isOwner: organisation.role === "owner" };
-}
-
-/** Name and description fields, shared by creating and editing a Project. */
-export function ProjectFields({
-  idPrefix,
-  project,
-}: {
-  idPrefix: string;
-  project?: Project;
-}) {
-  return (
-    <>
-      <div>
-        <label
-          htmlFor={`${idPrefix}-name`}
-          className="block text-sm font-medium"
-        >
-          Name
-        </label>
-        <input
-          id={`${idPrefix}-name`}
-          name="name"
-          required
-          maxLength={200}
-          defaultValue={project?.name}
-          className={INPUT}
-        />
-      </div>
-      <div>
-        <label
-          htmlFor={`${idPrefix}-description`}
-          className="block text-sm font-medium"
-        >
-          Description
-        </label>
-        <textarea
-          id={`${idPrefix}-description`}
-          name="description"
-          rows={2}
-          maxLength={2000}
-          defaultValue={project?.description}
-          className={INPUT}
-        />
-      </div>
-    </>
-  );
-}
-
-export function projectDetails(form: HTMLFormElement) {
-  return formValues(form, ["name", "description"]);
-}
-
-function NewProjectForm({ organisationId }: { organisationId: string }) {
-  const create = useCreateProject(organisationId);
-  const navigate = useNavigate();
-
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    create.mutate(projectDetails(event.currentTarget), {
-      onSuccess: (project) => {
-        void navigate({
-          to: "/organisations/$organisationId/projects/$projectId",
-          params: { organisationId, projectId: project.id },
-        });
-      },
-    });
-  }
-
-  return (
-    <form
-      aria-labelledby="new-project-heading"
-      onSubmit={onSubmit}
-      className="max-w-md space-y-3"
-    >
-      <h2 id="new-project-heading" className="text-lg font-semibold">
-        New Project
-      </h2>
-      <FormError message={projectFailure(create.error)} />
-      <ProjectFields idPrefix="new-project" />
-      <button type="submit" disabled={create.isPending} className={BUTTON}>
-        {create.isPending ? "Creating…" : "Create Project"}
-      </button>
-    </form>
-  );
 }
 
 function ActiveProjects({ organisationId }: { organisationId: string }) {
@@ -254,10 +166,11 @@ function ArchivedProjects({
   );
 }
 
-/** The Organisation's Projects with their counts, the archived ones, and a form for a new Project. */
+/** The Organisation's Projects with their counts, the archived ones, and New Project. */
 export function ProjectsPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   const [showArchived, setShowArchived] = useState(false);
+  const [creating, setCreating] = useState(false);
   const { deleted } = useSearch({ from: "/signed-in/organisations/$organisationId/projects" });
   return (
     <section aria-labelledby="page-heading" className="space-y-6">
@@ -285,7 +198,23 @@ export function ProjectsPage() {
       ) : (
         <>
           <ActiveProjects organisationId={organisationId} />
-          <NewProjectForm organisationId={organisationId} />
+          <button
+            type="button"
+            className={button.primary}
+            onClick={() => {
+              setCreating(true);
+            }}
+          >
+            New Project
+          </button>
+          {creating && (
+            <NewProjectDialog
+              organisationId={organisationId}
+              onClose={() => {
+                setCreating(false);
+              }}
+            />
+          )}
         </>
       )}
     </section>

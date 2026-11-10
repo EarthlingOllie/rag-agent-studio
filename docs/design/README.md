@@ -159,6 +159,11 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
     and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
     edged in `flag` and badged Flagged, paged with `Pagination`.
+- **Project details dialog** (12-02): New Project and a Project header's Edit details open one
+  `Dialog` (no corner ✕) holding a form named "New Project" or "Project details": `FormError`,
+  Name (`field.input`, required) and Description (`field.textarea`), then Cancel and the primary
+  "Create Project" / "Save". The opening button stays where it is and gets focus back on Cancel or
+  Escape; a saved edit closes the dialog with a toast. Nothing is edited inline under the header.
 - **A Project section** (built for Agents in 11-09) is the same under the Project's own header:
   `PageHeader level={2}` (the Project keeps the page's one h1) with the section's primary action
   on the right (New Agent opens a `Dialog`). The Agents list is a `table.wrap` card with a
