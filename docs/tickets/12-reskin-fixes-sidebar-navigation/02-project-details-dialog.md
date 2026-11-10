@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Edit details opens a "Project details" dialog with the current name and description; Save closes it, the header shows the new values and a toast confirms
 - [ ] The Edit details button stays in the Project header while the dialog is open; nothing renders inline under the header
