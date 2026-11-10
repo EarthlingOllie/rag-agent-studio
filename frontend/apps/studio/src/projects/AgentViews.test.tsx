@@ -43,8 +43,11 @@ test("the Agent crumb lists the Project's open Agents and switches between them"
   expect(await menuButton("Agents")).toHaveAccessibleName("HR helper, Agents");
   expect(await currentSection("Agents")).toBe("HR helper");
   expect(await sectionNames("Agents")).toEqual(["HR helper", "Pay helper"]);
-  // The Agents section is an ancestor now, not the current page.
-  expect(await menuButton("Project sections")).not.toHaveAttribute("aria-current");
+  // The Agents section crumb is an ancestor now, not the current page; the sidebar keeps Agents current.
+  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("button", { name: "Agents, Project sections" })).not.toHaveAttribute(
+    "aria-current",
+  );
+  expect(await currentSection("Project sections")).toBe("Agents");
 
   await openSection("Agents", "Pay helper");
 

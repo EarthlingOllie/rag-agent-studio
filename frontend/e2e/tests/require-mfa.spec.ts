@@ -54,7 +54,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
     .organisations[0]?.id;
 
   // The Owner turns MFA on for themselves, then requires it in Organisation settings.
-  await openSection(owner, "Organisation sections", "Security");
+  await openSection(owner, "Account", "Security");
   await enrol(owner);
   await openSection(owner, "Organisation sections", "Settings");
   const policy = owner.getByRole("region", { name: "Two-factor authentication" });
@@ -89,7 +89,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
   expect((await editorPage.request.get(`/api/organisations/${organisationId ?? ""}`)).status()).toBe(200);
 
   // While the Organisation requires MFA, the Editor can't turn it off.
-  await openSection(editorPage, "Organisation sections", "Security");
+  await openSection(editorPage, "Account", "Security");
   const turnOff = editorPage.getByRole("form", { name: "Turn off two-factor authentication" });
   await turnOff.getByLabel("Password").fill(editor.password);
   await turnOff.getByLabel("Code from your app or a recovery code").fill(totpCode(secret, step + 1));

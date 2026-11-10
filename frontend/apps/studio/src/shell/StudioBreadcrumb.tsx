@@ -5,12 +5,11 @@ import type { Session } from "../auth/session";
 import { Breadcrumb, CrumbSwitcher, CrumbText, type IconName, type MenuItem, type MenuLinkProps } from "../design";
 import { useAgent, useAgents } from "../projects/agents";
 import { useDocument } from "../projects/documents";
-import { useProject, useProjects } from "../projects/projects";
+import { useProject } from "../projects/projects";
 import { OrganisationCrumb } from "./OrganisationSwitcher";
+import { ORGANISATION, PROJECT, useProjectSections, useProjectSwitcherItems } from "./projectNavigation";
 import { SettingsCrumb } from "./SettingsCrumb";
 
-const ORGANISATION = "/organisations/$organisationId";
-const PROJECT = "/organisations/$organisationId/projects/$projectId";
 const SETTINGS = "/organisations/$organisationId/settings";
 
 type SectionPath =
@@ -30,28 +29,6 @@ const SECTIONS: { label: string; icon: IconName; to: SectionPath; ownersOnly?: t
   { label: "Settings", icon: "settings", to: "/organisations/$organisationId/settings" },
   { label: "Security", icon: "security", to: "/organisations/$organisationId/security" },
   { label: "Profile", icon: "profile", to: "/organisations/$organisationId/profile" },
-];
-
-type ProjectPath =
-  | "/organisations/$organisationId/projects/$projectId"
-  | "/organisations/$organisationId/projects/$projectId/documents/$documentId"
-  | "/organisations/$organisationId/projects/$projectId/instructions"
-  | "/organisations/$organisationId/projects/$projectId/agents"
-  | "/organisations/$organisationId/projects/$projectId/conversations"
-  | "/organisations/$organisationId/projects/$projectId/analytics"
-  | "/organisations/$organisationId/projects/$projectId/settings";
-
-/**
- * A Project's sections, in menu order, numbered 1-6. Documents is the Project's index page, so it
- * is matched exactly, and also holds the Document viewer; the others hold their inner pages.
- */
-const PROJECT_SECTIONS: { label: string; icon: IconName; to: ProjectPath; also?: ProjectPath }[] = [
-  { label: "Documents", icon: "documents", to: PROJECT, also: `${PROJECT}/documents/$documentId` },
-  { label: "Instructions", icon: "instructions", to: `${PROJECT}/instructions` },
-  { label: "Agents", icon: "agents", to: `${PROJECT}/agents` },
-  { label: "Conversations", icon: "conversations", to: `${PROJECT}/conversations` },
-  { label: "Analytics", icon: "analytics", to: `${PROJECT}/analytics` },
-  { label: "Settings", icon: "settings", to: `${PROJECT}/settings` },
 ];
 
 const AGENT = `${PROJECT}/agents/$agentId` as const;
@@ -143,31 +120,15 @@ function ProjectBreadcrumb({
   leading: ReactNode[];
 }) {
   const matchRoute = useMatchRoute();
-  const projects = useProjects(organisationId, false);
   const project = useProject(organisationId, projectId);
 
-  const switcher: MenuItem[] = [
-    ...(projects.data ?? []).map((candidate) => ({
-      id: candidate.id,
-      label: candidate.name,
-      icon: "projects" as const,
-      current: candidate.id === projectId,
-      renderLink: (props: MenuLinkProps) => <Link to={PROJECT} params={{ organisationId, projectId: candidate.id }} {...props} />,
-    })),
-    {
-      label: "All Projects",
-      renderLink: (props: MenuLinkProps) => <Link to={`${ORGANISATION}/projects`} params={{ organisationId }} {...props} />,
-    },
-  ];
-  const sections: MenuItem[] = PROJECT_SECTIONS.map((section, index) => ({
+  const switcher = useProjectSwitcherItems(organisationId, projectId);
+  // The number hints are a visual label only, hidden from assistive technology.
+  const sections: MenuItem[] = useProjectSections(organisationId, projectId).map((section, index) => ({
     label: section.label,
     icon: section.icon,
     hint: String(index + 1),
-    current:
-      section.also === undefined
-        ? matchRoute({ to: section.to, params: { organisationId, projectId }, fuzzy: true }) !== false
-        : matchRoute({ to: section.to, params: { organisationId, projectId } }) !== false ||
-          matchRoute({ to: section.also, params: { organisationId, projectId } }) !== false,
+    current: section.current,
     renderLink: (props) => <Link to={section.to} params={{ organisationId, projectId }} {...props} />,
   }));
   // Every page in a Project belongs to one section.

@@ -27,13 +27,13 @@ async function fillAndSubmit(form: string, values: Record<string, string>, butto
   await user.click(scope.getByRole("button", { name: button }));
 }
 
-test("the Security page is in the Organisation navigation", async () => {
+test("the Security page is in the account menu", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeMfaApi();
   renderStudio("/");
 
   await screen.findByRole("heading", { name: "Projects" });
-  await openSection("Organisation sections", "Security");
+  await openSection("Account", "Security");
 
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
 });

@@ -3,11 +3,11 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 import type { MemberCredentials } from "../fixtures/auth";
 import { totpCode, totpStep } from "../fixtures/totp";
-import { openSection } from "../fixtures/navigation";
+import { openSection, sidebar } from "../fixtures/navigation";
 
 async function openSecurity(page: Page) {
   await page.goto("/");
-  await openSection(page, "Organisation sections", "Security");
+  await openSection(page, "Account", "Security");
   await expect(page.getByRole("heading", { name: "Security", level: 1 })).toBeVisible();
 }
 
@@ -52,7 +52,7 @@ test("a Member enrols in MFA, signs in with a code and a recovery code, then tur
   await page.getByLabel("Authentication code").fill(totpCode(secret, enrolStep + 1));
   await page.getByRole("button", { name: "Verify" }).click();
   await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-  await expect(page.getByText(member.organisationName)).toBeVisible();
+  await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
 
   // A recovery code works once instead of the app.
   await signOutAndEnterPassword(page, member);

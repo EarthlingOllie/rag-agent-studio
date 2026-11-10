@@ -1,6 +1,6 @@
 import { expect, test } from "../fixtures";
 import { newMember, signUp } from "../fixtures/auth";
-import { menuButton, openSection } from "../fixtures/navigation";
+import { menuButton, openSection, sidebar } from "../fixtures/navigation";
 
 test.describe("sign up, sign in, sign out", () => {
   test("a visitor signs up, sees the signed-in shell and signs out", async ({ page, member }) => {
@@ -15,7 +15,7 @@ test.describe("sign up, sign in, sign out", () => {
     await page.getByRole("button", { name: "Create account" }).click();
 
     await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(page.getByText(member.organisationName)).toBeVisible();
+    await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
     await expect(menuButton(page, "Account")).toHaveAccessibleName(`${member.name}, Account`);
     await openSection(page, "Organisation sections", "Settings");
     await expect(page.getByRole("heading", { name: "Organisation settings" })).toBeVisible();
@@ -51,14 +51,14 @@ test.describe("sign up, sign in, sign out", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(page.getByText(member.organisationName)).toBeVisible();
+    await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
   });
 
   test("the signedInPage fixture opens the Member's Organisation", async ({ signedInPage, member }) => {
     await signedInPage.goto("/");
 
     await expect(signedInPage.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(signedInPage.getByText(member.organisationName)).toBeVisible();
+    await expect(sidebar(signedInPage).getByText(member.organisationName)).toBeVisible();
   });
 });
 

@@ -49,6 +49,7 @@ export function Menu({
   align = "start",
   triggerProps,
   disabled = false,
+  wrapperClassName = "relative inline-flex",
 }: {
   /** The trigger's content. */
   label: ReactNode;
@@ -62,6 +63,8 @@ export function Menu({
   triggerProps?: { "aria-current"?: "page" };
   /** Disables the button, e.g. while the action an item started is under way. */
   disabled?: boolean;
+  /** The classes of the element holding the button and the menu; it must stay positioned (`relative`). */
+  wrapperClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -118,7 +121,7 @@ export function Menu({
   }
 
   return (
-    <span ref={wrapper} className="relative inline-flex">
+    <span ref={wrapper} className={wrapperClassName}>
       <button
         ref={trigger}
         type="button"
