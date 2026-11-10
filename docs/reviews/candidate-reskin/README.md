@@ -229,7 +229,7 @@ disappears while the form is open.
 | B | **Top tabs under the header** (Org tabs in the top bar; a Project tab row under the Project title; Agent view tabs under the Agent title) | Visible. Keeps full width. Small change. | Three tab rows on an Agent page. Org-level tabs crowd the top bar alongside the page's actions (Publish, History). |
 | C | **Keep the breadcrumb, add a ⌘K command palette** | Smallest change. | Discoverability stays poor. A palette helps power users, not first-time Members. |
 
-**Decision: A, a contextual left sidebar, with a plain (non-menu) breadcrumb in the top bar.** Chosen 2026-11-09. The draft ADR is [0014-sidebar-navigation.md](0014-sidebar-navigation.md).
+**Decision: A, a contextual left sidebar, with a plain (non-menu) breadcrumb in the top bar.** Chosen 2026-11-09. The ADR is [0014-sidebar-navigation.md](../../adr/0014-sidebar-navigation.md) (a draft here until 12-11 moved it to `docs/adr/`).
 
 - **Sidebar, top to bottom:**
   - The Organisation switcher (name + ▾; plain text for a Member of one).
@@ -254,7 +254,7 @@ disappears while the form is open.
   Documents) and show them as `kbd` hints in the sidebar.
 - **Docs and decisions:** this reverses design principle 3 ("Navigation lives in the top bar's
   breadcrumb") and the README's *Navigation: the breadcrumb* section. The draft
-  [ADR-0014](0014-sidebar-navigation.md) moves to `docs/adr/` with the ticket. Update the design
+  [ADR-0014](../../adr/0014-sidebar-navigation.md) moves to `docs/adr/` with the ticket. Update the design
   README (principle 3, the navigation table, *Navigation: the breadcrumb*) and GLOSSARY (Breadcrumb
   fold and Crumb switcher go; add Sidebar and Sidebar drawer).
 - **Tests:** the e2e navigation helpers (`fixtures/`) and `breadcrumb`/`shell` unit tests move from
