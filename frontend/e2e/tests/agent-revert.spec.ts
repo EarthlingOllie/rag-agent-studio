@@ -17,7 +17,7 @@ test.describe("Revert an Agent via its Live History", () => {
     await page.getByRole("button", { name: "New Agent" }).click();
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     await openAgentView(page, "Versions");
     await expect(page.getByText("Nothing has been Live yet. Publish the Draft to make v1 Live.")).toBeVisible();

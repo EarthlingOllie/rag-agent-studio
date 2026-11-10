@@ -13,17 +13,35 @@ export function PageHeader({
   description,
   actions,
   level = 1,
+  headingId,
+  beside,
 }: {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
   level?: 1 | 2;
+  /** The heading's id, for a region it names. */
+  headingId?: string;
+  /** What sits on the title's line after it: a switcher's ▾, badges. */
+  beside?: ReactNode;
 }) {
   const Heading = level === 1 ? "h1" : "h2";
+  const heading = (
+    <Heading id={headingId} className={level === 1 ? text.title : "text-2xl font-medium tracking-[-0.01em] text-ink"}>
+      {title}
+    </Heading>
+  );
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
-        <Heading className={level === 1 ? text.title : "text-2xl font-medium tracking-[-0.01em] text-ink"}>{title}</Heading>
+        {beside === undefined ? (
+          heading
+        ) : (
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            {heading}
+            {beside}
+          </div>
+        )}
         {description !== undefined && <p className="text-[15px] text-muted">{description}</p>}
       </div>
       {actions !== undefined && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

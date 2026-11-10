@@ -17,7 +17,7 @@ test.describe("Publish an Agent to its Live Version", () => {
     await page.getByRole("button", { name: "New Agent" }).click();
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
 
     // Never published: not live.
     await expect(page.getByText("Not live")).toBeVisible();

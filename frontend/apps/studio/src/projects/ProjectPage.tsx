@@ -1,8 +1,9 @@
-import { Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Outlet, useMatchRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { button, ConfirmDialog, EmptyState, field, Icon, Menu, type MenuItem, PageHeader, Skeleton, ToastProvider } from "../design";
+import { AGENT } from "../shell/projectNavigation";
 import { EditProjectDialog } from "./ProjectDetailsDialog";
 import {
   type Project,
@@ -208,13 +209,15 @@ function ProjectHeader({ project, organisationId, isOwner }: { project: Project;
 }
 
 /**
- * One Project: its page header, then the section the breadcrumb's section switcher has open.
- * The Project and section switchers in the top bar replace a tab row and an All Projects link.
+ * One Project: its page header, then the section the sidebar has open. On an Agent's pages the
+ * Agent's own header is the page's h1, so the Project's is left out (an archived Project still
+ * says so).
  */
 export function ProjectLayout() {
   const { organisationId, isOwner } = useOrganisationRole();
   const { projectId } = useProjectParams();
   const project = useProject(organisationId, projectId);
+  const onAgent = useMatchRoute()({ to: AGENT, params: { organisationId, projectId }, fuzzy: true }) !== false;
 
   if (project.isPending) return <Skeleton label="Loading the Project" />;
   if (project.isError) {
@@ -227,7 +230,11 @@ export function ProjectLayout() {
   return (
     <div className="space-y-6">
       <ToastProvider>
-        <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
+        {onAgent ? (
+          project.data.archived_at !== null && <ArchivedNotice project={project.data} organisationId={organisationId} isOwner={isOwner} />
+        ) : (
+          <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
+        )}
       </ToastProvider>
       <Outlet />
     </div>

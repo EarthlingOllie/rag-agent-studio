@@ -64,7 +64,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
   await test.step("3. The Agent editor and a Playground Trace", async () => {
     await openProjectTab(page, "Agents");
     await page.getByRole("link", { name: "HR helper" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
     await page.getByRole("button", { name: "Send" }).click();
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });

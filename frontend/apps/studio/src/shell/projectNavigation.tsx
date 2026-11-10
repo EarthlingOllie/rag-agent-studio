@@ -1,6 +1,7 @@
 import { Link, useMatchRoute } from "@tanstack/react-router";
 
 import type { IconName, MenuItem, MenuLinkProps } from "../design";
+import { useAgents } from "../projects/agents";
 import { useProjects } from "../projects/projects";
 
 export const ORGANISATION = "/organisations/$organisationId";
@@ -58,4 +59,40 @@ export function useProjectSwitcherItems(organisationId: string, projectId: strin
       renderLink: (props: MenuLinkProps) => <Link to={`${ORGANISATION}/projects`} params={{ organisationId }} {...props} />,
     },
   ];
+}
+
+export const AGENT = `${PROJECT}/agents/$agentId` as const;
+
+type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed` | `${typeof AGENT}/conversations`;
+
+/**
+ * An Agent's views, in order: the tabs under its header (and the breadcrumb's view switcher).
+ * Conversations also holds the Conversation opened from it.
+ */
+export const AGENT_VIEWS: { label: string; icon: IconName; to: AgentViewPath; fuzzy?: boolean }[] = [
+  { label: "Playground", icon: "send", to: AGENT },
+  { label: "Versions", icon: "history", to: `${AGENT}/versions` },
+  { label: "Embed & limits", icon: "external", to: `${AGENT}/embed` },
+  { label: "Conversations", icon: "conversations", to: `${AGENT}/conversations`, fuzzy: true },
+];
+
+/** An Agent's views, each with whether the Member is in it now. Every page inside an Agent is one of them. */
+export function useAgentViews(organisationId: string, projectId: string, agentId: string) {
+  const matchRoute = useMatchRoute();
+  return AGENT_VIEWS.map(({ fuzzy = false, ...view }) => ({
+    ...view,
+    current: matchRoute({ to: view.to, params: { organisationId, projectId, agentId }, fuzzy }) !== false,
+  }));
+}
+
+/** The Agent switcher's menu: the Project's open Agents, the open one marked; each opens its Playground. */
+export function useAgentSwitcherItems(organisationId: string, projectId: string, agentId: string): MenuItem[] {
+  const agents = useAgents(organisationId, projectId);
+  return (agents.data ?? []).map((candidate) => ({
+    id: candidate.id,
+    label: candidate.name,
+    icon: "agents" as const,
+    current: candidate.id === agentId,
+    renderLink: (props: MenuLinkProps) => <Link to={AGENT} params={{ organisationId, projectId, agentId: candidate.id }} {...props} />,
+  }));
 }

@@ -8,6 +8,9 @@ import type { Locator, Page } from "@playwright/test";
  *   landmark named "Studio"): lists of links, the current one marked `aria-current="page"`.
  * - "Organisations" and "Projects" are the sidebar's switchers: a button named
  *   "<label>, <menu>" ("HR handbook, Projects") that opens a menu.
+ * - "Agent views" is the tab row under an Agent's header (the navigation landmark named "Agent
+ *   views"): a list of links, the current one marked `aria-current="page"`, like a sidebar group.
+ * - "Agents" is the ▾ switcher on the Agent's name, in the page's main content, named the same way.
  * - The rest are top bar menus: breadcrumb switchers named the same way, and the account menu,
  *   "<Member>, Account".
  */
@@ -34,6 +37,16 @@ function isGroup(menu: NavigationMenu): menu is SidebarGroup {
   return SIDEBAR_GROUPS.includes(menu);
 }
 
+/** Lists of links: the sidebar's groups and an Agent's tab row. */
+type LinkList = SidebarGroup | "Agent views";
+
+/** The switchers in the page's main content rather than the sidebar or the top bar. */
+const MAIN_SWITCHERS: readonly NavigationMenu[] = ["Agents"];
+
+function isLinkList(menu: NavigationMenu): menu is LinkList {
+  return isGroup(menu) || menu === "Agent views";
+}
+
 function escape(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -47,9 +60,22 @@ function group(page: Page, menu: SidebarGroup) {
   return sidebar(page).getByRole("list", { name: menu, exact: true });
 }
 
+/** An Agent's tab row: the navigation landmark named "Agent views". */
+export function agentTabs(page: Page) {
+  return page.getByRole("navigation", { name: "Agent views", exact: true });
+}
+
+function linkList(page: Page, menu: LinkList) {
+  return menu === "Agent views" ? agentTabs(page) : group(page, menu);
+}
+
 /** The button that opens `menu`, whatever its current label: in the sidebar, or in the top bar. */
 export function menuButton(page: Page, menu: SwitcherMenu) {
-  const scope = SIDEBAR_SWITCHERS.includes(menu) ? sidebar(page) : page.getByRole("banner");
+  const scope = SIDEBAR_SWITCHERS.includes(menu)
+    ? sidebar(page)
+    : MAIN_SWITCHERS.includes(menu)
+      ? page.getByRole("main")
+      : page.getByRole("banner");
   return scope.getByRole("button", { name: new RegExp(`^(.+, )?${escape(menu)}$`) });
 }
 
@@ -68,8 +94,8 @@ function visibleNames(items: Locator): Promise<string[]> {
 
 /** Follows the sidebar link `item` in a group, or opens a menu and follows (or chooses) `item`, as a Member does. */
 export async function openSection(page: Page, menu: NavigationMenu, item: string) {
-  if (isGroup(menu)) {
-    await group(page, menu).getByRole("link", { name: item, exact: true }).click();
+  if (isLinkList(menu)) {
+    await linkList(page, menu).getByRole("link", { name: item, exact: true }).click();
     return;
   }
   await menuButton(page, menu).click();
@@ -81,8 +107,8 @@ export async function openSection(page: Page, menu: NavigationMenu, item: string
  * again). Role-based hiding is asserted as an item missing from this list.
  */
 export async function sectionNames(page: Page, menu: NavigationMenu): Promise<string[]> {
-  if (isGroup(menu)) {
-    const links = group(page, menu).getByRole("link");
+  if (isLinkList(menu)) {
+    const links = linkList(page, menu).getByRole("link");
     await links.first().waitFor();
     return visibleNames(links);
   }
@@ -99,9 +125,9 @@ export async function sectionNames(page: Page, menu: NavigationMenu): Promise<st
  * is), or a switcher's label.
  */
 export async function currentSection(page: Page, menu: NavigationMenu): Promise<string> {
-  if (isGroup(menu)) {
-    await group(page, menu).getByRole("link").first().waitFor();
-    const current = group(page, menu).locator("a[aria-current=page]");
+  if (isLinkList(menu)) {
+    await linkList(page, menu).getByRole("link").first().waitFor();
+    const current = linkList(page, menu).locator("a[aria-current=page]");
     return (await current.count()) === 0 ? "" : ((await visibleNames(current))[0] as string);
   }
   const name = (await menuButton(page, menu).getAttribute("aria-label")) ?? "";

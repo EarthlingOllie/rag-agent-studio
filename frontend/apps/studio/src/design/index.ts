@@ -23,6 +23,7 @@ export { Menu, type MenuItem, type MenuLinkProps } from "./Menu";
 export { Meter } from "./Meter";
 export { button, field, layout, notice, surface, table, text } from "./recipes";
 export { EmptyState, Skeleton } from "./states";
+export { TabRow, tabLink } from "./TabRow";
 export { TOAST_DURATION_MS, ToastProvider, useToast } from "./Toast";
 export { AppearanceToggle, Avatar, Brand, TopBar } from "./TopBar";
 export { Sidebar, SidebarDivider, SidebarGroup, SidebarLabel, sidebarLink, sidebarSwitcher, SidebarTitle } from "./Sidebar";

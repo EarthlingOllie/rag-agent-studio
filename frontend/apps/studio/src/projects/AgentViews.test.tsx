@@ -34,34 +34,95 @@ async function choose(menu: string, item: string) {
   await userEvent.click(screen.getByRole("menuitem", { name: item }));
 }
 
-// The breadcrumb
+// The Agent's header and its view tabs
 
-test("the Agent crumb lists the Project's open Agents and switches between them", async () => {
+const tabRow = () => screen.findByRole("navigation", { name: "Agent views" }, { timeout: 5000 });
+
+test("the Agent's views are a tab row under its header, the current one marked", async () => {
   setUp();
   renderStudio(agentPage(hrHelper.id));
 
-  expect(await menuButton("Agents")).toHaveAccessibleName("HR helper, Agents");
+  const tabs = await tabRow();
+  expect(
+    within(tabs)
+      .getAllByRole("link")
+      .map((tab) => [tab.textContent, tab.getAttribute("href"), tab.getAttribute("aria-current")]),
+  ).toEqual([
+    ["Playground", agentPage(hrHelper.id), "page"],
+    ["Versions", agentPage(hrHelper.id, "/versions"), null],
+    ["Embed & limits", agentPage(hrHelper.id, "/embed"), null],
+    ["Conversations", agentPage(hrHelper.id, "/conversations"), null],
+  ]);
+  // The tab row follows the Agent's header.
+  const header = screen.getByRole("region", { name: "HR helper" });
+  expect(header.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  await userEvent.click(within(tabs).getByRole("link", { name: "Versions" }));
+  expect(await screen.findByRole("heading", { name: "Live History" })).toBeInTheDocument();
+  expect(within(tabs).getByRole("link", { name: "Versions" })).toHaveAttribute("aria-current", "page");
+  expect(within(tabs).getByRole("link", { name: "Playground" })).not.toHaveAttribute("aria-current");
+  expect(screen.queryByRole("region", { name: "Playground" })).not.toBeInTheDocument();
+});
+
+test("the navigation helpers read the Agent's views from the tab row", async () => {
+  setUp();
+  renderStudio(agentPage(hrHelper.id));
+
+  expect(await sectionNames("Agent views")).toEqual(["Playground", "Versions", "Embed & limits", "Conversations"]);
+  expect(await currentSection("Agent views")).toBe("Playground");
+
+  await openSection("Agent views", "Versions");
+  expect(await screen.findByRole("heading", { name: "Live History" })).toBeInTheDocument();
+  expect(await currentSection("Agent views")).toBe("Versions");
+
+  await openSection("Agent views", "Embed & limits");
+  expect(await screen.findByRole("heading", { name: "Allowed Origins" })).toBeInTheDocument();
+  expect(await currentSection("Agent views")).toBe("Embed & limits");
+});
+
+test("the Agent's name is the page's one h1, without the Project's header", async () => {
+  setUp();
+  renderStudio(agentPage(hrHelper.id));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  expect(screen.queryByRole("heading", { name: hrProject.name })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "More Project actions" })).not.toBeInTheDocument();
+
+  await openSection("Agent views", "Versions");
+  expect(await screen.findByRole("heading", { name: "Live History" })).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { level: 1 }).map((heading) => heading.textContent)).toEqual(["HR helper"]);
+});
+
+test("the ▾ on the Agent's name lists the Project's open Agents and switches between them", async () => {
+  setUp();
+  renderStudio(agentPage(hrHelper.id));
+
+  const header = await screen.findByRole("region", { name: "HR helper" }, { timeout: 5000 });
+  const switcher = within(header).getByRole("button", { name: "HR helper, Agents" });
+  expect(switcher).toHaveAttribute("aria-haspopup", "menu");
+  expect(await menuButton("Agents")).toBe(switcher);
   expect(await currentSection("Agents")).toBe("HR helper");
   expect(await sectionNames("Agents")).toEqual(["HR helper", "Pay helper"]);
-  // The Agents section crumb is an ancestor now, not the current page; the sidebar keeps Agents current.
-  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByRole("button", { name: "Agents, Project sections" })).not.toHaveAttribute(
-    "aria-current",
-  );
+  // On an Agent the sidebar keeps Agents current.
   expect(await currentSection("Project sections")).toBe("Agents");
 
   await openSection("Agents", "Pay helper");
 
-  expect(await screen.findByRole("heading", { name: "Pay helper" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 1, name: "Pay helper" })).toBeInTheDocument();
   expect(await menuButton("Agents")).toHaveAccessibleName("Pay helper, Agents");
+  expect(await currentSection("Agent views")).toBe("Playground");
 });
 
-test("the view crumb switches between Playground, Versions, Embed & limits and Conversations", async () => {
+test("the breadcrumb's view switcher, until it becomes a plain path, offers the same views", async () => {
   setUp();
-  renderStudio(agentPage(hrHelper.id));
+  renderStudio(agentPage(hrHelper.id, "/embed"));
 
-  expect(await currentSection("Agent views")).toBe("Playground");
-  expect(await menuButton("Agent views")).toHaveAttribute("aria-current", "page");
-  await userEvent.click(await menuButton("Agent views"));
+  const views = await screen.findByRole("button", { name: "Embed & limits, Agent views" }, { timeout: 5000 });
+  expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toContainElement(views);
+  expect(views).toHaveAttribute("aria-current", "page");
+  await userEvent.click(views);
   const menu = screen.getByRole("menu", { name: "Agent views" });
   expect(
     within(menu)
@@ -73,19 +134,9 @@ test("the view crumb switches between Playground, Versions, Embed & limits and C
     ["Embed & limits", agentPage(hrHelper.id, "/embed")],
     ["Conversations", agentPage(hrHelper.id, "/conversations")],
   ]);
-  await userEvent.keyboard("{Escape}");
-
-  await openSection("Agent views", "Versions");
-  expect(await screen.findByRole("heading", { name: "Live History" })).toBeInTheDocument();
-  expect(await currentSection("Agent views")).toBe("Versions");
-  expect(screen.queryByRole("region", { name: "Playground" })).not.toBeInTheDocument();
-
-  await openSection("Agent views", "Embed & limits");
-  expect(await screen.findByRole("heading", { name: "Allowed Origins" })).toBeInTheDocument();
-  expect(await currentSection("Agent views")).toBe("Embed & limits");
 });
 
-test("when the Agents can't be listed, the Agent crumb still names the Agent", async () => {
+test("when the Agents can't be listed, the ▾ still names the Agent", async () => {
   setUp();
   server.use(http.get("*/api/organisations/:organisationId/projects/:projectId/agents", () => HttpResponse.json({}, { status: 500 })));
   renderStudio(agentPage(hrHelper.id));
@@ -94,12 +145,13 @@ test("when the Agents can't be listed, the Agent crumb still names the Agent", a
   expect(await currentSection("Agent views")).toBe("Playground");
 });
 
-test("an Agent that can't be found has no Agent crumbs", async () => {
+test("an Agent that can't be found has no tab row and no Agent switcher", async () => {
   setUp();
   renderStudio(agentPage("a9e00000-0000-4000-8000-0000000000ff"));
 
   expect(await screen.findByRole("heading", { name: "Agent not found" }, { timeout: 5000 })).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /, Agent views$/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("navigation", { name: "Agent views" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /, Agents$/ })).not.toBeInTheDocument();
 });
 
 // The top bar and the header

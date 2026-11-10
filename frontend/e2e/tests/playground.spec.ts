@@ -48,7 +48,7 @@ test.describe("Agent and Playground", () => {
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("HR helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     // The Draft saves itself once typing pauses.
     const saved = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/draft") && response.request().method() === "PUT");
     // The system prompt is a markdown editor (contenteditable), not a text box.
