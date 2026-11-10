@@ -7,7 +7,7 @@
 **Blocked by:**
 - [13-04: Search limit and Fallback Text](04-search-limit-fallback.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Each search query is checked for the Canary token before it runs; a match ends the reply as a canary leak (Fallback Text and a Guardrail outcome) and the query isn't run
 - [ ] Chunks returned by Knowledge Search are spotlighted and handled by Flagged Chunk mode exactly as in Automatic mode
