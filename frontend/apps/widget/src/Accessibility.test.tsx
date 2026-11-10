@@ -234,3 +234,23 @@ test("the Conversation log holds a list of Messages, so each is announced as a l
   const list = within(log).getByRole("list");
   expect(within(list).getByRole("listitem", { name: "HR helper's greeting" })).toHaveTextContent("Hi!");
 });
+
+test("the searching status override is what the reply shows and what is announced", async () => {
+  const user = userEvent.setup();
+  const reply = controlledReply();
+  const ui_text = { ...boot.ui_text, searching_status: "Hana is looking that up…" };
+  render(<Widget boot={{ ...boot, ui_text }} launcher="inline" />);
+  const announcements = screen.getByRole("status", { name: "Announcements" });
+
+  await user.type(screen.getByLabelText("Message"), "How much leave?{Enter}");
+  reply.send("search", {});
+
+  const answer = await within(screen.getByRole("log", { name: "Conversation" })).findByRole("listitem", { name: "HR helper" });
+  expect(await within(answer).findByText("Hana is looking that up…")).toBeInTheDocument();
+  expect(await within(announcements).findByText("Hana is looking that up…")).toBeInTheDocument();
+  expect(screen.queryByText("Searching the knowledge base…")).not.toBeInTheDocument();
+  reply.send("token", { text: "Twenty-five days." });
+  reply.send("done", { message_id: "m1" });
+  reply.end();
+  expect(await within(announcements).findByText("HR helper: Twenty-five days.")).toBeInTheDocument();
+});
