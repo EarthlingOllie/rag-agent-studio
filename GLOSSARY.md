@@ -95,6 +95,10 @@ _Avoid_: Invitation code, join request
 The link that accepts an Invite. It works once and expires; a person without an account creates one from it and joins in one step, and an existing Member just gains the Membership. An Owner can get a new link for a pending Invite, which stops the old one working.
 _Avoid_: Join link, magic link
 
+**Invite dialog**:
+The one place an Owner invites someone: Invite someone, the primary action in the Members header, opens it with Email, Role and "Email the invite link". A refusal (an invalid email, an existing Member, an Invite already pending) shows inside it and keeps what was typed; Cancel and Escape close it without inviting. On success it closes, a toast confirms the Invite, and the Invite Link to copy (with its expiry) shows on the page above Pending invites, as it does after New link on a pending Invite.
+_Avoid_: Invite form, invite panel
+
 **Lockout**:
 A temporary block on signing in, after too many failed attempts for one account or from one IP address. Before it, each further attempt must wait a little longer. A Lockout of a Member's account is recorded as an Audit Event in each of their Organisations.
 _Avoid_: Ban, suspension, block

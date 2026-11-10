@@ -92,6 +92,7 @@ test.describe("provider credentials", () => {
     const editor = newMember({ name: "Grace Editor" });
     await openSection(owner, "Organisation settings", "Members");
     await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+    await owner.getByRole("button", { name: "Invite someone" }).click();
     const invite = owner.getByRole("form", { name: "Invite someone" });
     await invite.getByLabel("Email", { exact: true }).fill(editor.email);
     await invite.getByLabel("Role").selectOption("Editor");
