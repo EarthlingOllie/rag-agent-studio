@@ -409,6 +409,14 @@ _Avoid_: Auto-publish
 Retrieval that runs semantic (vector) search and keyword (full-text) search over a Project's Chunks and fuses their rankings with weighted reciprocal rank fusion, so exact terms such as product codes are found as well as similar meanings.
 _Avoid_: Vector search (for the whole), combined search
 
+**Retrieval Mode**:
+How an Agent gets Chunks for a reply, chosen in its AgentConfig and so fixed per Version. **Automatic** runs one Hybrid search on the Visitor input before the model is asked. **Agentic** gives the model Knowledge Search and lets it decide whether, how often and with what query to search. Agentic answers more accurately; Automatic costs less. New Agents start Agentic.
+_Avoid_: Basic RAG, agentic RAG, RAG mode, naive RAG
+
+**Knowledge Search**:
+The one tool an Agent in Agentic Retrieval Mode has: a read-only Hybrid search of its Project's Knowledge Base for a query the model writes, with every other setting (Tags, Minimum Score, Reranker, Top-k) taken from the Agent's Retrieval settings. It changes nothing outside the Conversation (ADR-0015).
+_Avoid_: Search tool, retrieval tool, RAG tool
+
 **Hybrid weighting**:
 The share of the fused score an Agent gives semantic search, from 0 (keyword search alone) to 1 (semantic search alone); keyword search has the rest.
 _Avoid_: Alpha, semantic ratio
