@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The runtime assigns Chunk labels from a per-reply record of Chunks given to the model, in the order they were first given
 - [ ] Citations (structured output and label parsing) resolve through the same record
