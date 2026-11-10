@@ -494,6 +494,9 @@ function AgentSwitcher({ agent, organisationId }: { agent: Agent; organisationId
       triggerLabel={`${agent.name}, Agents`}
       menuLabel="Agents"
       triggerClassName={button.iconBare}
+      // Not positioned itself: the menu drops from the start of the title's line, so on a phone
+      // it stays on screen however long the name is.
+      wrapperClassName="inline-flex"
       items={items}
     />
   );

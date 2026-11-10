@@ -22,7 +22,10 @@ export function PageHeader({
   level?: 1 | 2;
   /** The heading's id, for a region it names. */
   headingId?: string;
-  /** What sits on the title's line after it: a switcher's ▾, badges. */
+  /**
+   * What sits on the title's line after it: a switcher's ▾, badges. The line is positioned, so a
+   * menu opened from it can drop under the title rather than past the screen's edge.
+   */
   beside?: ReactNode;
 }) {
   const Heading = level === 1 ? "h1" : "h2";
@@ -37,7 +40,7 @@ export function PageHeader({
         {beside === undefined ? (
           heading
         ) : (
-          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+          <div className="relative flex min-w-0 flex-wrap items-center gap-2.5">
             {heading}
             {beside}
           </div>
