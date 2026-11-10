@@ -152,3 +152,21 @@ These tickets are worked on the `candidate-reskin` branch: each ticket branches 
 | `11-11` | [Organisation settings](./11-studio-design/11-organisation-settings.md) | 11-04 |
 | `11-12` | [Signed-out pages, profile, security and status](./11-studio-design/12-signed-out-account-pages.md) | 11-04 |
 | `11-13` | [Polish: narrow screens, accessibility and screenshots](./11-studio-design/13-polish.md) | 11-06, 11-07, 11-08, 11-09, 11-10, 11-11, 11-12 |
+
+## 12: Reskin fixes and sidebar navigation
+
+From the [candidate-reskin design review](../reviews/candidate-reskin/README.md). Like section 11, these tickets are worked on the `candidate-reskin` branch: each ticket branches from it and merges back into it.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `12-01` | [Dropdown chevron token and base rule](./12-reskin-fixes-sidebar-navigation/01-select-chevron.md) | none |
+| `12-02` | [Project details dialog (New Project and Edit details)](./12-reskin-fixes-sidebar-navigation/02-project-details-dialog.md) | none |
+| `12-03` | [Projects list reskin](./12-reskin-fixes-sidebar-navigation/03-projects-list-reskin.md) | 12-02 |
+| `12-04` | [Organisation cost reskin](./12-reskin-fixes-sidebar-navigation/04-organisation-cost-reskin.md) | none |
+| `12-05` | [Invite dialog](./12-reskin-fixes-sidebar-navigation/05-invite-dialog.md) | none |
+| `12-06` | [Project Settings reskin and Embedding Model dialog](./12-reskin-fixes-sidebar-navigation/06-project-settings-reskin.md) | none |
+| `12-07` | [Remove the legacy BUTTON / INPUT strings](./12-reskin-fixes-sidebar-navigation/07-remove-legacy-classes.md) | 12-03, 12-04, 12-06 |
+| `12-08` | [Sidebar navigation on desktop](./12-reskin-fixes-sidebar-navigation/08-sidebar.md) | none |
+| `12-09` | [Sidebar drawer on narrow screens](./12-reskin-fixes-sidebar-navigation/09-sidebar-drawer.md) | 12-08 |
+| `12-10` | [Agent view tabs](./12-reskin-fixes-sidebar-navigation/10-agent-view-tabs.md) | 12-08 |
+| `12-11` | [Plain breadcrumb, account menu cleanup and docs](./12-reskin-fixes-sidebar-navigation/11-plain-breadcrumb-docs.md) | 12-08, 12-09, 12-10 |
