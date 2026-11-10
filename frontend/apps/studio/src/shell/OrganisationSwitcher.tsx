@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 
 import { type Session, useSwitchOrganisation } from "../auth/session";
-import { CrumbSwitcher, CrumbText, Icon, Menu, type MenuItem, sidebarSwitcher, SidebarTitle } from "../design";
+import { Icon, Menu, type MenuItem, sidebarSwitcher, SidebarTitle } from "../design";
 
 /**
  * The Organisation switcher's menu: the Member's Organisations, the open one marked. Switching is
@@ -48,26 +48,7 @@ function SwitchFailed() {
   );
 }
 
-/** The breadcrumb's first crumb: the open Organisation's name, or, for a Member of several, a switcher between them. */
-export function OrganisationCrumb({ session, organisationId }: { session: Session; organisationId: string }) {
-  const switcher = useOrganisationSwitcher(session, organisationId);
-  if (!switcher.switches) {
-    return switcher.current ? <CrumbText>{switcher.current.name}</CrumbText> : null;
-  }
-  return (
-    <span className="flex items-center gap-2">
-      <CrumbSwitcher
-        label={switcher.label}
-        menuLabel="Organisations"
-        disabled={switcher.pending}
-        items={switcher.items}
-      />
-      {switcher.failed && <SwitchFailed />}
-    </span>
-  );
-}
-
-/** The top of the sidebar: the same switcher as a full-width row, or the one Organisation's name as plain text. */
+/** The top of the sidebar: a switcher between the Member's Organisations, or the one Organisation's name as plain text. */
 export function SidebarOrganisation({ session, organisationId }: { session: Session; organisationId: string }) {
   const switcher = useOrganisationSwitcher(session, organisationId);
   if (!switcher.switches) {

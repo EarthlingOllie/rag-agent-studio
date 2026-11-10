@@ -9,11 +9,12 @@ import userEvent from "@testing-library/user-event";
  *   landmark named "Studio"): lists of links, the current one marked `aria-current="page"`.
  * - "Organisations" and "Projects" are the sidebar's switchers: a button named
  *   "<label>, <menu>" ("HR handbook, Projects") that opens a menu.
- * - "Agent views" is the tab row under an Agent's header (the navigation landmark named "Agent
- *   views"): a list of links, the current one marked `aria-current="page"`, like a sidebar group.
+ * - "Agent views" and "Organisation settings" are tab rows under a page header (navigation
+ *   landmarks of those names): lists of links, the current one marked `aria-current="page"`, like
+ *   a sidebar group.
  * - "Agents" is the ▾ switcher on the Agent's name, in the page's main content, named the same way.
- * - The rest are top bar menus: breadcrumb switchers named the same way, and the account menu,
- *   "<Member>, Account".
+ * - "Account" is the top bar's account menu, "<Member>, Account". The breadcrumb has no menus: it
+ *   is plain links (`breadcrumb`).
  */
 export type NavigationMenu =
   | "Organisations"
@@ -29,7 +30,7 @@ export type NavigationMenu =
 type SidebarGroup = "Organisation sections" | "Project sections";
 
 /** The navigation menus that open from a button. */
-export type SwitcherMenu = Exclude<NavigationMenu, SidebarGroup>;
+export type SwitcherMenu = Exclude<NavigationMenu, SidebarGroup | "Agent views" | "Organisation settings">;
 
 const SIDEBAR_GROUPS: readonly NavigationMenu[] = ["Organisation sections", "Project sections"];
 const SIDEBAR_SWITCHERS: readonly NavigationMenu[] = ["Organisations", "Projects"];
@@ -38,19 +39,28 @@ function isGroup(menu: NavigationMenu): menu is SidebarGroup {
   return SIDEBAR_GROUPS.includes(menu);
 }
 
-/** Lists of links: the sidebar's groups and an Agent's tab row. */
-type LinkList = SidebarGroup | "Agent views";
+/** Tab rows under a page header. */
+type TabRowMenu = "Agent views" | "Organisation settings";
+
+const TAB_ROWS: readonly NavigationMenu[] = ["Agent views", "Organisation settings"];
+
+function isTabRow(menu: NavigationMenu): menu is TabRowMenu {
+  return TAB_ROWS.includes(menu);
+}
+
+/** Lists of links: the sidebar's groups and the tab rows. */
+type LinkList = SidebarGroup | TabRowMenu;
 
 /** The switchers in the page's main content rather than the sidebar or the top bar. */
 const MAIN_SWITCHERS: readonly NavigationMenu[] = ["Agents"];
 
 function isLinkList(menu: NavigationMenu): menu is LinkList {
-  return isGroup(menu) || menu === "Agent views";
+  return isGroup(menu) || isTabRow(menu);
 }
 
 type User = { click: (element: Element) => Promise<unknown>; keyboard: (text: string) => Promise<unknown> };
 
-/** An item's visible name, without what is hidden from assistive technology (a number hint, an icon). */
+/** An item's visible name, without what is hidden from assistive technology (an icon). */
 function itemName(item: Element): string {
   const copy = item.cloneNode(true) as Element;
   copy.querySelectorAll("[aria-hidden=true]").forEach((hidden) => {
@@ -84,13 +94,18 @@ async function group(menu: SidebarGroup) {
   return within(await sidebar()).findByRole("list", { name: menu });
 }
 
+/** A tab row under a page header: the navigation landmark named `menu`. */
+function tabRow(menu: TabRowMenu) {
+  return screen.findByRole("navigation", { name: menu });
+}
+
 /** An Agent's tab row: the navigation landmark named "Agent views". */
 export function agentTabs() {
-  return screen.findByRole("navigation", { name: "Agent views" });
+  return tabRow("Agent views");
 }
 
 async function linkList(menu: LinkList) {
-  return menu === "Agent views" ? agentTabs() : group(menu);
+  return isTabRow(menu) ? tabRow(menu) : group(menu);
 }
 
 async function openMenu(menu: SwitcherMenu, user: User) {
@@ -136,10 +151,21 @@ export async function currentSection(menu: NavigationMenu): Promise<string> {
 /** Whether `menu` is on screen at all, e.g. not on a page that was not found. */
 export function hasMenu(menu: NavigationMenu): boolean {
   const nav = screen.queryByRole("navigation", { name: "Studio" });
-  if (menu === "Agent views") return screen.queryByRole("navigation", { name: "Agent views" }) !== null;
+  if (isTabRow(menu)) return screen.queryByRole("navigation", { name: menu }) !== null;
   if (isGroup(menu)) return nav !== null && within(nav).queryByRole("list", { name: menu }) !== null;
   const scope = SIDEBAR_SWITCHERS.includes(menu) ? nav : MAIN_SWITCHERS.includes(menu) ? screen.queryByRole("main") : document.body;
   return scope !== null && within(scope).queryByRole("button", { name: buttonName(menu) }) !== null;
+}
+
+/**
+ * The top bar's breadcrumb, once it has crumbs: their names in order, and the one marked
+ * `aria-current="page"` ("" when none is).
+ */
+export async function breadcrumb(): Promise<{ crumbs: string[]; current: string }> {
+  const nav = within(await screen.findByRole("banner")).getByRole("navigation", { name: "Breadcrumb" });
+  const links = await within(nav).findAllByRole("link");
+  const current = links.find((link) => link.getAttribute("aria-current") === "page");
+  return { crumbs: links.map(itemName), current: current === undefined ? "" : itemName(current) };
 }
 
 /** The top bar's "Open navigation" button, which opens the sidebar as a drawer on a narrow screen. */

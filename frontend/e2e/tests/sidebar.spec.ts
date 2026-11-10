@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures";
-import { currentSection, navigationButton, openDrawer, openSection, sectionNames, sidebar } from "../fixtures/navigation";
+import { breadcrumb, currentSection, navigationButton, openDrawer, openSection, sectionNames, sidebar } from "../fixtures/navigation";
 
 test.describe("Sidebar", () => {
   test("an Owner moves around the Organisation and a Project from the sidebar, which marks where they are", async ({
@@ -110,5 +110,46 @@ test.describe("Sidebar", () => {
     const reopened = await openDrawer(page);
     await expect(reopened.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("aria-current", "page");
     await expect(reopened.getByRole("link", { name: "Settings", exact: true })).toBeFocused();
+  });
+
+  test("the breadcrumb is a plain path of links, and on a phone shows only its last two crumbs on one row", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+    const me = (await (await page.request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
+    const organisationId = me.organisations[0]?.id ?? "";
+    const organisation = `/api/organisations/${organisationId}`;
+    const project = await page.request.post(`${organisation}/projects`, { data: { name: "Northwind HR" } });
+    const { id: projectId } = (await project.json()) as { id: string };
+    const agent = await page.request.post(`${organisation}/projects/${projectId}/agents`, { data: { name: "HR helper" } });
+    const { id: agentId } = (await agent.json()) as { id: string };
+
+    await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}/versions`);
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible();
+    expect(await breadcrumb(page)).toEqual({ crumbs: ["Northwind HR", "Agents", "HR helper"], current: "HR helper" });
+    const crumbs = page.getByRole("banner").getByRole("navigation", { name: "Breadcrumb" });
+    await expect(crumbs.getByRole("button")).toHaveCount(0);
+
+    // Profile, Security and Sign out are in the account menu only.
+    expect(await sectionNames(page, "Account")).toEqual(["Profile", "Security", "Sign out"]);
+    for (const name of ["Profile", "Security"]) await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0);
+
+    // A crumb leads back up a level.
+    await crumbs.getByRole("link", { name: "Agents", exact: true }).click();
+    await expect(page.getByRole("table", { name: "Agents" })).toBeVisible();
+    expect(await breadcrumb(page)).toEqual({ crumbs: ["Northwind HR", "Agents"], current: "Agents" });
+
+    // On a phone: the last two crumbs, the top bar one row high, and no sideways scroll.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible();
+    expect(await breadcrumb(page)).toEqual({ crumbs: ["Agents", "HR helper"], current: "HR helper" });
+    await expect(page.getByRole("button", { name: "Show the whole path" })).toHaveCount(0);
+    const bar = await page.getByRole("banner").boundingBox();
+    expect(bar?.height ?? 0).toBeLessThanOrEqual(64);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 });

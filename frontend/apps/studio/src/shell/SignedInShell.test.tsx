@@ -1,18 +1,19 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { currentSection, hasMenu, menuButton, openSection, sectionNames } from "../test/navigation";
+import { breadcrumb, currentSection, menuButton, openSection, sectionNames } from "../test/navigation";
 import { fakeInvitesApi } from "../test/invites";
 import { fakeMembersApi } from "../test/members";
-import { fakeProjectsApi, hrProject, oldProject, salesProject } from "../test/projects";
+import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
+const projectPage = (projectId: string, section = "") => `/organisations/${organisationId}/projects/${projectId}${section}`;
 
-/** The top bar's breadcrumb. Its switchers stay until the breadcrumb becomes plain links; the sidebar is the navigation. */
+/** The top bar's breadcrumb: plain links that say where the Member is; the sidebar is the navigation. */
 const breadcrumbNav = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
 
 test("a visitor who is not signed in is sent to sign in", async () => {
@@ -40,210 +41,36 @@ test("one top bar holds the mark, the breadcrumb, the Appearance toggle and the 
   expect(screen.queryByRole("navigation", { name: "Organisation" })).not.toBeInTheDocument();
 });
 
-test("the breadcrumb's section switcher still offers the Organisation's sections as links and opens them", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  renderStudio("/");
-  expect(await screen.findByText(/No Projects yet/)).toBeInTheDocument();
-
-  await userEvent.click(breadcrumbNav().getByRole("button", { name: "Projects, Organisation sections" }));
-  const sections = within(screen.getByRole("menu", { name: "Organisation sections" }));
-  expect(sections.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Projects", "Cost", "Settings", "Security", "Profile"]);
-  expect(sections.getByRole("menuitem", { name: "Settings" })).toHaveAttribute(
-    "href",
-    `/organisations/${organisationId}/settings`,
-  );
-  expect(sections.getByRole("menuitem", { name: "Projects" })).toHaveAttribute("aria-current", "page");
-  await userEvent.click(sections.getByRole("menuitem", { name: "Settings" }));
-
-  expect(await screen.findByRole("heading", { name: "Organisation settings" })).toBeInTheDocument();
-});
-
-test("the breadcrumb follows the route and marks the current page", async () => {
+test("the breadcrumb is a plain path of links with no menus; the current crumb is the page", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   renderStudio(`/organisations/${organisationId}/projects`);
-  const breadcrumb = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(breadcrumb().getByText("Analytical Engines")).not.toHaveAttribute("aria-current");
-  expect(breadcrumb().getByRole("button", { name: "Projects, Organisation sections" })).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb()).toEqual({ crumbs: ["Projects"], current: "Projects" });
+  expect(breadcrumbNav().getByRole("link", { name: "Projects" })).toHaveAttribute("href", `/organisations/${organisationId}/projects`);
+  // No crumb opens a menu.
+  expect(breadcrumbNav().queryAllByRole("button")).toEqual([]);
 
   await userEvent.click(await screen.findByRole("link", { name: "HR handbook" }));
 
-  expect(await breadcrumb().findByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
-  expect(breadcrumb().getByRole("button", { name: "HR handbook, Projects" })).not.toHaveAttribute("aria-current");
-  expect(breadcrumb().getByRole("button", { name: "Projects, Organisation sections" })).not.toHaveAttribute("aria-current");
-
-  await openSection("Account", "Security");
-  expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
-  expect(breadcrumb().getByRole("button", { name: "Security, Organisation sections" })).toHaveAttribute("aria-current", "page");
-});
-
-test("Organisation settings are a Settings switcher crumb: the area is the current crumb, its siblings are links", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeMembersApi();
-  fakeInvitesApi();
-  renderStudio(`/organisations/${organisationId}/settings`);
-  const breadcrumb = () => within(screen.getByRole("navigation", { name: "Breadcrumb" }));
-
-  expect(await screen.findByRole("heading", { name: "Organisation settings", level: 1 })).toBeInTheDocument();
-  expect(screen.queryByRole("navigation", { name: "Organisation settings" })).not.toBeInTheDocument();
-  expect(breadcrumb().getByRole("button", { name: "Settings, Organisation sections" })).not.toHaveAttribute("aria-current");
-  expect(breadcrumb().getByRole("button", { name: "General, Organisation settings" })).toHaveAttribute("aria-current", "page");
-
-  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
-  await userEvent.click(await menuButton("Organisation settings"));
-  const menu = within(screen.getByRole("menu", { name: "Organisation settings" }));
-  expect(menu.getByRole("menuitem", { name: "Members" })).toHaveAttribute("href", `/organisations/${organisationId}/settings/members`);
-  expect(menu.getByRole("menuitem", { name: "General" })).toHaveAttribute("aria-current", "page");
-  await userEvent.keyboard("{Escape}");
-
-  await openSection("Organisation settings", "Members");
-
-  expect(await screen.findByRole("table", { name: "Members" })).toBeInTheDocument();
-  expect(await currentSection("Organisation settings")).toBe("Members");
-  expect(breadcrumb().getByRole("button", { name: "Members, Organisation settings" })).toHaveAttribute("aria-current", "page");
-});
-
-test("an Editor's Settings crumb leaves out Members and Audit", async () => {
-  fakeAuthApi({
-    signedInAs: { ...adaSession, organisations: adaSession.organisations.map((o) => ({ ...o, role: "editor" as const })) },
-  });
-  renderStudio(`/organisations/${organisationId}/settings/theme`);
-
-  expect(await currentSection("Organisation settings")).toBe("Theme");
-  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme"]);
-});
-
-test("an unknown settings address says so in the Settings crumb, which still offers every area", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  renderStudio(`/organisations/${organisationId}/settings/bogus`);
-
-  expect(await currentSection("Organisation settings")).toBe("Not found");
-  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
-});
-
-const projectPage = (projectId: string, section = "") => `/organisations/${organisationId}/projects/${projectId}${section}`;
-
-test("inside a Project the breadcrumb is the Organisation's sections, a Project switcher and a section switcher", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi();
-  renderStudio(projectPage(hrProject.id));
-  const breadcrumb = within(await screen.findByRole("navigation", { name: "Breadcrumb" }));
-
-  expect(await breadcrumb.findByRole("button", { name: "HR handbook, Projects" })).toBeInTheDocument();
-  expect(breadcrumb.getAllByRole("listitem").map((crumb) => crumb.textContent)).toEqual([
-    "Analytical Engines",
-    // The narrow screen's "…" (hidden on wider ones), which folds the middle crumbs.
-    "/…",
-    "/Projects",
-    "/HR handbook",
-    "/Documents",
-  ]);
-  // The Organisation's sections stay one click away from any Project, in the sidebar.
-  expect(await sectionNames("Organisation sections")).toEqual(["Projects", "Cost", "Settings"]);
-});
-
-test("on a narrow screen the middle crumbs fold into a … menu; the Organisation and the current page stay", async () => {
-  const user = userEvent.setup();
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi();
-  renderStudio(projectPage(hrProject.id, "/agents"));
-  const breadcrumb = within(await screen.findByRole("navigation", { name: "Breadcrumb" }));
-  await breadcrumb.findByRole("button", { name: "HR handbook, Projects" });
-
-  // The middle crumbs are hidden below the md breakpoint (CSS); the … button stands in for them.
-  const more = breadcrumb.getByRole("button", { name: "Show the whole path" });
-  expect(more).toHaveAttribute("aria-expanded", "false");
-  expect(more).toHaveTextContent("…");
-  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
-
-  await user.click(more);
-  expect(more).toHaveAttribute("aria-expanded", "true");
-  const path = within(screen.getByRole("list", { name: "The whole path" }));
-  // Only the middle: the Organisation's sections and the Project, not the Organisation or the page.
-  expect(path.getAllByRole("button").map((crumb) => crumb.getAttribute("aria-label"))).toEqual([
-    "Projects, Organisation sections",
-    "HR handbook, Projects",
-  ]);
-  // Escape closes it and returns focus to the … button.
-  await user.keyboard("{Escape}");
-  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
-  expect(more).toHaveFocus();
-
-  // Its crumbs are the same switchers: following one closes the path.
-  await user.keyboard("{Enter}");
-  const opened = within(screen.getByRole("list", { name: "The whole path" }));
-  await user.click(opened.getByRole("button", { name: "HR handbook, Projects" }));
-  // Escape inside a switcher closes only the switcher.
-  await user.keyboard("{Escape}");
-  expect(screen.getByRole("list", { name: "The whole path" })).toBeInTheDocument();
-  await user.click(opened.getByRole("button", { name: "HR handbook, Projects" }));
-  await user.click(screen.getByRole("menuitem", { name: "Sales enablement" }));
-  expect(await screen.findByRole("heading", { level: 1, name: "Sales enablement" })).toBeInTheDocument();
-  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
-
-  // A press outside closes it too.
-  await user.click(more);
-  expect(screen.getByRole("list", { name: "The whole path" })).toBeInTheDocument();
-  await user.click(screen.getByRole("heading", { level: 1, name: "Sales enablement" }));
-  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
-});
-
-test("a breadcrumb of two crumbs has nothing to fold", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  renderStudio("/");
-  expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(breadcrumbNav().getByRole("button", { name: "Projects, Organisation sections" })).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Show the whole path" })).not.toBeInTheDocument();
-});
-
-test("the breadcrumb's Project switcher lists the open Projects as links, plus All Projects", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi();
-  renderStudio(projectPage(hrProject.id, "/agents"));
-  const crumb = await within(await screen.findByRole("navigation", { name: "Breadcrumb" })).findByRole("button", { name: "HR handbook, Projects" });
-
-  await userEvent.click(crumb);
-  const projects = within(screen.getByRole("menu", { name: "Projects" }));
-  // Archived Projects are not offered: they are opened from the Projects list.
-  expect(projects.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["HR handbook", "Sales enablement", "All Projects"]);
-  expect(projects.getByRole("menuitem", { name: "HR handbook" })).toHaveAttribute("aria-current", "page");
-  expect(projects.getByRole("menuitem", { name: "Sales enablement" })).toHaveAttribute("href", projectPage(salesProject.id));
-  expect(projects.getByRole("menuitem", { name: "Sales enablement" })).not.toHaveAttribute("aria-current");
-  expect(projects.getByRole("menuitem", { name: "All Projects" })).toHaveAttribute("href", `/organisations/${organisationId}/projects`);
-  await userEvent.click(projects.getByRole("menuitem", { name: "Sales enablement" }));
-
-  expect(await screen.findByRole("heading", { level: 1, name: "Sales enablement" })).toBeInTheDocument();
-  expect(breadcrumbNav().getByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
-});
-
-test("the section switcher lists the Project's sections with icons and number hints, as links", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi();
-  renderStudio(projectPage(hrProject.id));
-  await screen.findByRole("button", { name: "Documents, Project sections" });
-
-  await userEvent.click(breadcrumbNav().getByRole("button", { name: "Documents, Project sections" }));
-  const menu = within(screen.getByRole("menu", { name: "Project sections" }));
-  const sections = ["Documents", "Instructions", "Agents", "Conversations", "Analytics", "Settings"];
-  const paths = ["", "/instructions", "/agents", "/conversations", "/analytics", "/settings"];
-  sections.forEach((section, index) => {
-    const item = menu.getByRole("menuitem", { name: section });
-    expect(item).toHaveAttribute("href", projectPage(hrProject.id, paths[index]));
-    // The number hint is a visual label: it is not part of the item's name.
-    expect(within(item).getByText(String(index + 1))).toHaveAttribute("aria-hidden", "true");
-    expect(item.querySelector("svg")).not.toBeNull();
-  });
-  expect(menu.getByRole("menuitem", { name: "Documents" })).toHaveAttribute("aria-current", "page");
-  await userEvent.keyboard("{Escape}");
+  expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents"], current: "Documents" });
+  expect(breadcrumbNav().getByRole("link", { name: "HR handbook" })).toHaveAttribute("href", projectPage(hrProject.id));
+  expect(breadcrumbNav().getByRole("link", { name: "HR handbook" })).not.toHaveAttribute("aria-current");
+  expect(breadcrumbNav().queryAllByRole("button")).toEqual([]);
 
   await openSection("Project sections", "Conversations");
   expect(await screen.findByRole("heading", { level: 2, name: "Conversations" })).toBeInTheDocument();
-  expect(await currentSection("Project sections")).toBe("Conversations");
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Conversations"], current: "Conversations" });
+  expect(breadcrumbNav().getByRole("link", { name: "Conversations" })).toHaveAttribute("href", projectPage(hrProject.id, "/conversations"));
+
+  // Going back up a level is one click on a crumb.
+  await userEvent.click(breadcrumbNav().getByRole("link", { name: "HR handbook" }));
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents"], current: "Documents" });
 });
 
-test("a section's inner pages keep their section: a Document is under Documents, and its own crumb is current", async () => {
+test("there is no fold: a long path keeps every crumb as a link, and nothing stands in for them", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   server.use(
@@ -253,57 +80,107 @@ test("a section's inner pages keep their section: a Document is under Documents,
   );
   renderStudio(projectPage(hrProject.id, "/documents/0e8f6a52-7d2b-4c8e-9f1a-3b5c7d9e1f20"));
 
-  expect(await currentSection("Project sections")).toBe("Documents");
-  expect(screen.getByRole("button", { name: "Documents, Project sections" })).not.toHaveAttribute("aria-current");
   // A Document that can't be loaded is still named by its crumb, as "Document".
-  expect(within(screen.getByRole("banner")).getByText("Document")).toHaveAttribute("aria-current", "page");
+  await waitFor(async () => {
+    expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents", "Document"], current: "Document" });
+  });
+  expect(breadcrumbNav().getByRole("link", { name: "Documents" })).toHaveAttribute("href", projectPage(hrProject.id));
+  expect(breadcrumbNav().getByRole("link", { name: "Documents" })).not.toHaveAttribute("aria-current");
+  expect(screen.queryByRole("button", { name: "Show the whole path" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "The whole path" })).not.toBeInTheDocument();
 });
 
-test("an archived Project still has its switchers; the Project switcher offers the open Projects", async () => {
+test("Organisation settings' areas are a tab row under its header; the breadcrumb is Settings, then the area", async () => {
   fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi();
-  renderStudio(projectPage(oldProject.id, "/settings"));
+  fakeMembersApi();
+  fakeInvitesApi();
+  renderStudio(`/organisations/${organisationId}/settings`);
 
-  expect(await screen.findByRole("button", { name: "Settings, Project sections" })).toHaveAttribute("aria-current", "page");
-  expect(await sectionNames("Projects")).toEqual(["HR handbook", "Sales enablement", "All Projects"]);
+  expect(await screen.findByRole("heading", { name: "Organisation settings", level: 1 })).toBeInTheDocument();
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
+  expect(await currentSection("Organisation settings")).toBe("General");
+  const tabs = within(screen.getByRole("navigation", { name: "Organisation settings" }));
+  expect(tabs.getByRole("link", { name: "Members" })).toHaveAttribute("href", `/organisations/${organisationId}/settings/members`);
+  expect(screen.getByRole("main")).toContainElement(tabs.getByRole("link", { name: "Members" }));
+  expect(await breadcrumb()).toEqual({ crumbs: ["Settings", "General"], current: "General" });
+
+  await openSection("Organisation settings", "Members");
+
+  expect(await screen.findByRole("table", { name: "Members" })).toBeInTheDocument();
+  expect(await currentSection("Organisation settings")).toBe("Members");
+  expect(await breadcrumb()).toEqual({ crumbs: ["Settings", "Members"], current: "Members" });
+  expect(breadcrumbNav().getByRole("link", { name: "Settings" })).toHaveAttribute("href", `/organisations/${organisationId}/settings`);
 });
 
-test("a Project that can't be loaded keeps the Project switcher as the current crumb, with no sections", async () => {
+test("an Editor's settings tabs leave out Members and Audit", async () => {
+  fakeAuthApi({
+    signedInAs: { ...adaSession, organisations: adaSession.organisations.map((o) => ({ ...o, role: "editor" as const })) },
+  });
+  renderStudio(`/organisations/${organisationId}/settings/theme`);
+
+  expect(await currentSection("Organisation settings")).toBe("Theme");
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme"]);
+});
+
+test("an unknown settings address marks no tab and no crumb; every area is still offered", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(`/organisations/${organisationId}/settings/bogus`);
+
+  expect(await sectionNames("Organisation settings")).toEqual(["General", "Credentials", "Models", "Theme", "Members", "Audit"]);
+  expect(await currentSection("Organisation settings")).toBe("");
+  expect(await breadcrumb()).toEqual({ crumbs: ["Settings"], current: "" });
+});
+
+test("a Project that can't be loaded is the current crumb, named Project", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   renderStudio(projectPage("00000000-0000-4000-8000-000000000000"));
 
   expect(await screen.findByRole("heading", { name: "Project not found" })).toBeInTheDocument();
-  expect(breadcrumbNav().getByRole("button", { name: "Project, Projects" })).toHaveAttribute("aria-current", "page");
-  expect(hasMenu("Project sections")).toBe(false);
+  expect(await breadcrumb()).toEqual({ crumbs: ["Project"], current: "Project" });
 });
 
-test("the account menu opens the Profile and Security, which are then the current section", async () => {
+test("Profile, Security and Sign out are only in the account menu; their pages are the current crumb", async () => {
   fakeAuthApi({ signedInAs: adaSession });
-  renderStudio("/");
-  await screen.findByRole("heading", { name: "Projects" });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+  await screen.findByRole("heading", { level: 1, name: "HR handbook" });
 
   expect(await sectionNames("Account")).toEqual(["Profile", "Security", "Sign out"]);
-  await openSection("Account", "Profile");
+  // With the account menu closed, nothing else on the page leads to them.
+  for (const name of ["Profile", "Security", "Sign out"]) {
+    expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name })).not.toBeInTheDocument();
+  }
 
+  await openSection("Account", "Profile");
   expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
-  expect(breadcrumbNav().getByRole("button", { name: "Profile, Organisation sections" })).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb()).toEqual({ crumbs: ["Profile"], current: "Profile" });
 
   await openSection("Account", "Security");
-
   expect(await screen.findByRole("heading", { name: "Security", level: 1 })).toBeInTheDocument();
-  expect(breadcrumbNav().getByRole("button", { name: "Security, Organisation sections" })).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb()).toEqual({ crumbs: ["Security"], current: "Security" });
 });
 
-test("the breadcrumb's section switcher reaches the Profile", async () => {
+test("Cost is the current crumb on the cost page", async () => {
   fakeAuthApi({ signedInAs: adaSession });
-  renderStudio("/");
-  await screen.findByRole("heading", { name: "Projects" });
+  renderStudio(`/organisations/${organisationId}/cost`);
 
-  await userEvent.click(breadcrumbNav().getByRole("button", { name: "Projects, Organisation sections" }));
-  await userEvent.click(screen.getByRole("menuitem", { name: "Profile" }));
+  expect(await breadcrumb()).toEqual({ crumbs: ["Cost"], current: "Cost" });
+});
 
-  expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
+test("no navigation item carries a number hint", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+  await screen.findByRole("heading", { level: 1, name: "HR handbook" });
+
+  const sections = ["Documents", "Instructions", "Agents", "Conversations", "Analytics", "Settings"];
+  expect(await sectionNames("Project sections")).toEqual(sections);
+  const links = within(screen.getByRole("list", { name: "Project sections" })).getAllByRole("link");
+  // Hidden text counts too: a hint hidden from assistive technology is still on screen.
+  expect(links.map((link) => link.textContent)).toEqual(sections);
+  expect(screen.getByRole("banner").textContent).not.toMatch(/[0-9]/);
 });
 
 test("signing out ends the session and returns to sign-in", async () => {
@@ -371,7 +248,6 @@ test("an Organisation the Member doesn't belong to is not found", async () => {
   renderStudio("/organisations/00000000-0000-4000-8000-000000000000/projects");
 
   expect(await screen.findByRole("heading", { name: "Organisation not found" })).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /, Organisation sections$/ })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /, Organisations$/ })).not.toBeInTheDocument();
   expect(await sectionNames("Account")).toEqual(["Sign out"]);
 
