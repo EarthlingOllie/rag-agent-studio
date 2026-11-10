@@ -101,10 +101,16 @@ test.describe("Full AgentConfig editor", () => {
       { kind: "agent", id: agentId, name: "HR helper (model)" },
     ]);
 
-    // Retrieval: Agentic mode with its Search limit, which is checked before saving.
+    // Retrieval: a new Agent is Agentic, with its Search limit, which is checked before saving.
     await openSettings(page, "Retrieval");
     const retrieval = page.getByRole("group", { name: "Retrieval" });
     await expect(retrieval.getByRole("radiogroup", { name: "Retrieval mode" })).toHaveAccessibleDescription(/cheaper and predictable/);
+    await expect(retrieval.getByRole("radio", { name: "Agentic" })).toBeChecked();
+    await expect(retrieval.getByLabel("Search limit")).toHaveValue("3");
+    // Automatic hides the Search limit; Agentic brings it back.
+    save = nextSave(page);
+    await retrieval.getByRole("radio", { name: "Automatic" }).click();
+    await save;
     await expect(retrieval.getByLabel("Search limit")).toHaveCount(0);
     save = nextSave(page);
     await retrieval.getByRole("radio", { name: "Agentic" }).click();
@@ -124,6 +130,7 @@ test.describe("Full AgentConfig editor", () => {
     expect(events.map(({ before, after }) => ({ before, after }))).toEqual([
       { before: { search_limit: 3 }, after: { search_limit: 2 } },
       { before: { retrieval_mode: "automatic" }, after: { retrieval_mode: "agentic" } },
+      { before: { retrieval_mode: "agentic" }, after: { retrieval_mode: "automatic" } },
     ]);
 
     // A reload shows the saved Draft.

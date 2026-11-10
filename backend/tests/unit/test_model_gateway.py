@@ -36,6 +36,7 @@ from app.credentials.service import seal_secret
 from app.crypto.envelope import EnvelopeEncryption, EnvelopeError
 from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.gateway.adapters import build_model_gateway
+from app.gateway.demo import DEMO_LABEL, NAIVE_LABEL
 from app.gateway.fakes import (
     FAKE_CLASSIFIER_OUTAGE,
     FAKE_JAILBREAK_PROMPT,
@@ -47,7 +48,7 @@ from app.gateway.live import BedrockClients, LiveModelAdapters
 from app.guardrails.canary import new_canary
 from app.guardrails.classifier import InjectionFlag
 from app.guardrails.llm import LlmClassifier, LlmClassifierError
-from app.runtime.prompt import KNOWLEDGE_SEARCH, preamble, visitor_block
+from app.runtime.prompt import KNOWLEDGE_SEARCH, NOTHING_FOUND, preamble, visitor_block
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
 ANTHROPIC_KEY = "sk-ant-gateway-test-only-aaaa"
@@ -614,6 +615,69 @@ async def test_without_a_chunk_the_demo_model_says_it_doesnt_know(question: str)
 
     result = await Agent(model).run(question)
 
+    assert result.output == (
+        "Demo model (canned answer, not AI): the Knowledge Base has nothing on that."
+    )
+
+
+DEMO_SEARCH_RESULT = (
+    "<<<RETRIEVED_CHUNKS>>>\n"
+    "[C1] northwind-product-faq.docx\n"
+    "Honey keeps for years. Return it unopened within 30 days.\n\n"
+    "[C2] northwind-returns-policy.md\n"
+    "You can return any unopened item within 30 days.\n"
+    "<<<END_RETRIEVED_CHUNKS>>>"
+)
+
+
+@pytest.mark.parametrize("model_name", ["demo-chat", "demo-naive"])
+@pytest.mark.parametrize("index", [0, 1], ids=["fake adapters", "live adapters"])
+async def test_given_knowledge_search_the_demo_models_search_once_with_the_question_then_answer(
+    index: int, model_name: str
+) -> None:
+    """Agentic Retrieval Mode (spec 13): offered Knowledge Search, each demo model makes one
+    Search with the Visitor's question, then answers from the first Chunk it returned, as it
+    does from Chunks retrieved up front."""
+    model = demo_gateways()[index].chat_model(
+        credential(Provider.DEMO, "demo-no-key-needed"), model_name
+    )
+    queries: list[str] = []
+
+    def knowledge_search(query: str) -> str:
+        queries.append(query)
+        return DEMO_SEARCH_RESULT
+
+    agent = Agent(model, tools=[Tool(knowledge_search, name=KNOWLEDGE_SEARCH)])
+    async with agent.run_stream(visitor_block("Can I return a jar of honey?")) as streamed:
+        output = await streamed.get_output()
+
+    assert queries == ["Can I return a jar of honey?"]
+    excerpt = (
+        "northwind-product-faq.docx [C1]: Honey keeps for years. Return it unopened within 30 days."
+    )
+    expected = {
+        "demo-chat": f"{DEMO_LABEL}: from {excerpt}",
+        "demo-naive": f"{NAIVE_LABEL}: From {excerpt}",
+    }[model_name]
+    assert output == expected
+
+
+async def test_the_demo_model_searches_before_answering_when_not_streamed() -> None:
+    """The runtime always streams; run without streaming, the demo model searches all the same.
+    Asked without a Visitor input block, it searches with all it was asked."""
+    model = ModelGateway(ENVELOPE, FakeModelAdapters()).chat_model(
+        credential(Provider.DEMO, "demo-no-key-needed"), "demo-chat"
+    )
+    queries: list[str] = []
+
+    def knowledge_search(query: str) -> str:
+        queries.append(query)
+        return f"<<<RETRIEVED_CHUNKS>>>\n{NOTHING_FOUND}\n<<<END_RETRIEVED_CHUNKS>>>"
+
+    agent = Agent(model, tools=[Tool(knowledge_search, name=KNOWLEDGE_SEARCH)])
+    result = await agent.run("Where is the moon?")
+
+    assert queries == ["Where is the moon?"]
     assert result.output == (
         "Demo model (canned answer, not AI): the Knowledge Base has nothing on that."
     )

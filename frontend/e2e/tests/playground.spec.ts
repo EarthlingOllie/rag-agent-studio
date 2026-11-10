@@ -56,6 +56,13 @@ test.describe("Agent and Playground", () => {
     expect((await saved).status()).toBe(200);
     await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("All changes saved");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    // This test follows an Automatic reply: one search up front, its Chunks in the Trace's table.
+    // A new Agent is Agentic (the test below), so the Editor switches the Retrieval Mode.
+    await openSettings(page, "Retrieval");
+    const modeSaved = page.waitForResponse((response) => new URL(response.url()).pathname.endsWith("/draft") && response.request().method() === "PUT");
+    await page.getByRole("group", { name: "Retrieval" }).getByRole("radio", { name: "Automatic" }).click();
+    expect((await modeSaved).status()).toBe(200);
+    await expect(page.getByRole("status", { name: "Draft status" })).toHaveText("All changes saved");
 
     // Ask the Draft; the fake model's answer streams back and is saved with its usage.
     await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
@@ -152,7 +159,7 @@ test.describe("Agent and Playground", () => {
     });
   });
 
-  test("an Agent set to Agentic searches the Knowledge Base, cites what it found and the Trace lists the Search", async ({
+  test("a new Agent is Agentic: it searches the Knowledge Base, cites what it found and the Trace lists the Search", async ({
     signedInPage: page,
     makeAxeBuilder,
   }) => {
@@ -184,13 +191,9 @@ test.describe("Agent and Playground", () => {
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "HR searcher" })).toBeVisible({ timeout: 15_000 });
 
-    // Its Retrieval Mode set to Agentic through the Draft API (the editor's control is ticket 13-05).
-    const [, projectId, agentId] = /\/projects\/([0-9a-f-]+)\/agents\/([0-9a-f-]+)/.exec(page.url()) ?? [];
-    const agentPath = `${organisation}/projects/${projectId ?? ""}/agents/${agentId ?? ""}`;
-    const { draft } = (await (await page.request.get(agentPath)).json()) as { draft: { retrieval: Record<string, unknown> } };
-    const saved = await page.request.put(`${agentPath}/draft`, { data: { ...draft, retrieval: { ...draft.retrieval, mode: "agentic" } } });
-    expect(saved.status()).toBe(200);
-    await page.reload();
+    // A new Agent's Retrieval Mode is Agentic, with nothing to change.
+    await openSettings(page, "Retrieval");
+    await expect(page.getByRole("group", { name: "Retrieval" }).getByRole("radio", { name: "Agentic" })).toBeChecked();
 
     // The fake model searches once with the question: the Search shows as it happens, then the
     // answer cites the Chunk the Search found.

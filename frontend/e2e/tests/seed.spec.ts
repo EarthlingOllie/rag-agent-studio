@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 import { signInAs } from "../fixtures/auth";
 import { openSection } from "../fixtures/navigation";
 
@@ -31,6 +32,28 @@ test.describe("Seeded demo Organisation", () => {
     await openSection(page, "Project sections", "Agents");
     await expect(page.getByRole("link", { name: "HR helper" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Product FAQ" })).toBeVisible();
+  });
+
+  test("one seeded Agent is Agentic and one Automatic, over the same Project; the Guardrail demo Agent is Automatic", async ({
+    page,
+    makeAxeBuilder,
+  }) => {
+    await signInAs(page, EDITOR);
+    await page.goto("/");
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("link", { name: "Northwind Handbook" }).click();
+    for (const [agent, mode] of [
+      ["Product FAQ", "Agentic"],
+      ["HR helper", "Automatic"],
+      ["Guardrail demo", "Automatic"],
+    ] as const) {
+      await openSection(page, "Project sections", "Agents");
+      await page.getByRole("link", { name: agent, exact: true }).click();
+      await expect(page.getByRole("heading", { level: 1, name: agent })).toBeVisible({ timeout: 15_000 });
+      await openSettings(page, "Retrieval");
+      await expect(page.getByRole("group", { name: "Retrieval" }).getByRole("radio", { name: mode })).toBeChecked();
+    }
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
   test("the demo model is the Default Model, labelled as a demo", async ({ page, makeAxeBuilder }) => {

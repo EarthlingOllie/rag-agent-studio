@@ -32,6 +32,7 @@ from app.seed.runner import (
 from app.storage.memory import InMemoryObjectStore
 from app.tenancy.erasure import erase_member, erase_organisation
 from tests.agents import ask, parse_sse, start_conversation
+from tests.integration.test_agentic_retrieval import asked
 from tests.conftest import BASE_URL, ClientFactory, SignedUpMember, TenantFactory
 from tests.integration.test_object_store import RUSTFS_KEYS, RUSTFS_URL
 
@@ -259,6 +260,64 @@ async def test_the_demo_model_is_labelled_and_answers_without_any_api_key(
     )
 
 
+async def test_one_agentic_and_one_automatic_agent_show_the_trade_off_without_a_real_key(
+    demo_app: FastAPI, new_client: ClientFactory
+) -> None:
+    """Spec 13: the Product FAQ is Agentic and the HR helper Automatic, over the same Project,
+    each set explicitly, Live as well as in the Draft. Both answer with the demo model: the
+    Agentic one makes one Knowledge Search with the question and answers from the first Chunk
+    it returned; the Automatic one searches up front. Their Traces show the difference. The
+    attack panel's Guardrail demo Agent is explicitly Automatic, and so is the Low-budget
+    helper."""
+    await seed(demo_app, ASSETS)
+    editor = await signed_in(new_client, content.EDITOR)
+    project = await demo_project(editor)
+    agents = {a["name"]: a for a in await get(editor, "projects", project["id"], "agents")}
+    # Live and Draft alike (the HR helper's Live Version is its third, from the history).
+    modes = {}
+    for name, agent in agents.items():
+        live = await get(
+            editor,
+            "projects",
+            project["id"],
+            "agents",
+            agent["id"],
+            "versions",
+            agent["live_version"]["id"],
+        )
+        modes[name] = (agent["draft"]["retrieval"]["mode"], live["config"]["retrieval"]["mode"])
+    assert modes == {
+        "Product FAQ": ("agentic", "agentic"),
+        "HR helper": ("automatic", "automatic"),
+        "Low-budget helper": ("automatic", "automatic"),
+        "Guardrail demo": ("automatic", "automatic"),
+    }
+    assert {a["project_id"] for a in agents.values()} == {project["id"]}
+
+    question = "Can I return a jar of honey?"
+    events, trace = await asked(editor, project["id"], agents["Product FAQ"]["id"], question)
+
+    assert events[0] == ("search", {"query": question, "order": 1})
+    answer = "".join(data["text"] for kind, data in events if kind == "token")
+    (search,) = trace["searches"]
+    first = search["chunks"][0]
+    assert (first["rank"], first["cited"]) == (1, True)
+    assert answer == (
+        f"Demo model (canned answer, not AI): from {first['document_name']} [C1]: "
+        + " ".join(first["text"].split())
+    )
+    assert (search["query"], trace["search_count"], trace["chunks"]) == (question, 1, [])
+
+    question = "How many days of annual leave do I get?"
+    events, trace = await asked(editor, project["id"], agents["HR helper"]["id"], question)
+
+    assert "search" not in {kind for kind, _ in events}
+    answer = "".join(data["text"] for kind, data in events if kind == "token")
+    assert answer.startswith("Demo model (canned answer, not AI): from northwind-staff-handbook.md")
+    assert (trace["search_count"], trace["searches"]) == (0, [])
+    assert trace["chunks"][0]["cited"] is True
+
+
 async def test_the_shop_agents_are_live_on_the_demo_pages_origin(
     demo_app: FastAPI, new_client: ClientFactory
 ) -> None:
@@ -333,7 +392,7 @@ async def test_seeding_again_puts_back_what_was_changed(
     agents = await get(owner, "projects", project["id"], "agents")
     # Someone experiments: the Products Tag, a Document and an Agent go, the Theme changes,
     # the Product FAQ's Allowed Origins and Token Budget change, the HR Agent loses its
-    # scoping, and a new credential becomes the Default Model.
+    # scoping and its Retrieval Mode, and a new credential becomes the Default Model.
     edits = [
         await owner.client.delete(f"{base}/projects/{project['id']}/tags/{tags['Products']}"),
         await owner.client.delete(
@@ -349,7 +408,8 @@ async def test_seeding_again_puts_back_what_was_changed(
         )
     )
     hr = next(a for a in agents if a["name"] == "HR helper")
-    draft = {**hr["draft"], "retrieval": {**hr["draft"]["retrieval"], "tag_ids": []}}
+    retrieval = {**hr["draft"]["retrieval"], "tag_ids": [], "mode": "agentic"}
+    draft = {**hr["draft"], "retrieval": retrieval}
     edits.append(
         await owner.client.put(
             f"{base}/projects/{project['id']}/agents/{hr['id']}/draft", json=draft
@@ -379,6 +439,7 @@ async def test_seeding_again_puts_back_what_was_changed(
     agents = await get(owner, "projects", project["id"], "agents")
     hr = next(a for a in agents if a["name"] == "HR helper")
     assert hr["draft"]["retrieval"]["tag_ids"] == [tags["HR"]]
+    assert hr["draft"]["retrieval"]["mode"] == "automatic"
 
 
 async def test_reset_recreates_only_the_demo_organisation(

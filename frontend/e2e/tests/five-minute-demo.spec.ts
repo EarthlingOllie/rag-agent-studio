@@ -61,7 +61,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
-  await test.step("3. The Agent editor and a Playground Trace", async () => {
+  await test.step("3. The Agent editor and a Playground Trace, Automatic then Agentic", async () => {
     await openProjectTab(page, "Agents");
     await page.getByRole("link", { name: "HR helper" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
@@ -69,14 +69,37 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await page.getByRole("button", { name: "Send" }).click();
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText(DEMO_ANSWER, { timeout: 30_000 });
-    // The Trace folds open under the answer.
+    // The HR helper is Automatic: one search up front, its Chunks in one table. The Trace folds
+    // open under the answer.
     await answer.getByText("Trace", { exact: true }).click();
     const trace = answer.getByRole("group", { name: "Trace" });
     await expect(trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row").nth(1)).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // The Product FAQ is Agentic: the model searches the Knowledge Base itself, and its Trace
+    // lists each Search with the Chunks it found.
+    const question = "Can I return a jar of honey?";
+    await openProjectTab(page, "Agents");
+    await page.getByRole("link", { name: "Product FAQ" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Product FAQ" })).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel("Question", { exact: true }).fill(question);
+    await page.getByRole("button", { name: "Send" }).click();
+    const searched = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "Product FAQ" });
+    await expect(searched.getByRole("list", { name: "Searches" }).getByRole("listitem")).toHaveText([`Searching: ${question}`], { timeout: 30_000 });
+    await expect(searched).toContainText(DEMO_ANSWER, { timeout: 30_000 });
+    await searched.getByText("Trace", { exact: true }).click();
+    const searches = searched.getByRole("group", { name: "Trace" }).getByRole("list", { name: "Searches" });
+    await expect(searches.getByRole("heading", { name: `Search 1: ${question}` })).toBeVisible({ timeout: 15_000 });
+    const found = searches.getByRole("table", { name: "Chunks found by Search 1" }).getByRole("row").nth(1);
+    await expect(found.getByRole("cell").first()).toHaveText("C1");
+    await expect(found.getByRole("cell").last()).toHaveText("Cited");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
   await test.step("4. Publish and revert: the HR helper's Live History tells the v2 story", async () => {
+    await openProjectTab(page, "Agents");
+    await page.getByRole("link", { name: "HR helper" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await openAgentView(page, "Versions");
     const timeline = page.getByRole("list", { name: "Live History" });
     await expect(timeline.getByRole("listitem").nth(0)).toContainText("Published v1 → v3");

@@ -311,6 +311,7 @@ async def _agents(api: SeedApi, project: str, tags: dict[str, str], origin: str)
             "retrieval": {
                 **draft["retrieval"],
                 "tag_ids": sorted(tags[name] for name in wanted.tags),
+                "mode": wanted.mode,
             },
             "experience": {**draft["experience"], "greeting": wanted.greeting},
         }

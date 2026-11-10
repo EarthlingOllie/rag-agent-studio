@@ -41,6 +41,9 @@ test.describe("Reranker", () => {
     const projectId = ((await project.json()) as { id: string }).id;
     const agent = await page.request.post(`${organisation}/projects/${projectId}/agents`, { data: { name: "Support helper" } });
     const agentId = ((await agent.json()) as { id: string }).id;
+    // Automatic: one search up front, whose Chunks the Trace's table lists (a new Agent is Agentic).
+    const automatic = { data: { retrieval: { mode: "automatic" } } };
+    expect((await page.request.put(`${organisation}/projects/${projectId}/agents/${agentId}/draft`, automatic)).ok()).toBe(true);
 
     // Two one-Chunk Documents, uploaded as an Editor would.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);

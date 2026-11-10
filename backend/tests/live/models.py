@@ -73,7 +73,7 @@ def _unreachable(repo_id: str) -> str | None:
 RAPIDOCR_MODELS_URL = "https://www.modelscope.cn/models/RapidAI/RapidOCR"
 
 
-def _skip_or_fail(message: str) -> None:
+def skip_or_fail(message: str) -> None:
     if os.environ.get("LIVE_REQUIRE_MODELS") == "1":
         pytest.fail(message)
     pytest.skip(message)
@@ -87,7 +87,7 @@ def require_ocr_models() -> None:
     try:
         httpx.head(RAPIDOCR_MODELS_URL, timeout=10, follow_redirects=True).raise_for_status()
     except httpx.HTTPError as error:
-        _skip_or_fail(
+        skip_or_fail(
             f"RapidOCR's models are not on disk and can't be downloaded ({RAPIDOCR_MODELS_URL}: "
             f"{type(error).__name__}: {error}). Run the live suite where www.modelscope.cn is "
             "reachable, or in the worker image."
@@ -106,4 +106,4 @@ def require_models(*repo_ids: str) -> None:
             "Run the live suite where huggingface.co and its CDN are reachable, or in the worker "
             "image."
         )
-        _skip_or_fail(message)
+        skip_or_fail(message)
