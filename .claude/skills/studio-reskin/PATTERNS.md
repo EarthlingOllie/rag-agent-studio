@@ -166,7 +166,8 @@ Built in 11-05:
   archived one; no menu when it would be empty. Both confirm in a destructive `ConfirmDialog`;
   deletion types the name in the dialog's `body`. Restore stays in the archived notice.
 - The Embedding Model is in the Settings section (`ProjectSettingsTab`), above OCR, and not shown
-  for an archived Project (as before).
+  for an archived Project (as before). Since 12-06 each setting is a card and Change opens a
+  `Dialog` (see the design README's *Project Settings*).
 - Loading is `<Skeleton label="Loading the Project" />`; not found is `<EmptyState level={1}>`;
   a failed load is `<EmptyState tone="error">`.
 

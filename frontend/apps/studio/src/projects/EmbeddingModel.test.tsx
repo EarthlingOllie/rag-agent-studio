@@ -133,6 +133,16 @@ function fakeEmbeddingApi(
   return { chosen };
 }
 
+const DIALOG = "Change the Embedding Model";
+
+/** Opens the Embedding Model dialog from the setting's Change button. */
+async function openChange(setting: HTMLElement): Promise<HTMLElement> {
+  await userEvent.click(
+    within(setting).getByRole("button", { name: "Change Embedding Model" }),
+  );
+  return screen.findByRole("dialog", { name: DIALOG });
+}
+
 test("an Editor chooses a provider Embedding Model for a Project without Documents", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();
@@ -145,10 +155,7 @@ test("an Editor chooses a provider Embedding Model for a Project without Documen
     "Documents are embedded with multilingual-e5-small.",
   );
 
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
-  const form = await within(setting).findByRole("form", {
+  const form = await within(await openChange(setting)).findByRole("form", {
     name: "Choose the Embedding Model",
   });
   const select = within(form).getByLabelText("Embedding Model");
@@ -167,16 +174,13 @@ test("an Editor chooses a provider Embedding Model for a Project without Documen
   );
 
   expect(await within(setting).findByText("voyage-3.5")).toBeInTheDocument();
-  expect(within(setting).queryByRole("form")).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(chosen).toEqual([
     { model_id: "voyage-3.5", credential_id: VOYAGE_CREDENTIAL },
   ]);
 
   // Back to the built-in model, which takes no credential.
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
-  const again = await within(setting).findByRole("form", {
+  const again = await within(await openChange(setting)).findByRole("form", {
     name: "Choose the Embedding Model",
   });
   expect(within(again).getByLabelText("Embedding Model")).toHaveDisplayValue(
@@ -231,10 +235,11 @@ test("changing the model of a Project with Documents shows the re-embed's progre
     "Documents are embedded with multilingual-e5-small. Changing it re-embeds every Document in the background; the current model keeps serving until that finishes.",
   );
 
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
+  const dialog = await openChange(setting);
+  expect(within(dialog).getByRole("status")).toHaveTextContent(
+    "Every Document in this Project is re-embedded with the new model in the background. The current model keeps serving until that finishes.",
   );
-  const form = await within(setting).findByRole("form", {
+  const form = within(dialog).getByRole("form", {
     name: "Choose the Embedding Model",
   });
   await userEvent.selectOptions(
@@ -250,8 +255,8 @@ test("changing the model of a Project with Documents shows the re-embed's progre
     "Re-embedding with voyage-3.5: 1 of 3 Chunks. Retrieval uses multilingual-e5-small until it finishes.",
   );
   expect(
-    within(status).getByRole("progressbar", { name: "Re-embedding progress" }),
-  ).toHaveAttribute("value", "1");
+    within(status).getByRole("meter", { name: "Re-embedding progress" }),
+  ).toHaveAttribute("aria-valuetext", "1 of 3 Chunks");
   expect(setting).toHaveTextContent(
     "Documents are embedded with multilingual-e5-small.",
   );
@@ -290,10 +295,9 @@ test("a failed re-embed shows its error, and the Project keeps its model", async
   });
 
   await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
-  await userEvent.click(
-    await within(setting).findByRole("button", { name: "Use this model" }),
+    await within(await openChange(setting)).findByRole("button", {
+      name: "Use this model",
+    }),
   );
 
   expect(await within(setting).findByRole("alert")).toHaveTextContent(
@@ -307,7 +311,44 @@ test("a failed re-embed shows its error, and the Project keeps its model", async
   ).toBeEnabled();
 });
 
-test("choosing can be cancelled, and a refused choice shows the API's reason", async () => {
+test("the dialog for a Project without Documents says the change applies at once; Cancel and Escape close it with focus back on Change", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { chosen } = fakeEmbeddingApi();
+  renderStudio(projectPage(salesProject.id));
+  const setting = await screen.findByRole("region", {
+    name: "Embedding Model",
+  });
+  const change = within(setting).getByRole("button", {
+    name: "Change Embedding Model",
+  });
+  expect(change).toHaveTextContent(/^Change$/);
+
+  let dialog = await openChange(setting);
+  expect(dialog).toHaveAccessibleDescription(
+    "Embedding Models come from the Organisation's Provider Credentials that can embed. The built-in model needs none.",
+  );
+  expect(await within(dialog).findByRole("status")).toHaveTextContent(
+    "This Project has no Documents yet, so the new model is used at once.",
+  );
+  expect(
+    within(dialog)
+      .getAllByRole("button")
+      .map((button) => button.textContent),
+  ).toEqual(["", "Cancel", "Use this model"]);
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(change).toHaveFocus();
+
+  dialog = await openChange(setting);
+  await within(dialog).findByLabelText("Embedding Model");
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(change).toHaveFocus();
+  expect(chosen).toEqual([]);
+});
+
+test("a refused choice shows the API's reason in the dialog, which stays open", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeEmbeddingApi({
@@ -320,28 +361,16 @@ test("choosing can be cancelled, and a refused choice shows the API's reason", a
   const setting = await screen.findByRole("region", {
     name: "Embedding Model",
   });
+  const dialog = await openChange(setting);
   await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
-  await within(setting).findByRole("form", {
-    name: "Choose the Embedding Model",
-  });
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Cancel" }),
-  );
-  expect(within(setting).queryByRole("form")).not.toBeInTheDocument();
-
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
-  await userEvent.click(
-    await within(setting).findByRole("button", { name: "Use this model" }),
+    await within(dialog).findByRole("button", { name: "Use this model" }),
   );
 
   expect(
-    await within(setting).findByRole("button", { name: "Saving…" }),
+    await within(dialog).findByRole("button", { name: "Saving…" }),
   ).toBeDisabled();
-  expect(await within(setting).findByRole("alert")).toHaveTextContent(ARCHIVED);
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(ARCHIVED);
+  expect(screen.getByRole("dialog", { name: DIALOG })).toBeInTheDocument();
 });
 
 test("an unusable choice shows why, and a failure without a reason says to try again", async () => {
@@ -368,37 +397,35 @@ test("an unusable choice shows why, and a failure without a reason says to try a
   const setting = await screen.findByRole("region", {
     name: "Embedding Model",
   });
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
+  const dialog = await openChange(setting);
 
   await userEvent.click(
-    await within(setting).findByRole("button", { name: "Use this model" }),
+    await within(dialog).findByRole("button", { name: "Use this model" }),
   );
-  expect(await within(setting).findByRole("alert")).toHaveTextContent(
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(
     "This credential can't be used for embeddings.",
   );
 
   await userEvent.click(
-    within(setting).getByRole("button", { name: "Use this model" }),
+    within(dialog).getByRole("button", { name: "Use this model" }),
   );
   expect(
-    await within(setting).findByText("Something went wrong. Try again."),
+    await within(dialog).findByText("Something went wrong. Try again."),
   ).toBeInTheDocument();
 
   // A validation error's detail is a list, not a reason to show.
   await userEvent.click(
-    within(setting).getByRole("button", { name: "Use this model" }),
+    within(dialog).getByRole("button", { name: "Use this model" }),
   );
   await waitFor(() => {
     expect(attempt).toBe(3);
   });
   expect(
-    await within(setting).findByText("Something went wrong. Try again."),
+    await within(dialog).findByText("Something went wrong. Try again."),
   ).toBeInTheDocument();
 });
 
-test("the choices show their loading and error states", async () => {
+test("the choices show their loading and error states in the dialog", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   server.use(
@@ -415,18 +442,19 @@ test("the choices show their loading and error states", async () => {
     name: "Embedding Model",
   });
 
-  await userEvent.click(
-    within(setting).getByRole("button", { name: "Change Embedding Model" }),
-  );
+  const dialog = await openChange(setting);
 
   expect(
-    await within(setting).findByText("Loading the Embedding Models…"),
+    await within(dialog).findByText("Loading the Embedding Models…"),
   ).toBeInTheDocument();
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+    "The Embedding Models could not be loaded. Try again shortly.",
+  );
   expect(
-    await within(setting).findByText(
-      "The Embedding Models could not be loaded. Try again shortly.",
-    ),
-  ).toBeInTheDocument();
+    within(dialog).queryByRole("button", { name: "Use this model" }),
+  ).not.toBeInTheDocument();
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
 test("if the re-embed state can't be read, the section shows the Project's model", async () => {

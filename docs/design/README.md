@@ -229,6 +229,20 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
     inline. On success the dialog closes, a toast confirms, and the copy-link panel
     (`surface.panel`, "New invite") shows above Pending invites; New link on a pending invite
     shows the same panel. Cancel or Escape returns focus to Invite someone.
+- **Project Settings** (built in 12-06): `PageHeader level={2}` ("Settings", one line on what they
+  control), then a `surface.panel` card per setting with an h3 title and its explanation:
+  - **Embedding Model**: the active model in mono on a `sunken` row with **Change** (named "Change
+    Embedding Model"), which opens a `Dialog` "Change the Embedding Model": the model select, a
+    warning notice that every Document is re-embedded (an info notice when the Project has none),
+    then Cancel and **Use this model**. A running Re-embed is a progress `Meter` ("N of M Chunks")
+    under a status line naming the model that keeps serving; a failed one is an error `Notice`.
+  - **OCR**: a labelled checkbox row on `sunken` (the hint is its description) and a status line.
+  - **Flagged Chunks**: a `radiogroup` of two bordered choices, each a title and a one-line
+    description; the chosen one takes `accent-soft`.
+
+  Each setting shows the choice at once, is disabled while it saves and shows a refusal in its
+  card. On an archived Project the header says the settings can't be changed, every control is
+  disabled and the Embedding Model card is left out.
 - **Project Instructions** (built in 11-07): a `surface.panel` each for the Draft (the markdown
   editor with its character count, Save Instructions as a secondary button and the conflict offer
   as a warning notice), Publish (the Note and **Publish Instructions**, the page's one primary),
@@ -338,6 +352,8 @@ refuses, an alert says to select and copy by hand.
 How much of a limit is used (Token Budget, Document quota): a bar in `accent` under 80%, `flag`
 from 80% and `danger` once spent, with the value always printed beside it ("8,200 / 10,000
 tokens"). It is a `meter` role with the value as text, so the colour is never the only signal.
+A `progress` meter (a Re-embed's Chunks) shows how far work has got, so it stays `accent` all the
+way.
 
 ### Diff
 
