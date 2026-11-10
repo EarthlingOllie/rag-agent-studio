@@ -8,6 +8,8 @@ The model is told never to reveal it, so seeing it in a reply means the prompt i
   whitespace and case, so ``3F9A 1C7E…`` or a canary broken over lines is caught too. When the
   canary appears, the filter says so and releases nothing more: the caller stops the model and
   replaces the reply.
+- ``carries_canary`` checks a whole text the model wrote before it is used (a Knowledge Search
+  query, ADR-0015): the canary in any form either check matches.
 - ``encoded_leak`` is the post-completion check of the whole answer, for disguised leaks the
   stream filter can't see: separated by punctuation, reversed, or base64-encoded. It can only
   log and flag: by the time the answer is complete, it has already been streamed.
@@ -95,3 +97,9 @@ def encoded_leak(text: str, canary: str) -> EncodedLeak | None:
     if any(_decodes_to_canary(run, canary) for run in _BASE64_RUN.findall(joined)):
         return "base64"
     return None
+
+
+def carries_canary(text: str, canary: str) -> bool:
+    """Whether ``text`` holds the canary in any form: plainly (ignoring whitespace and case) or
+    disguised as ``encoded_leak`` finds it."""
+    return _normalised(canary) in _normalised(text) or encoded_leak(text, canary) is not None

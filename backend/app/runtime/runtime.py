@@ -37,7 +37,10 @@ Every model call carries a fresh Canary token in its preamble, and the answer st
 ``CanaryFilter``. If the canary starts to appear, the model stream is stopped, nothing more of
 the answer is sent, and a ``ReplaceEvent`` carrying the fallback text replaces what was sent; the
 ``DoneEvent``'s answer is then the fallback text. A completed answer is checked again for an
-encoded canary, which is logged and flagged but can't be un-sent.
+encoded canary, which is logged and flagged but can't be un-sent. In Agentic mode each search
+query is checked for the canary (in any form) before it runs: a query carrying it is never run
+or recorded, and the reply ends as a canary leak, with the fallback text and a ``replaced``
+Guardrail outcome.
 
 With ``cautioned`` (the input Guardrail's warn mode flagged the message), the prompt carries a
 caution block after the system prompt (``app.runtime.prompt.CAUTION``).
@@ -63,7 +66,7 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage
 
 from app.agents.config import AgentConfig, Retrieval, RetrievalMode
-from app.guardrails.canary import CanaryFilter, encoded_leak, new_canary
+from app.guardrails.canary import CanaryFilter, carries_canary, encoded_leak, new_canary
 from app.guardrails.outcomes import GuardrailOutcome
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.citations import CitedAnswer, labels_in, resolve
@@ -161,6 +164,11 @@ TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | SearchEvent | DoneEvent 
 
 CANARY_REPLACED = "The reply contained the canary token, so it was cut off and replaced."
 CANARY_ENCODED = "The reply contained the canary token, encoded ({encoding})"
+CANARY_IN_QUERY = "A search query contained the canary token, so the reply was replaced."
+
+
+class _CanaryInQueryError(Exception):
+    """The model wrote the Canary token into a Knowledge Search query: the reply ends."""
 
 
 @dataclass
@@ -268,16 +276,23 @@ def _knowledge_search(
     given: GivenChunks,
     searches: list[Searched],
     started: Callable[[SearchEvent], None],
+    canary: str,
 ) -> Tool[None]:
     """Knowledge Search for one reply: the model writes the query; everything else comes from
     the Agent's Retrieval settings. Each Search is reported to ``started`` as it starts and
     recorded in ``searches`` once it ends. Once ``settings.search_limit`` Searches have run, a
-    further call is refused: it searches nothing, and is recorded as refused."""
+    further call is refused: it searches nothing, and is recorded as refused.
+
+    A query is model output, so it is checked for the reply's Canary token first: one that
+    carries it is never run, reported or recorded (it would reach the Trace and the logs), and
+    the reply ends (``_CanaryInQueryError``)."""
 
     # Numbered as they start: the model may ask for several Searches at once.
     orders = itertools.count(1)
 
     async def knowledge_search(query: str) -> str:
+        if carries_canary(query, canary):
+            raise _CanaryInQueryError
         order = next(orders)
         if order > settings.search_limit:
             searches.append(Searched(order, query, 0, [], [], limit_refused=True))
@@ -410,10 +425,14 @@ async def _turn(
     given = GivenChunks()
     searches: list[Searched] = []
     queue: asyncio.Queue[str | SearchEvent | _Failed | None] = asyncio.Queue()
+    canary = new_canary()
     if agentic:
         # No upfront search: the model searches with Knowledge Search, its one tool.
         retrieved = RetrievalResult([])
-        tools = [_knowledge_search(retrieve, config.retrieval, given, searches, queue.put_nowait)]
+        search = _knowledge_search(
+            retrieve, config.retrieval, given, searches, queue.put_nowait, canary
+        )
+        tools = [search]
         question = visitor_block(visitor_input)
     else:
         retrieved = await retrieve(visitor_input, config.retrieval)
@@ -433,7 +452,6 @@ async def _turn(
         )
         return
     remembered = list(turns)[-behaviour.remembered_turns :] if behaviour.remembered_turns else []
-    canary = new_canary()
     messages = history(
         instructions,
         behaviour.system_prompt,
@@ -452,23 +470,41 @@ async def _turn(
         model, question, messages, settings, streamed, tools, structured=structured
     )
     items = _with_searches(texts, queue) if agentic else texts
-    async with aclosing(items) as stream_items:
-        async for text in stream_items:
-            if isinstance(text, SearchEvent):
-                yield text
-                continue
-            if _found_nothing(given, searches):
-                # The answer only streams once every Search has run, so it is discarded before
-                # any of it is sent. Leaving the loop stops the model.
-                break
-            safe = canary_filter.feed(text)
-            if canary_filter.leaked:
-                # Leaving the loop closes the stream, which stops the model.
-                break
-            if safe:
-                yield TokenEvent(safe)
+    query_leaked = False
+    try:
+        async with aclosing(items) as stream_items:
+            async for text in stream_items:
+                if isinstance(text, SearchEvent):
+                    yield text
+                    continue
+                if _found_nothing(given, searches):
+                    # The answer only streams once every Search has run, so it is discarded
+                    # before any of it is sent. Leaving the loop stops the model.
+                    break
+                safe = canary_filter.feed(text)
+                if canary_filter.leaked:
+                    # Leaving the loop closes the stream, which stops the model.
+                    break
+                if safe:
+                    yield TokenEvent(safe)
+    except _CanaryInQueryError:
+        # The run stopped at the query. No answer text streams before a Search, so nothing is
+        # replaced: the Visitor gets the Fallback Text alone.
+        query_leaked = True
     if agentic:
         retrieved = _searched_result(given, searches)
+    if query_leaked:
+        yield TokenEvent(behaviour.fallback_text)
+        yield DoneEvent(
+            answer=behaviour.fallback_text,
+            input_tokens=streamed.usage.input_tokens,
+            output_tokens=streamed.usage.output_tokens,
+            retrieved=retrieved.candidates,
+            excluded=retrieved.excluded,
+            guardrail_outcomes=[GuardrailOutcome("canary", "leak", "replaced", CANARY_IN_QUERY)],
+            searches=searches,
+        )
+        return
     if _found_nothing(given, searches):
         # Searched, and nothing relevant was found: the Agent's words, not the model's guess.
         yield TokenEvent(behaviour.fallback_text)

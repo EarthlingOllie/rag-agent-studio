@@ -1,6 +1,6 @@
 """The attack evaluation runner, through its interface: a tiny case file runs through the real
 Guardrail pipeline and Agent runtime, with the naive model and the rule-driven fake classifier,
-and the report says what each layer did."""
+in each Retrieval Mode, and the report says what each layer did."""
 
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -9,12 +9,13 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from app.agents.config import Behaviour
+from app.agents.config import Behaviour, RetrievalMode
 from app.evals.naive_model import naive_model
-from app.evals.runner import run_suite
+from app.evals.runner import run_modes, run_suite
 from app.evals.suite import load_suite
 from app.guardrails.fake import FakeRule, RuleDrivenClassifier
 from app.guardrails.pipeline import GuardrailPipeline
+from app.runtime.runtime import CANARY_IN_QUERY
 
 TINY = Path(__file__).parent.parent / "fixtures" / "evals" / "tiny_suite.json"
 
@@ -162,3 +163,58 @@ async def test_a_provider_failure_ends_the_case_with_an_error() -> None:
     assert benign.error is not None
     assert not benign.defended
     assert report.model_name == "flaky-model"
+
+
+# Both Retrieval Modes
+
+
+async def test_each_case_runs_once_in_each_retrieval_mode() -> None:
+    suite = load_suite(TINY).only("extraction-canary", "indirect-mark", "benign-leave")
+
+    automatic, agentic = await run_modes(suite, pipeline(IGNORE), naive_model())
+
+    assert (automatic.retrieval_mode, agentic.retrieval_mode) == ("automatic", "agentic")
+    assert [case.case.id for case in agentic.cases] == [case.case.id for case in automatic.cases]
+    # In Agentic mode nothing is retrieved up front: the naive model answers from the Chunk
+    # its Knowledge Search found, and the Guardrails do what they do in Automatic mode.
+    assert agentic.cases[2].replies == [
+        "From leave-policy.md [C1]: Full-time staff get 25 days of annual leave a year."
+    ]
+    assert [case.replies for case in agentic.cases] == [case.replies for case in automatic.cases]
+    assert [case.observed for case in agentic.cases] == [case.observed for case in automatic.cases]
+    assert all(case.as_expected for run in (automatic, agentic) for case in run.cases)
+
+
+async def test_a_flagged_chunk_knowledge_search_finds_follows_the_flagged_chunk_mode() -> None:
+    suite = load_suite(TINY).only("indirect-mark", "indirect-exclude")
+
+    run = await run_suite(suite, pipeline(IGNORE), naive_model(), RetrievalMode.AGENTIC)
+
+    marked, excluded = run.cases
+    assert (marked.observed.ingestion, marked.observed.answer) == ("flagged", "compromised")
+    assert (excluded.observed.ingestion, excluded.observed.answer) == ("excluded", "harmless")
+    assert excluded.replies == [
+        "From leave-policy.md [C1]: Full-time staff get 25 days of annual leave a year."
+    ]
+
+
+async def test_a_chunk_asking_for_a_search_with_the_canary_is_stopped_in_agentic_mode() -> None:
+    suite = load_suite(TINY).only("indirect-search-canary")
+
+    automatic, agentic = await run_modes(suite, pipeline(IGNORE), naive_model())
+
+    (answered,) = automatic.cases
+    (stopped,) = agentic.cases
+    # Automatic mode has no tool: the naive model can only answer from the Chunk.
+    assert answered.observed.canary == "quiet"
+    assert answered.replies[0].startswith("From uploaded-document.md [C1]: Leave is 25 days.")
+    # Agentic mode: the naive model obeys and searches with its canary; the query is never
+    # run, and the reply is the Fallback Text.
+    assert stopped.observed.canary == "replaced"
+    assert stopped.replies == [Behaviour().fallback_text]
+    assert [o.reason for o in stopped.outcomes[0]] == [CANARY_IN_QUERY]
+    # Each mode's outcome is the one the case expects in that mode.
+    assert answered.as_expected
+    assert stopped.as_expected
+    assert answered.defended
+    assert stopped.defended

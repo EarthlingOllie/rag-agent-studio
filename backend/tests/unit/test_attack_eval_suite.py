@@ -28,6 +28,8 @@ def test_the_committed_suite_covers_every_category_with_benign_controls() -> Non
     assert len(benign) >= 8
     assert any(len(case.turns) > 1 for case in suite.cases if not case.benign)
     assert any(case.document is not None for case in suite.cases)
+    # An attack only an Agent with Knowledge Search can make: it expects otherwise there.
+    assert any(case.expected_agentic is not None for case in suite.cases)
 
 
 def tiny_with(tmp_path: Path, **changes: object) -> Path:
@@ -44,6 +46,17 @@ def tiny_with(tmp_path: Path, **changes: object) -> Path:
         ({"category": "benign"}, "a benign case has no markers"),
         ({"markers": []}, "an attack case needs a marker that shows it worked"),
         ({"document": "Hidden text."}, "expected.ingestion is given exactly when"),
+        (
+            {
+                "expected_agentic": {
+                    "ingestion": "passed",
+                    "input": "blocked",
+                    "canary": "quiet",
+                    "answer": "harmless",
+                }
+            },
+            "expected_agentic.ingestion is given exactly when",
+        ),
         ({"id": "extraction-canary"}, "Duplicate case IDs: extraction-canary"),
         ({"id": "Not An ID"}, "String should match pattern"),
         ({"turns": []}, "at least 1 item"),
