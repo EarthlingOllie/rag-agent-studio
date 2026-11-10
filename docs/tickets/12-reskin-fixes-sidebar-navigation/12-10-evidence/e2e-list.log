@@ -1,0 +1,16 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/sidebar.spec.ts e2e/tests/agent-archive.spec.ts e2e/tests/agent-drafts.spec.ts e2e/tests/agent-publish.spec.ts e2e/tests/agent-revert.spec.ts e2e/tests/embed.spec.ts e2e/tests/five-minute-demo.spec.ts e2e/tests/operational-settings.spec.ts e2e/tests/playground.spec.ts e2e/tests/rate-limits.spec.ts e2e/tests/token-budget.spec.ts (at f317adea)
+Listing tests:
+  [studio] › tests/agent-archive.spec.ts:6:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name
+  [studio] › tests/agent-drafts.spec.ts:6:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save
+  [studio] › tests/agent-publish.spec.ts:6:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log
+  [studio] › tests/agent-revert.spec.ts:6:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log
+  [studio] › tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version
+  [studio] › tests/five-minute-demo.spec.ts:40:1 › the five-minute demo
+  [studio] › tests/operational-settings.spec.ts:9:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget
+  [studio] › tests/playground.spec.ts:14:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in
+  [studio] › tests/rate-limits.spec.ts:14:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt
+  [studio] › tests/sidebar.spec.ts:5:3 › Sidebar › an Owner moves around the Organisation and a Project from the sidebar, which marks where they are
+  [studio] › tests/sidebar.spec.ts:52:3 › Sidebar › the main content keeps its 1160 px column beside a sidebar of about 240 px
+  [studio] › tests/token-budget.spec.ts:18:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers
+Total: 12 tests in 11 files
+exit 0
