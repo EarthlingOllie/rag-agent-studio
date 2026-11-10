@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] The page opens with a page header (Organisation cost) whose description is the existing sentence about frozen prices
 - [ ] "Break down by" is a segmented control (Project / Agent); From and To are date filters styled like those on Conversations and Analytics
