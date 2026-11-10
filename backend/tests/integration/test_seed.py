@@ -32,8 +32,8 @@ from app.seed.runner import (
 from app.storage.memory import InMemoryObjectStore
 from app.tenancy.erasure import erase_member, erase_organisation
 from tests.agents import ask, parse_sse, start_conversation
-from tests.integration.test_agentic_retrieval import asked
 from tests.conftest import BASE_URL, ClientFactory, SignedUpMember, TenantFactory
+from tests.integration.test_agentic_retrieval import asked
 from tests.integration.test_object_store import RUSTFS_KEYS, RUSTFS_URL
 
 ASSETS = DEFAULT_ASSETS

@@ -35,7 +35,7 @@ TEST_WORKERS ?=
 test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`); TEST_WORKERS=N runs them in parallel
 	cd backend && uv run pytest $(if $(TEST_WORKERS),-n $(TEST_WORKERS))
 
-test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
+test-live: ## Live suite: real Docling on the sample files, the local Embedding Model and one real Agentic reply with SEED_CREDENTIAL_* (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
 	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
 
 test-frontend: ## Studio, widget and API client tests, the embed loader's size budget, then the palette ratchet

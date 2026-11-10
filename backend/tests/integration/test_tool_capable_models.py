@@ -123,6 +123,9 @@ async def test_an_agentic_draft_is_refused_when_the_default_model_cant_use_tools
     await set_default(owner, await bedrock_chat(owner), MISTRAL)
     project_id = await create_project(owner)
     agent_id = (await create_agent(owner, project_id))["id"]
+    # Saved Automatic first: a new Agent starts Agentic, and creating one revalidates nothing.
+    automatic = await save_draft(owner, project_id, agent_id, {"retrieval": {"mode": "automatic"}})
+    assert automatic.status_code == 200, automatic.text
 
     refused = await save_draft(owner, project_id, agent_id, {"retrieval": {"mode": "agentic"}})
 

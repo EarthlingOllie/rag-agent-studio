@@ -141,7 +141,7 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. Its Agents show the Retrieval Mode trade-off over the same Project: the Product FAQ is Agentic, the HR helper Automatic; the seed sets every Agent's Retrieval Mode explicitly, and the Guardrail demo Agent is Automatic so the Attack panel stays deterministic. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
@@ -157,7 +157,7 @@ The Demo page (`/demo/attacks.html`) with one button per attack category (instru
 _Avoid_: Red-team page, jailbreak console
 
 **Five-minute demo**:
-The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace, the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
 _Avoid_: Walkthrough, showcase script, smoke test
 
 **Demo mode**:
@@ -223,11 +223,11 @@ The chat model an Organisation's Agents use unless an Agent overrides it: one ch
 _Avoid_: Global model, org model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
-The demo provider's second chat model (`demo-naive`): the Naive model behind its own label, "Naive demo model (obeys injected instructions, not AI)". The Attack panel's Guardrail demo Agent always answers with it, even when the seed was given a real Provider Credential, so the panel shows the Guardrails at work rather than a model refusing.
+The demo provider's second chat model (`demo-naive`): the Naive model behind its own label, "Naive demo model (obeys injected instructions, not AI)". Given Knowledge Search, it searches as the Naive model does, first with the Visitor's question. The Attack panel's Guardrail demo Agent always answers with it, even when the seed was given a real Provider Credential, so the panel shows the Guardrails at work rather than a model refusing.
 _Avoid_: Evil model, unsafe model
 
 **Model gateway**:
