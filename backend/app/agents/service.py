@@ -32,6 +32,10 @@ CREATED = "agent.created"
 ARCHIVED = "agent.archived"
 RESTORED = "agent.restored"
 DELETED = "agent.deleted"
+RETRIEVAL_MODE_CHANGED = "agent.retrieval_mode_changed"
+
+# The Retrieval settings a Draft change is audited for, with the names the Audit Event gives them.
+_AUDITED_RETRIEVAL = (("mode", "retrieval_mode"), ("search_limit", "search_limit"))
 
 
 class AgentNotFoundError(Exception):
@@ -280,6 +284,32 @@ async def delete_agent(
     await session.commit()
 
 
+async def _audit_retrieval_mode(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    agent: Agent,
+    before: AgentConfig,
+    after: AgentConfig,
+    now: datetime,
+) -> None:
+    """Records ``agent.retrieval_mode_changed`` when a Draft change moves the Retrieval Mode or
+    the Search limit, with the before and after values of just the settings that changed."""
+    old, new = before.retrieval.model_dump(mode="json"), after.retrieval.model_dump(mode="json")
+    changed = [(key, name) for key, name in _AUDITED_RETRIEVAL if old[key] != new[key]]
+    if not changed:
+        return
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=RETRIEVAL_MODE_CHANGED,
+        target=audit.AuditTarget("agent", agent.id),
+        before={name: old[key] for key, name in changed},
+        after={name: new[key] for key, name in changed},
+        occurred_at=now,
+    )
+
+
 async def replace_draft(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -298,6 +328,9 @@ async def replace_draft(
     if base_revision is not None and base_revision != draft.revision:
         raise StaleDraftError(await with_draft(session, agent))
     await check_draft(session, scope, project, config)
+    await _audit_retrieval_mode(
+        session, scope, agent, AgentConfig.model_validate(draft.config), config, now
+    )
     draft.config = config.model_dump(mode="json")
     draft.updated_at = now
     draft.revision += 1

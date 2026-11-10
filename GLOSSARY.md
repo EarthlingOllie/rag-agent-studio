@@ -426,7 +426,7 @@ Retrieval that runs semantic (vector) search and keyword (full-text) search over
 _Avoid_: Vector search (for the whole), combined search
 
 **Retrieval Mode**:
-How an Agent gets Chunks for a reply, chosen in its AgentConfig and so fixed per Version. **Automatic** runs one Hybrid search on the Visitor input before the model is asked. **Agentic** gives the model Knowledge Search and lets it decide whether, how often and with what query to search. Agentic answers more accurately; Automatic costs less. New Agents start Agentic.
+How an Agent gets Chunks for a reply, chosen in its AgentConfig and so fixed per Version. **Automatic** runs one Hybrid search on the Visitor input before the model is asked. **Agentic** gives the model Knowledge Search and lets it decide whether, how often and with what query to search. Agentic answers more accurately; Automatic costs less. New Agents start Agentic. An Editor chooses it in the Retrieval section of the Draft, a segmented choice with that trade-off in one sentence; every Draft change of it or of the Search limit is an Audit Event (`agent.retrieval_mode_changed`) holding the before and after values of just what changed.
 _Avoid_: Basic RAG, agentic RAG, RAG mode, naive RAG
 
 **Search**:
@@ -438,7 +438,7 @@ What a Visitor sees while an Agentic Agent searches: a short row in the reply, "
 _Avoid_: Typing indicator, thinking, spinner
 
 **Search limit**:
-The most Searches an Agentic Agent may make in one reply, set in its Retrieval settings. Once it is reached, a further call is refused (it searches nothing, and doesn't count as a Search) and the model must answer from what it has; the Trace lists the refused call, so it says the limit was hit.
+The most Searches an Agentic Agent may make in one reply, from 1 to 5 (3 by default), set in its Retrieval settings and shown there only in Agentic mode. Once it is reached, a further call is refused (it searches nothing, and doesn't count as a Search) and the model must answer from what it has; the Trace lists the refused call, so it says the limit was hit.
 _Avoid_: Max iterations, tool budget
 
 **Knowledge Search**:

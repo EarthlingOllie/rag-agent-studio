@@ -26,8 +26,20 @@ const GROUPS: Record<string, string> = {
   guardrails: "Guardrails",
 };
 
+/** Settings whose name isn't their place in the AgentConfig, by their path. */
+const SETTING_NAMES: Record<string, string> = {
+  "retrieval.mode": "Retrieval › Retrieval mode",
+};
+
+/** Values that read better as words, by the path of their setting. */
+const VALUE_NAMES: Record<string, Record<string, string>> = {
+  "retrieval.mode": { automatic: "Automatic", agentic: "Agentic" },
+};
+
 /** "retrieval.tag_ids" → "Retrieval › Tag ids". */
 export function settingName(path: string): string {
+  const named = SETTING_NAMES[path];
+  if (named) return named;
   return path
     .split(".")
     .map((part, index) => {
@@ -66,8 +78,9 @@ function LinesDiff({ lines, label }: { lines: DiffLine[]; label: string }) {
   return <Diff label={label} before={sideText(lines, "before")} after={sideText(lines, "after")} />;
 }
 
-function Change({ change, names }: { change: FieldChange; names: Record<string, string> }) {
+function Change({ change, names: given }: { change: FieldChange; names: Record<string, string> }) {
   const name = settingName(change.path);
+  const names = { ...given, ...VALUE_NAMES[change.path] };
   let detail;
   if (change.lines) {
     detail = <LinesDiff lines={change.lines} label={`${name} changes`} />;

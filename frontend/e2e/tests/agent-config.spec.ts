@@ -101,6 +101,31 @@ test.describe("Full AgentConfig editor", () => {
       { kind: "agent", id: agentId, name: "HR helper (model)" },
     ]);
 
+    // Retrieval: Agentic mode with its Search limit, which is checked before saving.
+    await openSettings(page, "Retrieval");
+    const retrieval = page.getByRole("group", { name: "Retrieval" });
+    await expect(retrieval.getByRole("radiogroup", { name: "Retrieval mode" })).toHaveAccessibleDescription(/cheaper and predictable/);
+    await expect(retrieval.getByLabel("Search limit")).toHaveCount(0);
+    save = nextSave(page);
+    await retrieval.getByRole("radio", { name: "Agentic" }).click();
+    await save;
+    await retrieval.getByLabel("Search limit").fill("6");
+    await expect(status).toHaveText("Not saved: fix the settings marked below.");
+    await expect(retrieval.getByLabel("Search limit")).toHaveAttribute("aria-invalid", "true");
+    await expect(retrieval.getByText("Enter a whole number from 1 to 5.")).toBeVisible();
+    save = nextSave(page);
+    await retrieval.getByLabel("Search limit").fill("2");
+    await save;
+    await expect(status).toHaveText("All changes saved");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    // Each change of the Retrieval Mode or Search limit is an Audit Event.
+    const audited = await page.request.get(`${organisation}/audit-events`, { params: { action: "agent.retrieval_mode_changed" } });
+    const events = ((await audited.json()) as { items: { before: object; after: object }[] }).items;
+    expect(events.map(({ before, after }) => ({ before, after }))).toEqual([
+      { before: { search_limit: 3 }, after: { search_limit: 2 } },
+      { before: { retrieval_mode: "automatic" }, after: { retrieval_mode: "agentic" } },
+    ]);
+
     // A reload shows the saved Draft.
     await page.reload();
     await expect(page.getByRole("group", { name: "Behaviour" }).getByLabel("Temperature")).toHaveValue("0.3", { timeout: 15_000 });
@@ -110,5 +135,8 @@ test.describe("Full AgentConfig editor", () => {
     await openSettings(page, "Guardrails");
     await expect(page.getByRole("group", { name: "Experience" }).getByLabel("Greeting")).toHaveValue("Hi! Ask me about leave.");
     await expect(page.getByLabel("Input Guardrail mode")).toHaveValue("warn");
+    await openSettings(page, "Retrieval");
+    await expect(page.getByRole("radio", { name: "Agentic" })).toBeChecked();
+    await expect(page.getByRole("group", { name: "Retrieval" }).getByLabel("Search limit")).toHaveValue("2");
   });
 });

@@ -1,7 +1,7 @@
 import { MarkdownEditor } from "@studio/ui";
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { button, field as fields, Section } from "../design";
+import { button, field as fields, Section, Segmented } from "../design";
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
 import { ChatModelOptions, withoutTools } from "../settings/ModelOptions";
 import { type Agent, StaleDraftError, useSaveDraft, useStoreAgent } from "./agents";
@@ -325,6 +325,32 @@ function ModelChoiceField({
   );
 }
 
+type RetrievalMode = Draft["retrieval"]["mode"];
+
+const RETRIEVAL_MODES: { value: RetrievalMode; label: string }[] = [
+  { value: "automatic", label: "Automatic" },
+  { value: "agentic", label: "Agentic" },
+];
+
+/** The Retrieval Mode, a segmented choice with its trade-off in a sentence and the reasons it was refused. */
+function RetrievalModeField({ value, errors, onChange }: { value: RetrievalMode; errors: string[]; onChange: (value: RetrievalMode) => void }) {
+  const id = useId();
+  const described = [`${id}-hint`, errors.length > 0 && `${id}-error`].filter(Boolean).join(" ");
+  return (
+    <div className="space-y-1">
+      <p className={fields.label}>
+        Retrieval mode
+      </p>
+      <p id={`${id}-hint`} className={fields.hint}>
+        Agentic lets the model search the Knowledge Base as often as a question needs, which is more accurate and can cost more per
+        reply; Automatic searches once per question, which is cheaper and predictable.
+      </p>
+      <Segmented label="Retrieval mode" describedBy={described} options={RETRIEVAL_MODES} value={value} onChange={onChange} />
+      <Errors id={`${id}-error`} messages={errors} />
+    </div>
+  );
+}
+
 function TagScoping({
   organisationId,
   projectId,
@@ -406,8 +432,18 @@ function localErrors(draft: Draft): FieldError[] {
     ["retrieval.min_score", draft.retrieval.min_score],
     ["experience.rating_prompt_after", draft.experience.rating_prompt_after],
   ];
-  return numbers.filter(([, value]) => Number.isNaN(value)).map(([field]) => ({ field, message: "Enter a number." }));
+  const errors = numbers.filter(([, value]) => Number.isNaN(value)).map(([field]) => ({ field, message: "Enter a number." }));
+  const limit = draft.retrieval.search_limit;
+  if (Number.isNaN(limit)) errors.push({ field: "retrieval.search_limit", message: "Enter a number." });
+  else if (!validSearchLimit(limit)) errors.push({ field: "retrieval.search_limit", message: "Enter a whole number from 1 to 5." });
+  return errors;
 }
+
+/** The Search limit's range: 1 to 5 searches in one reply. */
+const validSearchLimit = (limit: number) => Number.isInteger(limit) && limit >= 1 && limit <= 5;
+
+/** The Search limit a new Agent starts with. */
+const DEFAULT_SEARCH_LIMIT = 3;
 
 const orNull = (text: string) => (text.trim() === "" ? null : text);
 
@@ -581,6 +617,7 @@ export function DraftEditor({
   );
   const refused = (group: string) => errors.some((error) => error.field.startsWith(`${group}.`));
   const model = behaviour.model?.model ?? "Default Model";
+  const modeSummary = retrieval.mode === "agentic" ? `Agentic, up to ${String(retrieval.search_limit)} searches` : "Automatic";
 
   return (
     // No submit button: changes save themselves. The save state is shown in the top bar.
@@ -676,7 +713,29 @@ export function DraftEditor({
         />
       </Group>
 
-      <Group legend="Retrieval" summary={`top-${String(retrieval.top_k)} · hybrid ${String(retrieval.hybrid_weight)}`} refused={refused("retrieval")} disabled={readOnly}>
+      <Group legend="Retrieval" summary={`${modeSummary} · top-${String(retrieval.top_k)} · hybrid ${String(retrieval.hybrid_weight)}`} refused={refused("retrieval")} disabled={readOnly}>
+        <RetrievalModeField
+          value={retrieval.mode}
+          errors={at("retrieval.mode")}
+          onChange={(mode) => {
+            // A Search limit left unfinished in Agentic mode can't be fixed once it is hidden.
+            const search_limit = validSearchLimit(retrieval.search_limit) ? retrieval.search_limit : DEFAULT_SEARCH_LIMIT;
+            setRetrieval({ mode, search_limit });
+          }}
+        />
+        {retrieval.mode === "agentic" && (
+          <NumberField
+            label="Search limit"
+            hint="How many times the model may search in one reply, from 1 to 5."
+            min={1}
+            max={5}
+            errors={at("retrieval.search_limit")}
+            value={retrieval.search_limit}
+            onChange={(search_limit) => {
+              setRetrieval({ search_limit });
+            }}
+          />
+        )}
         <NumberField
           label="Chunks per answer (top-k)"
           min={1}

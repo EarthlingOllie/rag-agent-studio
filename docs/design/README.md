@@ -442,7 +442,8 @@ As built for Analytics' Over time (`projects/TimeSeriesChart.tsx`, Recharts):
   selection. A toolbar: arrow keys move between its buttons, Escape clears. A `Menu` in the bar
   (Add Tag ▾) keeps its own keys while open.
 - `Segmented`: a few mutually exclusive options side by side (Visitors / Playground / All). A radio
-  group with one Tab stop; arrows move and choose, Home and End jump.
+  group with one Tab stop; arrows move and choose, Home and End jump. `describedBy` names what
+  explains the choice (the Draft's Retrieval mode: its trade-off sentence and any refusal).
 - `Pagination`: Previous, page numbers (first, last, current and its neighbours, "…" between) and
   Next, in a named `navigation`. Hidden for a single page.
 - `EditableList`: a short list edited in place (Allowed Origins). Enter or Add adds; blanks,
