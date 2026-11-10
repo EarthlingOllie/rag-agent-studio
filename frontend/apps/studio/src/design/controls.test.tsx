@@ -27,6 +27,16 @@ function Source({ onChange }: { onChange: (value: string) => void }) {
 }
 
 describe("Segmented", () => {
+  it("is described by what explains the choice", () => {
+    render(
+      <>
+        <p id="source-hint">Where the Conversations came from.</p>
+        <Segmented label="Source" describedBy="source-hint" options={SOURCES} value="all" onChange={vi.fn()} />
+      </>,
+    );
+    expect(screen.getByRole("radiogroup", { name: "Source" })).toHaveAccessibleDescription("Where the Conversations came from.");
+  });
+
   it("is a radio group with one tab stop, on the chosen option", async () => {
     const user = userEvent.setup();
     render(

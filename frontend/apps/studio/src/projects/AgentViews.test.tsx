@@ -228,7 +228,7 @@ test("the configuration is four sections: Behaviour open, the rest folded with a
   const panel = await screen.findByRole("form", { name: "Draft" }, { timeout: 5000 });
   expect(within(panel).getByRole("textbox", { name: "System prompt" })).toBeVisible();
   expect(within(panel).getByLabelText("Chunks per answer (top-k)")).not.toBeVisible();
-  expect(within(panel).getByText("top-5 · hybrid 0.5")).toBeVisible();
+  expect(within(panel).getByText("Automatic · top-5 · hybrid 0.5")).toBeVisible();
   expect(within(panel).getByText("block · fail closed")).toBeVisible();
 
   await userEvent.click(within(panel).getByText("Retrieval"));

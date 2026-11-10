@@ -19,11 +19,14 @@ function moveIndex(key: string, index: number, count: number): number | null {
  */
 export function Segmented<T extends string>({
   label,
+  describedBy,
   options,
   value,
   onChange,
 }: {
   label: string;
+  /** The IDs of what explains the choice: a hint, the reasons a save was refused. */
+  describedBy?: string | undefined;
   options: readonly { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
@@ -44,6 +47,7 @@ export function Segmented<T extends string>({
       ref={group}
       role="radiogroup"
       aria-label={label}
+      aria-describedby={describedBy}
       onKeyDown={onKeyDown}
       className="inline-flex h-9 items-center gap-0.5 rounded-full bg-sunken p-0.5"
     >
