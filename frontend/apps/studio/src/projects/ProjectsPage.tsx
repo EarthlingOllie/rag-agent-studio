@@ -18,11 +18,6 @@ import {
 import { NewProjectDialog } from "./ProjectDetailsDialog";
 import { projectFailure, useArchiveOrRestore, useProjects } from "./projects";
 
-export const INPUT =
-  "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
-export const BUTTON =
-  "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
-
 /** The Organisation in the path and whether the signed-in Member is one of its Owners. */
 export function useOrganisationRole() {
   const { organisationId } = useParams({

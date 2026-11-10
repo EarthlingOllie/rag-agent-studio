@@ -363,3 +363,9 @@ test("the archived list shows its loading and error states", async () => {
   ).toBeInTheDocument();
   expect(failure).toHaveTextContent("Try again shortly.");
 });
+
+test("the Projects page leaves button and field styling to the design system's recipes", async () => {
+  const module: Record<string, unknown> = await import("./ProjectsPage");
+  expect(Object.keys(module)).not.toContain("BUTTON");
+  expect(Object.keys(module)).not.toContain("INPUT");
+});
