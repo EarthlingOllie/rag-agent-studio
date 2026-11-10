@@ -4,8 +4,15 @@ It knows nothing about HTTP, the Playground or the widget: callers give it the C
 turns (it keeps the last ``remembered_turns`` of them), the AgentConfig, the Instructions text,
 the Visitor input, the chat model (from the model gateway) and a ``retrieve`` function bound to
 the Project. When retrieval finds no Chunk at or above the minimum score, the turn is the Agent's
-fallback text and the model isn't asked. The Pydantic AI agent it builds registers no tools
-(ADR-0007).
+fallback text and the model isn't asked. In Automatic Retrieval Mode the Pydantic AI agent it
+builds registers no tools (ADR-0007).
+
+In Agentic Retrieval Mode (ADR-0015) nothing is retrieved up front. The agent registers exactly
+one tool, Knowledge Search, whose only argument is the query: it runs ``retrieve`` with the
+Agent's Retrieval settings and returns the Chunks it found as a spotlighted, labelled data block
+(``app.runtime.prompt.search_results``). A ``SearchEvent`` is streamed as each Search starts, and
+the ``DoneEvent`` lists the reply's Searches (``Searched``). Tool calls finish before the answer
+streams. Token use is summed over every model call of the reply.
 
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
 the answer cites (``app.runtime.citations``), then one ``DoneEvent``. The reply keeps one record
@@ -27,24 +34,37 @@ With ``cautioned`` (the input Guardrail's warn mode flagged the message), the pr
 caution block after the system prompt (``app.runtime.prompt.CAUTION``).
 """
 
+import asyncio
+import dataclasses
+import itertools
 import logging
+import time
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Sequence
-from contextlib import aclosing
+from contextlib import aclosing, suppress
 from dataclasses import dataclass, field
 
-from pydantic_ai import Agent, NativeOutput
+from pydantic_ai import Agent, NativeOutput, Tool
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage
 
-from app.agents.config import AgentConfig, Retrieval
+from app.agents.config import AgentConfig, Retrieval, RetrievalMode
 from app.guardrails.canary import CanaryFilter, encoded_leak, new_canary
 from app.guardrails.outcomes import GuardrailOutcome
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.citations import CitedAnswer, labels_in, resolve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
-from app.runtime.prompt import GivenChunks, Turn, data_blocks, history
+from app.runtime.prompt import (
+    KNOWLEDGE_SEARCH,
+    KNOWLEDGE_SEARCH_DESCRIPTION,
+    GivenChunks,
+    Turn,
+    data_blocks,
+    history,
+    search_results,
+    visitor_block,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +92,28 @@ class CitationEvent:
 
 
 @dataclass(frozen=True)
+class SearchEvent:
+    """A Knowledge Search starts: the reply's ``order``-th (from 1), for the model's ``query``."""
+
+    query: str
+    order: int
+
+
+@dataclass(frozen=True)
+class Searched:
+    """One Knowledge Search the reply made: its query, how long it took, the Chunks it found
+    (each ranked by the number in its Chunk label, which continues across the reply) and the
+    Chunks it left out. ``limit_refused`` marks a call refused by the Search limit."""
+
+    order: int
+    query: str
+    latency_ms: int
+    candidates: list[Candidate]
+    excluded: list[Excluded]
+    limit_refused: bool = False
+
+
+@dataclass(frozen=True)
 class DoneEvent:
     """The end of the turn: the full answer, token usage, the Chunks the model was given and
     the Chunks retrieval left out. ``fallback`` is true when no Chunk reached the minimum score,
@@ -89,9 +131,12 @@ class DoneEvent:
     # answer is the refusal text, and nothing was retrieved and no model was asked.
     refused: bool = False
     guardrail_outcomes: list[GuardrailOutcome] = field(default_factory=list)
+    # In Agentic Retrieval Mode, the reply's Searches in order; ``retrieved`` is then every Chunk
+    # given to the model, in label order, and ``excluded`` every Chunk the Searches left out.
+    searches: list[Searched] = field(default_factory=list)
 
 
-TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | DoneEvent | ErrorEvent
+TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | SearchEvent | DoneEvent | ErrorEvent
 
 CANARY_REPLACED = "The reply contained the canary token, so it was cut off and replaced."
 CANARY_ENCODED = "The reply contained the canary token, encoded ({encoding})"
@@ -112,8 +157,9 @@ async def _stream_text(
     messages: list[ModelMessage],
     settings: ModelSettings,
     streamed: _Streamed,
+    tools: list[Tool[None]],
 ) -> AsyncGenerator[str]:
-    async with Agent(model).run_stream(
+    async with Agent(model, tools=tools).run_stream(
         question, message_history=messages, model_settings=settings
     ) as result:
         async for text in result.stream_text(delta=True, debounce_by=None):
@@ -130,8 +176,9 @@ async def _stream_structured(
     messages: list[ModelMessage],
     settings: ModelSettings,
     streamed: _Streamed,
+    tools: list[Tool[None]],
 ) -> AsyncGenerator[str]:
-    agent = Agent(model, output_type=NativeOutput(CitedAnswer))
+    agent = Agent(model, output_type=NativeOutput(CitedAnswer), tools=tools)
     async with agent.run_stream(
         question, message_history=messages, model_settings=settings
     ) as result:
@@ -144,6 +191,87 @@ async def _stream_structured(
                 streamed.usage = result.usage
                 yield delta
         streamed.usage = result.usage
+
+
+def _elapsed_ms(started: float) -> int:
+    return round((time.perf_counter() - started) * 1000)
+
+
+def _knowledge_search(
+    retrieve: Retrieve,
+    settings: Retrieval,
+    given: GivenChunks,
+    searches: list[Searched],
+    started: Callable[[SearchEvent], None],
+) -> Tool[None]:
+    """Knowledge Search for one reply: the model writes the query; everything else comes from
+    the Agent's Retrieval settings. Each Search is reported to ``started`` as it starts and
+    recorded in ``searches`` once it ends."""
+
+    # Numbered as they start: the model may make several Searches at once.
+    orders = itertools.count(1)
+
+    async def knowledge_search(query: str) -> str:
+        order = next(orders)
+        started(SearchEvent(query, order))
+        began = time.perf_counter()
+        found = await retrieve(query, settings)
+        results = search_results(found.candidates, given)
+        searches.append(
+            Searched(
+                order=order,
+                query=query,
+                latency_ms=_elapsed_ms(began),
+                candidates=[
+                    dataclasses.replace(chunk, rank=given.entry(chunk).number)
+                    for chunk in found.candidates
+                ],
+                excluded=found.excluded,
+            )
+        )
+        searches.sort(key=lambda search: search.order)
+        return results
+
+    return Tool(
+        knowledge_search,
+        name=KNOWLEDGE_SEARCH,
+        description=KNOWLEDGE_SEARCH_DESCRIPTION,
+        takes_ctx=False,
+    )
+
+
+@dataclass(frozen=True)
+class _Failed:
+    error: Exception
+
+
+async def _with_searches(
+    texts: AsyncGenerator[str], queue: "asyncio.Queue[str | SearchEvent | _Failed | None]"
+) -> AsyncGenerator[str | SearchEvent]:
+    """The answer's text with the ``SearchEvent``s Knowledge Search puts on ``queue`` as they
+    happen: the model is streamed in a task of its own, so a Search is reported when it starts,
+    not when the answer does. Closing this stops the model."""
+
+    async def pump() -> None:
+        try:
+            async with aclosing(texts):
+                async for text in texts:
+                    queue.put_nowait(text)
+        except Exception as error:  # re-raised below, in the reply's own task
+            queue.put_nowait(_Failed(error))
+        else:
+            queue.put_nowait(None)
+
+    task = asyncio.create_task(pump())
+    try:
+        while (item := await queue.get()) is not None:
+            if isinstance(item, _Failed):
+                raise item.error
+            yield item
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
 
 
 async def run_turn(
@@ -186,8 +314,21 @@ async def _turn(
     cautioned: bool,
 ) -> AsyncGenerator[TurnEvent]:
     behaviour = config.behaviour
-    retrieved = await retrieve(visitor_input, config.retrieval)
-    if not retrieved.candidates:
+    agentic = config.retrieval.mode is RetrievalMode.AGENTIC
+    # The reply's record of the Chunks given to the model: it labels them and resolves Citations.
+    given = GivenChunks()
+    searches: list[Searched] = []
+    queue: asyncio.Queue[str | SearchEvent | _Failed | None] = asyncio.Queue()
+    if agentic:
+        # No upfront search: the model searches with Knowledge Search, its one tool.
+        retrieved = RetrievalResult([])
+        tools = [_knowledge_search(retrieve, config.retrieval, given, searches, queue.put_nowait)]
+        question = visitor_block(visitor_input)
+    else:
+        retrieved = await retrieve(visitor_input, config.retrieval)
+        tools = []
+        question = data_blocks(retrieved.candidates, visitor_input, given)
+    if not agentic and not retrieved.candidates:
         # Nothing relevant was found: say so in the Agent's words instead of letting it guess.
         fallback_text = behaviour.fallback_text
         yield TokenEvent(fallback_text)
@@ -203,11 +344,13 @@ async def _turn(
     remembered = list(turns)[-behaviour.remembered_turns :] if behaviour.remembered_turns else []
     canary = new_canary()
     messages = history(
-        instructions, behaviour.system_prompt, remembered, canary=canary, cautioned=cautioned
+        instructions,
+        behaviour.system_prompt,
+        remembered,
+        canary=canary,
+        cautioned=cautioned,
+        agentic=agentic,
     )
-    # The reply's record of the Chunks given to the model: it labels them and resolves Citations.
-    given = GivenChunks()
-    question = data_blocks(retrieved.candidates, visitor_input, given)
     settings = ModelSettings(
         temperature=behaviour.temperature, max_tokens=behaviour.max_output_tokens
     )
@@ -215,14 +358,24 @@ async def _turn(
     stream = _stream_structured if structured else _stream_text
     streamed = _Streamed()
     canary_filter = CanaryFilter(canary)
-    async with aclosing(stream(model, question, messages, settings, streamed)) as texts:
-        async for text in texts:
+    texts = stream(model, question, messages, settings, streamed, tools)
+    items = _with_searches(texts, queue) if agentic else texts
+    async with aclosing(items) as stream_items:
+        async for text in stream_items:
+            if isinstance(text, SearchEvent):
+                yield text
+                continue
             safe = canary_filter.feed(text)
             if canary_filter.leaked:
                 # Leaving the loop closes the stream, which stops the model.
                 break
             if safe:
                 yield TokenEvent(safe)
+    if agentic:
+        retrieved = RetrievalResult(
+            [dataclasses.replace(entry.chunk, rank=entry.number) for entry in given.entries()],
+            [chunk for search in searches for chunk in search.excluded],
+        )
     if canary_filter.leaked:
         yield ReplaceEvent(behaviour.fallback_text)
         yield DoneEvent(
@@ -232,6 +385,7 @@ async def _turn(
             retrieved=retrieved.candidates,
             excluded=retrieved.excluded,
             guardrail_outcomes=[GuardrailOutcome("canary", "leak", "replaced", CANARY_REPLACED)],
+            searches=searches,
         )
         return
     rest = canary_filter.finish()
@@ -254,4 +408,5 @@ async def _turn(
         excluded=retrieved.excluded,
         cited=[entry.chunk for entry in cited],
         guardrail_outcomes=outcomes,
+        searches=searches,
     )

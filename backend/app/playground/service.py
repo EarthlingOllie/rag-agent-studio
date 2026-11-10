@@ -21,6 +21,7 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal, overload
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -35,6 +36,7 @@ from app.conversations.models import (
     Message,
     MessageRetrieval,
     MessageRole,
+    Search,
 )
 from app.conversations.service import (
     TracedChunk,
@@ -55,10 +57,17 @@ from app.projects.instructions import project_version
 from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
 from app.retention.service import purge_messages
-from app.retrieval.service import RetrievalResult, retrieve
+from app.retrieval.service import Candidate, Excluded, RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.prompt import Turn
-from app.runtime.runtime import CitationEvent, DoneEvent, ReplaceEvent, TokenEvent
+from app.runtime.runtime import (
+    CitationEvent,
+    DoneEvent,
+    ReplaceEvent,
+    Searched,
+    SearchEvent,
+    TokenEvent,
+)
 from app.tenancy.repository import OrganisationScope
 
 
@@ -299,12 +308,11 @@ async def save_question(
     )
 
 
-def _retrievals(
-    organisation_id: uuid.UUID, message_id: uuid.UUID, done: DoneEvent
+def _retrieval_rows(
+    retrieved: list[Candidate], excluded: list[Excluded], cited: set[uuid.UUID]
 ) -> list[MessageRetrieval]:
-    """The answer's Trace rows: the Chunks given to the model, then those left out."""
-    cited = {chunk.chunk_id for chunk in done.cited}
-    rows = [
+    """Trace rows: the Chunks given to the model, then those left out."""
+    return [
         MessageRetrieval(
             chunk_id=c.chunk_id,
             document_id=c.document_id,
@@ -315,7 +323,7 @@ def _retrievals(
             cited=c.chunk_id in cited,
             excluded_reason=None,
         )
-        for c in done.retrieved
+        for c in retrieved
     ] + [
         MessageRetrieval(
             chunk_id=e.chunk_id,
@@ -327,13 +335,44 @@ def _retrievals(
             cited=False,
             excluded_reason=e.reason,
         )
-        for e in done.excluded
+        for e in excluded
     ]
-    for position, row in enumerate(rows):
+
+
+def _searched(organisation_id: uuid.UUID, message_id: uuid.UUID, search: Searched) -> Search:
+    return Search(
+        id=uuid.uuid4(),
+        organisation_id=organisation_id,
+        message_id=message_id,
+        order=search.order,
+        query=search.query,
+        latency_ms=search.latency_ms,
+        limit_refused=search.limit_refused,
+    )
+
+
+def _trace_rows(
+    organisation_id: uuid.UUID, message_id: uuid.UUID, done: DoneEvent
+) -> tuple[list[Search], list[MessageRetrieval]]:
+    """The answer's Trace rows: its Searches (Agentic Retrieval Mode), and its Chunk
+    retrievals, each under the Search that found it, in the order of the Searches."""
+    cited = {chunk.chunk_id for chunk in done.cited}
+    searches: list[Search] = []
+    retrievals: list[MessageRetrieval] = []
+    if not done.searches:
+        retrievals = _retrieval_rows(done.retrieved, done.excluded, cited)
+    for search in done.searches:
+        searched = _searched(organisation_id, message_id, search)
+        found = _retrieval_rows(search.candidates, search.excluded, cited)
+        for row in found:
+            row.search_id = searched.id
+        searches.append(searched)
+        retrievals.extend(found)
+    for position, row in enumerate(retrievals):
         row.organisation_id = organisation_id
         row.message_id = message_id
         row.position = position
-    return rows
+    return searches, retrievals
 
 
 async def get_trace(
@@ -362,6 +401,35 @@ def _elapsed_ms(started: float) -> int:
     return round((time.perf_counter() - started) * 1000)
 
 
+AnswerEvent = TokenEvent | ReplaceEvent | RefusalEvent | CitationEvent | ErrorEvent | Answered
+
+
+@overload
+def answer(
+    prepared: PreparedTurn,
+    *,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    gateway: ModelGateway,
+    guardrails: GuardrailPipeline,
+    embedders: dict[str, Embedder],
+    clock: Clock,
+    searches: Literal[False] = False,
+) -> AsyncIterator[AnswerEvent]: ...
+
+
+@overload
+def answer(
+    prepared: PreparedTurn,
+    *,
+    sessionmaker: async_sessionmaker[AsyncSession],
+    gateway: ModelGateway,
+    guardrails: GuardrailPipeline,
+    embedders: dict[str, Embedder],
+    clock: Clock,
+    searches: Literal[True],
+) -> AsyncIterator[AnswerEvent | SearchEvent]: ...
+
+
 async def answer(
     prepared: PreparedTurn,
     *,
@@ -370,14 +438,14 @@ async def answer(
     guardrails: GuardrailPipeline,
     embedders: dict[str, Embedder],
     clock: Clock,
-) -> AsyncIterator[
-    TokenEvent | ReplaceEvent | RefusalEvent | CitationEvent | ErrorEvent | Answered
-]:
+    searches: bool = False,
+) -> AsyncIterator[AnswerEvent | SearchEvent]:
     """Streams the answer's tokens and citations (or the replacement of an answer that leaked
     the Canary token, or the refusal of a question the input Guardrail blocked), then saves
-    the answer, with what retrieval found for it and the Guardrail outcomes, and ends with
-    ``Answered``. If the provider fails, it ends with an
-    ``ErrorEvent`` instead and saves no answer, so the question is not remembered."""
+    the answer, with what retrieval found for it (in Agentic Retrieval Mode, its Searches) and
+    the Guardrail outcomes, and ends with ``Answered``. With ``searches`` (the Playground) a
+    ``SearchEvent`` is streamed as each Knowledge Search starts. If the provider fails, it ends
+    with an ``ErrorEvent`` instead and saves no answer, so the question is not remembered."""
     started = time.perf_counter()
     first_token_ms: int | None = None
     chosen = prepared.chat
@@ -427,6 +495,10 @@ async def answer(
             if isinstance(event, CitationEvent | ReplaceEvent | RefusalEvent | ErrorEvent):
                 yield event
                 continue
+            if isinstance(event, SearchEvent):
+                if searches:
+                    yield event
+                continue
             latency_ms = _elapsed_ms(started)
             now = clock.now()
             usage = TokenUsage(event.input_tokens, event.output_tokens)
@@ -457,10 +529,15 @@ async def answer(
                 cost_usd=cost(pricing, chosen.model, usage, now, await price_table(session)),
                 fallback=event.fallback,
                 guardrail_outcomes=[o.as_dict() for o in event.guardrail_outcomes],
+                search_count=len(event.searches),
             )
             session.add(message)
             await session.flush()
-            session.add_all(_retrievals(prepared.organisation_id, message.id, event))
+            searched, retrievals = _trace_rows(prepared.organisation_id, message.id, event)
+            session.add_all(searched)
+            # The Searches are written before the Chunk retrievals that reference them.
+            await session.flush()
+            session.add_all(retrievals)
             # Locked, so a deletion either comes first (and is seen here) or purges this answer.
             conversation = await session.get_one(
                 Conversation, prepared.conversation_id, with_for_update=True

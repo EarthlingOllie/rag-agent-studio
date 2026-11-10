@@ -77,6 +77,8 @@ type ChatMessage = {
   // Which Project Instructions the answer ran with, once it is saved.
   instructions?: string;
   citations?: Citation[];
+  /** The queries of the Knowledge Searches the answer made, in order (Agentic Retrieval Mode). */
+  searches?: string[];
   // Set once the answer is saved, so its Trace can be opened.
   messageId?: string;
   // The input Guardrail blocked the question: the content is the Agent's refusal text.
@@ -99,6 +101,22 @@ function Sources({ citations, organisationId, projectId }: { citations: Citation
           >
             <span className="font-semibold text-accent">{citation.label}</span> <span>{citation.document_name}</span>
           </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The Knowledge Searches an answer made, one "Searching: …" line each, as they happen. */
+function Searches({ queries }: { queries: string[] }) {
+  return (
+    <ul aria-label="Searches" className="flex flex-col gap-1">
+      {queries.map((query, index) => (
+        <li key={index} className="flex items-center gap-1.5 text-sm text-muted">
+          <Icon name="search" size={14} />
+          <span>
+            Searching: <em className="text-ink-2">{query}</em>
+          </span>
         </li>
       ))}
     </ul>
@@ -194,6 +212,9 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
           // The input Guardrail blocked the question: the refusal text is the whole reply.
           appendToAnswer((answer) => ({ ...answer, content: text, refused: true }));
         },
+        (search) => {
+          appendToAnswer((answer) => ({ ...answer, searches: [...(answer.searches ?? []), search.query] }));
+        },
       );
       appendToAnswer((answer) => ({
         ...answer,
@@ -285,6 +306,7 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
                 {agent.name.charAt(0).toUpperCase()}
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-2">
+                {message.searches && <Searches queries={message.searches} />}
                 <p className="text-base whitespace-pre-wrap text-ink">{message.content}</p>
                 {message.refused && <p className="text-xs font-medium text-flag">Blocked by the input Guardrail: the model wasn&apos;t asked.</p>}
                 {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}

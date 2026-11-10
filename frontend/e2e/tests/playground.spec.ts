@@ -151,4 +151,65 @@ test.describe("Agent and Playground", () => {
       timeout: 15_000,
     });
   });
+
+  test("an Agent set to Agentic searches the Knowledge Base, cites what it found and the Trace lists the Search", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    // Ingestion and a streamed, searched answer: more than the default 30 seconds.
+    test.setTimeout(120_000);
+    await page.goto("/");
+    const me = (await (await page.request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
+    const organisation = `/api/organisations/${me.organisations[0]?.id ?? ""}`;
+    const credential = await page.request.post(`${organisation}/credentials`, {
+      data: { name: "Support Claude", provider: "anthropic", api_key: CHAT_KEY },
+    });
+    expect(credential.status()).toBe(201);
+    const { id } = (await credential.json()) as { id: string };
+    expect((await page.request.put(`${organisation}/default-model`, { data: { credential_id: id, model: "claude-haiku-4-5" } })).status()).toBe(200);
+
+    // A Project holding the seed handbook, and an Agent.
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
+    const newProject = page.getByRole("form", { name: "New Project" });
+    await newProject.getByLabel("Name").fill("Northwind HR");
+    await newProject.getByRole("button", { name: "Create Project" }).click();
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
+    const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
+    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
+    await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
+    const newAgent = page.getByRole("form", { name: "New Agent" });
+    await newAgent.getByLabel("Name").fill("HR searcher");
+    await newAgent.getByRole("button", { name: "Create Agent" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "HR searcher" })).toBeVisible({ timeout: 15_000 });
+
+    // Its Retrieval Mode set to Agentic through the Draft API (the editor's control is ticket 13-05).
+    const [, projectId, agentId] = /\/projects\/([0-9a-f-]+)\/agents\/([0-9a-f-]+)/.exec(page.url()) ?? [];
+    const agentPath = `${organisation}/projects/${projectId ?? ""}/agents/${agentId ?? ""}`;
+    const { draft } = (await (await page.request.get(agentPath)).json()) as { draft: { retrieval: Record<string, unknown> } };
+    const saved = await page.request.put(`${agentPath}/draft`, { data: { ...draft, retrieval: { ...draft.retrieval, mode: "agentic" } } });
+    expect(saved.status()).toBe(200);
+    await page.reload();
+
+    // The fake model searches once with the question: the Search shows as it happens, then the
+    // answer cites the Chunk the Search found.
+    const question = "How many days of annual leave do I get?";
+    await page.getByLabel("Question", { exact: true }).fill(question);
+    await page.getByRole("button", { name: "Send" }).click();
+    const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR searcher" });
+    await expect(answer.getByRole("list", { name: "Searches" }).getByRole("listitem")).toHaveText([`Searching: ${question}`], { timeout: 15_000 });
+    await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.");
+    await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link", { name: /^C1 northwind-staff-handbook\.md$/ })).toBeVisible();
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    // The Trace lists the Search, with the Chunks it found: the cited one first.
+    await answer.getByText("Trace", { exact: true }).click();
+    const searches = answer.getByRole("group", { name: "Trace" }).getByRole("list", { name: "Searches" });
+    await expect(searches.getByRole("heading", { name: `Search 1: ${question}` })).toBeVisible({ timeout: 15_000 });
+    const found = searches.getByRole("table", { name: "Chunks found by Search 1" }).getByRole("row").nth(1);
+    await expect(found.getByRole("cell").first()).toHaveText("C1");
+    await expect(found.getByRole("cell").last()).toHaveText("Cited");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+  });
 });

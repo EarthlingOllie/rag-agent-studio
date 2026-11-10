@@ -4497,7 +4497,14 @@ export interface components {
              * @default 0
              */
             min_score: number;
+            /** @default automatic */
+            mode: components["schemas"]["RetrievalMode"];
             reranker?: components["schemas"]["ModelChoice"] | null;
+            /**
+             * Search Limit
+             * @default 3
+             */
+            search_limit: number;
             /** Tag Ids */
             tag_ids?: string[];
             /**
@@ -4523,7 +4530,14 @@ export interface components {
              * @default 0
              */
             min_score: number;
+            /** @default automatic */
+            mode: components["schemas"]["RetrievalMode"];
             reranker: components["schemas"]["ModelChoice"] | null;
+            /**
+             * Search Limit
+             * @default 3
+             */
+            search_limit: number;
             /** Tag Ids */
             tag_ids: string[];
             /**
@@ -4532,6 +4546,14 @@ export interface components {
              */
             top_k: number;
         };
+        /**
+         * RetrievalMode
+         * @description How an Agent gets Chunks for a reply (ADR-0015). Automatic runs one Hybrid search on the
+         *     Visitor input before the model is asked; Agentic gives the model Knowledge Search, its one
+         *     tool, and lets it decide whether, how often and with what query to search.
+         * @enum {string}
+         */
+        RetrievalMode: "automatic" | "agentic";
         /**
          * Role
          * @enum {string}
@@ -4573,6 +4595,24 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /**
+         * SearchOut
+         * @description One Knowledge Search the answer made (Agentic Retrieval Mode), with the Chunks it found,
+         *     given to the model or left out, in Trace order. A Chunk's ``rank`` is the number in its
+         *     Chunk label, which continues across the reply's Searches.
+         */
+        SearchOut: {
+            /** Chunks */
+            chunks: components["schemas"]["TracedChunkOut"][];
+            /** Latency Ms */
+            latency_ms: number;
+            /** Limit Refused */
+            limit_refused: boolean;
+            /** Order */
+            order: number;
+            /** Query */
+            query: string;
         };
         /** SendMessageRequest */
         SendMessageRequest: {
@@ -4983,6 +5023,10 @@ export interface components {
             model_provider: string | null;
             /** Output Tokens */
             output_tokens: number | null;
+            /** Search Count */
+            search_count: number;
+            /** Searches */
+            searches: components["schemas"]["SearchOut"][];
         };
         /** TracedChunkOut */
         TracedChunkOut: {
@@ -8724,7 +8768,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
+            /** @description Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) as each Knowledge Search starts; `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;

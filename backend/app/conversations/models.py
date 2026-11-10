@@ -123,17 +123,39 @@ class Message(IdMixin, Base):
     guardrail_outcomes: Mapped[list[dict[str, str | float | None]]] = mapped_column(
         JSONB, default=list, server_default=text("'[]'::jsonb")
     )
+    # How many Knowledge Searches the answer made (Agentic Retrieval Mode); 0 in Automatic mode.
+    search_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     # When its text (and any feedback comment on it) was purged, by the Retention Window or a
     # Conversation deleted on request (``app.retention``); ``content`` is then empty. Every
     # number and attribution stays.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class Search(IdMixin, Base):
+    """One Knowledge Search an answer made in Agentic Retrieval Mode (ADR-0015): the reply's
+    ``order``-th (from 1), for the ``query`` the model wrote, how long it took, and whether the
+    Search limit refused it. The Chunks it found are its Message retrievals."""
+
+    __tablename__ = "searches"
+    __table_args__ = (UniqueConstraint("message_id", "order"),)
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(Message.id, ondelete="CASCADE"))
+    order: Mapped[int] = mapped_column(Integer)
+    query: Mapped[str] = mapped_column(Text)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    limit_refused: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+
 class MessageRetrieval(IdMixin, Base):
     """One Chunk retrieval found for an answer: given to the model (with its ``rank``, the
     number in its label) and maybe ``cited``, or left out with an ``excluded_reason``.
     ``position`` orders the Trace: the Chunks given to the model by rank, then the rest as
-    retrieval ranked them. The Chunk and Document IDs have no foreign keys, so the Trace
+    retrieval ranked them. In Agentic Retrieval Mode each belongs to the ``search_id`` that
+    found it, in the order of the Searches, and its ``rank`` is the number in its Chunk label,
+    which continues across the reply. The Chunk and Document IDs have no foreign keys, so the Trace
     outlives a Chunk replaced with its Document's edition. When the Document is deleted, both
     IDs are cleared and ``document_name``, the name when the answer was given, stays as the
     tombstone."""
@@ -145,6 +167,10 @@ class MessageRetrieval(IdMixin, Base):
         ForeignKey("organisations.id", ondelete="CASCADE"), index=True
     )
     message_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(Message.id, ondelete="CASCADE"))
+    # The Search that found it; None in Automatic mode.
+    search_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Search.id, ondelete="CASCADE"), index=True
+    )
     chunk_id: Mapped[uuid.UUID | None]
     document_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
     # None only for retrievals of Documents deleted before names were kept.

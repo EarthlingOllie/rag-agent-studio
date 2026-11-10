@@ -27,6 +27,8 @@ export const defaultDraft: Draft = {
     tag_ids: [],
     reranker: null,
     citations: true,
+    mode: "automatic",
+    search_limit: 3,
   },
   experience: {
     display_name: "",
@@ -255,6 +257,8 @@ export const hrTrace: Schemas["TraceOut"] = {
   latency_ms: 85,
   fallback: false,
   guardrail_outcomes: [],
+  search_count: 0,
+  searches: [],
   chunks: [
     {
       chunk_id: leaveCitation.chunk_id,
@@ -320,6 +324,36 @@ export const hrTrace: Schemas["TraceOut"] = {
   ],
 };
 
+/** The Trace of an answer in Agentic Retrieval Mode: two Searches, each with the Chunks it found
+ * (the second found the leave policy again, under its first label). */
+export const agenticTrace: Schemas["TraceOut"] = {
+  ...hrTrace,
+  input_tokens: 300,
+  output_tokens: 14,
+  chunks: [],
+  search_count: 2,
+  searches: [
+    {
+      order: 1,
+      query: "annual leave allowance",
+      latency_ms: 31,
+      limit_refused: false,
+      chunks: hrTrace.chunks.slice(0, 1),
+    },
+    {
+      order: 2,
+      query: "carry over unused leave",
+      latency_ms: 27,
+      limit_refused: false,
+      chunks: [
+        { ...(hrTrace.chunks[1] as Schemas["TracedChunkOut"]), rank: 2, text: "Carry over up to 5 days." },
+        hrTrace.chunks[0] as Schemas["TracedChunkOut"],
+        hrTrace.chunks[4] as Schemas["TracedChunkOut"],
+      ],
+    },
+  ],
+};
+
 function sse(event: string, data: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
@@ -337,9 +371,12 @@ export function streamedAnswer(
     error?: { code: string; message: string };
     /** What the `done` event says the answer ran with; the Instructions Draft by default. */
     instructions?: InstructionsUsed;
+    /** Agentic Retrieval Mode: a `search` event per query, in order, before the answer. */
+    searches?: string[];
   } = {},
 ) {
   const body =
+    (options.searches ?? []).map((query, index) => sse("search", { query, order: index + 1 })).join("") +
     tokens.map((text) => sse("token", { text })).join("") +
     (options.refusal === undefined
       ? ""

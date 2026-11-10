@@ -38,6 +38,8 @@ def full_draft(openai: str, voyage: str, anthropic: str, tag_id: str) -> dict[st
             "tag_ids": [tag_id],
             "reranker": {"credential_id": voyage, "model": "rerank-2.5-lite"},
             "citations": False,
+            "mode": "agentic",
+            "search_limit": 5,
         },
         "experience": {
             "display_name": "Hana from HR",
@@ -141,6 +143,9 @@ def _set(draft: dict[str, Any], path: str, value: Any) -> dict[str, Any]:
         ("retrieval.hybrid_weight", 1.5),
         ("retrieval.min_score", -0.5),
         ("retrieval.tag_ids", ["not-a-uuid"]),
+        ("retrieval.mode", "psychic"),
+        ("retrieval.search_limit", 0),
+        ("retrieval.search_limit", 6),
         ("experience.display_name", "x" * 101),
         ("experience.avatar_url", "http://cdn.example.com/plain-http.png"),
         ("experience.avatar_url", "javascript:alert(1)"),
