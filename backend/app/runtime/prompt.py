@@ -14,7 +14,8 @@ Everything inside a data block is data: the preamble tells the model never to fo
 instructions found there. Delimiters can't be forged: a delimiter inside the data is escaped.
 """
 
-from collections.abc import Sequence
+import uuid
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from pydantic_ai.messages import (
@@ -72,8 +73,43 @@ class Turn:
     answer: str
 
 
-def chunk_label(rank: int) -> str:
-    return f"C{rank}"
+def chunk_label(number: int) -> str:
+    """The label of the ``number``-th Chunk (from 1) given to the model in a reply."""
+    return f"C{number}"
+
+
+@dataclass(frozen=True)
+class LabelledChunk:
+    """A Chunk given to the model, with the Chunk label it was given under."""
+
+    label: str
+    chunk: Candidate
+
+
+class GivenChunks:
+    """The per-reply record of the Chunks given to the model. It labels each Chunk in the order
+    it was first given (``C1``, ``C2`` …); a Chunk given again keeps its first label. Citations
+    resolve through it (``app.runtime.citations.resolve``)."""
+
+    def __init__(self) -> None:
+        self._by_chunk: dict[uuid.UUID, LabelledChunk] = {}
+        self._by_label: dict[str, LabelledChunk] = {}
+
+    def give(self, chunks: Iterable[Candidate]) -> list[LabelledChunk]:
+        """Record ``chunks`` as given and return those not given before, newly labelled."""
+        new: list[LabelledChunk] = []
+        for chunk in chunks:
+            if chunk.chunk_id in self._by_chunk:
+                continue
+            labelled = LabelledChunk(chunk_label(len(self._by_chunk) + 1), chunk)
+            self._by_chunk[chunk.chunk_id] = labelled
+            self._by_label[labelled.label] = labelled
+            new.append(labelled)
+        return new
+
+    def labelled(self, label: str) -> LabelledChunk | None:
+        """The Chunk given under ``label``, if any."""
+        return self._by_label.get(label)
 
 
 def _escape(text: str) -> str:
@@ -82,11 +118,16 @@ def _escape(text: str) -> str:
     return text
 
 
-def data_blocks(chunks: Sequence[Candidate], visitor_input: str) -> str:
-    """The question's user message: the Chunks block, then the Visitor input block."""
+def data_blocks(
+    chunks: Sequence[Candidate], visitor_input: str, given: GivenChunks | None = None
+) -> str:
+    """The question's user message: the Chunks block, then the Visitor input block. The Chunks
+    are recorded as given in ``given``, the reply's record (a fresh one by default), which
+    labels them; a Chunk it already holds isn't repeated."""
+    record = GivenChunks() if given is None else given
     excerpts = "\n\n".join(
-        f"[{chunk_label(chunk.rank)}] {chunk.document_name}\n{_escape(chunk.text)}"
-        for chunk in chunks
+        f"[{entry.label}] {entry.chunk.document_name}\n{_escape(entry.chunk.text)}"
+        for entry in record.give(chunks)
     )
     return (
         f"{CHUNKS_OPEN}\n{excerpts}\n{CHUNKS_CLOSE}\n\n"
