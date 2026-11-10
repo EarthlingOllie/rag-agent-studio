@@ -1,0 +1,10 @@
+
+ RUN  v5.1.0 /home/user/wt-13-03/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  48 passed (48)
+   Start at  16:45:19
+   Duration  49.29s (tests 94%, environment 3%, import 2%, setup 1%)
+
+exit 0
