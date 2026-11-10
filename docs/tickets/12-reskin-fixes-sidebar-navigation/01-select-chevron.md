@@ -7,7 +7,7 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Every single-value select (form fields, toolbar pills, table cells) draws the design system's chevron-down instead of the browser's arrow
 - [ ] The chevron sits as far from the right edge as the text sits from the left, and a select reserves at least 36 px on the right so long option text never runs under it
