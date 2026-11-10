@@ -48,4 +48,26 @@ describe("the Studio's page", () => {
     expect(markdown).toMatch(/\.markdown code \{[^}]*bg-sunken[^}]*text-ink/);
     expect(markdown).toMatch(/\.markdown pre \{[^}]*bg-sunken[^}]*text-ink/);
   });
+
+  it("draws every single-value select's chevron from the token, mirrored on the left inset", () => {
+    const rule = (selector: string) => {
+      const start = tokensCss.indexOf(`${selector} {`);
+      expect(start, `${selector} is in tokens.css`).toBeGreaterThanOrEqual(0);
+      return tokensCss.slice(tokensCss.indexOf("{", start) + 1, tokensCss.indexOf("}", start));
+    };
+    const select = rule("select:not([multiple])");
+    expect(select).toContain("appearance: none;");
+    expect(select).toContain("background-image: var(--ds-chevron);");
+    expect(select).toContain("background-repeat: no-repeat;");
+    expect(select).toContain("background-size: 1rem;");
+    // The chevron sits as far from the right as the text from the left (a recipe sets the inset).
+    expect(select).toContain("background-position: right var(--select-inset, 0.75rem) center;");
+    // Inset, chevron and a gap; never less than 36px, so long option text stops short of it.
+    expect(select).toContain("padding-right: max(2.25rem, calc(var(--select-inset, 0.75rem) + 1.5rem));");
+    // A disabled select dims, chevron and all.
+    expect(rule("select:not([multiple]):disabled")).toContain("opacity: 0.5;");
+    // Outside every layer, so a recipe's `px-*` can't take the chevron's room back.
+    const layered = tokensCss.slice(tokensCss.indexOf("@layer base"));
+    expect(layered.indexOf("select:not([multiple])")).toBeGreaterThan(layered.indexOf("\n}\n"));
+  });
 });

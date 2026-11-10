@@ -22,6 +22,7 @@ Adapt names to the code as you find it; other agents keep changing these pages.
 | `bg-green-50 text-green-900` | `notice.success` / `<Notice tone="success">` |
 | `bg-amber-50 text-amber-900` | `notice.warning` / `<Notice tone="warning">` |
 | `rounded … px-3 py-2` inputs (`INPUT`) | `field.input`, `field.select`, `field.textarea`, `field.inputMono` |
+| a page's own select class string | `field.select` (forms), `field.pill` (toolbars), `field.selectCompact` (table cells); the chevron comes from the base rule |
 | `underline` links | `text.link` (running text) or `table.link` (name cells) |
 | `font-mono` numbers | keep `font-mono`; size 13px in tables (`table.tdNumeric`) |
 | `text-2xl font-semibold` page `h1` | `PageHeader` (`text.title`) |

@@ -5,8 +5,6 @@ import { type AuditEventPage, type AuditFilters, NO_FILTERS, PAGE_SIZE, useAudit
 
 type AuditEvent = AuditEventPage["items"][number];
 
-const FILTER = "block h-10 min-w-40 rounded-xl border border-field bg-surface px-3 text-sm font-normal text-ink";
-
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 export function formatTime(iso: string): string {
   return `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -45,9 +43,9 @@ function Filters({
   return (
     <fieldset className="flex flex-wrap items-end gap-3">
       <legend className="sr-only">Filter Audit Events</legend>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         Actor
-        <select className={FILTER} value={filters.actorId} onChange={set("actorId")}>
+        <select className={`${field.pill} min-w-40`} value={filters.actorId} onChange={set("actorId")}>
           <option value="">Anyone</option>
           {facets.data?.actors.map((actor) => (
             <option key={actor.id} value={actor.id}>
@@ -56,9 +54,9 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         Action
-        <select className={FILTER} value={filters.action} onChange={set("action")}>
+        <select className={`${field.pill} min-w-40`} value={filters.action} onChange={set("action")}>
           <option value="">Any action</option>
           {facets.data?.actions.map((action) => (
             <option key={action} value={action}>
@@ -67,13 +65,13 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         From (UTC)
-        <input type="date" className={FILTER} value={filters.from} onChange={set("from")} />
+        <input type="date" className={`${field.pill} min-w-40`} value={filters.from} onChange={set("from")} />
       </label>
-      <label className={`${field.label} flex flex-col gap-1.5`}>
+      <label className={field.filter}>
         To (UTC)
-        <input type="date" className={FILTER} value={filters.to} onChange={set("to")} />
+        <input type="date" className={`${field.pill} min-w-40`} value={filters.to} onChange={set("to")} />
       </label>
     </fieldset>
   );

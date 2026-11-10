@@ -1,6 +1,7 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { field } from "../design";
 import {
   choiceLabel,
   choiceValue,
@@ -11,7 +12,7 @@ import {
   useSetEmbeddingModel,
 } from "./embedding";
 import type { Project } from "./projects";
-import { BUTTON, INPUT } from "./ProjectsPage";
+import { BUTTON } from "./ProjectsPage";
 
 export const RE_EMBEDS =
   "Changing it re-embeds every Document in the background; the current model keeps serving until that finishes.";
@@ -71,7 +72,7 @@ function ChooseModel({
         <select
           id="embedding-model"
           name="embedding-model"
-          className={INPUT}
+          className={field.select}
           defaultValue={choiceValue(active.modelId, active.credentialId)}
         >
           {choices.data.map((choice) => (

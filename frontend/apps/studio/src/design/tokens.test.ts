@@ -64,8 +64,11 @@ it("declares every token in light and dark, and the system dark matches the chos
   expect(darkBySystem).toEqual(darkByChoice);
 });
 
-it("exposes every token to Tailwind as a colour", () => {
-  for (const name of Object.keys(light)) {
+/** Tokens that hold an image rather than a colour. */
+const IMAGES = new Set(["chevron"]);
+
+it("exposes every colour token to Tailwind as a colour", () => {
+  for (const name of Object.keys(light).filter((name) => !IMAGES.has(name))) {
     expect(css).toContain(`--color-${name}: var(--ds-${name});`);
   }
 });
@@ -74,4 +77,29 @@ it("keeps the chart colour apart from the UI accent, at the approved values", ()
   expect([light["chart-1"], darkByChoice["chart-1"]]).toEqual(["#00897b", "#1fa393"]);
   expect(light["chart-1"]).not.toBe(light.accent);
   expect(darkByChoice["chart-1"]).not.toBe(darkByChoice.accent);
+});
+
+describe("the select chevron", () => {
+  /** The stroke colour inside a chevron token's SVG (`%23536260` → `#536260`). */
+  function stroke(token: string | undefined): string {
+    return decodeURIComponent(/stroke='([^']+)'/.exec(decodeURIComponent(token ?? ""))?.[1] ?? "");
+  }
+
+  it("is declared in the light, system-dark and chosen-dark blocks, and the two darks match", () => {
+    expect(light.chevron).toMatch(/^url\("data:image\/svg\+xml,/);
+    expect(darkBySystem.chevron).toMatch(/^url\("data:image\/svg\+xml,/);
+    expect(darkByChoice.chevron).toMatch(/^url\("data:image\/svg\+xml,/);
+    expect(darkBySystem.chevron).toBe(darkByChoice.chevron);
+    expect(darkByChoice.chevron).not.toBe(light.chevron);
+  });
+
+  it("draws the design system's chevron-down, stroked in each Appearance's muted colour", () => {
+    for (const tokens of [light, darkByChoice]) {
+      // The Icon component's chevronDown path, at its 24×24 grid and 1.8 stroke.
+      expect(decodeURIComponent(tokens.chevron as string)).toContain("<path d='M7 10l5 5 5-5'/>");
+      expect(decodeURIComponent(tokens.chevron as string)).toContain("stroke-width='1.8'");
+      expect(stroke(tokens.chevron)).toBe(tokens.muted);
+    }
+    expect([stroke(light.chevron), stroke(darkByChoice.chevron)]).toEqual(["#536260", "#93a5a2"]);
+  });
 });

@@ -1,10 +1,9 @@
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { button, ConfirmDialog, table, text, useToast } from "../design";
+import { button, ConfirmDialog, field, table, text, useToast } from "../design";
 import { memberFailure, type OrganisationMember, type Role, useChangeRole, useMembers, useRemoveMember } from "./members";
 
-const SELECT = "h-9 rounded-xl border border-field bg-surface px-2.5 text-sm text-ink disabled:bg-sunken";
 
 function MemberRow({
   member,
@@ -29,7 +28,7 @@ function MemberRow({
       <td className={table.td}>
         <select
           aria-label={`Role for ${member.name}`}
-          className={SELECT}
+          className={field.selectCompact}
           value={member.role}
           disabled={busy}
           onChange={(event) => {
