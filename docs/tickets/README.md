@@ -130,3 +130,21 @@ Work the **frontier**: any ticket whose blockers are all done. `01-01` is the on
 | `10-04` | [Attack panel](./10-seed-showcase/04-attack-panel.md) | 10-02, 08-01, 08-04 |
 | `10-05` | [Seed in AWS](./10-seed-showcase/05-seed-in-aws.md) | 10-02, 09-06 |
 | `10-06` | [README and automated demo](./10-seed-showcase/06-readme-demo.md) | 10-03, 10-04 |
+
+## 12: Reskin fixes and sidebar navigation
+
+From the [candidate-reskin design review](../reviews/candidate-reskin/README.md); targets `candidate-reskin`.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `12-01` | [Dropdown chevron token and base rule](./12-reskin-fixes-sidebar-navigation/01-select-chevron.md) | none |
+| `12-02` | [Project details dialog (New Project and Edit details)](./12-reskin-fixes-sidebar-navigation/02-project-details-dialog.md) | none |
+| `12-03` | [Projects list reskin](./12-reskin-fixes-sidebar-navigation/03-projects-list-reskin.md) | 12-02 |
+| `12-04` | [Organisation cost reskin](./12-reskin-fixes-sidebar-navigation/04-organisation-cost-reskin.md) | none |
+| `12-05` | [Invite dialog](./12-reskin-fixes-sidebar-navigation/05-invite-dialog.md) | none |
+| `12-06` | [Project Settings reskin and Embedding Model dialog](./12-reskin-fixes-sidebar-navigation/06-project-settings-reskin.md) | none |
+| `12-07` | [Remove the legacy BUTTON / INPUT strings](./12-reskin-fixes-sidebar-navigation/07-remove-legacy-classes.md) | 12-03, 12-04, 12-06 |
+| `12-08` | [Sidebar navigation on desktop](./12-reskin-fixes-sidebar-navigation/08-sidebar.md) | none |
+| `12-09` | [Sidebar drawer on narrow screens](./12-reskin-fixes-sidebar-navigation/09-sidebar-drawer.md) | 12-08 |
+| `12-10` | [Agent view tabs](./12-reskin-fixes-sidebar-navigation/10-agent-view-tabs.md) | 12-08 |
+| `12-11` | [Plain breadcrumb, account menu cleanup and docs](./12-reskin-fixes-sidebar-navigation/11-plain-breadcrumb-docs.md) | 12-08, 12-09, 12-10 |

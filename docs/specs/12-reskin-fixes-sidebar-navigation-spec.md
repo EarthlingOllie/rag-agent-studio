@@ -295,18 +295,6 @@ Finish the reskin and replace the breadcrumb switchers with a sidebar.
 ## Further Notes
 
 - **Evidence.** Screenshots of every finding, taken with Playwright against the seeded stack at `candidate-reskin` 8cd1483, are in [docs/reviews/candidate-reskin](../reviews/candidate-reskin/README.md).
-- **Suggested tickets**, in dependency order. Each is a vertical slice with its own tests and evidence (light and dark screenshots, wide and narrow, axe):
-
-  | Ticket | Slice | Blocked by |
-  |---|---|---|
-  | `12-01` | Select chevron token and base rule | none |
-  | `12-02` | Project details dialog (New Project and Edit details) | none |
-  | `12-03` | Projects list reskin, removing the legacy `BUTTON` / `INPUT` strings (and moving Agent branding and Embedding Model off them) | 12-02 |
-  | `12-04` | Organisation cost reskin | 12-01, 12-03 |
-  | `12-05` | Invite dialog | none |
-  | `12-06` | Project Settings reskin, with the Embedding Model dialog | 12-03 |
-  | `12-07` | Navigation helpers, then the sidebar, drawer, plain breadcrumb and account menu (ADR-0014) | 12-03, 12-04, 12-06 |
-  | `12-08` | Agent view tabs, Agent switcher on the title, one h1 on Agent pages | 12-07 |
-
-- **Order of work in 12-07.** Rewrite the helpers against the new sidebar while the crumb switchers still exist, then remove the switchers. That keeps every end-to-end spec green throughout, as spec 11's navigation slice did.
+- **Tickets:** [`docs/tickets/12-reskin-fixes-sidebar-navigation/`](../tickets/README.md#12-reskin-fixes-and-sidebar-navigation): eleven tickets, 12-01 to 12-11. 12-01, 12-02, 12-04, 12-05, 12-06 and 12-08 can start at once.
+- **Order of work in 12-08 to 12-11.** 12-08 rewrites the helpers and adds the sidebar while the crumb switchers still exist; 12-11 removes them last. That keeps every end-to-end spec green throughout, as spec 11's navigation slice did.
 - **Base branch.** This spec targets `candidate-reskin`. Its links to spec 11 and the design README resolve there.
