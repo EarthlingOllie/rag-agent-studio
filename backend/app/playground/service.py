@@ -502,7 +502,8 @@ async def answer(
             latency_ms = _elapsed_ms(started)
             now = clock.now()
             usage = TokenUsage(event.input_tokens, event.output_tokens)
-            asked_none = event.fallback or event.refused
+            # An Agentic fallback asked the model, which searched and found nothing.
+            asked_none = event.refused or (event.fallback and not event.searches)
             pricing = await credential_pricing(session, chosen.credential)
             message = Message(
                 organisation_id=prepared.organisation_id,
@@ -519,7 +520,7 @@ async def answer(
                     prepared.instructions_source if prepared.agent_version_id is None else None
                 ),
                 instructions_version_id=prepared.instructions_version_id,
-                # A fallback reply or a refusal asked no model, so it names none.
+                # An Automatic fallback reply or a refusal asked no model, so it names none.
                 model_provider=None if asked_none else chosen.credential.provider,
                 model_name=None if asked_none else chosen.model,
                 input_tokens=event.input_tokens,
@@ -529,7 +530,7 @@ async def answer(
                 cost_usd=cost(pricing, chosen.model, usage, now, await price_table(session)),
                 fallback=event.fallback,
                 guardrail_outcomes=[o.as_dict() for o in event.guardrail_outcomes],
-                search_count=len(event.searches),
+                search_count=event.search_count,
             )
             session.add(message)
             await session.flush()

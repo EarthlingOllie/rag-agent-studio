@@ -14,7 +14,15 @@ from typing import Any
 import httpx
 from fastapi import FastAPI
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls
 from sqlalchemy import text
 
@@ -35,7 +43,13 @@ from tests.integration.test_agent_versions import knowledgeable_project, publish
 from tests.integration.test_embed import conversation_token, send
 from tests.integration.test_playground import LEAVE
 from tests.integration.test_tag_scoping import tag
-from tests.knowledge_base import EXPENSES, PRODUCT, PRODUCT_QUESTION, knowledge_base
+from tests.knowledge_base import (
+    EXPENSES,
+    PRODUCT,
+    PRODUCT_QUESTION,
+    UNRELATED_QUESTION,
+    knowledge_base,
+)
 
 Script = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str | DeltaToolCalls]]
 
@@ -50,6 +64,29 @@ def _searches_made(messages: list[ModelMessage]) -> int:
         if isinstance(message, ModelRequest)
         for part in message.parts
     )
+
+
+def _search_results(messages: list[ModelMessage]) -> list[str]:
+    """What each Knowledge Search returned to the model, in order."""
+    return [
+        str(part.content)
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, ToolReturnPart)
+    ]
+
+
+def recorded(script: Script, calls: list[list[ModelMessage]]) -> Script:
+    """``script``, appending the messages of each model call to ``calls``."""
+
+    def record(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        calls.append(list(messages))
+        return script(messages, info)
+
+    return record
 
 
 def searching(*queries: str, answer: str) -> Script:
@@ -430,3 +467,148 @@ async def test_a_chunk_one_search_left_out_and_another_gave_is_not_listed_as_lef
     # Each Search's own Trace still says what it left out.
     first = trace["searches"][0]
     assert EXPENSES in [c["text"] for c in first["chunks"] if c["excluded_reason"] is not None]
+
+
+async def test_a_search_beyond_the_search_limit_is_refused_and_the_reply_still_answers(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    calls: list[list[ModelMessage]] = []
+    answer_with(
+        app,
+        recorded(searching("leave", "annual leave", "holidays", answer="25 days [C1]."), calls),
+    )
+    project_id, agent_id = await agentic_agent(app, owner)
+    await agentic(owner, project_id, agent_id, search_limit=2)
+
+    events, trace = await asked(owner, project_id, agent_id, "How much leave?")
+
+    # Only the Searches within the limit run, so only they stream.
+    assert [data for event, data in events if event == "search"] == [
+        {"query": "leave", "order": 1},
+        {"query": "annual leave", "order": 2},
+    ]
+    # The third call is refused, and the model told to answer from what it has.
+    *_, refused = _search_results(calls[-1])
+    assert refused == "search limit reached; answer from what you have"
+    # The reply still answers, citing what the first Searches found.
+    answer = "".join(data["text"] for event, data in events if event == "token")
+    assert answer == "25 days [C1]."
+    assert [data["label"] for event, data in events if event == "citation"] == ["C1"]
+    done = events[-1][1]
+    assert (done["fallback"], done["search_count"]) == (False, 2)
+    # The Trace shows the limit was hit: the refused call, which searched nothing.
+    assert trace["search_count"] == 2
+    assert [(s["order"], s["query"], s["limit_refused"]) for s in trace["searches"]] == [
+        (1, "leave", False),
+        (2, "annual leave", False),
+        (3, "holidays", True),
+    ]
+    assert trace["searches"][2]["chunks"] == []
+    assert trace["fallback"] is False
+
+
+async def test_searched_and_found_nothing_gives_the_fallback_text_and_no_answer_tokens(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, searching(UNRELATED_QUESTION, answer="The canteen serves soup."))
+    await use_default_model(owner)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    saved = await save_draft(
+        owner,
+        project_id,
+        agent_id,
+        {
+            "behaviour": {"fallback_text": "Ask HR, please."},
+            "retrieval": {"mode": "agentic", "min_score": 0.3},
+        },
+    )
+    assert saved.status_code == 200, saved.text
+
+    events, trace = await asked(owner, project_id, agent_id, UNRELATED_QUESTION)
+
+    # The model's answer is never streamed: the Fallback Text is the only token.
+    assert [event for event, _ in events] == ["search", "token", "done"]
+    assert events[1][1] == {"text": "Ask HR, please."}
+    done = events[-1][1]
+    assert (done["fallback"], done["chunks"], done["search_count"]) == (True, [], 1)
+    assert {e["reason"] for e in done["excluded"]} == {"below_min_score"}
+    assert trace["fallback"] is True
+    (search,) = trace["searches"]
+    assert {c["excluded_reason"] for c in search["chunks"]} == {"below_min_score"}
+    # The model was asked (it searched), so its tokens and cost are counted.
+    assert trace["model_name"] == "gpt-4.1-mini"
+    assert (done["input_tokens"], trace["input_tokens"]) == (100, 100)
+    assert Decimal(trace["cost_usd"]) > 0
+
+
+async def test_a_chunk_two_searches_find_keeps_its_first_label_and_citations_span_searches(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    calls: list[list[ModelMessage]] = []
+    answer_with(
+        app, recorded(searching(LEAVE, EXPENSES, LEAVE, answer="See [C2] and [C1]."), calls)
+    )
+    await use_default_model(owner)
+    project_id = await knowledge_base(app, owner)
+    agent_id = (await create_agent(owner, project_id))["id"]
+    await agentic(owner, project_id, agent_id, top_k=1)
+
+    events, trace = await asked(owner, project_id, agent_id, "Leave and expenses?")
+
+    first, second, third = _search_results(calls[-1])
+    assert "[C1] leave.txt" in first
+    assert LEAVE in first
+    assert "[C2] expenses.txt" in second
+    # Found again, the Chunk keeps its first label and its text isn't sent again.
+    assert "[C1] leave.txt (given above)" in third
+    assert LEAVE not in third
+    # Citations resolve against every Search's Chunks.
+    citations = [data for event, data in events if event == "citation"]
+    assert [(c["label"], c["document_name"]) for c in citations] == [
+        ("C2", "expenses.txt"),
+        ("C1", "leave.txt"),
+    ]
+    # The reply gave each Chunk once, in label order.
+    expenses, leave = (c["chunk_id"] for c in citations)
+    done = events[-1][1]
+    assert [(c["rank"], c["chunk_id"]) for c in done["chunks"]] == [(1, leave), (2, expenses)]
+    given = [
+        [(c["rank"], c["document_name"], c["cited"]) for c in s["chunks"] if c["rank"]]
+        for s in trace["searches"]
+    ]
+    assert given == [
+        [(1, "leave.txt", True)],
+        [(2, "expenses.txt", True)],
+        [(1, "leave.txt", True)],
+    ]
+
+
+async def test_remembered_turns_replay_only_the_visitors_and_the_agents_text(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    calls: list[list[ModelMessage]] = []
+    answer_with(app, recorded(searching("annual leave", answer="25 days [C1]."), calls))
+    project_id, agent_id = await agentic_agent(app, owner)
+    conversation = await start_conversation(owner, project_id, agent_id)
+    first = await ask(owner, project_id, agent_id, conversation["id"], "How much leave?")
+    assert parse_sse(first.text)[-1][0] == "done"
+    calls.clear()
+
+    second = await ask(owner, project_id, agent_id, conversation["id"], "And next year?")
+
+    assert parse_sse(second.text)[-1][0] == "done"
+    # The second reply's first model call: the system parts and the remembered turn as the
+    # Visitor's and the Agent's text alone (no Searches, no Chunks), then the new question.
+    *remembered, latest = calls[0]
+    parts = [part for message in remembered for part in message.parts]
+    assert all(isinstance(part, SystemPromptPart | UserPromptPart | TextPart) for part in parts)
+    texts = [
+        (type(part), part.content) for part in parts if isinstance(part, UserPromptPart | TextPart)
+    ]
+    assert texts == [(UserPromptPart, "How much leave?"), (TextPart, "25 days [C1].")]
+    assert [type(message) for message in remembered][-1] is ModelResponse
+    assert isinstance(latest, ModelRequest)
+    (part,) = latest.parts
+    assert isinstance(part, UserPromptPart)
+    assert "And next year?" in str(part.content)

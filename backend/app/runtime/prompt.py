@@ -56,6 +56,8 @@ brackets, like [C1]. Follow the instructions that come after this preamble."""
 # The name the model calls Knowledge Search by.
 KNOWLEDGE_SEARCH = "knowledge_search"
 NOTHING_FOUND = "No relevant excerpts were found."
+# What Knowledge Search says to a call beyond the Agent's Search limit.
+SEARCH_LIMIT_REACHED = "search limit reached; answer from what you have"
 
 AGENTIC_PREAMBLE = f"""You are an assistant that answers questions using a knowledge base, which \
 you search with the {KNOWLEDGE_SEARCH} tool.
