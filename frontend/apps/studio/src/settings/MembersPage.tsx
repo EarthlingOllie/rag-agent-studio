@@ -101,8 +101,13 @@ function InviteDialog({
     );
   }
 
+  // Closing mid-request would drop the issued link, so wait for the answer.
+  function close() {
+    if (!createInvite.isPending) onClose();
+  }
+
   return (
-    <Dialog open title="Invite someone" onClose={onClose} closeButton={false}>
+    <Dialog open title="Invite someone" onClose={close} closeButton={false}>
       <form onSubmit={onSubmit} aria-label="Invite someone" className="flex flex-col gap-4">
         <FormError message={failure(createInvite.error)} />
         <div>
@@ -125,7 +130,7 @@ function InviteDialog({
           Email the invite link
         </label>
         <div className="flex flex-wrap justify-end gap-2 pt-2">
-          <button type="button" className={button.secondary} onClick={onClose}>
+          <button type="button" disabled={createInvite.isPending} className={button.secondary} onClick={close}>
             Cancel
           </button>
           <button type="submit" disabled={createInvite.isPending} className={button.primary}>

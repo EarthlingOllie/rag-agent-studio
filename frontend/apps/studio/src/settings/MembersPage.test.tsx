@@ -247,6 +247,38 @@ test("the invite button shows progress while the invite is sent", async () => {
   expect(await within(dialog).findByRole("button", { name: "Inviting…" })).toBeDisabled();
 });
 
+test("Cancel and Escape don't close the dialog while the invite is sent, so the link isn't lost", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeInvitesApi({ pending: [] });
+  let release = () => {};
+  const sent = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.post("*/api/organisations/:organisationId/invites", async () => {
+      await sent;
+      // Falls through to the fake invites API once released.
+    }),
+  );
+  renderStudio(membersPath);
+  await screen.findByText("No pending invites.");
+
+  const dialog = await inviteSomeone("grace@example.test");
+  const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+  expect(await within(dialog).findByRole("button", { name: "Inviting…" })).toBeDisabled();
+  expect(cancel).toBeDisabled();
+  await userEvent.click(cancel);
+  await userEvent.keyboard("{Escape}");
+  expect(screen.getByRole("dialog", { name: "Invite someone" })).toBe(dialog);
+
+  release();
+
+  expect(await screen.findByText("Invited grace@example.test.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Invite someone" })).not.toBeInTheDocument();
+  const result = screen.getByRole("region", { name: "New invite" });
+  expect(within(result).getByLabelText("Invite link for grace@example.test")).toHaveValue(linkFor("new-token-1"));
+});
+
 test("an Owner revokes a pending invite", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   const api = fakeInvitesApi();
