@@ -75,7 +75,7 @@ Standing criterion on Studio UI: no Studio component changed. Only the e2e specs
 | Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t09 TEST_REDIS_URL=redis://localhost:6379/15 uv run pytest -n 3` | **2617 passed**, 0 failed in 29 min 6 s; coverage **100.00%** (12406 statements, 1582 branches), gate reached, exit 0 | [backend-tests.log](backend-tests.log) |
 | Backend lint and types | `make lint-backend` (ruff check, ruff format --check, mypy) | exit 0 (402 files) | [lint-backend.log](lint-backend.log) |
 | API client drift | `make check-client` | "API client is up to date.", exit 0 | [check-client.log](check-client.log) |
-| Markdown links | `make link-check` | 2814 links in 281 files, all resolve, exit 0 | [link-check.log](link-check.log) |
+| Markdown links | `make link-check` | 2815 links in 281 files, all resolve, exit 0 | [link-check.log](link-check.log) |
 | Frontend | `cd frontend && pnpm test && pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | 1112 tests in 85 files passed, 100% coverage; embed size within budget; 0 palette-class uses; lint and typecheck clean (`e2e/` included); exit 0 | [frontend-checks.log](frontend-checks.log) |
 | e2e specs list | `cd frontend && pnpm e2e --list` (after `eslint` and `tsc` over `e2e/`, part of `pnpm lint` / `pnpm typecheck`) | 121 tests in 65 files | [e2e-list.log](e2e-list.log) |
 | Live suite, Agentic reply | `uv run pytest -m live --no-cov -rs tests/live/test_agentic_reply_live.py` | 1 skipped: "No real Provider Credential: set SEED_CREDENTIAL_PROVIDER … and SEED_CREDENTIAL_API_KEY" | [live-agentic-skip.log](live-agentic-skip.log) |
