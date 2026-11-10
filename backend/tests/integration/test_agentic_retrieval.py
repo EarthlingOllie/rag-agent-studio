@@ -35,6 +35,7 @@ from tests.integration.test_agent_versions import knowledgeable_project, publish
 from tests.integration.test_embed import conversation_token, send
 from tests.integration.test_playground import LEAVE
 from tests.integration.test_tag_scoping import tag
+from tests.integration.test_token_budget import usage
 from tests.knowledge_base import EXPENSES, PRODUCT, PRODUCT_QUESTION, knowledge_base
 
 Script = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str | DeltaToolCalls]]
@@ -430,3 +431,55 @@ async def test_a_chunk_one_search_left_out_and_another_gave_is_not_listed_as_lef
     # Each Search's own Trace still says what it left out.
     first = trace["searches"][0]
     assert EXPENSES in [c["text"] for c in first["chunks"] if c["excluded_reason"] is not None]
+
+
+# The widget: Visitors see that the Agent is searching, never what for (ticket 13-06)
+
+
+async def test_a_visitor_is_told_of_each_search_but_never_sees_its_query(
+    app: FastAPI, owner: SignedUpMember, new_client: ClientFactory
+) -> None:
+    project_id = await knowledgeable_project(app, owner)
+    answer_with(
+        app, searching("annual leave policy", "leave carry over", answer="Leave is 25 days [C1].")
+    )
+    created = await create_agent(owner, project_id)
+    await agentic(owner, project_id, created["id"])
+    await published(owner, project_id, created["id"])
+    visitor: httpx.AsyncClient = await new_client()
+    token = await conversation_token(visitor, created["public_id"])
+
+    response = await send(visitor, created["public_id"], token, "How much leave?")
+
+    events = parse_sse(response.text)
+    # One `search` event as each Search starts, before the answer, carrying nothing.
+    assert events[:2] == [("search", {}), ("search", {})]
+    assert [event for event, _ in events[2:]] == ["token", "citation", "done"]
+    assert "annual leave policy" not in response.text
+    assert "leave carry over" not in response.text
+
+
+async def test_an_agentic_reply_spends_every_token_it_used_of_the_budget_and_the_playground_none(
+    app: FastAPI, owner: SignedUpMember, new_client: ClientFactory
+) -> None:
+    project_id = await knowledgeable_project(app, owner)
+    answer_with(app, searching("annual leave", answer="Twenty-five days [C1]."))
+    created = await create_agent(owner, project_id)
+    await agentic(owner, project_id, created["id"])
+    await published(owner, project_id, created["id"])
+    conversation = await start_conversation(owner, project_id, created["id"])
+
+    # The Playground is exempt...
+    played = await ask(owner, project_id, created["id"], conversation["id"], "Leave?")
+    assert parse_sse(played.text)[-1][0] == "done"
+    assert (await usage(owner, created))["tokens_used"] == 0
+
+    visitor: httpx.AsyncClient = await new_client()
+    token = await conversation_token(visitor, created["public_id"])
+    response = await send(visitor, created["public_id"], token, "Leave?")
+    assert parse_sse(response.text)[-1][0] == "done"
+
+    # ...and a Visitor's reply counts the tokens of both model calls: 2 x 50 input tokens, and
+    # as output the search call's arguments (5) and the answer (4), as in
+    # test_token_use_and_cost_are_summed_over_every_model_call.
+    assert (await usage(owner, created))["tokens_used"] == 109

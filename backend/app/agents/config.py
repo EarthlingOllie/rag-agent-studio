@@ -120,6 +120,8 @@ class UiText(BaseModel):
     send_button: ShortText | None = None
     rate_conversation: ShortText | None = None
     unavailable_message: ShortText | None = None
+    # Shown to Visitors while an Agentic Agent searches; None keeps "Searching the knowledge base…".
+    searching_status: ShortText | None = None
 
 
 class Experience(BaseModel):

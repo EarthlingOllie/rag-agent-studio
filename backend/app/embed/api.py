@@ -47,7 +47,7 @@ from app.playground.api import QUESTION_MAX
 from app.playground.service import Answered, NoDefaultModelError, answer
 from app.projects.service import ProjectNotFoundError
 from app.runtime.errors import ErrorEvent
-from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
+from app.runtime.runtime import CitationEvent, ReplaceEvent, SearchEvent, TokenEvent
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 from app.theme import images
@@ -258,7 +258,8 @@ def _sse(event: str, data: dict[str, Any]) -> str:
                 "`unavailable` event (`reason`: `budget_exhausted` when the Agent's daily "
                 "Token Budget is spent, or `rate_limited` when the Conversation or the "
                 "Visitor's IP address is over the Agent's rate limit; and as `message` the "
-                "Agent's unavailable text); nothing is saved. Otherwise "
+                "Agent's unavailable text); nothing is saved. Otherwise, for an Agentic Agent, a "
+                "`search` event (no data) as each Knowledge Search starts, then "
                 "`token` events (`text`), then `citation` events "
                 "(`label`, `document_name`, `passage`; only when the Live Version shows "
                 "citations) and one `done` event (`message_id`); or, when the "
@@ -344,8 +345,13 @@ async def send_message(
             guardrails=request.app.state.guardrails,
             embedders=ingestion.embedders,
             clock=request.app.state.clock,
+            searches=True,
         ):
-            if isinstance(event, TokenEvent):
+            if isinstance(event, SearchEvent):
+                # Visitors are told the Agent is searching, never what for: the model's
+                # queries are internal to the reply (spec 13).
+                yield _sse("search", {})
+            elif isinstance(event, TokenEvent):
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})

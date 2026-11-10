@@ -5058,6 +5058,8 @@ export interface components {
         "UiText-Input": {
             /** Rate Conversation */
             rate_conversation?: string | null;
+            /** Searching Status */
+            searching_status?: string | null;
             /** Send Button */
             send_button?: string | null;
             /** Unavailable Message */
@@ -5070,6 +5072,8 @@ export interface components {
         "UiText-Output": {
             /** Rate Conversation */
             rate_conversation: string | null;
+            /** Searching Status */
+            searching_status: string | null;
             /** Send Button */
             send_button: string | null;
             /** Unavailable Message */
@@ -11971,7 +11975,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
+            /** @description Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise, for an Agentic Agent, a `search` event (no data) as each Knowledge Search starts, then `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;

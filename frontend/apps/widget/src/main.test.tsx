@@ -9,7 +9,7 @@ const BOOT = {
   avatar_url: null,
   greeting: "Hello!",
   starter_questions: [],
-  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null },
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null },
   citations: true,
   rating_prompt_after: 0,
 };

@@ -115,6 +115,7 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
   await userEvent.type(within(experience).getByLabelText(/"Send" button/), "Ask");
   await userEvent.type(within(experience).getByLabelText(/"Rate this conversation"/), "How did I do?");
   await userEvent.type(within(experience).getByLabelText(/Unavailable message/), "Back soon.");
+  await userEvent.type(within(experience).getByLabelText(/Searching status/), "Looking that up…");
   await userEvent.clear(within(experience).getByLabelText(/Rating prompt after/));
   await userEvent.type(within(experience).getByLabelText(/Rating prompt after/), "5");
   const guardrails = group("Guardrails");
@@ -132,7 +133,12 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
       avatar_url: "https://cdn.example.com/hana.png",
       greeting: "Hi!",
       starter_questions: ["How much leave?", "When is payday?"],
-      ui_text: { send_button: "Ask", rate_conversation: "How did I do?", unavailable_message: "Back soon." },
+      ui_text: {
+        send_button: "Ask",
+        rate_conversation: "How did I do?",
+        unavailable_message: "Back soon.",
+        searching_status: "Looking that up…",
+      },
       rating_prompt_after: 5,
     },
     guardrails: { ...defaultDraft.guardrails, input_mode: "warn", fail_mode: "open", refusal_text: "No." },

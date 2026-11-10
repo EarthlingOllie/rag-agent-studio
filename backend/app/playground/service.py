@@ -443,9 +443,10 @@ async def answer(
     """Streams the answer's tokens and citations (or the replacement of an answer that leaked
     the Canary token, or the refusal of a question the input Guardrail blocked), then saves
     the answer, with what retrieval found for it (in Agentic Retrieval Mode, its Searches) and
-    the Guardrail outcomes, and ends with ``Answered``. With ``searches`` (the Playground) a
-    ``SearchEvent`` is streamed as each Knowledge Search starts. If the provider fails, it ends
-    with an ``ErrorEvent`` instead and saves no answer, so the question is not remembered."""
+    the Guardrail outcomes, and ends with ``Answered``. With ``searches`` (the Playground and the
+    widget) a ``SearchEvent`` is streamed as each Knowledge Search starts. If the provider fails,
+    it ends with an ``ErrorEvent`` instead and saves no answer, so the question is not
+    remembered."""
     started = time.perf_counter()
     first_token_ms: int | None = None
     chosen = prepared.chat

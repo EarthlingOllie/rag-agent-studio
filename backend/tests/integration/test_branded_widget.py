@@ -122,6 +122,7 @@ EXPERIENCE = {
         "send_button": "Ask",
         "rate_conversation": "How did Hana do?",
         "unavailable_message": "Hana is on a break. Try again soon.",
+        "searching_status": "Hana is looking that up…",
     },
     "rating_prompt_after": 5,
 }
@@ -173,6 +174,7 @@ async def test_an_agent_with_the_default_experience_shows_its_name_and_built_in_
         "send_button": None,
         "rate_conversation": None,
         "unavailable_message": None,
+        "searching_status": None,
     }
     assert data["rating_prompt_after"] == 3
     assert data["citations"] is True

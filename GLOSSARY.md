@@ -433,6 +433,10 @@ _Avoid_: Basic RAG, agentic RAG, RAG mode, naive RAG
 One Knowledge Search call in an Agent's reply: the query the model wrote, the Chunks it found and the ones it excluded. A reply in Agentic Retrieval Mode has zero or more; the Trace lists them in order.
 _Avoid_: Tool call (for the record), lookup, step
 
+**Searching status**:
+What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming. Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
+_Avoid_: Typing indicator, thinking, spinner
+
 **Search limit**:
 The most Searches an Agentic Agent may make in one reply, set in its Retrieval settings. Once it is reached the model must answer from what it has, and the Trace says the limit was hit.
 _Avoid_: Max iterations, tool budget
@@ -597,7 +601,7 @@ The check every Visitor message passes, after its Conversation token is accepted
 The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
 
 **Token Budget**:
-The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by default) before it stops answering Visitors. Part of the Operational Settings. Each reply adds the input and output tokens it actually used to the Agent's counter for that date; once the day's usage reaches the budget, Admission control refuses Visitor messages with the Unavailable text (`unavailable` event, reason `budget_exhausted`), the Agent gets its Budget alert and the Owners are emailed. A new UTC date starts a new counter, so the budget resets at midnight UTC; raising it applies at once. The Playground doesn't count and is never refused. The Studio's budget meter shows today's usage against it.
+The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by default) before it stops answering Visitors. Part of the Operational Settings. Each reply adds the input and output tokens it actually used, summed over every model call it made (an Agentic reply makes one per Search plus the answer), to the Agent's counter for that date; once the day's usage reaches the budget, Admission control refuses Visitor messages with the Unavailable text (`unavailable` event, reason `budget_exhausted`), the Agent gets its Budget alert and the Owners are emailed. A new UTC date starts a new counter, so the budget resets at midnight UTC; raising it applies at once. The Playground doesn't count and is never refused. The Studio's budget meter shows today's usage against it.
 _Avoid_: Quota, spend limit (cost is tracked separately)
 
 **Budget alert**:
