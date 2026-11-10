@@ -7,16 +7,16 @@
 **Blocked by:**
 - None
 
-**Status:** in-progress
+**Status:** done
 
-- [ ] Every single-value select (form fields, toolbar pills, table cells) draws the design system's chevron-down instead of the browser's arrow
-- [ ] The chevron sits as far from the right edge as the text sits from the left, and a select reserves at least 36 px on the right so long option text never runs under it
-- [ ] The chevron colour comes from a new token with light, system-dark and chosen-dark values; it is visible against the field in both Appearances
-- [ ] A disabled select dims its chevron along with the field
-- [ ] The `field` recipes gain a compact select for table cells; no page keeps its own select class string (Members' role select, the Audit filters and the Draft editor move onto recipes)
-- [ ] The token contract test checks the chevron token is declared in all three blocks and that system-dark and chosen-dark match
-- [ ] An end-to-end check finds a select's computed `appearance` is `none` and its right padding is at least 36 px
-- [ ] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns, never Tailwind palette classes or `dark:`; the palette ratchet passes
-- [ ] Evidence: light and dark screenshots of the pages touched, wide (1440) and narrow (390), and the axe sweep in both Appearances
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Every single-value select (form fields, toolbar pills, table cells) draws the design system's chevron-down instead of the browser's arrow
+- [x] The chevron sits as far from the right edge as the text sits from the left, and a select reserves at least 36 px on the right so long option text never runs under it
+- [x] The chevron colour comes from a new token with light, system-dark and chosen-dark values; it is visible against the field in both Appearances
+- [x] A disabled select dims its chevron along with the field
+- [x] The `field` recipes gain a compact select for table cells; no page keeps its own select class string (Members' role select, the Audit filters and the Draft editor move onto recipes)
+- [x] The token contract test checks the chevron token is declared in all three blocks and that system-dark and chosen-dark match
+- [x] An end-to-end check finds a select's computed `appearance` is `none` and its right padding is at least 36 px
+- [x] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns, never Tailwind palette classes or `dark:`; the palette ratchet passes
+- [x] Evidence: light and dark screenshots of the pages touched, wide (1440) and narrow (390), and the axe sweep in both Appearances
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
