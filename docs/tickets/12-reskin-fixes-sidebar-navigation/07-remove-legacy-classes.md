@@ -9,7 +9,7 @@
 - [12-04: Organisation cost reskin](04-organisation-cost-reskin.md)
 - [12-06: Project Settings reskin and Embedding Model dialog](06-project-settings-reskin.md)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [ ] Agent branding and any remaining importer use the design system's button and field recipes
 - [ ] The Projects page no longer exports its BUTTON and INPUT strings, and nothing in the Studio defines its own button or input class string
