@@ -4546,7 +4546,8 @@
               "usd",
               "rate",
               "rating",
-              "ms"
+              "ms",
+              "searches"
             ],
             "title": "Unit",
             "type": "string"
@@ -5982,6 +5983,31 @@
           "chunks"
         ],
         "title": "SearchOut",
+        "type": "object"
+      },
+      "SearchesOut": {
+        "properties": {
+          "mean_per_reply": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Per Reply"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "mean_per_reply"
+        ],
+        "title": "SearchesOut",
         "type": "object"
       },
       "SendMessageRequest": {
@@ -7591,6 +7617,12 @@
           "rating": {
             "$ref": "#/components/schemas/RatingOut"
           },
+          "retrieval_mode": {
+            "$ref": "#/components/schemas/RetrievalMode"
+          },
+          "searches": {
+            "$ref": "#/components/schemas/SearchesOut"
+          },
           "thumbs_up": {
             "$ref": "#/components/schemas/ThumbsUpOut"
           },
@@ -7607,6 +7639,7 @@
           "version_id",
           "number",
           "is_live",
+          "retrieval_mode",
           "conversations",
           "messages",
           "low_confidence",
@@ -7616,6 +7649,7 @@
           "rating",
           "fallback",
           "guardrail_blocks",
+          "searches",
           "latency"
         ],
         "title": "VersionKpisOut",

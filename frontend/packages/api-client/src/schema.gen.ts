@@ -4053,7 +4053,7 @@ export interface components {
              * Unit
              * @enum {string}
              */
-            unit: "count" | "tokens" | "usd" | "rate" | "rating" | "ms";
+            unit: "count" | "tokens" | "usd" | "rate" | "rating" | "ms" | "searches";
         };
         /** MfaChallengeResponse */
         MfaChallengeResponse: {
@@ -4617,6 +4617,13 @@ export interface components {
             order: number;
             /** Query */
             query: string;
+        };
+        /** SearchesOut */
+        SearchesOut: {
+            /** Mean Per Reply */
+            mean_per_reply: number | null;
+            /** Total */
+            total: number;
         };
         /** SendMessageRequest */
         SendMessageRequest: {
@@ -5182,6 +5189,8 @@ export interface components {
             /** Number */
             number: number;
             rating: components["schemas"]["RatingOut"];
+            retrieval_mode: components["schemas"]["RetrievalMode"];
+            searches: components["schemas"]["SearchesOut"];
             thumbs_up: components["schemas"]["ThumbsUpOut"];
             tokens: components["schemas"]["TokensOut"];
             /**

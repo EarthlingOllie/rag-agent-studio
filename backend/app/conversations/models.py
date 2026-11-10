@@ -139,7 +139,9 @@ class Message(IdMixin, Base):
 class Search(IdMixin, Base):
     """One Knowledge Search an answer made in Agentic Retrieval Mode (ADR-0015): the reply's
     ``order``-th (from 1), for the ``query`` the model wrote, how long it took, and whether the
-    Search limit refused it. The Chunks it found are its Message retrievals."""
+    Search limit refused it. The Chunks it found are its Message retrievals. Purging the
+    Message's text (``app.retention``) clears the ``query`` too: it can carry the Visitor's
+    words."""
 
     __tablename__ = "searches"
     __table_args__ = (UniqueConstraint("message_id", "order"),)

@@ -14,8 +14,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from app.agents import versions
-from app.agents.config import RetrievalMode
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
+from app.agents.config import RetrievalMode
 from app.agents.models import AgentVersion
 from app.agents.service import AgentNotFoundError
 from app.agents.versions_api import AgentDiffOut, diff_out
@@ -415,7 +415,7 @@ class MetricRowOut(BaseModel):
     changed: bool
     # The Version this metric favours (a higher thumbs-up rate or rating; fewer tokens, lower
     # cost per Conversation, fallback rate and latency); null when it favours neither or they
-    # are level. Volumes, totals and interval bounds favour neither.
+    # are level. Volumes, totals, interval bounds and mean searches per reply favour neither.
     better: comparison.Side | None
     # Either Version's sample for this metric is small (fewer than 30).
     low_confidence: bool

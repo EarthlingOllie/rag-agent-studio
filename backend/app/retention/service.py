@@ -1,11 +1,12 @@
 """Retention: the Organisation's Retention Window, the daily purge of Message text and feedback
 comments older than it, and Conversations an Owner deletes on request.
 
-Purging clears a Message's ``content``, the reasons in its Guardrail outcomes and the comment of
-any Message Feedback on it, and sets ``purged_at``; every number and attribution (tokens, cost,
-latency, Agent Version, thumbs, ratings, retrievals, verdicts) stays, so the metrics are the same
-before and after. The daily purge and a
-deletion go through the same ``purge_messages``.
+Purging clears a Message's ``content``, the reasons in its Guardrail outcomes, the queries of its
+Searches (Agentic Retrieval Mode: the model writes them from the Visitor's text) and the comment
+of any Message Feedback on it, and sets ``purged_at``; every number and attribution (tokens,
+cost, latency, Agent Version, thumbs, ratings, retrievals, Searches made, verdicts) stays, so
+the metrics are the same before and after. The daily purge and a deletion go through the same
+``purge_messages``.
 
 Rollups come first: the daily purge clears a Visitor reply only once the ``usage_daily`` rollup
 of its day is final (``app.analytics.rollup``), so no metric is ever worked out from a purged
@@ -21,7 +22,7 @@ from app import audit
 from app.agents.models import Agent
 from app.analytics.rollup import pending_days
 from app.analytics.usage import day_bounds
-from app.conversations.models import Conversation, Message
+from app.conversations.models import Conversation, Message, Search
 from app.conversations.service import ConversationNotFoundError
 from app.feedback.models import MessageFeedback
 from app.projects.service import get_project
@@ -38,9 +39,11 @@ async def purge_messages(
     session: AsyncSession, *conditions: ColumnElement[bool], now: datetime
 ) -> int:
     """Purges the Messages matching ``conditions`` that aren't purged yet: their text, their
-    Guardrail outcomes' reasons and the comments of their feedback are cleared, and
-    ``purged_at`` set to ``now``. Returns how many Messages were purged."""
+    Guardrail outcomes' reasons, their Search queries and the comments of their feedback are
+    cleared, and ``purged_at`` set to ``now``. Returns how many Messages were purged."""
     found = select(Message.id).where(Message.purged_at.is_(None), *conditions)
+    # A query can repeat or reword what the Visitor wrote; the Search itself stays.
+    await session.execute(update(Search).where(Search.message_id.in_(found)).values(query=""))
     await session.execute(
         update(MessageFeedback)
         .where(MessageFeedback.message_id.in_(found), MessageFeedback.comment.is_not(None))
