@@ -306,16 +306,27 @@ def test_worker_task_logs_leave_out_task_arguments_and_results(
     assert succeeded["data"]["name"] == "test.echo"
 
 
-def test_onnx_runtime_writes_only_errors_to_the_console(monkeypatch: pytest.MonkeyPatch) -> None:
-    # ONNX Runtime logs from C++ straight to stderr, bypassing logging, so its warnings would
-    # not be JSON: on some hosts it warns at start-up that it cannot read a device's PCI bus ID.
-    import onnxruntime
+def test_onnx_runtime_start_up_warnings_never_reach_stderr(tmp_path: Path) -> None:
+    # ONNX Runtime logs from C++ straight to file descriptor 2, bypassing logging, and it logs
+    # as it is imported, before Python code can lower its log level: on GitHub's runners it
+    # warns that it cannot read a device's PCI bus ID. A stand-in module does the same here.
+    fake = tmp_path / "onnxruntime"
+    fake.mkdir()
+    (fake / "__init__.py").write_text(
+        "import os\n"
+        "os.write(2, b'[W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping\\n')\n"
+        "severities = []\n"
+        "def set_default_logger_severity(severity):\n"
+        "    severities.append(severity)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", "import app, onnxruntime; print(onnxruntime.severities)"],
+        cwd=BACKEND_ROOT,
+        env={**os.environ, "PYTHONPATH": f"{tmp_path}{os.pathsep}{BACKEND_ROOT}"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
 
-    from app.core.logs import configure_logging
-
-    severities: list[int] = []
-    monkeypatch.setattr(onnxruntime, "set_default_logger_severity", severities.append)
-
-    configure_logging("api")
-
-    assert severities == [3]  # 3: errors and fatal only
+    assert result.stderr == ""
+    assert result.stdout == "[3]\n"  # 3: errors and fatal only
