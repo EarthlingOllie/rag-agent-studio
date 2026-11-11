@@ -4,6 +4,8 @@ Branch `t/13-02`, from `037bf379` (the integration branch with all of spec 12, p
 
 **Status: done.** Every criterion is met and evidenced below.
 
+> **Superseded in part by [13-10](../10-stream-agentic-answers.md):** the hold described below (each Agentic model response's text held until the response ended, so pre-tool text was never sent) was replaced by a product owner decision. Agentic answers now stream word by word, and text sent before a Knowledge Search is retracted with a `retract` event. `test_text_the_model_writes_before_searching_is_kept_out_of_the_answer` was renamed `..._is_retracted_and_kept_out_of_the_answer` and asserts the retraction.
+
 ## What was built
 
 - **AgentConfig** (`backend/app/agents/config.py`): Retrieval gains `mode` (`RetrievalMode`: `automatic` | `agentic`, default **Automatic** until 13-09) and `search_limit` (1–5, default 3). The JSON Schema and the generated client (`frontend/packages/api-client`) are regenerated.

@@ -433,8 +433,12 @@ _Avoid_: Basic RAG, agentic RAG, RAG mode, naive RAG
 One Knowledge Search call in an Agent's reply: the query the model wrote, the Chunks it found and the ones it excluded. A reply in Agentic Retrieval Mode has zero or more; the Trace lists them in order.
 _Avoid_: Tool call (for the record), lookup, step
 
+**Retraction**:
+In Agentic Retrieval Mode, clearing answer text that already streamed because the model response it came from went on to call Knowledge Search, so it was not the answer. The stream sends a `retract` event (no data) before that Search's `search` event; the Playground clears the answer, and the widget shows its Searching status again without announcing the cleared text. Retracted text is never part of the saved reply, the Trace or the Citations, and a Retraction is no Guardrail outcome (a canary in retracted text still replaces the reply). The Fallback Text, sent as a response starts after Searches that found nothing, is retracted the same way if that response searches again.
+_Avoid_: Replace (that is the canary's), rollback, undo
+
 **Searching status**:
-What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming. Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
+What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming, and shown again on a Retraction. Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
 _Avoid_: Typing indicator, thinking, spinner
 
 **Search limit**:

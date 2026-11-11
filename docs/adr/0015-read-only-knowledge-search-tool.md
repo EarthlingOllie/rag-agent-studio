@@ -13,7 +13,7 @@ This narrows the earlier "Agents have no tools" wording in specs 04 and 08 to wh
 A successful injection can still at worst produce a bad answer, or a few wasted searches.
 
 Two limits stay with the runtime rather than the model:
-- **The Fallback Text stays guaranteed.** If the model searched and no Search found a Chunk reaching the Minimum Score, the runtime sends the Fallback Text instead of the model's answer. It decides before the answer starts streaming, so nothing is sent and then replaced.
+- **The Fallback Text stays guaranteed.** If the model searched and no Search found a Chunk reaching the Minimum Score, the runtime sends the Fallback Text instead of the model's answer. Every Search has run before the next model response streams, so it decides as that response starts and sends no answer token first. Agentic answers otherwise stream word by word, like Automatic ones: text a response streamed before calling Knowledge Search is retracted (a `retract` event clears it), and is never part of the reply (ticket 13-10).
 - **A versioned Search limit (1–5, default 3) bounds each reply.** This stops a looping or injected model from searching without end.
 
 Search queries are model output, so the Canary check runs on them as well. The Attack evaluation suite runs in both modes.
