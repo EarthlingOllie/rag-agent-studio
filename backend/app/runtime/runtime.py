@@ -101,6 +101,13 @@ class ReplaceEvent:
 
 
 @dataclass(frozen=True)
+class RetractEvent:
+    """Agentic mode: the model response whose text was streamed so far called Knowledge Search,
+    so it was not the answer. Clients clear the answer text shown so far; a Search follows.
+    The retracted text is no part of the reply, and a retraction is no Guardrail outcome."""
+
+
+@dataclass(frozen=True)
 class CitationEvent:
     """The answer cites ``chunk``, which the model was given labelled ``label``."""
 
@@ -160,7 +167,9 @@ class DoneEvent:
         return sum(not search.limit_refused for search in self.searches)
 
 
-TurnEvent = TokenEvent | ReplaceEvent | CitationEvent | SearchEvent | DoneEvent | ErrorEvent
+TurnEvent = (
+    TokenEvent | ReplaceEvent | RetractEvent | CitationEvent | SearchEvent | DoneEvent | ErrorEvent
+)
 
 CANARY_REPLACED = "The reply contained the canary token, so it was cut off and replaced."
 CANARY_ENCODED = "The reply contained the canary token, encoded ({encoding})"
@@ -173,11 +182,20 @@ class _CanaryInQueryError(Exception):
 
 @dataclass
 class _Streamed:
-    """What a model call streamed, filled in as it streams."""
+    """What a model call streamed, filled in as it streams: the answer's text and labels, and
+    the text of each earlier response that turned out to call Knowledge Search."""
 
     text: str = ""
     labels: list[str] = field(default_factory=list)
     usage: RunUsage = field(default_factory=RunUsage)
+    retracted: list[str] = field(default_factory=list)
+
+
+class _Retraction:
+    """``_stream_answer``'s marker: the response whose text was just streamed called a tool."""
+
+
+RETRACTION = _Retraction()
 
 
 async def _response_text(response: AgentStream[None, str]) -> AsyncGenerator[tuple[str, None]]:
@@ -217,13 +235,14 @@ async def _stream_answer(
     tools: list[Tool[None]],
     *,
     structured: bool,
-) -> AsyncGenerator[str]:
+) -> AsyncGenerator[str | _Retraction]:
     """The answer's text as it arrives, over every model call of the reply (each tool call is
     run, and the model called again, until it answers). A model that supports structured
     output is asked for a ``CitedAnswer``; any other model answers in text.
 
-    With tools, the text of a model response is held until the response ends: a response that
-    calls a tool is not the answer, so any text written before the call is never sent."""
+    Each response's text streams as it arrives. A response that calls a tool is not the answer:
+    once it ends, its text is set aside in ``streamed.retracted`` and, if it wrote any,
+    ``RETRACTION`` is yielded before the tool runs."""
     output = NativeOutput(CitedAnswer) if structured else str
     agent: Agent[None, Any] = Agent(model, output_type=output, tools=tools)
     async with agent.iter(question, message_history=messages, model_settings=settings) as run:
@@ -235,13 +254,9 @@ async def _stream_answer(
                     pieces = (
                         _response_structured(response) if structured else _response_text(response)
                     )
-                    held: list[tuple[str, list[str] | None]] = []
                     async with aclosing(pieces) as response_pieces:
                         async for piece in response_pieces:
                             streamed.usage = response.usage
-                            if tools:
-                                held.append(piece)
-                                continue
                             _take(streamed, piece)
                             if piece[0]:
                                 yield piece[0]
@@ -250,13 +265,15 @@ async def _stream_answer(
                         # The first response that calls no tool is the answer, as with
                         # ``run_stream``: the run isn't driven further (an empty answer stays
                         # empty rather than being retried).
-                        for piece in held:
-                            _take(streamed, piece)
-                            if piece[0]:
-                                yield piece[0]
                         if not structured:
                             streamed.labels = labels_in(streamed.text)
                         return
+                    # Not the answer: what it wrote is retracted, before its Search starts.
+                    wrote = streamed.text
+                    streamed.text, streamed.labels = "", []
+                    if wrote:
+                        streamed.retracted.append(wrote)
+                        yield RETRACTION
 
 
 def _take(streamed: _Streamed, piece: tuple[str, list[str] | None]) -> None:
@@ -351,9 +368,12 @@ class _Failed:
     error: Exception
 
 
+_Item = str | _Retraction | SearchEvent
+
+
 async def _with_searches(
-    texts: AsyncGenerator[str], queue: "asyncio.Queue[str | SearchEvent | _Failed | None]"
-) -> AsyncGenerator[str | SearchEvent]:
+    texts: AsyncGenerator[str | _Retraction], queue: "asyncio.Queue[_Item | _Failed | None]"
+) -> AsyncGenerator[_Item]:
     """The answer's text with the ``SearchEvent``s Knowledge Search puts on ``queue`` as they
     happen: the model is streamed in a task of its own, so a Search is reported when it starts,
     not when the answer does. Closing this stops the model."""
@@ -424,7 +444,7 @@ async def _turn(
     # The reply's record of the Chunks given to the model: it labels them and resolves Citations.
     given = GivenChunks()
     searches: list[Searched] = []
-    queue: asyncio.Queue[str | SearchEvent | _Failed | None] = asyncio.Queue()
+    queue: asyncio.Queue[_Item | _Failed | None] = asyncio.Queue()
     canary = new_canary()
     if agentic:
         # No upfront search: the model searches with Knowledge Search, its one tool.
@@ -471,25 +491,40 @@ async def _turn(
     )
     items = _with_searches(texts, queue) if agentic else texts
     query_leaked = False
+    # Per model response: whether it has streamed text yet, whether anything of it (its text or
+    # the Fallback Text) was sent, and whether the Fallback Text stands in for it.
+    responding = shown = falling_back = False
     try:
         async with aclosing(items) as stream_items:
-            async for text in stream_items:
-                if isinstance(text, SearchEvent):
-                    yield text
+            async for item in stream_items:
+                if isinstance(item, SearchEvent):
+                    yield item
                     continue
-                if _found_nothing(given, searches):
-                    # The answer only streams once every Search has run, so it is discarded
-                    # before any of it is sent. Leaving the loop stops the model.
-                    break
-                safe = canary_filter.feed(text)
+                if isinstance(item, _Retraction):
+                    # The response called Knowledge Search, so it wasn't the answer: what the
+                    # filter held back is dropped, and what was sent is retracted.
+                    canary_filter.retract()
+                    if shown:
+                        yield RetractEvent()
+                    responding = shown = falling_back = False
+                    continue
+                if not responding:
+                    responding = True
+                    if _found_nothing(given, searches):
+                        # Every Search so far found nothing, so if this response is the answer
+                        # it is the Fallback Text: sent now, with none of the model's text.
+                        falling_back = shown = True
+                        yield TokenEvent(behaviour.fallback_text)
+                safe = canary_filter.feed(item)
                 if canary_filter.leaked:
                     # Leaving the loop closes the stream, which stops the model.
                     break
-                if safe:
+                if safe and not falling_back:
+                    shown = True
                     yield TokenEvent(safe)
     except _CanaryInQueryError:
-        # The run stopped at the query. No answer text streams before a Search, so nothing is
-        # replaced: the Visitor gets the Fallback Text alone.
+        # The run stopped at the query. The response that called it was retracted before its
+        # Search, so nothing is replaced: the Visitor gets the Fallback Text alone.
         query_leaked = True
     if agentic:
         retrieved = _searched_result(given, searches)
@@ -505,19 +540,6 @@ async def _turn(
             searches=searches,
         )
         return
-    if _found_nothing(given, searches):
-        # Searched, and nothing relevant was found: the Agent's words, not the model's guess.
-        yield TokenEvent(behaviour.fallback_text)
-        yield DoneEvent(
-            answer=behaviour.fallback_text,
-            input_tokens=streamed.usage.input_tokens,
-            output_tokens=streamed.usage.output_tokens,
-            retrieved=[],
-            excluded=retrieved.excluded,
-            fallback=True,
-            searches=searches,
-        )
-        return
     if canary_filter.leaked:
         yield ReplaceEvent(behaviour.fallback_text)
         yield DoneEvent(
@@ -530,11 +552,28 @@ async def _turn(
             searches=searches,
         )
         return
+    if _found_nothing(given, searches):
+        # Searched, and nothing relevant was found: the Agent's words, not the model's guess.
+        if not falling_back:
+            # The answer was empty, so the Fallback Text wasn't sent yet.
+            yield TokenEvent(behaviour.fallback_text)
+        yield DoneEvent(
+            answer=behaviour.fallback_text,
+            input_tokens=streamed.usage.input_tokens,
+            output_tokens=streamed.usage.output_tokens,
+            retrieved=[],
+            excluded=retrieved.excluded,
+            fallback=True,
+            searches=searches,
+        )
+        return
     rest = canary_filter.finish()
     if rest:
         yield TokenEvent(rest)
     outcomes = []
-    encoding = encoded_leak(streamed.text, canary)
+    # Retracted text was shown too, so it is checked as well.
+    encodings = (encoded_leak(text, canary) for text in [*streamed.retracted, streamed.text])
+    encoding = next((found for found in encodings if found is not None), None)
     if encoding is not None:
         reason = CANARY_ENCODED.format(encoding=encoding)
         logger.warning(reason)

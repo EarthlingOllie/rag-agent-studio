@@ -42,7 +42,7 @@ from app.embed.api import (
 from app.guardrails.pipeline import RefusalEvent
 from app.playground.service import Answered, answer
 from app.runtime.errors import ErrorEvent
-from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
+from app.runtime.runtime import CitationEvent, ReplaceEvent, RetractEvent, TokenEvent
 from app.seed import content
 from app.seed.demo_pages import NOT_SEEDED, demo_pages_on, live_demo_agents
 
@@ -179,6 +179,8 @@ async def fire_attack(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
+            elif isinstance(event, RetractEvent):
+                yield _sse("retract", {})
             elif isinstance(event, RefusalEvent):
                 yield _sse("refusal", {"text": event.text})
             elif isinstance(event, ErrorEvent):

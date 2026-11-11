@@ -51,7 +51,13 @@ from app.projects.instructions import InstructionsVersionNotFoundError, version_
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.retrieval.service import ExcludedReason
 from app.runtime.errors import ErrorEvent
-from app.runtime.runtime import CitationEvent, ReplaceEvent, SearchEvent, TokenEvent
+from app.runtime.runtime import (
+    CitationEvent,
+    ReplaceEvent,
+    RetractEvent,
+    SearchEvent,
+    TokenEvent,
+)
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 
@@ -463,6 +469,8 @@ async def send_message(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
+            elif isinstance(event, RetractEvent):
+                yield _sse("retract", {})
             elif isinstance(event, RefusalEvent):
                 yield _sse("refusal", {"text": event.text})
             elif isinstance(event, ErrorEvent):
