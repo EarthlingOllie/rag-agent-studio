@@ -22,9 +22,6 @@ import type { ThemeImage } from "./themeImages";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_RADIUS = 24;
-/** A short field (hex colour, radius): the design system's input, sized to its content. */
-const SHORT = "block h-10 rounded-xl border border-field bg-surface px-3 text-sm text-ink disabled:bg-sunken aria-[invalid=true]:border-danger";
-const FIELD_ERROR = "text-xs text-danger";
 
 type Validity = (field: string, valid: boolean) => void;
 
@@ -54,7 +51,7 @@ function ColourField({
       <label htmlFor={id} className="block text-xs font-medium text-ink-2">
         {label}
       </label>
-      <div className="flex items-center gap-2">
+      <div className="flex items-end gap-2">
         <input
           type="color"
           aria-label={`${label} colour picker`}
@@ -65,20 +62,23 @@ function ColourField({
           onChange={() => undefined}
           className="h-10 w-11 cursor-pointer rounded-xl border border-field bg-surface p-1 disabled:cursor-not-allowed"
         />
-        <input
-          id={id}
-          value={text}
-          aria-invalid={!valid}
-          aria-describedby={valid ? undefined : `${id}-error`}
-          onChange={(event) => {
-            apply(event.target.value);
-          }}
-          spellCheck={false}
-          className={`${SHORT} w-28 font-mono`}
-        />
+        {/* The recipe is full width; this box sizes it to a hex value. */}
+        <div className="w-28">
+          <input
+            id={id}
+            value={text}
+            aria-invalid={!valid}
+            aria-describedby={valid ? undefined : `${id}-error`}
+            onChange={(event) => {
+              apply(event.target.value);
+            }}
+            spellCheck={false}
+            className={field.inputMono}
+          />
+        </div>
       </div>
       {!valid && (
-        <p id={`${id}-error`} className={FIELD_ERROR}>
+        <p id={`${id}-error`} className={field.error}>
           Use a colour like #1a2b3c.
         </p>
       )}
@@ -96,26 +96,28 @@ function RadiusField({ value, onChange, onValidity }: { value: number; onChange:
       <label htmlFor={id} className={field.label}>
         Corner radius (px)
       </label>
-      <input
-        id={id}
-        type="number"
-        min={0}
-        max={MAX_RADIUS}
-        step={1}
-        value={text}
-        aria-invalid={!valid}
-        aria-describedby={valid ? undefined : `${id}-error`}
-        onChange={(event) => {
-          const raw = event.target.value;
-          setText(raw);
-          const radius = parse(raw);
-          onValidity("radius", radius !== undefined);
-          if (radius !== undefined) onChange(radius);
-        }}
-        className={`${SHORT} mt-1.5 w-28 font-mono`}
-      />
+      <div className="w-28">
+        <input
+          id={id}
+          type="number"
+          min={0}
+          max={MAX_RADIUS}
+          step={1}
+          value={text}
+          aria-invalid={!valid}
+          aria-describedby={valid ? undefined : `${id}-error`}
+          onChange={(event) => {
+            const raw = event.target.value;
+            setText(raw);
+            const radius = parse(raw);
+            onValidity("radius", radius !== undefined);
+            if (radius !== undefined) onChange(radius);
+          }}
+          className={field.inputMono}
+        />
+      </div>
       {!valid && (
-        <p id={`${id}-error`} className={FIELD_ERROR}>
+        <p id={`${id}-error`} className={field.error}>
           Use a whole number from 0 to {MAX_RADIUS}.
         </p>
       )}

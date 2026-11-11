@@ -32,16 +32,24 @@ _Avoid_: Theme, Theme Mode, dark mode
 The Studio's design system (`docs/design/README.md`, code in `frontend/apps/studio/src/design`): colour tokens with a light and a dark value, class recipes, and the shared components every Studio page is built from (top bar and breadcrumb, menus, dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list). It styles the Studio only, never the widget, which shows the Organisation's Theme.
 _Avoid_: Theme, skin, component library
 
+**Sidebar**:
+The Studio's navigation on wider screens: a column of links beside every page of an Organisation, the navigation landmark named "Studio", computed from the page's address and the Member's session. From the top: the Organisation switcher (the Organisation's name as plain text for a Member of one), the Organisation's links (Projects, Cost for Owners, Settings), and inside a Project the Project switcher (the open Projects, then All Projects) and its six Project sections. The link for where the Member is has the soft accent fill and is the current page; a section stays current on its inner pages (the Document viewer under Documents, an Agent under Agents, a Conversation under Conversations). Under the Require MFA policy, until the Member enrols, it offers only Security. Profile, Security and Sign out are only in the account menu, the Member's avatar in the top bar; Organisation settings' areas (General, Credentials, Models, Theme, and Members and Audit for Owners) are a tab row under the settings header. Below `md` it is hidden behind the top bar's "Open navigation" button, which opens it as the Sidebar drawer.
+_Avoid_: Side menu, nav bar
+
+**Sidebar drawer**:
+The Sidebar on a narrow screen (below `md`, a phone): hidden so the page gets the full width, it slides in over the page from the left when the Member presses "Open navigation" in the top bar. It is a modal dialog named "Navigation" holding the same Sidebar: opening it focuses the current link, focus stays inside it while it is open, and Escape, a press outside it or following a link closes it and returns focus to the button.
+_Avoid_: Hamburger menu, mobile menu, off-canvas
+
 **Breadcrumb**:
-The Studio's navigation: the path in the top bar, Organisation / section / item, computed from the page's address. Each level with siblings is a switcher, a menu of them (the Organisation switcher, the Organisation's sections, the Organisation settings areas, the Project switcher, a Project's sections, the Agent switcher, an Agent's views); the last crumb is the page the Member is on. It replaces the side menu and the tab rows. Profile, Security and Sign out are also in the account menu beside it. On a narrow screen a path of three or more crumbs keeps the Organisation and the current page and folds the crumbs between them into "…" (Show the whole path), which opens them as a list, each still its switcher.
-_Avoid_: Tabs, side menu, nav bar
+The plain path of links in the top bar that says where the Member is, computed from the page's address: from the Organisation's page they are under down to the page they are on, for example `Northwind Handbook / Agents / HR helper`, `Settings / Members` or `Profile`. Each crumb is a link that leads back up; only the last, the page the Member is on, is marked as the current page. No crumb opens a menu: the Sidebar is how the Member moves around, and the Organisation is named at its top. On a narrow screen (below `md`) only the last two crumbs are shown, so the top bar stays one row.
+_Avoid_: Breadcrumb switcher, crumb menu, tabs, nav bar
 
 **Project section**:
-One of the six areas of a Project in the Studio, in this order: Documents, Instructions, Agents, Conversations, Analytics and Settings. The Member moves between them with the section switcher, the Breadcrumb's last level inside a Project, which numbers them 1–6. The crumb before it is the Project switcher: the Organisation's open Projects, plus All Projects. Rare actions on the Project itself (Archive, permanent deletion) are in its page header's ⋯ menu, not in a section.
+One of the six areas of a Project in the Studio, in this order: Documents, Instructions, Agents, Conversations, Analytics and Settings. The Member moves between them with their links in the Sidebar, under the Project switcher (the Organisation's open Projects, plus All Projects); the section the Member is in is also the Breadcrumb's crumb after the Project. Rare actions on the Project itself (Archive, permanent deletion) are in its page header's ⋯ menu, not in a section.
 _Avoid_: Tab, page, area
 
 **Agent view**:
-One of the four pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the view switcher, the Breadcrumb's last level inside an Agent; the crumb before it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
+One of the four pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the tab row under the Agent's header (the navigation named "Agent views", the current tab marked as the current page, Conversations staying current on a Conversation opened from it); the Breadcrumb ends at the Agent on all four. The Agent's name is the page's one heading (the Project's page header is left out on an Agent's pages), and the ▾ beside it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
 _Avoid_: Agent tab, Agent section
 
 **Palette ratchet**:
@@ -84,7 +92,7 @@ A Member's place in one Organisation, with a role: Owner or Editor. Signing up c
 _Avoid_: Seat, account
 
 **Active Organisation**:
-The Organisation a Member is working in. A Member of several Organisations picks it with the Organisation switcher, the first crumb of the Breadcrumb; the Studio remembers the choice and opens it next time, and otherwise opens their first Organisation. It never grants access: every Organisation page and API route names its Organisation, and a Member reaches only Organisations they have a Membership in.
+The Organisation a Member is working in. A Member of several Organisations picks it with the Organisation switcher, at the top of the Sidebar; the Studio remembers the choice and opens it next time, and otherwise opens their first Organisation. It never grants access: every Organisation page and API route names its Organisation, and a Member reaches only Organisations they have a Membership in.
 _Avoid_: Current tenant, workspace, default Organisation
 
 **Invite**:
@@ -94,6 +102,10 @@ _Avoid_: Invitation code, join request
 **Invite Link**:
 The link that accepts an Invite. It works once and expires; a person without an account creates one from it and joins in one step, and an existing Member just gains the Membership. An Owner can get a new link for a pending Invite, which stops the old one working.
 _Avoid_: Join link, magic link
+
+**Invite dialog**:
+The one place an Owner invites someone: Invite someone, the primary action in the Members header, opens it with Email, Role and "Email the invite link". A refusal (an invalid email, an existing Member, an Invite already pending) shows inside it and keeps what was typed; Cancel and Escape close it without inviting. On success it closes, a toast confirms the Invite, and the Invite Link to copy (with its expiry) shows on the page above Pending invites, as it does after New link on a pending Invite.
+_Avoid_: Invite form, invite panel
 
 **Lockout**:
 A temporary block on signing in, after too many failed attempts for one account or from one IP address. Before it, each further attempt must wait a little longer. A Lockout of a Member's account is recorded as an Audit Event in each of their Organisations.
@@ -259,6 +271,10 @@ _Avoid_: Search endpoint, retriever
 An isolated container of a Knowledge Base, Project Instructions and Agents. Nothing crosses a Project boundary.
 _Avoid_: Workspace, context repository, collection
 
+**Project details dialog**:
+The one dialog for a Project's name and description: New Project opens it empty to create a Project (which then opens), and Edit details on a Project's header opens it filled in to change them (a toast confirms the save). A refusal shows inside it and keeps what was typed; Cancel and Escape close it without saving. Nothing about a Project's details is edited inline.
+_Avoid_: Edit form, new project form
+
 **Knowledge Base**:
 All the Documents and Chunks in a Project.
 _Avoid_: Corpus, index, vector store
@@ -300,7 +316,7 @@ The most Documents a Project may hold, not counting Failed ones. Uploads beyond 
 _Avoid_: Document limit, storage limit, cap
 
 **Document viewer**:
-The Studio page for one Document: its converted markdown beside its Chunks, each on a card with its heading path and page range (a flagged Chunk's card is badged Flagged), and a download of the original file. The Breadcrumb's last crumb names the Document, after the Documents switcher that leads back to the list.
+The Studio page for one Document: its converted markdown beside its Chunks, each on a card with its heading path and page range (a flagged Chunk's card is badged Flagged), and a download of the original file. The Breadcrumb's last crumb names the Document, after the Documents crumb that leads back to the list.
 _Avoid_: Document preview, inspector, detail page
 
 **Heading path**:

@@ -31,6 +31,7 @@ test.describe("Rate limits", () => {
 
     // A live Agent.
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Busy Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
@@ -39,7 +40,7 @@ test.describe("Rate limits", () => {
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Busy helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Busy helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Busy helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
     await publishAgent(page, "First release");
@@ -93,6 +94,7 @@ test.describe("Rate limits", () => {
     await visitor.close();
 
     // The Playground has no limits: two questions in a row are both answered.
+    await openAgentView(page, "Playground");
     const messages = page.getByRole("list", { name: "Playground messages" });
     for (const [index, question] of ["What are your opening hours?", "And at weekends?"].entries()) {
       await page.getByLabel("Question", { exact: true }).fill(question);

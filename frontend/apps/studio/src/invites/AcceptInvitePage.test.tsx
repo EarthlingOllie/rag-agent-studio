@@ -1,9 +1,10 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeAcceptApi, invitedOrganisation, joined, previewFor } from "../test/invites";
+import { sidebar } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -19,7 +20,7 @@ const newcomer: Session = {
 
 async function expectProjectsOf(organisationName: string) {
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(screen.getByText(organisationName)).toBeInTheDocument();
+  expect(within(await sidebar()).getByText(organisationName)).toBeInTheDocument();
 }
 
 test("a person without an account creates one and joins in one step", async () => {

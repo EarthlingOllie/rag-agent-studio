@@ -12,6 +12,7 @@ async function openProjects(page: Page) {
 
 async function createProject(page: Page, name: string, description: string) {
   await openProjects(page);
+  await page.getByRole("button", { name: "New Project" }).click();
   const form = page.getByRole("form", { name: "New Project" });
   await form.getByLabel("Name").fill(name);
   await form.getByLabel("Description").fill(description);
@@ -25,6 +26,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await openSection(owner, "Organisation sections", "Settings");
   await openSection(owner, "Organisation settings", "Members");
   await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+  await owner.getByRole("button", { name: "Invite someone" }).click();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
   await form.getByLabel("Role").selectOption("Editor");
@@ -36,7 +38,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 
@@ -50,7 +52,7 @@ test.describe("Projects", () => {
     // The Project page has a section per area, each a placeholder for now.
     for (const tab of ["Documents", "Instructions", "Agents", "Conversations", "Analytics"]) {
       await openSection(page, "Project sections", tab);
-      await expect(page.getByRole("heading", { level: 2, name: tab })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: tab, exact: true })).toBeVisible();
     }
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
@@ -83,14 +85,14 @@ test.describe("Projects", () => {
     const refused = await page.request.patch(projectUrl, { data: { name: "Sneaky rename" } });
     expect(refused.status()).toBe(409);
     await openSection(page, "Projects", "All Projects");
-    await expect(page.getByText(/No Projects yet/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "No Projects yet" })).toBeVisible();
 
     // Restore it from the archived list.
-    await page.getByRole("button", { name: "Show archived Projects" }).click();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Archived" }).click();
     await page.getByRole("button", { name: "Restore People team" }).click();
     await expect(page.getByText("People team was restored.")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await page.getByRole("button", { name: "Show active Projects" }).click();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Active" }).click();
     await expect(projects.getByRole("link", { name: "People team" })).toBeVisible();
 
     // Create, archive and restore are in the Audit tab.
@@ -115,7 +117,7 @@ test.describe("Projects", () => {
     expect((await editorPage.request.post(restoreUrl)).status()).toBe(403);
 
     await openProjects(page);
-    await page.getByRole("button", { name: "Show archived Projects" }).click();
+    await page.getByRole("radiogroup", { name: "Projects shown" }).getByRole("radio", { name: "Archived" }).click();
     await page.getByRole("button", { name: "Restore Sales enablement" }).click();
     await expect(page.getByText("Sales enablement was restored.")).toBeVisible();
 

@@ -27,6 +27,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await openSection(owner, "Organisation sections", "Settings");
   await openSection(owner, "Organisation settings", "Members");
   await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+  await owner.getByRole("button", { name: "Invite someone" }).click();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
   await form.getByLabel("Role").selectOption("Editor");
@@ -38,7 +39,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 
@@ -54,7 +55,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
     .organisations[0]?.id;
 
   // The Owner turns MFA on for themselves, then requires it in Organisation settings.
-  await openSection(owner, "Organisation sections", "Security");
+  await openSection(owner, "Account", "Security");
   await enrol(owner);
   await openSection(owner, "Organisation sections", "Settings");
   const policy = owner.getByRole("region", { name: "Two-factor authentication" });
@@ -85,11 +86,11 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
   // Once enrolled, the Organisation opens as usual.
   const { secret, step } = await enrol(editorPage);
   await openSection(editorPage, "Organisation sections", "Projects");
-  await expect(editorPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(editorPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   expect((await editorPage.request.get(`/api/organisations/${organisationId ?? ""}`)).status()).toBe(200);
 
   // While the Organisation requires MFA, the Editor can't turn it off.
-  await openSection(editorPage, "Organisation sections", "Security");
+  await openSection(editorPage, "Account", "Security");
   const turnOff = editorPage.getByRole("form", { name: "Turn off two-factor authentication" });
   await turnOff.getByLabel("Password").fill(editor.password);
   await turnOff.getByLabel("Code from your app or a recovery code").fill(totpCode(secret, step + 1));

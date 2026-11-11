@@ -8,8 +8,9 @@ import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
+/** The sidebar's Organisation switcher. */
 function switcher() {
-  return screen.getByRole("button", { name: /, Organisations$/ });
+  return within(screen.getByRole("navigation", { name: "Studio" })).getByRole("button", { name: /, Organisations$/ });
 }
 
 async function openMembers() {
@@ -23,7 +24,7 @@ test("a Member of one Organisation sees its name, not a switcher", async () => {
   renderStudio("/");
 
   expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
-  expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Analytical Engines")).toBeInTheDocument();
+  expect(within(screen.getByRole("navigation", { name: "Studio" })).getByText("Analytical Engines")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /, Organisations$/ })).not.toBeInTheDocument();
 });
 

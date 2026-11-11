@@ -1,0 +1,33 @@
+light         projects                 h1 "Projects"; dialog "none"; horizontal overflow 0px; axe violations: 0
+light         new-project-dialog       h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+light         new-project-refused      h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+light         project                  h1 "HR handbook"; dialog "none"; horizontal overflow 0px; axe violations: 0
+light         project-details-dialog   h1 "HR handbook"; dialog "Project details"; horizontal overflow 0px; axe violations: 0
+light         project-details-saved    h1 "People team"; dialog "none"; horizontal overflow 0px; axe violations: 0
+light         keyboard: New Project (Enter) opens "New Project" with focus on "name"; Escape closes it; focus back on "New Project": ok
+light         keyboard: Edit details (Enter) opens "Project details" with focus on "name"; Escape closes it; focus back on "Edit details": ok
+dark          projects                 h1 "Projects"; dialog "none"; horizontal overflow 0px; axe violations: 0
+dark          new-project-dialog       h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+dark          new-project-refused      h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+dark          project                  h1 "HR handbook"; dialog "none"; horizontal overflow 0px; axe violations: 0
+dark          project-details-dialog   h1 "HR handbook"; dialog "Project details"; horizontal overflow 0px; axe violations: 0
+dark          project-details-saved    h1 "People team"; dialog "none"; horizontal overflow 0px; axe violations: 0
+dark          keyboard: New Project (Enter) opens "New Project" with focus on "name"; Escape closes it; focus back on "New Project": ok
+dark          keyboard: Edit details (Enter) opens "Project details" with focus on "name"; Escape closes it; focus back on "Edit details": ok
+narrow-light  projects                 h1 "Projects"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-light  new-project-dialog       h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+narrow-light  new-project-refused      h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+narrow-light  project                  h1 "HR handbook"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-light  project-details-dialog   h1 "HR handbook"; dialog "Project details"; horizontal overflow 0px; axe violations: 0
+narrow-light  project-details-saved    h1 "People team"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-light  keyboard: New Project (Enter) opens "New Project" with focus on "name"; Escape closes it; focus back on "New Project": ok
+narrow-light  keyboard: Edit details (Enter) opens "Project details" with focus on "name"; Escape closes it; focus back on "Edit details": ok
+narrow-dark   projects                 h1 "Projects"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-dark   new-project-dialog       h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+narrow-dark   new-project-refused      h1 "Projects"; dialog "New Project"; horizontal overflow 0px; axe violations: 0
+narrow-dark   project                  h1 "HR handbook"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-dark   project-details-dialog   h1 "HR handbook"; dialog "Project details"; horizontal overflow 0px; axe violations: 0
+narrow-dark   project-details-saved    h1 "People team"; dialog "none"; horizontal overflow 0px; axe violations: 0
+narrow-dark   keyboard: New Project (Enter) opens "New Project" with focus on "name"; Escape closes it; focus back on "New Project": ok
+narrow-dark   keyboard: Edit details (Enter) opens "Project details" with focus on "name"; Escape closes it; focus back on "Edit details": ok
+total axe violations, overflows and focus problems: 0

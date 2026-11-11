@@ -33,7 +33,8 @@ export function CodeBlock({ label, code }: { label: string; code: string }) {
         </pre>
         <button
           type="button"
-          aria-label={`Copy ${label}`}
+          // Starts with the visible "Copy" or "Copied", so the name contains the label you see (WCAG 2.5.3).
+          aria-label={`${state === "copied" ? "Copied" : "Copy"} ${label}`}
           className={`${button.secondary} absolute top-2 right-2 h-8 px-3`}
           onClick={() => {
             navigator.clipboard.writeText(code).then(

@@ -4,13 +4,13 @@ import type { Page } from "@playwright/test";
 import { AXE_TAGS, expect, test } from "../fixtures";
 import { newMember, signUp } from "../fixtures/auth";
 import { latestEmailTo, linkPath } from "../fixtures/mailpit";
-import { menuButton, openSection, sectionNames } from "../fixtures/navigation";
+import { menuButton, openSection, sectionNames, sidebar } from "../fixtures/navigation";
 
 async function openMembers(page: Page) {
   await page.goto("/");
   await openSection(page, "Organisation sections", "Settings");
   await openSection(page, "Organisation settings", "Members");
-  await expect(page.getByRole("form", { name: "Invite someone" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Invite someone" })).toBeVisible();
   // Wait for the Members list, so its loading status has gone before the invite's status appears.
   await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
 }
@@ -24,6 +24,7 @@ test.describe("invites", () => {
   }) => {
     const invited = newMember({ name: "Invited Editor" });
     await openMembers(page);
+    await page.getByRole("button", { name: "Invite someone" }).click();
     const form = page.getByRole("form", { name: "Invite someone" });
     await form.getByLabel("Email", { exact: true }).fill(invited.email);
     await form.getByLabel("Role").selectOption("Editor");
@@ -48,8 +49,8 @@ test.describe("invites", () => {
     await invitedPage.getByLabel("Password").fill(invited.password);
     await invitedPage.getByRole("button", { name: "Create account and join" }).click();
 
-    await expect(invitedPage.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(invitedPage.getByText(member.organisationName)).toBeVisible();
+    await expect(invitedPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+    await expect(sidebar(invitedPage).getByText(member.organisationName)).toBeVisible();
     // An Editor: no Owner-only settings.
     await openSection(invitedPage, "Organisation sections", "Settings");
     const sections = await sectionNames(invitedPage, "Organisation settings");
@@ -62,7 +63,7 @@ test.describe("invites", () => {
     await invitedPage.getByLabel("Email").fill(invited.email);
     await invitedPage.getByLabel("Password").fill(invited.password);
     await invitedPage.getByRole("button", { name: "Sign in" }).click();
-    await expect(invitedPage.getByText(member.organisationName)).toBeVisible();
+    await expect(sidebar(invitedPage).getByText(member.organisationName)).toBeVisible();
 
     // The link worked once.
     await invitedContext.clearCookies();
@@ -89,6 +90,7 @@ test.describe("invites", () => {
     await signUp(colleaguePage.request, colleague);
 
     await openMembers(page);
+    await page.getByRole("button", { name: "Invite someone" }).click();
     const form = page.getByRole("form", { name: "Invite someone" });
     await form.getByLabel("Email", { exact: true }).fill(colleague.email);
     await form.getByLabel("Role").selectOption("Owner");
@@ -99,8 +101,8 @@ test.describe("invites", () => {
 
     await colleaguePage.goto(new URL(link).pathname + new URL(link).search);
     await colleaguePage.getByRole("button", { name: `Join ${member.organisationName}` }).click();
-    await expect(colleaguePage.getByRole("heading", { name: "Projects" })).toBeVisible();
-    // The colleague now belongs to two Organisations, so the breadcrumb's switcher shows the one joined.
+    await expect(colleaguePage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+    // The colleague now belongs to two Organisations, so the sidebar's switcher shows the one joined.
     await expect(menuButton(colleaguePage, "Organisations")).toHaveAccessibleName(`${member.organisationName}, Organisations`);
     const me = (await (await colleaguePage.request.get("/api/auth/me")).json()) as { organisations: { name: string; role: string }[] };
     expect(me.organisations.map((o) => [o.name, o.role]).sort()).toEqual(
@@ -112,6 +114,8 @@ test.describe("invites", () => {
 
     // A second invite, revoked before it is used.
     const late = newMember();
+    // The dialog closed on the first invite; open it again.
+    await page.getByRole("button", { name: "Invite someone" }).click();
     await form.getByLabel("Email", { exact: true }).fill(late.email);
     await form.getByRole("button", { name: "Invite" }).click();
     const lateLink = await page.getByLabel(`Invite link for ${late.email}`).inputValue();

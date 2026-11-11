@@ -1,256 +1,152 @@
-import { Link, useMatchRoute } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { createLink, useMatchRoute } from "@tanstack/react-router";
+import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
 
-import type { Session } from "../auth/session";
-import { Breadcrumb, CrumbSwitcher, CrumbText, type IconName, type MenuItem, type MenuLinkProps } from "../design";
-import { useAgent, useAgents } from "../projects/agents";
+import { Breadcrumb, crumbLink } from "../design";
+import { useAgent } from "../projects/agents";
 import { useDocument } from "../projects/documents";
-import { useProject, useProjects } from "../projects/projects";
-import { OrganisationCrumb } from "./OrganisationSwitcher";
-import { SettingsCrumb } from "./SettingsCrumb";
-
-const ORGANISATION = "/organisations/$organisationId";
-const PROJECT = "/organisations/$organisationId/projects/$projectId";
-const SETTINGS = "/organisations/$organisationId/settings";
-
-type SectionPath =
-  | "/organisations/$organisationId/projects"
-  | "/organisations/$organisationId/cost"
-  | "/organisations/$organisationId/settings"
-  | "/organisations/$organisationId/security"
-  | "/organisations/$organisationId/profile";
+import { useProject } from "../projects/projects";
+import { AGENT, ORGANISATION, PROJECT, useProjectSections } from "./projectNavigation";
+import { SETTINGS, useSettingsAreas } from "./settingsNavigation";
 
 /**
- * The Organisation's sections, in menu order. Cost is for Owners, as the side menu had it. Profile
- * is the Member's own page; it is also in the account menu.
+ * One crumb: a link whose `current` alone decides `aria-current="page"`, replacing the router's
+ * own marking. The router marks every link to the page the Member is on, which would make the
+ * Project's crumb current on its Documents page as well as the Documents crumb.
  */
-const SECTIONS: { label: string; icon: IconName; to: SectionPath; ownersOnly?: true }[] = [
-  { label: "Projects", icon: "projects", to: "/organisations/$organisationId/projects" },
-  { label: "Cost", icon: "analytics", to: "/organisations/$organisationId/cost", ownersOnly: true },
-  { label: "Settings", icon: "settings", to: "/organisations/$organisationId/settings" },
-  { label: "Security", icon: "security", to: "/organisations/$organisationId/security" },
-  { label: "Profile", icon: "profile", to: "/organisations/$organisationId/profile" },
-];
+function CrumbAnchor({ current = false, ref, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { current?: boolean; ref?: Ref<HTMLAnchorElement> }) {
+  return <a ref={ref} {...props} aria-current={current ? "page" : undefined} className={crumbLink} />;
+}
 
-type ProjectPath =
-  | "/organisations/$organisationId/projects/$projectId"
-  | "/organisations/$organisationId/projects/$projectId/documents/$documentId"
-  | "/organisations/$organisationId/projects/$projectId/instructions"
-  | "/organisations/$organisationId/projects/$projectId/agents"
-  | "/organisations/$organisationId/projects/$projectId/conversations"
-  | "/organisations/$organisationId/projects/$projectId/analytics"
-  | "/organisations/$organisationId/projects/$projectId/settings";
+const Crumb = createLink(CrumbAnchor);
+
+/** A Document's crumb, after Documents: its name, or "Document" until it loads or when it can't be. */
+function DocumentCrumb({ organisationId, projectId, documentId }: { organisationId: string; projectId: string; documentId: string }) {
+  const document = useDocument(organisationId, projectId, documentId);
+  return (
+    <Crumb to={`${PROJECT}/documents/$documentId`} params={{ organisationId, projectId, documentId }} current>
+      {document.data?.name ?? "Document"}
+    </Crumb>
+  );
+}
 
 /**
- * A Project's sections, in menu order, numbered 1-6. Documents is the Project's index page, so it
- * is matched exactly, and also holds the Document viewer; the others hold their inner pages.
+ * Inside an Agent: the crumbs before it, then the Agent, current on every one of its views (the
+ * tab row says which). Until the Agent has loaded, or when it can't be found, the crumbs end at
+ * its section, which is then current.
  */
-const PROJECT_SECTIONS: { label: string; icon: IconName; to: ProjectPath; also?: ProjectPath }[] = [
-  { label: "Documents", icon: "documents", to: PROJECT, also: `${PROJECT}/documents/$documentId` },
-  { label: "Instructions", icon: "instructions", to: `${PROJECT}/instructions` },
-  { label: "Agents", icon: "agents", to: `${PROJECT}/agents` },
-  { label: "Conversations", icon: "conversations", to: `${PROJECT}/conversations` },
-  { label: "Analytics", icon: "analytics", to: `${PROJECT}/analytics` },
-  { label: "Settings", icon: "settings", to: `${PROJECT}/settings` },
-];
-
-const AGENT = `${PROJECT}/agents/$agentId` as const;
-
-type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed` | `${typeof AGENT}/conversations`;
-
-/** An Agent's views, in menu order. Conversations also holds the Conversation opened from it. */
-const AGENT_VIEWS: { label: string; icon: IconName; to: AgentViewPath; fuzzy?: boolean }[] = [
-  { label: "Playground", icon: "send", to: AGENT },
-  { label: "Versions", icon: "history", to: `${AGENT}/versions` },
-  { label: "Embed & limits", icon: "external", to: `${AGENT}/embed` },
-  { label: "Conversations", icon: "conversations", to: `${AGENT}/conversations`, fuzzy: true },
-];
-
-/**
- * Inside an Agent: the crumbs `before` it, its section crumb (`section`), the Agent crumb, a
- * switcher of the Project's open Agents, then the view switcher (Playground, Versions, Embed &
- * limits, Conversations). Until the Agent is loaded, or when it can't be found, the section crumb
- * is the current one.
- */
-function AgentBreadcrumb({
+function AgentPath({
   organisationId,
   projectId,
   agentId,
   before,
-  section,
 }: {
   organisationId: string;
   projectId: string;
   agentId: string;
-  before: ReactNode[];
-  section: (current: boolean) => ReactNode;
+  before: (sectionCurrent: boolean) => ReactNode[];
 }) {
-  const matchRoute = useMatchRoute();
-  const agents = useAgents(organisationId, projectId);
   const agent = useAgent(organisationId, projectId, agentId);
-  if (!agent.data) {
-    return (
-      <Breadcrumb>
-        {before}
-        {section(true)}
-      </Breadcrumb>
-    );
-  }
-  const switcher: MenuItem[] = (agents.data ?? []).map((candidate) => ({
-    id: candidate.id,
-    label: candidate.name,
-    icon: "agents" as const,
-    current: candidate.id === agentId,
-    renderLink: (props: MenuLinkProps) => <Link to={AGENT} params={{ organisationId, projectId, agentId: candidate.id }} {...props} />,
-  }));
-  const views: MenuItem[] = AGENT_VIEWS.map(({ label, icon, to, fuzzy = false }) => ({
-    label,
-    icon,
-    current: matchRoute({ to, params: { organisationId, projectId, agentId }, fuzzy }) !== false,
-    renderLink: (props: MenuLinkProps) => <Link to={to} params={{ organisationId, projectId, agentId }} {...props} />,
-  }));
-  // Every view inside the Agent's route is one of its views.
-  const here = views.find((view) => view.current) as MenuItem;
+  if (!agent.data) return <Breadcrumb>{before(true)}</Breadcrumb>;
   return (
     <Breadcrumb>
-      {before}
-      {section(false)}
-      <CrumbSwitcher label={agent.data.name} menuLabel="Agents" items={switcher} />
-      <CrumbSwitcher label={here.label} menuLabel="Agent views" items={views} current />
+      {before(false)}
+      <Crumb to={AGENT} params={{ organisationId, projectId, agentId }} current>
+        {agent.data.name}
+      </Crumb>
     </Breadcrumb>
   );
 }
 
-/** A Document's own crumb, after the Documents switcher: its name, or "Document" until it loads. */
-function DocumentCrumb({ organisationId, projectId, documentId }: { organisationId: string; projectId: string; documentId: string }) {
-  const document = useDocument(organisationId, projectId, documentId);
-  return <CrumbText current>{document.data?.name ?? "Document"}</CrumbText>;
-}
-
-/**
- * The Project crumb, a switcher of the Organisation's open Projects plus All Projects, then the
- * Project's section switcher, then on the Document viewer the Document's name. While the Project
- * can't be shown (loading, not found) there are no sections, and the Project crumb is the current one.
- */
-function ProjectBreadcrumb({
-  organisationId,
-  projectId,
-  leading,
-}: {
-  organisationId: string;
-  projectId: string;
-  /** The Organisation's crumbs, before the Project's. */
-  leading: ReactNode[];
-}) {
+/** Where the Member is inside a Project: the Project, its section, then a Document or an Agent. */
+function ProjectPath({ organisationId, projectId }: { organisationId: string; projectId: string }) {
   const matchRoute = useMatchRoute();
-  const projects = useProjects(organisationId, false);
   const project = useProject(organisationId, projectId);
+  const sections = useProjectSections(organisationId, projectId);
 
-  const switcher: MenuItem[] = [
-    ...(projects.data ?? []).map((candidate) => ({
-      id: candidate.id,
-      label: candidate.name,
-      icon: "projects" as const,
-      current: candidate.id === projectId,
-      renderLink: (props: MenuLinkProps) => <Link to={PROJECT} params={{ organisationId, projectId: candidate.id }} {...props} />,
-    })),
-    {
-      label: "All Projects",
-      renderLink: (props: MenuLinkProps) => <Link to={`${ORGANISATION}/projects`} params={{ organisationId }} {...props} />,
-    },
-  ];
-  const sections: MenuItem[] = PROJECT_SECTIONS.map((section, index) => ({
-    label: section.label,
-    icon: section.icon,
-    hint: String(index + 1),
-    current:
-      section.also === undefined
-        ? matchRoute({ to: section.to, params: { organisationId, projectId }, fuzzy: true }) !== false
-        : matchRoute({ to: section.to, params: { organisationId, projectId } }) !== false ||
-          matchRoute({ to: section.also, params: { organisationId, projectId } }) !== false,
-    renderLink: (props) => <Link to={section.to} params={{ organisationId, projectId }} {...props} />,
-  }));
-  // Every page in a Project belongs to one section.
-  const here = sections.find((section) => section.current) as MenuItem;
-  const agent = matchRoute({ to: AGENT, params: { organisationId, projectId }, fuzzy: true });
-  const sectionCrumb = (current: boolean) => (
-    <CrumbSwitcher key="section" label={here.label} menuLabel="Project sections" items={sections} current={current} />
-  );
-  const viewing = matchRoute({ to: `${PROJECT}/documents/$documentId`, params: { organisationId, projectId } });
-
-  const projectCrumb = (
-    <CrumbSwitcher key="project" label={project.data?.name ?? "Project"} menuLabel="Projects" items={switcher} current={!project.data} />
-  );
-
-  if (project.data && agent !== false) {
+  // While the Project can't be shown (loading, not found) it is the only crumb.
+  if (!project.data) {
     return (
-      <AgentBreadcrumb
-        organisationId={organisationId}
-        projectId={projectId}
-        agentId={agent.agentId}
-        before={[...leading, projectCrumb]}
-        section={sectionCrumb}
-      />
+      <Breadcrumb>
+        <Crumb to={PROJECT} params={{ organisationId, projectId }} current>
+          Project
+        </Crumb>
+      </Breadcrumb>
     );
   }
+  // Every page in a Project belongs to one section.
+  const section = sections.find((candidate) => candidate.current) as (typeof sections)[number];
+  const before = (sectionCurrent: boolean) => [
+    <Crumb key="project" to={PROJECT} params={{ organisationId, projectId }}>
+      {project.data.name}
+    </Crumb>,
+    <Crumb key="section" to={section.to} params={{ organisationId, projectId }} current={sectionCurrent}>
+      {section.label}
+    </Crumb>,
+  ];
+  const agent = matchRoute({ to: AGENT, params: { organisationId, projectId }, fuzzy: true });
+  if (agent !== false) {
+    return <AgentPath organisationId={organisationId} projectId={projectId} agentId={agent.agentId} before={before} />;
+  }
+  const viewing = matchRoute({ to: `${PROJECT}/documents/$documentId`, params: { organisationId, projectId } });
   return (
     <Breadcrumb>
-      {leading}
-      {projectCrumb}
-      {project.data && sectionCrumb(viewing === false)}
-      {project.data && viewing !== false && (
-        <DocumentCrumb organisationId={organisationId} projectId={projectId} documentId={viewing.documentId} />
+      {before(viewing === false)}
+      {viewing !== false && <DocumentCrumb organisationId={organisationId} projectId={projectId} documentId={viewing.documentId} />}
+    </Breadcrumb>
+  );
+}
+
+/** Organisation settings: Settings, then the area the Member is in (none on an address that is no area). */
+function SettingsPath({ organisationId }: { organisationId: string }) {
+  const area = useSettingsAreas(organisationId).find((candidate) => candidate.current);
+  return (
+    <Breadcrumb>
+      <Crumb to={SETTINGS} params={{ organisationId }}>
+        Settings
+      </Crumb>
+      {area && (
+        <Crumb to={area.to} params={{ organisationId }} current>
+          {area.label}
+        </Crumb>
       )}
     </Breadcrumb>
   );
 }
 
+type OrganisationPage =
+  | "/organisations/$organisationId/projects"
+  | "/organisations/$organisationId/cost"
+  | "/organisations/$organisationId/security"
+  | "/organisations/$organisationId/profile";
+
+/** The Organisation's own pages outside settings, each a crumb of its own. */
+const PAGES: { label: string; to: OrganisationPage }[] = [
+  { label: "Projects", to: `${ORGANISATION}/projects` },
+  { label: "Cost", to: `${ORGANISATION}/cost` },
+  { label: "Security", to: `${ORGANISATION}/security` },
+  { label: "Profile", to: `${ORGANISATION}/profile` },
+];
+
 /**
- * The top bar's breadcrumb, computed from the route: Organisation / section, then the Project and
- * its section when one is open, or the settings area (`SettingsCrumb`). Pages register nothing.
- * While the Organisation requires MFA and the Member has none, the section switcher offers only
- * Security.
+ * The top bar's breadcrumb, computed from the route (pages register nothing): plain links from the
+ * Organisation's page the Member is under down to the page they are on, which is marked
+ * `aria-current="page"`. The Organisation itself is named at the top of the sidebar.
  */
-export function StudioBreadcrumb({
-  session,
-  organisationId,
-  mustEnrol,
-}: {
-  session: Session;
-  organisationId: string;
-  mustEnrol: boolean;
-}) {
+export function StudioBreadcrumb({ organisationId }: { organisationId: string }) {
   const matchRoute = useMatchRoute();
-  const organisation = session.organisations.find((candidate) => candidate.id === organisationId);
   const project = matchRoute({ to: PROJECT, params: { organisationId }, fuzzy: true });
-  const settings = matchRoute({ to: SETTINGS, params: { organisationId }, fuzzy: true }) !== false;
-  // The one page outside the section menu: Cost, for a Member who isn't an Owner.
-  const costElsewhere = matchRoute({ to: `${ORGANISATION}/cost`, params: { organisationId } }) !== false;
-
-  const sections: MenuItem[] = SECTIONS.filter(
-    (section) => (!mustEnrol || section.label === "Security") && (section.ownersOnly !== true || organisation?.role === "owner"),
-  ).map((section) => ({
-    label: section.label,
-    icon: section.icon,
-    current: matchRoute({ to: section.to, params: { organisationId }, fuzzy: true }) !== false,
-    renderLink: (props) => <Link to={section.to} params={{ organisationId }} {...props} />,
-  }));
-  const here = sections.find((section) => section.current);
-  const leading = [
-    <OrganisationCrumb key="organisation" session={session} organisationId={organisationId} />,
-    organisation && here && (
-      <CrumbSwitcher key="sections" label={here.label} menuLabel="Organisation sections" items={sections} current={project === false && !settings} />
-    ),
-  ];
-
-  if (organisation && project !== false) {
-    return <ProjectBreadcrumb organisationId={organisationId} projectId={project.projectId} leading={leading} />;
+  if (project !== false) return <ProjectPath organisationId={organisationId} projectId={project.projectId} />;
+  if (matchRoute({ to: SETTINGS, params: { organisationId }, fuzzy: true }) !== false) {
+    return <SettingsPath organisationId={organisationId} />;
   }
+  const page = PAGES.find((candidate) => matchRoute({ to: candidate.to, params: { organisationId } }) !== false);
   return (
     <Breadcrumb>
-      {leading}
-      {organisation && settings && <SettingsCrumb organisationId={organisationId} isOwner={organisation.role === "owner"} />}
-      {organisation && !here && costElsewhere && <CrumbText current>Cost</CrumbText>}
+      {page && (
+        <Crumb to={page.to} params={{ organisationId }} current>
+          {page.label}
+        </Crumb>
+      )}
     </Breadcrumb>
   );
 }

@@ -4,7 +4,8 @@ const NEAR = 0.8;
 /**
  * How much of a limit is used (Token Budget, quota). The fill is the accent under 80%, the flag
  * colour from 80% and the danger colour once spent; the value is always printed beside it, so
- * the colour is never the only signal.
+ * the colour is never the only signal. A `progress` meter (a re-embed's Chunks) has no limit to
+ * warn about, so it stays the accent all the way.
  */
 export function Meter({
   label,
@@ -12,6 +13,7 @@ export function Meter({
   max,
   unit,
   format = (n) => n.toLocaleString("en-GB"),
+  progress = false,
 }: {
   label: string;
   value: number;
@@ -20,9 +22,11 @@ export function Meter({
   /** Said after the numbers: "tokens". */
   unit?: string;
   format?: (n: number) => string;
+  /** How far work has got rather than how much of a limit is used: never the warning colours. */
+  progress?: boolean;
 }) {
   const share = value / max;
-  const tone = share >= 1 ? "bg-danger" : share >= NEAR ? "bg-flag" : "bg-accent";
+  const tone = progress ? "bg-accent" : share >= 1 ? "bg-danger" : share >= NEAR ? "bg-flag" : "bg-accent";
   const suffix = unit === undefined ? "" : ` ${unit}`;
   return (
     <div className="flex items-center gap-3">

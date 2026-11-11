@@ -22,6 +22,7 @@ Adapt names to the code as you find it; other agents keep changing these pages.
 | `bg-green-50 text-green-900` | `notice.success` / `<Notice tone="success">` |
 | `bg-amber-50 text-amber-900` | `notice.warning` / `<Notice tone="warning">` |
 | `rounded … px-3 py-2` inputs (`INPUT`) | `field.input`, `field.select`, `field.textarea`, `field.inputMono` |
+| a page's own select class string | `field.select` (forms), `field.pill` (toolbars), `field.selectCompact` (table cells); the chevron comes from the base rule |
 | `underline` links | `text.link` (running text) or `table.link` (name cells) |
 | `font-mono` numbers | keep `font-mono`; size 13px in tables (`table.tdNumeric`) |
 | `text-2xl font-semibold` page `h1` | `PageHeader` (`text.title`) |
@@ -165,7 +166,8 @@ Built in 11-05:
   archived one; no menu when it would be empty. Both confirm in a destructive `ConfirmDialog`;
   deletion types the name in the dialog's `body`. Restore stays in the archived notice.
 - The Embedding Model is in the Settings section (`ProjectSettingsTab`), above OCR, and not shown
-  for an archived Project (as before).
+  for an archived Project (as before). Since 12-06 each setting is a card and Change opens a
+  `Dialog` (see the design README's *Project Settings*).
 - Loading is `<Skeleton label="Loading the Project" />`; not found is `<EmptyState level={1}>`;
   a failed load is `<EmptyState tone="error">`.
 
@@ -328,6 +330,24 @@ toast.show(`Archived ${agent.name}.`, { onUndo: () => { restore.mutate(); } });
 <EditableList label="Allowed Origins" inputLabel="New origin" items={origins} onChange={setOrigins}
   validate={(v) => (/^https?:\/\//.test(v) ? undefined : "Start with https://")}
   emptyWarning="No site can embed this Agent until you add an origin." />
+```
+
+A summary row of figures (Organisation cost, 12-04): a list, so tests and screen readers read
+each card as one item.
+
+```tsx
+<ul aria-label="Spend for the period" className={layout.stats}>
+  {figures.map((f) => <li key={f.label}><StatCard label={f.label} value={dollars(f.value)} /></li>)}
+</ul>
+```
+
+A free-text cell kept to one line (a Project's Description, 12-03): the span truncates, the
+cell keeps the `table` recipe, and the full text is in its `title`.
+
+```tsx
+<td className={table.tdMuted}>
+  <span className="block max-w-md truncate" title={project.description || undefined}>{project.description}</span>
+</td>
 ```
 
 Old → new: a page's `confirm()` or inline "Are you sure?" panel → `ConfirmDialog`; a status

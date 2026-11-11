@@ -40,3 +40,17 @@ it("prints values in the caller's format", () => {
   expect(screen.getByText("USD 12.50 / USD 50.00")).toBeInTheDocument();
   expect(screen.getByRole("meter", { name: "Spend" })).toHaveAttribute("aria-valuetext", "USD 12.50 of USD 50.00");
 });
+
+it("as progress, stays the accent colour all the way, since nearly done is no warning", () => {
+  render(
+    <>
+      <Meter label="Started" value={1} max={10} unit="Chunks" progress />
+      <Meter label="Nearly" value={9} max={10} unit="Chunks" progress />
+      <Meter label="Done" value={10} max={10} unit="Chunks" progress />
+    </>,
+  );
+  expect(fill("Started").className).toContain("bg-accent");
+  expect(fill("Nearly").className).toContain("bg-accent");
+  expect(fill("Done").className).toContain("bg-accent");
+  expect(screen.getByRole("meter", { name: "Nearly" })).toHaveAttribute("aria-valuetext", "9 of 10 Chunks");
+});

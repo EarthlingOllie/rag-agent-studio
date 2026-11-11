@@ -32,6 +32,7 @@ test.describe("Embed an Agent", () => {
 
     // A Project holding the handbook, and an Agent.
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
@@ -43,7 +44,7 @@ test.describe("Embed an Agent", () => {
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("HR helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
 
@@ -60,7 +61,7 @@ test.describe("Embed an Agent", () => {
     await expect(embed.locator("code")).toHaveText(snippet);
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: STUDIO_URL });
     await embed.getByRole("button", { name: "Copy Embed Snippet" }).click();
-    await expect(embed.getByRole("button", { name: "Copy Embed Snippet" })).toHaveText("Copied");
+    await expect(embed.getByRole("button", { name: "Copied Embed Snippet" })).toHaveText("Copied");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippet);
 
     // Allow the demo host page's origin.

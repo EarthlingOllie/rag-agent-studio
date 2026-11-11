@@ -72,7 +72,7 @@ test.describe("Version comparison", () => {
     await expect(row("Votes (small sample)").getByRole("cell")).toHaveText(["1", "1", "Same", ""]);
     const changes = page.getByRole("region", { name: "Configuration changes" });
     await expect(changes.getByText("Behaviour › System prompt")).toBeVisible();
-    await expect(changes.getByRole("list", { name: "Behaviour › System prompt changes" })).toContainText("Answer in one sentence.");
+    await expect(changes.getByRole("table", { name: "Behaviour › System prompt changes" })).toContainText("Answer in one sentence.");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // A date range with no Visitor use leaves nothing to compare.

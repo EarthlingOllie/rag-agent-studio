@@ -3,11 +3,11 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 import type { MemberCredentials } from "../fixtures/auth";
 import { totpCode, totpStep } from "../fixtures/totp";
-import { openSection } from "../fixtures/navigation";
+import { openSection, sidebar } from "../fixtures/navigation";
 
 async function openSecurity(page: Page) {
   await page.goto("/");
-  await openSection(page, "Organisation sections", "Security");
+  await openSection(page, "Account", "Security");
   await expect(page.getByRole("heading", { name: "Security", level: 1 })).toBeVisible();
 }
 
@@ -51,15 +51,15 @@ test("a Member enrols in MFA, signs in with a code and a recovery code, then tur
   // A code is accepted once, so use the step after the enrolment code (inside the ±1 window).
   await page.getByLabel("Authentication code").fill(totpCode(secret, enrolStep + 1));
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-  await expect(page.getByText(member.organisationName)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+  await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
 
   // A recovery code works once instead of the app.
   await signOutAndEnterPassword(page, member);
   await page.getByRole("button", { name: "Use a recovery code instead" }).click();
   await page.getByLabel("Recovery code").fill(recoveryCodes[0] ?? "");
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   await openSecurity(page);
   await expect(page.getByText("9 recovery codes left.", { exact: false })).toBeVisible();
 
@@ -77,7 +77,7 @@ test("a Member enrols in MFA, signs in with a code and a recovery code, then tur
   await page.getByLabel("Email").fill(member.email);
   await page.getByLabel("Password").fill(member.password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 });
 
 test("a wrong code keeps the Member on the challenge", async ({ signedInPage: page, member }) => {
@@ -96,5 +96,5 @@ test("a wrong code keeps the Member on the challenge", async ({ signedInPage: pa
   await expect(page.getByRole("alert")).toHaveText("That code is incorrect. Try again.");
   await page.getByLabel("Authentication code").fill(totpCode(secret, enrolStep + 1));
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 });

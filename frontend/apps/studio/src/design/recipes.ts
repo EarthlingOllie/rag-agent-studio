@@ -33,15 +33,22 @@ export const field = {
   /** Numbers, tokens, ids: same box, mono text. */
   inputMono:
     "mt-1.5 block h-10 w-full rounded-xl border border-field bg-surface px-3 font-mono text-sm text-ink disabled:bg-sunken aria-[invalid=true]:border-danger",
+  /**
+   * Every select recipe sets `--select-inset` to its left padding: the base rule in tokens.css
+   * draws the chevron that far from the right edge and keeps the text clear of it.
+   */
   select:
-    "mt-1.5 block h-10 w-full rounded-xl border border-field bg-surface px-3 text-sm text-ink disabled:bg-sunken",
+    "mt-1.5 block h-10 w-full rounded-xl border border-field bg-surface px-3 text-sm text-ink disabled:bg-sunken [--select-inset:--spacing(3)]",
+  /** A select inside a table cell (a Member's role): button height, no margin, as wide as its text. */
+  selectCompact:
+    "h-9 rounded-xl border border-field bg-surface px-2.5 text-sm text-ink disabled:bg-sunken [--select-inset:--spacing(2.5)]",
   textarea:
     "mt-1.5 block w-full rounded-xl border border-field bg-surface px-3 py-2.5 text-sm text-ink placeholder:text-muted disabled:bg-sunken aria-[invalid=true]:border-danger",
   checkbox: "size-4 rounded accent-accent",
   /** A filter's label in a toolbar (Agent, Version, From): small, above its `pill` control. */
-  filter: "flex flex-col text-xs font-medium text-ink-2",
-  /** A select or date filter in a toolbar: pill-shaped, button height. */
-  pill: "mt-1 block h-9 rounded-full border border-line bg-surface px-3.5 text-sm text-ink disabled:bg-sunken disabled:text-muted",
+  filter: "flex flex-col gap-1 text-xs font-medium text-ink-2",
+  /** A select or date filter in a toolbar: pill-shaped, button height; under a `filter` label or on its own. */
+  pill: "block h-9 rounded-full border border-line bg-surface px-3.5 text-sm text-ink disabled:bg-sunken disabled:text-muted [--select-inset:--spacing(3.5)]",
   /**
    * A search box or filter in a toolbar: pill-shaped, icon inside. Its input draws no outline of
    * its own, so the pill draws the focus ring around the whole box.

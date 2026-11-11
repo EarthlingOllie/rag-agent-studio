@@ -112,8 +112,10 @@ function VersionItem({ version, current }: { version: InstructionsVersion; curre
 /** Compares any two Instructions Versions, or one with the saved Draft, line by line with `Diff`. */
 function CompareInstructions({ organisationId, projectId, versions, currentId }: Target & { versions: InstructionsVersion[]; currentId: string | null }) {
   const draft = useInstructions(organisationId, projectId);
-  // By default, what publishing the saved Draft would change.
-  const [from, setFrom] = useState(currentId ?? "draft");
+  // By default, what publishing the saved Draft would change: from the Current Version, following
+  // it when a publish or revert moves it, until the Member picks another side.
+  const [picked, setFrom] = useState<string | null>(null);
+  const from = picked ?? currentId ?? "draft";
   const [to, setTo] = useState("draft");
   const version = (side: string) => versions.find((each) => each.id === side) as InstructionsVersion;
   const name = (side: string) => (side === "draft" ? "the Draft" : `v${String(version(side).number)}`);

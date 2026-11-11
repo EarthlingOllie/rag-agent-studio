@@ -111,6 +111,10 @@ test("an Editor publishes the Draft as written with a note, and it becomes the C
   await screen.findByText("Current Version: v3.");
   expect(items.map((item) => item.getAttribute("aria-label"))).toEqual(["v3", "v2", "v1"]);
   expect(within(screen.getByRole("listitem", { name: "v3" })).getByText("Current")).toBeInTheDocument();
+  // Compare follows the new Current Version: the Draft is what v3 froze.
+  const compare = screen.getByRole("region", { name: "Compare" });
+  expect(await within(compare).findByText("No differences: v3 and the Draft are the same.")).toBeInTheDocument();
+  expect(within(compare).getByRole("combobox", { name: "From" })).toHaveDisplayValue("v3 (Current)");
 });
 
 test("the note is required", async () => {
@@ -212,7 +216,7 @@ test("an Editor reverts the Current Version after confirming, and the Draft is u
   expect(within(confirmation).getByRole("button", { name: "Cancel" })).toHaveFocus();
   await userEvent.click(within(confirmation).getByRole("button", { name: "Yes, revert to v1" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Reverted to v1");
+  expect(await screen.findByText("Reverted to v1")).toHaveAttribute("role", "status");
   expect(await screen.findByText("Current Version: v1.")).toBeInTheDocument();
   expect(within(screen.getByRole("listitem", { name: "v1" })).getByText("Current")).toBeInTheDocument();
   // v1 has nothing before it.

@@ -45,6 +45,26 @@ function DialogPanel({ title, description, onClose, children, footer, role = "di
     };
   }, []);
 
+  // Escape also closes the top dialog when focus has fallen out of it to the page, as it does when
+  // the focused button is disabled while its request runs. Escape inside a dialog is handled below.
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  });
+  useEffect(() => {
+    function onDocumentKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const modals = document.querySelectorAll('[aria-modal="true"]');
+      if (modals[modals.length - 1] !== panel.current) return;
+      event.preventDefault();
+      close.current();
+    }
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onDocumentKeyDown);
+    };
+  }, []);
+
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {
       event.preventDefault();

@@ -1,0 +1,12 @@
+# Sandbox-only: light backend (images built without models). Not committed.
+x-be-env: &beenv
+  EMBEDDER: fake
+  INJECTION_CLASSIFIER: heuristic
+  INPUT_CLASSIFIER: heuristic
+services:
+  api: { environment: *beenv }
+  worker: { environment: *beenv }
+  beat: { environment: *beenv }
+  # The sandbox's own Postgres and Redis hold 5432 and 6379; the stack's stay internal.
+  postgres: { ports: !reset [] }
+  redis: { ports: !reset [] }

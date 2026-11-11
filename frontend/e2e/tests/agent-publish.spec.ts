@@ -9,6 +9,7 @@ test.describe("Publish an Agent to its Live Version", () => {
   }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Publishing HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
@@ -16,7 +17,7 @@ test.describe("Publish an Agent to its Live Version", () => {
     await page.getByRole("button", { name: "New Agent" }).click();
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
 
     // Never published: not live.
     await expect(page.getByText("Not live")).toBeVisible();

@@ -61,7 +61,8 @@ test("an Editor rewrites the Instructions and saves exactly the markdown written
   await userEvent.type(source, "Use <context> & cite [[C1]. Answer in snake_case{enter}");
   await userEvent.click(screen.getByRole("button", { name: "Save Instructions" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Instructions saved");
+  // The Project page also hosts a toast live region, so the status is found by its words.
+  expect(await screen.findByText("Instructions saved")).toHaveAttribute("role", "status");
   expect(requests).toEqual([
     { route: "instructions", projectId: hrProject.id, body: { markdown: "Use <context> & cite [C1]. Answer in snake_case\n" } },
   ]);
@@ -75,7 +76,8 @@ test("saving untouched Instructions sends them back unchanged", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: "Save Instructions" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Instructions saved");
+  // The Project page also hosts a toast live region, so the status is found by its words.
+  expect(await screen.findByText("Instructions saved")).toHaveAttribute("role", "status");
   expect(requests).toEqual([{ route: "instructions", projectId: hrProject.id, body: { markdown: "* one\n* two" } }]);
 });
 
@@ -98,7 +100,7 @@ test("Instructions the API refuses show why", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Save Instructions" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Instructions can be up to 20,000 characters.");
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByText("Instructions saved")).not.toBeInTheDocument();
 });
 
 test("a Project archived elsewhere refuses the save with the API's reason", async () => {

@@ -27,7 +27,7 @@ test.describe("organisation switcher", () => {
 
     await page.goto("/");
     const switcher = menuButton(page, "Organisations");
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     expect(await sectionNames(page, "Organisations")).toEqual([member.organisationName, otherOwner.organisationName]);
     await expect(switcher).toHaveAccessibleName(`${member.organisationName}, Organisations`);
     const firstId = /\/organisations\/([^/]+)\//.exec(page.url())?.[1] ?? "";
@@ -39,7 +39,7 @@ test.describe("organisation switcher", () => {
     await openSection(page, "Organisations", otherOwner.organisationName);
 
     await expect(page).toHaveURL(new RegExp(`/organisations/${secondId}/projects$`));
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     // As an Editor in the second Organisation, nothing from the first one's Owner areas is shown.
     await openSection(page, "Organisation sections", "Settings");
     const sections = await sectionNames(page, "Organisation settings");

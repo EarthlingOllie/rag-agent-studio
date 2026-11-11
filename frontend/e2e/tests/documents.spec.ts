@@ -11,6 +11,7 @@ test.describe("Documents", () => {
   test("an Owner uploads the seed handbook and it goes from Queued to Ready", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Northwind handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -38,6 +39,7 @@ test.describe("Documents", () => {
   test("an Owner opens the handbook in the Document viewer and downloads the original", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Handbook viewer");
     await form.getByRole("button", { name: "Create Project" }).click();
@@ -68,6 +70,7 @@ test.describe("Documents", () => {
   test("the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Handbook scan");
     await form.getByRole("button", { name: "Create Project" }).click();

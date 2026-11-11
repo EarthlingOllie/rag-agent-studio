@@ -92,6 +92,7 @@ test.describe("provider credentials", () => {
     const editor = newMember({ name: "Grace Editor" });
     await openSection(owner, "Organisation settings", "Members");
     await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+    await owner.getByRole("button", { name: "Invite someone" }).click();
     const invite = owner.getByRole("form", { name: "Invite someone" });
     await invite.getByLabel("Email", { exact: true }).fill(editor.email);
     await invite.getByLabel("Role").selectOption("Editor");
@@ -103,7 +104,7 @@ test.describe("provider credentials", () => {
     await page.getByLabel("Your name").fill(editor.name);
     await page.getByLabel("Password").fill(editor.password);
     await page.getByRole("button", { name: "Create account and join" }).click();
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 
     await openCredentials(page);
     const row = page.getByRole("table", { name: "Provider Credentials" }).getByRole("row", { name: /Search embeddings/ });

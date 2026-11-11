@@ -14,7 +14,8 @@ it("shows the code and copies exactly that text, confirming it", async () => {
 
   await user.click(screen.getByRole("button", { name: "Copy Embed snippet" }));
   expect(await navigator.clipboard.readText()).toBe(SNIPPET);
-  expect(screen.getByRole("button", { name: "Copy Embed snippet" })).toHaveTextContent("Copied");
+  // The name starts with the visible text, so "Copied" is in it too (WCAG 2.5.3, Label in Name).
+  expect(screen.getByRole("button", { name: "Copied Embed snippet" })).toHaveTextContent("Copied");
   expect(screen.getByRole("status")).toHaveTextContent("Embed snippet copied.");
 });
 
@@ -36,7 +37,7 @@ it("goes back to Copy after a moment", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Copy Embed snippet" }));
       await Promise.resolve();
     });
-    expect(screen.getByRole("button", { name: "Copy Embed snippet" })).toHaveTextContent("Copied");
+    expect(screen.getByRole("button", { name: "Copied Embed snippet" })).toHaveTextContent("Copied");
     act(() => {
       vi.advanceTimersByTime(COPIED_FOR_MS);
     });

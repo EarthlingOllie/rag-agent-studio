@@ -1,9 +1,10 @@
-import { Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
-import { button, ConfirmDialog, layout, PageHeader, surface, text, ToastProvider } from "../design";
+import { button, ConfirmDialog, layout, PageHeader, surface, TabRow, tabLink, text, ToastProvider } from "../design";
+import { useSettingsAreas } from "../shell/settingsNavigation";
 import { AuditPage } from "./AuditPage";
 import { CredentialsPage } from "./CredentialsPage";
 import { memberFailure, useLeaveOrganisation } from "./members";
@@ -112,17 +113,41 @@ function LeaveOrganisation({ organisationId, organisationName }: { organisationI
   );
 }
 
+/** Organisation settings' areas as tabs under its header; Members and Audit are left out for anyone but an Owner. */
+function SettingsTabs({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
+  const areas = useSettingsAreas(organisationId).filter((area) => area.ownersOnly !== true || isOwner);
+  return (
+    <TabRow label="Organisation settings">
+      {areas.map((area) => (
+        <li key={area.label} className="flex">
+          <Link
+            to={area.to}
+            params={{ organisationId }}
+            // The router would mark General current on every area; only our own marking counts.
+            activeOptions={{ exact: true, includeSearch: false }}
+            aria-current={area.current ? "page" : undefined}
+            className={tabLink}
+          >
+            {area.label}
+          </Link>
+        </li>
+      ))}
+    </TabRow>
+  );
+}
+
 /**
  * Organisation settings. The area (General, Credentials, Models, Theme, and Members and Audit for
- * Owners) is chosen from the Settings switcher crumb in the top bar (`shell/SettingsCrumb.tsx`);
- * Editors view the Theme without editing it. Changes here confirm with a toast.
+ * Owners) is chosen from the tab row under the header; Editors view the Theme without editing it.
+ * Changes here confirm with a toast.
  */
 export function OrganisationSettingsLayout() {
-  const { organisationName } = useOrganisation();
+  const { organisationId, organisationName, isOwner } = useOrganisation();
   return (
     <ToastProvider>
       <div className={layout.stack}>
         <PageHeader title="Organisation settings" description={`How ${organisationName} works for every Project and Member.`} />
+        <SettingsTabs organisationId={organisationId} isOwner={isOwner} />
         <Outlet />
       </div>
     </ToastProvider>

@@ -11,7 +11,7 @@ export {
   useAppearance,
 } from "./appearance";
 export { Badge, BADGE_LABELS, type BadgeKind } from "./Badge";
-export { Breadcrumb, crumbClass, CrumbSwitcher, CrumbText } from "./Breadcrumb";
+export { Breadcrumb, crumbLink } from "./Breadcrumb";
 export { CodeBlock } from "./CodeBlock";
 export { FlagCount, Notice, PageHeader, Section, StatCard, Status, Tag } from "./content";
 export { BulkBar, Pagination, Segmented } from "./controls";
@@ -23,5 +23,17 @@ export { Menu, type MenuItem, type MenuLinkProps } from "./Menu";
 export { Meter } from "./Meter";
 export { button, field, layout, notice, surface, table, text } from "./recipes";
 export { EmptyState, Skeleton } from "./states";
+export { TabRow, tabLink } from "./TabRow";
 export { TOAST_DURATION_MS, ToastProvider, useToast } from "./Toast";
 export { AppearanceToggle, Avatar, Brand, TopBar } from "./TopBar";
+export {
+  Sidebar,
+  SidebarButton,
+  type SidebarDrawer,
+  SidebarDivider,
+  SidebarGroup,
+  SidebarLabel,
+  sidebarLink,
+  sidebarSwitcher,
+  SidebarTitle,
+} from "./Sidebar";

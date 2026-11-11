@@ -28,7 +28,7 @@ test("the Agent page shows the Draft's configuration beside the Playground", asy
   setUp();
   renderStudio(agentPage);
 
-  expect(await screen.findByRole("heading", { level: 2, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
   expect(await screen.findByRole("textbox", { name: "System prompt" })).toHaveTextContent("Answer from the handbook.");
   expect(screen.getByLabelText("Chunks per answer (top-k)")).toHaveValue(5);
   expect(screen.getByRole("heading", { level: 2, name: "Playground" })).toBeInTheDocument();

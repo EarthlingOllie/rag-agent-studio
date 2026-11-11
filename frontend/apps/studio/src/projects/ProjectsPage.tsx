@@ -1,20 +1,22 @@
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
 
-import { FormError, formValues } from "../auth/AuthLayout";
+import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
 import {
-  type Project,
-  projectFailure,
-  useArchiveOrRestore,
-  useCreateProject,
-  useProjects,
-} from "./projects";
-
-export const INPUT =
-  "mt-1 block w-full rounded border border-field bg-surface px-3 py-2 focus:outline-2 focus:outline-accent";
-export const BUTTON =
-  "rounded border border-field px-3 py-1 text-sm hover:bg-sunken disabled:text-muted";
+  button,
+  EmptyState,
+  layout,
+  Notice,
+  PageHeader,
+  Segmented,
+  Skeleton,
+  table,
+  ToastProvider,
+  useToast,
+} from "../design";
+import { NewProjectDialog } from "./ProjectDetailsDialog";
+import { projectFailure, useArchiveOrRestore, useProjects } from "./projects";
 
 /** The Organisation in the path and whether the signed-in Member is one of its Owners. */
 export function useOrganisationRole() {
@@ -29,133 +31,79 @@ export function useOrganisationRole() {
   return { organisationId, isOwner: organisation.role === "owner" };
 }
 
-/** Name and description fields, shared by creating and editing a Project. */
-export function ProjectFields({
-  idPrefix,
-  project,
-}: {
-  idPrefix: string;
-  project?: Project;
-}) {
-  return (
-    <>
-      <div>
-        <label
-          htmlFor={`${idPrefix}-name`}
-          className="block text-sm font-medium"
-        >
-          Name
-        </label>
-        <input
-          id={`${idPrefix}-name`}
-          name="name"
-          required
-          maxLength={200}
-          defaultValue={project?.name}
-          className={INPUT}
-        />
-      </div>
-      <div>
-        <label
-          htmlFor={`${idPrefix}-description`}
-          className="block text-sm font-medium"
-        >
-          Description
-        </label>
-        <textarea
-          id={`${idPrefix}-description`}
-          name="description"
-          rows={2}
-          maxLength={2000}
-          defaultValue={project?.description}
-          className={INPUT}
-        />
-      </div>
-    </>
-  );
-}
+type Shown = "active" | "archived";
 
-export function projectDetails(form: HTMLFormElement) {
-  return formValues(form, ["name", "description"]);
-}
-
-function NewProjectForm({ organisationId }: { organisationId: string }) {
-  const create = useCreateProject(organisationId);
-  const navigate = useNavigate();
-
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    create.mutate(projectDetails(event.currentTarget), {
-      onSuccess: (project) => {
-        void navigate({
-          to: "/organisations/$organisationId/projects/$projectId",
-          params: { organisationId, projectId: project.id },
-        });
-      },
-    });
-  }
-
-  return (
-    <form
-      aria-labelledby="new-project-heading"
-      onSubmit={onSubmit}
-      className="max-w-md space-y-3"
-    >
-      <h2 id="new-project-heading" className="text-lg font-semibold">
-        New Project
-      </h2>
-      <FormError message={projectFailure(create.error)} />
-      <ProjectFields idPrefix="new-project" />
-      <button type="submit" disabled={create.isPending} className={BUTTON}>
-        {create.isPending ? "Creating…" : "Create Project"}
-      </button>
-    </form>
-  );
-}
+const SHOWN_OPTIONS = [
+  { value: "active", label: "Active" },
+  { value: "archived", label: "Archived" },
+] as const;
 
 function ActiveProjects({ organisationId }: { organisationId: string }) {
   const projects = useProjects(organisationId, false);
-  if (projects.isPending) return <p role="status">Loading Projects…</p>;
+  if (projects.isPending) return <Skeleton label="Loading Projects" />;
   if (projects.isError)
     return (
-      <p role="alert">The Projects could not be loaded. Try again shortly.</p>
+      <EmptyState
+        tone="error"
+        title="The Projects could not be loaded"
+        description="Try again shortly."
+      />
     );
   if (projects.data.length === 0) {
     return (
-      <p className="text-muted">
-        No Projects yet. Create one to start collecting knowledge for a purpose.
-      </p>
+      <EmptyState
+        icon="projects"
+        title="No Projects yet"
+        description="Create one with New Project to start collecting knowledge for a purpose."
+      />
     );
   }
   return (
-    <table className="w-full text-left text-sm" aria-label="Projects">
-      <thead>
-        <tr>
-          <th className="py-2 pr-4 font-medium">Name</th>
-          <th className="py-2 pr-4 font-medium">Description</th>
-          <th className="py-2 pr-4 text-right font-medium">Documents</th>
-          <th className="py-2 text-right font-medium">Agents</th>
-        </tr>
-      </thead>
-      <tbody>
-        {projects.data.map((project) => (
-          <tr key={project.id} className="border-t border-line align-top">
-            <td className="py-2 pr-4">
-              <Link
-                to="/organisations/$organisationId/projects/$projectId"
-                params={{ organisationId, projectId: project.id }}
-                className="font-medium underline"
-              >
-                {project.name}
-              </Link>
-            </td>
-            <td className="py-2 pr-4 text-muted">{project.description}</td>
-            <td className="py-2 pr-4 text-right">{project.document_count}</td>
-            <td className="py-2 text-right">{project.agent_count}</td>
+    <div className={table.wrap}>
+      <table className={table.table} aria-label="Projects">
+        <thead>
+          <tr>
+            <th scope="col" className={table.th}>
+              Name
+            </th>
+            <th scope="col" className={table.th}>
+              Description
+            </th>
+            <th scope="col" className={table.thNumeric}>
+              Documents
+            </th>
+            <th scope="col" className={table.thNumeric}>
+              Agents
+            </th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {projects.data.map((project) => (
+            <tr key={project.id} className={table.row}>
+              <td className={table.td}>
+                <Link
+                  to="/organisations/$organisationId/projects/$projectId"
+                  params={{ organisationId, projectId: project.id }}
+                  className={`${table.link} whitespace-nowrap`}
+                >
+                  {project.name}
+                </Link>
+              </td>
+              <td className={table.tdMuted}>
+                <span
+                  className="block max-w-md truncate"
+                  title={project.description || undefined}
+                >
+                  {project.description}
+                </span>
+              </td>
+              <td className={table.tdNumeric}>{project.document_count}</td>
+              <td className={table.tdNumeric}>{project.agent_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -168,17 +116,18 @@ function ArchivedProjects({
 }) {
   const projects = useProjects(organisationId, true);
   const restore = useArchiveOrRestore(organisationId, "restore");
-  const [restored, setRestored] = useState<string | null>(null);
-  if (projects.isPending)
-    return <p role="status">Loading archived Projects…</p>;
+  const toast = useToast();
+  if (projects.isPending) return <Skeleton label="Loading archived Projects" />;
   if (projects.isError)
     return (
-      <p role="alert">
-        The archived Projects could not be loaded. Try again shortly.
-      </p>
+      <EmptyState
+        tone="error"
+        title="The archived Projects could not be loaded"
+        description="Try again shortly."
+      />
     );
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-4">
       <p className="text-sm text-muted">
         Archived Projects are hidden from the Projects list and don't serve.{" "}
         {isOwner
@@ -186,107 +135,127 @@ function ArchivedProjects({
           : "Only Owners can restore them."}
       </p>
       <FormError message={projectFailure(restore.error)} />
-      {restored && (
-        <p role="status" className="text-sm text-accent-ink">
-          {restored} was restored.
-        </p>
-      )}
       {projects.data.length === 0 ? (
-        <p className="text-muted">No archived Projects.</p>
+        <EmptyState
+          icon="projects"
+          title="No archived Projects"
+          description="A Project you archive is kept here, with its Documents and Agents."
+        />
       ) : (
-        <table
-          className="w-full text-left text-sm"
-          aria-label="Archived Projects"
-        >
-          <thead>
-            <tr>
-              <th className="py-2 pr-4 font-medium">Name</th>
-              <th className="py-2 pr-4 font-medium">Archived</th>
-              <th className="py-2 font-medium">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {projects.data.map((project) => (
-              <tr
-                key={project.id}
-                className="border-t border-line align-top"
-              >
-                <td className="py-2 pr-4">
-                  <Link
-                    to="/organisations/$organisationId/projects/$projectId"
-                    params={{ organisationId, projectId: project.id }}
-                    className="underline"
-                  >
-                    {project.name}
-                  </Link>
-                </td>
-                <td className="py-2 pr-4">
-                  {(project.archived_at as string).slice(0, 10)}
-                </td>
-                <td className="py-2">
-                  {isOwner && (
-                    <button
-                      type="button"
-                      className={BUTTON}
-                      disabled={restore.isPending}
-                      aria-label={`Restore ${project.name}`}
-                      onClick={() => {
-                        setRestored(null);
-                        restore.mutate(project.id, {
-                          onSuccess: (done) => {
-                            setRestored(done.name);
-                          },
-                        });
-                      }}
-                    >
-                      Restore
-                    </button>
-                  )}
-                </td>
+        <div className={table.wrap}>
+          <table className={table.table} aria-label="Archived Projects">
+            <thead>
+              <tr>
+                <th scope="col" className={table.th}>
+                  Name
+                </th>
+                <th scope="col" className={table.th}>
+                  Archived
+                </th>
+                <th scope="col" className={table.th}>
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {projects.data.map((project) => (
+                <tr key={project.id} className={table.row}>
+                  <td className={table.td}>
+                    <Link
+                      to="/organisations/$organisationId/projects/$projectId"
+                      params={{ organisationId, projectId: project.id }}
+                      className={`${table.link} whitespace-nowrap`}
+                    >
+                      {project.name}
+                    </Link>
+                  </td>
+                  <td className={`${table.tdMuted} font-mono text-[13px]`}>
+                    {(project.archived_at as string).slice(0, 10)}
+                  </td>
+                  <td className={`${table.td} text-right`}>
+                    {isOwner && (
+                      <button
+                        type="button"
+                        className={button.secondary}
+                        disabled={restore.isPending}
+                        aria-label={`Restore ${project.name}`}
+                        onClick={() => {
+                          restore.mutate(project.id, {
+                            onSuccess: (done) => {
+                              toast.show(`${done.name} was restored.`);
+                            },
+                          });
+                        }}
+                      >
+                        Restore
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
-/** The Organisation's Projects with their counts, the archived ones, and a form for a new Project. */
+/**
+ * The Organisation's Projects page: a page header with New Project (the one primary), an
+ * Active / Archived filter, and the Projects as a table card with their counts, or the archived
+ * ones with their dates and, for Owners, Restore.
+ */
 export function ProjectsPage() {
-  const { organisationId, isOwner } = useOrganisationRole();
-  const [showArchived, setShowArchived] = useState(false);
-  const { deleted } = useSearch({ from: "/signed-in/organisations/$organisationId/projects" });
   return (
-    <section aria-labelledby="page-heading" className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 id="page-heading" className="text-2xl font-semibold">
-          Projects
-        </h1>
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            setShowArchived(!showArchived);
-          }}
-        >
-          {showArchived ? "Show active Projects" : "Show archived Projects"}
-        </button>
+    <ToastProvider>
+      <Projects />
+    </ToastProvider>
+  );
+}
+
+/** The page itself, inside the ToastProvider that confirms a restore. */
+function Projects() {
+  const { organisationId, isOwner } = useOrganisationRole();
+  const [shown, setShown] = useState<Shown>("active");
+  const [creating, setCreating] = useState(false);
+  const { deleted } = useSearch({ from: "/signed-in/organisations/$organisationId/projects" });
+  const archived = shown === "archived";
+  return (
+    <section aria-label="Projects" className={layout.stack}>
+      <PageHeader
+        title="Projects"
+        description="Each Project holds the Documents its Agents answer from."
+        actions={
+          !archived && (
+            <button
+              type="button"
+              className={button.primary}
+              onClick={() => {
+                setCreating(true);
+              }}
+            >
+              New Project
+            </button>
+          )
+        }
+      />
+      {deleted && <Notice tone="success">{deleted} is being deleted permanently.</Notice>}
+      <div className={layout.toolbar}>
+        <Segmented label="Projects shown" options={SHOWN_OPTIONS} value={shown} onChange={setShown} />
       </div>
-      {deleted && (
-        <p role="status" className="text-sm text-accent-ink">
-          {deleted} is being deleted permanently.
-        </p>
-      )}
-      {showArchived ? (
+      {archived ? (
         <ArchivedProjects organisationId={organisationId} isOwner={isOwner} />
       ) : (
-        <>
-          <ActiveProjects organisationId={organisationId} />
-          <NewProjectForm organisationId={organisationId} />
-        </>
+        <ActiveProjects organisationId={organisationId} />
+      )}
+      {creating && (
+        <NewProjectDialog
+          organisationId={organisationId}
+          onClose={() => {
+            setCreating(false);
+          }}
+        />
       )}
     </section>
   );

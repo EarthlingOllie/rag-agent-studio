@@ -1,17 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { Breadcrumb, crumbClass, CrumbSwitcher, CrumbText } from "./Breadcrumb";
 import { Icon } from "./Icon";
 import { Menu, type MenuItem } from "./Menu";
 import { button } from "./recipes";
 
 function sections(onSelect: (label: string) => void): MenuItem[] {
   return [
-    { label: "Documents", icon: "documents", hint: "1", current: true, onSelect: () => {
+    { label: "Documents", icon: "documents", current: true, onSelect: () => {
       onSelect("Documents");
     } },
-    { label: "Instructions", icon: "instructions", hint: "2", onSelect: () => {
+    { label: "Instructions", icon: "instructions", onSelect: () => {
       onSelect("Instructions");
     } },
     { label: "Agents", id: "agents", onSelect: () => {
@@ -119,51 +118,6 @@ it("does nothing with the arrow keys when every item is disabled", async () => {
   await user.click(screen.getByRole("button", { name: "Nothing" }));
   await user.keyboard("{ArrowDown}");
   expect(screen.getByRole("menu")).toBeInTheDocument();
-});
-
-it("lays crumbs out with separators; the current one is the accent and says so", async () => {
-  const user = userEvent.setup();
-  const onSelect = vi.fn();
-  render(
-    <Breadcrumb>
-      <a href="/" className={crumbClass()}>
-        Northwind Traders
-      </a>
-      <CrumbSwitcher
-        label="Northwind Handbook"
-        menuLabel="Projects"
-        items={[{ label: "Northwind Handbook", current: true, onSelect: vi.fn() }]}
-      />
-      <CrumbSwitcher label="Documents" menuLabel="Project sections" current items={sections(onSelect)} />
-    </Breadcrumb>,
-  );
-  const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
-  // Three crumbs, and the narrow screen's "…" after the first (hidden on wider screens).
-  expect(nav.querySelectorAll("li")).toHaveLength(4);
-  expect(nav.textContent).toBe("Northwind Traders/…/Northwind Handbook/Documents");
-
-  const current = screen.getByRole("button", { name: "Documents, Project sections" });
-  expect(current).toHaveAttribute("aria-current", "page");
-  expect(current.className).toContain("text-accent");
-  const project = screen.getByRole("button", { name: "Northwind Handbook, Projects" });
-  expect(project).not.toHaveAttribute("aria-current");
-  expect(project.className).toContain("text-muted");
-
-  await user.click(current);
-  expect(screen.getByRole("menu", { name: "Project sections" })).toBeInTheDocument();
-  await user.click(screen.getByRole("menuitem", { name: /Instructions/ }));
-  expect(onSelect).toHaveBeenCalledWith("Instructions");
-});
-
-it("shows a crumb with nothing to switch to as text", () => {
-  render(
-    <>
-      <CrumbText current>HR helper</CrumbText>
-      <CrumbText>Archived</CrumbText>
-    </>,
-  );
-  expect(screen.getByText("HR helper")).toHaveAttribute("aria-current", "page");
-  expect(screen.getByText("Archived")).not.toHaveAttribute("aria-current");
 });
 
 it("renders destinations as links that close the menu when followed", async () => {

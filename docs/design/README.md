@@ -6,7 +6,7 @@ accent that marks where you are and what to press, taken from colours you find a
 comes in a light and a dark **Appearance**.
 
 - Approved concept (design canvas, pages *Direction* and *Tab row*): https://claude.ai/artifact/FmHzJQ49hXshpcyuuhnso5
-- Decision record: [ADR-0013](../adr/0013-studio-design-system.md)
+- Decision records: [ADR-0013](../adr/0013-studio-design-system.md), amended for navigation by [ADR-0014](../adr/0014-sidebar-navigation.md)
 - Code: `frontend/apps/studio/src/design/` (import from `../design`)
 - Reskinning a page: the `studio-reskin` skill (`.claude/skills/studio-reskin/`)
 
@@ -19,8 +19,9 @@ embedded widget (`frontend/packages/ui`). Never apply Studio tokens to the widge
    green. Most of a screen has no colour at all.
 2. **One accent, used sparingly.** Sea-glass green appears only where it means something (see
    *Where the accent goes*). If a screen has more than a few green things, remove some.
-3. **Content first.** Navigation lives in the top bar's breadcrumb, not in tab rows or side menus,
-   so pages start with their own title and content.
+3. **Navigation you can see.** Every place a Member can go is a link in the sidebar beside the
+   page, the current one highlighted; the top bar's breadcrumb is a plain path that says where
+   they are. Pages start with their own title and content, with one heading (ADR-0014).
 4. **Secondary actions hide.** Row actions go in a "⋯" menu, rare page actions (Archive, Delete) in
    the page's "⋯" menu. Each view has at most one primary (filled) button.
 5. **Both Appearances, always.** Every screen works in light and dark. Tokens switch automatically;
@@ -45,7 +46,7 @@ Tailwind's palette (`slate-700`, `red-800`, `green-50`) or the `dark:` variant.
 | `accent` | Primary buttons, current crumb, focus ring, Ready dot, links | `#2C6E6A` | `#6FB8B1` |
 | `accent-hover` | Primary button hover | `#245B58` | `#86C7C1` |
 | `on-accent` | Text on `accent` | `#FFFFFF` | `#0B1A19` |
-| `accent-soft` | Open switcher, success notice, assistant avatar | `#DCEBE9` | `#1F3836` |
+| `accent-soft` | Current sidebar link, open switcher, success notice, assistant avatar | `#DCEBE9` | `#1F3836` |
 | `accent-ink` | Text on `accent-soft` | `#1F4F4C` | `#A9DCD6` |
 | `sand` | Tag pills, Draft badge | `#EDE6D6` | `#3A3326` |
 | `sand-ink` | Text on `sand` | `#5A4A2A` | `#E6D7B5` |
@@ -66,7 +67,8 @@ accent keeps meaning "where you are, what to press". Use `chart-1` for data and 
 ### Where the accent goes
 
 - The primary button of a view (Upload, Publish, Send, Save).
-- The **current** crumb in the breadcrumb, and a crumb whose menu is open (soft fill).
+- The **current** link in the sidebar (soft fill) and the current crumb in the breadcrumb (text).
+- The current tab's underline in a `TabRow`.
 - The current item's icon in an open menu.
 - Status "Ready" dots, citation markers, the "cited" chunk in a trace.
 - Focus rings and links in running text.
@@ -86,6 +88,12 @@ Nowhere else: not headings, not table text, not borders, not backgrounds of whol
 
 - Cards and panels: `rounded-2xl` (16px), 1px `line` border, no shadow.
 - Inputs: `rounded-xl` (12px), 40px tall. Buttons and pills: fully rounded, 36px tall.
+- Selects: every single-value select draws the design system's chevron-down (the `--ds-chevron`
+  token, stroked in `muted` for each Appearance) instead of the browser's arrow, from one base rule
+  in `tokens.css`. The chevron sits as far from the right edge as the text from the left (each
+  select recipe sets `--select-inset` to its left padding), the right padding never drops below
+  36px, and a disabled select dims with its chevron. Use `field.select` in forms, `field.pill` in
+  toolbars and `field.selectCompact` in table cells; never a select class string of a page's own.
 - Menus and popovers: `rounded-2xl`, soft shadow (`surface.popover`).
 - Page content: max width 1160px, 32px side padding (16px on phones), 28px between blocks.
 
@@ -93,55 +101,83 @@ Nowhere else: not headings, not table text, not borders, not backgrounds of whol
 
 ```
 ┌ TopBar ─────────────────────────────────────────────────────────────────────┐
-│ ≈ Studio   Northwind Traders ▾ / Northwind Handbook ▾ / Documents ▾   ◐ (NN)│
-└─────────────────────────────────────────────────────────────────────────────┘
-   PageHeader: title + description                         [Edit details] [⋯]
-   [StatCard] [StatCard] [StatCard] [StatCard]
-   toolbar: (search) (All)(HR)(Products) Manage tags  [Any status ▾] [⤒ Upload]
-   ┌ table.wrap ────────────────────────────────────────────────────────────┐
-   │ ☐ Name                    Tags      Status   Chunks  Flagged  Size   ⋯ │
-   └────────────────────────────────────────────────────────────────────────┘
+│ ≈ Studio   Northwind Handbook / Agents / HR helper     [Saved] [Publish] ◐ (NN)│
+├ Sidebar ──────────┬─────────────────────────────────────────────────────────┤
+│ Northwind ▾       │  PageHeader: title + description      [Edit details] [⋯] │
+│ ▣ Projects        │  [StatCard] [StatCard] [StatCard] [StatCard]             │
+│ ◔ Cost            │  toolbar: (search) (All)(HR)(Products)      [⤒ Upload]   │
+│ ⚙ Settings        │  ┌ table.wrap ───────────────────────────────────────┐   │
+│ ───────────────── │  │ ☐ Name             Tags    Status   Chunks   ⋯   │   │
+│ ▣ Northwind HB ▾  │  └───────────────────────────────────────────────────┘   │
+│ ▤ Documents       │                                                          │
+│ ✎ Instructions    │                                                          │
+│ ☺ Agents          │                                                          │
+│ …                 │                                                          │
+└───────────────────┴──────────────────────────────────────────────────────────┘
 ```
+
+- The sidebar is about 240 px wide and stays in place while the page scrolls; the page keeps its
+  1160 px column, centred in the space beside it.
+- Below `md` (768 px) the sidebar is a drawer behind the top bar's "Open navigation" button, and
+  the page gets the full width.
+
+### Navigation: the sidebar
+
+The sidebar (`Sidebar`, the navigation landmark named "Studio") is how a Member moves around. It
+is computed from the page's address and the Member's session; pages register nothing
+(`shell/StudioSidebar.tsx`).
+
+| Where you are | Sidebar | Breadcrumb |
+| --- | --- | --- |
+| Projects list | Org ▾; **Projects**, Cost, Settings | **Projects** |
+| Cost | Org ▾; Projects, **Cost**, Settings | **Cost** |
+| Organisation settings | Org ▾; Projects, Cost, **Settings** (the areas are a `TabRow` under the header) | Settings / **Members** |
+| Security, Profile (from the account menu) | Org ▾; Projects, Cost, Settings (none current) | **Security** |
+| A Project section | Org ▾; Projects, Cost, Settings; Project ▾; **Documents**, Instructions, Agents, … | Project / **Documents** |
+| A Document | … Project ▾; **Documents**, … | Project / Documents / **handbook.md** |
+| An Agent | … Project ▾; …, **Agents**, … (its views are a `TabRow` under its header) | Project / Agents / **HR helper** |
+
+- **Top to bottom:** the Organisation switcher (`sidebarSwitcher`, a `Menu` of the Member's
+  Organisations; a Member of one sees its name as plain text, `SidebarTitle`), then the
+  Organisation's links (`SidebarGroup` "Organisation sections": Projects, Cost for Owners,
+  Settings). Inside a Project: a `SidebarDivider`, the Project switcher (the open Projects, then
+  All Projects; archived Projects are opened from the Projects list) and the Project's six sections
+  (`SidebarGroup` "Project sections": Documents, Instructions, Agents, Conversations, Analytics,
+  Settings), each with its icon (`SidebarLabel`). No link carries a number or other hint.
+- **Current link:** `sidebarLink` gives the current one (`aria-current="page"`) the soft accent
+  fill. A section stays current on its inner pages: the Document viewer under Documents, an Agent
+  under Agents, a Conversation under Conversations. Projects is not current inside a Project.
+- **Who sees what:** Cost is left out for anyone but an Owner. Under the Require MFA policy, until
+  the Member enrols, the sidebar offers only Security.
+- **Account menu:** the avatar at the right of the top bar is the only home of Profile, Security
+  and Sign out; they are not in the sidebar.
+- **Tab rows** (`TabRow`, `tabLink`) hold a page's own views under its header, each a link and a
+  page of its own: an Agent's views ("Agent views") and Organisation settings' areas
+  ("Organisation settings": General, Credentials, Models, Theme, and Members and Audit for Owners).
+  The current tab has `aria-current="page"`.
+- **Drawer:** below `md` the sidebar is hidden until "Open navigation" (`SidebarButton`) opens it as
+  a modal dialog named "Navigation" over the page. Opening it focuses the current link (or the
+  first); Tab and Shift+Tab stay inside; Escape, a press outside it or following a link closes it
+  and returns focus to the button. A switcher's own menu takes Escape first.
 
 ### Navigation: the breadcrumb
 
-The top bar's breadcrumb carries every level of navigation. Tab rows and the side menu go away.
+The top bar's breadcrumb (`Breadcrumb`, named "Breadcrumb") is a plain path of links that says
+where the Member is: from the Organisation's page they are under down to the page they are on
+(`shell/StudioBreadcrumb.tsx`, computed from the address). It never opens a menu.
 
-| Where you are | Breadcrumb |
-| --- | --- |
-| Projects list | `Org ▾ / **Projects ▾**` |
-| A Project section | `Org ▾ / Projects ▾ / Project ▾ / **Documents ▾**` |
-| A Document | `Org ▾ / Projects ▾ / Project ▾ / Documents ▾ / **handbook.md**` |
-| An Agent | `Org ▾ / Projects ▾ / Project ▾ / Agents ▾ / HR helper ▾ / **Playground ▾**` (the views: Playground, Versions, Embed & limits, Conversations) |
-| Organisation settings | `Org ▾ / Settings ▾ / **Members ▾**` |
-| Security, Cost, Profile | `Org ▾ / **Security ▾**` (the Organisation's sections: Projects, Cost for Owners, Settings, Security, Profile) |
-| Cost for an Editor | `Org ▾ / **Cost**` (a plain crumb: Cost is in the menu for Owners only) |
-
-- Each crumb with siblings is a `CrumbSwitcher` that opens a menu of them: the Organisation
-  switcher lists the Member's Organisations (a Member of one sees its name as plain text); the
-  Organisation's section switcher lists Projects, Cost (Owners), Settings, Security and Profile, or only
-  Security while the Require MFA policy is waiting for the Member to enrol; the avatar menu holds
-  Profile, Security and Sign out; the Project switcher lists Projects plus "All
-  Projects" (archived Projects are opened from the Projects list); a section switcher lists the
-  sections with icons and number hints (1–6); an Agent switcher lists the Project's open Agents
-  (an archived Agent is opened from the Agents list); an Agent's view switcher lists Playground,
-  Versions, Embed & limits and Conversations (the Conversations list fixed to the Agent, built in
-  11-10; a Conversation opened from it keeps the Agent's crumbs).
-- Inside a Project the Organisation's section switcher stays, as an ancestor crumb, so Cost,
-  Settings and Security are one click away from any Project, as they were from the side menu.
-- Number hints are visual labels only (`aria-hidden`), so an item's name is just its label
-  ("Agents", not "Agents 3"). Binding the keys is a later polish ticket.
-- Ancestor crumbs are `muted`; the last crumb is the current page, in `accent`, with
-  `aria-current="page"`. An open switcher turns soft green.
-- A menu that navigates renders router `<Link>`s (`MenuItem.renderLink`) so items are real links.
-- Sections a Member may not see (an Editor and Members or Audit) are left out of the menu, exactly
-  as the tabs leave them out today.
-- On narrow screens (below `md`, 768px) a path of three or more crumbs keeps the first (the
-  Organisation) and the last (the current page) and folds the middle into "…" (`Breadcrumb` does
-  it; pages register nothing). The "…" button, named "Show the whole path", opens the folded
-  crumbs in a popover list ("The whole path"), each still its switcher; Escape (outside a
-  switcher's own menu), a press outside or following a link closes it. The top bar wraps under
-  the breadcrumb.
+- Each crumb is a router link styled `crumbLink`: ancestors `muted`, the current page (the last
+  crumb, `aria-current="page"`) in `accent`. A crumb leads back up a level: the Project to its
+  Documents, a section to its list, Settings to General.
+- The Organisation is not a crumb: it is named at the top of the sidebar.
+- An Agent is the last crumb on every one of its views (the tab row says which); until the Agent,
+  Document or Project has loaded, the path ends at the level above it.
+- Below `md` only the last two crumbs are shown (`Breadcrumb` hides the rest and the separator
+  before the first one shown), and the top bar's mark drops its "Studio" name (`Brand compact`),
+  so the mark and the path share one row. There is no "…" fold.
+- A long name is cut short with an ellipsis rather than wrapping. The page's own actions
+  (`TopBarActions`) join that row while it leaves the path at least 12rem, and drop under it
+  otherwise (an Agent's History and Publish on a phone).
 
 ### Pages
 
@@ -159,6 +195,22 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
     and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
     edged in `flag` and badged Flagged, paged with `Pagination`.
+- **Projects list** (built in 12-03): the Organisation's page, laid out like the Agents list.
+  `PageHeader` "Projects" (the page's one h1, "Each Project holds the Documents its Agents answer
+  from.") with New Project, the one primary, on the right; it is hidden while Archived is shown.
+  The toolbar is a `Segmented` "Projects shown" (Active / Archived). Active Projects are a
+  `table.wrap` card: the name as `table.link`, the Description muted and cut to one line (the full
+  text in its `title`), then Documents and Agents in `table.thNumeric` / `table.tdNumeric`.
+  Archived Projects are a card with the archived date in mono and, for Owners, a secondary
+  Restore in the row, confirmed by a toast; a line above says Owners restore them (or that only
+  Owners can). Loading is a `Skeleton`, a failed load an error `EmptyState`, and no Projects or no
+  archived Projects an `EmptyState`. After a Project is deleted, "… is being deleted permanently."
+  is a success `Notice`.
+- **Project details dialog** (12-02): New Project and a Project header's Edit details open one
+  `Dialog` (no corner ✕) holding a form named "New Project" or "Project details": `FormError`,
+  Name (`field.input`, required) and Description (`field.textarea`), then Cancel and the primary
+  "Create Project" / "Save". The opening button stays where it is and gets focus back on Cancel or
+  Escape; a saved edit closes the dialog with a toast. Nothing is edited inline under the header.
 - **A Project section** (built for Agents in 11-09) is the same under the Project's own header:
   `PageHeader level={2}` (the Project keeps the page's one h1) with the section's primary action
   on the right (New Agent opens a `Dialog`). The Agents list is a `table.wrap` card with a
@@ -180,10 +232,25 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
   mono value, interval and n under it; a small sample is dashed and muted with a `lowSample` badge
   whose title says why), Compare two Versions (`table.wrap`, changed rows on `flag-soft`), and
   Over time (the chart; see *Charts*).
-- **Agent page**: a header with the Agent's name, its `Badge`s (Live with the Version chip, or Not
-  live; Draft while there are unpublished changes), "Analytics for this Agent" (a ghost link to
-  Analytics filtered to it) and a ⋯ menu (Discard Draft, Archive, or Delete permanently on an
-  archived Agent), then the view the breadcrumb chose.
+- **Organisation cost** (built in 12-04): `PageHeader` ("Organisation cost", the frozen-prices
+  sentence as its description), then a toolbar: "Break down by" as a `Segmented` (Project /
+  Agent) and From and To as `field.filter` / `field.pill` date filters. The period line sits under
+  it, then the `StatCard` row (Total, Visitors, Playground; a list named "Spend for the period")
+  and the `table.wrap` card (a focusable region, so it scrolls sideways inside the card on a phone):
+  names in `table.td`, amounts in `table.thNumeric` / `table.tdNumeric` (right-aligned, mono), and
+  the "All Projects" / "All Agents" total row set apart on `sunken` above a `line` border. Nothing
+  spent is an `EmptyState`; bad dates (the 422) and a failed load are `Notice tone="error"`;
+  loading is a `Skeleton`. An Editor sees an `EmptyState`, "Only Owners see the Organisation's
+  spend", under the header. The Audit page's filters use the same `field.filter` / `field.pill`.
+- **Agent page** (tabs built in 12-10): the Project's `PageHeader` is left out, so the Agent's
+  `PageHeader` is the page's one h1: its name, then (`beside`) a ▾ Agent switcher (a `Menu` of the
+  Project's open Agents, `button.iconBare`, named "<Agent>, Agents") and its `Badge`s (Live with
+  the Version chip, or Not live; Draft while there are unpublished changes); on the right
+  "Analytics for this Agent" (a ghost link to Analytics filtered to it) and a ⋯ menu (Discard
+  Draft, Archive, or Delete permanently on an archived Agent). Under it a `TabRow` "Agent views"
+  of `tabLink`s (Playground, Versions, Embed & limits, Conversations; the current one has
+  `aria-current="page"`, an `accent` underline and `ink` text, and Conversations stays current on
+  a Conversation opened from it), then the view. An archived Project's notice stays above it.
   - **Playground**: the Playground is the main column (max 720px, centred); configuration is a
     right-hand panel (360–420px) of collapsible `Section`s (Behaviour open; Retrieval, Experience,
     Guardrails collapsed with a mono summary; a section the API refused a setting in opens). The
@@ -197,10 +264,31 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
     `TopBarActions` (`shell/TopBarActions.tsx`). Publish opens a `Dialog`.
 - **Settings and forms**: a `surface.panel` per group, labels above fields, one primary button.
   Organisation settings (built in 11-11) keep one `PageHeader` ("Organisation settings"); the
-  area (General, Credentials, Models, Theme, and Members and Audit for Owners) is the Settings
-  switcher crumb (`shell/SettingsCrumb.tsx`). Lists there (Members, pending invites, Credentials,
+  area (General, Credentials, Models, Theme, and Members and Audit for Owners) is a `TabRow`
+  "Organisation settings" under it (`shell/settingsNavigation.tsx`). Lists there (Members, pending invites, Credentials,
   the price table, the Audit log) are `table.wrap` cards; long ones page with `Pagination`.
   Saved changes confirm with a toast; a destructive one asks with `ConfirmDialog` first.
+  - **Members** (invite dialog in 12-05): the Members heading row carries **Invite someone**
+    (`button.primary`) on the right; it opens a `Dialog` (no corner ✕) holding the form
+    "Invite someone": `FormError`, Email (`field.input`), Role (`field.select`), "Email the
+    invite link" (`field.checkbox`), then Cancel and the primary Invite. Nothing about inviting is
+    inline. On success the dialog closes, a toast confirms, and the copy-link panel
+    (`surface.panel`, "New invite") shows above Pending invites; New link on a pending invite
+    shows the same panel. Cancel or Escape returns focus to Invite someone.
+- **Project Settings** (built in 12-06): `PageHeader level={2}` ("Settings", one line on what they
+  control), then a `surface.panel` card per setting with an h3 title and its explanation:
+  - **Embedding Model**: the active model in mono on a `sunken` row with **Change** (named "Change
+    Embedding Model"), which opens a `Dialog` "Change the Embedding Model": the model select, a
+    warning notice that every Document is re-embedded (an info notice when the Project has none),
+    then Cancel and **Use this model**. A running Re-embed is a progress `Meter` ("N of M Chunks")
+    under a status line naming the model that keeps serving; a failed one is an error `Notice`.
+  - **OCR**: a labelled checkbox row on `sunken` (the hint is its description) and a status line.
+  - **Flagged Chunks**: a `radiogroup` of two bordered choices, each a title and a one-line
+    description; the chosen one takes `accent-soft`.
+
+  Each setting shows the choice at once, is disabled while it saves and shows a refusal in its
+  card. On an archived Project the header says the settings can't be changed, every control is
+  disabled and the Embedding Model card is left out.
 - **Project Instructions** (built in 11-07): a `surface.panel` each for the Draft (the markdown
   editor with its character count, Save Instructions as a secondary button and the conflict offer
   as a warning notice), Publish (the Note and **Publish Instructions**, the page's one primary),
@@ -227,7 +315,9 @@ The top bar's breadcrumb carries every level of navigation. Tab rows and the sid
 | `tokens.css` | The tokens, the Appearance switch, base body styles and focus ring |
 | `button`, `field`, `surface`, `table`, `text`, `notice`, `layout` | Class recipes |
 | `TopBar`, `Brand`, `AppearanceToggle`, `Avatar` | The frame |
-| `Breadcrumb`, `CrumbSwitcher`, `CrumbText`, `crumbClass()` | Navigation |
+| `Sidebar`, `SidebarButton`, `SidebarGroup`, `SidebarLabel`, `SidebarDivider`, `SidebarTitle`, `sidebarLink`, `sidebarSwitcher` | The sidebar and its drawer (see *Navigation: the sidebar*) |
+| `Breadcrumb`, `crumbLink` | The top bar's plain path of links (see *Navigation: the breadcrumb*) |
+| `TabRow`, `tabLink` | A page's own views as a row of tab links under its header (an Agent's views, Organisation settings' areas) |
 | `Menu`, `MenuItem`, `MenuLinkProps` | Switchers and ⋯ menus, keyboard-complete |
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
@@ -310,6 +400,8 @@ refuses, an alert says to select and copy by hand.
 How much of a limit is used (Token Budget, Document quota): a bar in `accent` under 80%, `flag`
 from 80% and `danger` once spent, with the value always printed beside it ("8,200 / 10,000
 tokens"). It is a `meter` role with the value as text, so the colour is never the only signal.
+A `progress` meter (a Re-embed's Chunks) shows how far work has got, so it stays `accent` all the
+way.
 
 ### Diff
 
@@ -377,7 +469,8 @@ baseline:
 ## Don't
 
 - Don't use raw colours, Tailwind palette classes, `dark:`, or inline `style` colours.
-- Don't add tab rows or side navigation; add a crumb or a switcher item.
+- Don't add menus to the breadcrumb or a second home for a destination; add a sidebar link, or a
+  tab to the page's own `TabRow`.
 - Don't put more than one primary button in a view, or colour whole sections green.
 - Don't use emoji or filled icons; use `Icon`.
 - Don't build your own dialog, toast, badge, meter, diff, empty state or pager: use the pattern.

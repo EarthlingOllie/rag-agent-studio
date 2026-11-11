@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { aChunk, aDocument, fakeDocumentViewerApi } from "../test/documents";
-import { currentSection, openSection } from "../test/navigation";
+import { breadcrumb, currentSection } from "../test/navigation";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -19,11 +19,11 @@ const API_DOCUMENT =
 // The first render of a test file is slow on a busy machine (the markdown renderer warms up).
 const LOAD = { timeout: 5000 };
 
-const MARKDOWN = `## Northwind staff handbook
+const MARKDOWN = `# Northwind staff handbook
 
 Welcome to **Northwind Traders**.
 
-### Annual leave
+## Annual leave
 
 | Years | Days |
 | --- | --- |
@@ -89,11 +89,13 @@ test("an Editor opens a Document from the list and sees its markdown beside its 
   const markdown = within(
     screen.getByRole("region", { name: "Converted markdown" }),
   );
+  // The Document's own headings sit below the page's (the Project's h1, the Document's h2 and this
+  // section's h3), so a Document's "# Title" is not a second h1 on the page.
   expect(
-    markdown.getByRole("heading", { name: "Northwind staff handbook" }),
+    markdown.getByRole("heading", { level: 4, name: "Northwind staff handbook" }),
   ).toBeInTheDocument();
   expect(
-    markdown.getByRole("heading", { name: "Annual leave" }),
+    markdown.getByRole("heading", { level: 5, name: "Annual leave" }),
   ).toBeInTheDocument();
   expect(markdown.getByText("Northwind Traders").tagName).toBe("STRONG");
   expect(markdown.getByRole("cell", { name: "25" })).toBeInTheDocument();
@@ -347,7 +349,7 @@ test("a Document that can't be loaded says so", async () => {
   expect(await screen.findByRole("alert", {}, LOAD)).toHaveTextContent(
     "This Document could not be loaded",
   );
-  // The breadcrumb still leads back: its last crumb names no Document, and Documents is a switcher.
+  // The breadcrumb still leads back: its last crumb names no Document, and Documents is a link.
   expect(screen.getByText("Document", { selector: "[aria-current=page]" })).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "All Documents" })).not.toBeInTheDocument();
 });
@@ -373,22 +375,20 @@ test("Chunks that can't be loaded say so", async () => {
   );
 });
 
-test("the breadcrumb ends with the Document's name, after the Documents switcher that leads back", async () => {
+test("the breadcrumb ends with the Document's name, after the Documents crumb that leads back", async () => {
   signedIn();
   fakeDocumentViewerApi({ document: { ...handbook, markdown: MARKDOWN }, chunks: handbookChunks });
   renderStudio(viewer);
 
   const banner = within(await screen.findByRole("banner", {}, LOAD));
-  const crumb = await banner.findByText("Staff handbook.pdf", {}, LOAD);
-  expect(crumb).toHaveAttribute("aria-current", "page");
-  const documents = await banner.findByRole("button", { name: "Documents, Project sections" });
-  expect(documents).not.toHaveAttribute("aria-current");
+  expect(await banner.findByRole("link", { name: "Staff handbook.pdf" }, LOAD)).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents", "Staff handbook.pdf"], current: "Staff handbook.pdf" });
   expect(await currentSection("Project sections")).toBe("Documents");
 
-  await openSection("Project sections", "Documents");
+  await userEvent.click(banner.getByRole("link", { name: "Documents" }));
   expect(await screen.findByRole("table", { name: "Documents" }, LOAD)).toBeInTheDocument();
   expect(banner.queryByText("Staff handbook.pdf")).not.toBeInTheDocument();
-  expect(banner.getByRole("button", { name: "Documents, Project sections" })).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents"], current: "Documents" });
 });
 
 test("the viewer shows the Document's type, size and Chunks, its Chunks on cards, and badges the flagged ones", async () => {

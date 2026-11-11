@@ -68,6 +68,8 @@
   /* Data marks only (charts, meter fills); the accent reads too grey as a data mark. */
   --ds-chart-1: #00897b;
   --ds-scrim: rgb(21 32 31 / 0.12);
+  /* The select chevron: the Icon component's chevronDown, stroked in `muted`. */
+  --ds-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23536260' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
 }
 
 /* Dark: deep-sea green-black. Repeated for the system preference and for an explicit choice. */
@@ -97,6 +99,7 @@
     --ds-on-danger: #1a0f0d;
     --ds-chart-1: #1fa393;
     --ds-scrim: rgb(0 0 0 / 0.5);
+    --ds-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393a5a2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
   }
 }
 
@@ -125,6 +128,7 @@
   --ds-on-danger: #1a0f0d;
   --ds-chart-1: #1fa393;
   --ds-scrim: rgb(0 0 0 / 0.5);
+  --ds-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393a5a2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -147,4 +151,25 @@
     background-color: var(--ds-accent-soft);
     color: var(--ds-accent-ink);
   }
+}
+
+/*
+ * Single-value selects draw the design system's chevron instead of the browser's arrow. The
+ * chevron sits as far from the right edge as the text from the left: a recipe sets
+ * `--select-inset` to its left padding (design/recipes.ts). The right padding keeps room for the
+ * inset, the 16px chevron and a gap, never less than 36px, so long option text stops short of it.
+ * Outside every layer on purpose, so a recipe's `px-*` can't take that room back.
+ */
+select:not([multiple]) {
+  appearance: none;
+  padding-right: max(2.25rem, calc(var(--select-inset, 0.75rem) + 1.5rem));
+  background-image: var(--ds-chevron);
+  background-repeat: no-repeat;
+  background-position: right var(--select-inset, 0.75rem) center;
+  background-size: 1rem;
+}
+/* A disabled select dims, chevron and all, like a disabled button. */
+select:not([multiple]):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -23,12 +23,7 @@ export interface MenuItem {
    */
   renderLink?: (props: MenuLinkProps) => ReactNode;
   icon?: IconName;
-  /**
-   * A hint shown on the right, e.g. a section's number. It is a visual label only, hidden from
-   * assistive technology, so it is not part of the item's name.
-   */
-  hint?: string;
-  /** Marks where the Member is now (a breadcrumb switcher's current option). */
+  /** Marks where the Member is now (a switcher's current option). */
   current?: boolean;
   /** Destructive actions (Delete) read in the danger colour. */
   danger?: boolean;
@@ -36,8 +31,8 @@ export interface MenuItem {
 }
 
 /**
- * A button that opens a list of actions or destinations. Used for breadcrumb switchers and row
- * "more" menus. Keyboard: Enter/Space/ArrowDown open it on the first item, ArrowUp/ArrowDown move,
+ * A button that opens a list of actions or destinations. Used for the sidebar's and the Agent's
+ * switchers, the account menu and row "more" menus. Keyboard: Enter/Space/ArrowDown open it on the first item, ArrowUp/ArrowDown move,
  * Home/End jump, Escape closes and returns focus to the button; clicking outside closes it.
  */
 export function Menu({
@@ -49,6 +44,7 @@ export function Menu({
   align = "start",
   triggerProps,
   disabled = false,
+  wrapperClassName = "relative inline-flex",
 }: {
   /** The trigger's content. */
   label: ReactNode;
@@ -62,6 +58,8 @@ export function Menu({
   triggerProps?: { "aria-current"?: "page" };
   /** Disables the button, e.g. while the action an item started is under way. */
   disabled?: boolean;
+  /** The classes of the element holding the button and the menu; it must stay positioned (`relative`). */
+  wrapperClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -118,7 +116,7 @@ export function Menu({
   }
 
   return (
-    <span ref={wrapper} className="relative inline-flex">
+    <span ref={wrapper} className={wrapperClassName}>
       <button
         ref={trigger}
         type="button"
@@ -154,11 +152,6 @@ export function Menu({
               <>
                 {item.icon && <Icon name={item.icon} className={item.current === true ? "text-accent" : "text-muted"} />}
                 <span className="flex-1">{item.label}</span>
-                {item.hint !== undefined && (
-                  <span aria-hidden="true" className="font-mono text-xs text-muted">
-                    {item.hint}
-                  </span>
-                )}
               </>
             );
             const current = item.current === true ? "page" : undefined;

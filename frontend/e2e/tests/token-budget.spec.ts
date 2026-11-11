@@ -36,6 +36,7 @@ test.describe("Token Budget", () => {
 
     // A live Agent over the handbook.
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Thrifty Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
@@ -47,7 +48,7 @@ test.describe("Token Budget", () => {
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Thrifty helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
     const agentPage = page.url();
     const agentApi = agentPage.replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
@@ -101,7 +102,7 @@ test.describe("Token Budget", () => {
 
     // The Studio: the alert badge on the Agent's page and in the Agent list, and the meter full.
     await page.reload();
-    await expect(page.getByRole("heading", { level: 2, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("region", { name: "Thrifty helper" }).getByText("Budget spent")).toBeVisible();
     await expect(
       embed.getByText(

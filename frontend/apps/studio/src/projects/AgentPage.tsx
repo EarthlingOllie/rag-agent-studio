@@ -12,10 +12,14 @@ import {
   Menu,
   type MenuItem,
   Notice,
+  PageHeader,
   Skeleton,
   surface,
+  TabRow,
+  tabLink,
   text,
 } from "../design";
+import { useAgentSwitcherItems, useAgentViews } from "../shell/projectNavigation";
 import { TopBarActions } from "../shell/TopBarActions";
 import {
   type Agent,
@@ -481,10 +485,51 @@ function ArchivedAgentNotice({ agent, organisationId, isOwner }: { agent: Agent;
 
 type Confirming = "archive" | "discard" | "delete" | null;
 
+/** The ▾ after the Agent's name: a menu of the Project's open Agents, named "<Agent>, Agents". */
+function AgentSwitcher({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+  const items = useAgentSwitcherItems(organisationId, agent.project_id, agent.id);
+  return (
+    <Menu
+      label={<Icon name="chevronDown" size={18} />}
+      triggerLabel={`${agent.name}, Agents`}
+      menuLabel="Agents"
+      triggerClassName={button.iconBare}
+      // Not positioned itself: the menu drops from the start of the title's line, so on a phone
+      // it stays on screen however long the name is.
+      wrapperClassName="inline-flex"
+      items={items}
+    />
+  );
+}
+
+/** The Agent's views as tabs under its header: Playground, Versions, Embed & limits, Conversations. */
+function AgentViewTabs({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+  const views = useAgentViews(organisationId, agent.project_id, agent.id);
+  return (
+    <TabRow label="Agent views">
+      {views.map((view) => (
+        <li key={view.label} className="flex">
+          <Link
+            to={view.to}
+            params={{ organisationId, projectId: agent.project_id, agentId: agent.id }}
+            // The router would mark Playground current on every view; only our own marking counts.
+            activeOptions={{ exact: true, includeSearch: false }}
+            aria-current={view.current ? "page" : undefined}
+            className={tabLink}
+          >
+            {view.label}
+          </Link>
+        </li>
+      ))}
+    </TabRow>
+  );
+}
+
 /**
- * The Agent's header: its name with its Live, Draft and alert badges, and a ⋯ menu of the rare
- * actions: Discard Draft (while the Draft differs from the Live Version) and Archive, or, on an
- * archived Agent, permanent deletion (Owners only). Each asks first in a `ConfirmDialog`.
+ * The Agent's header, the page's h1: its name with a ▾ switcher of the Project's Agents and its
+ * Live, Draft and alert badges, and a ⋯ menu of the rare actions: Discard Draft (while the Draft
+ * differs from the Live Version) and Archive, or, on an archived Agent, permanent deletion (Owners
+ * only). Each asks first in a `ConfirmDialog`.
  */
 function AgentHeader({ agent, organisationId, isOwner, onReplaced }: { agent: Agent; organisationId: string; isOwner: boolean; onReplaced: () => void }) {
   const headingId = useId();
@@ -503,27 +548,31 @@ function AgentHeader({ agent, organisationId, isOwner, onReplaced }: { agent: Ag
 
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <h2 id={headingId} className="text-2xl font-medium tracking-[-0.01em] text-ink">
-            {agent.name}
-          </h2>
-          <LiveStatus agent={agent} />
-        </div>
-        <div className="flex items-center gap-2">
-          <AgentAnalyticsLink organisationId={organisationId} projectId={agent.project_id} agentId={agent.id} />
-          {actions.length > 0 && (
-            <Menu
-              label={<Icon name="more" />}
-              triggerLabel="More Agent actions"
-              menuLabel="Agent actions"
-              align="end"
-              triggerClassName={button.icon}
-              items={actions}
-            />
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={agent.name}
+        headingId={headingId}
+        beside={
+          <>
+            <AgentSwitcher agent={agent} organisationId={organisationId} />
+            <LiveStatus agent={agent} />
+          </>
+        }
+        actions={
+          <>
+            <AgentAnalyticsLink organisationId={organisationId} projectId={agent.project_id} agentId={agent.id} />
+            {actions.length > 0 && (
+              <Menu
+                label={<Icon name="more" />}
+                triggerLabel="More Agent actions"
+                menuLabel="Agent actions"
+                align="end"
+                triggerClassName={button.icon}
+                items={actions}
+              />
+            )}
+          </>
+        }
+      />
       {!agent.live_version && <p className={text.muted}>Visitors can&apos;t use it until you publish it.</p>}
       {refusal && (
         <FormError message={refusal.action === "archive" ? agentFailure(refusal.error) : draftChangeFailure(refusal.error)} />
@@ -588,8 +637,8 @@ function AgentTopBar({ agent, organisationId, draftStatus }: { agent: Agent; org
 }
 
 /**
- * One Agent: its header, the top bar's Saved state, History and Publish, and the view the breadcrumb
- * chose (Playground, Versions, Embed & limits). An archived Agent's Draft is read only, without
+ * One Agent: its header (the page's h1), the top bar's Saved state, History and Publish, then the
+ * view its tab row chose (Playground, Versions, Embed & limits, Conversations). An archived Agent's Draft is read only, without
  * the Playground, and an Owner can restore it.
  */
 export function AgentPage() {
@@ -626,6 +675,7 @@ export function AgentPage() {
     <div className="flex flex-col gap-6">
       <AgentTopBar key={agent.data.id} agent={agent.data} organisationId={organisationId} draftStatus={draftStatus} />
       <AgentHeader key={`header-${agent.data.id}`} agent={agent.data} organisationId={organisationId} isOwner={isOwner} onReplaced={replaced} />
+      <AgentViewTabs agent={agent.data} organisationId={organisationId} />
       {archived && <ArchivedAgentNotice agent={agent.data} organisationId={organisationId} isOwner={isOwner} />}
       <AgentViewContext.Provider value={view}>
         <Outlet />

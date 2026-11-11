@@ -18,6 +18,7 @@ test.describe("Operational Settings", () => {
 
     // A live Agent. The Organisation has no Default Model, so the Agent can't answer.
     await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Support");
     await newProject.getByRole("button", { name: "Create Project" }).click();
@@ -26,7 +27,7 @@ test.describe("Operational Settings", () => {
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Support helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Support helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Support helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { id: agentId, public_id: publicId } = (await (await page.request.get(agentApi)).json()) as {
       id: string;

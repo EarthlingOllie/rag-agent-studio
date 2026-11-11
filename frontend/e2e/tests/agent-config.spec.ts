@@ -105,6 +105,9 @@ test.describe("Full AgentConfig editor", () => {
     await page.reload();
     await expect(page.getByRole("group", { name: "Behaviour" }).getByLabel("Temperature")).toHaveValue("0.3", { timeout: 15_000 });
     await expect(page.getByRole("group", { name: "Model override" }).getByLabel("Model")).toHaveValue("gpt-4.1-mini");
+    // Experience and Guardrails are folded again on a fresh page.
+    await openSettings(page, "Experience");
+    await openSettings(page, "Guardrails");
     await expect(page.getByRole("group", { name: "Experience" }).getByLabel("Greeting")).toHaveValue("Hi! Ask me about leave.");
     await expect(page.getByLabel("Input Guardrail mode")).toHaveValue("warn");
   });

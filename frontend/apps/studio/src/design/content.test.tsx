@@ -23,6 +23,17 @@ it("heads a section inside a page at level 2, so the page keeps its one h1", () 
   expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
 });
 
+it("puts what is beside the title on its line, and gives the heading an id to name a region by", () => {
+  render(
+    <section aria-labelledby="agent-heading">
+      <PageHeader title="HR helper" headingId="agent-heading" beside={<button type="button">HR helper, Agents</button>} />
+    </section>,
+  );
+  const heading = screen.getByRole("heading", { level: 1, name: "HR helper" });
+  expect(screen.getByRole("region", { name: "HR helper" })).toContainElement(heading);
+  expect(heading.parentElement).toContainElement(screen.getByRole("button", { name: "HR helper, Agents" }));
+});
+
 it("shows a stat with an optional unit, in the flag colour when asked", () => {
   render(
     <>
@@ -91,6 +102,19 @@ it("frames the Studio with a top bar, brand and avatar", () => {
 
   rerender(<TopBar home={<Brand />} />);
   expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+});
+
+it("a compact Brand keeps its name for wider screens only", () => {
+  render(
+    <>
+      <Brand />
+      <Brand compact />
+    </>,
+  );
+  // jsdom applies no stylesheet, so the breakpoint is read from the classes; the screenshots at 390 px show it.
+  const [full, compact] = screen.getAllByText("Studio");
+  expect(full).not.toHaveClass("hidden");
+  expect(compact).toHaveClass("hidden", "md:inline");
 });
 
 it("draws icons and the mark, decoratively", () => {

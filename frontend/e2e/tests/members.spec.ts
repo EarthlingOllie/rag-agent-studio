@@ -23,6 +23,7 @@ async function organisationId(page: Page): Promise<string> {
 /** The Owner invites a new person with a copied link; they create an account in their own browser. */
 async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCredentials): Promise<Page> {
   await openSettings(owner, "Members");
+  await owner.getByRole("button", { name: "Invite someone" }).click();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
   await form.getByLabel("Role").selectOption("Editor");
@@ -34,7 +35,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 

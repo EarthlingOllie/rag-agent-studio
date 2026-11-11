@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openDrawer } from "../fixtures/navigation";
 import { APPEARANCES, pagePath, SIGNED_IN_PAGES } from "../fixtures/pages";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
@@ -14,7 +15,7 @@ test.describe("Accessibility", () => {
     signedInPage: page,
     makeAxeBuilder,
   }) => {
-    // Ingestion, then 23 pages scanned twice.
+    // Ingestion, then 23 pages and the open sidebar drawer scanned twice.
     test.setTimeout(300_000);
     await page.goto("/");
     const me = (await (await page.request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
@@ -61,6 +62,18 @@ test.describe("Accessibility", () => {
         const found = (await makeAxeBuilder().analyze()).violations.map((violation) => violation.id);
         if (found.length > 0) violations[`${appearance} ${target.name}`] = found;
       }
+    }
+
+    // The sidebar drawer, open at phone width over a Project's page.
+    await page.setViewportSize({ width: 390, height: 844 });
+    for (const appearance of APPEARANCES) {
+      await page.emulateMedia({ colorScheme: appearance });
+      await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
+      await page.waitForLoadState("networkidle");
+      await openDrawer(page);
+      const found = (await makeAxeBuilder().analyze()).violations.map((violation) => violation.id);
+      if (found.length > 0) violations[`${appearance} sidebar-drawer`] = found;
     }
     expect(violations).toEqual({});
   });

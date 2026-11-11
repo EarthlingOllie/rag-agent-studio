@@ -79,6 +79,46 @@ it("closes on Escape, the Close button or a click on the scrim, and returns focu
   expect(opener).toHaveFocus();
 });
 
+it("still closes on Escape when focus has fallen out of it, as when the focused button is disabled while it saves", async () => {
+  const user = userEvent.setup();
+  render(<EditDetails />);
+  const opener = screen.getByRole("button", { name: "Edit details" });
+  await user.click(opener);
+  // A focused control that becomes disabled drops focus to the page.
+  (document.activeElement as HTMLElement).blur();
+  expect(document.body).toHaveFocus();
+
+  await user.keyboard("x");
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(opener).toHaveFocus();
+});
+
+function Stacked() {
+  const [inner, setInner] = useState(true);
+  const [outer, setOuter] = useState(true);
+  return (
+    <>
+      <Dialog open={outer} title="Tags" onClose={() => { setOuter(false); }}>
+        <p>The Project's Tags</p>
+      </Dialog>
+      <Dialog open={inner} title="Delete HR?" onClose={() => { setInner(false); }}>
+        <p>HR leaves every Document.</p>
+      </Dialog>
+    </>
+  );
+}
+
+it("with focus fallen out of two open dialogs, Escape closes only the top one", async () => {
+  const user = userEvent.setup();
+  render(<Stacked />);
+  (document.activeElement as HTMLElement).blur();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Delete HR?" })).not.toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "Tags" })).toBeInTheDocument();
+});
+
 it("keeps focus on the Close button when it is the only control", async () => {
   const user = userEvent.setup();
   render(<EditDetails withFields={false} />);
