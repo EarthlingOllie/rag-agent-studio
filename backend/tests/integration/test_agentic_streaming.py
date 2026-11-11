@@ -201,6 +201,22 @@ async def test_text_written_before_a_search_streams_then_is_retracted_and_never_
     assert reply.trace["search_count"] == 1
 
 
+async def test_a_remark_too_short_to_leave_the_canary_filter_is_dropped_with_no_retraction(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # Nothing of "One moment." was sent (the filter still held it back), so there is nothing
+    # to retract: no `retract` event, and the remark never reaches the Visitor.
+    answer_with(app, Scripted(["One moment.", Search("annual leave")], ANSWER))
+    project_id, agent_id = await leave_agent(app, owner)
+
+    reply = await asked(owner, project_id, agent_id, "How much leave?")
+
+    assert reply.names[0] == "search"
+    assert "retract" not in reply.names
+    assert reply.tokens() == "".join(ANSWER)
+    assert "moment" not in json.dumps(reply.events)
+
+
 async def test_text_before_each_of_several_searches_is_retracted_and_its_labels_never_cited(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
