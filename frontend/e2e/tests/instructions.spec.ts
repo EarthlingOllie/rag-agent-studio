@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Project Instructions", () => {
   test("an Owner formats Instructions in the markdown editor and the markdown is saved and audited", async ({
@@ -6,11 +7,12 @@ test.describe("Project Instructions", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Instructions" }).click();
+    await openSection(page, "Project sections", "Instructions");
 
     // Write formatted text the way an Editor would: toolbar buttons and typing.
     const editor = page.getByRole("textbox", { name: "Project Instructions" });
@@ -52,7 +54,8 @@ test.describe("Project Instructions", () => {
     // Archiving the Project with the tab open locks the editor in place; restoring unlocks it.
     await page.getByRole("button", { name: "Markdown" }).click();
     await expect(editor).toHaveAttribute("contenteditable", "true");
-    await page.getByRole("button", { name: "Archive" }).click();
+    await page.getByRole("button", { name: "More Project actions" }).click();
+    await page.getByRole("menu", { name: "Project actions" }).getByRole("menuitem", { name: "Archive" }).click();
     await page.getByRole("button", { name: "Yes, archive Northwind HR" }).click();
     await expect(editor).toHaveAttribute("contenteditable", "false");
     await expect(page.getByRole("button", { name: "Save Instructions" })).toHaveCount(0);

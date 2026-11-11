@@ -5,6 +5,7 @@ import { delay, http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { expiredInvite, fakeInvitesApi, graceInvite, linkFor, organisationId } from "../test/invites";
 import { fakeMembersApi } from "../test/members";
+import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -32,12 +33,25 @@ function stubClipboard(writeText: (text: string) => Promise<void>) {
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
 }
 
+/** Opens the invite dialog from the Members header and returns it. */
+async function openInviteDialog() {
+  await userEvent.click(await screen.findByRole("button", { name: "Invite someone" }));
+  return screen.getByRole("dialog", { name: "Invite someone" });
+}
+
 async function inviteSomeone(email: string, { role, sendEmail = true }: { role?: string; sendEmail?: boolean } = {}) {
-  const form = screen.getByRole("form", { name: "Invite someone" });
+  const dialog = await openInviteDialog();
+  const form = within(dialog).getByRole("form", { name: "Invite someone" });
   await userEvent.type(within(form).getByLabelText("Email"), email);
   if (role) await userEvent.selectOptions(within(form).getByLabelText("Role"), role);
   if (!sendEmail) await userEvent.click(within(form).getByLabelText("Email the invite link"));
   await userEvent.click(within(form).getByRole("button", { name: "Invite" }));
+  return dialog;
+}
+
+/** Whether `first` comes before `second` in the page. */
+function precedes(first: Element, second: Element) {
+  return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
 }
 
 test("Owners open Members from Organisation settings and see pending invites", async () => {
@@ -45,8 +59,7 @@ test("Owners open Members from Organisation settings and see pending invites", a
   fakeInvitesApi();
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-  await userEvent.click(within(tabs).getByRole("link", { name: "Members" }));
+  await openSection("Organisation settings", "Members");
 
   expect(await screen.findByRole("table", { name: "Pending invites" })).toBeInTheDocument();
   expect(pendingRows()).toEqual([
@@ -55,14 +68,56 @@ test("Owners open Members from Organisation settings and see pending invites", a
   ]);
 });
 
+test("Members has a header with Invite someone, which opens a dialog with Email, Role and Email the invite link", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeInvitesApi();
+  renderStudio(membersPath);
+
+  const heading = await screen.findByRole("heading", { level: 2, name: "Members" });
+  const invite = screen.getByRole("button", { name: "Invite someone" });
+  expect(precedes(heading, invite)).toBe(true);
+  expect(precedes(invite, screen.getByRole("heading", { name: "Pending invites" }))).toBe(true);
+  // No inline invite panel: the form only exists inside the dialog.
+  expect(screen.queryByRole("form", { name: "Invite someone" })).not.toBeInTheDocument();
+
+  const dialog = await openInviteDialog();
+  const form = within(dialog).getByRole("form", { name: "Invite someone" });
+  expect(within(form).getByLabelText("Email")).toHaveFocus();
+  expect(within(form).getByLabelText("Email")).toBeRequired();
+  expect(within(form).getByLabelText("Role")).toHaveValue("editor");
+  expect(within(form).getByLabelText("Email the invite link")).toBeChecked();
+  expect(within(form).getByRole("button", { name: "Invite" })).toBeEnabled();
+  // Members and Pending invites stay on the page behind the dialog.
+  expect(screen.getByRole("table", { name: "Pending invites" })).toBeInTheDocument();
+});
+
+test("Cancel and Escape close the invite dialog without inviting, and focus returns to Invite someone", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const api = fakeInvitesApi();
+  renderStudio(membersPath);
+  await screen.findByRole("table", { name: "Pending invites" });
+
+  let dialog = await openInviteDialog();
+  await userEvent.type(within(dialog).getByLabelText("Email"), "half@example.test");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog", { name: "Invite someone" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Invite someone" })).toHaveFocus();
+
+  dialog = await openInviteDialog();
+  expect(within(dialog).getByLabelText("Email")).toHaveValue("");
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Invite someone" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Invite someone" })).toHaveFocus();
+  expect(api.created).toEqual([]);
+  expect(screen.queryByRole("region", { name: "New invite" })).not.toBeInTheDocument();
+});
+
 test("Editors don't see the Members tab, and its address tells them it is for Owners", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   const api = fakeInvitesApi();
   renderStudio(membersPath);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-
-  expect(within(tabs).queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
+  expect(await sectionNames("Organisation settings")).not.toContain("Members");
   expect(screen.getByText("Only Owners can manage Members and invites.")).toBeInTheDocument();
   expect(api.created).toEqual([]);
 });
@@ -80,14 +135,19 @@ test("an Owner invites by email with a role and can copy the link", async () => 
 
   await inviteSomeone("grace@example.test", { role: "Owner" });
 
-  const result = await screen.findByRole("status");
+  expect(await screen.findByText("Invited grace@example.test.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Invite someone" })).not.toBeInTheDocument();
+  const result = screen.getByRole("region", { name: "New invite" });
+  expect(precedes(result, screen.getByRole("heading", { name: "Pending invites" }))).toBe(true);
   expect(result).toHaveTextContent("We emailed an invite to grace@example.test.");
   expect(result).toHaveTextContent("expires on 2026-06-08");
   expect(within(result).getByLabelText("Invite link for grace@example.test")).toHaveValue(linkFor("new-token-1"));
   expect(api.created).toEqual([{ email: "grace@example.test", role: "owner", send_email: true }]);
   expect(await screen.findByRole("table", { name: "Pending invites" })).toBeInTheDocument();
   expect(pendingRows()).toEqual([["grace@example.test", "Owner", "Ada Lovelace", "2026-06-08"]]);
-  expect(screen.getByLabelText("Email")).toHaveValue("");
+  // The next invite starts from an empty dialog.
+  expect(within(await openInviteDialog()).getByLabelText("Email")).toHaveValue("");
+  await userEvent.keyboard("{Escape}");
 
   await userEvent.click(within(result).getByRole("button", { name: "Copy link" }));
 
@@ -103,7 +163,7 @@ test("an Owner can invite by link only, without sending an email", async () => {
 
   await inviteSomeone("grace@example.test", { sendEmail: false });
 
-  expect(await screen.findByRole("status")).toHaveTextContent("Copy the link and send it to grace@example.test.");
+  expect(await screen.findByRole("region", { name: "New invite" })).toHaveTextContent("Copy the link and send it to grace@example.test.");
   expect(api.created).toEqual([{ email: "grace@example.test", role: "editor", send_email: false }]);
 });
 
@@ -116,7 +176,7 @@ test("when the email can't be sent, the Owner is told to copy the link", async (
 
   await inviteSomeone("grace@example.test");
 
-  const result = await screen.findByRole("status");
+  const result = await screen.findByRole("region", { name: "New invite" });
   expect(result).toHaveTextContent("The email to grace@example.test couldn't be sent. Copy the link and send it yourself.");
   await userEvent.click(within(result).getByRole("button", { name: "Copy link" }));
   expect(await within(result).findByText("Couldn't copy. Select the link and copy it yourself.")).toBeInTheDocument();
@@ -138,10 +198,13 @@ test.each([
   renderStudio(membersPath);
   await screen.findByText("No pending invites.");
 
-  await inviteSomeone("grace@example.test");
+  const dialog = await inviteSomeone("grace@example.test");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(message);
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(message);
+  expect(screen.getByRole("dialog", { name: "Invite someone" })).toBe(dialog);
+  expect(within(dialog).getByLabelText("Email")).toHaveValue("grace@example.test");
+  expect(screen.queryByRole("region", { name: "New invite" })).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Invited /)).not.toBeInTheDocument();
 });
 
 test("an unreachable API while inviting says to try again", async () => {
@@ -151,9 +214,9 @@ test("an unreachable API while inviting says to try again", async () => {
   renderStudio(membersPath);
   await screen.findByText("No pending invites.");
 
-  await inviteSomeone("grace@example.test");
+  const dialog = await inviteSomeone("grace@example.test");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
 });
 
 test("a duplicate invite says there is one pending already", async () => {
@@ -162,9 +225,9 @@ test("a duplicate invite says there is one pending already", async () => {
   renderStudio(membersPath);
   await screen.findByRole("table", { name: "Pending invites" });
 
-  await inviteSomeone("grace@example.test");
+  const dialog = await inviteSomeone("grace@example.test");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("That email already has a pending invite.");
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("That email already has a pending invite.");
 });
 
 test("the invite button shows progress while the invite is sent", async () => {
@@ -179,9 +242,41 @@ test("the invite button shows progress while the invite is sent", async () => {
   renderStudio(membersPath);
   await screen.findByText("No pending invites.");
 
-  await inviteSomeone("grace@example.test");
+  const dialog = await inviteSomeone("grace@example.test");
 
-  expect(await screen.findByRole("button", { name: "Inviting…" })).toBeDisabled();
+  expect(await within(dialog).findByRole("button", { name: "Inviting…" })).toBeDisabled();
+});
+
+test("Cancel and Escape don't close the dialog while the invite is sent, so the link isn't lost", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeInvitesApi({ pending: [] });
+  let release = () => {};
+  const sent = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.post("*/api/organisations/:organisationId/invites", async () => {
+      await sent;
+      // Falls through to the fake invites API once released.
+    }),
+  );
+  renderStudio(membersPath);
+  await screen.findByText("No pending invites.");
+
+  const dialog = await inviteSomeone("grace@example.test");
+  const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+  expect(await within(dialog).findByRole("button", { name: "Inviting…" })).toBeDisabled();
+  expect(cancel).toBeDisabled();
+  await userEvent.click(cancel);
+  await userEvent.keyboard("{Escape}");
+  expect(screen.getByRole("dialog", { name: "Invite someone" })).toBe(dialog);
+
+  release();
+
+  expect(await screen.findByText("Invited grace@example.test.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Invite someone" })).not.toBeInTheDocument();
+  const result = screen.getByRole("region", { name: "New invite" });
+  expect(within(result).getByLabelText("Invite link for grace@example.test")).toHaveValue(linkFor("new-token-1"));
 });
 
 test("an Owner revokes a pending invite", async () => {
@@ -193,6 +288,7 @@ test("an Owner revokes a pending invite", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Revoke invite for grace@example.test" }));
 
   expect(api.revoked).toEqual([graceInvite.id]);
+  expect(await screen.findByText("Revoked the invite for grace@example.test.")).toBeInTheDocument();
   await within(screen.getByRole("table", { name: "Pending invites" })).findByRole("cell", { name: "Owner" });
   await expect.poll(pendingRows).toEqual([["charles@example.test", "Owner", "Ada Lovelace", "Expired"]]);
 });
@@ -205,10 +301,12 @@ test("an Owner gets a new link for an expired invite", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: "New link for charles@example.test" }));
 
-  const result = await screen.findByRole("status");
+  expect(await screen.findByText("New invite link for charles@example.test.")).toBeInTheDocument();
+  const result = screen.getByRole("region", { name: "New invite" });
   expect(result).toHaveTextContent("Copy the link and send it to charles@example.test.");
   expect(within(result).getByLabelText("Invite link for charles@example.test")).toHaveValue(linkFor("renewed-token-1"));
   expect(result).toHaveTextContent("expires on 2026-06-20");
+  expect(precedes(result, screen.getByRole("heading", { name: "Pending invites" }))).toBe(true);
   expect(api.renewed).toEqual([expiredInvite.id]);
   await expect.poll(pendingRows).toEqual([
     ["grace@example.test", "Editor", "Ada Lovelace", "2026-06-08"],

@@ -1,6 +1,7 @@
 import { expect, test } from "../fixtures";
 import { signInAs } from "../fixtures/auth";
 import { BLOCKED_HOST_URL, HOST_URL, STUDIO_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 // `make seed` runs before the suite (`make e2e`): it publishes the Product FAQ and the Low-budget
 // helper with the demo host's shop origin (HOST_URL) in their Allowed Origins.
@@ -91,11 +92,11 @@ test.describe("Demo host pages", () => {
     const studio = await (await browser.newContext()).newPage();
     await signInAs(studio, OWNER);
     await studio.goto("/");
-    await studio.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(studio, "Organisation sections", "Projects");
     await studio.getByRole("link", { name: "Northwind Handbook" }).click();
-    await studio.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
-    const listed = studio.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Low-budget helper" });
-    await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
+    await openSection(studio, "Project sections", "Agents");
+    const listed = studio.getByRole("table", { name: "Agents" }).getByRole("row").filter({ hasText: "Low-budget helper" });
+    await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
     await studio.context().close();
   });
 });

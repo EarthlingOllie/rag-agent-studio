@@ -1,0 +1,5 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+........                                                                 [100%]
+8 passed in 38.54s
+{"timestamp": "2026-11-10T21:45:36.009158+00:00", "level": "ERROR", "logger": "opentelemetry.sdk._shared_internal", "message": "Exception while exporting Span.", "service": "worker", "exception": "Traceback (most recent call last):\n  File \"/home/user/wt-13-07/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/_shared_internal/__init__.py\", line 187, in _export\n    self._exporter.export(batch)\n    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"/home/user/wt-13-07/backend/.venv/lib/python3.13/site-packages/opentelemetry/sdk/trace/export/__init__.py\", line 311, in export\n    self.out.write(self.formatter(span))\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^\nValueError: I/O operation on closed file."}
+EXIT 0

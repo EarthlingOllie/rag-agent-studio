@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { SubmitEvent } from "react";
 
-import { AuthLayout, Field, FormError, formValues, SubmitButton } from "./AuthLayout";
+import { AuthLayout, ErrorNotice, Field, formValues, PANEL_LINK, SubmitButton } from "./AuthLayout";
 import { AuthRequestError, type Throttled, throttledDetails, useSignIn } from "./session";
 
 function plural(count: number, unit: string): string {
@@ -43,18 +43,18 @@ export function SignInPage() {
       footer={
         <>
           New to RAG Agent Studio?{" "}
-          <Link to="/sign-up" className="font-medium text-slate-900 underline">
+          <Link to="/sign-up" className={PANEL_LINK}>
             Create an account
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-4" aria-label="Sign in">
-        <FormError message={signInErrorMessage(signIn.error)} />
+        <ErrorNotice message={signInErrorMessage(signIn.error)} />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="current-password" />
         <p className="-mt-2 text-sm">
-          <Link to="/forgot-password" className="text-slate-700 underline">
+          <Link to="/forgot-password" className={PANEL_LINK}>
             Forgot your password?
           </Link>
         </p>

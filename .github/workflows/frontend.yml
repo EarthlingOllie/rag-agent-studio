@@ -38,6 +38,10 @@ jobs:
       - name: Embed loader size budget
         # The Embed Snippet's loader (embed.js) runs on every host page: 2 KB, 1 KB gzipped at most.
         run: pnpm check-embed-size
+      - name: Palette ratchet
+        # Tailwind palette classes in the Studio may only go down (spec 11): fails when the count
+        # rises above palette-baseline.json, and prints the new baseline when it falls.
+        run: pnpm palette-ratchet
 
   api-client-drift:
     runs-on: ubuntu-latest

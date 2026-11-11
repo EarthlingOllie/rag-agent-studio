@@ -34,12 +34,13 @@ test.describe("Version comparison", () => {
     expect(
       (await page.request.patch(`${agentApi}/operational-settings`, { data: { allowed_origins: [new URL(HOST_URL).origin] } })).status(),
     ).toBe(200);
-    const publish = async (system_prompt: string, note: string) => {
-      expect((await page.request.put(`${agentApi}/draft`, { data: { behaviour: { system_prompt } } })).ok()).toBe(true);
+    const publish = async (system_prompt: string, mode: "automatic" | "agentic", note: string) => {
+      expect((await page.request.put(`${agentApi}/draft`, { data: { behaviour: { system_prompt }, retrieval: { mode } } })).ok()).toBe(true);
       expect((await page.request.post(`${agentApi}/versions`, { data: { note } })).status()).toBe(201);
     };
 
-    // A Visitor chats with v1 and finds it helpful; then with v2 (a new system prompt), which they don't.
+    // A Visitor chats with v1 (Automatic) and finds it helpful; then with v2 (a new system prompt, Agentic: the fake
+    // chat model makes one Knowledge Search per reply), which they don't.
     const visitorChat = async (question: string, button: "Helpful" | "Not helpful") => {
       const visitor = await browser.newContext();
       const host = await visitor.newPage();
@@ -55,9 +56,9 @@ test.describe("Version comparison", () => {
       await expect(thumbs.getByRole("button", { name: button, exact: true })).toHaveAttribute("aria-pressed", "true");
       await visitor.close();
     };
-    await publish("Answer from the handbook.", "First release");
+    await publish("Answer from the handbook.", "automatic", "First release");
     await visitorChat("How many days of annual leave do I get?", "Helpful");
-    await publish("Answer in one sentence.", "Shorter answers");
+    await publish("Answer in one sentence.", "agentic", "Shorter answers");
     await visitorChat("Can I carry leave over?", "Not helpful");
 
     // The Editor compares the two Versions (today's partial day included).
@@ -70,9 +71,11 @@ test.describe("Version comparison", () => {
     await expect(row("Thumbs-up rate (small sample)").getByRole("cell")).toHaveText(["100%", "0%", "−100 pts", "v1"]);
     await expect(row("Conversations (small sample)").getByRole("cell")).toHaveText(["1", "1", "Same", ""]);
     await expect(row("Votes (small sample)").getByRole("cell")).toHaveText(["1", "1", "Same", ""]);
+    await expect(row("Mean searches per reply (small sample)").getByRole("cell")).toHaveText(["0.00", "1.00", "+1.00", ""]);
     const changes = page.getByRole("region", { name: "Configuration changes" });
+    await expect(changes.getByText("Retrieval Mode: Automatic → Agentic")).toBeVisible();
     await expect(changes.getByText("Behaviour › System prompt")).toBeVisible();
-    await expect(changes.getByRole("list", { name: "Behaviour › System prompt changes" })).toContainText("Answer in one sentence.");
+    await expect(changes.getByRole("table", { name: "Behaviour › System prompt changes" })).toContainText("Answer in one sentence.");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // A date range with no Visitor use leaves nothing to compare.
@@ -92,5 +95,6 @@ test.describe("Version comparison", () => {
     expect(lines[0]).toBe("Metric,v1,v2,Difference (v2 - v1),Better");
     expect(lines).toContain("Thumbs-up rate,1.0000,0.0000,-1.0000,v1");
     expect(lines).toContain("Conversations,1,1,0,");
+    expect(lines).toContain("Mean searches per reply,0.00,1.00,1.00,");
   });
 });

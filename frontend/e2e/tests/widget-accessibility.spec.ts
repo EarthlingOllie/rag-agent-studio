@@ -8,8 +8,9 @@ import { HOST_URL } from "../fixtures/env";
 // chat model. No real provider is called and no real key is used.
 const CHAT_KEY = "sk-ant-e2e-test-only-not-a-real-key-e607";
 
-/** A published Agent with a greeting and starter questions, allowed on the demo host page, in
- * an Organisation whose Theme (the default colours) follows the Visitor's light or dark mode. */
+/** A published Agentic Agent (it searches before it answers) with a greeting and starter
+ * questions, allowed on the demo host page, in an Organisation whose Theme (the default colours)
+ * follows the Visitor's light or dark mode. */
 async function publishedAgent(request: APIRequestContext): Promise<string> {
   const me = (await (await request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
   const organisation = `/api/organisations/${me.organisations[0]?.id ?? ""}`;
@@ -33,6 +34,7 @@ async function publishedAgent(request: APIRequestContext): Promise<string> {
         greeting: "Hi! Ask me about leave, pay or benefits.",
         starter_questions: ["How much leave do I get?", "When is payday?"],
       },
+      retrieval: { mode: "agentic" },
     },
   });
   expect(draft.status()).toBe(200);
@@ -60,8 +62,61 @@ async function panelAnimation(host: Page): Promise<string> {
   return frame.evaluate(() => getComputedStyle(document.querySelector(".panel") as HTMLElement).animationName);
 }
 
+/**
+ * Holds each widget reply after its first `search` event until `releaseAnswer()` is called in the
+ * widget's frame, so the searching status stays on screen long enough to check. The stream is
+ * the API's own, except that the first `search` is preceded by text and its `retract` event, as
+ * when a model writes before it searches (the compose stack's fake model never does): the
+ * retracted text must give way to the searching status and never be announced (ticket 13-10).
+ */
+function holdAfterSearch() {
+  if (!location.pathname.startsWith("/widget/a/")) return;
+  const held: (() => void)[] = [];
+  Object.assign(window, {
+    releaseAnswer: () => {
+      for (const release of held.splice(0)) release();
+    },
+  });
+  const realFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await realFetch(input, init);
+    const url = input instanceof Request ? input.url : String(input);
+    if (!url.endsWith("/messages") || init?.method !== "POST" || !response.body) return response;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    let holding = true;
+    const body = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        const { value, done } = await reader.read();
+        if (done) {
+          controller.close();
+          return;
+        }
+        const text = decoder.decode(value, { stream: true });
+        const at = holding ? text.indexOf("event: search") : -1;
+        if (at === -1) {
+          controller.enqueue(value);
+          return;
+        }
+        // Up to the end of the first `search` event now, after the retracted text; the rest
+        // once released.
+        holding = false;
+        const close = text.indexOf("\n\n", at);
+        const end = close === -1 ? text.length : close + 2;
+        const retracted = `event: token\ndata: ${JSON.stringify({ text: "Let me look that up for you first. " })}\n\nevent: retract\ndata: {}\n\n`;
+        controller.enqueue(encoder.encode(text.slice(0, at) + retracted + text.slice(at, end)));
+        await new Promise<void>((release) => held.push(release));
+        if (end < text.length) controller.enqueue(encoder.encode(text.slice(end)));
+      },
+    });
+    return new Response(body, { status: response.status, headers: response.headers });
+  };
+}
+
 async function visitor(browser: Browser, colorScheme: "light" | "dark", reducedMotion: "reduce" | "no-preference") {
   const context = await browser.newContext({ colorScheme, reducedMotion });
+  await context.addInitScript(holdAfterSearch);
   const host = await context.newPage();
   return { context, host };
 }
@@ -111,16 +166,30 @@ for (const [colorScheme, reducedMotion, animation] of [
     // Open with the greeting and starter questions on screen.
     expect(await violations(host)).toEqual([]);
 
-    // A question typed and sent from the keyboard; the reply is announced once it is complete.
+    // A question typed and sent from the keyboard. Text streamed before the Search is retracted;
+    // while the Agent searches the reply shows the searching status, announced once; the status
+    // shows, axe finds nothing either.
     await message.focus();
     await host.keyboard.type("How much leave do I get?");
     await host.keyboard.press("Enter");
     const reply = chat.getByRole("log", { name: "Conversation" }).getByRole("listitem", { name: "Hana from HR", exact: true });
+    const announcements = chat.getByRole("status", { name: "Announcements" });
+    await expect(reply).toContainText("Searching the knowledge base…", { timeout: 15_000 });
+    await expect(announcements).toHaveText("Searching the knowledge base…");
+    await expect(reply).not.toContainText("look that up");
+    expect(await violations(host)).toEqual([]);
+
+    // The answer replaces the status, and is announced once it is complete.
+    await host.frameLocator('iframe[title="Chat"]').locator("body").evaluate(() => {
+      (window as unknown as { releaseAnswer: () => void }).releaseAnswer();
+    });
     await expect(chat.getByRole("button", { name: "Send" })).toBeEnabled({ timeout: 15_000 });
+    await expect(reply).not.toContainText("Searching the knowledge base…");
     // The reply's text only: the bubble also holds its Message Feedback thumbs (07-02).
     const answer = (await reply.locator("p").first().innerText()).trim();
     expect(answer).not.toBe("");
-    await expect(chat.getByRole("status", { name: "Announcements" })).toHaveText(`Hana from HR: ${answer}`);
+    await expect(announcements).toHaveText(`Hana from HR: ${answer}`);
+    expect(answer).not.toContain("look that up");
 
     // Open with a Conversation in it.
     expect(await violations(host)).toEqual([]);

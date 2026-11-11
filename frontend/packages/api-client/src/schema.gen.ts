@@ -3216,6 +3216,8 @@ export interface components {
             /** Model Name */
             model_name: string;
             provider: components["schemas"]["Provider"];
+            /** Supports Tools */
+            supports_tools: boolean;
             /**
              * Updated At
              * Format: date-time
@@ -4051,7 +4053,7 @@ export interface components {
              * Unit
              * @enum {string}
              */
-            unit: "count" | "tokens" | "usd" | "rate" | "rating" | "ms";
+            unit: "count" | "tokens" | "usd" | "rate" | "rating" | "ms" | "searches";
         };
         /** MfaChallengeResponse */
         MfaChallengeResponse: {
@@ -4093,6 +4095,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Supports Tools */
+            supports_tools: boolean;
         };
         /** ModelPricesOut */
         ModelPricesOut: {
@@ -4497,7 +4501,14 @@ export interface components {
              * @default 0
              */
             min_score: number;
+            /** @default agentic */
+            mode: components["schemas"]["RetrievalMode"];
             reranker?: components["schemas"]["ModelChoice"] | null;
+            /**
+             * Search Limit
+             * @default 3
+             */
+            search_limit: number;
             /** Tag Ids */
             tag_ids?: string[];
             /**
@@ -4523,7 +4534,14 @@ export interface components {
              * @default 0
              */
             min_score: number;
+            /** @default agentic */
+            mode: components["schemas"]["RetrievalMode"];
             reranker: components["schemas"]["ModelChoice"] | null;
+            /**
+             * Search Limit
+             * @default 3
+             */
+            search_limit: number;
             /** Tag Ids */
             tag_ids: string[];
             /**
@@ -4532,6 +4550,14 @@ export interface components {
              */
             top_k: number;
         };
+        /**
+         * RetrievalMode
+         * @description How an Agent gets Chunks for a reply (ADR-0015). Automatic runs one Hybrid search on the
+         *     Visitor input before the model is asked; Agentic gives the model Knowledge Search, its one
+         *     tool, and lets it decide whether, how often and with what query to search.
+         * @enum {string}
+         */
+        RetrievalMode: "automatic" | "agentic";
         /**
          * Role
          * @enum {string}
@@ -4573,6 +4599,31 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /**
+         * SearchOut
+         * @description One Knowledge Search the answer made (Agentic Retrieval Mode), with the Chunks it found,
+         *     given to the model or left out, in Trace order. A Chunk's ``rank`` is the number in its
+         *     Chunk label, which continues across the reply's Searches.
+         */
+        SearchOut: {
+            /** Chunks */
+            chunks: components["schemas"]["TracedChunkOut"][];
+            /** Latency Ms */
+            latency_ms: number;
+            /** Limit Refused */
+            limit_refused: boolean;
+            /** Order */
+            order: number;
+            /** Query */
+            query: string;
+        };
+        /** SearchesOut */
+        SearchesOut: {
+            /** Mean Per Reply */
+            mean_per_reply: number | null;
+            /** Total */
+            total: number;
         };
         /** SendMessageRequest */
         SendMessageRequest: {
@@ -4950,6 +5001,8 @@ export interface components {
             agent_version_id: string | null;
             /** Agent Version Number */
             agent_version_number: number | null;
+            /** Automatic Fallback */
+            automatic_fallback: boolean;
             /** Chunks */
             chunks: components["schemas"]["TracedChunkOut"][];
             /** Config Source */
@@ -4983,6 +5036,10 @@ export interface components {
             model_provider: string | null;
             /** Output Tokens */
             output_tokens: number | null;
+            /** Search Count */
+            search_count: number;
+            /** Searches */
+            searches: components["schemas"]["SearchOut"][];
         };
         /** TracedChunkOut */
         TracedChunkOut: {
@@ -5014,6 +5071,8 @@ export interface components {
         "UiText-Input": {
             /** Rate Conversation */
             rate_conversation?: string | null;
+            /** Searching Status */
+            searching_status?: string | null;
             /** Send Button */
             send_button?: string | null;
             /** Unavailable Message */
@@ -5026,6 +5085,8 @@ export interface components {
         "UiText-Output": {
             /** Rate Conversation */
             rate_conversation: string | null;
+            /** Searching Status */
+            searching_status: string | null;
             /** Send Button */
             send_button: string | null;
             /** Unavailable Message */
@@ -5132,6 +5193,8 @@ export interface components {
             /** Number */
             number: number;
             rating: components["schemas"]["RatingOut"];
+            retrieval_mode: components["schemas"]["RetrievalMode"];
+            searches: components["schemas"]["SearchesOut"];
             thumbs_up: components["schemas"]["ThumbsUpOut"];
             tokens: components["schemas"]["TokensOut"];
             /**
@@ -8724,7 +8787,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
+            /** @description Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) as each Knowledge Search starts, preceded by a `retract` event (no data) when text the model streamed before the Search must be cleared from the answer; `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11927,7 +11990,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
+            /** @description Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise, for an Agentic Agent, a `search` event (no data) as each Knowledge Search starts, preceded by a `retract` event (no data) when the answer text streamed so far must be cleared, then `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential). */
             200: {
                 headers: {
                     [name: string]: unknown;

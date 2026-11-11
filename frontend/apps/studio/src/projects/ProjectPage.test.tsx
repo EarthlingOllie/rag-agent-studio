@@ -1,28 +1,29 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
+import { fakeAgentsApi, hrHelper } from "../test/agents";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeProjectsApi, hrProject, NAME_MISMATCH, oldProject, PROJECT_ARCHIVED } from "../test/projects";
+import { currentSection, hasMenu, openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
-const projectPage = (projectId: string) => `/organisations/${organisationId}/projects/${projectId}`;
+const projectPage = (projectId: string, section = "") => `/organisations/${organisationId}/projects/${projectId}${section}`;
 const editorSession: Session = {
   ...adaSession,
   organisations: adaSession.organisations.map((organisation) => ({ ...organisation, role: "editor" as const })),
 };
 
-test("a Project page has a tab for each area, each saying what it holds while it is empty", async () => {
+test("a Project page has a section for each area, each saying what it holds while it is empty", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));
 
   expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
   expect(screen.getByText("Policies for the HR Agent")).toBeInTheDocument();
-  const tabs = screen.getByRole("navigation", { name: "Project" });
-  expect(within(tabs).getAllByRole("link").map((link) => link.textContent)).toEqual([
+  expect(await sectionNames("Project sections")).toEqual([
     "Documents",
     "Instructions",
     "Agents",
@@ -30,22 +31,22 @@ test("a Project page has a tab for each area, each saying what it holds while it
     "Analytics",
     "Settings",
   ]);
-  // Documents is the first tab.
+  // Documents is the first section.
   expect(screen.getByRole("heading", { level: 2, name: "Documents" })).toBeInTheDocument();
-  expect(within(tabs).getByRole("link", { name: "Documents" })).toHaveAttribute("aria-current", "page");
+  expect(await currentSection("Project sections")).toBe("Documents");
 
   const placeholders: [string, RegExp][] = [
     ["Instructions", /the shared rules every Agent in this Project follows/],
     ["Agents", /No Agents yet/],
     ["Conversations", /No Conversations yet/],
     ["Analytics", /No Agents to measure yet/],
-    ["Documents", /No Documents yet\. Upload files/],
+    ["Documents", /Upload files to build this Project's Knowledge Base/],
   ];
   for (const [tab, placeholder] of placeholders) {
-    await userEvent.click(within(tabs).getByRole("link", { name: tab }));
+    await openSection("Project sections", tab);
     expect(await screen.findByRole("heading", { level: 2, name: tab })).toBeInTheDocument();
     expect(screen.getByText(placeholder)).toBeInTheDocument();
-    expect(within(tabs).getByRole("link", { name: tab })).toHaveAttribute("aria-current", "page");
+    expect(await currentSection("Project sections")).toBe(tab);
   }
 });
 
@@ -57,16 +58,26 @@ test("opening a Project from the list shows its page", async () => {
   await userEvent.click(await screen.findByRole("link", { name: "HR handbook" }));
 
   expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
-  expect(screen.getByRole("navigation", { name: "Project" })).toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(true);
 });
 
-test("an Editor renames a Project and edits its description", async () => {
+/** Opens the Project details dialog from the header and returns it. */
+async function openDetails() {
+  await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
+  return screen.getByRole("dialog", { name: "Project details" });
+}
+
+test("an Editor renames a Project and edits its description in a dialog, and a toast confirms it", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   const { requests } = fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));
-  await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
-  const form = screen.getByRole("form", { name: "Project details" });
+  const dialog = await openDetails();
+  const form = within(dialog).getByRole("form", { name: "Project details" });
   expect(within(form).getByLabelText("Name")).toHaveValue("HR handbook");
+  expect(within(form).getByLabelText("Name")).toHaveFocus();
+  // The header doesn't rearrange: Edit details stays put and nothing opens inline under it.
+  expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
+  expect(screen.getByRole("main")).not.toContainElement(form);
 
   await userEvent.clear(within(form).getByLabelText("Name"));
   await userEvent.type(within(form).getByLabelText("Name"), "People team");
@@ -76,13 +87,36 @@ test("an Editor renames a Project and edits its description", async () => {
 
   expect(await screen.findByRole("heading", { level: 1, name: "People team" })).toBeInTheDocument();
   expect(screen.getByText("Policies and benefits")).toBeInTheDocument();
-  expect(screen.queryByRole("form", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.getByText("Project details saved")).toBeInTheDocument();
   expect(requests).toEqual([
     { route: "update", projectId: hrProject.id, body: { name: "People team", description: "Policies and benefits" } },
   ]);
 });
 
-test("editing can be cancelled, and a failed save says why", async () => {
+test("Cancel and Escape close the details dialog without saving, and focus returns to Edit details", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const { requests } = fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+
+  let dialog = await openDetails();
+  await userEvent.type(within(dialog).getByLabelText("Name"), " draft");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Edit details" })).toHaveFocus();
+
+  dialog = await openDetails();
+  // Reopened, it shows the saved values again, not what was typed before Cancel.
+  expect(within(dialog).getByLabelText("Name")).toHaveValue("HR handbook");
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog", { name: "Project details" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Edit details" })).toHaveFocus();
+
+  expect(screen.getByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
+  expect(requests).toEqual([]);
+});
+
+test("a refused save says why inside the dialog and keeps what was typed", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   server.use(
@@ -92,48 +126,87 @@ test("editing can be cancelled, and a failed save says why", async () => {
     }),
   );
   renderStudio(projectPage(hrProject.id));
-  await userEvent.click(await screen.findByRole("button", { name: "Edit details" }));
-  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(screen.queryByRole("form", { name: "Project details" })).not.toBeInTheDocument();
+  const dialog = await openDetails();
+  await userEvent.clear(within(dialog).getByLabelText("Name"));
+  await userEvent.type(within(dialog).getByLabelText("Name"), "People team");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
-  await userEvent.click(screen.getByRole("button", { name: "Edit details" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-  expect(await screen.findByRole("button", { name: "Saving…" })).toBeDisabled();
-  expect(await screen.findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
+  expect(await within(dialog).findByRole("button", { name: "Saving…" })).toBeDisabled();
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
+  expect(within(dialog).getByLabelText("Name")).toHaveValue("People team");
   expect(screen.getByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
 });
 
-test("archiving asks first, then shows the Project as archived; Owners restore it", async () => {
+/** The page header's ⋯ menu: what it offers, then closed again. */
+async function projectActions(): Promise<string[]> {
+  await userEvent.click(await screen.findByRole("button", { name: "More Project actions" }));
+  const items = within(screen.getByRole("menu", { name: "Project actions" }))
+    .getAllByRole("menuitem")
+    .map((item) => item.textContent);
+  await userEvent.keyboard("{Escape}");
+  return items;
+}
+
+async function chooseProjectAction(action: string) {
+  await userEvent.click(await screen.findByRole("button", { name: "More Project actions" }));
+  await userEvent.click(within(screen.getByRole("menu", { name: "Project actions" })).getByRole("menuitem", { name: action }));
+}
+
+test("the Project frame has no tab row and no All Projects link: the sidebar does both", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(hrProject.id));
+  await screen.findByRole("heading", { level: 1, name: "HR handbook" });
+
+  expect(screen.queryByRole("navigation", { name: "Project" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "All Projects" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
+});
+
+test("archiving is in the ⋯ menu and asks first, then shows the Project as archived; Owners restore it", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   const { requests } = fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));
 
-  await userEvent.click(await screen.findByRole("button", { name: "Archive" }));
-  expect(screen.getByText(/HR handbook will be hidden from the Projects list and stop serving/)).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  // An active Project offers no permanent deletion.
+  expect(await projectActions()).toEqual(["Archive"]);
+  await chooseProjectAction("Archive");
+  const dialog = screen.getByRole("alertdialog", { name: "Archive HR handbook?" });
+  expect(dialog).toHaveAccessibleDescription(
+    "HR handbook will be hidden from the Projects list and stop serving. An Owner can restore it.",
+  );
+  expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(requests).toEqual([]);
-  await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+  await chooseProjectAction("Archive");
   await userEvent.click(screen.getByRole("button", { name: "Yes, archive HR handbook" }));
 
-  const notice = await screen.findByRole("status");
+  // The Documents section's toasts have their own status region, so the notice is found by what it says.
+  const notice = await waitFor(() => {
+    const found = screen.getAllByRole("status").find((status) => status.textContent.includes("This Project is archived."));
+    expect(found).toBeDefined();
+    return found as HTMLElement;
+  });
   expect(notice).toHaveTextContent("This Project is archived. It is hidden from the Projects list and doesn't serve.");
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Archive" })).not.toBeInTheDocument();
+  expect(await projectActions()).toEqual(["Delete permanently"]);
 
   await userEvent.click(within(notice).getByRole("button", { name: "Restore HR handbook" }));
 
-  expect(await screen.findByRole("button", { name: "Archive" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Edit details" })).toBeInTheDocument();
   expect(screen.queryByText(/This Project is archived/)).not.toBeInTheDocument();
+  expect(await projectActions()).toEqual(["Archive"]);
   expect(requests).toEqual([
     { route: "archive", projectId: hrProject.id },
     { route: "restore", projectId: hrProject.id },
   ]);
-  await userEvent.click(screen.getByRole("link", { name: "All Projects" }));
+  await openSection("Projects", "All Projects");
   expect(await screen.findByRole("link", { name: "HR handbook" })).toBeInTheDocument();
 });
 
-test("an Editor sees an archived Project but can't restore it", async () => {
+test("an Editor sees an archived Project but can't restore or delete it", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();
   renderStudio(projectPage(oldProject.id));
@@ -142,7 +215,9 @@ test("an Editor sees an archived Project but can't restore it", async () => {
 
   expect(notice).toHaveTextContent("Only Owners can restore it.");
   expect(within(notice).queryByRole("button")).not.toBeInTheDocument();
-  expect(screen.getByRole("navigation", { name: "Project" })).toBeInTheDocument();
+  // Nothing is left for the ⋯ menu to offer.
+  expect(screen.queryByRole("button", { name: "More Project actions" })).not.toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(true);
 });
 
 test("a refused archive or restore shows the API's reason", async () => {
@@ -157,33 +232,36 @@ test("a refused archive or restore shows the API's reason", async () => {
     ),
   );
   renderStudio(projectPage(hrProject.id));
-  await userEvent.click(await screen.findByRole("button", { name: "Archive" }));
+  await chooseProjectAction("Archive");
   await userEvent.click(screen.getByRole("button", { name: "Yes, archive HR handbook" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
-  expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(await projectActions()).toEqual(["Archive"]);
+  // Asking again starts without the old error.
+  await chooseProjectAction("Archive");
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-  await userEvent.click(screen.getByRole("link", { name: "All Projects" }));
-  await userEvent.click(await screen.findByRole("link", { name: "HR handbook" }));
-  await screen.findByRole("heading", { level: 1, name: "HR handbook" });
   renderStudio(projectPage(oldProject.id));
   await userEvent.click(await screen.findByRole("button", { name: "Restore Old launch" }));
   expect(await screen.findByText("This Project isn't archived.")).toBeInTheDocument();
 });
 
-test("an Owner permanently deletes an archived Project after typing its name", async () => {
+test("an Owner permanently deletes an archived Project from the ⋯ menu after typing its name", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   const { requests } = fakeProjectsApi();
   renderStudio(projectPage(oldProject.id));
 
-  const notice = (await screen.findByText(/This Project is archived/)).closest("[role=status]") as HTMLElement;
-  await userEvent.click(within(notice).getByRole("button", { name: "Delete permanently" }));
-  const form = screen.getByRole("form", { name: "Delete Old launch permanently" });
-  expect(form).toHaveTextContent(
+  await screen.findByText(/This Project is archived/);
+  await chooseProjectAction("Delete permanently");
+  const dialog = screen.getByRole("alertdialog", { name: "Delete Old launch permanently" });
+  expect(dialog).toHaveAccessibleDescription(
     "Deleting Old launch removes its Documents, stored files, Agents and Conversations for good. This can't be undone.",
   );
-  const confirm = within(form).getByRole("button", { name: "Delete Old launch permanently" });
-  const typed = within(form).getByLabelText("Type Old launch to confirm");
+  const confirm = within(dialog).getByRole("button", { name: "Delete Old launch permanently" });
+  const typed = within(dialog).getByLabelText("Type Old launch to confirm");
+  expect(typed).toHaveFocus();
   // Nothing happens until the name is typed exactly.
   expect(confirm).toBeDisabled();
   await userEvent.type(typed, "old launch");
@@ -196,10 +274,25 @@ test("an Owner permanently deletes an archived Project after typing its name", a
 
   // Back on the Projects list, where the Project is gone, archived or not.
   expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  // A success notice says so, above the list.
   expect(await screen.findByText("Old launch is being deleted permanently.")).toHaveAttribute("role", "status");
   expect(requests).toEqual([{ route: "delete", projectId: oldProject.id, body: { confirm_name: "Old launch" } }]);
-  await userEvent.click(screen.getByRole("button", { name: "Show archived Projects" }));
-  expect(await screen.findByText("No archived Projects.")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("radio", { name: "Archived" }));
+  expect(await screen.findByRole("heading", { name: "No archived Projects" })).toBeInTheDocument();
+});
+
+test("typing the name and pressing Enter deletes, too", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const { requests } = fakeProjectsApi();
+  renderStudio(projectPage(oldProject.id));
+
+  await chooseProjectAction("Delete permanently");
+  await userEvent.type(screen.getByLabelText("Type Old launch to confirm"), "Old{Enter}");
+  expect(requests).toEqual([]);
+  await userEvent.type(screen.getByLabelText("Type Old launch to confirm"), " launch{Enter}");
+
+  expect(await screen.findByRole("heading", { level: 1, name: "Projects" })).toBeInTheDocument();
+  expect(requests).toEqual([{ route: "delete", projectId: oldProject.id, body: { confirm_name: "Old launch" } }]);
 });
 
 test("deleting can be cancelled, and a refused deletion says why", async () => {
@@ -207,10 +300,10 @@ test("deleting can be cancelled, and a refused deletion says why", async () => {
   const { requests } = fakeProjectsApi();
   renderStudio(projectPage(oldProject.id));
 
-  await userEvent.click(await screen.findByRole("button", { name: "Delete permanently" }));
+  await chooseProjectAction("Delete permanently");
   await userEvent.type(screen.getByLabelText("Type Old launch to confirm"), "Old");
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(screen.queryByRole("form", { name: "Delete Old launch permanently" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog", { name: "Delete Old launch permanently" })).not.toBeInTheDocument();
   expect(requests).toEqual([]);
 
   server.use(
@@ -218,35 +311,38 @@ test("deleting can be cancelled, and a refused deletion says why", async () => {
       HttpResponse.json({ detail: NAME_MISMATCH }, { status: 400 }),
     ),
   );
-  // The form starts empty again.
-  await userEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
+  // The dialog starts empty again.
+  await chooseProjectAction("Delete permanently");
   const typed = screen.getByLabelText("Type Old launch to confirm");
   expect(typed).toHaveValue("");
   await userEvent.type(typed, "Old launch");
   await userEvent.click(screen.getByRole("button", { name: "Delete Old launch permanently" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(NAME_MISMATCH);
+  const dialog = screen.getByRole("alertdialog", { name: "Delete Old launch permanently" });
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(NAME_MISMATCH);
   expect(screen.getByRole("heading", { level: 1, name: "Old launch" })).toBeInTheDocument();
 });
 
-test("only Owners are offered permanent deletion", async () => {
-  fakeAuthApi({ signedInAs: editorSession });
-  fakeProjectsApi();
-  renderStudio(projectPage(oldProject.id));
-
-  await screen.findByText(/This Project is archived/);
-
-  expect(screen.queryByRole("button", { name: "Delete permanently" })).not.toBeInTheDocument();
-});
-
-test("an active Project offers no permanent deletion", async () => {
+test("the Embedding Model is set in the Project's Settings section, not on every page", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   renderStudio(projectPage(hrProject.id));
+  await screen.findByRole("heading", { level: 2, name: "Documents" });
 
-  await screen.findByRole("button", { name: "Archive" });
+  expect(screen.queryByRole("region", { name: "Embedding Model" })).not.toBeInTheDocument();
+  await openSection("Project sections", "Settings");
 
-  expect(screen.queryByRole("button", { name: "Delete permanently" })).not.toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "Embedding Model" })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "OCR" })).toBeInTheDocument();
+});
+
+test("an archived Project's Settings section has no Embedding Model to change", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(projectPage(oldProject.id, "/settings"));
+
+  expect(await screen.findByRole("region", { name: "OCR" })).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Embedding Model" })).not.toBeInTheDocument();
 });
 
 test("an unknown Project is not found", async () => {
@@ -255,7 +351,8 @@ test("an unknown Project is not found", async () => {
   renderStudio(projectPage("00000000-0000-4000-8000-000000000000"));
 
   expect(await screen.findByRole("heading", { level: 1, name: "Project not found" })).toBeInTheDocument();
-  expect(screen.queryByRole("navigation", { name: "Project" })).not.toBeInTheDocument();
+  expect(screen.getByText("It doesn't exist in this Organisation.")).toBeInTheDocument();
+  expect(hasMenu("Project sections")).toBe(false);
 });
 
 test("a Project page shows its loading and error states", async () => {
@@ -268,6 +365,39 @@ test("a Project page shows its loading and error states", async () => {
   );
   renderStudio(projectPage(hrProject.id));
 
-  expect(await screen.findByText("Loading the Project…")).toBeInTheDocument();
-  expect(await screen.findByText("The Project could not be loaded. Try again shortly.")).toBeInTheDocument();
+  expect(await screen.findByRole("status", { name: "Loading the Project" })).toHaveAttribute("aria-busy", "true");
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("The Project could not be loaded");
+  expect(alert).toHaveTextContent("Try again shortly.");
+  expect(screen.queryByRole("status", { name: "Loading the Project" })).not.toBeInTheDocument();
+});
+
+test("an Agent's pages leave out the Project's header, so the Agent's name is the one h1", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [hrHelper] });
+  renderStudio(projectPage(hrProject.id, `/agents/${hrHelper.id}`));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  expect(screen.queryByRole("heading", { name: "HR handbook" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Policies for the HR Agent")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Edit details" })).not.toBeInTheDocument();
+
+  // Back on the Agents list, the Project's header returns.
+  await openSection("Project sections", "Agents");
+  expect(await screen.findByRole("heading", { level: 1, name: "HR handbook" })).toBeInTheDocument();
+});
+
+test("an archived Project's Agent still says the Project is archived, without the Project's header", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  const archivedHelper = { ...hrHelper, project_id: oldProject.id };
+  fakeAgentsApi({ agents: [archivedHelper] });
+  renderStudio(projectPage(oldProject.id, `/agents/${hrHelper.id}`));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  const notice = (await screen.findByText(/This Project is archived/)).closest("[role=status]") as HTMLElement;
+  expect(notice).toHaveTextContent("Only Owners can restore it.");
+  expect(screen.queryByRole("heading", { name: oldProject.name })).not.toBeInTheDocument();
 });

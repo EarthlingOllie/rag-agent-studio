@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent, saveAllowedOrigins } from "../fixtures/agent";
 import { HOST_URL } from "../fixtures/env";
 import { latestEmailTo } from "../fixtures/mailpit";
+import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), so questions reach the model and use tokens. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -33,33 +35,38 @@ test.describe("Token Budget", () => {
     ).toBe(200);
 
     // A live Agent over the handbook.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Thrifty Desk");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Thrifty helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
     const agentPage = page.url();
     const agentApi = agentPage.replace(/^https?:\/\/[^/]+/, "/api");
-    const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    const { public_id: publicId, draft } = (await (await page.request.get(agentApi)).json()) as {
+      public_id: string;
+      draft: { retrieval: Record<string, unknown> };
+    };
+    // Agentic (the editor's control is ticket 13-05): each reply is a Search's model call plus the
+    // answer's, and the budget counts both.
+    const agentic = await page.request.put(`${agentApi}/draft`, { data: { ...draft, retrieval: { ...draft.retrieval, mode: "agentic" } } });
+    expect(agentic.status()).toBe(200);
+    await page.reload();
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     // Operational Settings: the host page's origin, the unavailable text, and a tiny budget.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
-    const origins = embed.getByLabel("Allowed Origins");
-    await expect(origins).toBeEnabled();
-    await origins.fill(new URL(HOST_URL).origin);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("main");
+    await saveAllowedOrigins(page, [new URL(HOST_URL).origin]);
     await embed.getByLabel("Unavailable text").fill(UNAVAILABLE);
     await embed.getByRole("button", { name: "Save unavailable text" }).click();
     await expect(embed.getByText("Saved. Visitors see it from their next message.")).toBeVisible({ timeout: 15_000 });
@@ -88,6 +95,8 @@ test.describe("Token Budget", () => {
     await widget.getByLabel("Message").fill("How many days of annual leave do I get?");
     await widget.getByRole("button", { name: "Send" }).click();
     await expect(log.getByRole("listitem", { name: "Thrifty helper" })).toContainText(ANSWER, { timeout: 15_000 });
+    // The Visitor was told of the Search, but never sent the query the model wrote.
+    await expect.poll(() => bodies[0]?.startsWith("event: search\ndata: {}\n\n")).toBe(true);
     await widget.getByLabel("Message").fill("And how do I book it?");
     await widget.getByRole("button", { name: "Send" }).click();
     await expect(widget.getByRole("alert")).toHaveText(UNAVAILABLE, { timeout: 15_000 });
@@ -103,18 +112,18 @@ test.describe("Token Budget", () => {
 
     // The Studio: the alert badge on the Agent's page and in the Agent list, and the meter full.
     await page.reload();
-    await expect(page.getByRole("heading", { level: 2, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("region", { name: "Agent", exact: true }).getByText("Budget exhausted").first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Thrifty helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("region", { name: "Thrifty helper" }).getByText("Budget spent")).toBeVisible();
     await expect(
       embed.getByText(
         "Today's Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you raise the budget.",
       ),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(embed.getByRole("progressbar", { name: "Tokens used today" })).toHaveAttribute("aria-valuenow", "1");
+    await expect(embed.getByRole("meter", { name: "Tokens used today" })).toHaveAttribute("aria-valuenow", "1");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await page.getByRole("link", { name: "All Agents" }).click();
-    const listed = page.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Thrifty helper" });
-    await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
+    await openSection(page, "Project sections", "Agents");
+    const listed = page.getByRole("table", { name: "Agents" }).getByRole("row").filter({ hasText: "Thrifty helper" });
+    await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
 
     // The Owner got one email about it.
     const email = await latestEmailTo(page.request, member.email);

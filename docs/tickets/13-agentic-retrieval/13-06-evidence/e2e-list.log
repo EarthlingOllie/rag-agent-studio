@@ -1,0 +1,15 @@
+Listing tests:
+  [studio] › tests/agent-config.spec.ts:22:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override
+  [studio] › tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark
+  [studio] › tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version
+  [studio] › tests/playground.spec.ts:14:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in
+  [studio] › tests/playground.spec.ts:155:3 › Agent and Playground › an Agent set to Agentic searches the Knowledge Base, cites what it found and the Trace lists the Search
+  [studio] › tests/token-budget.spec.ts:18:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers
+  [studio] › tests/widget-accessibility.spec.ts:124:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations
+  [studio] › tests/widget-accessibility.spec.ts:124:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations
+  [studio] › tests/widget-accessibility.spec.ts:198:1 › axe finds no AA violations on the inline widget in light and dark mode
+  [studio] › tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so
+  [studio] › tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page
+  [studio] › tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh
+Total: 12 tests in 7 files
+exit 0

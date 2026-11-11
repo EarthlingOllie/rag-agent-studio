@@ -1,6 +1,7 @@
 import { expect, test } from "../fixtures";
 import { newMember, signUp } from "../fixtures/auth";
 import { latestEmailTo, linkPath } from "../fixtures/mailpit";
+import { openSection } from "../fixtures/navigation";
 
 const NEW_PASSWORD = "a new password from the reset link";
 
@@ -30,7 +31,7 @@ test.describe("password reset and change password", () => {
     await page.getByLabel("Email").fill(member.email);
     await page.getByLabel("Password").fill(NEW_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 
     // The link worked once; opening it again is refused.
     await page.goto(resetLink);
@@ -52,7 +53,7 @@ test.describe("password reset and change password", () => {
     expect(signIn.ok()).toBe(true);
 
     await page.goto("/");
-    await page.getByRole("link", { name: "Profile" }).click();
+    await openSection(page, "Account", "Profile");
     await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
     const nameForm = page.getByRole("form", { name: "Your name" });
     await nameForm.getByLabel("Name").fill("Renamed Member");
@@ -87,7 +88,7 @@ test.describe("accessibility", () => {
 
   test("the Profile page has no WCAG 2.2 AA violations", async ({ signedInPage, makeAxeBuilder }) => {
     await signedInPage.goto("/");
-    await signedInPage.getByRole("link", { name: "Profile" }).click();
+    await openSection(signedInPage, "Account", "Profile");
     await expect(signedInPage.getByRole("heading", { name: "Profile" })).toBeVisible();
     const results = await makeAxeBuilder().analyze();
     expect(results.violations).toEqual([]);

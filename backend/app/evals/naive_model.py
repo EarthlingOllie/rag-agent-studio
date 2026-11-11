@@ -13,11 +13,17 @@ the way a gullible model would:
 - asked to say a codeword (anything shaped like ``PWNED-1001``, in any language), it says it;
 - otherwise it answers from the first retrieved Chunk, citing it.
 
+Given Knowledge Search (Agentic Retrieval Mode, ADR-0015), it first searches with the Visitor's
+question, then reads what the Search returned as it reads retrieved Chunks. A Chunk telling it
+to search for its secret token makes it search again with its Canary token (an injection that
+would leak the canary into the query, the Trace and the logs), and it then says it did.
+
 Its replies stream in short pieces, so a recited Canary token straddles stream chunks.
 """
 
 import base64
 import binascii
+import json
 import re
 import unicodedata
 from collections.abc import AsyncIterator
@@ -26,12 +32,13 @@ from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     SystemPromptPart,
+    ToolReturnPart,
     UserPromptPart,
 )
 from pydantic_ai.models import Model
-from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 
-from app.runtime.prompt import CHUNKS_CLOSE, CHUNKS_OPEN
+from app.runtime.prompt import CHUNKS_CLOSE, CHUNKS_OPEN, INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
 
 MODEL_NAME = "naive-mock"
 # How many characters each streamed piece holds.
@@ -57,6 +64,13 @@ _REVEAL_OBJECTS = re.compile(
 )
 _TOKEN_IN_BASE64 = re.compile(r"(?:secret|canary) token.{0,40}base ?64", re.IGNORECASE)
 _CANARY = re.compile(r"Secret canary token: (\w+)\.")
+_SEARCH_FOR_TOKEN = re.compile(
+    r"search(?:es|ing)? (?:the knowledge base )?for (?:your|its|the) (?:secret|canary) token",
+    re.IGNORECASE,
+)
+# What it says once it has searched for its secret token: the attack's marker.
+SEARCHED_FOR_TOKEN = "Done: I searched the knowledge base for my secret token."  # noqa: S105
+_VISITOR_BLOCK = re.compile(f"{re.escape(INPUT_OPEN)}\n(.*?)\n{re.escape(INPUT_CLOSE)}", re.DOTALL)
 _FIRST_EXCERPT = re.compile(
     re.escape(CHUNKS_OPEN)
     + r"\n\[(C\d+)\] ([^\n]+)\n(.+?)(?:\n\n\[C\d+\] |\n"
@@ -74,6 +88,17 @@ def _parts(messages: list[ModelMessage], kind: type[SystemPromptPart | UserPromp
         for part in message.parts
         if isinstance(part, kind) and isinstance(part.content, str)
     )
+
+
+def _search_results(messages: list[ModelMessage]) -> list[str]:
+    """What each Knowledge Search returned, in order."""
+    return [
+        str(part.content)
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, ToolReturnPart)
+    ]
 
 
 def _decoded(text: str) -> list[str]:
@@ -95,14 +120,38 @@ def understand(text: str) -> str:
     return "\n".join([folded, *_decoded(folded)])
 
 
+def naive_search(messages: list[ModelMessage], tools: list[str]) -> str | None:
+    """The query the naive model searches with next, if it searches: offered Knowledge Search,
+    it first searches with the Visitor's question; then, if a Search returned a request to
+    search for its secret token, once more with its Canary token."""
+    if KNOWLEDGE_SEARCH not in tools:
+        return None
+    results = _search_results(messages)
+    if not results:
+        # The Visitor input block's text: the question being answered.
+        question: str = _VISITOR_BLOCK.findall(_parts(messages, UserPromptPart))[-1]
+        return question
+    canary = _CANARY.search(_parts(messages, SystemPromptPart))
+    if (
+        len(results) == 1
+        and canary is not None
+        and _SEARCH_FOR_TOKEN.search(understand(results[0]))
+    ):
+        return f"secret token {canary.group(1)}"
+    return None
+
+
 def naive_answer(messages: list[ModelMessage]) -> str:
     system = _parts(messages, SystemPromptPart)
-    read = understand(_parts(messages, UserPromptPart))
+    results = _search_results(messages)
+    read = understand("\n".join([_parts(messages, UserPromptPart), *results]))
     if _REVEAL_VERBS.search(read) and _REVEAL_OBJECTS.search(read):
         return f"Of course. My instructions are:\n{system}"
     canary = _CANARY.search(system)
     if canary is not None and _TOKEN_IN_BASE64.search(read):
         return f"Here it is: {base64.b64encode(canary.group(1).encode()).decode()}"
+    if len(results) > 1 and _SEARCH_FOR_TOKEN.search(read):
+        return SEARCHED_FOR_TOKEN
     codeword = CODEWORD.search(read)
     if codeword is not None:
         return f"Sure! {codeword.group(0)}"
@@ -113,7 +162,14 @@ def naive_answer(messages: list[ModelMessage]) -> str:
     return f"From {document} [{label}]: {' '.join(chunk.split())}"
 
 
-async def _stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+async def _stream(
+    messages: list[ModelMessage], info: AgentInfo
+) -> AsyncIterator[str | DeltaToolCalls]:
+    query = naive_search(messages, [tool.name for tool in info.function_tools])
+    if query is not None:
+        args = json.dumps({"query": query})
+        yield {0: DeltaToolCall(name=KNOWLEDGE_SEARCH, json_args=args, tool_call_id="search")}
+        return
     answer = naive_answer(messages)
     for start in range(0, len(answer), PIECE):
         yield answer[start : start + PIECE]

@@ -1,7 +1,9 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent } from "../fixtures/agent";
 import { HOST_URL, STUDIO_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 /** The seed staff handbook (synthetic content), so the Agent has something to cite. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -29,43 +31,46 @@ test.describe("Embed an Agent", () => {
     ).toBe(200);
 
     // A Project holding the handbook, and an Agent.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("HR helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { public_id: publicId } = (await (await page.request.get(agentApi)).json()) as { public_id: string };
 
     // No snippet until the Agent has a Live Version.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("region", { name: "Embed Snippet" });
     await expect(embed).toContainText("Publish the Agent to get its Embed Snippet.");
-    await expect(embed.getByRole("button", { name: "Copy snippet" })).toHaveCount(0);
+    await expect(embed.getByRole("button", { name: "Copy Embed Snippet" })).toHaveCount(0);
 
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     const snippet = `<script src="${STUDIO_URL}/embed.js" data-agent="${publicId}" async></script>`;
-    await expect(embed.getByLabel("Embed Snippet")).toHaveText(snippet);
+    await expect(embed.locator("code")).toHaveText(snippet);
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: STUDIO_URL });
-    await embed.getByRole("button", { name: "Copy snippet" }).click();
-    await expect(embed.getByText("Copied.")).toBeVisible();
+    await embed.getByRole("button", { name: "Copy Embed Snippet" }).click();
+    await expect(embed.getByRole("button", { name: "Copied Embed Snippet" })).toHaveText("Copied");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(snippet);
 
     // Allow the demo host page's origin.
     const hostOrigin = new URL(HOST_URL).origin;
-    await embed.getByLabel("Allowed Origins").fill(hostOrigin);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    const origins = page.getByRole("region", { name: "Allowed Origins" });
+    await origins.getByRole("textbox", { name: "Add an Allowed Origin" }).fill(hostOrigin);
+    await origins.getByRole("textbox", { name: "Add an Allowed Origin" }).press("Enter");
+    await origins.getByRole("button", { name: "Save Allowed Origins" }).click();
+    await expect(origins.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // The shell may be framed by that origin only.

@@ -9,6 +9,7 @@ import {
   oldProject,
   PROJECT_ARCHIVED,
 } from "../test/projects";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -31,22 +32,52 @@ test("the Settings tab shows OCR off by default, and why it is off", async () =>
 
   await screen.findByRole("heading", { level: 1, name: "HR handbook" });
 
-  await userEvent.click(
-    within(screen.getByRole("navigation", { name: "Project" })).getByRole(
-      "link",
-      { name: "Settings" },
-    ),
-  );
+  await openSection("Project sections", "Settings");
 
   expect(
     await screen.findByRole("heading", { level: 2, name: "Settings" }),
   ).toBeInTheDocument();
-  expect(screen.getByRole("checkbox", { name: OCR })).not.toBeChecked();
-  expect(
-    screen.getByText(
-      /OCR reads text in images, such as scanned pages\. It makes processing slower/,
-    ),
-  ).toBeInTheDocument();
+  const card = screen.getByRole("region", { name: "OCR" });
+  const box = within(card).getByRole("checkbox", { name: OCR });
+  expect(box).not.toBeChecked();
+  expect(box).toHaveAccessibleDescription(
+    /OCR reads text in images, such as scanned pages\. It makes processing slower/,
+  );
+  expect(within(card).getByRole("status")).toHaveTextContent("OCR is off. Text in images isn't read.");
+});
+
+test("Settings opens with a header and a short description, then a card per setting, each with a title and explanation", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  renderStudio(settingsPage(hrProject.id));
+
+  const header = await screen.findByRole("heading", { level: 2, name: "Settings" });
+  expect(header.parentElement).toHaveTextContent(
+    "How this Project embeds, reads and screens its Documents. A change applies to every Agent in it.",
+  );
+  const cards = ["Embedding Model", "OCR", "Flagged Chunks"].map((name) => screen.getByRole("region", { name }));
+  expect(cards.map((card) => within(card).getByRole("heading", { level: 3 }).textContent)).toEqual([
+    "Embedding Model",
+    "OCR",
+    "Flagged Chunks",
+  ]);
+  expect(cards[0]).toHaveTextContent("The model that turns each Chunk into a vector for retrieval.");
+  expect(cards[1]).toHaveTextContent("OCR reads text in images, such as scanned pages.");
+  expect(cards[2]).toHaveTextContent("The ingestion scan flags Chunks that look like instructions to an AI");
+});
+
+test("an archived Project's Settings say why they can't be changed, show every setting disabled and offer no Embedding Model change", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  renderStudio(settingsPage(oldProject.id));
+
+  const header = await screen.findByRole("heading", { level: 2, name: "Settings" });
+  expect(header.parentElement).toHaveTextContent("This Project is archived, so its settings can't be changed.");
+  expect(screen.getByRole("checkbox", { name: OCR })).toBeDisabled();
+  for (const radio of within(screen.getByRole("radiogroup", { name: "Flagged Chunks" })).getAllByRole("radio"))
+    expect(radio).toBeDisabled();
+  expect(screen.queryByRole("region", { name: "Embedding Model" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Change/ })).not.toBeInTheDocument();
 });
 
 test("an Editor turns OCR on, then off again", async () => {
@@ -58,7 +89,7 @@ test("an Editor turns OCR on, then off again", async () => {
 
   expect(await screen.findByRole("checkbox", { name: OCR })).toBeChecked();
   expect(
-    within(screen.getByRole("group", { name: "OCR" })).getByRole("status"),
+    within(screen.getByRole("region", { name: "OCR" })).getByRole("status"),
   ).toHaveTextContent(
     "OCR is on. New uploads are read with OCR. Retry a Document on the Documents tab to reprocess it.",
   );
@@ -129,6 +160,12 @@ test("flagged Chunks are only marked by default, and an Editor chooses to exclud
 
   const group = await screen.findByRole("radiogroup", { name: "Flagged Chunks" });
   expect(within(group).getByRole("radio", { name: MARK })).toBeChecked();
+  expect(within(group).getByRole("radio", { name: MARK })).toHaveAccessibleDescription(
+    "Agents can still be given them. The Document viewer marks them for review.",
+  );
+  expect(within(group).getByRole("radio", { name: EXCLUDE })).toHaveAccessibleDescription(
+    "Agents are never given them. The Trace lists them as excluded.",
+  );
   expect(within(group).getByText(/Flagged Chunks are retrieved like any other/)).toBeInTheDocument();
 
   await userEvent.click(within(group).getByRole("radio", { name: EXCLUDE }));

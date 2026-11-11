@@ -1,0 +1,23 @@
+$ sh -c cd frontend && PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e:harness (at d5f734f2)
+
+> rag-agent-studio-frontend@ e2e:harness /home/user/wt-12-04/frontend
+> playwright test --project=harness
+
+
+Running 12 tests using 2 workers
+
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (870ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (352ms)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (415ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.9s)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (377ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓   8 [harness] › e2e/harness/navigation.spec.ts:37:3 › navigation helpers › openSection opens a switcher and follows its item (648ms)
+  ✓   6 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.3s)
+  ✓   9 [harness] › e2e/harness/navigation.spec.ts:43:3 › navigation helpers › sectionNames lists a switcher's items, without their hidden number hints, and closes it (603ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (92ms)
+  ✓  11 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (216ms)
+  ✓  12 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (220ms)
+
+  12 passed (6.8s)
+exit 0

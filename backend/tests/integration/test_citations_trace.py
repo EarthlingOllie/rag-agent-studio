@@ -17,9 +17,11 @@ from pydantic_ai.models.function import AgentInfo
 
 from app.conversations.models import Message
 from tests.agents import (
+    AUTOMATIC,
     answer_with,
     ask,
     create_agent,
+    create_automatic_agent,
     parse_sse,
     playground_path,
     save_draft,
@@ -45,12 +47,12 @@ async def cites_first_twice_and_a_missing_label(
 async def two_document_agent(
     app: FastAPI, member: SignedUpMember, owner: SignedUpMember | None = None
 ) -> tuple[str, str]:
-    """A Project with the leave and expenses policies, each one Chunk, and an Agent."""
+    """A Project with the leave and expenses policies, each one Chunk, and an Automatic Agent."""
     await use_default_model(owner or member)
     project_id = await create_project(member)
     await upload(app, member, project_id, "leave.txt", LEAVE.encode())
     await upload(app, member, project_id, "expenses.txt", EXPENSES.encode())
-    agent = await create_agent(member, project_id)
+    agent = await create_automatic_agent(member, project_id)
     return project_id, agent["id"]
 
 
@@ -129,7 +131,7 @@ async def test_the_trace_shows_the_model_usage_and_every_chunk_retrieved(
     editor = await member_factory(owner, "editor")
     project_id = await knowledge_base(app, editor)
     agent_id = (await create_agent(editor, project_id))["id"]
-    await save_draft(editor, project_id, agent_id, {"retrieval": {"min_score": 0.3}})
+    await save_draft(editor, project_id, agent_id, {"retrieval": {**AUTOMATIC, "min_score": 0.3}})
     conversation = await start_conversation(editor, project_id, agent_id)
     response = await ask(editor, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
     (done,) = by_name(parse_sse(response.text), "done")
@@ -188,7 +190,7 @@ async def test_chunks_given_but_not_cited_and_chunks_outside_top_k_are_traced(
     await use_default_model(owner)
     project_id = await knowledge_base(app, owner)
     agent_id = (await create_agent(owner, project_id))["id"]
-    await save_draft(owner, project_id, agent_id, {"retrieval": {"top_k": 2}})
+    await save_draft(owner, project_id, agent_id, {"retrieval": {**AUTOMATIC, "top_k": 2}})
     conversation = await start_conversation(owner, project_id, agent_id)
     response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
     events = parse_sse(response.text)
@@ -213,7 +215,7 @@ async def test_a_fallback_reply_is_traced_with_the_chunks_it_left_out(
     await use_default_model(owner)
     project_id = await knowledge_base(app, owner)
     agent_id = (await create_agent(owner, project_id))["id"]
-    await save_draft(owner, project_id, agent_id, {"retrieval": {"min_score": 0.9}})
+    await save_draft(owner, project_id, agent_id, {"retrieval": {**AUTOMATIC, "min_score": 0.9}})
     conversation = await start_conversation(owner, project_id, agent_id)
     response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
     (done,) = by_name(parse_sse(response.text), "done")

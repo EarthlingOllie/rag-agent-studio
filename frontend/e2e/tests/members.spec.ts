@@ -2,14 +2,15 @@ import type { Browser, Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
 import { type MemberCredentials, newMember } from "../fixtures/auth";
+import { openSection, sectionNames } from "../fixtures/navigation";
 
 const LAST_OWNER = "An Organisation needs at least one Owner. Make someone else an Owner first.";
 
 async function openSettings(page: Page, tab?: "Members") {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+  await openSection(page, "Organisation sections", "Settings");
   if (tab) {
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: tab }).click();
+    await openSection(page, "Organisation settings", tab);
     await expect(page.getByRole("table", { name: "Members" })).toBeVisible();
   }
 }
@@ -22,6 +23,7 @@ async function organisationId(page: Page): Promise<string> {
 /** The Owner invites a new person with a copied link; they create an account in their own browser. */
 async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCredentials): Promise<Page> {
   await openSettings(owner, "Members");
+  await owner.getByRole("button", { name: "Invite someone" }).click();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
   await form.getByLabel("Role").selectOption("Editor");
@@ -33,7 +35,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 
@@ -48,12 +50,12 @@ test.describe("members and roles", () => {
     const editorPage = await inviteNewEditor(page, browser, editor);
     const id = await organisationId(page);
 
-    // The Editor doesn't see Owner-only tabs, and the API refuses them too.
+    // The Editor doesn't see Owner-only settings, and the API refuses them too.
     await openSettings(editorPage);
-    const editorTabs = editorPage.getByRole("navigation", { name: "Organisation settings" });
-    await expect(editorTabs.getByRole("link", { name: "General" })).toBeVisible();
-    await expect(editorTabs.getByRole("link", { name: "Members" })).toHaveCount(0);
-    await expect(editorTabs.getByRole("link", { name: "Audit" })).toHaveCount(0);
+    const editorSections = await sectionNames(editorPage, "Organisation settings");
+    expect(editorSections).toContain("General");
+    expect(editorSections).not.toContain("Members");
+    expect(editorSections).not.toContain("Audit");
     expect((await editorPage.request.get(`/api/organisations/${id}/members`)).status()).toBe(403);
     expect((await editorPage.request.get(`/api/organisations/${id}/audit-events`)).status()).toBe(403);
 
@@ -70,11 +72,12 @@ test.describe("members and roles", () => {
     await expect(page.getByRole("alert")).toContainText(LAST_OWNER);
     await expect(page.getByLabel(`Role for ${member.name}`)).toHaveValue("owner");
 
-    // Promote the Editor: the Owner-only tabs appear for them.
+    // Promote the Editor: the Owner-only settings appear for them.
     await page.getByLabel(`Role for ${editor.name}`).selectOption("Owner");
     await expect(page.getByText(`${editor.name} is now an Owner.`)).toBeVisible();
     await editorPage.reload();
-    await expect(editorTabs.getByRole("link", { name: "Members" })).toBeVisible();
+    await expect(editorPage.getByRole("heading", { name: "Organisation settings" })).toBeVisible();
+    expect(await sectionNames(editorPage, "Organisation settings")).toContain("Members");
     await page.getByLabel(`Role for ${editor.name}`).selectOption("Editor");
     await expect(page.getByText(`${editor.name} is now an Editor.`)).toBeVisible();
 
@@ -88,7 +91,7 @@ test.describe("members and roles", () => {
     await expect(editorPage.getByRole("heading", { name: "Organisation not found" })).toBeVisible();
 
     // Each change is in the Audit tab.
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     const audit = page.getByRole("table", { name: "Audit Events" });
     await expect(audit.getByRole("cell", { name: "member.role_changed" })).toHaveCount(2);
     await expect(audit.getByRole("cell", { name: "member.removed" })).toHaveCount(1);
@@ -109,7 +112,7 @@ test.describe("members and roles", () => {
     await page.getByRole("button", { name: `Yes, leave ${member.organisationName}` }).click();
     await expect(page.getByRole("alert")).toContainText(LAST_OWNER);
 
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     await expect(page.getByRole("table", { name: "Audit Events" }).getByRole("cell", { name: "member.left" })).toHaveCount(1);
     await editorPage.context().close();
   });

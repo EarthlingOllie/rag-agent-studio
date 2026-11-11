@@ -1,0 +1,5 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/accessibility.spec.ts (at fa89983)
+Listing tests:
+  [studio] › tests/accessibility.spec.ts:13:3 › Accessibility › every signed-in page has no WCAG 2.2 AA violations, in the light and the dark Appearance
+Total: 1 test in 1 file
+exit 0

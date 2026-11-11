@@ -1,8 +1,8 @@
 import { MarkdownEditor } from "@studio/ui";
 import { useParams } from "@tanstack/react-router";
-import { type SubmitEvent, useRef, useState } from "react";
+import { type ReactNode, type SubmitEvent, useRef, useState } from "react";
 
-import { FormError } from "../auth/AuthLayout";
+import { button, EmptyState, Notice, notice, Skeleton, surface, text } from "../design";
 import { AgentsBehind, BulkRevertOffer, RolloutDialog } from "./BulkRollout";
 import {
   type DraftInstructions,
@@ -16,9 +16,19 @@ import {
 } from "./instructions";
 import { InstructionsVersions, PublishInstructionsForm } from "./InstructionsVersions";
 import { useProject } from "./projects";
-import { BUTTON, useOrganisationRole } from "./ProjectsPage";
+import { useOrganisationRole } from "./ProjectsPage";
 
-const CONFLICT_BUTTON = "rounded border border-slate-400 bg-white px-3 py-1 text-sm text-slate-900 hover:bg-slate-100";
+/** A panel on the Instructions page, under its own heading. */
+function Panel({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section aria-labelledby={id} className={`flex flex-col gap-4 ${surface.panel}`}>
+      <h3 id={id} className={text.subheading}>
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
 
 function InstructionsForm({
   organisationId,
@@ -64,73 +74,78 @@ function InstructionsForm({
     saveOver(base.current);
   }
 
+  const failure = save.error instanceof StaleInstructionsError ? undefined : instructionsFailure(save.error);
   return (
     <>
-      <form aria-label="Project Instructions" onSubmit={onSubmit} className="space-y-3">
-        <FormError message={save.error instanceof StaleInstructionsError ? undefined : instructionsFailure(save.error)} />
-        {conflict && (
-          <div role="alert" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-            <p>Someone else saved these Instructions while you were editing. Yours aren&apos;t saved. Load theirs, or save yours over them.</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={CONFLICT_BUTTON}
-                onClick={() => {
-                  store(conflict);
-                  onReplaced();
-                }}
-              >
-                Load their changes
-              </button>
-              <button
-                type="button"
-                className={CONFLICT_BUTTON}
-                onClick={() => {
-                  saveOver(conflict.revision);
-                }}
-              >
-                Save mine over theirs
-              </button>
+      <Panel id="instructions-draft-heading" title="Draft">
+        <form aria-label="Project Instructions" onSubmit={onSubmit} className="flex flex-col gap-3">
+          {failure !== undefined && <Notice tone="error">{failure}</Notice>}
+          {conflict && (
+            <div role="alert" className={`flex flex-col gap-2 ${notice.warning}`}>
+              <p>Someone else saved these Instructions while you were editing. Yours aren&apos;t saved. Load theirs, or save yours over them.</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={button.secondary}
+                  onClick={() => {
+                    store(conflict);
+                    onReplaced();
+                  }}
+                >
+                  Load their changes
+                </button>
+                <button
+                  type="button"
+                  className={button.secondary}
+                  onClick={() => {
+                    saveOver(conflict.revision);
+                  }}
+                >
+                  Save mine over theirs
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        <MarkdownEditor
-          label="Project Instructions"
-          defaultValue={draft.markdown}
-          maxLength={20000}
-          disabled={archived}
-          onChange={(changed) => {
-            current.current = changed;
-            save.reset();
-          }}
-        />
-        {archived ? (
-          <p className="text-sm text-slate-700">This Project is archived. Restore the Project to edit its Instructions.</p>
-        ) : (
-          <div className="flex items-center gap-3">
-            <button type="submit" disabled={save.isPending} className={BUTTON}>
-              {save.isPending ? "Saving…" : "Save Instructions"}
-            </button>
-            {save.isSuccess && (
-              <span role="status" className="text-sm text-slate-700">
-                Instructions saved
-              </span>
-            )}
-          </div>
-        )}
-      </form>
+          )}
+          <MarkdownEditor
+            label="Project Instructions"
+            defaultValue={draft.markdown}
+            maxLength={20000}
+            disabled={archived}
+            onChange={(changed) => {
+              current.current = changed;
+              save.reset();
+            }}
+          />
+          {archived ? (
+            <p className={notice.info}>This Project is archived. Restore the Project to edit its Instructions.</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="submit" disabled={save.isPending} className={button.secondary}>
+                {save.isPending ? "Saving…" : "Save Instructions"}
+              </button>
+              {save.isSuccess && (
+                <span role="status" className={text.muted}>
+                  Instructions saved
+                </span>
+              )}
+            </div>
+          )}
+        </form>
+      </Panel>
       {!archived && (
-        <PublishInstructionsForm
-          organisationId={organisationId}
-          projectId={projectId}
-          markdown={() => current.current}
-          baseRevision={() => base.current}
-          onSaved={(revision) => {
-            base.current = revision;
-          }}
-          onStale={setConflict}
-          onPublished={onPublished}
-        />
+        <Panel id="instructions-publish-heading" title="Publish">
+          <PublishInstructionsForm
+            organisationId={organisationId}
+            projectId={projectId}
+            markdown={() => current.current}
+            baseRevision={() => base.current}
+            onSaved={(revision) => {
+              base.current = revision;
+            }}
+            onStale={setConflict}
+            onPublished={onPublished}
+          />
+        </Panel>
       )}
     </>
   );
@@ -154,9 +169,9 @@ export function InstructionsTab() {
 
   let body;
   if (instructions.isError) {
-    body = <p role="alert">The Instructions could not be loaded. Try again shortly.</p>;
+    body = <EmptyState tone="error" title="The Instructions could not be loaded" description="Try again shortly." />;
   } else if (instructions.isPending || !project.data) {
-    body = <p role="status">Loading the Instructions…</p>;
+    body = <Skeleton label="Loading the Instructions" lines={6} />;
   } else {
     body = (
       <InstructionsForm
@@ -176,13 +191,15 @@ export function InstructionsTab() {
   }
 
   return (
-    <section aria-labelledby="tab-heading" className="space-y-3">
-      <h2 id="tab-heading" className="text-lg font-semibold">
-        Instructions
-      </h2>
-      <p className="text-slate-700">
-        Project Instructions are the shared rules every Agent in this Project follows. They come before each Agent's system prompt.
-      </p>
+    <section aria-labelledby="tab-heading" className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <h2 id="tab-heading" className={text.heading}>
+          Instructions
+        </h2>
+        <p className={text.muted}>
+          Project Instructions are the shared rules every Agent in this Project follows. They come before each Agent&apos;s system prompt.
+        </p>
+      </div>
       {body}
       {dialog?.kind === "rollout" && (
         <RolloutDialog organisationId={organisationId} projectId={projectId} version={dialog.version} onClose={close} />
@@ -198,24 +215,26 @@ export function InstructionsTab() {
       )}
       {project.data && (
         <>
-          <h3 className="pt-4 text-base font-semibold">Agents</h3>
-          <AgentsBehind
-            organisationId={organisationId}
-            projectId={projectId}
-            archived={project.data.archived_at !== null}
-            onRollOut={(version) => {
-              setDialog({ kind: "rollout", version });
-            }}
-          />
-          <h3 className="pt-4 text-base font-semibold">Versions</h3>
-          <InstructionsVersions
-            organisationId={organisationId}
-            projectId={projectId}
-            archived={project.data.archived_at !== null}
-            onReverted={(reverted) => {
-              setDialog(reverted.bulk_revert_candidates.length > 0 ? { kind: "revert", reverted } : null);
-            }}
-          />
+          <Panel id="instructions-agents-heading" title="Agents">
+            <AgentsBehind
+              organisationId={organisationId}
+              projectId={projectId}
+              archived={project.data.archived_at !== null}
+              onRollOut={(version) => {
+                setDialog({ kind: "rollout", version });
+              }}
+            />
+          </Panel>
+          <Panel id="instructions-versions-heading" title="Versions">
+            <InstructionsVersions
+              organisationId={organisationId}
+              projectId={projectId}
+              archived={project.data.archived_at !== null}
+              onReverted={(reverted) => {
+                setDialog(reverted.bulk_revert_candidates.length > 0 ? { kind: "revert", reverted } : null);
+              }}
+            />
+          </Panel>
         </>
       )}
     </section>

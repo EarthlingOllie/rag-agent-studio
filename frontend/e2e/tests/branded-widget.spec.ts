@@ -73,9 +73,9 @@ test.describe("Branded widget", () => {
     for (const key of ["updated_at", "logo", "avatar"]) Reflect.deleteProperty(theme, key);
     expect((await page.request.put(`${organisation}/theme`, { data: { ...theme, mode: "auto" } })).status()).toBe(200);
 
-    // The Owner gives this Agent its own primary colour on the Agent page; no publishing.
-    await page.goto(`/organisations/${organisation.split("/").at(-1) ?? ""}/projects/${agent.project_id}/agents/${agent.id}`);
-    const branding = page.getByRole("region", { name: "Widget branding" });
+    // The Owner gives this Agent its own primary colour in its Embed & limits view; no publishing.
+    await page.goto(`/organisations/${organisation.split("/").at(-1) ?? ""}/projects/${agent.project_id}/agents/${agent.id}/embed`);
+    const branding = page.getByRole("region", { name: "Theme override" });
     await branding.getByRole("checkbox", { name: "Override primary" }).check({ timeout: 15_000 });
     await branding.getByLabel("Primary, light").fill("#aa0000");
     await branding.getByLabel("Primary, dark").fill("#ff8888");

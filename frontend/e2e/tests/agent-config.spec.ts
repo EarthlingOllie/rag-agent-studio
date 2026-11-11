@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -43,7 +44,7 @@ test.describe("Full AgentConfig editor", () => {
     const agentId = ((await agent.json()) as { id: string }).id;
     // The Knowledge Base holds the seed handbook, so the Playground has Chunks to answer from.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
@@ -62,7 +63,9 @@ test.describe("Full AgentConfig editor", () => {
     await behaviour.getByLabel("Temperature").fill("0.2");
     await save;
 
-    // Experience and Guardrails.
+    // Experience and Guardrails, folded until opened.
+    await openSettings(page, "Experience");
+    await openSettings(page, "Guardrails");
     const experience = page.getByRole("group", { name: "Experience" });
     save = nextSave(page);
     await experience.getByLabel("Greeting").fill("Hi! Ask me about leave.");
@@ -98,11 +101,49 @@ test.describe("Full AgentConfig editor", () => {
       { kind: "agent", id: agentId, name: "HR helper (model)" },
     ]);
 
+    // Retrieval: a new Agent is Agentic, with its Search limit, which is checked before saving.
+    await openSettings(page, "Retrieval");
+    const retrieval = page.getByRole("group", { name: "Retrieval" });
+    await expect(retrieval.getByRole("radiogroup", { name: "Retrieval mode" })).toHaveAccessibleDescription(/cheaper and predictable/);
+    await expect(retrieval.getByRole("radio", { name: "Agentic" })).toBeChecked();
+    await expect(retrieval.getByLabel("Search limit")).toHaveValue("3");
+    // Automatic hides the Search limit; Agentic brings it back.
+    save = nextSave(page);
+    await retrieval.getByRole("radio", { name: "Automatic" }).click();
+    await save;
+    await expect(retrieval.getByLabel("Search limit")).toHaveCount(0);
+    save = nextSave(page);
+    await retrieval.getByRole("radio", { name: "Agentic" }).click();
+    await save;
+    await retrieval.getByLabel("Search limit").fill("6");
+    await expect(status).toHaveText("Not saved: fix the settings marked below.");
+    await expect(retrieval.getByLabel("Search limit")).toHaveAttribute("aria-invalid", "true");
+    await expect(retrieval.getByText("Enter a whole number from 1 to 5.")).toBeVisible();
+    save = nextSave(page);
+    await retrieval.getByLabel("Search limit").fill("2");
+    await save;
+    await expect(status).toHaveText("All changes saved");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    // Each change of the Retrieval Mode or Search limit is an Audit Event.
+    const audited = await page.request.get(`${organisation}/audit-events`, { params: { action: "agent.retrieval_mode_changed" } });
+    const events = ((await audited.json()) as { items: { before: object; after: object }[] }).items;
+    expect(events.map(({ before, after }) => ({ before, after }))).toEqual([
+      { before: { search_limit: 3 }, after: { search_limit: 2 } },
+      { before: { retrieval_mode: "automatic" }, after: { retrieval_mode: "agentic" } },
+      { before: { retrieval_mode: "agentic" }, after: { retrieval_mode: "automatic" } },
+    ]);
+
     // A reload shows the saved Draft.
     await page.reload();
     await expect(page.getByRole("group", { name: "Behaviour" }).getByLabel("Temperature")).toHaveValue("0.3", { timeout: 15_000 });
     await expect(page.getByRole("group", { name: "Model override" }).getByLabel("Model")).toHaveValue("gpt-4.1-mini");
+    // Experience and Guardrails are folded again on a fresh page.
+    await openSettings(page, "Experience");
+    await openSettings(page, "Guardrails");
     await expect(page.getByRole("group", { name: "Experience" }).getByLabel("Greeting")).toHaveValue("Hi! Ask me about leave.");
     await expect(page.getByLabel("Input Guardrail mode")).toHaveValue("warn");
+    await openSettings(page, "Retrieval");
+    await expect(page.getByRole("radio", { name: "Agentic" })).toBeChecked();
+    await expect(page.getByRole("group", { name: "Retrieval" }).getByLabel("Search limit")).toHaveValue("2");
   });
 });

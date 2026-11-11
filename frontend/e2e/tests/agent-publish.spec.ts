@@ -1,4 +1,6 @@
 import { expect, test } from "../fixtures";
+import { liveVersion } from "../fixtures/agent";
+import { openSection } from "../fixtures/navigation";
 
 test.describe("Publish an Agent to its Live Version", () => {
   test("an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log", async ({
@@ -6,14 +8,16 @@ test.describe("Publish an Agent to its Live Version", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Publishing HR");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     await page.getByRole("form", { name: "New Agent" }).getByLabel("Name").fill("HR helper");
     await page.getByRole("form", { name: "New Agent" }).getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
 
     // Never published: not live.
     await expect(page.getByText("Not live")).toBeVisible();
@@ -27,6 +31,8 @@ test.describe("Publish an Agent to its Live Version", () => {
     expect((await page.request.post(`${projectApi}/instructions/versions`, { data: { note: "Rules" } })).status()).toBe(201);
     await page.reload();
 
+    // Publish is in the top bar; it opens the publish dialog.
+    await page.getByRole("banner").getByRole("button", { name: "Publish" }).click({ timeout: 15_000 });
     const publish = page.getByRole("form", { name: "Publish" });
     const picker = publish.getByRole("combobox", { name: "Project Instructions" });
     await expect(picker.getByRole("option", { name: "Current Version (v1)" })).toHaveCount(1, { timeout: 15_000 });
@@ -35,12 +41,13 @@ test.describe("Publish an Agent to its Live Version", () => {
     await expect(publish.getByRole("status")).toHaveText("Published v1 with Instructions v1. It is now Live.", {
       timeout: 15_000,
     });
-    await expect(page.getByText("Live v1")).toBeVisible();
-    await expect(page.getByText("Not live")).toHaveCount(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
+    await expect(liveVersion(page, 1)).toBeVisible();
+    await expect(page.getByText("Not live")).toHaveCount(0);
 
-    await page.getByRole("link", { name: "All Agents" }).click();
-    await expect(page.getByRole("list", { name: "Agents" }).getByRole("listitem")).toContainText("Live v1");
+    await openSection(page, "Project sections", "Agents");
+    await expect(page.getByRole("table", { name: "Agents" }).getByRole("row", { name: /HR helper/ })).toContainText("Live v1");
 
     // The API agrees: v1 is Live, pins Instructions v1, and the Live History and Audit log record it.
     const versions = (await (await page.request.get(`${agentApi}/versions`)).json()) as {

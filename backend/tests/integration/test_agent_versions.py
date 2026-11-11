@@ -18,6 +18,7 @@ from app.playground.service import answer
 from app.runtime.prompt import preamble
 from app.tenancy.erasure import erase_organisation
 from tests.agents import (
+    AUTOMATIC,
     FULL_DEFAULT_DRAFT,
     agents_path,
     answer_with,
@@ -535,7 +536,9 @@ async def test_served_messages_record_the_live_version_and_run_its_pinned_instru
     created = await create_agent(owner, project_id)
     agent_id = created["id"]
     await instructions(owner, project_id, "Pinned rules.", "Rules")
-    await save_draft(owner, project_id, agent_id, {"behaviour": {"system_prompt": "Live prompt."}})
+    # Automatic, so the model is given the Automatic preamble.
+    live = {"behaviour": {"system_prompt": "Live prompt."}, "retrieval": AUTOMATIC}
+    await save_draft(owner, project_id, agent_id, live)
     version = await published(owner, project_id, agent_id)
     # Neither the Draft nor newer Instructions reach a Visitor until they are published.
     await save_draft(owner, project_id, agent_id, {"behaviour": {"system_prompt": "Draft prompt."}})
@@ -565,7 +568,9 @@ async def test_a_version_without_instructions_runs_with_none(
     await owner.client.put(
         f"{project_path(owner, project_id)}/instructions", json={"markdown": "Unpublished"}
     )
-    await save_draft(owner, project_id, created["id"], {"behaviour": {"system_prompt": "Prompt."}})
+    # Automatic, so the model is given the Automatic preamble.
+    draft = {"behaviour": {"system_prompt": "Prompt."}, "retrieval": AUTOMATIC}
+    await save_draft(owner, project_id, created["id"], draft)
     await published(owner, project_id, created["id"])
 
     reply, _ = await serve(app, created["public_id"], "Hi")

@@ -2,11 +2,11 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
   Outlet,
   type RouterHistory,
 } from "@tanstack/react-router";
 
+import { SignedOutFrame } from "./auth/AuthLayout";
 import { MfaChallengePage } from "./auth/MfaChallengePage";
 import { ForgotPasswordPage } from "./auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "./auth/ResetPasswordPage";
@@ -23,11 +23,17 @@ import {
   OrganisationSettingsLayout,
   ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
-import { AgentPage } from "./projects/AgentPage";
+import { AgentEmbedView, AgentPage, AgentPlaygroundView, AgentVersionsView } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
 import { AnalyticsTab } from "./projects/AnalyticsTab";
 import { ProjectLayout } from "./projects/ProjectPage";
-import { ConversationPage, ConversationsTab } from "./projects/ConversationsTab";
+import {
+  AgentConversationsView,
+  agentConversationFilters,
+  ConversationPage,
+  ConversationsTab,
+  NoConversationChosen,
+} from "./projects/ConversationsTab";
 import { conversationFilters } from "./projects/conversations";
 import { DocumentsTab } from "./projects/DocumentsTab";
 import { ProjectSettingsTab } from "./projects/ProjectSettingsTab";
@@ -39,20 +45,12 @@ import { ProfilePage } from "./profile/ProfilePage";
 import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
 
+/** The status page is public: the signed-out panel, its mark linking to the Studio. */
 function StatusLayout() {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <nav className="mx-auto flex max-w-4xl items-center gap-6 px-6 py-4" aria-label="Main">
-          <Link to="/" className="font-semibold">
-            RAG Agent Studio
-          </Link>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        <StatusPage />
-      </main>
-    </div>
+    <SignedOutFrame home wide>
+      <StatusPage />
+    </SignedOutFrame>
   );
 }
 
@@ -126,21 +124,49 @@ const agentsTabRoute = createRoute({
   component: AgentsTab,
 });
 const agentRoute = createRoute({ getParentRoute: () => projectRoute, path: "/agents/$agentId", component: AgentPage });
+// An Agent's views, switched in the breadcrumb.
+const agentPlaygroundRoute = createRoute({ getParentRoute: () => agentRoute, path: "/", component: AgentPlaygroundView });
+const agentVersionsRoute = createRoute({ getParentRoute: () => agentRoute, path: "/versions", component: AgentVersionsView });
+const agentEmbedRoute = createRoute({ getParentRoute: () => agentRoute, path: "/embed", component: AgentEmbedView });
+// The Agent's Conversations: the Project's list fixed to the Agent, beside the open Conversation.
+const agentConversationsRoute = createRoute({
+  getParentRoute: () => agentRoute,
+  path: "/conversations",
+  validateSearch: agentConversationFilters,
+  component: AgentConversationsView,
+});
+const agentConversationsIndexRoute = createRoute({
+  getParentRoute: () => agentConversationsRoute,
+  path: "/",
+  component: NoConversationChosen,
+});
+const agentConversationRoute = createRoute({
+  getParentRoute: () => agentConversationsRoute,
+  path: "/$conversationId",
+  component: ConversationPage,
+});
+// The Project's Conversations: the list, filtered by its URL so the filters survive opening a
+// Conversation, with the open one beside it.
 const conversationsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/conversations",
-  // The list's filters, so opening a Conversation and coming back keeps them.
   validateSearch: conversationFilters,
   component: ConversationsTab,
 });
+const conversationsIndexRoute = createRoute({ getParentRoute: () => conversationsTabRoute, path: "/", component: NoConversationChosen });
 const conversationRoute = createRoute({
-  getParentRoute: () => projectRoute,
-  path: "/conversations/$conversationId",
-  // The list's filters, carried to the way back.
-  validateSearch: conversationFilters,
+  getParentRoute: () => conversationsTabRoute,
+  path: "/$conversationId",
   component: ConversationPage,
 });
-const analyticsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/analytics", component: AnalyticsTab });
+// Analytics is filtered to one Agent, as `?agent=` (each Agent's views link to it).
+const analyticsTabRoute = createRoute({
+  getParentRoute: () => projectRoute,
+  path: "/analytics",
+  validateSearch: (search: Record<string, unknown>): { agent?: string } =>
+    typeof search.agent === "string" && search.agent !== "" ? { agent: search.agent } : {},
+  component: AnalyticsTab,
+});
 const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });
 const costRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/cost", component: CostPage });
 const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
@@ -187,9 +213,13 @@ const routeTree = rootRoute.addChildren([
         documentViewerRoute,
         instructionsTabRoute,
         agentsTabRoute,
-        agentRoute,
-        conversationsTabRoute,
-        conversationRoute,
+        agentRoute.addChildren([
+          agentPlaygroundRoute,
+          agentVersionsRoute,
+          agentEmbedRoute,
+          agentConversationsRoute.addChildren([agentConversationsIndexRoute, agentConversationRoute]),
+        ]),
+        conversationsTabRoute.addChildren([conversationsIndexRoute, conversationRoute]),
         analyticsTabRoute,
         projectSettingsTabRoute,
       ]),

@@ -35,11 +35,11 @@ TEST_WORKERS ?=
 test-backend: ## Backend tests against real Postgres and Redis (start them with `make services`); TEST_WORKERS=N runs them in parallel
 	cd backend && uv run pytest $(if $(TEST_WORKERS),-n $(TEST_WORKERS))
 
-test-live: ## Live suite: real Docling on the sample files and the local Embedding Model (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
+test-live: ## Live suite: real Docling on the sample files, the local Embedding Model and one real Agentic reply with SEED_CREDENTIAL_* (downloads models, skips with the reason without them unless LIVE_REQUIRE_MODELS=1; outside the coverage gate)
 	cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
 
-test-frontend: ## Studio, widget and API client tests, then the embed loader's size budget
-	cd frontend && pnpm test && pnpm check-embed-size
+test-frontend: ## Studio, widget and API client tests, the embed loader's size budget, then the palette ratchet
+	cd frontend && pnpm test && pnpm check-embed-size && pnpm palette-ratchet
 
 lint: lint-backend lint-frontend ## Lint and type-check backend and frontend
 
@@ -124,8 +124,8 @@ audit: ## pip-audit on the locked backend dependencies and pnpm audit on the fro
 	cd frontend && pnpm audit --audit-level low
 
 image-scan: images ## Trivy scan of the built images; fails on any fixable HIGH or CRITICAL vulnerability
-	trivy image --exit-code 1 --ignore-unfixed --severity $(TRIVY_SEVERITY) rag-agent-studio/api:$(IMAGE_TAG)
-	trivy image --exit-code 1 --ignore-unfixed --severity $(TRIVY_SEVERITY) rag-agent-studio/studio:$(IMAGE_TAG)
+	trivy image --exit-code 1 --ignore-unfixed --secret-config trivy-secret.yaml --severity $(TRIVY_SEVERITY) rag-agent-studio/api:$(IMAGE_TAG)
+	trivy image --exit-code 1 --ignore-unfixed --secret-config trivy-secret.yaml --severity $(TRIVY_SEVERITY) rag-agent-studio/studio:$(IMAGE_TAG)
 
 e2e-install: ## Install the Playwright browser the end-to-end suite uses
 	cd frontend && pnpm exec playwright install --with-deps chromium
@@ -136,14 +136,15 @@ e2e: ## Start the stack, wait for health checks, seed the demo and run the Playw
 	cd frontend && pnpm e2e
 
 # The attack evaluation suite (backend/evals/attack_suite.json) through the real Guardrail
-# pipeline with the local classifier (fetched from Hugging Face on first use). Reports go to
-# EVAL_OUT as attack-eval-report.json and attack-eval-report.md.
+# pipeline with the local classifier (fetched from Hugging Face on first use), every case in both
+# Retrieval Modes; either mode failing fails the target. Reports (a pass rate per Retrieval Mode)
+# go to EVAL_OUT as attack-eval-report.json and attack-eval-report.md.
 EVAL_OUT ?= $(CURDIR)/backend/eval-report
 EVAL_MIN_PASS_RATE ?= 0.85
 
-eval: ## Guardrail attack evaluation suite against the naive mocked model; fails on any unexpected outcome
+eval: ## Guardrail attack evaluation suite against the naive mocked model, both Retrieval Modes; fails on any unexpected outcome
 	cd backend && uv run python -m app.evals --mode mocked --out "$(EVAL_OUT)"
 
-eval-live: ## The suite against a real model (EVAL_PROVIDER, EVAL_MODEL, EVAL_API_KEY); fails below EVAL_MIN_PASS_RATE
+eval-live: ## The suite against a real model (EVAL_PROVIDER, EVAL_MODEL, EVAL_API_KEY), both Retrieval Modes; fails if either is below EVAL_MIN_PASS_RATE
 	cd backend && uv run python -m app.evals --mode live --provider "$(EVAL_PROVIDER)" \
 		--model "$(EVAL_MODEL)" --min-pass-rate "$(EVAL_MIN_PASS_RATE)" --out "$(EVAL_OUT)"

@@ -1,0 +1,8 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/sidebar.spec.ts e2e/tests/accessibility.spec.ts (at 7ceadcfd)
+Listing tests:
+  [studio] › tests/accessibility.spec.ts:14:3 › Accessibility › every signed-in page has no WCAG 2.2 AA violations, in the light and the dark Appearance
+  [studio] › tests/sidebar.spec.ts:5:3 › Sidebar › an Owner moves around the Organisation and a Project from the sidebar, which marks where they are
+  [studio] › tests/sidebar.spec.ts:52:3 › Sidebar › the main content keeps its 1160 px column beside a sidebar of about 240 px
+  [studio] › tests/sidebar.spec.ts:68:3 › Sidebar › on a phone the sidebar is a drawer behind Open navigation, which holds focus and closes on Escape, outside or a link
+Total: 4 tests in 2 files
+exit 0

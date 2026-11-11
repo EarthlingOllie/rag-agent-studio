@@ -1,21 +1,32 @@
-import { Link, Navigate, Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Navigate, Outlet, useLocation, useParams } from "@tanstack/react-router";
+import { useId, useRef, useState } from "react";
 
-import { type Session, useMe, useSignOut } from "../auth/session";
-import { OrganisationSwitcher } from "./OrganisationSwitcher";
-
-function Centered({ children, role }: { children: string; role: "status" | "alert" }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
-      <p role={role}>{children}</p>
-    </main>
-  );
-}
+import { SignedOutFrame } from "../auth/AuthLayout";
+import { type Session, useMe } from "../auth/session";
+import { AppearanceToggle, Brand, button, EmptyState, layout, Notice, SidebarButton, Skeleton, TopBar } from "../design";
+import { AccountMenu } from "./AccountMenu";
+import { StudioBreadcrumb } from "./StudioBreadcrumb";
+import { StudioSidebar } from "./StudioSidebar";
+import { TopBarSlot } from "./TopBarActions";
 
 /** Everything a signed-in Member sees. Signed-out visitors are sent to the sign-in screen. */
 export function SignedInShell() {
   const me = useMe();
-  if (me.isPending) return <Centered role="status">Loading…</Centered>;
-  if (me.isError) return <Centered role="alert">The Studio could not reach the API. Try again shortly.</Centered>;
+  // Before the session is known there is no top bar to show, so these sit in the signed-out panel.
+  if (me.isPending) {
+    return (
+      <SignedOutFrame>
+        <Skeleton label="Loading the Studio" />
+      </SignedOutFrame>
+    );
+  }
+  if (me.isError) {
+    return (
+      <SignedOutFrame>
+        <Notice tone="error">The Studio could not reach the API. Try again shortly.</Notice>
+      </SignedOutFrame>
+    );
+  }
   if (me.data === null) return <Navigate to="/sign-in" />;
   return <Outlet />;
 }
@@ -25,42 +36,24 @@ export function HomeRedirect() {
   const { data } = useMe();
   const active = (data as Session).active_organisation_id;
   if (active === null) {
-    return <Centered role="status">You don't belong to any Organisation yet.</Centered>;
+    return (
+      <SignedOutFrame wide>
+        <EmptyState
+          icon="projects"
+          title="You don't belong to any Organisation yet."
+          description="Ask an Owner to invite you, then open the link in their email."
+        />
+      </SignedOutFrame>
+    );
   }
   return <Navigate to="/organisations/$organisationId/projects" params={{ organisationId: active }} />;
 }
 
-function SignOutButton() {
-  const signOut = useSignOut();
-  const navigate = useNavigate();
-  return (
-    <div className="flex items-center gap-3">
-      {signOut.isError && (
-        <p role="alert" className="text-sm text-red-800">
-          Sign-out failed. Try again.
-        </p>
-      )}
-      <button
-        type="button"
-        disabled={signOut.isPending}
-        onClick={() => {
-          signOut.mutate(undefined, {
-            onSuccess: () => {
-              void navigate({ to: "/sign-in" });
-            },
-          });
-        }}
-        className="rounded border border-slate-400 px-3 py-1 text-sm hover:bg-slate-100"
-      >
-        Sign out
-      </button>
-    </div>
-  );
-}
-
-const NAV_LINK = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
-
-/** The Studio frame for one Organisation: navigation, the Member, and the page. */
+/**
+ * The Studio frame for one Organisation: the top bar (the mark, the breadcrumb, the page's actions
+ * and the Member's controls), then the sidebar, which is the navigation, beside the page. Below
+ * `md` the sidebar is a drawer that the top bar's "Open navigation" button opens.
+ */
 export function OrganisationShell() {
   const { data } = useMe();
   const session = data as Session;
@@ -69,68 +62,76 @@ export function OrganisationShell() {
   // The Require MFA policy: until the Member turns MFA on, the Organisation offers only enrolment.
   const mustEnrol = organisation !== undefined && organisation.mfa_required && !session.member.mfa_enabled;
   const onSecurityPage = useLocation().pathname.endsWith("/security");
+  // The page's own top bar actions are portalled into this element (`TopBarActions`).
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  // Below `md` the sidebar is a drawer behind the top bar's button, which takes focus back on close.
+  const sidebarId = useId();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerButton = useRef<HTMLButtonElement>(null);
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    drawerButton.current?.focus();
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-6 px-6 py-3">
-          <div className="flex items-center gap-6">
-            <span className="font-semibold">RAG Agent Studio</span>
-            <OrganisationSwitcher session={session} organisationId={organisationId} />
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-700">{session.member.name}</span>
-            {organisation && (
-              <Link
-                to="/organisations/$organisationId/profile"
-                params={{ organisationId }}
-                className="text-sm text-slate-700 underline"
-              >
-                Profile
-              </Link>
-            )}
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
-      {organisation ? (
-        <div className="mx-auto flex max-w-5xl gap-8 px-6 py-8">
-          <nav aria-label="Organisation" className="flex w-48 shrink-0 flex-col gap-1">
-            {!mustEnrol && (
-              <>
-                <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className={NAV_LINK}>
-                  Projects
-                </Link>
-                {organisation.role === "owner" && (
-                  <Link to="/organisations/$organisationId/cost" params={{ organisationId }} className={NAV_LINK}>
-                    Cost
-                  </Link>
-                )}
-                <Link to="/organisations/$organisationId/settings" params={{ organisationId }} className={NAV_LINK}>
-                  Organisation settings
-                </Link>
-              </>
-            )}
-            <Link to="/organisations/$organisationId/security" params={{ organisationId }} className={NAV_LINK}>
-              Security
-            </Link>
-          </nav>
-          <main className="min-w-0 flex-1">
-            {mustEnrol && !onSecurityPage ? (
+    <div className="min-h-screen bg-canvas text-ink">
+      <TopBar
+        menu={
+          <SidebarButton
+            ref={drawerButton}
+            controls={sidebarId}
+            open={drawerOpen}
+            onOpen={() => {
+              setDrawerOpen(true);
+            }}
+          />
+        }
+        home={
+          <Link to="/" aria-label="Studio home" className="rounded-md">
+            <Brand compact />
+          </Link>
+        }
+        breadcrumb={organisation && <StudioBreadcrumb organisationId={organisationId} />}
+        actions={
+          <>
+            <div ref={setSlot} className="flex items-center gap-3 empty:hidden" />
+            <AppearanceToggle />
+            <AccountMenu session={session} organisationId={organisationId} inOrganisation={organisation !== undefined} />
+          </>
+        }
+      />
+      <div className="md:flex">
+        <StudioSidebar
+          session={session}
+          organisationId={organisationId}
+          mustEnrol={mustEnrol}
+          id={sidebarId}
+          drawer={{ open: drawerOpen, onClose: closeDrawer }}
+        />
+        {/* The page keeps its 1160 px column, centred in the space beside the sidebar. */}
+        <main className={`${layout.page} min-w-0`}>
+          {organisation ? (
+            mustEnrol && !onSecurityPage ? (
               <Navigate to="/organisations/$organisationId/security" params={{ organisationId }} replace />
             ) : (
-              <Outlet />
-            )}
-          </main>
-        </div>
-      ) : (
-        <main className="mx-auto max-w-5xl px-6 py-8">
-          <h1 className="text-2xl font-semibold">Organisation not found</h1>
-          <p className="mt-2 text-slate-700">
-            It doesn't exist, or you are not a Member of it. <Link to="/" className="underline">Go to your Organisation</Link>
-          </p>
+              <TopBarSlot.Provider value={slot}>
+                <Outlet />
+              </TopBarSlot.Provider>
+            )
+          ) : (
+            <EmptyState
+              icon="warning"
+              title="Organisation not found"
+              description="It doesn't exist, or you are not a Member of it."
+              action={
+                <Link to="/" className={button.primary}>
+                  Go to your Organisation
+                </Link>
+              }
+            />
+          )}
         </main>
-      )}
+      </div>
     </div>
   );
 }

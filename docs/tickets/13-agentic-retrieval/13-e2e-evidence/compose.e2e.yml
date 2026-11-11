@@ -1,0 +1,14 @@
+# Sandbox-only (copied from the spec 12 run): run as its own project (-p rag13e2e) beside the shared rag-agent-studio services;
+# its Postgres, Redis and RustFS stay unpublished (the shared ones hold 5432, 6379, 9000/9001).
+x-img-api: &api { image: rag-agent-studio/api:13e2e, build: !reset null, pull_policy: never }
+x-img-studio: &studio { image: rag-agent-studio/studio:13e2e, build: !reset null, pull_policy: never }
+services:
+  postgres: { ports: !reset [] }
+  redis: { ports: !reset [] }
+  rustfs: { ports: !reset [] }
+  api: *api
+  worker: *api
+  beat: *api
+  studio: *studio
+  widget: *studio
+  host: *studio

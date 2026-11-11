@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures";
 import { newMember, signUp } from "../fixtures/auth";
+import { menuButton, openSection, sidebar } from "../fixtures/navigation";
 
 test.describe("sign up, sign in, sign out", () => {
   test("a visitor signs up, sees the signed-in shell and signs out", async ({ page, member }) => {
@@ -13,18 +14,17 @@ test.describe("sign up, sign in, sign out", () => {
     await page.getByLabel("Organisation name").fill(member.organisationName);
     await page.getByRole("button", { name: "Create account" }).click();
 
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(page.getByText(member.organisationName)).toBeVisible();
-    await expect(page.getByText(member.name)).toBeVisible();
-    const nav = page.getByRole("navigation", { name: "Organisation" });
-    await nav.getByRole("link", { name: "Organisation settings" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+    await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
+    await expect(menuButton(page, "Account")).toHaveAccessibleName(`${member.name}, Account`);
+    await openSection(page, "Organisation sections", "Settings");
     await expect(page.getByRole("heading", { name: "Organisation settings" })).toBeVisible();
 
     const cookies = await page.context().cookies();
     const session = cookies.find((cookie) => cookie.name === "studio_session");
     expect(session).toMatchObject({ httpOnly: true, secure: true, sameSite: "Lax" });
 
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await openSection(page, "Account", "Sign out");
 
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     // The server ended the session: the old cookie no longer signs anyone in.
@@ -50,15 +50,15 @@ test.describe("sign up, sign in, sign out", () => {
     await page.getByLabel("Password").fill(member.password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(page.getByText(member.organisationName)).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+    await expect(sidebar(page).getByText(member.organisationName)).toBeVisible();
   });
 
   test("the signedInPage fixture opens the Member's Organisation", async ({ signedInPage, member }) => {
     await signedInPage.goto("/");
 
-    await expect(signedInPage.getByRole("heading", { name: "Projects" })).toBeVisible();
-    await expect(signedInPage.getByText(member.organisationName)).toBeVisible();
+    await expect(signedInPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
+    await expect(sidebar(signedInPage).getByText(member.organisationName)).toBeVisible();
   });
 });
 
@@ -74,7 +74,7 @@ test.describe("accessibility", () => {
 
   test("the signed-in shell has no WCAG 2.2 AA violations", async ({ signedInPage, makeAxeBuilder }) => {
     await signedInPage.goto("/");
-    await expect(signedInPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(signedInPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
     const results = await makeAxeBuilder().analyze();
     expect(results.violations).toEqual([]);
   });

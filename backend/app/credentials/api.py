@@ -209,6 +209,9 @@ class CredentialInUseResponse(BaseModel):
 class ModelOut(BaseModel):
     id: str
     name: str
+    # Whether the model can call tools, as Agentic Retrieval Mode needs; false for every
+    # embedding and rerank model.
+    supports_tools: bool
 
 
 class CapabilityModelsOut(BaseModel):
@@ -484,7 +487,7 @@ async def list_credential_models(
     except CredentialNotFoundError:
         raise _not_found() from None
     offered = models_for(Provider(credential.provider), credential.capabilities, capability)
-    return [ModelOut(id=m.id, name=m.name) for m in offered]
+    return [ModelOut(id=m.id, name=m.name, supports_tools=m.supports_tools) for m in offered]
 
 
 @providers_router.get(
@@ -502,7 +505,10 @@ async def list_providers(member: CurrentMember) -> list[ProviderOut]:
             capabilities=[
                 CapabilityModelsOut(
                     capability=capability,
-                    models=[ModelOut(id=m.id, name=m.name) for m in models],
+                    models=[
+                        ModelOut(id=m.id, name=m.name, supports_tools=m.supports_tools)
+                        for m in models
+                    ],
                 )
                 for capability, models in spec.models.items()
             ],

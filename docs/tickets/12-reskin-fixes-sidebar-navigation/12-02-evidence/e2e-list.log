@@ -1,0 +1,9 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/projects.spec.ts e2e/tests/documents.spec.ts (at 93a8705a)
+Listing tests:
+  [studio] › tests/documents.spec.ts:11:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready
+  [studio] › tests/documents.spec.ts:39:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original
+  [studio] › tests/documents.spec.ts:70:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it
+  [studio] › tests/projects.spec.ts:45:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited
+  [studio] › tests/projects.spec.ts:106:3 › Projects › an Editor creates and archives a Project but only an Owner restores it
+Total: 5 tests in 2 files
+exit 0

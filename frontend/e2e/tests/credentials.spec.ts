@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
 import { newMember } from "../fixtures/auth";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier: every key passes except those
 // starting `fake-fail-<reason>`. No real provider is called and no real key is used.
@@ -10,8 +11,8 @@ const ROTATED = "sk-proj-e2e-test-only-rotated-key-r9z4";
 
 async function openCredentials(page: Page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-  await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+  await openSection(page, "Organisation sections", "Settings");
+  await openSection(page, "Organisation settings", "Credentials");
   await expect(page.getByRole("heading", { name: "Provider Credentials" })).toBeVisible();
 }
 
@@ -89,8 +90,9 @@ test.describe("provider credentials", () => {
 
     // Invite an Editor with a copied link; they join in their own browser.
     const editor = newMember({ name: "Grace Editor" });
-    await owner.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Members" }).click();
+    await openSection(owner, "Organisation settings", "Members");
     await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+    await owner.getByRole("button", { name: "Invite someone" }).click();
     const invite = owner.getByRole("form", { name: "Invite someone" });
     await invite.getByLabel("Email", { exact: true }).fill(editor.email);
     await invite.getByLabel("Role").selectOption("Editor");
@@ -102,7 +104,7 @@ test.describe("provider credentials", () => {
     await page.getByLabel("Your name").fill(editor.name);
     await page.getByLabel("Password").fill(editor.password);
     await page.getByRole("button", { name: "Create account and join" }).click();
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
 
     await openCredentials(page);
     const row = page.getByRole("table", { name: "Provider Credentials" }).getByRole("row", { name: /Search embeddings/ });

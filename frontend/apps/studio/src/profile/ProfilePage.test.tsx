@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { fakeAccountApi } from "../test/account";
 import { adaSession } from "../test/auth";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -34,11 +35,11 @@ async function rename(name: string) {
   await user.click(within(nameForm()).getByRole("button", { name: "Save name" }));
 }
 
-test("the Profile is linked from the header", async () => {
+test("the Profile is linked from the account menu", async () => {
   fakeAccountApi({ signedInAs: adaSession });
   renderStudio("/");
 
-  await userEvent.click(await screen.findByRole("link", { name: "Profile" }));
+  await openSection("Account", "Profile");
 
   expect(await screen.findByRole("heading", { name: "Profile" })).toBeInTheDocument();
   expect(within(nameForm()).getByLabelText("Name")).toHaveValue("Ada Lovelace");
@@ -52,7 +53,7 @@ test("a Member edits their name and the header shows it", async () => {
   await rename("Ada King");
 
   expect(await within(nameForm()).findByRole("status")).toHaveTextContent("Name saved.");
-  expect(within(screen.getByRole("banner")).getByText("Ada King")).toBeInTheDocument();
+  expect(within(screen.getByRole("banner")).getByRole("button", { name: "Ada King, Account" })).toBeInTheDocument();
   expect(requests).toEqual([{ route: "update-profile", body: { name: "Ada King" } }]);
 });
 

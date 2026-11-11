@@ -15,9 +15,15 @@ from typing import Any
 
 import httpx2
 import pytest
-from pydantic_ai import Agent
+from pydantic_ai import Agent, Tool
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.core.clock import SystemClock
@@ -30,6 +36,7 @@ from app.credentials.service import seal_secret
 from app.crypto.envelope import EnvelopeEncryption, EnvelopeError
 from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.gateway.adapters import build_model_gateway
+from app.gateway.demo import DEMO_LABEL, NAIVE_LABEL
 from app.gateway.fakes import (
     FAKE_CLASSIFIER_OUTAGE,
     FAKE_JAILBREAK_PROMPT,
@@ -41,7 +48,7 @@ from app.gateway.live import BedrockClients, LiveModelAdapters
 from app.guardrails.canary import new_canary
 from app.guardrails.classifier import InjectionFlag
 from app.guardrails.llm import LlmClassifier, LlmClassifierError
-from app.runtime.prompt import preamble
+from app.runtime.prompt import KNOWLEDGE_SEARCH, NOTHING_FOUND, preamble, visitor_block
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"G" * 32).decode()))
 ANTHROPIC_KEY = "sk-ant-gateway-test-only-aaaa"
@@ -429,6 +436,33 @@ async def test_the_fake_chat_model_cites_the_first_chunk_it_is_given() -> None:
     assert streamed == "Fake reply from openai:gpt-4.1. [C1]"
 
 
+async def test_the_fake_chat_model_searches_with_the_visitors_question_whatever_else_is_asked() -> (
+    None
+):
+    """In Agentic Retrieval Mode the fake makes one Knowledge Search with the text of the
+    Visitor input block, even when the request carries other user content beside it."""
+    gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
+    model = gateway.chat_model(credential(Provider.OPENAI, OPENAI_KEY), "gpt-4.1")
+    queries: list[str] = []
+
+    def knowledge_search(query: str) -> str:
+        queries.append(query)
+        return "<<<RETRIEVED_CHUNKS>>>\n[C1] a.md\nText\n<<<END_RETRIEVED_CHUNKS>>>"
+
+    agent = Agent(model, tools=[Tool(knowledge_search, name=KNOWLEDGE_SEARCH)])
+    asked = ModelRequest(
+        parts=[UserPromptPart("Be careful."), UserPromptPart(visitor_block("How much leave?"))]
+    )
+    async with agent.run_stream(message_history=[asked]) as result:
+        output = await result.get_output()
+    # Asked without an input block, it searches with all it was asked.
+    async with agent.run_stream("Parking?") as result:
+        await result.get_output()
+
+    assert queries == ["How much leave?", "Parking?"]
+    assert output == "Fake reply from openai:gpt-4.1. [C1]"
+
+
 async def test_the_fake_chat_model_leaks_its_canary_when_asked_to_repeat_its_secret() -> None:
     """For end-to-end tests of the Canary token: the fake plays a naive model that obeys."""
     gateway = ModelGateway(ENVELOPE, FakeModelAdapters())
@@ -586,14 +620,79 @@ async def test_without_a_chunk_the_demo_model_says_it_doesnt_know(question: str)
     )
 
 
+DEMO_SEARCH_RESULT = (
+    "<<<RETRIEVED_CHUNKS>>>\n"
+    "[C1] northwind-product-faq.docx\n"
+    "Honey keeps for years. Return it unopened within 30 days.\n\n"
+    "[C2] northwind-returns-policy.md\n"
+    "You can return any unopened item within 30 days.\n"
+    "<<<END_RETRIEVED_CHUNKS>>>"
+)
+
+
+@pytest.mark.parametrize("model_name", ["demo-chat", "demo-naive"])
+@pytest.mark.parametrize("index", [0, 1], ids=["fake adapters", "live adapters"])
+async def test_given_knowledge_search_the_demo_models_search_once_with_the_question_then_answer(
+    index: int, model_name: str
+) -> None:
+    """Agentic Retrieval Mode (spec 13): offered Knowledge Search, each demo model makes one
+    Search with the Visitor's question, then answers from the first Chunk it returned, as it
+    does from Chunks retrieved up front."""
+    model = demo_gateways()[index].chat_model(
+        credential(Provider.DEMO, "demo-no-key-needed"), model_name
+    )
+    queries: list[str] = []
+
+    def knowledge_search(query: str) -> str:
+        queries.append(query)
+        return DEMO_SEARCH_RESULT
+
+    agent = Agent(model, tools=[Tool(knowledge_search, name=KNOWLEDGE_SEARCH)])
+    async with agent.run_stream(visitor_block("Can I return a jar of honey?")) as streamed:
+        output = await streamed.get_output()
+
+    assert queries == ["Can I return a jar of honey?"]
+    excerpt = (
+        "northwind-product-faq.docx [C1]: Honey keeps for years. Return it unopened within 30 days."
+    )
+    expected = {
+        "demo-chat": f"{DEMO_LABEL}: from {excerpt}",
+        "demo-naive": f"{NAIVE_LABEL}: From {excerpt}",
+    }[model_name]
+    assert output == expected
+
+
+async def test_the_demo_model_searches_before_answering_when_not_streamed() -> None:
+    """The runtime always streams; run without streaming, the demo model searches all the same.
+    Asked without a Visitor input block, it searches with all it was asked."""
+    model = ModelGateway(ENVELOPE, FakeModelAdapters()).chat_model(
+        credential(Provider.DEMO, "demo-no-key-needed"), "demo-chat"
+    )
+    queries: list[str] = []
+
+    def knowledge_search(query: str) -> str:
+        queries.append(query)
+        return f"<<<RETRIEVED_CHUNKS>>>\n{NOTHING_FOUND}\n<<<END_RETRIEVED_CHUNKS>>>"
+
+    agent = Agent(model, tools=[Tool(knowledge_search, name=KNOWLEDGE_SEARCH)])
+    result = await agent.run("Where is the moon?")
+
+    assert queries == ["Where is the moon?"]
+    assert result.output == (
+        "Demo model (canned answer, not AI): the Knowledge Base has nothing on that."
+    )
+
+
 def test_the_demo_provider_is_labelled_as_a_demo_model() -> None:
     spec = PROVIDERS[Provider.DEMO]
 
     assert spec.name == "Demo (not a real model)"
     assert spec.models == {
         Capability.CHAT: (
-            RegistryModel("demo-chat", "Demo model"),
-            RegistryModel("demo-naive", "Naive demo model (obeys injected instructions)"),
+            RegistryModel("demo-chat", "Demo model", supports_tools=True),
+            RegistryModel(
+                "demo-naive", "Naive demo model (obeys injected instructions)", supports_tools=True
+            ),
         )
     }
     assert spec.auth_kinds == (AuthKind.API_KEY,)

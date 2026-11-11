@@ -1,16 +1,19 @@
 import type { SubmitEvent } from "react";
 
-import { Field, FormError, formValues, SubmitButton } from "../auth/AuthLayout";
+import { ErrorNotice, Field, formValues } from "../auth/AuthLayout";
 import { AuthRequestError, type Session, useChangePassword, useMe, useUpdateProfile } from "../auth/session";
 import { MIN_PASSWORD_LENGTH } from "../auth/SignUpPage";
+import { button, layout, Notice, PageHeader, surface, text } from "../design";
 
-function Saved({ children }: { children: string }) {
+function Submit({ pending, label, pendingLabel }: { pending: boolean; label: string; pendingLabel: string }) {
   return (
-    <p role="status" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
-      {children}
-    </p>
+    <button type="submit" disabled={pending} className={`${button.primary} self-start`}>
+      {pending ? pendingLabel : label}
+    </button>
   );
 }
+
+const FORM = `${surface.panel} flex max-w-xl flex-col gap-4`;
 
 function failure(error: Error | null, messages: Partial<Record<number, string>>): string | undefined {
   if (error === null) return undefined;
@@ -27,12 +30,12 @@ function NameForm({ name }: { name: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} aria-label="Your name" className="max-w-sm space-y-4">
-      <h2 className="text-lg font-semibold">Your name</h2>
-      {updateProfile.isSuccess && <Saved>Name saved.</Saved>}
-      <FormError message={failure(updateProfile.error, { 422: "Enter a name of up to 200 characters." })} />
+    <form onSubmit={onSubmit} aria-label="Your name" className={FORM}>
+      <h2 className={text.subheading}>Your name</h2>
+      {updateProfile.isSuccess && <Notice tone="success">Name saved.</Notice>}
+      <ErrorNotice message={failure(updateProfile.error, { 422: "Enter a name of up to 200 characters." })} />
       <Field label="Name" name="name" autoComplete="name" defaultValue={name} />
-      <SubmitButton pending={updateProfile.isPending} label="Save name" pendingLabel="Saving…" />
+      <Submit pending={updateProfile.isPending} label="Save name" pendingLabel="Saving…" />
     </form>
   );
 }
@@ -51,10 +54,10 @@ function PasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} aria-label="Change password" className="max-w-sm space-y-4">
-      <h2 className="text-lg font-semibold">Change password</h2>
-      {changePassword.isSuccess && <Saved>Password changed. Your other sessions have been signed out.</Saved>}
-      <FormError
+    <form onSubmit={onSubmit} aria-label="Change password" className={FORM}>
+      <h2 className={text.subheading}>Change password</h2>
+      {changePassword.isSuccess && <Notice tone="success">Password changed. Your other sessions have been signed out.</Notice>}
+      <ErrorNotice
         message={failure(changePassword.error, {
           400: "Current password is incorrect.",
           422: `Choose a new password of at least ${String(MIN_PASSWORD_LENGTH)} characters.`,
@@ -68,8 +71,8 @@ function PasswordForm() {
         autoComplete="new-password"
         minLength={MIN_PASSWORD_LENGTH}
       />
-      <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
-      <SubmitButton pending={changePassword.isPending} label="Change password" pendingLabel="Changing password…" />
+      <p className="-mt-2 text-xs text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
+      <Submit pending={changePassword.isPending} label="Change password" pendingLabel="Changing password…" />
     </form>
   );
 }
@@ -79,17 +82,17 @@ export function ProfilePage() {
   const { data } = useMe();
   const { member } = data as Session;
   return (
-    <section aria-labelledby="page-heading" className="space-y-8">
-      <div>
-        <h1 id="page-heading" className="text-2xl font-semibold">
-          Profile
-        </h1>
-        <p className="mt-2 text-slate-700">
-          Signed in as <span className="font-medium">{member.email}</span>
-        </p>
-      </div>
+    <div className={layout.stack}>
+      <PageHeader
+        title="Profile"
+        description={
+          <>
+            Signed in as <span className="font-medium text-ink">{member.email}</span>
+          </>
+        }
+      />
       <NameForm name={member.name} />
       <PasswordForm />
-    </section>
+    </div>
   );
 }

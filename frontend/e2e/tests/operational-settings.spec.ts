@@ -1,5 +1,7 @@
 import { expect, test } from "../fixtures";
+import { liveVersion, openAgentView, publishAgent } from "../fixtures/agent";
 import { HOST_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 const UNAVAILABLE = "Our helper is having a break. Call us on 0123 456 789.";
 
@@ -15,38 +17,44 @@ test.describe("Operational Settings", () => {
     const organisation = `/api/organisations/${me.organisations[0]?.id ?? ""}`;
 
     // A live Agent. The Organisation has no Default Model, so the Agent can't answer.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const newProject = page.getByRole("form", { name: "New Project" });
     await newProject.getByLabel("Name").fill("Northwind Support");
     await newProject.getByRole("button", { name: "Create Project" }).click();
-    await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: "Agents" }).click();
+    await openSection(page, "Project sections", "Agents");
+    await page.getByRole("button", { name: "New Agent" }).click();
     const newAgent = page.getByRole("form", { name: "New Agent" });
     await newAgent.getByLabel("Name").fill("Support helper");
     await newAgent.getByRole("button", { name: "Create Agent" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Support helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Support helper" })).toBeVisible({ timeout: 15_000 });
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
     const { id: agentId, public_id: publicId } = (await (await page.request.get(agentApi)).json()) as {
       id: string;
       public_id: string;
     };
-    const publish = page.getByRole("form", { name: "Publish" });
-    await publish.getByRole("textbox", { name: "Note" }).fill("First release");
-    await publish.getByRole("button", { name: "Publish" }).click();
-    await expect(page.getByText("Live v1")).toBeVisible({ timeout: 15_000 });
+    await publishAgent(page, "First release");
+    await expect(liveVersion(page, 1)).toBeVisible({ timeout: 15_000 });
 
     // The Operational Settings, saved without publishing again.
     const allowed = new URL(HOST_URL);
     const disallowed = new URL(HOST_URL);
     disallowed.hostname = "127.0.0.1"; // The same page, served on another origin.
-    const embed = page.getByRole("region", { name: "Embed", exact: true });
-    const origins = embed.getByLabel("Allowed Origins");
-    await expect(origins).toBeEnabled();
+    await openAgentView(page, "Embed & limits");
+    const embed = page.getByRole("main");
+    const originsCard = page.getByRole("region", { name: "Allowed Origins" });
+    const origins = originsCard.getByRole("textbox", { name: "Add an Allowed Origin" });
     await origins.fill("www.example.com");
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByRole("alert")).toContainText("'www.example.com' isn't a site address.");
-    await origins.fill(`${allowed.origin}\nhttps://*.example.com`);
-    await embed.getByRole("button", { name: "Save Allowed Origins" }).click();
-    await expect(embed.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    await origins.press("Enter");
+    await originsCard.getByRole("button", { name: "Save Allowed Origins" }).click();
+    await expect(originsCard.getByRole("alert")).toContainText("'www.example.com' isn't a site address.");
+    await originsCard.getByRole("button", { name: "Remove www.example.com" }).click();
+    for (const origin of [allowed.origin, "https://*.example.com"]) {
+      await origins.fill(origin);
+      await origins.press("Enter");
+    }
+    await originsCard.getByRole("button", { name: "Save Allowed Origins" }).click();
+    await expect(originsCard.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
     await embed.getByLabel("Unavailable text").fill(UNAVAILABLE);
     await embed.getByRole("button", { name: "Save unavailable text" }).click();
     await expect(embed.getByText("Saved. Visitors see it from their next message.")).toBeVisible({ timeout: 15_000 });

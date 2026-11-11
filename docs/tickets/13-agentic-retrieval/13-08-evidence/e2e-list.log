@@ -1,0 +1,8 @@
+Listing tests:
+  [studio] › tests/agent-drafts.spec.ts:6:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save
+  [studio] › tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome
+  [studio] › tests/retention.spec.ts:10:3 › Retention and tombstones › an Owner sets the Retention Window, and the change is audited
+  [studio] › tests/retention.spec.ts:34:3 › Retention and tombstones › a Trace keeps a deleted Document's name as a tombstone, and an Owner deletes a Conversation on request
+  [studio] › tests/version-comparison.spec.ts:11:3 › Version comparison › an Editor compares two Versions side by side with the config diff, and exports the comparison as CSV
+  [studio] › tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count
+Total: 6 tests in 5 files

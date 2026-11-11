@@ -1,0 +1,14 @@
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/user/wt-13-09/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, xdist-3.8.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 1 item
+
+tests/live/test_agentic_reply_live.py s                                  [100%]
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/live/test_agentic_reply_live.py:56: No real Provider Credential: set SEED_CREDENTIAL_PROVIDER (anthropic or openai) and SEED_CREDENTIAL_API_KEY to make a real Agentic reply.
+============================== 1 skipped in 0.11s ==============================

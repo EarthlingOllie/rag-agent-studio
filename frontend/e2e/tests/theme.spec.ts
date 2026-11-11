@@ -3,11 +3,12 @@ import type { Browser, Locator, Page } from "@playwright/test";
 
 import { AXE_TAGS, expect, test } from "../fixtures";
 import { newMember } from "../fixtures/auth";
+import { openSection } from "../fixtures/navigation";
 
 async function openTheme(page: Page) {
   await page.goto("/");
-  await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-  await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Theme" }).click();
+  await openSection(page, "Organisation sections", "Settings");
+  await openSection(page, "Organisation settings", "Theme");
   await expect(page.getByRole("form", { name: "Theme" })).toBeVisible();
 }
 
@@ -90,7 +91,7 @@ test.describe("Theme editor", () => {
     await expect(preview(page).getByRole("button", { name: "Close chat" })).toHaveAttribute("data-position", "bottom-left");
 
     // The change is an Audit Event.
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     const row = page.getByRole("table", { name: "Audit Events" }).getByRole("row").filter({ hasText: "theme.updated" });
     await expect(row).toHaveCount(1);
     await expect(row).toContainText('"primary":{"light":"#b91c1c"}');
@@ -154,7 +155,7 @@ test.describe("Theme editor", () => {
     await expect(preview(page).getByRole("img", { name: "Assistant's avatar" })).toHaveCount(0);
 
     // Each change is an Audit Event.
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     const rows = page.getByRole("table", { name: "Audit Events" }).getByRole("row").filter({ hasText: "theme.updated" });
     await expect(rows).toHaveCount(4);
     await expect(rows.first()).toContainText('"avatar":null');

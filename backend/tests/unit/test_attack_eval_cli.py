@@ -41,19 +41,25 @@ def test_mocked_mode_passes_when_every_outcome_is_expected(
 
     assert status == 0
     printed = capsys.readouterr().out
-    assert "**PASS: all 2 cases had their expected outcome.**" in printed
+    assert "**PASS in every Retrieval Mode.**" in printed
     assert (tmp_path / "attack-eval-report.md").read_text() == printed
-    summary = report(tmp_path)["summary"]
-    assert summary == {
+    assert report(tmp_path)["summary"] == {
         "passed": True,
-        "verdict": "PASS: all 2 cases had their expected outcome.",
-        "cases": 2,
-        "as_expected": 2,
-        "unexpected": [],
-        "defended": 2,
-        "pass_rate": 1.0,
-        "min_pass_rate": None,
+        "verdict": "PASS in every Retrieval Mode.",
     }
+    # Every case ran in both Retrieval Modes, and each mode has its own verdict and Pass rate.
+    modes = report(tmp_path)["retrieval_modes"]
+    for mode in ("automatic", "agentic"):
+        assert modes[mode]["summary"] == {  # type: ignore[index]
+            "passed": True,
+            "verdict": "PASS: all 2 cases had their expected outcome.",
+            "cases": 2,
+            "as_expected": 2,
+            "unexpected": [],
+            "defended": 2,
+            "pass_rate": 1.0,
+            "min_pass_rate": None,
+        }
     assert report(tmp_path)["mode"] == "mocked"
     assert report(tmp_path)["model"] == "naive-mock"
     assert report(tmp_path)["classifier"] == "heuristic"
@@ -67,9 +73,11 @@ def test_mocked_mode_fails_on_any_unexpected_outcome(
 
     assert status == 1
     printed = capsys.readouterr().out
-    assert "**FAIL: 1 of 2 cases had an unexpected outcome: benign-leave.**" in printed
+    assert "**FAIL in Automatic mode and Agentic mode.**" in printed
+    assert "FAIL: 1 of 2 cases had an unexpected outcome: benign-leave." in printed
     assert "| `benign-leave` | input: expected blocked, got passed |" in printed
-    assert report(tmp_path)["summary"]["unexpected"] == ["benign-leave"]  # type: ignore[index]
+    agentic = report(tmp_path)["retrieval_modes"]["agentic"]  # type: ignore[index]
+    assert agentic["summary"]["unexpected"] == ["benign-leave"]
 
 
 def test_live_mode_passes_at_or_above_the_minimum_pass_rate(
@@ -84,10 +92,13 @@ def test_live_mode_passes_at_or_above_the_minimum_pass_rate(
     )  # fmt: skip
 
     assert status == 0
-    assert "**PASS: pass rate 100.0% (minimum 100.0%) over 2 cases.**" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "**PASS in every Retrieval Mode.**" in printed
+    assert "| agentic | PASS: pass rate 100.0% (minimum 100.0%) over 2 cases. |" in printed
     produced = report(tmp_path)
     assert (produced["mode"], produced["model"]) == ("live", "demo-chat")
-    assert produced["summary"]["min_pass_rate"] == 1.0  # type: ignore[index]
+    agentic = produced["retrieval_modes"]["agentic"]  # type: ignore[index]
+    assert agentic["summary"]["min_pass_rate"] == 1.0
 
 
 def test_live_mode_fails_below_the_minimum_pass_rate(
@@ -105,7 +116,9 @@ def test_live_mode_fails_below_the_minimum_pass_rate(
     )  # fmt: skip
 
     assert status == 1
-    assert "**FAIL: pass rate 50.0% (minimum 75.0%) over 2 cases.**" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "**FAIL in Automatic mode and Agentic mode.**" in printed
+    assert "| automatic | FAIL: pass rate 50.0% (minimum 75.0%) over 2 cases. |" in printed
 
 
 @pytest.mark.parametrize(

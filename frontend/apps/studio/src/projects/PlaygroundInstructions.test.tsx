@@ -150,9 +150,9 @@ test("the Trace names the Instructions the answer ran with", async () => {
   await userEvent.selectOptions(select, await within(select).findByRole("option", { name: "v1 · First rules" }));
   const answer = await ask("How much leave?");
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   const instructions = await within(drawer).findByText("Instructions");
   expect(instructions.nextElementSibling).toHaveTextContent("v1");
 });
@@ -163,9 +163,9 @@ test("the Trace of an answer run with the Instructions Draft says so", async () 
   await picker();
   const answer = await ask("How much leave?");
 
-  await userEvent.click(within(answer).getByRole("button", { name: "Trace" }));
+  await userEvent.click(within(answer).getByText("Trace"));
 
-  const drawer = await screen.findByRole("dialog", { name: "Trace" });
+  const drawer = await screen.findByRole("group", { name: "Trace" });
   const instructions = await within(drawer).findByText("Instructions");
   expect(instructions.nextElementSibling).toHaveTextContent("Draft");
 });

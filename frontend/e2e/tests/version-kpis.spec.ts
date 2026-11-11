@@ -32,6 +32,8 @@ test.describe("Version KPIs", () => {
     expect(
       (await page.request.patch(`${agentApi}/operational-settings`, { data: { allowed_origins: [new URL(HOST_URL).origin] } })).status(),
     ).toBe(200);
+    // Automatic, whatever the default Retrieval Mode.
+    expect((await page.request.put(`${agentApi}/draft`, { data: { retrieval: { mode: "automatic" } } })).ok()).toBe(true);
     expect((await page.request.post(`${agentApi}/versions`, { data: { note: "First release" } })).status()).toBe(201);
     // Playground use of the same Agent is left out of its KPIs.
     const playground = await page.request.post(`${agentApi}/playground/conversations`);
@@ -68,16 +70,16 @@ test.describe("Version KPIs", () => {
 
     // The Editor reads the Live Version's KPIs, today's partial day included.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
-    await expect(page.getByLabel("Agent")).toHaveValue(agentId);
+    await expect(page.getByRole("combobox", { name: "Agent" })).toHaveValue(agentId);
     await expect(page.getByRole("combobox", { name: /^Version/ })).toHaveText("v1 (Live)");
     const card = (name: string) => page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name });
     await expect(card("Volume")).toContainText("1 Conversation", { timeout: 15_000 });
     await expect(card("Volume")).toContainText("2 replies");
-    await expect(card("Volume")).toContainText("Low confidence (fewer than 30 Conversations)");
+    await expect(card("Volume").getByText("Low sample")).toHaveAttribute("title", "Fewer than 30 Conversations");
     await expect(card("Thumbs-up rate")).toContainText("50%");
     await expect(card("Thumbs-up rate")).toContainText("95% interval 9% to 91%");
     await expect(card("Thumbs-up rate")).toContainText("n = 2 votes (1 up, 1 down)");
-    await expect(card("Thumbs-up rate")).toContainText("Low confidence (fewer than 30 votes)");
+    await expect(card("Thumbs-up rate").getByText("Low sample")).toHaveAttribute("title", "Fewer than 30 votes");
     await expect(card("Mean rating")).toContainText("2.0 of 5");
     await expect(card("Mean rating")).toContainText("n = 1 rating");
     // The Project has no Documents, so every reply is the fallback text and asks no model.
@@ -85,6 +87,10 @@ test.describe("Version KPIs", () => {
     await expect(card("Fallback rate")).toContainText("2 of 2 replies were the fallback text");
     await expect(card("Tokens per reply")).toContainText("n = 0 replies that asked a model");
     await expect(card("p95 latency")).toContainText("n = 2 replies");
+    // An Automatic Version makes no Knowledge Search.
+    await expect(card("Searches per reply")).toContainText("0.0 mean");
+    await expect(card("Searches per reply")).toContainText("Retrieval Mode: Automatic");
+    await expect(card("Searches per reply")).toContainText("0 Searches in 2 replies");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 });

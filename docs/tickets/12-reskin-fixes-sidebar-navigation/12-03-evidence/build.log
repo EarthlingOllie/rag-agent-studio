@@ -1,0 +1,50 @@
+$ sh -c cd frontend && pnpm build (at be70569f)
+
+> rag-agent-studio-frontend@ build /home/user/wt-12-03/frontend
+> pnpm --filter @studio/studio build && pnpm --filter @studio/widget build
+
+
+> @studio/studio@ build /home/user/wt-12-03/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 932 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                     0.70 kB │ gzip:   0.38 kB
+dist/assets/index-Cp2gBlem.css     38.13 kB │ gzip:   8.16 kB
+dist/assets/index-DWFgigCn.js   1,706.89 kB │ gzip: 491.65 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.22s
+
+> @studio/widget@ build /home/user/wt-12-03/frontend/apps/widget
+> vite build && vite build --config vite.embed.config.ts
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 78 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 536ms
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/embed.js  1.36 kB │ gzip: 0.77 kB
+
+✓ built in 35ms
+exit 0

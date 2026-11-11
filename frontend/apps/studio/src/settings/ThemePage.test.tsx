@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 import { defaultTheme, fakeThemeApi } from "../test/theme";
@@ -37,8 +38,7 @@ test("every Member finds the Theme tab in Organisation settings", async () => {
   fakeThemeApi();
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-  await userEvent.click(within(tabs).getByRole("link", { name: "Theme" }));
+  await openSection("Organisation settings", "Theme");
 
   expect(await screen.findByRole("heading", { name: "Theme" })).toBeInTheDocument();
 });

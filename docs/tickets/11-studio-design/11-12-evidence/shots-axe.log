@@ -1,0 +1,79 @@
+light       sign-in                      at /sign-in "Sign in"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       sign-in-error                at /sign-in "Sign in"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       sign-up                      at /sign-up "Create your account"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       mfa-challenge                at /sign-in/mfa "Two-factor authentication"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       forgot-password              at /forgot-password "Reset your password"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       forgot-password-sent         at /forgot-password "Reset your password"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       reset-password               at /reset-password "Choose a new password"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       reset-password-incomplete    at /reset-password "Choose a new password"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       accept-invite-create         at /accept-invite "Join Difference Engines"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       accept-invite-sign-in        at /accept-invite "Join Difference Engines"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       accept-invite-wrong-account  at /accept-invite "Join Difference Engines"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       accept-invite-invalid        at /accept-invite "Accept invite"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       status                       at /status "System status"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       status-degraded              at /status "System status"; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       shell-loading                at / ""; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       shell-error                  at / ""; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       no-organisation              at / "You don't belong to any Organisation yet."; top bar no; body rgb(243, 246, 246); axe violations: 0
+light       organisation-not-found       at /organisations/00000000-0000-4000-8000-000000000000/projects "Organisation not found"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       profile                      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile "Profile"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       security                     at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       security-enrol               at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       security-recovery-codes      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       security-on                  at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       security-loading             at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       menu-account                 at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects "Projects"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+light       menu-sections-on-profile     at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile "Profile"; top bar yes; body rgb(243, 246, 246); axe violations: 0
+dark        sign-in                      at /sign-in "Sign in"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        sign-in-error                at /sign-in "Sign in"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        sign-up                      at /sign-up "Create your account"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        mfa-challenge                at /sign-in/mfa "Two-factor authentication"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        forgot-password              at /forgot-password "Reset your password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        forgot-password-sent         at /forgot-password "Reset your password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        reset-password               at /reset-password "Choose a new password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        reset-password-incomplete    at /reset-password "Choose a new password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        accept-invite-create         at /accept-invite "Join Difference Engines"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        accept-invite-sign-in        at /accept-invite "Join Difference Engines"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        accept-invite-wrong-account  at /accept-invite "Join Difference Engines"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        accept-invite-invalid        at /accept-invite "Accept invite"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        status                       at /status "System status"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        status-degraded              at /status "System status"; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        shell-loading                at / ""; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        shell-error                  at / ""; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        no-organisation              at / "You don't belong to any Organisation yet."; top bar no; body rgb(14, 22, 21); axe violations: 0
+dark        organisation-not-found       at /organisations/00000000-0000-4000-8000-000000000000/projects "Organisation not found"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        profile                      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile "Profile"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        security                     at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        security-enrol               at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        security-recovery-codes      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        security-on                  at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        security-loading             at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        menu-account                 at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects "Projects"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+dark        menu-sections-on-profile     at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile "Profile"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark sign-in                      at /sign-in "Sign in"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark sign-in-error                at /sign-in "Sign in"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark sign-up                      at /sign-up "Create your account"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark mfa-challenge                at /sign-in/mfa "Two-factor authentication"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark forgot-password              at /forgot-password "Reset your password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark forgot-password-sent         at /forgot-password "Reset your password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark reset-password               at /reset-password "Choose a new password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark reset-password-incomplete    at /reset-password "Choose a new password"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark accept-invite-create         at /accept-invite "Join Difference Engines"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark accept-invite-sign-in        at /accept-invite "Join Difference Engines"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark accept-invite-wrong-account  at /accept-invite "Join Difference Engines"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark accept-invite-invalid        at /accept-invite "Accept invite"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark status                       at /status "System status"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark status-degraded              at /status "System status"; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark shell-loading                at / ""; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark shell-error                  at / ""; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark no-organisation              at / "You don't belong to any Organisation yet."; top bar no; body rgb(14, 22, 21); axe violations: 0
+chosen-dark organisation-not-found       at /organisations/00000000-0000-4000-8000-000000000000/projects "Organisation not found"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark profile                      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile "Profile"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark security                     at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark security-enrol               at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark security-recovery-codes      at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark security-on                  at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark security-loading             at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security "Security"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark menu-account                 at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects "Projects"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+chosen-dark menu-sections-on-profile     at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile "Profile"; top bar yes; body rgb(14, 22, 21); axe violations: 0
+total axe violations: 0

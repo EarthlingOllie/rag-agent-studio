@@ -1,4 +1,6 @@
 import { expect, test } from "../fixtures";
+import { rowAction } from "../fixtures/documents";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -22,10 +24,10 @@ test.describe("Retention and tombstones", () => {
     await expect(retention).toContainText("kept for 30 days");
 
     // The Audit tab lists the change.
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation settings", "Audit");
     await expect(page.getByRole("table").getByText("organisation.retention_window_changed")).toBeVisible();
     await page.reload();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "General" }).click();
+    await openSection(page, "Organisation settings", "General");
     await expect(page.getByRole("region", { name: "Retention" })).toContainText("kept for 30 days");
   });
 
@@ -53,7 +55,7 @@ test.describe("Retention and tombstones", () => {
 
     // A leave policy Document, uploaded and Ready.
     await page.goto(projectPage);
-    await page.getByLabel("Choose files to upload").setInputFiles({
+    await page.getByLabel("Upload", { exact: true }).setInputFiles({
       name: "leave-policy.md",
       mimeType: "text/markdown",
       buffer: Buffer.from(`# Leave\n\nEveryone gets 25 days of annual leave a year. ${String(Date.now())}\n`),
@@ -65,6 +67,8 @@ test.describe("Retention and tombstones", () => {
     const agent = await page.request.post(`${organisation}/projects/${projectId}/agents`, { data: { name: "HR helper" } });
     const { id: agentId, public_id: publicId } = (await agent.json()) as { id: string; public_id: string };
     const agentApi = `${organisation}/projects/${projectId}/agents/${agentId}`;
+    // Automatic: one search up front, whose Chunks the Trace's table lists (a new Agent is Agentic).
+    expect((await page.request.put(`${agentApi}/draft`, { data: { retrieval: { mode: "automatic" } } })).ok()).toBe(true);
     expect((await page.request.post(`${agentApi}/versions`, { data: { note: "First release" } })).status()).toBe(201);
 
     // A Visitor (another browser, no Studio session) asks about leave through the widget API.
@@ -87,8 +91,8 @@ test.describe("Retention and tombstones", () => {
 
     // The Document is deleted after the answer.
     await page.goto(projectPage);
-    await documentRow.getByRole("button", { name: "Delete leave-policy.md" }).click();
-    await page.getByRole("group", { name: "Delete leave-policy.md?" }).getByRole("button", { name: "Delete" }).click();
+    await rowAction(page, "leave-policy.md", "Delete");
+    await page.getByRole("alertdialog", { name: "Delete leave-policy.md?" }).getByRole("button", { name: "Delete leave-policy.md" }).click();
     await expect(page.getByText(/No Documents yet/)).toBeVisible();
 
     // The reply's Trace still lists the Chunk, as a tombstone with the Document's name.
@@ -96,16 +100,15 @@ test.describe("Retention and tombstones", () => {
     await page.getByRole("link", { name: "How many days of annual leave do I get?" }).click();
     const messages = page.getByRole("list", { name: "Messages" });
     const reply = messages.getByRole("listitem", { name: "HR helper" });
-    await reply.getByRole("button", { name: "Trace" }).click();
-    const drawer = page.getByRole("dialog", { name: "Trace" });
-    const chunks = drawer.getByRole("table", { name: "Retrieved Chunks" });
+    await reply.getByText("Trace", { exact: true }).click();
+    const trace = reply.getByRole("group", { name: "Trace" });
+    const chunks = trace.getByRole("table", { name: "Retrieved Chunks" });
     await expect(chunks.getByRole("cell", { name: "Chunk from deleted Document leave-policy.md" })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await drawer.getByRole("button", { name: "Close" }).click();
 
     // The Owner deletes the Conversation on the Visitor's request, after confirming.
     await page.getByRole("button", { name: "Delete Conversation" }).click();
-    await expect(page.getByRole("group", { name: "Delete Conversation" })).toContainText("Its numbers stay in the metrics.");
+    await expect(page.getByRole("alertdialog", { name: "Delete Conversation" })).toContainText("Its numbers stay in the metrics.");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await page.getByRole("button", { name: "Yes, delete it" }).click();
     await expect(page.getByText(/^Deleted on request .* Its numbers stay in the metrics\.$/)).toBeVisible();
@@ -121,7 +124,6 @@ test.describe("Retention and tombstones", () => {
     const audit = await page.request.get(`${organisation}/audit-events`, { params: { action: "conversation.deleted" } });
     const { items } = (await audit.json()) as { items: { target: { type: string } }[] };
     expect(items.map((item) => item.target.type)).toEqual(["conversation"]);
-    await page.getByRole("link", { name: "All Conversations" }).click();
-    await expect(page.getByRole("table", { name: "Conversations" }).getByRole("link", { name: "(deleted on request)" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Conversations" }).getByRole("link", { name: "(deleted on request)" })).toBeVisible();
   });
 });

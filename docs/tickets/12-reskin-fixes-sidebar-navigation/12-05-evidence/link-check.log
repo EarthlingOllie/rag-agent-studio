@@ -1,0 +1,77 @@
+$ make link-check (at 9690c827)
+node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+	scripts/ci/tests/links.test.mjs
+TAP version 13
+# Subtest: links to files and folders that exist pass, relative to the linking file or to the root
+ok 1 - links to files and folders that exist pass, relative to the linking file or to the root
+  ---
+  duration_ms: 2.804983
+  type: 'test'
+  ...
+# Subtest: a link to a missing file is reported with its file and line
+ok 2 - a link to a missing file is reported with its file and line
+  ---
+  duration_ms: 0.588164
+  type: 'test'
+  ...
+# Subtest: external links, mail links and links in code are not checked
+ok 3 - external links, mail links and links in code are not checked
+  ---
+  duration_ms: 0.272418
+  type: 'test'
+  ...
+# Subtest: reference-style link definitions are checked; footnotes are not links
+ok 4 - reference-style link definitions are checked; footnotes are not links
+  ---
+  duration_ms: 0.272446
+  type: 'test'
+  ...
+# Subtest: anchors must name a heading in the target Markdown file, or in the same file
+ok 5 - anchors must name a heading in the target Markdown file, or in the same file
+  ---
+  duration_ms: 2.142874
+  type: 'test'
+  ...
+# Subtest: slugs follow GitHub's rules
+ok 6 - slugs follow GitHub's rules
+  ---
+  duration_ms: 0.256711
+  type: 'test'
+  ...
+# Subtest: the files come from git: tracked Markdown only
+ok 7 - the files come from git: tracked Markdown only
+  ---
+  duration_ms: 14.799221
+  type: 'test'
+  ...
+# Subtest: main prints each broken link and fails, or says how many links it checked
+ok 8 - main prints each broken link and fails, or says how many links it checked
+  ---
+  duration_ms: 1.119968
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 101.372908
+# start of coverage report
+# ------------------------------------------------------------------
+# file              | line % | branch % | funcs % | uncovered lines
+# ------------------------------------------------------------------
+# scripts           |        |          |         | 
+#  ci               |        |          |         | 
+#   links.mjs       | 100.00 |   100.00 |  100.00 | 
+#   tests           |        |          |         | 
+#    links.test.mjs | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# all files         | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# end of coverage report
+node scripts/ci/link-check.mjs
+Checked 2459 relative links in 260 Markdown files: all resolve.
+exit 0

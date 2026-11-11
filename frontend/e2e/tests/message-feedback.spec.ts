@@ -70,9 +70,9 @@ test.describe("Message Feedback", () => {
     // The Editor filters the Conversations by thumbs down and reads the feedback.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/conversations`);
     const filters = page.getByRole("group", { name: "Filter Conversations" });
-    const table = page.getByRole("table", { name: "Conversations" });
-    const row = table.getByRole("row", { name: /How many days of annual leave/ });
-    await expect(row.getByRole("cell").nth(5)).toHaveText("1 down", { timeout: 15_000 });
+    const list = page.getByRole("list", { name: "Conversations" });
+    const row = list.getByRole("listitem").filter({ hasText: "How many days of annual leave" });
+    await expect(row.getByRole("definition").nth(5)).toHaveText("1 down", { timeout: 15_000 });
     await filters.getByLabel("Feedback").selectOption("Thumbs up");
     await expect(page.getByText("No Conversations match these filters.")).toBeVisible();
     await filters.getByLabel("Feedback").selectOption("Thumbs down");

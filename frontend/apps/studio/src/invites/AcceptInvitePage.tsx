@@ -1,7 +1,8 @@
 import { Link, Navigate, useSearch } from "@tanstack/react-router";
 import type { ReactNode, SubmitEvent } from "react";
 
-import { AuthLayout, Field, FormError, formValues, SubmitButton } from "../auth/AuthLayout";
+import { AuthLayout, ErrorNotice, Field, formValues, PANEL_LINK, SubmitButton } from "../auth/AuthLayout";
+import { button, Notice, notice, Skeleton } from "../design";
 import { AuthRequestError, type Session, useMe, useSignIn, useSignOut, useVerifyMfa } from "../auth/session";
 import { signInErrorMessage } from "../auth/SignInPage";
 import { MIN_PASSWORD_LENGTH } from "../auth/SignUpPage";
@@ -19,15 +20,16 @@ const INVALID = "This invite link is invalid or has expired. Ask an Owner of the
 const SOMETHING_WRONG = "Something went wrong. Try again.";
 
 const signInLink = (
-  <Link to="/sign-in" className="font-medium text-slate-900 underline">
+  <Link to="/sign-in" className={PANEL_LINK}>
     Sign in
   </Link>
 );
 
-function Message({ role, children }: { role: "status" | "alert"; children: ReactNode }) {
+/** The invite page while the invite can't be shown: loading, or why it failed. */
+function Message({ children }: { children: ReactNode }) {
   return (
     <AuthLayout title={TITLE} footer={signInLink}>
-      <p role={role}>{children}</p>
+      {children}
     </AuthLayout>
   );
 }
@@ -39,9 +41,9 @@ function statusOf(error: Error | null): number | undefined {
 
 function Invitation({ preview }: { preview: InvitePreview }) {
   return (
-    <p className="text-slate-700">
-      {preview.invited_by_name} invited <strong className="text-slate-900">{preview.email}</strong> to join{" "}
-      <strong className="text-slate-900">{preview.organisation_name}</strong> as{" "}
+    <p className="text-sm text-muted">
+      {preview.invited_by_name} invited <strong className="font-medium text-ink">{preview.email}</strong> to join{" "}
+      <strong className="font-medium text-ink">{preview.organisation_name}</strong> as{" "}
       {preview.role === "owner" ? "an Owner" : "an Editor"}.
     </p>
   );
@@ -54,7 +56,7 @@ function JoinAsMember({ token, preview }: { token: string; preview: InvitePrevie
   return (
     <div className="space-y-4">
       <Invitation preview={preview} />
-      <FormError
+      <ErrorNotice
         message={accept.error === null ? undefined : status === 400 ? INVALID : SOMETHING_WRONG}
       />
       <button
@@ -63,7 +65,7 @@ function JoinAsMember({ token, preview }: { token: string; preview: InvitePrevie
         onClick={() => {
           accept.mutate(token);
         }}
-        className="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:bg-slate-600"
+        className={`${button.primary} w-full`}
       >
         {accept.isPending ? "Joining…" : `Join ${preview.organisation_name}`}
       </button>
@@ -77,17 +79,17 @@ function WrongAccount({ session, preview }: { session: Session; preview: InviteP
   return (
     <div className="space-y-4">
       <Invitation preview={preview} />
-      <p role="alert" className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <p role="alert" className={notice.warning}>
         You're signed in as {session.member.email}. Sign out, then open the link again to accept as {preview.email}.
       </p>
-      <FormError message={signOut.isError ? "Sign-out failed. Try again." : undefined} />
+      <ErrorNotice message={signOut.isError ? "Sign-out failed. Try again." : undefined} />
       <button
         type="button"
         disabled={signOut.isPending}
         onClick={() => {
           signOut.mutate();
         }}
-        className="w-full rounded border border-slate-400 px-4 py-2 font-medium hover:bg-slate-100"
+        className={`${button.secondary} w-full`}
       >
         Sign out
       </button>
@@ -114,10 +116,10 @@ function CreateAccount({ token, preview }: { token: string; preview: InvitePrevi
   return (
     <form onSubmit={onSubmit} className="space-y-4" aria-label="Create your account and join">
       <Invitation preview={preview} />
-      <FormError message={signUp.error === null ? undefined : (messages[status ?? 0] ?? SOMETHING_WRONG)} />
+      <ErrorNotice message={signUp.error === null ? undefined : (messages[status ?? 0] ?? SOMETHING_WRONG)} />
       <Field label="Your name" name="name" autoComplete="name" />
       <Field label="Password" name="password" type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} />
-      <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
+      <p className="-mt-2 text-sm text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
       <SubmitButton pending={signUp.isPending} label="Create account and join" pendingLabel="Creating your account…" />
     </form>
   );
@@ -148,8 +150,8 @@ function SignInToAccept({ preview }: { preview: InvitePreview }) {
         }}
       >
         <Invitation preview={preview} />
-        <p className="text-sm text-slate-700">Enter the 6-digit code from your authenticator app, or a recovery code.</p>
-        <FormError message={codeError} />
+        <p className="text-sm text-muted">Enter the 6-digit code from your authenticator app, or a recovery code.</p>
+        <ErrorNotice message={codeError} />
         <Field label="Authentication code" name="code" autoComplete="one-time-code" />
         <SubmitButton pending={verify.isPending} label="Verify" pendingLabel="Verifying…" />
       </form>
@@ -166,11 +168,11 @@ function SignInToAccept({ preview }: { preview: InvitePreview }) {
       }}
     >
       <Invitation preview={preview} />
-      <p className="text-sm text-slate-700">You already have an account. Sign in to accept.</p>
-      <FormError message={signInErrorMessage(signIn.error)} />
+      <p className="text-sm text-muted">You already have an account. Sign in to accept.</p>
+      <ErrorNotice message={signInErrorMessage(signIn.error)} />
       <Field label="Password" name="password" type="password" autoComplete="current-password" />
       <p className="-mt-2 text-sm">
-        <Link to="/forgot-password" className="text-slate-700 underline">
+        <Link to="/forgot-password" className={PANEL_LINK}>
           Forgot your password?
         </Link>
       </p>
@@ -182,11 +184,27 @@ function SignInToAccept({ preview }: { preview: InvitePreview }) {
 function AcceptInvite({ token }: { token: string }) {
   const preview = useInvitePreview(token);
   const me = useMe();
-  if (preview.isPending || me.isPending) return <Message role="status">Loading…</Message>;
-  if (preview.isError) {
-    return <Message role="alert">{statusOf(preview.error) === 404 ? INVALID : SOMETHING_WRONG}</Message>;
+  if (preview.isPending || me.isPending) {
+    return (
+      <Message>
+        <Skeleton label="Loading the invite" />
+      </Message>
+    );
   }
-  if (me.isError) return <Message role="alert">The Studio could not reach the API. Try again shortly.</Message>;
+  if (preview.isError) {
+    return (
+      <Message>
+        <Notice tone="error">{statusOf(preview.error) === 404 ? INVALID : SOMETHING_WRONG}</Notice>
+      </Message>
+    );
+  }
+  if (me.isError) {
+    return (
+      <Message>
+        <Notice tone="error">The Studio could not reach the API. Try again shortly.</Notice>
+      </Message>
+    );
+  }
 
   const invite = preview.data;
   const session = me.data;
@@ -213,6 +231,12 @@ function AcceptInvite({ token }: { token: string }) {
 /** `/accept-invite?token=…`: the page an invite link opens. */
 export function AcceptInvitePage() {
   const { token } = useSearch({ from: "/accept-invite" });
-  if (token === undefined) return <Message role="alert">This invite link is incomplete.</Message>;
+  if (token === undefined) {
+    return (
+      <Message>
+        <Notice tone="error">This invite link is incomplete.</Notice>
+      </Message>
+    );
+  }
   return <AcceptInvite token={token} />;
 }

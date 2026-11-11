@@ -1,44 +1,38 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { Badge, button, field, text } from "../design";
 import { AgentDiffView } from "./AgentDiff";
 import { type Agent, type AgentVersion, agentFailure, publishFailure, useAgentDiff, usePublishAgent } from "./agents";
 import { useInstructionsVersions } from "./instructions";
-import { BUTTON, INPUT } from "./ProjectsPage";
 import { useTags } from "./tags";
 
-/** "Live v3", or "Not live" for an Agent that has never been published; "Unpublished
- * changes" while its Draft differs from the Live Version; and its alert badges. */
+/** Live with its Version chip, or Not live for an Agent that has never been published; Draft while
+ * its Draft differs from the Live Version; and its alert badges. */
 export function LiveStatus({ agent }: { agent: Agent }) {
   return (
-    <>
+    <span className="inline-flex flex-wrap items-center gap-1.5">
       {agent.live_version ? (
-        <span className="rounded-full bg-green-100 px-2 py-0.5 text-sm font-medium text-green-900">
-          Live v{agent.live_version.number}
-        </span>
+        <>
+          <Badge kind="live" />
+          <Badge kind="version" version={agent.live_version.number} />
+        </>
       ) : (
-        <span className="rounded-full bg-slate-200 px-2 py-0.5 text-sm font-medium text-slate-900">Not live</span>
+        <Badge kind="notLive" />
       )}
-      {agent.has_unpublished_changes && (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-sm font-medium text-amber-950">Unpublished changes</span>
-      )}
+      {agent.has_unpublished_changes && <Badge kind="draft" title="The Draft has changes that aren't published yet." />}
       {agent.budget_exhausted && (
-        <span
-          title="Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC."
-          className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
-        >
-          Budget exhausted
-        </span>
+        <Badge kind="budgetSpent" title="Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC." />
       )}
       {agent.block_rate_alert && (
         <span
           title="In the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations."
-          className="rounded-full bg-red-100 px-2 py-0.5 text-sm font-medium text-red-900"
+          className="inline-flex items-center rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium whitespace-nowrap text-danger"
         >
           Block rate spike
         </span>
       )}
-    </>
+    </span>
   );
 }
 
@@ -61,17 +55,17 @@ function ChangesToPublish({ agent, organisationId }: { agent: Agent; organisatio
   const names = useTagNames(organisationId, agent.project_id);
   let body;
   if (!live) {
-    body = <p className="text-sm text-slate-700">This is the first Version: all of the Draft&apos;s settings go live.</p>;
+    body = <p className="text-sm text-muted">This is the first Version: all of the Draft&apos;s settings go live.</p>;
   } else if (diff.isPending) {
-    body = <p className="text-sm text-slate-700">Comparing the Draft with the Live Version (v{live.number})…</p>;
+    body = <p className="text-sm text-muted">Comparing the Draft with the Live Version (v{live.number})…</p>;
   } else if (diff.isError) {
-    body = <p className="text-sm text-slate-700">The changes could not be loaded. {agentFailure(diff.error)}</p>;
+    body = <p className="text-sm text-muted">The changes could not be loaded. {agentFailure(diff.error)}</p>;
   } else {
     body = <AgentDiffView diff={diff.data} names={names} />;
   }
   return (
-    <section aria-label="Changes to publish" className="space-y-2">
-      <h4 className="text-sm font-semibold">{live ? `Changes from the Live Version (v${String(live.number)})` : "Changes"}</h4>
+    <section aria-label="Changes to publish" className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-ink">{live ? `Changes from the Live Version (v${String(live.number)})` : "Changes"}</h3>
       {body}
     </section>
   );
@@ -111,18 +105,18 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
 
   let options;
   if (history.isError) {
-    options = <p className="text-sm text-slate-700">The Instructions Versions could not be loaded.</p>;
+    options = <p className="text-sm text-muted">The Instructions Versions could not be loaded.</p>;
   } else {
     const versions = history.data?.versions ?? [];
     const current = versions.find((version) => version.id === history.data?.current_version_id);
     options = (
       <>
-        <label htmlFor="publish-instructions" className="block text-sm font-medium">
+        <label htmlFor="publish-instructions" className={field.label}>
           Project Instructions
         </label>
         <select
           id="publish-instructions"
-          className={INPUT}
+          className={field.select}
           value={pinned}
           onChange={(event) => {
             setPinned(event.target.value);
@@ -146,32 +140,33 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
   }
 
   return (
-    <form aria-label="Publish" onSubmit={onSubmit} noValidate className="space-y-2 rounded border border-slate-200 bg-white p-3">
-      <h3 className="font-semibold">Publish</h3>
-      <p className="text-sm text-slate-700">
-        Publishing freezes the saved Draft as a new Version, and Visitors are served it at once.
-      </p>
-      <label htmlFor="publish-note" className="block text-sm font-medium">
-        Note
-      </label>
-      <input
-        id="publish-note"
-        required
-        maxLength={500}
-        autoComplete="off"
-        className={INPUT}
+    <form aria-label="Publish" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <p className={text.muted}>Publishing freezes the saved Draft as a new Version, and Visitors are served it at once.</p>
+      <div>
+        <label htmlFor="publish-note" className={field.label}>
+          Note
+        </label>
+        <input
+          id="publish-note"
+          required
+          maxLength={500}
+          autoComplete="off"
+          className={field.input}
         value={note}
-        onChange={(event) => {
-          setNote(event.target.value);
-        }}
-      />
-      {options}
+          onChange={(event) => {
+            setNote(event.target.value);
+          }}
+        />
+      </div>
+      <div>{options}</div>
       <ChangesToPublish agent={agent} organisationId={organisationId} />
       <FormError message={noteMissing ? "Add a note of up to 500 characters." : publishFailure(publish.error)} />
-      <button type="submit" className={BUTTON} disabled={publish.isPending}>
-        {publish.isPending ? "Publishing…" : "Publish"}
-      </button>
-      <p role="status" className="text-sm text-slate-700">
+      <div className="flex justify-end">
+        <button type="submit" className={button.primary} disabled={publish.isPending}>
+          {publish.isPending ? "Publishing…" : "Publish"}
+        </button>
+      </div>
+      <p role="status" className={text.muted}>
         {publish.data ? outcome(publish.data) : ""}
       </p>
     </form>

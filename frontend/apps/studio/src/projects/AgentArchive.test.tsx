@@ -17,6 +17,12 @@ const editorSession: Session = {
 };
 const AGENT_ARCHIVED = "This Agent is archived. An Owner can restore it.";
 
+/** Opens the Agent's ⋯ menu and chooses `item`. */
+async function agentAction(item: string) {
+  await userEvent.click(await screen.findByRole("button", { name: "More Agent actions" }, { timeout: 5000 }));
+  await userEvent.click(screen.getByRole("menuitem", { name: item }));
+}
+
 function setUp(session: Session = adaSession, options: Parameters<typeof fakeAgentsApi>[0] = {}) {
   fakeAuthApi({ signedInAs: session });
   fakeProjectsApi();
@@ -27,19 +33,18 @@ test("archived Agents are left out of the Agents list and shown on request", asy
   setUp(editorSession);
   renderStudio(agentsTab);
 
-  const active = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
+  const active = await screen.findByRole("table", { name: "Agents" }, { timeout: 5000 });
   expect(within(active).getAllByRole("link").map((link) => link.textContent)).toEqual(["HR helper"]);
 
-  await userEvent.click(screen.getByRole("button", { name: "Show archived Agents" }));
+  await userEvent.click(screen.getByRole("radio", { name: "Archived" }));
 
-  const archived = await screen.findByRole("list", { name: "Archived Agents" });
+  const archived = await screen.findByRole("table", { name: "Archived Agents" });
   expect(within(archived).getAllByRole("link").map((link) => link.textContent)).toEqual(["Old helper"]);
-  expect(within(archived).getByText("Archived 2026-11-06")).toBeInTheDocument();
+  expect(within(archived).getByRole("cell", { name: "2026-11-06" })).toBeInTheDocument();
   expect(screen.getByText(/Only Owners can restore or delete them/)).toBeInTheDocument();
-  expect(screen.queryByRole("form", { name: "New Agent" })).not.toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: "Show active Agents" }));
-  expect(await screen.findByRole("list", { name: "Agents" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("radio", { name: "Active" }));
+  expect(await screen.findByRole("table", { name: "Agents" })).toBeInTheDocument();
 });
 
 test("a Project with no archived Agents says so", async () => {
@@ -48,9 +53,9 @@ test("a Project with no archived Agents says so", async () => {
   fakeAgentsApi({ agents: [hrHelper] });
   renderStudio(agentsTab);
 
-  await userEvent.click(await screen.findByRole("button", { name: "Show archived Agents" }, { timeout: 5000 }));
+  await userEvent.click(await screen.findByRole("radio", { name: "Archived" }, { timeout: 5000 }));
 
-  expect(await screen.findByText("No archived Agents.")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "No archived Agents" })).toBeInTheDocument();
   expect(screen.getByText(/Open one to restore it or delete it permanently/)).toBeInTheDocument();
 });
 
@@ -58,11 +63,11 @@ test("an Editor archives an Agent after confirming; its page turns read-only wit
   const { requests } = setUp(editorSession);
   renderStudio(agentPage(hrHelper.id));
 
-  await userEvent.click(await screen.findByRole("button", { name: "Archive Agent" }, { timeout: 5000 }));
-  expect(screen.getByText(/HR helper will be hidden from the Agents list/)).toBeInTheDocument();
+  await agentAction("Archive");
+  expect(screen.getByRole("alertdialog", { name: "Archive HR helper?" })).toHaveTextContent(/HR helper will be hidden from the Agents list/);
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(requests).toEqual([]);
-  await userEvent.click(screen.getByRole("button", { name: "Archive Agent" }));
+  await agentAction("Archive");
   await userEvent.click(screen.getByRole("button", { name: "Yes, archive HR helper" }));
 
   const notice = await screen.findByRole("status", { name: "Archived" });
@@ -79,11 +84,12 @@ test("a refused archive shows why", async () => {
   setUp(adaSession, { refuse: { archive: "This Project is archived. An Owner can restore it." } });
   renderStudio(agentPage(hrHelper.id));
 
-  await userEvent.click(await screen.findByRole("button", { name: "Archive Agent" }, { timeout: 5000 }));
+  await agentAction("Archive");
   await userEvent.click(screen.getByRole("button", { name: "Yes, archive HR helper" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("This Project is archived. An Owner can restore it.");
-  expect(screen.getByRole("button", { name: "Archive Agent" })).toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "More Agent actions" })).toBeInTheDocument();
 });
 
 test("an Owner restores an archived Agent and the Playground returns", async () => {
@@ -96,7 +102,8 @@ test("an Owner restores an archived Agent and the Playground returns", async () 
 
   expect(await screen.findByRole("heading", { name: "Playground" })).toBeInTheDocument();
   expect(screen.queryByRole("status", { name: "Archived" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Archive Agent" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "More Agent actions" }));
+  expect(screen.getByRole("menuitem", { name: "Archive" })).toBeInTheDocument();
   expect(requests).toEqual([{ route: "restore" }]);
 });
 
@@ -114,20 +121,23 @@ test("an Owner deletes an archived Agent permanently after typing its name", asy
   const { requests } = setUp();
   renderStudio(agentPage(oldHelper.id));
 
-  await userEvent.click(await screen.findByRole("button", { name: "Delete permanently" }, { timeout: 5000 }));
-  const form = screen.getByRole("form", { name: "Delete Old helper permanently" });
-  expect(form).toHaveTextContent("removes its Draft and Conversations for good");
-  const submit = within(form).getByRole("button", { name: "Delete Old helper permanently" });
+  await agentAction("Delete permanently");
+  const dialog = screen.getByRole("alertdialog", { name: "Delete Old helper permanently" });
+  expect(dialog).toHaveTextContent("removes its Draft and Conversations for good");
+  const form = within(dialog).getByRole("form", { name: "Delete Old helper permanently" });
+  const submit = within(dialog).getByRole("button", { name: "Delete Old helper permanently" });
   expect(submit).toBeDisabled();
-  await userEvent.type(within(form).getByLabelText("Type Old helper to confirm"), "old helper");
+  await userEvent.type(within(form).getByLabelText("Type Old helper to confirm"), "old helper{Enter}");
   expect(submit).toBeDisabled();
+  // Enter does nothing until the name is typed exactly.
+  expect(requests).toEqual([]);
   await userEvent.clear(within(form).getByLabelText("Type Old helper to confirm"));
   await userEvent.type(within(form).getByLabelText("Type Old helper to confirm"), "Old helper");
   await userEvent.click(submit);
 
   expect(await screen.findByText("Old helper was deleted permanently.")).toBeInTheDocument();
   expect(requests).toEqual([{ route: "delete", body: { confirm_name: "Old helper" } }]);
-  const active = await screen.findByRole("list", { name: "Agents" }, { timeout: 5000 });
+  const active = await screen.findByRole("table", { name: "Agents" }, { timeout: 5000 });
   expect(within(active).getAllByRole("link").map((link) => link.textContent)).toEqual(["HR helper"]);
 });
 
@@ -141,11 +151,11 @@ test("deleting can be cancelled, and a refusal shows why", async () => {
   );
   renderStudio(agentPage(oldHelper.id));
 
-  await userEvent.click(await screen.findByRole("button", { name: "Delete permanently" }, { timeout: 5000 }));
+  await agentAction("Delete permanently");
   await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("form", { name: "Delete Old helper permanently" })).not.toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
+  await agentAction("Delete permanently");
   const form = screen.getByRole("form", { name: "Delete Old helper permanently" });
   await userEvent.type(within(form).getByLabelText("Type Old helper to confirm"), "Old helper");
   // Submitting by Enter works too.
@@ -160,7 +170,8 @@ test("Editors see no restore or delete on an archived Agent", async () => {
 
   const notice = await screen.findByRole("status", { name: "Archived" }, { timeout: 5000 });
   expect(within(notice).queryByRole("button")).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Archive Agent" })).not.toBeInTheDocument();
+  // Nothing to offer an Editor on an archived Agent, so there is no ⋯ menu.
+  expect(screen.queryByRole("button", { name: "More Agent actions" })).not.toBeInTheDocument();
 });
 
 test("a Playground refused because the Agent was archived elsewhere says so", async () => {

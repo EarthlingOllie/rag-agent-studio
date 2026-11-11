@@ -1,0 +1,15 @@
+# Sandbox-only: ticket 13-02's stack as its own project (-p rag1302e2e) beside the shared
+# rag-agent-studio services and the rag12e2e stack; every host port moved off theirs.
+x-img-api: &api { image: rag-agent-studio/api:1302, build: !reset null, pull_policy: never }
+x-img-studio: &studio { image: rag-agent-studio/studio:1302, build: !reset null, pull_policy: never }
+services:
+  postgres: { ports: !reset [] }
+  redis: { ports: !reset [] }
+  rustfs: { ports: !reset [] }
+  mailpit: { ports: !override ["1125:1025", "8125:8025"] }
+  api: { <<: *api, ports: !reset [] }
+  worker: *api
+  beat: *api
+  studio: { <<: *studio, ports: !override ["5273:5173"] }
+  widget: *studio
+  host: { <<: *studio, ports: !override ["5275:5175", "5276:5176"] }

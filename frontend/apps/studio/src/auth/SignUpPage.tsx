@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { SubmitEvent } from "react";
 
-import { AuthLayout, Field, FormError, formValues, SubmitButton } from "./AuthLayout";
+import { AuthLayout, ErrorNotice, Field, formValues, PANEL_LINK, SubmitButton } from "./AuthLayout";
 import { AuthRequestError, useSignUp } from "./session";
 
 export const MIN_PASSWORD_LENGTH = 12;
@@ -37,18 +37,18 @@ export function SignUpPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/sign-in" className="font-medium text-slate-900 underline">
+          <Link to="/sign-in" className={PANEL_LINK}>
             Sign in
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-4" aria-label="Sign up">
-        <FormError message={errorMessage(signUp.error)} />
+        <ErrorNotice message={errorMessage(signUp.error)} />
         <Field label="Your name" name="name" autoComplete="name" />
         <Field label="Email" name="email" type="email" autoComplete="email" />
         <Field label="Password" name="password" type="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} />
-        <p className="-mt-2 text-sm text-slate-700">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p className="-mt-2 text-sm text-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
         <Field label="Organisation name" name="organisation_name" autoComplete="organization" />
         <SubmitButton pending={signUp.isPending} label="Create account" pendingLabel="Creating account…" />
       </form>

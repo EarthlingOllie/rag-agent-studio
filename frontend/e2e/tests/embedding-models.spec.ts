@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and calls provider models through the
 // gateway's offline fakes, in the API and the worker. No real provider is called.
@@ -19,8 +20,8 @@ test.describe("Embedding Models", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Credentials");
     const add = page.getByRole("region", { name: "Add a credential" });
     await add.getByLabel("Provider").selectOption("Voyage AI");
     await add.getByLabel("Name").fill("Search embeddings");
@@ -28,15 +29,19 @@ test.describe("Embedding Models", () => {
     await add.getByRole("button", { name: "Check and save" }).click();
     await expect(page.getByText("Search embeddings was checked and saved.")).toBeVisible();
 
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Voyage handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
+    await openSection(page, "Project sections", "Settings");
     const setting = page.getByRole("region", { name: "Embedding Model" });
     await expect(setting).toContainText("Documents are embedded with multilingual-e5-small.");
 
     await setting.getByRole("button", { name: "Change Embedding Model" }).click();
-    const choose = setting.getByRole("form", { name: "Choose the Embedding Model" });
+    const dialog = page.getByRole("dialog", { name: "Change the Embedding Model" });
+    await expect(dialog.getByText("This Project has no Documents yet, so the new model is used at once.")).toBeVisible();
+    const choose = dialog.getByRole("form", { name: "Choose the Embedding Model" });
     await expect(choose.getByLabel("Embedding Model").getByRole("option")).toHaveText([
       "multilingual-e5-small (built in)",
       "voyage-3.5 (Search embeddings)",
@@ -46,13 +51,16 @@ test.describe("Embedding Models", () => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await choose.getByLabel("Embedding Model").selectOption("voyage-3.5 (Search embeddings)");
     await choose.getByRole("button", { name: "Use this model" }).click();
+    await expect(dialog).toHaveCount(0);
     await expect(setting).toContainText("Documents are embedded with voyage-3.5.");
 
     // The worker embeds the upload with the chosen model; changing it now would re-embed.
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await openSection(page, "Project sections", "Documents");
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.reload();
+    await openSection(page, "Project sections", "Settings");
     await expect(setting).toContainText("Changing it re-embeds every Document in the background");
 
     // The retrieval probe finds the handbook's Chunks by their Voyage vectors.
@@ -67,8 +75,8 @@ test.describe("Embedding Models", () => {
     expect(answer.chunks.map((chunk) => chunk.document_name)).toEqual(Array(3).fill("northwind-staff-handbook.md"));
 
     // The Project's credential is a reference: deleting it is refused and says why.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Credentials");
     await page.getByRole("button", { name: "Delete: Search embeddings" }).click();
     await page.getByRole("button", { name: "Yes, delete Search embeddings" }).click();
     await expect(page.getByText("Voyage handbook (Embedding Model voyage-3.5)")).toBeVisible();
@@ -79,8 +87,8 @@ test.describe("Embedding Models", () => {
     makeAxeBuilder,
   }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Credentials" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Credentials");
     const add = page.getByRole("region", { name: "Add a credential" });
     await add.getByLabel("Provider").selectOption("Voyage AI");
     await add.getByLabel("Name").fill("Re-embed target");
@@ -89,11 +97,12 @@ test.describe("Embedding Models", () => {
     await expect(page.getByText("Re-embed target was checked and saved.")).toBeVisible();
 
     // A Project on the built-in model, with the handbook Ready.
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
+    await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Re-embedded handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     const [, organisationId, projectId] = /organisations\/([^/]+)\/projects\/([^/]+)/.exec(page.url()) ?? [];
@@ -106,10 +115,13 @@ test.describe("Embedding Models", () => {
     expect((await probe()).embedding_model_id).toBe("multilingual-e5-small");
 
     await page.reload();
+    await openSection(page, "Project sections", "Settings");
     const setting = page.getByRole("region", { name: "Embedding Model" });
     await expect(setting).toContainText("Changing it re-embeds every Document in the background");
     await setting.getByRole("button", { name: "Change Embedding Model" }).click();
-    const choose = setting.getByRole("form", { name: "Choose the Embedding Model" });
+    const dialog = page.getByRole("dialog", { name: "Change the Embedding Model" });
+    await expect(dialog.getByText("Every Document in this Project is re-embedded with the new model in the background.")).toBeVisible();
+    const choose = dialog.getByRole("form", { name: "Choose the Embedding Model" });
     await choose.getByLabel("Embedding Model").selectOption("voyage-3.5 (Re-embed target)");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await choose.getByRole("button", { name: "Use this model" }).click();
@@ -126,6 +138,7 @@ test.describe("Embedding Models", () => {
     expect([answer.embedding_model_id, answer.dimension]).toEqual(["voyage-3.5", 1024]);
     expect(answer.chunks.map((chunk) => chunk.document_name)).toEqual(Array(3).fill("northwind-staff-handbook.md"));
     // The Documents table counts each Chunk once.
+    await openSection(page, "Project sections", "Documents");
     await expect(row).toBeVisible();
 
     // The change is in the Audit log.

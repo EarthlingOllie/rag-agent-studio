@@ -13,7 +13,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from tests.agents import answer_with, ask, create_agent, start_conversation
+from tests.agents import answer_with, ask, create_agent, create_automatic_agent, start_conversation
 from tests.conftest import ClientFactory, MemberFactory, SignedUpMember
 from tests.documents import create_project, project_path
 from tests.fakes.clock import ControllableClock
@@ -57,7 +57,8 @@ async def playground_chat(
 
 
 async def live_agent_in(owner: SignedUpMember, project_id: str, name: str) -> dict[str, Any]:
-    agent: dict[str, Any] = await create_agent(owner, project_id, name)
+    """An Automatic Agent, published: its Traces list the Chunks retrieved up front."""
+    agent: dict[str, Any] = await create_automatic_agent(owner, project_id, name)
     agent["version"] = await published(owner, project_id, agent["id"])
     return agent
 
@@ -327,7 +328,7 @@ async def test_a_playground_conversation_opens_flagged_with_its_draft_traces(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
     project_id = await citing_project(app, owner)
-    agent = await create_agent(owner, project_id)
+    agent = await create_automatic_agent(owner, project_id)
     conversation_id = await playground_chat(owner, project_id, agent["id"], "Leave?")
 
     body = await opened(owner, project_id, conversation_id)

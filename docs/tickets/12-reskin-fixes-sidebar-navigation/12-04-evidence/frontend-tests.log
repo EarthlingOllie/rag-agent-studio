@@ -1,0 +1,145 @@
+$ make test-frontend (at d5f734f2)
+cd frontend && pnpm test && pnpm check-embed-size && pnpm palette-ratchet
+
+> rag-agent-studio-frontend@ test /home/user/wt-12-04/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /home/user/wt-12-04/frontend
+      Coverage enabled with v8
+
+
+ Test Files  79 passed (79)
+      Tests  1035 passed (1035)
+   Start at  01:05:34
+   Duration  313.46s (tests 71%, environment 13%, import 8%, setup 5%, transform 1%, worker 1%)
+
+    Isolate  79 workers spawned · ~1.75s startup each (spawn + environment, per file)
+             at least ~44.23s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+112 files fully covered.
+2 empty files skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 4558/4558 )
+Branches     : 100% ( 3230/3230 )
+Functions    : 100% ( 1645/1645 )
+Lines        : 100% ( 3987/3987 )
+================================================================================
+
+> rag-agent-studio-frontend@ check-embed-size /home/user/wt-12-04/frontend
+> pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size
+
+
+> @studio/widget@ build /home/user/wt-12-04/frontend/apps/widget
+> vite build && vite build --config vite.embed.config.ts
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 78 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
+
+✓ built in 660ms
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/embed.js  1.36 kB │ gzip: 0.77 kB
+
+✓ built in 27ms
+
+> @studio/widget@ check-size /home/user/wt-12-04/frontend/apps/widget
+> node scripts/check-size.mjs
+
+embed.js: 1367 bytes, 778 gzipped (budget 2048 and 1024)
+
+> rag-agent-studio-frontend@ palette-ratchet /home/user/wt-12-04/frontend
+> node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=scripts/palette-ratchet/ratchet.mjs scripts/palette-ratchet/ratchet.test.mjs && node scripts/palette-ratchet/cli.mjs
+
+TAP version 13
+# Subtest: counts palette classes, dark: variants and white text or backgrounds under apps/studio/src only
+ok 1 - counts palette classes, dark: variants and white text or backgrounds under apps/studio/src only
+  ---
+  duration_ms: 8.584629
+  type: 'test'
+  ...
+# Subtest: token utilities are not palette classes
+ok 2 - token utilities are not palette classes
+  ---
+  duration_ms: 0.46885
+  type: 'test'
+  ...
+# Subtest: a `dark` key or a colour named in prose is not a class; the dark: variant is
+ok 3 - a `dark` key or a colour named in prose is not a class; the dark: variant is
+  ---
+  duration_ms: 1.394959
+  type: 'test'
+  ...
+# Subtest: the same count as the baseline passes
+ok 4 - the same count as the baseline passes
+  ---
+  duration_ms: 1.206713
+  type: 'test'
+  ...
+# Subtest: a rise fails and names the files that have them
+ok 5 - a rise fails and names the files that have them
+  ---
+  duration_ms: 0.86774
+  type: 'test'
+  ...
+# Subtest: a fall passes and prints the new baseline to commit
+ok 6 - a fall passes and prints the new baseline to commit
+  ---
+  duration_ms: 0.754131
+  type: 'test'
+  ...
+# Subtest: --write lowers the baseline to the new count, but never raises it
+ok 7 - --write lowers the baseline to the new count, but never raises it
+  ---
+  duration_ms: 2.69693
+  type: 'test'
+  ...
+# Subtest: with no baseline file none are allowed
+ok 8 - with no baseline file none are allowed
+  ---
+  duration_ms: 0.640351
+  type: 'test'
+  ...
+# Subtest: an unknown argument is a usage error
+ok 9 - an unknown argument is a usage error
+  ---
+  duration_ms: 0.540386
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 146.423831
+# start of coverage report
+# ------------------------------------------------------------------
+# file              | line % | branch % | funcs % | uncovered lines
+# ------------------------------------------------------------------
+# scripts           |        |          |         | 
+#  palette-ratchet  |        |          |         | 
+#   ratchet.mjs     | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# all files         | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# end of coverage report
+0 palette-class uses under apps/studio/src (none allowed).
+exit 0

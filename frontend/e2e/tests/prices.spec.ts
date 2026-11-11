@@ -1,19 +1,20 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier; no real provider is called and no
 // real key is used. Prices come from the repo's price table, loaded when the API migrates.
 const CHAT_KEY = "sk-ant-e2e-test-only-not-a-real-key-p7q2";
 
 async function settingsTab(page: Page, tab: string) {
-  await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: tab }).click();
+  await openSection(page, "Organisation settings", tab);
 }
 
 test.describe("prices", () => {
   test("an Owner sees the platform price table and overrides a price for one credential", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
+    await openSection(page, "Organisation sections", "Settings");
     await settingsTab(page, "Credentials");
     const add = page.getByRole("region", { name: "Add a credential" });
     await add.getByLabel("Provider").selectOption("Anthropic");

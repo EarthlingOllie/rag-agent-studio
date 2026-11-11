@@ -1,10 +1,11 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { legalVoyage, marketingOpenAi } from "../test/credentials";
 import { chatModels, claudeDefault, demoCredential, demoDefault, embeddingsOnlyOpenAi, fakeModelsApi, legalClaude } from "../test/models";
+import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -32,7 +33,7 @@ test("the Models tab is shown to every Member", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  await userEvent.click(await screen.findByRole("link", { name: "Models" }));
+  await openSection("Organisation settings", "Models");
 
   expect(await screen.findByRole("heading", { name: "Default Model" })).toBeInTheDocument();
 });
@@ -61,6 +62,36 @@ test("the credential picker offers only chat-capable credentials, and the model 
   expect(api.listed).toEqual([`${legalClaude.id}/chat`, `${marketingOpenAi.id}/chat`]);
 });
 
+test("the model picker marks the models that support tools", async () => {
+  chatModels[legalClaude.id]?.push({ id: "claude-no-tools", name: "Claude Plain", supports_tools: false });
+  fakeModelsApi({ credentials: [legalClaude] });
+  openAs();
+  const form = await picker();
+  await form.findByRole("option", { name: "Claude Plain" });
+
+  const tools = form.getByRole("group", { name: "Supports tools: Agentic or Automatic" });
+  expect(optionNames(tools)).toEqual(["Claude Sonnet 4.5", "Claude Haiku 4.5"]);
+  const plain = form.getByRole("group", { name: "No tools: Automatic only" });
+  expect(optionNames(plain)).toEqual(["Claude Plain"]);
+  expect(form.queryByText(/can't use tools/)).not.toBeInTheDocument();
+
+  await userEvent.selectOptions(form.getByRole("combobox", { name: "Model" }), "Claude Plain");
+
+  expect(
+    form.getByText("Claude Plain can't use tools: Agentic Agents that use the Default Model will answer as Automatic."),
+  ).toBeInTheDocument();
+  chatModels[legalClaude.id]?.pop();
+});
+
+test("a current Default Model without tool support says Agentic Agents answer as Automatic", async () => {
+  fakeModelsApi({ defaultModel: { ...claudeDefault, model_name: "Claude Plain", supports_tools: false } });
+  openAs(editorSession);
+
+  expect(
+    await screen.findByText("It can't use tools, so Agentic Agents without their own model answer as Automatic."),
+  ).toBeInTheDocument();
+});
+
 test("an Owner sets the Default Model", async () => {
   const api = fakeModelsApi();
   openAs();
@@ -71,6 +102,7 @@ test("an Owner sets the Default Model", async () => {
   await userEvent.selectOptions(form.getByRole("combobox", { name: "Model" }), "GPT-4.1 mini");
   await userEvent.click(form.getByRole("button", { name: "Save Default Model" }));
 
+  // Confirmed by a toast.
   expect(await screen.findByRole("status")).toHaveTextContent("The Default Model is now GPT-4.1 mini.");
   expect(api.set).toEqual([{ credential_id: marketingOpenAi.id, model: "gpt-4.1-mini" }]);
   expect(await screen.findByText("GPT-4.1 mini, using Marketing OpenAI (OpenAI)")).toBeInTheDocument();
@@ -110,7 +142,7 @@ test("Editors see the Default Model but cannot change it", async () => {
 
 test("a refused choice shows the API's reason", async () => {
   fakeModelsApi();
-  chatModels[legalClaude.id]?.push({ id: "claude-retired", name: "Claude Retired" });
+  chatModels[legalClaude.id]?.push({ id: "claude-retired", name: "Claude Retired", supports_tools: true });
   server.use(
     http.put("*/api/organisations/:organisationId/default-model", () =>
       HttpResponse.json({ detail: "Anthropic doesn't offer claude-retired for chat." }, { status: 422 }),
@@ -132,7 +164,7 @@ test("without a chat-capable credential, Owners are sent to add one", async () =
   openAs();
 
   expect(await screen.findByText(/No credential can be used for chat yet/)).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Add one on the Credentials tab" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Add one in Credentials" })).toHaveAttribute(
     "href",
     `/organisations/${organisationId}/settings/credentials`,
   );
@@ -167,4 +199,16 @@ test("credentials that can't be loaded say so", async () => {
   openAs();
 
   expect(await screen.findByText("The credentials could not be loaded. Try again shortly.")).toBeInTheDocument();
+});
+
+test("the save button shows progress while the Default Model is saved", async () => {
+  fakeModelsApi();
+  server.use(http.put("*/api/organisations/:organisationId/default-model", () => delay("infinite")));
+  openAs();
+  const form = await picker();
+  await form.findByRole("option", { name: "Claude Sonnet 4.5" });
+
+  await userEvent.click(form.getByRole("button", { name: "Save Default Model" }));
+
+  expect(await form.findByRole("button", { name: "Saving…" })).toBeDisabled();
 });

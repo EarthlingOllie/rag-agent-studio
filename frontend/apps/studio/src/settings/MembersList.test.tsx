@@ -5,6 +5,7 @@ import { delay, http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeInvitesApi, organisationId } from "../test/invites";
 import { adaMember, charlesMember, fakeMembersApi, graceMember, LAST_OWNER } from "../test/members";
+import { sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -44,7 +45,8 @@ test("an Owner changes a Member's role", async () => {
 
   await userEvent.selectOptions(screen.getByLabelText("Role for Grace Hopper"), "Owner");
 
-  expect(await screen.findByText("Grace Hopper is now an Owner.")).toBeInTheDocument();
+  // The change is confirmed by a toast.
+  expect(await screen.findByRole("status")).toHaveTextContent("Grace Hopper is now an Owner.");
   expect(api.roleChanges).toEqual([{ memberId: graceMember.id, role: "owner" }]);
   expect(memberRows()[1]).toEqual(["Grace Hopper", "grace@example.test", "owner"]);
 });
@@ -78,9 +80,9 @@ test("an Owner who steps down loses the Owner-only tabs", async () => {
   await userEvent.selectOptions(screen.getByLabelText("Role for Ada Lovelace"), "Editor");
 
   expect(await screen.findByText("Only Owners can manage Members and invites.")).toBeInTheDocument();
-  const tabs = screen.getByRole("navigation", { name: "Organisation settings" });
-  expect(within(tabs).queryByRole("link", { name: "Members" })).not.toBeInTheDocument();
-  expect(within(tabs).queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
+  const sections = await sectionNames("Organisation settings");
+  expect(sections).not.toContain("Members");
+  expect(sections).not.toContain("Audit");
 });
 
 test("an Owner removes a Member after confirming", async () => {
@@ -90,12 +92,17 @@ test("an Owner removes a Member after confirming", async () => {
   await screen.findByRole("table", { name: "Members" });
 
   await userEvent.click(screen.getByRole("button", { name: "Remove Grace Hopper" }));
-  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  const dialog = screen.getByRole("alertdialog", { name: "Remove Grace Hopper?" });
+  expect(dialog).toHaveTextContent("Grace Hopper loses access to Analytical Engines");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(api.removed).toEqual([]);
   await userEvent.click(screen.getByRole("button", { name: "Remove Grace Hopper" }));
   await userEvent.click(screen.getByRole("button", { name: "Yes, remove Grace Hopper" }));
 
-  expect(await screen.findByText("Grace Hopper was removed and can no longer open this Organisation.")).toBeInTheDocument();
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "Grace Hopper was removed and can no longer open this Organisation.",
+  );
   expect(api.removed).toEqual([graceMember.id]);
   expect(memberRows()).toEqual([["Ada Lovelace (you)", "ada@example.test", "owner"]]);
 });

@@ -4,6 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { type AuditEvent, fakeAuditApi, grace, lockedOut, organisationCreated, roleChanged } from "../test/audit";
 import { adaSession, fakeAuthApi } from "../test/auth";
+import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -24,8 +25,7 @@ test("Owners open the Audit tab from Organisation settings and see who changed w
   fakeAuditApi();
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
-  await userEvent.click(within(tabs).getByRole("link", { name: "Audit" }));
+  await openSection("Organisation settings", "Audit");
 
   expect(await screen.findByRole("heading", { name: "Audit" })).toBeInTheDocument();
   expect(await screen.findByRole("cell", { name: "member.locked_out" })).toBeInTheDocument();
@@ -42,16 +42,20 @@ test("Owners open the Audit tab from Organisation settings and see who changed w
     ],
   ]);
   expect(screen.getByText("Page 1 of 1 · 3 events")).toBeInTheDocument();
+  // On a narrow screen the table scrolls sideways in a box that takes keyboard focus.
+  const box = screen.getByRole("region", { name: "Audit Events" });
+  expect(box).toHaveAttribute("tabindex", "0");
+  expect(within(box).getByRole("table", { name: "Audit Events" })).toBeInTheDocument();
 });
 
 test("Editors don't see the Audit tab", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   renderStudio(`/organisations/${organisationId}/settings`);
 
-  const tabs = await screen.findByRole("navigation", { name: "Organisation settings" });
+  const sections = await sectionNames("Organisation settings");
 
-  expect(within(tabs).getByRole("link", { name: "General" })).toBeInTheDocument();
-  expect(within(tabs).queryByRole("link", { name: "Audit" })).not.toBeInTheDocument();
+  expect(sections).toContain("General");
+  expect(sections).not.toContain("Audit");
   expect(screen.getByRole("button", { name: "Leave Analytical Engines" })).toBeInTheDocument();
 });
 
@@ -123,6 +127,8 @@ test("Owners page through long histories, and changing a filter goes back to the
   renderStudio(auditPath);
 
   expect(await screen.findByText("Page 1 of 2 · 30 events")).toBeInTheDocument();
+  const pages = within(screen.getByRole("navigation", { name: "Audit Events pages" }));
+  expect(pages.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
   await userEvent.click(screen.getByRole("button", { name: "Next page" }));
 
@@ -131,8 +137,9 @@ test("Owners page through long histories, and changing a filter goes back to the
   expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
   await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
   expect(await screen.findByText("Page 1 of 2 · 30 events")).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+  await userEvent.click(pages.getByRole("button", { name: "Page 2" }));
   await screen.findByText("Page 2 of 2 · 30 events");
+  expect(pages.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
 
   await userEvent.selectOptions(screen.getByLabelText("Action"), "member.invited");
 

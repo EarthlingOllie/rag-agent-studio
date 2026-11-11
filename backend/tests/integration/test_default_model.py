@@ -31,9 +31,9 @@ from tests.integration.test_provider_credentials import (
 from tests.unit.test_model_gateway import NO_BEDROCK, openai_completion
 
 GPT_MODELS = [
-    {"id": "gpt-4.1", "name": "GPT-4.1"},
-    {"id": "gpt-4.1-mini", "name": "GPT-4.1 mini"},
-    {"id": "gpt-4o-mini", "name": "GPT-4o mini"},
+    {"id": "gpt-4.1", "name": "GPT-4.1", "supports_tools": True},
+    {"id": "gpt-4.1-mini", "name": "GPT-4.1 mini", "supports_tools": True},
+    {"id": "gpt-4o-mini", "name": "GPT-4o mini", "supports_tools": True},
 ]
 
 
@@ -71,14 +71,14 @@ async def test_a_credentials_models_are_listed_per_capability(owner: SignedUpMem
 
     assert await models(owner, openai["id"], "chat") == GPT_MODELS
     assert await models(owner, openai["id"], "embeddings") == [
-        {"id": "text-embedding-3-small", "name": "text-embedding-3-small"},
-        {"id": "text-embedding-3-large", "name": "text-embedding-3-large"},
+        {"id": "text-embedding-3-small", "name": "text-embedding-3-small", "supports_tools": False},
+        {"id": "text-embedding-3-large", "name": "text-embedding-3-large", "supports_tools": False},
     ]
     assert await models(owner, openai["id"], "rerank") == []
     assert await models(owner, voyage["id"], "chat") == []
     assert await models(owner, voyage["id"], "rerank") == [
-        {"id": "rerank-2.5", "name": "rerank-2.5"},
-        {"id": "rerank-2.5-lite", "name": "rerank-2.5-lite"},
+        {"id": "rerank-2.5", "name": "rerank-2.5", "supports_tools": False},
+        {"id": "rerank-2.5-lite", "name": "rerank-2.5-lite", "supports_tools": False},
     ]
 
 
@@ -138,6 +138,7 @@ async def test_an_owner_sets_the_default_model_from_a_chat_credential(
         "provider": "openai",
         "model": "gpt-4.1-mini",
         "model_name": "GPT-4.1 mini",
+        "supports_tools": True,
         "updated_at": "2026-11-05T09:00:00Z",
     }
     assert response.status_code == 200, response.text

@@ -22,10 +22,12 @@ from app.gateway.fakes import FakeModelAdapters
 from app.gateway.ports import Reranker
 from app.runtime.prompt import preamble
 from tests.agents import (
+    AUTOMATIC,
     answer_text,
     answer_with,
     ask,
     create_agent,
+    create_automatic_agent,
     parse_sse,
     playground_path,
     save_draft,
@@ -79,12 +81,13 @@ async def echo(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[s
 async def ready_agent(
     app: FastAPI, owner: SignedUpMember, editor: SignedUpMember | None = None
 ) -> tuple[SignedUpMember, str, str]:
-    """An Organisation with a Default Model, and a Project with the leave policy and an Agent."""
+    """An Organisation with a Default Model, and a Project with the leave policy and an
+    Automatic Agent."""
     member = editor or owner
     await use_default_model(owner)
     project_id = await create_project(member)
     await upload(app, member, project_id, "leave.txt", LEAVE.encode())
-    agent = await create_agent(member, project_id)
+    agent = await create_automatic_agent(member, project_id)
     return member, project_id, agent["id"]
 
 
@@ -151,7 +154,10 @@ async def test_the_model_receives_the_draft_the_chunks_and_the_history_in_order(
     answer_with(app, echo)
     member, project_id, agent_id = await ready_agent(app, owner)
     saved = await save_draft(
-        member, project_id, agent_id, {"behaviour": {"system_prompt": "Be brief."}}
+        member,
+        project_id,
+        agent_id,
+        {"behaviour": {"system_prompt": "Be brief."}, "retrieval": AUTOMATIC},
     )
     assert saved.status_code == 200
     conversation = await start_conversation(member, project_id, agent_id)
@@ -188,7 +194,12 @@ async def test_the_project_instructions_reach_the_model_before_the_system_prompt
         f"{project_path(member, project_id)}/instructions", json={"markdown": instructions}
     )
     assert saved.status_code == 200, saved.text
-    await save_draft(member, project_id, agent_id, {"behaviour": {"system_prompt": "Be brief."}})
+    await save_draft(
+        member,
+        project_id,
+        agent_id,
+        {"behaviour": {"system_prompt": "Be brief."}, "retrieval": AUTOMATIC},
+    )
     conversation = await start_conversation(member, project_id, agent_id)
 
     response = await ask(member, project_id, agent_id, conversation["id"], "How much leave?")
@@ -248,7 +259,7 @@ async def test_a_project_without_documents_replies_with_the_fallback_text(
     answer_with(app, never_called)
     await use_default_model(owner)
     project_id = await create_project(owner)
-    agent = await create_agent(owner, project_id)
+    agent = await create_automatic_agent(owner, project_id)
     conversation = await start_conversation(owner, project_id, agent["id"])
 
     response = await ask(owner, project_id, agent["id"], conversation["id"], "Hello?")
@@ -275,7 +286,10 @@ async def test_with_nothing_relevant_the_agent_replies_with_its_fallback_text(
         owner,
         project_id,
         agent_id,
-        {"behaviour": {"fallback_text": "Ask HR, please."}, "retrieval": {"min_score": 0.3}},
+        {
+            "behaviour": {"fallback_text": "Ask HR, please."},
+            "retrieval": {**AUTOMATIC, "min_score": 0.3},
+        },
     )
     assert saved.status_code == 200, saved.text
     conversation = await start_conversation(owner, project_id, agent_id)
@@ -310,7 +324,7 @@ async def test_a_relevant_chunk_above_the_minimum_score_reaches_the_model(
     await use_default_model(owner)
     project_id = await knowledge_base(app, owner)
     agent_id = (await create_agent(owner, project_id))["id"]
-    await save_draft(owner, project_id, agent_id, {"retrieval": {"min_score": 0.3}})
+    await save_draft(owner, project_id, agent_id, {"retrieval": {**AUTOMATIC, "min_score": 0.3}})
     conversation = await start_conversation(owner, project_id, agent_id)
 
     response = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)
@@ -346,7 +360,7 @@ async def test_the_drafts_reranker_chooses_the_chunks_the_model_is_given(
     project_id = await knowledge_base(app, owner)
     agent_id = (await create_agent(owner, project_id))["id"]
     # Semantic search alone, keeping one Chunk: without the reranker that isn't PRODUCT.
-    retrieval = {"hybrid_weight": 1, "top_k": 1, "min_score": 0}
+    retrieval = {**AUTOMATIC, "hybrid_weight": 1, "top_k": 1, "min_score": 0}
     await save_draft(owner, project_id, agent_id, {"retrieval": retrieval})
     conversation = await start_conversation(owner, project_id, agent_id)
     plain = await ask(owner, project_id, agent_id, conversation["id"], PRODUCT_QUESTION)

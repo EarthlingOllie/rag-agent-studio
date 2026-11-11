@@ -60,12 +60,6 @@ test.describe("Time series", () => {
     const section = page.getByRole("region", { name: "Over time" });
     await expect(section.getByLabel("Metric")).toHaveValue("conversations");
     await expect(section.getByLabel("Granularity")).toHaveValue("day");
-    const table = section.getByRole("table", { name: "Conversations, the numbers behind the chart" });
-    // The last 30 days, one row each (and the header); today's has the Visitor's Conversation.
-    await expect(table.getByRole("row")).toHaveCount(31, { timeout: 15_000 });
-    const cells = (row: number) => table.getByRole("row").nth(row).getByRole("cell");
-    await expect(cells(30)).toHaveText(["1", "1"]);
-    await expect(cells(29)).toHaveText(["0", "0"]);
     const changes = section.getByRole("list", { name: "Live Version changes" }).getByRole("listitem");
     await expect(changes).toHaveCount(3);
     await expect(changes.nth(0)).toContainText("v1 published");
@@ -77,6 +71,14 @@ test.describe("Time series", () => {
     await expect(section.getByRole("note")).toHaveCount(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
+    // The Table view: the last 30 days, one row each (and the header); today's has the Visitor's Conversation.
+    await section.getByRole("radio", { name: "Table" }).click();
+    const table = section.getByRole("table", { name: "Conversations, the numbers behind the chart" });
+    await expect(table.getByRole("row")).toHaveCount(31, { timeout: 15_000 });
+    const cells = (row: number) => table.getByRole("row").nth(row).getByRole("cell");
+    await expect(cells(30)).toHaveText(["1", "1"]);
+    await expect(cells(29)).toHaveText(["0", "0"]);
+
     // By month: the range's months, the last holding the Conversation.
     await section.getByLabel("Granularity").selectOption("Month");
     await expect(section.getByText(/Conversations per month, from/)).toBeVisible({ timeout: 15_000 });
@@ -85,12 +87,14 @@ test.describe("Time series", () => {
 
     // An Editor adds a Document: the period now carries the confounder note.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     await expect(page.getByRole("list", { name: "Uploads" }).getByText("Uploaded")).toBeVisible();
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
     await expect(section.getByRole("note")).toContainText("Documents changed during this period: 1 added, replaced or processed again.", {
       timeout: 15_000,
     });
+    // The chart draws the period as a Documents-changed band.
+    await expect(section.getByText("Documents changed", { exact: true })).toBeVisible();
     await expect(section.getByRole("note")).toContainText("may confound the comparison");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });

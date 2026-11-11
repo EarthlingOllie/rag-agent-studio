@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openAgentView } from "../fixtures/agent";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -55,43 +56,43 @@ test.describe("Conversations viewer", () => {
       (await page.request.post(`${agentApi}/playground/conversations/${playgroundId}/messages`, { data: { content: "Testing leave" } })).status(),
     ).toBe(200);
 
-    // The Agent page leads to its Conversations.
+    // The Agent's Conversations view leads to its Conversations.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
-    await page.getByRole("link", { name: "Conversations with this Agent" }).click();
-    const table = page.getByRole("table", { name: "Conversations" });
-    const playgroundRow = table.getByRole("row", { name: /Testing leave/ });
-    const visitorRow = table.getByRole("row", { name: /How many days of annual leave/ });
-    await expect(playgroundRow.getByRole("cell").nth(2)).toHaveText("Playground", { timeout: 15_000 });
-    await expect(visitorRow.getByRole("cell").nth(2)).toHaveText("Visitor");
-    await expect(visitorRow.getByRole("cell").nth(3)).toHaveText("v1");
+    await openAgentView(page, "Conversations");
+    const list = page.getByRole("list", { name: "Conversations" });
+    const playgroundRow = list.getByRole("listitem").filter({ hasText: "Testing leave" });
+    const visitorRow = list.getByRole("listitem").filter({ hasText: "How many days of annual leave" });
+    // Each listed Conversation's facts: when, the Agent, with whom, the Versions that answered…
+    await expect(playgroundRow.getByRole("definition").nth(2)).toHaveText("Playground", { timeout: 15_000 });
+    await expect(visitorRow.getByRole("definition").nth(2)).toHaveText("Visitor");
+    await expect(visitorRow.getByRole("definition").nth(3)).toHaveText("v1");
+    // The view is the Agent's: its list has no Agent filter.
     const filters = page.getByRole("group", { name: "Filter Conversations" });
-    await expect(filters.getByLabel("Agent")).toHaveValue(agentId);
+    await expect(filters.getByLabel("Agent")).toHaveCount(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     // Visitors only, then v1 only.
-    await filters.getByLabel("Show").selectOption("Visitors only");
+    await filters.getByRole("radio", { name: "Visitors" }).click();
     await expect(playgroundRow).toHaveCount(0);
     await filters.getByLabel("Version").selectOption("v1");
     await expect(visitorRow).toHaveCount(1);
     await expect(page).toHaveURL(/show=visitors/);
 
-    // Open it and read the reply's Trace.
+    // Open it beside the list and read the reply's Trace, folded under it.
     await visitorRow.getByRole("link", { name: "How many days of annual leave do I get?" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Conversation with HR helper" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 4, name: "Conversation with HR helper" })).toBeVisible();
     await expect(page.getByText(/^Visitor Conversation · started/)).toBeVisible();
     const messages = page.getByRole("list", { name: "Messages" });
     await expect(messages.getByRole("listitem", { name: "Visitor" })).toHaveText("VisitorHow many days of annual leave do I get?");
     const reply = messages.getByRole("listitem", { name: "HR helper" });
-    await expect(reply).toContainText("Agent Version v1");
-    await reply.getByRole("button", { name: "Trace" }).click();
-    const drawer = page.getByRole("dialog", { name: "Trace" });
-    await expect(drawer.getByText("Answered by")).toBeVisible();
-    await expect(drawer.getByText("Pinned by Agent Version v1")).toBeVisible();
+    await expect(reply.getByLabel("Version 1")).toBeVisible();
+    await reply.getByText("Trace", { exact: true }).click();
+    const trace = reply.getByRole("group", { name: "Trace" });
+    await expect(trace.getByText("Answered by")).toBeVisible();
+    await expect(trace.getByText("Pinned by Agent Version v1")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await drawer.getByRole("button", { name: "Close" }).click();
 
-    // Back to the list, still filtered.
-    await page.getByRole("link", { name: "All Conversations" }).click();
+    // The list is still beside it, still filtered.
     await expect(visitorRow).toHaveCount(1);
     await expect(playgroundRow).toHaveCount(0);
   });

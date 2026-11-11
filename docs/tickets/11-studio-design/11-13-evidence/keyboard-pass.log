@@ -1,0 +1,463 @@
+Keyboard only (Playwright keyboard.press; no mouse), Chrome 153.0.8010.12, 1280x800 and 390x844, light.
+projects (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (10 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Show archived Projects" → link "HR handbook" → link "Sales enablement" → textbox "Name" → textbox "Description" → button "Create Project"
+    ok: every stop draws a focus indicator
+documents (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Documents, Project sections", focus on menuitem "Documents1"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Documents, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+    ok: Enter opens button "More actions for handbook.pdf", focus on menuitem "Retry"
+    ok: End, Home, ArrowDown move through its 4 items (menuitem "Delete", menuitem "Retry", menuitem "New edition")
+    ok: Escape closes it, focus back on button "More actions for handbook.pdf"
+  Tab order (17 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Documents, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → textbox "Search by name" → radio "All" → button "Manage tags" → combobox "Status" → file input "Upload" → checkbox "Select all Documents" → checkbox "Select handbook.pdf" → link "handbook.pdf" → button "More actions for handbook.pdf"
+    ok: every stop draws a focus indicator
+document-viewer (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/documents/d0c00000-0000-4000-8000-000000000001)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Documents, Project sections", focus on menuitem "Documents1"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Documents, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (11 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Documents, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → link "Download original" → div "Northwind staff handbook Annual leave Everyone gets 25 days a year. Ye" → button "Clear flag on Chunk 2"
+    ok: every stop draws a focus indicator
+instructions (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/instructions)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Instructions, Project sections", focus on menuitem "Instructions2"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Instructions, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (24 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Instructions, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → button "Markdown" → button "BBold" → button "IItalic" → button "</>Inline code" → button "HHeading" → button "•Bulleted list" → button "1.Numbered list" → button "{ }Code block" → textbox "Project Instructions" → button "Save Instructions" → textbox "Note" → button "Publish Instructions" → summary "Show the Instructions" → summary "Show the Instructions" → combobox "From" → combobox "To"
+    ok: every stop draws a focus indicator
+agents (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Agents, Project sections", focus on menuitem "Agents3"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Agents, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (13 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Agents, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → button "New Agent" → radio "Active" → checkbox "Select all Agents" → checkbox "Select HR helper" → link "HR helper"
+    ok: every stop draws a focus indicator
+agent-playground (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Agents, Project sections", focus on menuitem "Agents3"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Agents, Project sections"
+    ok: Enter opens button "HR helper, Agents", focus on menuitem "HR helper"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "HR helper", menuitem "HR helper", menuitem "HR helper")
+    ok: Escape closes it, focus back on button "HR helper, Agents"
+    ok: Enter opens button "Playground, Agent views", focus on menuitem "Playground"
+    ok: End, Home, ArrowDown move through its 4 items (menuitem "Conversations", menuitem "Playground", menuitem "Versions")
+    ok: Escape closes it, focus back on button "Playground, Agent views"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+    ok: Enter opens button "More Agent actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Agent actions"
+  Tab order (36 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Agents, Project sections" → button "HR helper, Agents" → button "Playground, Agent views" → link "History" → button "Publish" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → link "Analytics for this Agent" → button "More Agent actions" → combobox "Instructions" → button "Reset conversation" → textbox "Question" → button "Send" → summary "BehaviourDefault Model · temp 0.7" → button "Markdown" → button "BBold" → button "IItalic" → button "</>Inline code" → button "HHeading" → button "•Bulleted list" → button "1.Numbered list" → button "{ }Code block" → textbox "System prompt" → combobox "Credential" → textbox "Temperature" → textbox "Max output tokens" → textbox "Remembered turns" → textbox "Fallback text (when nothing relevant is found)" → summary "Retrievaltop-5 · hybrid 0.5" → summary "Experience0 starter questions" → summary "Guardrailsblock · fail closed"
+    ok: every stop draws a focus indicator
+agent-versions (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/versions)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Agents, Project sections", focus on menuitem "Agents3"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Agents, Project sections"
+    ok: Enter opens button "HR helper, Agents", focus on menuitem "HR helper"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "HR helper", menuitem "HR helper", menuitem "HR helper")
+    ok: Escape closes it, focus back on button "HR helper, Agents"
+    ok: Enter opens button "Versions, Agent views", focus on menuitem "Versions"
+    ok: End, Home, ArrowDown move through its 4 items (menuitem "Conversations", menuitem "Playground", menuitem "Versions")
+    ok: Escape closes it, focus back on button "Versions, Agent views"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+    ok: Enter opens button "More Agent actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Agent actions"
+    ok: Enter opens button "Actions for v2", focus on menuitem "Start Draft from v2"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Start Draft from v2", menuitem "Start Draft from v2", menuitem "Start Draft from v2")
+    ok: Escape closes it, focus back on button "Actions for v2"
+    ok: Enter opens button "Actions for v1", focus on menuitem "Start Draft from v1"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Start Draft from v1", menuitem "Start Draft from v1", menuitem "Start Draft from v1")
+    ok: Escape closes it, focus back on button "Actions for v1"
+  Tab order (18 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Agents, Project sections" → button "HR helper, Agents" → button "Versions, Agent views" → link "History" → button "Publish" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → link "Analytics for this Agent" → button "More Agent actions" → button "Actions for v2" → button "Actions for v1" → combobox "From" → combobox "To"
+    ok: every stop draws a focus indicator
+agent-embed (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/embed)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Agents, Project sections", focus on menuitem "Agents3"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Agents, Project sections"
+    ok: Enter opens button "HR helper, Agents", focus on menuitem "HR helper"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "HR helper", menuitem "HR helper", menuitem "HR helper")
+    ok: Escape closes it, focus back on button "HR helper, Agents"
+    ok: Enter opens button "Embed & limits, Agent views", focus on menuitem "Embed & limits"
+    ok: End, Home, ArrowDown move through its 4 items (menuitem "Conversations", menuitem "Playground", menuitem "Versions")
+    ok: Escape closes it, focus back on button "Embed & limits, Agent views"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+    ok: Enter opens button "More Agent actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Agent actions"
+  Tab order (35 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Agents, Project sections" → button "HR helper, Agents" → button "Embed & limits, Agent views" → link "History" → button "Publish" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → link "Analytics for this Agent" → button "More Agent actions" → combobox "Launcher" → region "Embed Snippet code" → button "Copy Embed Snippet" → textbox "Add an Allowed Origin" → button "Add" → button "Save Allowed Origins" → textbox "Unavailable text" → button "Save unavailable text" → textbox "Tokens per day" → button "Save Token Budget" → textbox "Messages per minute per Conversation" → textbox "Messages per minute per IP address" → button "Save rate limits" → checkbox "Override primary" → checkbox "Override text on primary" → checkbox "Override surface" → checkbox "Override text on surface" → checkbox "Override accent" → checkbox "Override muted text" → button "Save colours" → file input "Upload avatar"
+    ok: every stop draws a focus indicator
+agent-conversations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/conversations)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Agents, Project sections", focus on menuitem "Agents3"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Agents, Project sections"
+    ok: Enter opens button "HR helper, Agents", focus on menuitem "HR helper"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "HR helper", menuitem "HR helper", menuitem "HR helper")
+    ok: Escape closes it, focus back on button "HR helper, Agents"
+    ok: Enter opens button "Conversations, Agent views", focus on menuitem "Conversations"
+    ok: End, Home, ArrowDown move through its 4 items (menuitem "Conversations", menuitem "Playground", menuitem "Versions")
+    ok: Escape closes it, focus back on button "Conversations, Agent views"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+    ok: Enter opens button "More Agent actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Agent actions"
+  Tab order (29 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Agents, Project sections" → button "HR helper, Agents" → button "Conversations, Agent views" → link "History" → button "Publish" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → link "Analytics for this Agent" → button "More Agent actions" → combobox "VersionEvery Versionv2v1" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → radio "Both" → combobox "FeedbackAny or noneThumbs upThumbs downWith feedbackWithout feedback" → combobox "RatingRated or not5 of 54 of 53 of 52 of 51 of 5RatedNot rated" → combobox "GuardrailAny or noneBlockedFlaggedLoggedReplaced (Canary token)Allowed" → link "Testing leave" → link "How much leave do I get?"
+    ok: every stop draws a focus indicator
+agent-conversation (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001/conversations/c7000000-0000-4000-8000-000000000001)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Agents, Project sections", focus on menuitem "Agents3"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Agents, Project sections"
+    ok: Enter opens button "HR helper, Agents", focus on menuitem "HR helper"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "HR helper", menuitem "HR helper", menuitem "HR helper")
+    ok: Escape closes it, focus back on button "HR helper, Agents"
+    ok: Enter opens button "Conversations, Agent views", focus on menuitem "Conversations"
+    ok: End, Home, ArrowDown move through its 4 items (menuitem "Conversations", menuitem "Playground", menuitem "Versions")
+    ok: Escape closes it, focus back on button "Conversations, Agent views"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+    ok: Enter opens button "More Agent actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Agent actions"
+  Tab order (32 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Agents, Project sections" → button "HR helper, Agents" → button "Conversations, Agent views" → link "History" → button "Publish" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → link "Analytics for this Agent" → button "More Agent actions" → combobox "VersionEvery Versionv2v1" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → radio "Both" → combobox "FeedbackAny or noneThumbs upThumbs downWith feedbackWithout feedback" → combobox "RatingRated or not5 of 54 of 53 of 52 of 51 of 5RatedNot rated" → combobox "GuardrailAny or noneBlockedFlaggedLoggedReplaced (Canary token)Allowed" → link "Testing leave" → link "How much leave do I get?" → button "Delete Conversation" → summary "Trace120 input and 6 output tokens · 85 ms" → summary "Trace120 input and 6 output tokens · 85 ms"
+    ok: every stop draws a focus indicator
+conversations (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Conversations, Project sections", focus on menuitem "Conversations4"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Conversations, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (23 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Conversations, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → combobox "AgentEvery AgentHR helperOld helper (archived)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → radio "Both" → combobox "FeedbackAny or noneThumbs upThumbs downWith feedbackWithout feedback" → combobox "RatingRated or not5 of 54 of 53 of 52 of 51 of 5RatedNot rated" → combobox "GuardrailAny or noneBlockedFlaggedLoggedReplaced (Canary token)Allowed" → link "Testing leave" → link "How much leave do I get?"
+    ok: every stop draws a focus indicator
+conversation (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/conversations/c7000000-0000-4000-8000-000000000001)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Conversations, Project sections", focus on menuitem "Conversations4"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Conversations, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (26 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Conversations, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → combobox "AgentEvery AgentHR helperOld helper (archived)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → radio "Both" → combobox "FeedbackAny or noneThumbs upThumbs downWith feedbackWithout feedback" → combobox "RatingRated or not5 of 54 of 53 of 52 of 51 of 5RatedNot rated" → combobox "GuardrailAny or noneBlockedFlaggedLoggedReplaced (Canary token)Allowed" → link "Testing leave" → link "How much leave do I get?" → button "Delete Conversation" → summary "Trace120 input and 6 output tokens · 85 ms" → summary "Trace120 input and 6 output tokens · 85 ms"
+    ok: every stop draws a focus indicator
+analytics (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/analytics)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Analytics, Project sections", focus on menuitem "Analytics5"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Analytics, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (26 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Analytics, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → combobox "AgentHR helper" → combobox "Versionv2 (Live)v1" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → combobox "First Versionv2 (Live)v1" → combobox "Second Versionv2 (Live)v1" → link "Export as CSV" → region "v1 compared with v2" → combobox "MetricConversationsRepliesCostMean tokens per replyThumbs-up rateMean " → combobox "GranularityDayWeekMonth" → radio "Chart" → application "Documents changed2026-10-092026-10-132026-10-172026-10-212026-10-25202"
+    ok: every stop draws a focus indicator
+project-settings (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/settings)
+    ok: Enter opens button "Projects, Organisation sections", focus on menuitem "Projects"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Projects, Organisation sections"
+    ok: Enter opens button "HR handbook, Projects", focus on menuitem "HR handbook"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "All Projects", menuitem "HR handbook", menuitem "Sales enablement")
+    ok: Escape closes it, focus back on button "HR handbook, Projects"
+    ok: Enter opens button "Settings, Project sections", focus on menuitem "Settings6"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Settings6", menuitem "Documents1", menuitem "Instructions2")
+    ok: Escape closes it, focus back on button "Settings, Project sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+    ok: Enter opens button "More Project actions", focus on menuitem "Archive"
+    ok: End, Home, ArrowDown move through its 1 items (menuitem "Archive", menuitem "Archive", menuitem "Archive")
+    ok: Escape closes it, focus back on button "More Project actions"
+  Tab order (11 stops, from link "Studio home"): link "Studio home" → button "Projects, Organisation sections" → button "HR handbook, Projects" → button "Settings, Project sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Edit details" → button "More Project actions" → button "Change Embedding Model" → checkbox "Read scanned PDFs with OCR" → radio "Mark them, and keep retrieving them"
+    ok: every stop draws a focus indicator
+cost (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/cost)
+    ok: Enter opens button "Cost, Organisation sections", focus on menuitem "Cost"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Cost, Organisation sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (14 stops, from link "Studio home"): link "Studio home" → button "Cost, Organisation sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → combobox "Break down byProjectAgent" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → region "Cost by Project"
+    ok: every stop draws a focus indicator
+settings-general (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings)
+    ok: Enter opens button "Settings, Organisation sections", focus on menuitem "Settings"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Settings, Organisation sections"
+    ok: Enter opens button "General, Organisation settings", focus on menuitem "General"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Audit", menuitem "General", menuitem "Credentials")
+    ok: Escape closes it, focus back on button "General, Organisation settings"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (9 stops, from link "Studio home"): link "Studio home" → button "Settings, Organisation sections" → button "General, Organisation settings" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Require two-factor authentication" → textbox "Retention Window (days)" → button "Save" → button "Leave Analytical Engines"
+    ok: every stop draws a focus indicator
+settings-members (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/members)
+    ok: Enter opens button "Settings, Organisation sections", focus on menuitem "Settings"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Settings, Organisation sections"
+    ok: Enter opens button "Members, Organisation settings", focus on menuitem "Members"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Audit", menuitem "General", menuitem "Credentials")
+    ok: Escape closes it, focus back on button "Members, Organisation settings"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (16 stops, from link "Studio home"): link "Studio home" → button "Settings, Organisation sections" → button "Members, Organisation settings" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → combobox "Role for Ada Lovelace" → combobox "Role for Grace Hopper" → button "Remove Grace Hopper" → textbox "Email" → combobox "Role" → checkbox "Email the invite link" → button "Invite" → button "New link for grace@example.test" → button "Revoke invite for grace@example.test" → button "New link for charles@example.test" → button "Revoke invite for charles@example.test"
+    ok: every stop draws a focus indicator
+settings-credentials (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/credentials)
+    ok: Enter opens button "Settings, Organisation sections", focus on menuitem "Settings"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Settings, Organisation sections"
+    ok: Enter opens button "Credentials, Organisation settings", focus on menuitem "Credentials"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Audit", menuitem "General", menuitem "Credentials")
+    ok: Escape closes it, focus back on button "Credentials, Organisation settings"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (19 stops, from link "Studio home"): link "Studio home" → button "Settings, Organisation sections" → button "Credentials, Organisation settings" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Check now: Marketing OpenAI" → button "Rotate key: Marketing OpenAI" → button "Delete: Marketing OpenAI" → button "Check now: Legal Claude" → button "Rotate key: Legal Claude" → button "Delete: Legal Claude" → button "Check now: Search OpenAI" → button "Rotate key: Search OpenAI" → button "Delete: Search OpenAI" → combobox "ProviderAnthropicOpenAIAmazon BedrockVoyage AI" → textbox "Name" → textbox "API key" → checkbox "Chat" → button "Check and save"
+    ok: every stop draws a focus indicator
+settings-models (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/models)
+    ok: Enter opens button "Settings, Organisation sections", focus on menuitem "Settings"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Settings, Organisation sections"
+    ok: Enter opens button "Models, Organisation settings", focus on menuitem "Models"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Audit", menuitem "General", menuitem "Credentials")
+    ok: Escape closes it, focus back on button "Models, Organisation settings"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (11 stops, from link "Studio home"): link "Studio home" → button "Settings, Organisation sections" → button "Models, Organisation settings" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → combobox "CredentialLegal Claude (Anthropic)Marketing OpenAI (OpenAI)" → combobox "ModelClaude Sonnet 4.5Claude Haiku 4.5" → button "Save Default Model" → combobox "Show prices forLegal ClaudeMarketing OpenAISearch OpenAI" → button "Override prices: Claude Sonnet 4.5" → button "Override prices: Claude Haiku 4.5"
+    ok: every stop draws a focus indicator
+settings-theme (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/theme)
+    ok: Enter opens button "Settings, Organisation sections", focus on menuitem "Settings"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Settings, Organisation sections"
+    ok: Enter opens button "Theme, Organisation settings", focus on menuitem "Theme"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Audit", menuitem "General", menuitem "Credentials")
+    ok: Escape closes it, focus back on button "Theme, Organisation settings"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (41 stops, from link "Studio home"): link "Studio home" → button "Settings, Organisation sections" → button "Theme, Organisation settings" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → textbox "Primary (light) colour picker" → textbox "Primary (light)" → textbox "Primary (dark) colour picker" → textbox "Primary (dark)" → textbox "Text on primary (light) colour picker" → textbox "Text on primary (light)" → textbox "Text on primary (dark) colour picker" → textbox "Text on primary (dark)" → textbox "Surface (light) colour picker" → textbox "Surface (light)" → textbox "Surface (dark) colour picker" → textbox "Surface (dark)" → textbox "Text on surface (light) colour picker" → textbox "Text on surface (light)" → textbox "Text on surface (dark) colour picker" → textbox "Text on surface (dark)" → textbox "Accent (light) colour picker" → textbox "Accent (light)" → textbox "Accent (dark) colour picker" → textbox "Accent (dark)" → textbox "Muted text (light) colour picker" → textbox "Muted text (light)" → textbox "Muted text (dark) colour picker" → textbox "Muted text (dark)" → textbox "Corner radius (px)" → combobox "Font" → radio "Light" → radio "Floating bubble" → radio "Bottom right" → button "Save Theme" → file input "Upload logo" → file input "Upload avatar" → link "Opening hours, page 2" → textbox "Message" → button "Send" → button "Close chat"
+    ok: every stop draws a focus indicator
+settings-audit (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/settings/audit)
+    ok: Enter opens button "Settings, Organisation sections", focus on menuitem "Settings"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Settings, Organisation sections"
+    ok: Enter opens button "Audit, Organisation settings", focus on menuitem "Audit"
+    ok: End, Home, ArrowDown move through its 6 items (menuitem "Audit", menuitem "General", menuitem "Credentials")
+    ok: Escape closes it, focus back on button "Audit, Organisation settings"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (16 stops, from link "Studio home"): link "Studio home" → button "Settings, Organisation sections" → button "Audit, Organisation settings" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → combobox "ActorAnyoneAda LovelaceGrace Hopper" → combobox "ActionAny actionmember.locked_outmember.role_changedorganisation.creat" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "From (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → textbox "To (UTC)" → region "Audit Events"
+    ok: every stop draws a focus indicator
+profile (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/profile)
+    ok: Enter opens button "Profile, Organisation sections", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Profile, Organisation sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (9 stops, from link "Studio home"): link "Studio home" → button "Profile, Organisation sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → textbox "Name" → button "Save name" → textbox "Current password" → textbox "New password" → button "Change password"
+    ok: every stop draws a focus indicator
+security (/organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/security)
+    ok: Enter opens button "Security, Organisation sections", focus on menuitem "Security"
+    ok: End, Home, ArrowDown move through its 5 items (menuitem "Profile", menuitem "Projects", menuitem "Cost")
+    ok: Escape closes it, focus back on button "Security, Organisation sections"
+    ok: Enter opens button "ALAda Lovelace, Account", focus on menuitem "Profile"
+    ok: End, Home, ArrowDown move through its 3 items (menuitem "Sign out", menuitem "Profile", menuitem "Security")
+    ok: Escape closes it, focus back on button "ALAda Lovelace, Account"
+  Tab order (5 stops, from link "Studio home"): link "Studio home" → button "Security, Organisation sections" → button "Switch to dark mode" → button "ALAda Lovelace, Account" → button "Set up two-factor authentication"
+    ok: every stop draws a focus indicator
+following a link from the Project sections switcher
+    ok: Tab ×4 reaches the Project sections switcher
+    ok: End, Enter on menuitem "Settings6" opens /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/settings
+the Appearance toggle
+    ok: Tab ×3, Enter on Switch to dark mode: data-appearance=dark, focus on button "Switch to light mode"
+    ok: Enter again switches back to light
+the Organisation switcher (Ada in two Organisations)
+    ok: Tab ×2 reaches button "Analytical Engines, Organisations"
+    ok: Enter opens button "Analytical Engines, Organisations", focus on menuitem "Analytical Engines"
+    ok: End, Home, ArrowDown move through its 2 items (menuitem "Difference Engines", menuitem "Analytical Engines", menuitem "Difference Engines")
+    ok: Escape closes it, focus back on button "Analytical Engines, Organisations"
+dialog: documents, More Project actions → Archive
+    ok: Tab ×8 reaches button "More Project actions"
+    ok: ArrowDown reaches menuitem "Archive"
+    ok: Enter opens the dialog "Archive HR handbook?", focus on button "Cancel"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: button "Yes, archive HR handbook" → button "Cancel" → button "Yes, archive HR handbook" → button "Cancel" → button "Yes, archive HR handbook" → button "Cancel" → button "Yes, archive HR handbook" → button "Cancel"
+    ok: Escape closes it, focus back on button "More Project actions"
+dialog: documents, More actions for handbook.pdf → Edit Tags
+    ok: Tab ×17 reaches button "More actions for handbook.pdf"
+    ok: ArrowDown reaches menuitem "Edit Tags"
+    ok: Enter opens the dialog "Tags for handbook.pdf", focus on button "Close"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: checkbox "HR" → checkbox "Pay" → button "Cancel" → button "Save Tags" → button "Close" → button "Save Tags" → button "Cancel" → checkbox "Pay"
+    ok: Escape closes it, focus back on button "More actions for handbook.pdf"
+dialog: documents, More actions for handbook.pdf → Delete
+    ok: Tab ×17 reaches button "More actions for handbook.pdf"
+    ok: ArrowDown reaches menuitem "Delete"
+    ok: Enter opens the dialog "Delete handbook.pdf?", focus on button "Cancel"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: button "Delete handbook.pdf" → button "Cancel" → button "Delete handbook.pdf" → button "Cancel" → button "Delete handbook.pdf" → button "Cancel" → button "Delete handbook.pdf" → button "Cancel"
+    ok: Escape closes it, focus back on button "More actions for handbook.pdf"
+dialog: agents, New Agent
+    ok: Tab ×9 reaches button "New Agent"
+    ok: Enter opens the dialog "New Agent", focus on textbox "Name"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: button "Cancel" → button "Create Agent" → textbox "Name" → button "Cancel" → button "Create Agent" → button "Cancel" → textbox "Name" → button "Create Agent"
+    ok: Escape closes it, focus back on button "New Agent"
+dialog: agent-playground, Publish
+    ok: Tab ×8 reaches button "Publish"
+    ok: Enter opens the dialog "Publish HR helper", focus on button "Close"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: textbox "Note" → combobox "Project Instructions" → button "Publish" → button "Close" → textbox "Note" → button "Close" → button "Publish" → combobox "Project Instructions"
+    ok: Escape closes it, focus back on button "Publish"
+dialog: agent-playground, More Agent actions → Archive
+    ok: Tab ×14 reaches button "More Agent actions"
+    ok: ArrowDown reaches menuitem "Archive"
+    ok: Enter opens the dialog "Archive HR helper?", focus on button "Cancel"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: button "Yes, archive HR helper" → button "Cancel" → button "Yes, archive HR helper" → button "Cancel" → button "Yes, archive HR helper" → button "Cancel" → button "Yes, archive HR helper" → button "Cancel"
+    ok: Escape closes it, focus back on button "More Agent actions"
+dialog: conversation, Delete Conversation
+    ok: Tab ×24 reaches button "Delete Conversation"
+    ok: Enter opens the dialog "Delete Conversation", focus on button "Cancel"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: button "Yes, delete it" → button "Cancel" → button "Yes, delete it" → button "Cancel" → button "Yes, delete it" → button "Cancel" → button "Yes, delete it" → button "Cancel"
+    ok: Escape closes it, focus back on button "Delete Conversation"
+dialog: settings-members, Remove Grace Hopper
+    ok: Tab ×8 reaches button "Remove Grace Hopper"
+    ok: Enter opens the dialog "Remove Grace Hopper?", focus on button "Cancel"
+    ok: Tab ×5 and Shift+Tab ×3 stay inside: button "Yes, remove Grace Hopper" → button "Cancel" → button "Yes, remove Grace Hopper" → button "Cancel" → button "Yes, remove Grace Hopper" → button "Cancel" → button "Yes, remove Grace Hopper" → button "Cancel"
+    ok: Escape closes it, focus back on button "Remove Grace Hopper"
+narrow: the breadcrumb's fold, on an Agent's Versions view
+    ok: the middle crumbs are hidden (the Agent switcher is not shown)
+    ok: Tab ×2 reaches the … button
+    ok: Enter opens the whole path
+    folded crumbs: Projects, Organisation sections / HR handbook, Projects / Agents, Project sections / HR helper, Agents
+    ok: Tab moves into it: button "Projects, Organisation sections"
+    ok: Enter on button "HR helper, Agents" opens its menu, focus on menuitem "HR helper"
+    ok: Escape closes the menu only; the path stays open
+    ok: Escape again closes the path, focus back on …
+    ok: following menuitem "HR helper" closes the path; now at /organisations/0b6f3a3e-6f53-4a5e-9a39-6d2b8f0c1e02/projects/7c2d1e69-1e7f-4d2c-8e2f-2a2b7d1a0b01/agents/a9e00000-0000-4000-8000-000000000001
+problems: 0

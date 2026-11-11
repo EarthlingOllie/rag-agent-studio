@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
+import { openTags } from "../fixtures/documents";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -39,7 +41,7 @@ test.describe("Tag scoping", () => {
     // One Project holds HR and Sales material.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
     await page
-      .getByLabel("Choose files to upload")
+      .getByLabel("Upload", { exact: true })
       .setInputFiles([
         markdown("leave-policy.md", "# Leave\n\nEveryone gets 25 days of annual leave a year."),
         markdown("price-list.md", "# Prices\n\nModel SKU-4471 ships with a two-year warranty."),
@@ -60,9 +62,12 @@ test.describe("Tag scoping", () => {
     await tag("Sales", "price-list.md");
     const agent = await page.request.post(`${projectApi}/agents`, { data: { name: "HR helper" } });
     const agentId = ((await agent.json()) as { id: string }).id;
+    // Automatic: one search up front, whose Chunks the Trace's table lists (a new Agent is Agentic).
+    expect((await page.request.put(`${projectApi}/agents/${agentId}/draft`, { data: { retrieval: { mode: "automatic" } } })).ok()).toBe(true);
 
     // The Editor limits the Agent to HR in its Retrieval settings.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
+    await openSettings(page, "Retrieval");
     const scoping = page.getByRole("group", { name: "Tag scoping" });
     const saved = page.waitForResponse((r) => new URL(r.url()).pathname.endsWith("/draft") && r.request().method() === "PUT");
     await scoping.getByRole("checkbox", { name: "HR" }).check();
@@ -76,19 +81,17 @@ test.describe("Tag scoping", () => {
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
     await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link")).toHaveText(["C1 leave-policy.md"]);
-    await answer.getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
-    const chunks = trace.getByRole("table", { name: "Retrieved Chunks" });
+    await answer.getByText("Trace", { exact: true }).click();
+    const chunks = answer.getByRole("group", { name: "Trace" }).getByRole("table", { name: "Retrieved Chunks" });
     await expect(chunks.getByRole("row").filter({ hasText: "price-list.md" })).toContainText("Excluded: outside the Agent's Tags", {
       timeout: 15_000,
     });
     await expect(chunks.getByRole("row").filter({ hasText: "leave-policy.md" })).toContainText("Cited");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // Deleting HR warns that the HR helper uses it; once deleted, the Draft has no Tags.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    const tags = page.getByRole("region", { name: "Tags" });
+    const tags = await openTags(page);
     await tags.getByRole("button", { name: "Delete HR" }).click();
     await expect(tags.getByRole("alert")).toHaveText(
       "1 Agent is limited to HR: HR helper. Deleting it takes it out of their Drafts; an Agent left with no Tags searches every Document.",

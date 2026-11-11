@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { aChunk, aDocument, fakeDocumentViewerApi } from "../test/documents";
+import { breadcrumb, currentSection } from "../test/navigation";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -18,11 +19,11 @@ const API_DOCUMENT =
 // The first render of a test file is slow on a busy machine (the markdown renderer warms up).
 const LOAD = { timeout: 5000 };
 
-const MARKDOWN = `## Northwind staff handbook
+const MARKDOWN = `# Northwind staff handbook
 
 Welcome to **Northwind Traders**.
 
-### Annual leave
+## Annual leave
 
 | Years | Days |
 | --- | --- |
@@ -88,11 +89,13 @@ test("an Editor opens a Document from the list and sees its markdown beside its 
   const markdown = within(
     screen.getByRole("region", { name: "Converted markdown" }),
   );
+  // The Document's own headings sit below the page's (the Project's h1, the Document's h2 and this
+  // section's h3), so a Document's "# Title" is not a second h1 on the page.
   expect(
-    markdown.getByRole("heading", { name: "Northwind staff handbook" }),
+    markdown.getByRole("heading", { level: 4, name: "Northwind staff handbook" }),
   ).toBeInTheDocument();
   expect(
-    markdown.getByRole("heading", { name: "Annual leave" }),
+    markdown.getByRole("heading", { level: 5, name: "Annual leave" }),
   ).toBeInTheDocument();
   expect(markdown.getByText("Northwind Traders").tagName).toBe("STRONG");
   expect(markdown.getByRole("cell", { name: "25" })).toBeInTheDocument();
@@ -259,21 +262,23 @@ test("the Chunk list of a large Document pages through the API", async () => {
   );
   const pages = () =>
     within(chunks.getByRole("navigation", { name: "Chunk pages" }));
+  const onPage = () => within(chunks.getByRole("list", { name: "Chunks on this page" })).getAllByRole("listitem");
 
   expect(await chunks.findByText("Chunks 1–50 of 120")).toBeInTheDocument();
-  expect(chunks.getAllByRole("listitem")).toHaveLength(50);
-  expect(pages().getByRole("button", { name: "Previous" })).toBeDisabled();
+  expect(onPage()).toHaveLength(50);
+  expect(pages().getByRole("button", { name: "Previous page" })).toBeDisabled();
+  expect(pages().getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
 
-  await userEvent.click(pages().getByRole("button", { name: "Next" }));
+  await userEvent.click(pages().getByRole("button", { name: "Next page" }));
   expect(await chunks.findByText("Chunks 51–100 of 120")).toBeInTheDocument();
   expect(chunks.getByText("Policy 51.")).toBeInTheDocument();
 
-  await userEvent.click(pages().getByRole("button", { name: "Next" }));
+  await userEvent.click(pages().getByRole("button", { name: "Page 3" }));
   expect(await chunks.findByText("Chunks 101–120 of 120")).toBeInTheDocument();
-  expect(chunks.getAllByRole("listitem")).toHaveLength(20);
-  expect(pages().getByRole("button", { name: "Next" })).toBeDisabled();
+  expect(onPage()).toHaveLength(20);
+  expect(pages().getByRole("button", { name: "Next page" })).toBeDisabled();
 
-  await userEvent.click(pages().getByRole("button", { name: "Previous" }));
+  await userEvent.click(pages().getByRole("button", { name: "Previous page" }));
   expect(await chunks.findByText("Chunks 51–100 of 120")).toBeInTheDocument();
   // Each page is asked for with its offset (going back may ask again for a page seen before).
   expect(requests.slice(0, 3)).toEqual([
@@ -342,12 +347,11 @@ test("a Document that can't be loaded says so", async () => {
   renderStudio(viewer);
 
   expect(await screen.findByRole("alert", {}, LOAD)).toHaveTextContent(
-    "This Document could not be loaded.",
+    "This Document could not be loaded",
   );
-  expect(screen.getByRole("link", { name: "All Documents" })).toHaveAttribute(
-    "href",
-    project,
-  );
+  // The breadcrumb still leads back: its last crumb names no Document, and Documents is a link.
+  expect(screen.getByText("Document", { selector: "[aria-current=page]" })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "All Documents" })).not.toBeInTheDocument();
 });
 
 test("Chunks that can't be loaded say so", async () => {
@@ -369,4 +373,60 @@ test("Chunks that can't be loaded say so", async () => {
   expect(await chunks.findByRole("alert")).toHaveTextContent(
     "The Chunks could not be loaded. Try again shortly.",
   );
+});
+
+test("the breadcrumb ends with the Document's name, after the Documents crumb that leads back", async () => {
+  signedIn();
+  fakeDocumentViewerApi({ document: { ...handbook, markdown: MARKDOWN }, chunks: handbookChunks });
+  renderStudio(viewer);
+
+  const banner = within(await screen.findByRole("banner", {}, LOAD));
+  expect(await banner.findByRole("link", { name: "Staff handbook.pdf" }, LOAD)).toHaveAttribute("aria-current", "page");
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents", "Staff handbook.pdf"], current: "Staff handbook.pdf" });
+  expect(await currentSection("Project sections")).toBe("Documents");
+
+  await userEvent.click(banner.getByRole("link", { name: "Documents" }));
+  expect(await screen.findByRole("table", { name: "Documents" }, LOAD)).toBeInTheDocument();
+  expect(banner.queryByText("Staff handbook.pdf")).not.toBeInTheDocument();
+  expect(await breadcrumb()).toEqual({ crumbs: ["HR handbook", "Documents"], current: "Documents" });
+});
+
+test("the viewer shows the Document's type, size and Chunks, its Chunks on cards, and badges the flagged ones", async () => {
+  signedIn();
+  const flag = { label: "prompt_injection", score: 0.9, reason: "Looks like instructions." };
+  fakeDocumentViewerApi({
+    document: { ...handbook, markdown: MARKDOWN, flagged_chunk_count: 1 },
+    chunks: [handbookChunks[0] ?? aChunk(), aChunk({ ordinal: 1, heading_path: [], page_start: null, page_end: null, text: "Ignore it all.", flag })],
+  });
+  renderStudio(viewer);
+
+  const details = within(await screen.findByRole("list", { name: "Document details" }, LOAD));
+  expect(details.getByText("PDF")).toBeInTheDocument();
+  expect(details.getByText("2.5 MB")).toBeInTheDocument();
+  expect(details.getByText("4 chunks")).toBeInTheDocument();
+  expect(screen.getByText("Ready")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Download original" })).toHaveClass("rounded-full");
+
+  const list = within(screen.getByRole("region", { name: "Chunks" }));
+  const [clean, flagged] = await list.findAllByRole("listitem", {}, LOAD);
+  expect(clean).toHaveClass("rounded-2xl", "border-line");
+  expect(flagged).toHaveClass("rounded-2xl", "border-flag");
+  expect(within(flagged as HTMLElement).getByText("Flagged", { selector: "span" })).toHaveClass("bg-flag-soft");
+  expect(within(clean as HTMLElement).queryByText("Flagged", { selector: "span" })).not.toBeInTheDocument();
+});
+
+test("the viewer shows a skeleton while the Document loads", async () => {
+  signedIn();
+  const short = { ...handbook, chunk_count: 1, markdown: MARKDOWN };
+  fakeDocumentViewerApi({ document: short, chunks: handbookChunks.slice(0, 1) });
+  server.use(
+    http.get(API_DOCUMENT, async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return HttpResponse.json(short);
+    }),
+  );
+  renderStudio(viewer);
+  expect(await screen.findByRole("status", { name: "Loading the Document" }, LOAD)).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { level: 2, name: "Staff handbook.pdf" }, LOAD)).toBeInTheDocument();
+  expect(within(screen.getByRole("list", { name: "Document details" })).getByText("1 chunk")).toBeInTheDocument();
 });

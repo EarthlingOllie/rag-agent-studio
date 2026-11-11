@@ -13,6 +13,7 @@ from pydantic_ai.models.function import AgentInfo
 
 from app.guardrails.fake import FakeRule
 from tests.agents import (
+    AUTOMATIC,
     answer_with,
     ask,
     create_agent,
@@ -84,7 +85,7 @@ async def traced(member: SignedUpMember, project_id: str, agent_id: str) -> list
 
 async def agent(member: SignedUpMember, project_id: str) -> str:
     agent_id: str = (await create_agent(member, project_id))["id"]
-    saved = await save_draft(member, project_id, agent_id, {"retrieval": {"top_k": 3}})
+    saved = await save_draft(member, project_id, agent_id, {"retrieval": {**AUTOMATIC, "top_k": 3}})
     assert saved.status_code == 200, saved.text
     return agent_id
 

@@ -1,110 +1,84 @@
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
+import { button, CodeBlock, EditableList, field, Meter, Notice, Skeleton, surface, text as type } from "../design";
 import type { Agent } from "./agents";
 import {
   embedSnippet,
+  type OperationalSettings,
   type SnippetLayout,
   useChangeOperationalSettings,
   useOperationalSettings,
   useTokenUsage,
 } from "./embed";
-import { BUTTON, INPUT } from "./ProjectsPage";
 
+const CARD = `${surface.panel} flex flex-col gap-4`;
+
+/** The Embed Snippet for the chosen Launcher, to copy into the pages that show the Agent. */
 function Snippet({ agent }: { agent: Agent }) {
   const [launcher, setLauncher] = useState<SnippetLayout["launcher"]>("theme");
   const [target, setTarget] = useState("#chat");
   const layout: SnippetLayout = launcher === "inline" ? { launcher, target } : { launcher };
   const snippet = embedSnippet(agent.public_id, window.location.origin, layout);
-  const [copied, setCopied] = useState<string>("");
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied("Copied.");
-    } catch {
-      setCopied("Couldn't copy. Select the snippet and copy it.");
-    }
-  }
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-slate-700">
-        Paste this into the pages where Visitors should chat with the Agent&apos;s Live Version.
-      </p>
+    <>
+      <p className={type.muted}>Paste this into the pages where Visitors should chat with the Agent&apos;s Live Version.</p>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm font-medium">
-          Launcher
+        <div className="min-w-48">
+          <label htmlFor="snippet-launcher" className={field.label}>
+            Launcher
+          </label>
           <select
+            id="snippet-launcher"
             value={launcher}
             onChange={(event) => {
-              setCopied("");
               setLauncher(event.target.value as SnippetLayout["launcher"]);
             }}
-            className={`${INPUT} mt-1 block`}
+            className={field.select}
           >
             <option value="theme">The Theme&apos;s Launcher</option>
             <option value="bubble">Bubble in the corner</option>
             <option value="inline">Inline in a container</option>
           </select>
-        </label>
+        </div>
         {launcher === "inline" && (
-          <label className="text-sm font-medium">
-            Container selector
+          <div className="min-w-48">
+            <label htmlFor="snippet-target" className={field.label}>
+              Container selector
+            </label>
             <input
+              id="snippet-target"
               value={target}
               onChange={(event) => {
-                setCopied("");
                 setTarget(event.target.value);
               }}
               spellCheck={false}
-              className={`${INPUT} mt-1 block font-mono`}
+              className={field.inputMono}
             />
-          </label>
+          </div>
         )}
       </div>
-      <pre
-        aria-label="Embed Snippet"
-        className="overflow-x-auto rounded border border-slate-300 bg-slate-50 p-2 text-xs"
-      >
-        <code>{snippet}</code>
-      </pre>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            void copy();
-          }}
-        >
-          Copy snippet
-        </button>
-        <p role="status" className="text-sm text-slate-700">
-          {copied}
-        </p>
-      </div>
-    </div>
+      <CodeBlock label="Embed Snippet" code={snippet} />
+    </>
   );
 }
 
 type SettingsPath = { organisation_id: string; project_id: string; agent_id: string };
 
+/** The sites allowed to show the Agent, edited as a list and saved together. */
 function AllowedOrigins({ path }: { path: SettingsPath }) {
   const settings = useOperationalSettings(path);
   const save = useChangeOperationalSettings(path);
-  const [edited, setEdited] = useState<string | null>(null);
-  const text = edited ?? (settings.data?.allowed_origins ?? []).join("\n");
-  // Until the saved list is here, saving would replace it with whatever the box holds.
+  const [edited, setEdited] = useState<string[] | null>(null);
+  // Until the saved list is here, saving would replace it with whatever the list holds.
   const loaded = settings.isSuccess;
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const lines = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
     save.mutate(
-      { allowed_origins: lines },
+      // The button is enabled only once the saved list is loaded.
+      { allowed_origins: edited ?? (settings.data as OperationalSettings).allowed_origins },
       {
         onSuccess: () => {
           setEdited(null);
@@ -113,41 +87,43 @@ function AllowedOrigins({ path }: { path: SettingsPath }) {
     );
   }
 
-  return (
-    <form onSubmit={onSubmit} className="space-y-2">
-      <label htmlFor="allowed-origins" className="block text-sm font-medium">
-        Allowed Origins
-      </label>
-      <p id="allowed-origins-hint" className="text-sm text-slate-700">
-        One site per line, such as https://www.example.com, https://*.example.com for all its
-        subdomains, or http://localhost:3000 (http://localhost:* for any port) while developing.
-        Only pages on these sites can show the Agent.
-      </p>
-      {settings.isError && (
-        <p className="text-sm text-slate-700">The Operational Settings could not be loaded.</p>
-      )}
-      <textarea
-        id="allowed-origins"
-        aria-describedby="allowed-origins-hint"
-        rows={3}
-        className={INPUT}
-        disabled={!loaded}
-        value={text}
-        onChange={(event) => {
+  let list;
+  if (settings.isError) list = <p className={type.muted}>The Operational Settings could not be loaded.</p>;
+  else if (!loaded) list = <Skeleton label="Loading the Allowed Origins" lines={2} />;
+  else
+    list = (
+      <EditableList
+        label="Allowed Origins"
+        inputLabel="Add an Allowed Origin"
+        placeholder="https://www.example.com"
+        items={edited ?? settings.data.allowed_origins}
+        onChange={(items) => {
           save.reset();
-          setEdited(event.target.value);
+          setEdited(items);
         }}
+        emptyWarning="No site can embed this Agent until you add an origin."
       />
-      <FormError message={save.error?.message} />
-      <div className="flex items-center gap-3">
-        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
-          Save Allowed Origins
-        </button>
-        <p role="status" className="text-sm text-slate-700">
-          {save.isSuccess ? "Saved. Pages on these sites can show the Agent now." : ""}
+    );
+
+  return (
+    <section aria-label="Allowed Origins" className={CARD}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        {list}
+        <p className={field.hint}>
+          A site such as https://www.example.com, https://*.example.com for all its subdomains, or http://localhost:3000
+          (http://localhost:* for any port) while developing. Only pages on these sites can show the Agent.
         </p>
-      </div>
-    </form>
+        <FormError message={save.error?.message} />
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
+            Save Allowed Origins
+          </button>
+          <p role="status" className={type.muted}>
+            {save.isSuccess ? "Saved. Pages on these sites can show the Agent now." : ""}
+          </p>
+        </div>
+      </form>
+    </section>
   );
 }
 
@@ -173,11 +149,12 @@ function UnavailableText({ path }: { path: SettingsPath }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2">
-      <label htmlFor="unavailable-text" className="block text-sm font-medium">
+    <section className={CARD}>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <label htmlFor="unavailable-text" className={type.subheading}>
         Unavailable text
       </label>
-      <p id="unavailable-text-hint" className="text-sm text-slate-700">
+      <p id="unavailable-text-hint" className={type.muted}>
         What Visitors see when the Agent can&apos;t answer. Leave it empty for the default.
       </p>
       <textarea
@@ -185,7 +162,7 @@ function UnavailableText({ path }: { path: SettingsPath }) {
         aria-describedby="unavailable-text-hint"
         rows={2}
         maxLength={UNAVAILABLE_TEXT_MAX}
-        className={INPUT}
+        className={field.textarea}
         disabled={!loaded}
         value={text}
         onChange={(event) => {
@@ -195,14 +172,15 @@ function UnavailableText({ path }: { path: SettingsPath }) {
       />
       <FormError message={save.error?.message} />
       <div className="flex items-center gap-3">
-        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
+        <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
           Save unavailable text
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className={type.muted}>
           {save.isSuccess ? "Saved. Visitors see it from their next message." : ""}
         </p>
       </div>
     </form>
+    </section>
   );
 }
 
@@ -239,16 +217,17 @@ function RateLimits({ path }: { path: SettingsPath }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2">
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Rate limits</legend>
-        <p id="rate-limits-hint" className="text-sm text-slate-700">
+    <section aria-label="Rate limits" className={CARD}>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <fieldset className="flex flex-col gap-3">
+        <legend className={`${type.subheading} mb-3`}>Rate limits</legend>
+        <p id="rate-limits-hint" className={type.muted}>
           How many messages Visitors may send in any one minute. Messages over a limit get the
           unavailable text instead of an answer. The Playground has no limits.
         </p>
         <div className="flex flex-wrap gap-4">
           <div>
-            <label htmlFor="conversation-rate" className="block text-sm">
+            <label htmlFor="conversation-rate" className={field.label}>
               Messages per minute per Conversation
             </label>
             <input
@@ -256,7 +235,7 @@ function RateLimits({ path }: { path: SettingsPath }) {
               type="number"
               min={1}
               aria-describedby="rate-limits-hint"
-              className={INPUT}
+              className={`${field.inputMono} max-w-48`}
               disabled={!loaded}
               value={limits.conversation}
               onChange={(event) => {
@@ -265,7 +244,7 @@ function RateLimits({ path }: { path: SettingsPath }) {
             />
           </div>
           <div>
-            <label htmlFor="ip-rate" className="block text-sm">
+            <label htmlFor="ip-rate" className={field.label}>
               Messages per minute per IP address
             </label>
             <input
@@ -273,7 +252,7 @@ function RateLimits({ path }: { path: SettingsPath }) {
               type="number"
               min={1}
               aria-describedby="rate-limits-hint"
-              className={INPUT}
+              className={`${field.inputMono} max-w-48`}
               disabled={!loaded}
               value={limits.ip}
               onChange={(event) => {
@@ -285,14 +264,15 @@ function RateLimits({ path }: { path: SettingsPath }) {
       </fieldset>
       <FormError message={save.error?.message} />
       <div className="flex items-center gap-3">
-        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
+        <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
           Save rate limits
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className={type.muted}>
           {save.isSuccess ? "Saved. Messages over a limit get the unavailable text from now on." : ""}
         </p>
       </div>
     </form>
+    </section>
   );
 }
 
@@ -301,33 +281,17 @@ const tokens = new Intl.NumberFormat("en-GB");
 /** Today's usage against the Token Budget. */
 function BudgetMeter({ path }: { path: SettingsPath }) {
   const usage = useTokenUsage(path);
-  if (usage.isError) return <p className="text-sm text-slate-700">Today&apos;s usage could not be loaded.</p>;
+  if (usage.isError) return <p className={type.muted}>Today&apos;s usage could not be loaded.</p>;
   if (!usage.data) return null;
   const { tokens_used: used, daily_token_budget: budget, exhausted } = usage.data;
-  const shown = Math.min(used, budget);
-  const percent = Math.floor((shown / budget) * 100);
+  const percent = Math.floor((Math.min(used, budget) / budget) * 100);
   return (
-    <div className="space-y-1">
-      <div
-        role="progressbar"
-        aria-label="Tokens used today"
-        aria-valuemin={0}
-        aria-valuemax={budget}
-        aria-valuenow={shown}
-        className="h-2 w-full max-w-md overflow-hidden rounded bg-slate-200"
-      >
-        <div
-          className={`h-full ${exhausted ? "bg-red-700" : "bg-slate-700"}`}
-          style={{ width: `${String(percent)}%` }}
-        />
-      </div>
-      <p className="text-sm text-slate-700">
-        {`${tokens.format(used)} of ${tokens.format(budget)} tokens used today (${String(percent)}%).`}
-      </p>
+    <div className="flex flex-col gap-1">
+      <Meter label="Tokens used today" value={Math.min(used, budget)} max={budget} unit="tokens" format={(n) => tokens.format(n)} />
+      <p className={type.small}>{`${tokens.format(used)} of ${tokens.format(budget)} tokens used today (${String(percent)}%).`}</p>
       {exhausted && (
-        <p className="text-sm font-medium text-red-800">
-          Today&apos;s Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you
-          raise the budget.
+        <p className="text-sm font-medium text-danger">
+          Today&apos;s Token Budget is spent: Visitors see the unavailable text until midnight UTC, or until you raise the budget.
         </p>
       )}
     </div>
@@ -354,15 +318,16 @@ function TokenBudget({ path }: { path: SettingsPath }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2">
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Token Budget</legend>
-        <p id="token-budget-hint" className="text-sm text-slate-700">
+    <section aria-label="Token Budget" className={CARD}>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <fieldset className="flex flex-col gap-3">
+        <legend className={`${type.subheading} mb-3`}>Token Budget</legend>
+        <p id="token-budget-hint" className={type.muted}>
           The budget resets at midnight UTC. The Playground doesn&apos;t count.
         </p>
         <BudgetMeter path={path} />
         <div>
-          <label htmlFor="token-budget" className="block text-sm">
+          <label htmlFor="token-budget" className={field.label}>
             Tokens per day
           </label>
           <input
@@ -370,7 +335,7 @@ function TokenBudget({ path }: { path: SettingsPath }) {
             type="number"
             min={1}
             aria-describedby="token-budget-hint"
-            className={INPUT}
+            className={`${field.inputMono} max-w-48`}
             disabled={!loaded}
             value={budget}
             onChange={(event) => {
@@ -382,41 +347,38 @@ function TokenBudget({ path }: { path: SettingsPath }) {
       </fieldset>
       <FormError message={save.error?.message} />
       <div className="flex items-center gap-3">
-        <button type="submit" className={BUTTON} disabled={!loaded || save.isPending}>
+        <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
           Save Token Budget
         </button>
-        <p role="status" className="text-sm text-slate-700">
+        <p role="status" className={type.muted}>
           {save.isSuccess ? "Saved. The new budget applies to the next message." : ""}
         </p>
       </div>
     </form>
+    </section>
   );
 }
 
-/** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings: the
- * sites allowed to show it, what Visitors see when it can't answer, its rate limits and its daily
- * Token Budget, with today's usage. They apply at once, without publishing. */
+/** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings as cards: the
+ * sites allowed to show it, what Visitors see when it can't answer, its daily Token Budget, with
+ * today's usage, and its rate limits. They apply at once, without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   return (
-    <section aria-labelledby="embed-heading" className="space-y-3">
-      <h2 id="embed-heading" className="text-lg font-semibold">
-        Embed
-      </h2>
-      {agent.live_version ? (
-        <Snippet agent={agent} />
-      ) : (
-        <p className="text-sm text-slate-700">Publish the Agent to get its Embed Snippet.</p>
-      )}
-      <h3 className="font-semibold">Operational Settings</h3>
-      <p className="text-sm text-slate-700">
-        These apply straight away, without publishing, and every change is recorded in the Audit
-        log.
-      </p>
-      <AllowedOrigins path={path} />
-      <UnavailableText path={path} />
-      <RateLimits path={path} />
-      <TokenBudget path={path} />
-    </section>
+    <div className="flex flex-col gap-6">
+      <section aria-labelledby="embed-heading" className={CARD}>
+        <h2 id="embed-heading" className={type.subheading}>
+          Embed Snippet
+        </h2>
+        {agent.live_version ? <Snippet agent={agent} /> : <p className={type.muted}>Publish the Agent to get its Embed Snippet.</p>}
+      </section>
+      <Notice tone="info">These Operational Settings apply straight away, without publishing, and every change is recorded in the Audit log.</Notice>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AllowedOrigins path={path} />
+        <UnavailableText path={path} />
+        <TokenBudget path={path} />
+        <RateLimits path={path} />
+      </div>
+    </div>
   );
 }

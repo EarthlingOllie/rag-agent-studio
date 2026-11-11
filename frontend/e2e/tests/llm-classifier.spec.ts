@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import { expect, test } from "../fixtures";
+import { openSettings } from "../fixtures/agent";
 
 /** The seed staff handbook (synthetic content), uploaded as an Editor would. */
 const HANDBOOK = fileURLToPath(new URL("../../../seed/documents/northwind-staff-handbook.md", import.meta.url));
@@ -43,7 +44,7 @@ test.describe("LLM classifier", () => {
     });
     expect(draft.status()).toBe(200);
     await page.goto(`/organisations/${organisationId}/projects/${projectId}`);
-    await page.getByLabel("Choose files to upload").setInputFiles(HANDBOOK);
+    await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);
@@ -51,9 +52,10 @@ test.describe("LLM classifier", () => {
     const question = page.getByLabel("Question", { exact: true });
     const send = page.getByRole("button", { name: "Send" });
     const answers = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
-    const trace = page.getByRole("dialog", { name: "Trace" });
-    const outcomes = trace.getByRole("list", { name: "Guardrails" });
+    // Each answer's Trace folds open under it.
+    const outcomes = answers.getByRole("group", { name: "Trace" }).getByRole("list", { name: "Guardrails" });
     // The Editor sees the classifier the Draft names, failing closed by default.
+    await openSettings(page, "Guardrails");
     await expect(page.getByLabel("When the classifier errors")).toHaveValue("closed", { timeout: 15_000 });
 
     // A message the LLM classifier flags gets the refusal text; the answering model isn't asked.
@@ -61,26 +63,24 @@ test.describe("LLM classifier", () => {
     await send.click();
     await expect(answers.nth(0)).toContainText("Sorry, I can't help with that request.", { timeout: 15_000 });
     await expect(answers.nth(0)).toContainText("Blocked by the input Guardrail: the model wasn't asked.");
-    await answers.nth(0).getByRole("button", { name: "Trace" }).click();
+    await answers.nth(0).getByText("Trace", { exact: true }).click();
     await expect(
       outcomes.getByText(
         "Input Guardrail: injection (score 0.90), blocked before the model. The LLM classifier (claude-haiku-4-5) flagged the message: Fake classifier: the message asks for a persona without rules.",
       ),
     ).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // Failing closed, a classifier outage refuses the message.
     await question.fill(OUTAGE);
     await send.click();
     await expect(answers.nth(1)).toContainText("Sorry, I can't help with that request.", { timeout: 15_000 });
-    await answers.nth(1).getByRole("button", { name: "Trace" }).click();
+    await answers.nth(1).getByText("Trace", { exact: true }).click();
     await expect(
       outcomes.getByText(
         "Input Guardrail: unchecked, blocked before the model. The LLM classifier (claude-haiku-4-5) couldn't check the message: the provider failed. The Agent fails closed, so the message was refused.",
       ),
     ).toBeVisible({ timeout: 15_000 });
-    await trace.getByRole("button", { name: "Close" }).click();
 
     // The Editor chooses to fail open: the same outage now lets the message through, answered,
     // and the Trace says it went unchecked.
@@ -91,7 +91,7 @@ test.describe("LLM classifier", () => {
     await question.fill(OUTAGE);
     await send.click();
     await expect(answers.nth(2)).toContainText("Fake reply from anthropic:claude-haiku-4-5.", { timeout: 15_000 });
-    await answers.nth(2).getByRole("button", { name: "Trace" }).click();
+    await answers.nth(2).getByText("Trace", { exact: true }).click();
     await expect(
       outcomes.getByText(
         "Input Guardrail: unchecked, let through without the check. The LLM classifier (claude-haiku-4-5) couldn't check the message: the provider failed. The Agent fails open, so the message was answered without this check.",

@@ -576,9 +576,11 @@ async def test_the_capability_registry_lists_providers_capabilities_and_models(
     openai = providers["openai"]
     assert openai["name"] == "OpenAI"
     embeddings = next(c for c in openai["capabilities"] if c["capability"] == "embeddings")
-    assert {"id": "text-embedding-3-small", "name": "text-embedding-3-small"} in embeddings[
-        "models"
-    ]
+    assert {
+        "id": "text-embedding-3-small",
+        "name": "text-embedding-3-small",
+        "supports_tools": False,
+    } in embeddings["models"]
     for provider in providers.values():
         for capability in provider["capabilities"]:
             assert capability["models"], (provider["id"], capability["capability"])

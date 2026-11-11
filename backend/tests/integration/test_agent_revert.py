@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from app.agents.versions_api import REVERT_TARGET_INVALID
 from app.runtime.prompt import preamble
 from tests.agents import (
+    AUTOMATIC,
     FULL_DEFAULT_DRAFT,
     agents_path,
     answer_with,
@@ -130,11 +131,16 @@ async def test_revert_restores_the_earlier_config_and_its_pinned_instructions(
     created = await create_agent(owner, project_id)
     agent_id = created["id"]
     first_rules = await instructions(owner, project_id, "First rules.", "Rules")
-    await save_draft(owner, project_id, agent_id, {"behaviour": {"system_prompt": "First prompt."}})
+    # Automatic: the model is given the Chunks up front and the Automatic preamble.
+    first_draft = {"behaviour": {"system_prompt": "First prompt."}, "retrieval": AUTOMATIC}
+    await save_draft(owner, project_id, agent_id, first_draft)
     first = await published(owner, project_id, agent_id)
     await instructions(owner, project_id, "Second rules.", "Newer")
     newer_model = {"credential_id": credential_id, "model": "gpt-4.1"}
-    second_draft = {"behaviour": {"system_prompt": "Second prompt.", "model": newer_model}}
+    second_draft = {
+        "behaviour": {"system_prompt": "Second prompt.", "model": newer_model},
+        "retrieval": AUTOMATIC,
+    }
     await save_draft(owner, project_id, agent_id, second_draft)
     second = await published(owner, project_id, agent_id)
     reply, attribution = await serve(app, created["public_id"], "How much leave?")

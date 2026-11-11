@@ -4,7 +4,7 @@ metric's difference (b minus a) and which side it favours, and the comparison as
 Whether a metric is better higher or lower is fixed per metric: a higher thumbs-up rate or mean
 rating is better; fewer tokens per reply, a cheaper Conversation, a lower fallback rate, a lower
 Guardrail block rate and lower latency are better; volumes, totals and interval bounds favour
-neither side."""
+neither side, nor do mean searches per reply: more searching costs more but may answer better."""
 
 import csv
 import io
@@ -15,7 +15,7 @@ from typing import Literal
 
 from app.analytics.service import VersionKpis, low_confidence
 
-Unit = Literal["count", "tokens", "usd", "rate", "rating", "ms"]
+Unit = Literal["count", "tokens", "usd", "rate", "rating", "ms", "searches"]
 Side = Literal["a", "b"]
 Direction = Literal["higher", "lower"] | None
 Value = int | float | Decimal
@@ -77,6 +77,8 @@ METRICS = [
     Metric("fallback_rate", "Fallback rate", "rate", "lower", lambda k: k.fallback_rate),
     Metric("guardrail_block_rate", "Guardrail block rate", "rate", "lower",
            lambda k: k.block_rate),
+    Metric("searches_per_reply", "Mean searches per reply", "searches", None,
+           lambda k: k.mean_searches, _few_conversations),
     Metric("first_token_p95_ms", "p95 time to first token (ms)", "ms", "lower",
            lambda k: k.usage.first_token_histogram.percentile(0.95)),
     Metric("total_p95_ms", "p95 total latency (ms)", "ms", "lower",
@@ -151,6 +153,7 @@ _FORMATS: dict[Unit, str] = {
     "ms": ".1f",
     "rate": ".4f",
     "rating": ".2f",
+    "searches": ".2f",
 }
 
 

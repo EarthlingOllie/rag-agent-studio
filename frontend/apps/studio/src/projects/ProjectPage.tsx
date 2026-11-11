@@ -1,8 +1,10 @@
-import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
-import { type SubmitEvent, useState } from "react";
+import { Outlet, useMatchRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { EmbeddingModelSetting } from "./EmbeddingModel";
+import { button, ConfirmDialog, EmptyState, field, Icon, Menu, type MenuItem, PageHeader, Skeleton, ToastProvider } from "../design";
+import { AGENT } from "../shell/projectNavigation";
+import { EditProjectDialog } from "./ProjectDetailsDialog";
 import {
   type Project,
   ProjectRequestError,
@@ -10,121 +12,49 @@ import {
   useArchiveOrRestore,
   useDeleteProject,
   useProject,
-  useUpdateProject,
 } from "./projects";
-import { BUTTON, INPUT, ProjectFields, projectDetails, useOrganisationRole } from "./ProjectsPage";
-
-const TAB = "rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 [&.active]:bg-slate-100 [&.active]:font-medium [&.active]:text-slate-900";
-
-const PROJECT = "/organisations/$organisationId/projects/$projectId";
+import { useOrganisationRole } from "./ProjectsPage";
 
 function useProjectParams() {
   return useParams({ from: "/signed-in/organisations/$organisationId/projects/$projectId" });
 }
 
-function EditDetails({ project, organisationId, onDone }: { project: Project; organisationId: string; onDone: () => void }) {
-  const update = useUpdateProject(organisationId, project.id);
-
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    update.mutate(projectDetails(event.currentTarget), { onSuccess: onDone });
-  }
-
+/** Archive, from the ⋯ menu: asked first, in a destructive confirmation. */
+function ArchiveDialog({
+  project,
+  archive,
+  onDone,
+}: {
+  project: Project;
+  archive: ReturnType<typeof useArchiveOrRestore>;
+  onDone: () => void;
+}) {
   return (
-    <form aria-label="Project details" onSubmit={onSubmit} className="max-w-md space-y-3">
-      <FormError message={projectFailure(update.error)} />
-      <ProjectFields idPrefix="project" project={project} />
-      <div className="flex gap-2">
-        <button type="submit" disabled={update.isPending} className={BUTTON}>
-          {update.isPending ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className={BUTTON} onClick={onDone}>
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function ArchiveProject({ project, organisationId }: { project: Project; organisationId: string }) {
-  const archive = useArchiveOrRestore(organisationId, "archive");
-  const [confirming, setConfirming] = useState(false);
-  return (
-    <div className="space-y-2">
-      <FormError message={projectFailure(archive.error)} />
-      {confirming ? (
-        <div className="space-y-2">
-          <p className="text-sm text-slate-700">
-            {project.name} will be hidden from the Projects list and stop serving. An Owner can restore it.
-          </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={BUTTON}
-              disabled={archive.isPending}
-              onClick={() => {
-                archive.mutate(project.id, {
-                  onSettled: () => {
-                    setConfirming(false);
-                  },
-                });
-              }}
-            >
-              Yes, archive {project.name}
-            </button>
-            <button
-              type="button"
-              className={BUTTON}
-              onClick={() => {
-                setConfirming(false);
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            archive.reset();
-            setConfirming(true);
-          }}
-        >
-          Archive
-        </button>
-      )}
-    </div>
+    <ConfirmDialog
+      open
+      title={`Archive ${project.name}?`}
+      confirmLabel={`Yes, archive ${project.name}`}
+      destructive
+      busy={archive.isPending}
+      onConfirm={() => {
+        archive.mutate(project.id, { onSettled: onDone });
+      }}
+      onCancel={onDone}
+    >
+      {project.name} will be hidden from the Projects list and stop serving. An Owner can restore it.
+    </ConfirmDialog>
   );
 }
 
 /** Owners only, on an archived Project: deletion is confirmed by typing the Project's name exactly. */
-function DeletePermanently({ project, organisationId }: { project: Project; organisationId: string }) {
+function DeleteDialog({ project, organisationId, onDone }: { project: Project; organisationId: string; onDone: () => void }) {
   const remove = useDeleteProject(organisationId, project.id);
   const navigate = useNavigate();
-  const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
   const title = `Delete ${project.name} permanently`;
+  const ready = typed === project.name && !remove.isPending;
 
-  if (!confirming) {
-    return (
-      <button
-        type="button"
-        className={BUTTON}
-        onClick={() => {
-          remove.reset();
-          setTyped("");
-          setConfirming(true);
-        }}
-      >
-        Delete permanently
-      </button>
-    );
-  }
-
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function confirm() {
     remove.mutate(typed, {
       onSuccess: () => {
         void navigate({ to: "/organisations/$organisationId/projects", params: { organisationId }, search: { deleted: project.name } });
@@ -133,51 +63,51 @@ function DeletePermanently({ project, organisationId }: { project: Project; orga
   }
 
   return (
-    <form aria-label={title} onSubmit={onSubmit} className="space-y-2 rounded border border-red-300 bg-white p-3 text-slate-900">
-      <p>
-        Deleting {project.name} removes its Documents, stored files, Agents and Conversations for good. This can&apos;t be undone.
-      </p>
-      <FormError message={projectFailure(remove.error)} />
-      <div>
-        <label htmlFor="delete-project-name" className="block text-sm font-medium">
-          Type {project.name} to confirm
-        </label>
-        <input
-          id="delete-project-name"
-          autoComplete="off"
-          className={INPUT}
-          value={typed}
-          onChange={(event) => {
-            setTyped(event.target.value);
-          }}
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          className="rounded border border-red-800 bg-red-700 px-3 py-1 text-sm text-white hover:bg-red-800 disabled:border-slate-400 disabled:bg-slate-200 disabled:text-slate-600"
-          disabled={typed !== project.name || remove.isPending}
-        >
-          {title}
-        </button>
-        <button
-          type="button"
-          className={BUTTON}
-          onClick={() => {
-            setConfirming(false);
+    <ConfirmDialog
+      open
+      title={title}
+      confirmLabel={title}
+      destructive
+      busy={remove.isPending}
+      confirmDisabled={!ready}
+      onConfirm={confirm}
+      onCancel={onDone}
+      body={
+        <form
+          aria-label={title}
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (ready) confirm();
           }}
         >
-          Cancel
-        </button>
-      </div>
-    </form>
+          <FormError message={projectFailure(remove.error)} />
+          <div>
+            <label htmlFor="delete-project-name" className={field.label}>
+              Type {project.name} to confirm
+            </label>
+            <input
+              id="delete-project-name"
+              autoComplete="off"
+              className={field.input}
+              value={typed}
+              onChange={(event) => {
+                setTyped(event.target.value);
+              }}
+            />
+          </div>
+        </form>
+      }
+    >
+      Deleting {project.name} removes its Documents, stored files, Agents and Conversations for good. This can&apos;t be undone.
+    </ConfirmDialog>
   );
 }
 
 function ArchivedNotice({ project, organisationId, isOwner }: { project: Project; organisationId: string; isOwner: boolean }) {
   const restore = useArchiveOrRestore(organisationId, "restore");
   return (
-    <div role="status" className="space-y-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+    <div role="status" className="space-y-2 rounded-2xl border border-flag bg-flag-soft p-4 text-sm text-flag">
       <p>
         This Project is archived. It is hidden from the Projects list and doesn't serve.{" "}
         {isOwner ? "Restore it to use it again." : "Only Owners can restore it."}
@@ -186,7 +116,7 @@ function ArchivedNotice({ project, organisationId, isOwner }: { project: Project
       {isOwner && (
         <button
           type="button"
-          className={BUTTON}
+          className={button.secondary}
           disabled={restore.isPending}
           onClick={() => {
             restore.mutate(project.id);
@@ -195,108 +125,118 @@ function ArchivedNotice({ project, organisationId, isOwner }: { project: Project
           Restore {project.name}
         </button>
       )}
-      {isOwner && <DeletePermanently project={project} organisationId={organisationId} />}
     </div>
   );
 }
 
+/**
+ * The page header: the Project's name and description, Edit details (which opens the Project
+ * details dialog, leaving the header as it is), and a ⋯ menu for the rare
+ * actions: Archive, or, on an archived Project, permanent deletion (Owners only).
+ */
 function ProjectHeader({ project, organisationId, isOwner }: { project: Project; organisationId: string; isOwner: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState<"archive" | "delete" | null>(null);
+  const archive = useArchiveOrRestore(organisationId, "archive");
   const archived = project.archived_at !== null;
+  const done = () => {
+    setConfirming(null);
+  };
+
+  const actions: MenuItem[] = archived
+    ? isOwner
+      ? [{ label: "Delete permanently", danger: true, onSelect: () => { setConfirming("delete"); } }]
+      : []
+    : [
+        {
+          label: "Archive",
+          onSelect: () => {
+            archive.reset();
+            setConfirming("archive");
+          },
+        },
+      ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 id="page-heading" className="text-2xl font-semibold">
-            {project.name}
-          </h1>
-          {project.description && <p className="mt-1 text-slate-700">{project.description}</p>}
-        </div>
-        {!archived && !editing && (
-          <button
-            type="button"
-            className={BUTTON}
-            onClick={() => {
-              setEditing(true);
-            }}
-          >
-            Edit details
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title={project.name}
+        description={project.description === "" ? undefined : project.description}
+        actions={
+          <>
+            {!archived && (
+              <button
+                type="button"
+                className={button.secondary}
+                onClick={() => {
+                  setEditing(true);
+                }}
+              >
+                Edit details
+              </button>
+            )}
+            {actions.length > 0 && (
+              <Menu
+                label={<Icon name="more" />}
+                triggerLabel="More Project actions"
+                menuLabel="Project actions"
+                align="end"
+                triggerClassName={button.icon}
+                items={actions}
+              />
+            )}
+          </>
+        }
+      />
       {archived ? (
         <ArchivedNotice project={project} organisationId={organisationId} isOwner={isOwner} />
       ) : (
-        <>
-          {editing && (
-            <EditDetails
-              project={project}
-              organisationId={organisationId}
-              onDone={() => {
-                setEditing(false);
-              }}
-            />
-          )}
-          <ArchiveProject project={project} organisationId={organisationId} />
-          <EmbeddingModelSetting project={project} organisationId={organisationId} />
-        </>
+        <FormError message={confirming === null ? projectFailure(archive.error) : undefined} />
       )}
+      {editing && (
+        <EditProjectDialog
+          project={project}
+          organisationId={organisationId}
+          onClose={() => {
+            setEditing(false);
+          }}
+        />
+      )}
+      {confirming === "archive" && <ArchiveDialog project={project} archive={archive} onDone={done} />}
+      {confirming === "delete" && <DeleteDialog project={project} organisationId={organisationId} onDone={done} />}
     </div>
   );
 }
 
-const TABS = [
-  { label: "Documents", to: PROJECT },
-  { label: "Instructions", to: `${PROJECT}/instructions` },
-  { label: "Agents", to: `${PROJECT}/agents` },
-  { label: "Conversations", to: `${PROJECT}/conversations` },
-  { label: "Analytics", to: `${PROJECT}/analytics` },
-  { label: "Settings", to: `${PROJECT}/settings` },
-] as const;
-
-/** One Project: its name and description, Archive and restore, and a tab per area of the Project. */
+/**
+ * One Project: its page header, then the section the sidebar has open. On an Agent's pages the
+ * Agent's own header is the page's h1, so the Project's is left out (an archived Project still
+ * says so).
+ */
 export function ProjectLayout() {
   const { organisationId, isOwner } = useOrganisationRole();
   const { projectId } = useProjectParams();
   const project = useProject(organisationId, projectId);
+  const onAgent = useMatchRoute()({ to: AGENT, params: { organisationId, projectId }, fuzzy: true }) !== false;
 
-  let body;
-  if (project.isPending) {
-    body = <p role="status">Loading the Project…</p>;
-  } else if (project.isError) {
-    body =
-      project.error instanceof ProjectRequestError && project.error.status === 404 ? (
-        <>
-          <h1 id="page-heading" className="text-2xl font-semibold">
-            Project not found
-          </h1>
-          <p className="text-slate-700">It doesn't exist in this Organisation.</p>
-        </>
-      ) : (
-        <p role="alert">The Project could not be loaded. Try again shortly.</p>
-      );
-  } else {
-    body = (
-      <>
-        <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
-        <nav aria-label="Project" className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
-          {TABS.map((tab) => (
-            <Link key={tab.label} to={tab.to} params={{ organisationId, projectId }} activeOptions={{ exact: true }} className={TAB}>
-              {tab.label}
-            </Link>
-          ))}
-        </nav>
-        <Outlet />
-      </>
+  if (project.isPending) return <Skeleton label="Loading the Project" />;
+  if (project.isError) {
+    return project.error instanceof ProjectRequestError && project.error.status === 404 ? (
+      <EmptyState level={1} icon="projects" title="Project not found" description="It doesn't exist in this Organisation." />
+    ) : (
+      <EmptyState tone="error" title="The Project could not be loaded" description="Try again shortly." />
     );
   }
-
   return (
-    <section aria-labelledby="page-heading" className="space-y-6">
-      <Link to="/organisations/$organisationId/projects" params={{ organisationId }} className="text-sm text-slate-700 underline">
-        All Projects
-      </Link>
-      {body}
-    </section>
+    <div className="space-y-6">
+      <ToastProvider>
+        {onAgent ? (
+          project.data.archived_at !== null && <ArchivedNotice project={project.data} organisationId={organisationId} isOwner={isOwner} />
+        ) : (
+          <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
+        )}
+      </ToastProvider>
+      <Outlet />
+    </div>
   );
 }

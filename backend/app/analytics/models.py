@@ -61,6 +61,9 @@ class UsageDaily(IdMixin, Base):
     fallback_count: Mapped[int] = mapped_column(Integer)
     # Replies that were the refusal text because the input Guardrail blocked the question.
     guardrail_blocks: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    # Knowledge Searches the replies ran (Agentic Retrieval Mode; a call the Search limit
+    # refused searched nothing): the sum of their ``search_count``.
+    searches: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # Histograms of milliseconds to the first token, and to the whole reply.
     first_token_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)
     latency_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)

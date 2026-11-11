@@ -27,6 +27,8 @@ export const defaultDraft: Draft = {
     tag_ids: [],
     reranker: null,
     citations: true,
+    mode: "automatic",
+    search_limit: 3,
   },
   experience: {
     display_name: "",
@@ -37,6 +39,7 @@ export const defaultDraft: Draft = {
       send_button: null,
       rate_conversation: null,
       unavailable_message: null,
+      searching_status: null,
     },
     rating_prompt_after: 3,
   },
@@ -87,19 +90,31 @@ export const voyage = credential(
   ["embeddings", "rerank"],
 );
 
+export const bedrock = credential(
+  "c1000000-0000-4000-8000-000000000004",
+  "Bedrock",
+  "bedrock",
+  ["chat"],
+);
+
 /** Models per credential and capability, as `GET …/credentials/{id}/models/{capability}` answers. */
 export const offeredModels: Record<string, ModelOut[]> = {
   [`${openAi.id}/chat`]: [
-    { id: "gpt-4.1", name: "GPT-4.1" },
-    { id: "gpt-4.1-mini", name: "GPT-4.1 mini" },
+    { id: "gpt-4.1", name: "GPT-4.1", supports_tools: true },
+    { id: "gpt-4.1-mini", name: "GPT-4.1 mini", supports_tools: true },
   ],
   [`${claude.id}/chat`]: [
-    { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
-    { id: "claude-haiku-4-5", name: "Claude Haiku 4.5" },
+    { id: "claude-sonnet-4-5", name: "Claude Sonnet 4.5", supports_tools: true },
+    { id: "claude-haiku-4-5", name: "Claude Haiku 4.5", supports_tools: true },
+  ],
+  // Mistral 7B Instruct can't use tools.
+  [`${bedrock.id}/chat`]: [
+    { id: "amazon.nova-pro-v1:0", name: "Amazon Nova Pro", supports_tools: true },
+    { id: "mistral.mistral-7b-instruct-v0:2", name: "Mistral 7B Instruct", supports_tools: false },
   ],
   [`${voyage.id}/rerank`]: [
-    { id: "rerank-2.5", name: "rerank-2.5" },
-    { id: "rerank-2.5-lite", name: "rerank-2.5-lite" },
+    { id: "rerank-2.5", name: "rerank-2.5", supports_tools: false },
+    { id: "rerank-2.5-lite", name: "rerank-2.5-lite", supports_tools: false },
   ],
 };
 
@@ -255,6 +270,9 @@ export const hrTrace: Schemas["TraceOut"] = {
   latency_ms: 85,
   fallback: false,
   guardrail_outcomes: [],
+  search_count: 0,
+  searches: [],
+  automatic_fallback: false,
   chunks: [
     {
       chunk_id: leaveCitation.chunk_id,
@@ -320,6 +338,36 @@ export const hrTrace: Schemas["TraceOut"] = {
   ],
 };
 
+/** The Trace of an answer in Agentic Retrieval Mode: two Searches, each with the Chunks it found
+ * (the second found the leave policy again, under its first label). */
+export const agenticTrace: Schemas["TraceOut"] = {
+  ...hrTrace,
+  input_tokens: 300,
+  output_tokens: 14,
+  chunks: [],
+  search_count: 2,
+  searches: [
+    {
+      order: 1,
+      query: "annual leave allowance",
+      latency_ms: 31,
+      limit_refused: false,
+      chunks: hrTrace.chunks.slice(0, 1),
+    },
+    {
+      order: 2,
+      query: "carry over unused leave",
+      latency_ms: 27,
+      limit_refused: false,
+      chunks: [
+        { ...(hrTrace.chunks[1] as Schemas["TracedChunkOut"]), rank: 2, text: "Carry over up to 5 days." },
+        hrTrace.chunks[0] as Schemas["TracedChunkOut"],
+        hrTrace.chunks[4] as Schemas["TracedChunkOut"],
+      ],
+    },
+  ],
+};
+
 function sse(event: string, data: unknown) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
@@ -337,9 +385,15 @@ export function streamedAnswer(
     error?: { code: string; message: string };
     /** What the `done` event says the answer ran with; the Instructions Draft by default. */
     instructions?: InstructionsUsed;
+    /** Agentic Retrieval Mode: a `search` event per query, in order, before the answer. */
+    searches?: string[];
+    /** Events sent first, as they are: say, text the model wrote, its `retract` and a `search`. */
+    prelude?: [string, unknown][];
   } = {},
 ) {
   const body =
+    (options.prelude ?? []).map(([event, data]) => sse(event, data)).join("") +
+    (options.searches ?? []).map((query, index) => sse("search", { query, order: index + 1 })).join("") +
     tokens.map((text) => sse("token", { text })).join("") +
     (options.refusal === undefined
       ? ""

@@ -1,8 +1,10 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { openAgentView } from "../fixtures/agent";
 import { signInAs } from "../fixtures/auth";
 import { BLOCKED_HOST_URL, HOST_URL } from "../fixtures/env";
+import { openSection } from "../fixtures/navigation";
 
 // The README's five-minute demo, automated as one test, in the README's order. `make seed` runs
 // before the suite (`make e2e`); the stack answers with the demo model and the real local classifier.
@@ -22,7 +24,7 @@ const ATTACKS = [
 ];
 
 async function openProjectTab(page: Page, tab: string) {
-  await page.getByRole("navigation", { name: "Project" }).getByRole("link", { name: tab }).click();
+  await openSection(page, "Project sections", tab);
 }
 
 /** The Thumbs-up rate a Version's KPI card shows, as a whole percentage. */
@@ -42,7 +44,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await signInAs(page, OWNER);
     await page.goto("/");
     await expect(page.getByText("Northwind Traders").first()).toBeVisible();
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Projects" }).click();
+    await openSection(page, "Organisation sections", "Projects");
     await page.getByRole("link", { name: "Northwind Handbook" }).click();
     const handbook = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(handbook.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 120_000 });
@@ -59,22 +61,46 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
-  await test.step("3. The Agent editor and a Playground Trace", async () => {
+  await test.step("3. The Agent editor and a Playground Trace, Automatic then Agentic", async () => {
     await openProjectTab(page, "Agents");
     await page.getByRole("link", { name: "HR helper" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
     await page.getByRole("button", { name: "Send" }).click();
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR helper" });
     await expect(answer).toContainText(DEMO_ANSWER, { timeout: 30_000 });
-    await answer.getByRole("button", { name: "Trace" }).click();
-    const trace = page.getByRole("dialog", { name: "Trace" });
+    // The HR helper is Automatic: one search up front, its Chunks in one table. The Trace folds
+    // open under the answer.
+    await answer.getByText("Trace", { exact: true }).click();
+    const trace = answer.getByRole("group", { name: "Trace" });
     await expect(trace.getByRole("table", { name: "Retrieved Chunks" }).getByRole("row").nth(1)).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
-    await trace.getByRole("button", { name: "Close" }).click();
+
+    // The Product FAQ is Agentic: the model searches the Knowledge Base itself, and its Trace
+    // lists each Search with the Chunks it found.
+    const question = "Can I return a jar of honey?";
+    await openProjectTab(page, "Agents");
+    await page.getByRole("link", { name: "Product FAQ" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Product FAQ" })).toBeVisible({ timeout: 15_000 });
+    await page.getByLabel("Question", { exact: true }).fill(question);
+    await page.getByRole("button", { name: "Send" }).click();
+    const searched = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "Product FAQ" });
+    await expect(searched.getByRole("list", { name: "Searches" }).getByRole("listitem")).toHaveText([`Searching: ${question}`], { timeout: 30_000 });
+    await expect(searched).toContainText(DEMO_ANSWER, { timeout: 30_000 });
+    await searched.getByText("Trace", { exact: true }).click();
+    const searches = searched.getByRole("group", { name: "Trace" }).getByRole("list", { name: "Searches" });
+    await expect(searches.getByRole("heading", { name: `Search 1: ${question}` })).toBeVisible({ timeout: 15_000 });
+    const found = searches.getByRole("table", { name: "Chunks found by Search 1" }).getByRole("row").nth(1);
+    await expect(found.getByRole("cell").first()).toHaveText("C1");
+    await expect(found.getByRole("cell").last()).toHaveText("Cited");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
   await test.step("4. Publish and revert: the HR helper's Live History tells the v2 story", async () => {
+    await openProjectTab(page, "Agents");
+    await page.getByRole("link", { name: "HR helper" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
+    await openAgentView(page, "Versions");
     const timeline = page.getByRole("list", { name: "Live History" });
     await expect(timeline.getByRole("listitem").nth(0)).toContainText("Published v1 → v3");
     await expect(timeline.getByRole("listitem").nth(1)).toContainText("Reverted v2 → v1");
@@ -90,7 +116,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect(v2).toBeLessThan(v1);
     expect(v1).toBeLessThan(v3);
     const v3Volume = page.getByRole("list", { name: "Key numbers for v3" }).getByRole("listitem", { name: "Volume" });
-    await expect(v3Volume).toContainText("Low confidence (fewer than 30 Conversations)");
+    await expect(v3Volume.getByText("Low sample")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
@@ -147,24 +173,24 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await budget.close();
 
     await openProjectTab(page, "Agents");
-    const listed = page.getByRole("list", { name: "Agents" }).getByRole("listitem").filter({ hasText: "Low-budget helper" });
-    await expect(listed.getByText("Budget exhausted")).toBeVisible({ timeout: 15_000 });
+    const listed = page.getByRole("table", { name: "Agents" }).getByRole("row").filter({ hasText: "Low-budget helper" });
+    await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
   });
 
   await test.step("10. Organisation cost: what each Project and Agent spent, the Playground apart", async () => {
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Cost" }).click();
+    await openSection(page, "Organisation sections", "Cost");
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
     await expect(byProject.getByRole("row", { name: /^Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
-    await page.getByLabel("Break down by").selectOption("Agent");
+    await page.getByRole("radiogroup", { name: "Break down by" }).getByRole("radio", { name: "Agent" }).click();
     const byAgent = page.getByRole("table", { name: "Cost by Agent" });
     await expect(byAgent.getByRole("row", { name: /^HR helper Northwind Handbook/ })).toBeVisible({ timeout: 15_000 });
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
   await test.step("11. The Audit tab is already full of the seeded history", async () => {
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Organisation settings" }).click();
-    await page.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+    await openSection(page, "Organisation sections", "Settings");
+    await openSection(page, "Organisation settings", "Audit");
     const events = page.getByRole("table", { name: "Audit Events" });
     await expect(events.getByRole("row").nth(1)).toBeVisible({ timeout: 15_000 });
     for (const action of ["agent.reverted", "agent.bulk_published", "project.instructions_published"]) {

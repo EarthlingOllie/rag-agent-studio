@@ -4,12 +4,9 @@ import type { Browser, Page } from "@playwright/test";
 import { AXE_TAGS, expect, test } from "../fixtures";
 import { type MemberCredentials, newMember } from "../fixtures/auth";
 import { totpCode, totpStep } from "../fixtures/totp";
+import { openSection, sectionNames } from "../fixtures/navigation";
 
 const MFA_REQUIRED = "This Organisation requires MFA. Turn on MFA for your account to continue.";
-
-function organisationNav(page: Page) {
-  return page.getByRole("navigation", { name: "Organisation" });
-}
 
 /** Turns MFA on from the Security page; returns the secret and the step the confirming code used. */
 async function enrol(page: Page): Promise<{ secret: string; step: number }> {
@@ -27,9 +24,10 @@ async function enrol(page: Page): Promise<{ secret: string; step: number }> {
 /** The Owner invites a new person with a copied link; they create an account in their own browser. */
 async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCredentials): Promise<Page> {
   await owner.goto("/");
-  await organisationNav(owner).getByRole("link", { name: "Organisation settings" }).click();
-  await owner.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Members" }).click();
+  await openSection(owner, "Organisation sections", "Settings");
+  await openSection(owner, "Organisation settings", "Members");
   await expect(owner.getByRole("table", { name: "Members" })).toBeVisible();
+  await owner.getByRole("button", { name: "Invite someone" }).click();
   const form = owner.getByRole("form", { name: "Invite someone" });
   await form.getByLabel("Email", { exact: true }).fill(person.email);
   await form.getByLabel("Role").selectOption("Editor");
@@ -41,7 +39,7 @@ async function inviteNewEditor(owner: Page, browser: Browser, person: MemberCred
   await page.getByLabel("Your name").fill(person.name);
   await page.getByLabel("Password").fill(person.password);
   await page.getByRole("button", { name: "Create account and join" }).click();
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   return page;
 }
 
@@ -57,9 +55,9 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
     .organisations[0]?.id;
 
   // The Owner turns MFA on for themselves, then requires it in Organisation settings.
-  await organisationNav(owner).getByRole("link", { name: "Security" }).click();
+  await openSection(owner, "Account", "Security");
   await enrol(owner);
-  await organisationNav(owner).getByRole("link", { name: "Organisation settings" }).click();
+  await openSection(owner, "Organisation sections", "Settings");
   const policy = owner.getByRole("region", { name: "Two-factor authentication" });
   await expect(policy).toContainText("Members choose whether to use two-factor authentication.");
   await policy.getByRole("button", { name: "Require two-factor authentication" }).click();
@@ -68,7 +66,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
   expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
   // The Editor's next visit: signing in again lands on enrolment, and nothing else is offered.
-  await editorPage.getByRole("button", { name: "Sign out" }).click();
+  await openSection(editorPage, "Account", "Sign out");
   await editorPage.getByLabel("Email").fill(editor.email);
   await editorPage.getByLabel("Password").fill(editor.password);
   await editorPage.getByRole("button", { name: "Sign in" }).click();
@@ -76,7 +74,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
   await expect(
     editorPage.getByText(`${member.organisationName} requires two-factor authentication. Set it up to continue.`),
   ).toBeVisible();
-  await expect(organisationNav(editorPage).getByRole("link", { name: "Projects" })).toHaveCount(0);
+  expect(await sectionNames(editorPage, "Organisation sections")).toEqual(["Security"]);
   expect((await new AxeBuilder({ page: editorPage }).withTags(AXE_TAGS).analyze()).violations).toEqual([]);
   // Typing another page's address leads back to enrolment, and the API refuses the Organisation.
   await editorPage.goto(`/organisations/${organisationId ?? ""}/settings`);
@@ -87,12 +85,12 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
 
   // Once enrolled, the Organisation opens as usual.
   const { secret, step } = await enrol(editorPage);
-  await organisationNav(editorPage).getByRole("link", { name: "Projects" }).click();
-  await expect(editorPage.getByRole("heading", { name: "Projects" })).toBeVisible();
+  await openSection(editorPage, "Organisation sections", "Projects");
+  await expect(editorPage.getByRole("heading", { level: 1, name: "Projects" })).toBeVisible();
   expect((await editorPage.request.get(`/api/organisations/${organisationId ?? ""}`)).status()).toBe(200);
 
   // While the Organisation requires MFA, the Editor can't turn it off.
-  await organisationNav(editorPage).getByRole("link", { name: "Security" }).click();
+  await openSection(editorPage, "Account", "Security");
   const turnOff = editorPage.getByRole("form", { name: "Turn off two-factor authentication" });
   await turnOff.getByLabel("Password").fill(editor.password);
   await turnOff.getByLabel("Code from your app or a recovery code").fill(totpCode(secret, step + 1));
@@ -102,7 +100,7 @@ test("an Owner requires MFA, and an Editor is forced to enrol on their next visi
   );
 
   // The policy change is in the Owner's Audit tab.
-  await owner.getByRole("navigation", { name: "Organisation settings" }).getByRole("link", { name: "Audit" }).click();
+  await openSection(owner, "Organisation settings", "Audit");
   await expect(
     owner.getByRole("table", { name: "Audit Events" }).getByRole("cell", { name: "organisation.mfa_policy_changed" }),
   ).toHaveCount(1);

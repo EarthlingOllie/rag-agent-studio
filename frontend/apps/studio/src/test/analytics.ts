@@ -13,6 +13,7 @@ export function versionKpis(number: number, overrides: Partial<VersionKpis> = {}
     version_id: `a1e00000-0000-4000-8000-${String(number).padStart(12, "0")}`,
     number,
     is_live: false,
+    retrieval_mode: "automatic",
     conversations: 0,
     messages: 0,
     low_confidence: true,
@@ -22,14 +23,16 @@ export function versionKpis(number: number, overrides: Partial<VersionKpis> = {}
     rating: { n: 0, mean: null, low_confidence: true },
     fallback: { count: 0, rate: null },
     guardrail_blocks: { count: 0, rate: null },
+    searches: { total: 0, mean_per_reply: null },
     latency: { n: 0, first_token_p95_ms: null, total_p95_ms: null },
     ...overrides,
   };
 }
 
-/** v2, Live, with a small sample: three Conversations, two thumbs up out of three votes. */
+/** v2, Live and Agentic, with a small sample: three Conversations, two thumbs up out of three votes. */
 export const smallSample = versionKpis(2, {
   is_live: true,
+  retrieval_mode: "agentic",
   conversations: 3,
   messages: 4,
   tokens: { n: 3, mean: 120.4, p95: 300.2 },
@@ -38,10 +41,11 @@ export const smallSample = versionKpis(2, {
   rating: { n: 2, mean: 3.5, low_confidence: true },
   fallback: { count: 1, rate: 0.25 },
   guardrail_blocks: { count: 2, rate: 0.5 },
+  searches: { total: 6, mean_per_reply: 1.5 },
   latency: { n: 4, first_token_p95_ms: 320.4, total_p95_ms: 1480 },
 });
 
-/** v1, with enough evidence: no number is low confidence. */
+/** v1, Automatic, with enough evidence: no number is low confidence. */
 export const largeSample = versionKpis(1, {
   conversations: 120,
   messages: 400,
@@ -52,6 +56,7 @@ export const largeSample = versionKpis(1, {
   rating: { n: 40, mean: 4.25, low_confidence: false },
   fallback: { count: 0, rate: 0 },
   guardrail_blocks: { count: 3, rate: 0.0075 },
+  searches: { total: 0, mean_per_reply: 0 },
   latency: { n: 400, first_token_p95_ms: 950, total_p95_ms: 2400 },
 });
 
@@ -106,11 +111,12 @@ export const v1AgainstV2Metrics: MetricRow[] = [
   row("rating_mean", "Mean rating", "rating", 4.25, 3.5, "a", true),
   row("ratings", "Ratings", "count", 40, 2, null, true),
   row("fallback_rate", "Fallback rate", "rate", 0, 0.25, "a"),
+  row("searches_per_reply", "Mean searches per reply", "searches", 0, 1.5, null, true),
   row("first_token_p95_ms", "p95 time to first token (ms)", "ms", 950, 320.4, "b"),
   row("total_p95_ms", "p95 total latency (ms)", "ms", 2400, 1480, "b"),
 ];
 
-/** v2's system prompt replaced v1's one line. */
+/** v2's system prompt replaced v1's one line, and v2 is Agentic. */
 export const v1ToV2Diff: AgentDiff = {
   from: { kind: "version", version: { id: largeSample.version_id, number: 1 } },
   to: { kind: "version", version: { id: smallSample.version_id, number: 2 } },
@@ -126,6 +132,7 @@ export const v1ToV2Diff: AgentDiff = {
         { op: "insert", text: "Answer in one sentence." },
       ],
     },
+    { path: "retrieval.mode", before: "automatic", after: "agentic", added: null, removed: null, lines: null },
   ],
   instructions: null,
 };

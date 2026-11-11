@@ -1,4 +1,5 @@
 import { expect, test } from "../fixtures";
+import { openSection } from "../fixtures/navigation";
 
 // The compose stack checks keys with the fake verifier and answers with the fake gateway's
 // chat model. No real provider is called and no real key is used.
@@ -37,16 +38,17 @@ test.describe("Organisation cost", () => {
     expect(await tried.text()).toContain("event: done");
 
     await page.goto(`/organisations/${organisationId}/projects`);
-    await page.getByRole("navigation", { name: "Organisation" }).getByRole("link", { name: "Cost" }).click();
+    await openSection(page, "Organisation sections", "Cost");
 
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
     await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Total"]);
     await expect(byProject.getByRole("row", { name: /^Cost HR/ })).toBeVisible();
     await expect(byProject.getByRole("row", { name: /^All Projects/ })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Spend for the period" }).getByRole("listitem")).toHaveCount(3);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
-    await page.getByLabel("Break down by").selectOption("Agent");
+    await page.getByRole("radiogroup", { name: "Break down by" }).getByRole("radio", { name: "Agent" }).click();
     const byAgent = page.getByRole("table", { name: "Cost by Agent" });
     await expect(byAgent.getByRole("row", { name: /^Cost helper Cost HR/ })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);

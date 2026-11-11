@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Colour and font tokens, the light and dark Appearance, and the page's base styles. */
+@import "./design/tokens.css";
 /* The shared UI package lives outside the app; its classes are generated too. */
 @source "../../../packages/ui/src";
 
@@ -12,9 +14,9 @@
   .markdown ul { @apply list-disc pl-5; }
   .markdown ol { @apply list-decimal pl-5; }
   .markdown table { @apply border-collapse; }
-  .markdown th, .markdown td { @apply border border-slate-300 px-2 py-1 text-left align-top; }
-  .markdown code { @apply rounded bg-slate-100 px-1; }
-  .markdown pre { @apply overflow-auto rounded bg-slate-100 p-3; }
+  .markdown th, .markdown td { @apply border border-line px-2 py-1 text-left align-top; }
+  .markdown code { @apply rounded bg-sunken px-1 text-ink; }
+  .markdown pre { @apply overflow-auto rounded bg-sunken p-3 text-ink; }
   .markdown a { @apply underline; }
   .markdown img { @apply max-w-full; }
 }

@@ -10,7 +10,7 @@ import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
-const agentPage = `/organisations/${organisationId}/projects/${hrProject.id}/agents/${hrHelper.id}`;
+const agentPage = `/organisations/${organisationId}/projects/${hrProject.id}/agents/${hrHelper.id}/embed`;
 const editorSession: Session = {
   ...adaSession,
   organisations: adaSession.organisations.map((organisation) => ({ ...organisation, role: "editor" as const })),
@@ -25,7 +25,7 @@ function setUp(options: Parameters<typeof fakeBrandingApi>[0] = {}, session = ad
 }
 
 async function branding() {
-  const section = await screen.findByRole("region", { name: "Widget branding" }, { timeout: 5000 });
+  const section = await screen.findByRole("region", { name: "Theme override" }, { timeout: 5000 });
   await within(section).findByRole("form", { name: "Colour override" });
   return section;
 }
@@ -203,6 +203,6 @@ test("when the branding can't be loaded, that is said", async () => {
   server.use(http.get(OVERRIDE, () => HttpResponse.json({ detail: "Not found" }, { status: 404 })));
   renderStudio(agentPage);
 
-  const section = await screen.findByRole("region", { name: "Widget branding" }, { timeout: 5000 });
+  const section = await screen.findByRole("region", { name: "Theme override" }, { timeout: 5000 });
   expect(await within(section).findByRole("alert")).toHaveTextContent("The widget branding could not be loaded.");
 });
