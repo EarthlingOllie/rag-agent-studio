@@ -304,3 +304,18 @@ def test_worker_task_logs_leave_out_task_arguments_and_results(
     assert succeeded["data"]["args"] == "[Redacted]"
     assert succeeded["data"]["return_value"] == "[Redacted]"
     assert succeeded["data"]["name"] == "test.echo"
+
+
+def test_onnx_runtime_writes_only_errors_to_the_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    # ONNX Runtime logs from C++ straight to stderr, bypassing logging, so its warnings would
+    # not be JSON: on some hosts it warns at start-up that it cannot read a device's PCI bus ID.
+    import onnxruntime
+
+    from app.core.logs import configure_logging
+
+    severities: list[int] = []
+    monkeypatch.setattr(onnxruntime, "set_default_logger_severity", severities.append)
+
+    configure_logging("api")
+
+    assert severities == [3]  # 3: errors and fatal only
