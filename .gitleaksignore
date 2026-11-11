@@ -27,3 +27,11 @@ a7613be7aa3c5531bfb5fba811bfdc789cc8eeb9:frontend/apps/studio/src/projects/Embed
 # listed the python:3.13-slim base image's `ENV GPG_KEY=` (CPython's public release-signing key
 # fingerprint), which the generic rule matches. It is public, not a secret; the line was then edited out.
 082333e8224056dae3aeff0825d5541ed5332ff8:docs/tickets/03-projects-knowledge-base/03-02-evidence/live-models/image-pdf-history.txt:generic-api-key:26
+# backend/tests/unit/test_aws_task_settings.py (ticket 09-06): made-up REDIS_AUTH_TOKEN, SESSION_SECRET and
+# LOCAL_KEY_WRAPPER_KEY values in the shapes the Terraform modules generate, for the URL-escaping test.
+749674de737d288512ed9708742dfe3baa6ce7ff:backend/tests/unit/test_aws_task_settings.py:generic-api-key:27
+749674de737d288512ed9708742dfe3baa6ce7ff:backend/tests/unit/test_aws_task_settings.py:generic-api-key:28
+749674de737d288512ed9708742dfe3baa6ce7ff:backend/tests/unit/test_aws_task_settings.py:generic-api-key:30
+# docs/tickets/08-guardrails-evaluation/08-05-evidence/merged3-e2e.log: a one-time invite token from an e2e run
+# against a throwaway local stack, in the accept-invite URL Playwright logged.
+1dd64d55d339a2dac5b588c45ac8e85f347a9ffb:docs/tickets/08-guardrails-evaluation/08-05-evidence/merged3-e2e.log:generic-api-key:668

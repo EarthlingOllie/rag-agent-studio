@@ -124,8 +124,8 @@ audit: ## pip-audit on the locked backend dependencies and pnpm audit on the fro
 	cd frontend && pnpm audit --audit-level low
 
 image-scan: images ## Trivy scan of the built images; fails on any fixable HIGH or CRITICAL vulnerability
-	trivy image --exit-code 1 --ignore-unfixed --severity $(TRIVY_SEVERITY) rag-agent-studio/api:$(IMAGE_TAG)
-	trivy image --exit-code 1 --ignore-unfixed --severity $(TRIVY_SEVERITY) rag-agent-studio/studio:$(IMAGE_TAG)
+	trivy image --exit-code 1 --ignore-unfixed --secret-config trivy-secret.yaml --severity $(TRIVY_SEVERITY) rag-agent-studio/api:$(IMAGE_TAG)
+	trivy image --exit-code 1 --ignore-unfixed --secret-config trivy-secret.yaml --severity $(TRIVY_SEVERITY) rag-agent-studio/studio:$(IMAGE_TAG)
 
 e2e-install: ## Install the Playwright browser the end-to-end suite uses
 	cd frontend && pnpm exec playwright install --with-deps chromium
