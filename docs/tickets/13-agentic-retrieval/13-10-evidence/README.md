@@ -1,6 +1,6 @@
 # Evidence: ticket 13-10, Agentic answers stream word by word
 
-Branch `t/13-10`, from `bcf109e9`: all of spec 12 plus spec 13 merged. The claim commit `68236052` set Status `in-progress`. The change is in commits `c2cc16fc` to `778dc6fd`, and the evidence logs are in `eb823005`. Every check below ran on that code. Afterwards only this folder and the ticket file were written.
+Branch `t/13-10`, from `bcf109e9`: all of spec 12 plus spec 13 merged. The claim commit `68236052` set Status `in-progress`. The change is in commits `c2cc16fc` to `778dc6fd`. Every check below ran on that code; the logs are in `eb823005`, and the backend suite ran at `8cdc7727`, which differs from it only in this README. Afterwards only this folder and the ticket file were written.
 
 **Status: done.** Every criterion is met and backed by the evidence below.
 
@@ -78,7 +78,7 @@ These are the pre-agreed [shared test seams](../../../specs/README.md#shared-tes
 
 | Check | Command | Result | Log |
 |---|---|---|---|
-| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t10 TEST_REDIS_URL=redis://localhost:6379/15 uv run pytest -n 3` | BACKEND_RESULT | [backend-tests.log](backend-tests.log) |
+| Backend tests + coverage gate | `cd backend && TEST_DATABASE_URL=…/studio_test_t10 TEST_REDIS_URL=redis://localhost:6379/15 uv run pytest -n 3` | **2635 passed** in 22 min 17 s, none failed, no test timed out or was rerun; coverage **100.00%** (12436 statements, 1594 branches), gate reached; exit 0 | [backend-tests.log](backend-tests.log) |
 | Backend lint and types | `make lint-backend` (ruff check, ruff format --check, mypy) | exit 0 | [lint-backend.log](lint-backend.log) |
 | API client drift and links | `make check-client`, `make link-check` | up to date; all links resolve; exit 0 | [check-client-and-links.log](check-client-and-links.log) |
 | Frontend | `pnpm test && pnpm check-embed-size && pnpm palette-ratchet && pnpm lint && pnpm typecheck` | 1114 tests passed in 85 files; coverage 100% (statements, branches, functions, lines); embed size, ratchet, lint and typecheck pass | [frontend-checks.log](frontend-checks.log) |
