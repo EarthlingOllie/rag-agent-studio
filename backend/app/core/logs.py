@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any, TextIO
 
+import onnxruntime
 from opentelemetry import trace
 
 from app.core.telemetry import MESSAGE_FIELD_PATTERN
@@ -100,3 +101,6 @@ def configure_logging(service: str, level: int = logging.INFO) -> None:
         server_logger.handlers.clear()
         server_logger.propagate = True
     logging.captureWarnings(True)
+    # ONNX Runtime (the local classifier, Embedding Model and OCR) logs from C++ straight to
+    # stderr, so its warnings would not be JSON; keep it to errors (3: ERROR).
+    onnxruntime.set_default_logger_severity(3)
