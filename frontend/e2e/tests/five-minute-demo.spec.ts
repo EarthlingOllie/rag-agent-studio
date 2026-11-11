@@ -6,7 +6,7 @@ import { signInAs } from "../fixtures/auth";
 import { BLOCKED_HOST_URL, HOST_URL } from "../fixtures/env";
 import { openSection } from "../fixtures/navigation";
 
-// The README's five-minute demo, automated as one test, in the README's order. `make seed` runs
+// The five-minute walkthrough in docs/demo.md, automated as one test, in its order. `make seed` runs
 // before the suite (`make e2e`); the stack answers with the demo model and the real local classifier.
 const OWNER = { email: "owner@northwind.example", password: "northwind-owner-demo" };
 const DEMO_ANSWER = "Demo model (canned answer, not AI)";

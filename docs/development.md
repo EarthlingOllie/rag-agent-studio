@@ -12,7 +12,7 @@ Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/
 | `make gen-client` | Regenerates `frontend/packages/api-client` from the backend's OpenAPI schema. |
 | `make check-client` | Fails if the committed API client differs from a fresh generation (CI runs this). |
 | `make e2e-install` | Installs the Chromium build Playwright uses. |
-| `make e2e` | Starts the stack with `docker compose up --wait`, seeds the demo (`make seed`), then runs the Playwright suite with axe, including the README's five-minute demo as one test (`frontend/e2e/tests/five-minute-demo.spec.ts`). |
+| `make e2e` | Starts the stack with `docker compose up --wait`, seeds the demo (`make seed`), then runs the Playwright suite with axe, including the five-minute walkthrough in [docs/demo.md](demo.md#five-minute-walkthrough) as one test (`frontend/e2e/tests/five-minute-demo.spec.ts`). |
 | `make infra-check` | `terraform fmt`, `validate`, `terraform test`, TFLint (with the AWS ruleset) and Checkov over `infra/bootstrap`, every module in `infra/modules` and every environment in `infra/envs`, plus the S3 backend check (`infra/tests/backend.test.sh`) and the plan-gate tests (`scripts/ci/tests/plan-gate.test.sh`). No AWS account is needed: `terraform test` uses mocked providers. |
 | `make link-check` | Checks that every relative link, and its `#anchor`, in the Markdown git tracks resolves (offline: external links are not fetched), after the checker's own tests (`scripts/ci/tests/links.test.mjs`, 100% coverage). |
 | `make security` | gitleaks over the whole history (`secret-scan`), pip-audit and pnpm audit (`audit`), and a Trivy scan of the built images (`image-scan`). |
