@@ -186,3 +186,4 @@ Retrieval Mode (Automatic or Agentic) and the read-only Knowledge Search tool ([
 | `13-07` | [Guardrails in both modes](./13-agentic-retrieval/07-guardrails-both-modes.md) | 13-04 |
 | `13-08` | [Searches in metrics and retention](./13-agentic-retrieval/08-searches-metrics-retention.md) | 13-02 |
 | `13-09` | [Agentic by default, with the demo and seed](./13-agentic-retrieval/09-agentic-default-demo-seed.md) | 13-03, 13-04, 13-07 |
+| `13-10` | [Agentic answers stream word by word](./13-agentic-retrieval/10-stream-agentic-answers.md) | 13-04, 13-06, 13-07 |
