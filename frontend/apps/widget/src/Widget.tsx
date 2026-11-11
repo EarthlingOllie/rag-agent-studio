@@ -249,6 +249,12 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
           answer = text;
           updateReply((reply) => ({ ...reply, text }));
         },
+        onRetract: () => {
+          // The Agent went on to search: what streamed wasn't the answer. It is cleared and
+          // never announced; the searching status shows until the answer streams.
+          answer = "";
+          updateReply((reply) => ({ ...reply, text: "", searching: true }));
+        },
         onRefusal: (text) => {
           updateReply((reply) => ({ ...reply, text, refused: true }));
         },

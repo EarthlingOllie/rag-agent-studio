@@ -135,6 +135,43 @@ test("while an Agentic Agent searches the Visitor sees a status, announced once 
   expect(await within(announcements).findByText("HR helper: Twenty-five days.")).toBeInTheDocument();
 });
 
+test("text streamed before a Search is retracted: the reply shows the searching status again, and only the answer is announced", async () => {
+  const user = userEvent.setup();
+  const reply = controlledReply();
+  render(<Widget boot={boot} launcher="inline" />);
+  const announcements = screen.getByRole("status", { name: "Announcements" });
+  const log = screen.getByRole("log", { name: "Conversation" });
+
+  await user.type(screen.getByLabelText("Message"), "How much leave?{Enter}");
+  reply.send("token", { text: "Let me look that up in the knowledge base. " });
+  const answer = await within(log).findByRole("listitem", { name: "HR helper" });
+  expect(await within(answer).findByText("Let me look that up in the knowledge base.")).toBeInTheDocument();
+
+  // The model went on to search: its text is cleared and the searching status shows instead.
+  reply.send("retract", {});
+  expect(await within(answer).findByText("Searching the knowledge base…")).toBeInTheDocument();
+  expect(within(answer).queryByText(/look that up/)).not.toBeInTheDocument();
+  reply.send("search", {});
+  const announced = await within(announcements).findByText("Searching the knowledge base…");
+
+  // A second retraction in the same reply shows the status again, without announcing it again.
+  reply.send("token", { text: "One more look, with other words. " });
+  expect(await within(answer).findByText("One more look, with other words.")).toBeInTheDocument();
+  reply.send("retract", {});
+  reply.send("search", {});
+  expect(await within(answer).findByText("Searching the knowledge base…")).toBeInTheDocument();
+  expect(within(announcements).getByText("Searching the knowledge base…")).toBe(announced);
+  expect(announcements.childElementCount).toBe(1);
+
+  reply.send("token", { text: "Twenty-five days." });
+  expect(await within(answer).findByText("Twenty-five days.")).toBeInTheDocument();
+  reply.send("done", { message_id: "m1" });
+  reply.end();
+  // The Reply announcement is the answer alone: retracted text is never read out.
+  expect(await within(announcements).findByText("HR helper: Twenty-five days.")).toBeInTheDocument();
+  expect(announcements).not.toHaveTextContent(/look/);
+});
+
 test("each reply that searches announces the status again", async () => {
   const user = userEvent.setup();
   server.use(

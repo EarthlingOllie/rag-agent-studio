@@ -133,6 +133,8 @@ footer{max-width:960px;margin:0 auto;padding:24px;color:var(--muted);font-size:.
       let buffer = "";
       const handle = (kind, data) => {
         if (kind === "token") stream.textContent += data.text;
+        // An Agentic Agent's text before a Knowledge Search was not the answer: it is cleared.
+        else if (kind === "retract") stream.textContent = "";
         else if (kind === "replace") {
           note.textContent = "The Canary token cut the reply off here and replaced it with: " + data.text;
           stream.textContent = data.text;

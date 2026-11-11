@@ -51,6 +51,25 @@ test.describe("Attack panel", () => {
     });
   }
 
+  test("text retracted before a Search is cleared from the reply", async ({ page }) => {
+    test.setTimeout(90_000);
+    // The Guardrail demo Agent is Automatic, so its stream never retracts: it is given text and
+    // a `retract` event first, as an Agentic Agent's model writing before a Search would send
+    // (ticket 13-10).
+    await page.route("**/api/demo/attacks/benign-control", async (route) => {
+      const response = await route.fetch();
+      const retracted = `event: token\ndata: ${JSON.stringify({ text: "Let me look that up for you first. " })}\n\nevent: retract\ndata: {}\n\n`;
+      await route.fulfill({ response, body: retracted + (await response.text()) });
+    });
+    await page.goto(`${HOST_URL}/demo/attacks.html`);
+    await page.getByRole("button", { name: "Benign control", exact: true }).click({ timeout: 15_000 });
+
+    const result = page.getByRole("region", { name: "Benign control" });
+    await expect(result.getByText("No Guardrail layer acted.", { exact: true })).toBeVisible({ timeout: 45_000 });
+    await expect(result.locator("#stream")).toContainText(`${NAIVE}: From northwind-staff-handbook`);
+    await expect(result.locator("#stream")).not.toContainText("look that up");
+  });
+
   test("the canary cuts off the encoded attack's leak: the secret never reaches the page", async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto(`${HOST_URL}/demo/attacks.html`);

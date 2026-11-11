@@ -137,6 +137,26 @@ test("each Search the model makes shows as a Searching line, in reply order, abo
   expect(within(answer).getByRole("link", { name: "C1 leave-policy.md" })).toBeInTheDocument();
 });
 
+test("text the model streamed before searching is cleared, then the Search shows and the answer streams", async () => {
+  const { answer } = await askLeave({
+    answer: () =>
+      streamedAnswer(["Twenty-five days ", "[C1]."], {
+        citations: [leaveCitation],
+        prelude: [
+          ["token", { text: "Let me look that up " }],
+          ["token", { text: "in the knowledge base. " }],
+          ["retract", {}],
+          ["search", { query: "annual leave allowance", order: 1 }],
+        ],
+      }),
+  });
+
+  const searches = within(answer).getByRole("list", { name: "Searches" });
+  expect(within(searches).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Searching: annual leave allowance"]);
+  expect(within(answer).getByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(within(answer).queryByText(/look that up/)).not.toBeInTheDocument();
+});
+
 test("an answer that made no Search shows no Searching line", async () => {
   const { answer } = await askLeave();
 

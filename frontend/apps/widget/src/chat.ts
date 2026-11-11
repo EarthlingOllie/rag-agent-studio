@@ -120,6 +120,8 @@ export type Handlers = {
   onToken: (text: string) => void;
   onCitation: (citation: Citation) => void;
   onReplace: (text: string) => void;
+  /** The text streamed so far was not the answer (the Agent went on to search): clear it. */
+  onRetract: () => void;
   /** The input Guardrail blocked the message: the Agent's refusal text is the whole reply. */
   onRefusal: (text: string) => void;
 };
@@ -153,6 +155,9 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
           break;
         case "replace":
           handlers.onReplace(data.text);
+          break;
+        case "retract":
+          handlers.onRetract();
           break;
         case "refusal":
           handlers.onRefusal(data.text);

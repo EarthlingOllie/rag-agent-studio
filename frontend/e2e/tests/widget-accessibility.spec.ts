@@ -65,7 +65,9 @@ async function panelAnimation(host: Page): Promise<string> {
 /**
  * Holds each widget reply after its first `search` event until `releaseAnswer()` is called in the
  * widget's frame, so the searching status stays on screen long enough to check. The stream is
- * the API's own; only its pace changes.
+ * the API's own, except that the first `search` is preceded by text and its `retract` event, as
+ * when a model writes before it searches (the compose stack's fake model never does): the
+ * retracted text must give way to the searching status and never be announced (ticket 13-10).
  */
 function holdAfterSearch() {
   if (!location.pathname.startsWith("/widget/a/")) return;
@@ -97,11 +99,13 @@ function holdAfterSearch() {
           controller.enqueue(value);
           return;
         }
-        // Up to the end of the first `search` event now; the rest once released.
+        // Up to the end of the first `search` event now, after the retracted text; the rest
+        // once released.
         holding = false;
         const close = text.indexOf("\n\n", at);
         const end = close === -1 ? text.length : close + 2;
-        controller.enqueue(encoder.encode(text.slice(0, end)));
+        const retracted = `event: token\ndata: ${JSON.stringify({ text: "Let me look that up for you first. " })}\n\nevent: retract\ndata: {}\n\n`;
+        controller.enqueue(encoder.encode(text.slice(0, at) + retracted + text.slice(at, end)));
         await new Promise<void>((release) => held.push(release));
         if (end < text.length) controller.enqueue(encoder.encode(text.slice(end)));
       },
@@ -162,8 +166,9 @@ for (const [colorScheme, reducedMotion, animation] of [
     // Open with the greeting and starter questions on screen.
     expect(await violations(host)).toEqual([]);
 
-    // A question typed and sent from the keyboard. While the Agent searches the reply shows the
-    // searching status, announced once; the status shows, axe finds nothing either.
+    // A question typed and sent from the keyboard. Text streamed before the Search is retracted;
+    // while the Agent searches the reply shows the searching status, announced once; the status
+    // shows, axe finds nothing either.
     await message.focus();
     await host.keyboard.type("How much leave do I get?");
     await host.keyboard.press("Enter");
@@ -171,6 +176,7 @@ for (const [colorScheme, reducedMotion, animation] of [
     const announcements = chat.getByRole("status", { name: "Announcements" });
     await expect(reply).toContainText("Searching the knowledge base…", { timeout: 15_000 });
     await expect(announcements).toHaveText("Searching the knowledge base…");
+    await expect(reply).not.toContainText("look that up");
     expect(await violations(host)).toEqual([]);
 
     // The answer replaces the status, and is announced once it is complete.
@@ -183,6 +189,7 @@ for (const [colorScheme, reducedMotion, animation] of [
     const answer = (await reply.locator("p").first().innerText()).trim();
     expect(answer).not.toBe("");
     await expect(announcements).toHaveText(`Hana from HR: ${answer}`);
+    expect(answer).not.toContain("look that up");
 
     // Open with a Conversation in it.
     expect(await violations(host)).toEqual([]);
