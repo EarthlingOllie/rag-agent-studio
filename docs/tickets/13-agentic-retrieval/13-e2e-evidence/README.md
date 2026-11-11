@@ -30,3 +30,16 @@ Run 1 ([e2e-run1-3-failed.log](e2e-run1-3-failed.log)): 118 passed, 3 failed. Ea
 | `models`, `playground` | `getByRole('group', { name: 'Supports tools: …' })` found no elements | A bug in the spec's locator, from 13-03. Chrome exposes the `<optgroup>`s as named groups. Playwright's role engine (1.64.1) doesn't name an optgroup from its `label`, and doesn't treat one inside a closed `<select>` as visible | The specs find each group with `locator('optgroup[label="…"]')` and still check which models are in it. The rest of each test now runs and passes |
 
 No test was skipped, disabled, quarantined or given a longer timeout.
+
+## Rerun after 13-10 (Agentic answers stream word by word)
+
+13-10 merged at `9208a94b`, on top of the spec 12 CI fixes. The images were rebuilt from that tree, and the suite ran on a fresh seed: **122 passed, 0 failed, 0 skipped, 0 flaky**, with no retries. 13-10 added one test (122 rather than 121). Log: [e2e-after-13-10.log](e2e-after-13-10.log). At the same tree the backend passed 2635 tests at 100% coverage, and ruff, mypy, the frontend checks, `make check-client` and `make link-check` all passed.
+
+Four earlier full runs on this tree had failures (`accessibility` in all four, plus `auth`, `bedrock-credentials` and `agent-revert` once or twice). The cause was this sandbox's disk, not the code:
+
+- Playwright starts Chromium with `--disable-dev-shm-usage`, so each renderer keeps its shared memory in files under `/tmp`, about 230MB per navigation until Chrome frees them.
+- The image build had left about 5GB of Docker build cache, so usable space fell to about 1MB partway through the run, and the page then open stopped rendering. `accessibility.spec.ts` opens every signed-in page twice, which is why it always hit this.
+- The same failure happened with 13-10's Studio files swapped back to their `b848fc16` versions in the running container, so 13-10 didn't cause it.
+- After `docker builder prune -f`, usable space was about 7GB, and `accessibility.spec.ts` passed three times out of three, twice on a fresh seed. The full run above then passed. No code changed.
+
+When rerunning here, prune the build cache after building the images.
