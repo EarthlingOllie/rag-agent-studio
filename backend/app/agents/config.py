@@ -36,6 +36,7 @@ STARTER_QUESTIONS_MAX = 6
 SHORT_TEXT_MAX = 200
 RATING_PROMPT_AFTER_MAX = 50
 REFUSAL_TEXT_MAX = 2_000
+SEARCH_LIMIT_MAX = 5
 DEFAULT_REFUSAL_TEXT = "Sorry, I can't help with that request."
 
 # Unknown settings are refused. In responses every field is present, so the generated client
@@ -78,6 +79,15 @@ class Behaviour(BaseModel):
     )
 
 
+class RetrievalMode(enum.StrEnum):
+    """How an Agent gets Chunks for a reply (ADR-0015). Automatic runs one Hybrid search on the
+    Visitor input before the model is asked; Agentic gives the model Knowledge Search, its one
+    tool, and lets it decide whether, how often and with what query to search."""
+
+    AUTOMATIC = "automatic"
+    AGENTIC = "agentic"
+
+
 class Retrieval(BaseModel):
     model_config = _STRICT
 
@@ -96,6 +106,10 @@ class Retrieval(BaseModel):
     reranker: ModelChoice | None = None
     # Whether Visitors see the citations of an answer.
     citations: bool = True
+    # The Retrieval Mode: Agentic for a new Agent, the more accurate of the two (spec 13).
+    mode: RetrievalMode = RetrievalMode.AGENTIC
+    # The Search limit: the most Searches an Agentic reply may make. Ignored when Automatic.
+    search_limit: int = Field(default=3, ge=1, le=SEARCH_LIMIT_MAX)
 
 
 class UiText(BaseModel):
@@ -106,6 +120,8 @@ class UiText(BaseModel):
     send_button: ShortText | None = None
     rate_conversation: ShortText | None = None
     unavailable_message: ShortText | None = None
+    # Shown to Visitors while an Agentic Agent searches; None keeps "Searching the knowledge base…".
+    searching_status: ShortText | None = None
 
 
 class Experience(BaseModel):

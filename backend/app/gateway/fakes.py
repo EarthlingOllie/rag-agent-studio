@@ -5,6 +5,7 @@ chat builder (for example one returning a Pydantic AI ``FunctionModel``).
 """
 
 import hashlib
+import json
 import math
 import re
 from collections.abc import AsyncIterator, Callable, Sequence
@@ -19,19 +20,22 @@ from pydantic_ai.exceptions import (
 )
 from pydantic_ai.messages import (
     ModelMessage,
+    ModelRequest,
     ModelResponse,
     SystemPromptPart,
     TextPart,
     ToolCallPart,
+    ToolReturnPart,
     UserPromptPart,
 )
 from pydantic_ai.models import Model
-from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
 from app.gateway.demo import demo_chat_model
 from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
+from app.runtime.prompt import INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
 
 ChatBuilder = Callable[[Provider, str, str], Model]
 
@@ -58,17 +62,48 @@ FAKE_FAILURES: dict[str, tuple[SimulatedFailure, int]] = {
 
 
 def _given_chunks(messages: list[ModelMessage]) -> bool:
-    """Whether the question holds retrieved Chunks: a line starting with the label [C1]."""
+    """Whether the model was just given retrieved Chunks, with the question or by a Knowledge
+    Search: a line starting with the label [C1]."""
     return any(
-        isinstance(part, UserPromptPart) and "\n[C1] " in str(part.content)
+        isinstance(part, UserPromptPart | ToolReturnPart) and "\n[C1] " in str(part.content)
         for part in messages[-1].parts
+    )
+
+
+def _asked(messages: list[ModelMessage]) -> ModelRequest:
+    """The request holding the question: the latest one with a user prompt (in Agentic
+    Retrieval Mode, Knowledge Search results may follow it)."""
+    return next(
+        message
+        for message in reversed(messages)
+        if isinstance(message, ModelRequest)
+        and any(isinstance(part, UserPromptPart) for part in message.parts)
     )
 
 
 def _question(messages: list[ModelMessage]) -> str:
     return " ".join(
-        str(part.content).lower() for part in messages[-1].parts if isinstance(part, UserPromptPart)
+        str(part.content).lower()
+        for part in _asked(messages).parts
+        if isinstance(part, UserPromptPart)
     )
+
+
+def _search_first(messages: list[ModelMessage], info: AgentInfo) -> DeltaToolCalls | None:
+    """In Agentic Retrieval Mode, before it has searched: one Knowledge Search with the
+    Visitor's question (the text of the Visitor input block)."""
+    offered = any(tool.name == KNOWLEDGE_SEARCH for tool in info.function_tools)
+    searched = any(isinstance(part, ToolReturnPart) for part in messages[-1].parts)
+    if not offered or searched:
+        return None
+    prompts = "\n".join(
+        str(part.content) for part in _asked(messages).parts if isinstance(part, UserPromptPart)
+    )
+    # The Visitor input block's text, wherever it is among what was asked; all of it, if none.
+    block = re.search(f"{re.escape(INPUT_OPEN)}\n(.*)\n{re.escape(INPUT_CLOSE)}", prompts, re.S)
+    question = prompts if block is None else block.group(1)
+    args = json.dumps({"query": question})
+    return {0: DeltaToolCall(name=KNOWLEDGE_SEARCH, json_args=args, tool_call_id="search-1")}
 
 
 def _simulated_failure(messages: list[ModelMessage], model: str) -> ModelHTTPError | None:
@@ -82,10 +117,7 @@ def _simulated_failure(messages: list[ModelMessage], model: str) -> ModelHTTPErr
 
 def _leaked_canary(messages: list[ModelMessage]) -> str | None:
     """The Canary token in the system prompt, when the question asks for it."""
-    asked = any(
-        isinstance(part, UserPromptPart) and FAKE_LEAK_PROMPT in str(part.content).lower()
-        for part in messages[-1].parts
-    )
+    asked = FAKE_LEAK_PROMPT in _question(messages)
     system = " ".join(
         part.content
         for message in messages
@@ -119,7 +151,8 @@ def _classifier_verdict(messages: list[ModelMessage], info: AgentInfo, model: st
 
 def fake_chat(provider: Provider, secret: str, model: str) -> Model:
     """A Pydantic AI ``FunctionModel`` that says which provider and model it stands in for, and
-    cites the first Chunk ([C1]) when it is given retrieved Chunks. It answers in plain text,
+    cites the first Chunk ([C1]) when it is given retrieved Chunks. In Agentic Retrieval Mode
+    it first makes one Knowledge Search with the Visitor's question. It answers in plain text,
     except as an LLM classifier (a structured-output call), when it returns a verdict.
     Asked to ``FAKE_LEAK_PROMPT``, it streams its Canary token instead, in pieces; asked one of
     the ``FAKE_FAILURES``, it raises that provider error instead of answering."""
@@ -133,10 +166,16 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
             return _classifier_verdict(messages, info, model)
         return ModelResponse(parts=[TextPart(reply(messages))])
 
-    async def stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+    async def stream(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
         failure = _simulated_failure(messages, model)
         if failure is not None:
             raise failure
+        search = _search_first(messages, info)
+        if search is not None:
+            yield search
+            return
         canary = _leaked_canary(messages)
         if canary is None:
             yield reply(messages)

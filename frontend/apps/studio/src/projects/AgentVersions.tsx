@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { Badge, button, ConfirmDialog, field, Icon, Menu, Skeleton, surface, text } from "../design";
-import { AgentDiffView } from "./AgentDiff";
+import { AgentDiffView, retrievalModeName } from "./AgentDiff";
 import { useTagNames } from "./AgentPublish";
 import {
   type Agent,
@@ -61,10 +61,14 @@ function Compare({
       </select>
     </div>
   );
+  // Between two Versions, the Diff shows each one's Retrieval Mode.
+  const mode = (side: DiffSide) => versions.find((version) => version.id === side)?.config.retrieval.mode;
+  const [fromMode, toMode] = [mode(from), mode(to)];
+  const modes = fromMode && toMode ? { from: fromMode, to: toMode } : undefined;
   let body;
   if (diff.isPending) body = <p className={text.muted}>Comparing…</p>;
   else if (diff.isError) body = <p className={text.muted}>The comparison could not be loaded. {agentFailure(diff.error)}</p>;
-  else body = <AgentDiffView diff={diff.data} names={names} />;
+  else body = <AgentDiffView diff={diff.data} names={names} modes={modes} />;
   return (
     <section aria-labelledby="compare-heading" className={`${surface.panel} flex flex-col gap-4`}>
       <h2 id="compare-heading" className={text.subheading}>
@@ -110,7 +114,8 @@ export function AgentVersions({ agent, organisationId, onReplaced }: DraftProps)
               </p>
               <p className={text.small}>
                 {version.author.name} · {new Date(version.created_at).toLocaleString()} ·{" "}
-                {version.instructions_version ? `Instructions v${String(version.instructions_version.number)}` : "No Project Instructions"}
+                {version.instructions_version ? `Instructions v${String(version.instructions_version.number)}` : "No Project Instructions"} ·{" "}
+                {`Retrieval Mode: ${retrievalModeName(version.config.retrieval.mode)}`}
               </p>
             </div>
             {!archived && (

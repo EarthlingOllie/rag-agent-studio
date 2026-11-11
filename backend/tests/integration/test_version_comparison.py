@@ -124,6 +124,7 @@ async def test_two_versions_are_compared_side_by_side_with_each_difference(
         "ratings",
         "fallback_rate",
         "guardrail_block_rate",
+        "searches_per_reply",
         "first_token_p95_ms",
         "total_p95_ms",
     ]

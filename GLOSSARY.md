@@ -141,7 +141,7 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. Its Agents show the Retrieval Mode trade-off over the same Project: the Product FAQ is Agentic, the HR helper Automatic; the seed sets every Agent's Retrieval Mode explicitly, and the Guardrail demo Agent is Automatic so the Attack panel stays deterministic. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
@@ -157,7 +157,7 @@ The Demo page (`/demo/attacks.html`) with one button per attack category (instru
 _Avoid_: Red-team page, jailbreak console
 
 **Five-minute demo**:
-The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace, the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
 _Avoid_: Walkthrough, showcase script, smoke test
 
 **Demo mode**:
@@ -223,11 +223,11 @@ The chat model an Organisation's Agents use unless an Agent overrides it: one ch
 _Avoid_: Global model, org model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first. It answers with the first retrieved Chunk, quoted and cited, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
-The demo provider's second chat model (`demo-naive`): the Naive model behind its own label, "Naive demo model (obeys injected instructions, not AI)". The Attack panel's Guardrail demo Agent always answers with it, even when the seed was given a real Provider Credential, so the panel shows the Guardrails at work rather than a model refusing.
+The demo provider's second chat model (`demo-naive`): the Naive model behind its own label, "Naive demo model (obeys injected instructions, not AI)". Given Knowledge Search, it searches as the Naive model does, first with the Visitor's question. The Attack panel's Guardrail demo Agent always answers with it, even when the seed was given a real Provider Credential, so the panel shows the Guardrails at work rather than a model refusing.
 _Avoid_: Evil model, unsafe model
 
 **Model gateway**:
@@ -387,7 +387,7 @@ To replace an Agent's Draft with the AgentConfig of any of its Versions, to buil
 _Avoid_: Restore, check out
 
 **Diff**:
-What changes from one side to another. For an Agent, each side is the Draft or a Version (the Live Version or any other), and the diff lists every AgentConfig setting that differs by its path (such as Retrieval › Top k), with the items added and removed for lists (Tags, starter questions), a line diff for markdown (the system prompt), and, between two Versions, the change of pinned Instructions Version with a line diff of their text. For Project Instructions, each side is the Draft or an Instructions Version, compared line by line. The publish form shows the Draft-to-Live diff.
+What changes from one side to another. For an Agent, each side is the Draft or a Version (the Live Version or any other), and the diff lists every AgentConfig setting that differs by its path (such as Retrieval › Top k), with the items added and removed for lists (Tags, starter questions), a line diff for markdown (the system prompt), and, between two Versions, the change of pinned Instructions Version with a line diff of their text; a diff between two Versions (a Version Diff) is headed by each Version's Retrieval Mode, changed or not. For Project Instructions, each side is the Draft or an Instructions Version, compared line by line. The publish form shows the Draft-to-Live diff.
 _Avoid_: Changeset, delta
 
 **AgentConfig**:
@@ -426,20 +426,36 @@ Retrieval that runs semantic (vector) search and keyword (full-text) search over
 _Avoid_: Vector search (for the whole), combined search
 
 **Retrieval Mode**:
-How an Agent gets Chunks for a reply, chosen in its AgentConfig and so fixed per Version. **Automatic** runs one Hybrid search on the Visitor input before the model is asked. **Agentic** gives the model Knowledge Search and lets it decide whether, how often and with what query to search. Agentic answers more accurately; Automatic costs less. New Agents start Agentic.
+How an Agent gets Chunks for a reply, chosen in its AgentConfig and so fixed per Version. **Automatic** runs one Hybrid search on the Visitor input before the model is asked. **Agentic** gives the model Knowledge Search and lets it decide whether, how often and with what query to search. Agentic answers more accurately; Automatic costs less. New Agents start Agentic. An Editor chooses it in the Retrieval section of the Draft, a segmented choice with that trade-off in one sentence; every Draft change of it or of the Search limit is an Audit Event (`agent.retrieval_mode_changed`) holding the before and after values of just what changed.
 _Avoid_: Basic RAG, agentic RAG, RAG mode, naive RAG
 
 **Search**:
 One Knowledge Search call in an Agent's reply: the query the model wrote, the Chunks it found and the ones it excluded. A reply in Agentic Retrieval Mode has zero or more; the Trace lists them in order.
 _Avoid_: Tool call (for the record), lookup, step
 
+**Retraction**:
+In Agentic Retrieval Mode, clearing answer text that already streamed because the model response it came from went on to call Knowledge Search, so it was not the answer. The stream sends a `retract` event (no data) before that Search's `search` event; the Playground clears the answer, and the widget shows its Searching status again without announcing the cleared text. Retracted text is never part of the saved reply, the Trace or the Citations, and a Retraction is no Guardrail outcome (a canary in retracted text still replaces the reply). The Fallback Text, sent as a response starts after Searches that found nothing, is retracted the same way if that response searches again.
+_Avoid_: Replace (that is the canary's), rollback, undo
+
+**Searching status**:
+What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming, and shown again on a Retraction. Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
+_Avoid_: Typing indicator, thinking, spinner
+
 **Search limit**:
-The most Searches an Agentic Agent may make in one reply, set in its Retrieval settings. Once it is reached the model must answer from what it has, and the Trace says the limit was hit.
+The most Searches an Agentic Agent may make in one reply, from 1 to 5 (3 by default), set in its Retrieval settings and shown there only in Agentic mode. Once it is reached, a further call is refused (it searches nothing, and doesn't count as a Search) and the model must answer from what it has; the Trace lists the refused call, so it says the limit was hit.
 _Avoid_: Max iterations, tool budget
 
 **Knowledge Search**:
 The one tool an Agent in Agentic Retrieval Mode has: a read-only Hybrid search of its Project's Knowledge Base for a query the model writes, with every other setting (Tags, Minimum Score, Reranker, Top-k) taken from the Agent's Retrieval settings. It changes nothing outside the Conversation (ADR-0015).
 _Avoid_: Search tool, retrieval tool, RAG tool
+
+**Tool support**:
+Whether a chat model can call tools, as Knowledge Search needs: the `supports_tools` flag of each Model in the capability registry, a property of the model rather than a Capability. Every chat model the registry offers supports tools except Bedrock's Mistral 7B Instruct; the Demo models do. The Studio's model pickers group models by it, and saving an Agentic Draft whose effective model (its Model override, else the Default Model) lacks it is refused.
+_Avoid_: Function calling (for the flag), tool capability, agentic model
+
+**Automatic fallback**:
+An Agentic Agent's reply run as Automatic because its effective model lacks Tool support, which happens when the Default Model is changed after the Draft was saved (that change doesn't revalidate Drafts). The Agent keeps answering, with one search up front, and the reply's Trace carries a warning. Not the Fallback Text.
+_Avoid_: Fallback (alone), degraded mode
 
 **Hybrid weighting**:
 The share of the fused score an Agent gives semantic search, from 0 (keyword search alone) to 1 (semantic search alone); keyword search has the rest.
@@ -597,7 +613,7 @@ The check every Visitor message passes, after its Conversation token is accepted
 The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
 
 **Token Budget**:
-The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by default) before it stops answering Visitors. Part of the Operational Settings. Each reply adds the input and output tokens it actually used to the Agent's counter for that date; once the day's usage reaches the budget, Admission control refuses Visitor messages with the Unavailable text (`unavailable` event, reason `budget_exhausted`), the Agent gets its Budget alert and the Owners are emailed. A new UTC date starts a new counter, so the budget resets at midnight UTC; raising it applies at once. The Playground doesn't count and is never refused. The Studio's budget meter shows today's usage against it.
+The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by default) before it stops answering Visitors. Part of the Operational Settings. Each reply adds the input and output tokens it actually used, summed over every model call it made (an Agentic reply makes one per Search plus the answer), to the Agent's counter for that date; once the day's usage reaches the budget, Admission control refuses Visitor messages with the Unavailable text (`unavailable` event, reason `budget_exhausted`), the Agent gets its Budget alert and the Owners are emailed. A new UTC date starts a new counter, so the budget resets at midnight UTC; raising it applies at once. The Playground doesn't count and is never refused. The Studio's budget meter shows today's usage against it.
 _Avoid_: Quota, spend limit (cost is tracked separately)
 
 **Budget alert**:
@@ -611,7 +627,7 @@ The sites permitted to display an Agent through its Embed Snippet, each a scheme
 A check on Visitor input, Agent output or a Document that can flag or block content as prompt injection or leakage.
 
 **Canary token**:
-A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent.
+A random secret placed in the platform preamble of every prompt, with the instruction never to reveal it. If an answer starts to repeat it (whatever its case or spacing, even split across stream chunks), the stream is cut and the reply replaced with the Agent's fallback text; a disguised copy (separated by punctuation, reversed or base64) found once the answer is complete is logged and flagged, as it has already been sent. A Knowledge Search query is checked for it, in any of those forms, before the Search runs: a query carrying it is never run or recorded, and the reply is the fallback text, recorded as a canary leak.
 _Avoid_: Canary, honeytoken, tripwire
 
 **Input Guardrail**:
@@ -644,15 +660,15 @@ _Avoid_: Block message, rejection text
 What one Guardrail layer decided about an answer: its layer (input or canary), verdict (such as injection or leak, or unchecked when the LLM classifier couldn't judge), action (blocked, flagged, logged, replaced or allowed: the input Guardrail blocks, flags or logs by its Input mode; the Canary token replaces a leak, or flags an encoded one found after sending; allowed when an Agent failing open let an unchecked message through), reason, and score when the layer gives one. Saved on the Message and shown in its Trace.
 
 **Attack evaluation suite**:
-The versioned set of attack and benign cases (`backend/evals/attack_suite.json`) run through the real Guardrail pipeline to show the defences work: each case declares its expected outcome per layer (ingestion scan, input Guardrail, Canary token, and whether the answer stayed harmless). It runs on every PR against the Naive model, where any unexpected outcome fails, and nightly against a real model, where it fails below the configured pass rate.
+The versioned set of attack and benign cases (`backend/evals/attack_suite.json`) run through the real Guardrail pipeline to show the defences work: each case declares its expected outcome per layer (ingestion scan, input Guardrail, Canary token, and whether the answer stayed harmless). Every case runs once in each Retrieval Mode (a case can expect different outcomes in Agentic mode, for an attack only an Agent with Knowledge Search can make), and the report gives a Pass rate per mode. It runs on every PR against the Naive model, where any unexpected outcome in either mode fails, and nightly against a real model, where either mode below the configured pass rate fails.
 _Avoid_: Red-team suite, jailbreak tests
 
 **Naive model**:
-The mocked chat model the Attack evaluation suite runs against in CI: it obeys whatever instructions it finds (in the Visitor's message, the history or a retrieved Chunk, disguised or not), so the suite tests the Guardrails rather than a model's own refusals.
+The mocked chat model the Attack evaluation suite runs against in CI: it obeys whatever instructions it finds (in the Visitor's message, the history or a retrieved Chunk, disguised or not), so the suite tests the Guardrails rather than a model's own refusals. Given Knowledge Search, it searches once with the Visitor's question, and again with its Canary token if a Chunk tells it to search for its secret token.
 _Avoid_: Dumb model, evil model
 
 **Pass rate**:
-In an Attack evaluation suite report, the share of cases defended: an attack got none of its markers into a reply and sent no encoded Canary token; a benign question was answered without being blocked, flagged or cut off.
+In an Attack evaluation suite report, the share of cases defended: an attack got none of its markers into a reply and sent no encoded Canary token; a benign question was answered without being blocked, flagged or cut off. The report gives one per Retrieval Mode.
 
 ## Conversations
 
@@ -676,7 +692,7 @@ A Visitor's thumbs-up or thumbs-down, with an optional comment (up to 1000 chara
 _Avoid_: Reaction, vote
 
 **Trace**:
-The record of why an Agent Message said what it did: the model, token use (summed over every model call in the reply), Cost and latency, its Searches in Agentic Retrieval Mode, its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
+The record of why an Agent Message said what it did: the model, token use (summed over every model call in the reply), Cost and latency, its Searches in Agentic Retrieval Mode (or the Automatic fallback warning), its Message retrievals (cited, given but not cited, or excluded and why), Guardrail outcomes, the Agent Version (or Draft) that answered, and the Project Instructions it ran with (for an Agent Version's answer, the ones the Version pins). Shown folded under each answer, in the Playground and in the Conversations viewer; the summary row gives its usage and opening it loads the rest.
 _Avoid_: Debug log, explanation
 
 **Conversation Rating**:
@@ -692,12 +708,16 @@ The append-only record of a Conversation's Conversation Ratings: the first ratin
 _Avoid_: Rating history
 
 **Version KPIs**:
-An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics section (a small sample marked Low sample): volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
+An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics section (a small sample marked Low sample): volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate, Searches per reply (with the Version's Retrieval Mode) and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
 _Avoid_: Stats, dashboard numbers
 
 **Usage rollup**:
-The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
+The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), Searches (the sum of the replies' Searches, for Searches per reply), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block, Searches and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
 _Avoid_: Aggregate, summary table
+
+**Searches per reply**:
+The mean number of Searches an Agent Version's Visitor replies made (a call the Search limit refused isn't a Search), shown as the "Searches per reply" KPI card with the total and the Version's Retrieval Mode, and as "Mean searches per reply" in the Version comparison. Every reply counts, so an Automatic Version's is 0. It favours neither Version: more searching costs more but may answer better. Only Visitor Conversations count.
+_Avoid_: Tool calls per reply, search rate
 
 **Block rate**:
 The share of an Agent Version's Visitor replies that were its refusal text because the input Guardrail blocked the question, shown with the count as the "Guardrail block rate" KPI card in the Version KPIs. Warned or logged messages were answered, so they aren't blocks; neither is a reply the Canary token replaced. Only Visitor Conversations count. A rate under 1% is shown with one decimal, so a few blocks don't read as none.
@@ -712,7 +732,7 @@ The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from it
 _Avoid_: Error bars, margin
 
 **Purge**:
-Clearing a Message's text, the reasons in its Guardrail outcomes and the comment of any Message Feedback on it, and stamping it purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, each Guardrail outcome's verdict) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
+Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words) and the comment of any Message Feedback on it, and stamping it purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
 _Avoid_: Deletion, cleanup, expiry
 
 **Deleting a Conversation**:
@@ -728,11 +748,11 @@ The visual treatment of a KPI with a small sample (fewer than 30 votes, ratings 
 _Avoid_: Low confidence (its earlier label), insufficient data, greyed out
 
 **Version comparison**:
-Any two Versions of an Agent (the first and the second) side by side over a chosen range of UTC days, in the Analytics section: every Version KPI for each, the difference (second minus first; rates in percentage points), and the Version a metric favours. Rows whose values differ are highlighted, and a metric whose sample is small on either side is marked "(small sample)". The configuration diff from the first Version to the second (the Agent diff, pinned Project Instructions included) is shown alongside, and the comparison can be exported as CSV. By default the Live Version (else the newest) is compared with the newest other one. Only Visitor Conversations count.
+Any two Versions of an Agent (the first and the second) side by side over a chosen range of UTC days, in the Analytics section: every Version KPI for each, the difference (second minus first; rates in percentage points), and the Version a metric favours. Rows whose values differ are highlighted, and a metric whose sample is small on either side is marked "(small sample)". The configuration diff from the first Version to the second (the Agent diff, pinned Project Instructions included, headed by both Versions' Retrieval Mode) is shown alongside, and the comparison can be exported as CSV. By default the Live Version (else the newest) is compared with the newest other one. Only Visitor Conversations count.
 _Avoid_: A/B test, benchmark
 
 **Better side**:
-The Version a compared metric favours. A higher thumbs-up rate or mean rating is better; fewer tokens per reply, a lower cost per Conversation, a lower fallback rate and lower latency are better. Volumes, totals and the Wilson interval's bounds favour neither, nor do level values or a metric only one side has. It says which value is preferable, not that the difference is significant: read it with the sample sizes and intervals.
+The Version a compared metric favours. A higher thumbs-up rate or mean rating is better; fewer tokens per reply, a lower cost per Conversation, a lower fallback rate and lower latency are better. Volumes, totals, the Wilson interval's bounds and Searches per reply favour neither, nor do level values or a metric only one side has. It says which value is preferable, not that the difference is significant: read it with the sample sizes and intervals.
 _Avoid_: Winner
 
 **Time series**:

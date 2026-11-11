@@ -1,0 +1,1 @@
+uv run pytest tests/integration/test_logging.py tests/integration/test_agent_versions.py::test_deleting_the_agent_or_erasing_the_organisation_removes_its_versions --no-cov  -> 9 passed in 50.53s; and tests/integration/test_agent_versions.py whole file -> 28 passed

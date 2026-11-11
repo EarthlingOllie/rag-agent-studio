@@ -38,6 +38,8 @@ def full_draft(openai: str, voyage: str, anthropic: str, tag_id: str) -> dict[st
             "tag_ids": [tag_id],
             "reranker": {"credential_id": voyage, "model": "rerank-2.5-lite"},
             "citations": False,
+            "mode": "agentic",
+            "search_limit": 5,
         },
         "experience": {
             "display_name": "Hana from HR",
@@ -48,6 +50,7 @@ def full_draft(openai: str, voyage: str, anthropic: str, tag_id: str) -> dict[st
                 "send_button": "Ask",
                 "rate_conversation": "How did Hana do?",
                 "unavailable_message": "Hana is on a break. Try again soon.",
+                "searching_status": "Hana is looking that up…",
             },
             "rating_prompt_after": 5,
         },
@@ -141,6 +144,9 @@ def _set(draft: dict[str, Any], path: str, value: Any) -> dict[str, Any]:
         ("retrieval.hybrid_weight", 1.5),
         ("retrieval.min_score", -0.5),
         ("retrieval.tag_ids", ["not-a-uuid"]),
+        ("retrieval.mode", "psychic"),
+        ("retrieval.search_limit", 0),
+        ("retrieval.search_limit", 6),
         ("experience.display_name", "x" * 101),
         ("experience.avatar_url", "http://cdn.example.com/plain-http.png"),
         ("experience.avatar_url", "javascript:alert(1)"),
@@ -150,6 +156,7 @@ def _set(draft: dict[str, Any], path: str, value: Any) -> dict[str, Any]:
         ("experience.starter_questions", ["x" * 201]),
         ("experience.ui_text", {"send_button": ""}),
         ("experience.ui_text", {"send_button": "x" * 201}),
+        ("experience.ui_text", {"searching_status": "x" * 201}),
         ("experience.ui_text", {"close_button": "Bye"}),
         ("experience.rating_prompt_after", -1),
         ("experience.rating_prompt_after", 51),
@@ -190,6 +197,7 @@ async def test_starter_questions_and_ui_text_are_trimmed(owner: SignedUpMember) 
         "send_button": "Ask",
         "rate_conversation": None,
         "unavailable_message": None,
+        "searching_status": None,
     }
 
 

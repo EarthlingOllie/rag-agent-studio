@@ -43,6 +43,14 @@ test.describe("models", () => {
     const credential = form.getByLabel("Credential");
     await expect(credential.getByRole("option")).toHaveText(["Support Claude (Anthropic)"]);
     await expect(form.getByLabel("Model").getByRole("option")).toHaveText(["Claude Opus 4.1", "Claude Sonnet 4.5", "Claude Haiku 4.5"]);
+    // Each of them supports tools, as Agentic Retrieval Mode needs. The groups are native
+    // <optgroup>s, which Chrome exposes as named groups but Playwright's role engine neither names
+    // nor counts as visible, so they are found by their label attribute.
+    await expect(form.getByLabel("Model").locator('optgroup[label="Supports tools: Agentic or Automatic"]').getByRole("option")).toHaveText([
+      "Claude Opus 4.1",
+      "Claude Sonnet 4.5",
+      "Claude Haiku 4.5",
+    ]);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
     await form.getByLabel("Model").selectOption("Claude Haiku 4.5");

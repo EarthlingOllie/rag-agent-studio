@@ -2239,6 +2239,10 @@
           "provider": {
             "$ref": "#/components/schemas/Provider"
           },
+          "supports_tools": {
+            "title": "Supports Tools",
+            "type": "boolean"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -2251,6 +2255,7 @@
           "provider",
           "model",
           "model_name",
+          "supports_tools",
           "updated_at"
         ],
         "title": "DefaultModelOut",
@@ -4541,7 +4546,8 @@
               "usd",
               "rate",
               "rating",
-              "ms"
+              "ms",
+              "searches"
             ],
             "title": "Unit",
             "type": "string"
@@ -4636,11 +4642,16 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "supports_tools": {
+            "title": "Supports Tools",
+            "type": "boolean"
           }
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "supports_tools"
         ],
         "title": "ModelOut",
         "type": "object"
@@ -5720,6 +5731,10 @@
             "title": "Min Score",
             "type": "number"
           },
+          "mode": {
+            "$ref": "#/components/schemas/RetrievalMode",
+            "default": "agentic"
+          },
           "reranker": {
             "anyOf": [
               {
@@ -5729,6 +5744,13 @@
                 "type": "null"
               }
             ]
+          },
+          "search_limit": {
+            "default": 3,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Search Limit",
+            "type": "integer"
           },
           "tag_ids": {
             "items": {
@@ -5772,6 +5794,10 @@
             "title": "Min Score",
             "type": "number"
           },
+          "mode": {
+            "$ref": "#/components/schemas/RetrievalMode",
+            "default": "agentic"
+          },
           "reranker": {
             "anyOf": [
               {
@@ -5781,6 +5807,13 @@
                 "type": "null"
               }
             ]
+          },
+          "search_limit": {
+            "default": 3,
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Search Limit",
+            "type": "integer"
           },
           "tag_ids": {
             "items": {
@@ -5805,10 +5838,21 @@
           "min_score",
           "tag_ids",
           "reranker",
-          "citations"
+          "citations",
+          "mode",
+          "search_limit"
         ],
         "title": "Retrieval",
         "type": "object"
+      },
+      "RetrievalMode": {
+        "description": "How an Agent gets Chunks for a reply (ADR-0015). Automatic runs one Hybrid search on the\nVisitor input before the model is asked; Agentic gives the model Knowledge Search, its one\ntool, and lets it decide whether, how often and with what query to search.",
+        "enum": [
+          "automatic",
+          "agentic"
+        ],
+        "title": "RetrievalMode",
+        "type": "string"
       },
       "Role": {
         "enum": [
@@ -5902,6 +5946,68 @@
           "name"
         ],
         "title": "ScopedAgentOut",
+        "type": "object"
+      },
+      "SearchOut": {
+        "description": "One Knowledge Search the answer made (Agentic Retrieval Mode), with the Chunks it found,\ngiven to the model or left out, in Trace order. A Chunk's ``rank`` is the number in its\nChunk label, which continues across the reply's Searches.",
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/TracedChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "limit_refused": {
+            "title": "Limit Refused",
+            "type": "boolean"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order",
+          "query",
+          "latency_ms",
+          "limit_refused",
+          "chunks"
+        ],
+        "title": "SearchOut",
+        "type": "object"
+      },
+      "SearchesOut": {
+        "properties": {
+          "mean_per_reply": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Per Reply"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "mean_per_reply"
+        ],
+        "title": "SearchesOut",
         "type": "object"
       },
       "SendMessageRequest": {
@@ -6837,6 +6943,10 @@
             ],
             "title": "Agent Version Number"
           },
+          "automatic_fallback": {
+            "title": "Automatic Fallback",
+            "type": "boolean"
+          },
           "chunks": {
             "items": {
               "$ref": "#/components/schemas/TracedChunkOut"
@@ -6985,6 +7095,17 @@
               }
             ],
             "title": "Output Tokens"
+          },
+          "search_count": {
+            "title": "Search Count",
+            "type": "integer"
+          },
+          "searches": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOut"
+            },
+            "title": "Searches",
+            "type": "array"
           }
         },
         "required": [
@@ -7004,6 +7125,9 @@
           "latency_ms",
           "fallback",
           "chunks",
+          "search_count",
+          "searches",
+          "automatic_fallback",
           "guardrail_outcomes"
         ],
         "title": "TraceOut",
@@ -7134,6 +7258,19 @@
             ],
             "title": "Rate Conversation"
           },
+          "searching_status": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Searching Status"
+          },
           "send_button": {
             "anyOf": [
               {
@@ -7181,6 +7318,19 @@
             ],
             "title": "Rate Conversation"
           },
+          "searching_status": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Searching Status"
+          },
           "send_button": {
             "anyOf": [
               {
@@ -7211,7 +7361,8 @@
         "required": [
           "send_button",
           "rate_conversation",
-          "unavailable_message"
+          "unavailable_message",
+          "searching_status"
         ],
         "title": "UiText",
         "type": "object"
@@ -7493,6 +7644,12 @@
           "rating": {
             "$ref": "#/components/schemas/RatingOut"
           },
+          "retrieval_mode": {
+            "$ref": "#/components/schemas/RetrievalMode"
+          },
+          "searches": {
+            "$ref": "#/components/schemas/SearchesOut"
+          },
           "thumbs_up": {
             "$ref": "#/components/schemas/ThumbsUpOut"
           },
@@ -7509,6 +7666,7 @@
           "version_id",
           "number",
           "is_live",
+          "retrieval_mode",
           "conversations",
           "messages",
           "low_confidence",
@@ -7518,6 +7676,7 @@
           "rating",
           "fallback",
           "guardrail_blocks",
+          "searches",
           "latency"
         ],
         "title": "VersionKpisOut",
@@ -13158,7 +13317,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events: `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`)."
+            "description": "Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) as each Knowledge Search starts, preceded by a `retract` event (no data) when text the model streamed before the Search must be cleared from the answer; `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`)."
           },
           "404": {
             "content": {
@@ -18490,7 +18649,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential)."
+            "description": "Server-Sent Events. When admission control refuses the message, one `unavailable` event (`reason`: `budget_exhausted` when the Agent's daily Token Budget is spent, or `rate_limited` when the Conversation or the Visitor's IP address is over the Agent's rate limit; and as `message` the Agent's unavailable text); nothing is saved. Otherwise, for an Agentic Agent, a `search` event (no data) as each Knowledge Search starts, preceded by a `retract` event (no data) when the answer text streamed so far must be cleared, then `token` events (`text`), then `citation` events (`label`, `document_name`, `passage`; only when the Live Version shows citations) and one `done` event (`message_id`); or, when the answer leaks the Canary token, a `replace` event (`text`) then `done`; or, when the input Guardrail blocks the message, a `refusal` event (`text`) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`, and as `message` the Agent's unavailable text, which names no model or credential)."
           },
           "401": {
             "content": {

@@ -32,6 +32,8 @@ test.describe("Version KPIs", () => {
     expect(
       (await page.request.patch(`${agentApi}/operational-settings`, { data: { allowed_origins: [new URL(HOST_URL).origin] } })).status(),
     ).toBe(200);
+    // Automatic, whatever the default Retrieval Mode.
+    expect((await page.request.put(`${agentApi}/draft`, { data: { retrieval: { mode: "automatic" } } })).ok()).toBe(true);
     expect((await page.request.post(`${agentApi}/versions`, { data: { note: "First release" } })).status()).toBe(201);
     // Playground use of the same Agent is left out of its KPIs.
     const playground = await page.request.post(`${agentApi}/playground/conversations`);
@@ -85,6 +87,10 @@ test.describe("Version KPIs", () => {
     await expect(card("Fallback rate")).toContainText("2 of 2 replies were the fallback text");
     await expect(card("Tokens per reply")).toContainText("n = 0 replies that asked a model");
     await expect(card("p95 latency")).toContainText("n = 2 replies");
+    // An Automatic Version makes no Knowledge Search.
+    await expect(card("Searches per reply")).toContainText("0.0 mean");
+    await expect(card("Searches per reply")).toContainText("Retrieval Mode: Automatic");
+    await expect(card("Searches per reply")).toContainText("0 Searches in 2 replies");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 });

@@ -14,6 +14,7 @@ import pytest
 from fastapi import FastAPI
 
 from tests.agents import (
+    AUTOMATIC,
     FULL_DEFAULT_DRAFT,
     agents_path,
     answer_with,
@@ -254,7 +255,8 @@ async def _ready_agent_with_override(
     _, project_id, agent_id = await ready_agent(app, owner)
     credential = await added(owner, provider="anthropic", api_key=ANTHROPIC_KEY, name="Claude")
     credential_id = credential["id"]
-    draft = {"behaviour": {"model": {"credential_id": credential_id, "model": "claude-haiku-4-5"}}}
+    override = {"credential_id": credential_id, "model": "claude-haiku-4-5"}
+    draft = {"behaviour": {"model": override}, "retrieval": AUTOMATIC}
     saved = await save_draft(owner, project_id, agent_id, draft)
     assert saved.status_code == 200, saved.text
     conversation = await start_conversation(owner, project_id, agent_id)

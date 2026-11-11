@@ -88,6 +88,17 @@
         },
         "expected": {
           "$ref": "#/$defs/Expected"
+        },
+        "expected_agentic": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Expected"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [

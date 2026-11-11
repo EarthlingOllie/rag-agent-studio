@@ -1,0 +1,3 @@
+# end of coverage report
+node scripts/ci/link-check.mjs
+Checked 2757 relative links in 275 Markdown files: all resolve.

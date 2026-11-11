@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI
 from pydantic_ai.messages import ModelMessage
-from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.models.function import AgentInfo, DeltaToolCalls, FunctionModel
 
 from app.credentials.registry import Provider
 from app.gateway.fakes import FakeModelAdapters
@@ -32,13 +32,20 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
         "tag_ids": [],
         "reranker": None,
         "citations": True,
+        "mode": "agentic",
+        "search_limit": 3,
     },
     "experience": {
         "display_name": "",
         "avatar_url": None,
         "greeting": "",
         "starter_questions": [],
-        "ui_text": {"send_button": None, "rate_conversation": None, "unavailable_message": None},
+        "ui_text": {
+            "send_button": None,
+            "rate_conversation": None,
+            "unavailable_message": None,
+            "searching_status": None,
+        },
         "rating_prompt_after": 3,
     },
     "guardrails": {
@@ -49,7 +56,13 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
     },
 }
 
-StreamFunction = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str]]
+# Streams the answer's text; or, to call a tool (Knowledge Search), the tool call.
+StreamFunction = Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str | DeltaToolCalls]]
+
+
+# Automatic Retrieval Mode: one search on the Visitor input before the model is asked. A new
+# Agent is Agentic, so tests about Automatic mode set it explicitly, in every Draft they save.
+AUTOMATIC: dict[str, Any] = {"mode": "automatic"}
 
 
 def agents_path(member: SignedUpMember, project_id: str, *rest: str) -> str:
@@ -59,6 +72,16 @@ def agents_path(member: SignedUpMember, project_id: str, *rest: str) -> str:
 async def create_agent(member: SignedUpMember, project_id: str, name: str = "HR helper") -> Any:
     response = await member.client.post(agents_path(member, project_id), json={"name": name})
     assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def create_automatic_agent(
+    member: SignedUpMember, project_id: str, name: str = "HR helper"
+) -> Any:
+    """A new Agent, its Draft saved in Automatic Retrieval Mode."""
+    agent = await create_agent(member, project_id, name)
+    response = await save_draft(member, project_id, agent["id"], {"retrieval": AUTOMATIC})
+    assert response.status_code == 200, response.text
     return response.json()
 
 

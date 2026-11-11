@@ -19,7 +19,15 @@ from pydantic_ai.models.function import AgentInfo
 from sqlalchemy import text
 
 from app.runtime.prompt import preamble
-from tests.agents import agents_path, answer_with, create_agent, parse_sse, save_draft
+from tests.agents import (
+    AUTOMATIC,
+    agents_path,
+    answer_with,
+    create_agent,
+    create_automatic_agent,
+    parse_sse,
+    save_draft,
+)
 from tests.conftest import ClientFactory, SignedUpMember
 from tests.documents import create_project, project_path
 from tests.fakes.clock import ControllableClock
@@ -309,7 +317,9 @@ async def test_a_visitor_chats_with_the_live_version_and_its_pinned_instructions
     project_id = await knowledgeable_project(app, owner)
     created = await create_agent(owner, project_id)
     await instructions(owner, project_id, "Pinned rules.", "Rules")
-    await save_draft(owner, project_id, created["id"], {"behaviour": {"system_prompt": "Live."}})
+    # Automatic, so the model is given the Automatic preamble.
+    live = {"behaviour": {"system_prompt": "Live."}, "retrieval": AUTOMATIC}
+    await save_draft(owner, project_id, created["id"], live)
     version = await published(owner, project_id, created["id"])
     # Neither a later Draft nor newer Instructions reach Visitors until they are published.
     await save_draft(owner, project_id, created["id"], {"behaviour": {"system_prompt": "Draft."}})
@@ -362,7 +372,7 @@ async def test_citations_stream_with_the_document_name(
 ) -> None:
     project_id = await knowledgeable_project(app, owner)
     answer_with(app, cites)
-    created = await create_agent(owner, project_id)
+    created = await create_automatic_agent(owner, project_id)
     await published(owner, project_id, created["id"])
     token = await conversation_token(visitor, created["public_id"])
 

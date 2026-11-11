@@ -99,6 +99,7 @@ Because the Retrieval Mode is in AgentConfig, it's part of every Version. An Edi
 - **Agent runtime: `run_turn` keeps its signature and event-stream shape.**
   - In Automatic mode it behaves exactly as today.
   - In Agentic mode it builds the Pydantic AI agent with exactly one tool, Knowledge Search, whose only argument is `query`. It does no upfront retrieval.
+  - **Streaming (ticket 13-10, a product owner decision):** each model response's text streams word by word as it arrives, exactly as in Automatic mode. A response that has already streamed text and then calls Knowledge Search was not the answer: when it ends, the runtime emits a `RetractEvent` (SSE `retract`, no data) before the Search's `search` event, and clients clear the answer text shown so far. This is a **Retraction**: it records no Guardrail outcome, and the retracted text never becomes part of the saved reply, the Trace or the Citations (its tokens are still counted, as every model call's are).
   - **Tool behaviour:**
     - The tool runs `retrieve` with the Agent's Retrieval settings.
     - It returns the new Chunks as spotlighted, labelled data blocks. Labels continue across the reply, and a Chunk already given to the model is referred to by its existing label instead of being repeated.
@@ -106,10 +107,10 @@ Because the Retrieval Mode is in AgentConfig, it's part of every Version. An Edi
     - Once the Search limit is reached, any further call is refused with "search limit reached; answer from what you have", and the reply is marked limit-hit.
   - **Preamble rules (Agentic only):** search before answering any question about the Knowledge Base; write complete, standalone queries, resolving follow-ups from the Conversation; greetings and small talk need no search.
   - **Fallback:**
-    - If the model searched at least once and no Search returned a Chunk reaching the Minimum Score, the runtime discards the model's answer before streaming it and sends the Fallback Text, with `fallback` true.
+    - If the model searched at least once and no Search returned a Chunk reaching the Minimum Score, the runtime sends the Fallback Text instead of the model's answer, with `fallback` true.
     - A reply that made no Search is not a fallback.
-    - Tool calls finish before the final answer starts streaming, which is how the runtime can decide without a replace.
-  - **Canary:** each search query is checked for the Canary token before it runs. A match ends the reply as a canary leak (Fallback Text, with a Guardrail outcome), and the query isn't run.
+    - Every Search of the reply has run by the time the next model response starts streaming, so the runtime decides then: it sends the Fallback Text at once and none of the model's text. If that response turns out to search again, the Fallback Text is retracted like any other text.
+  - **Canary:** each search query is checked for the Canary token before it runs. A match ends the reply as a canary leak (Fallback Text, with a Guardrail outcome), and the query isn't run. Every response's text, retracted or not, streams through the reply's Canary filter: if the canary starts to appear the stream stops and the reply is replaced (a `replace` event), as in Automatic mode. On a Retraction the text the filter held back is dropped, never released.
   - **Citations:** structured output where supported, label parsing otherwise, as today. Labels resolve against every Chunk given to the model in the reply.
   - **Usage:** input, output and cached tokens are summed across every model call in the reply. `max_output_tokens` applies to each model call.
   - **New stream event:** `SearchEvent(query, order)`, emitted as each Search starts. `DoneEvent` gains the reply's Searches, each with its query, order, latency, its candidates and excluded Chunks, and whether the limit was hit.
@@ -119,15 +120,15 @@ Because the Retrieval Mode is in AgentConfig, it's part of every Version. An Edi
   - Messages gain `search_count`.
   - Message text purging (Retention Window) also purges search queries, since they can contain Visitor text.
   - Cost is computed from the summed tokens with the existing cost function. The Token Budget counter is incremented with the summed tokens.
-- **Playground and widget APIs.** The SSE stream gains a `search` event carrying the query for the Playground and no query for the widget, so Visitors don't see the model's internal queries. The Trace endpoint returns Searches in order, with their Message retrievals nested.
+- **Playground and widget APIs.** The SSE stream gains a `search` event carrying the query for the Playground and no query for the widget, so Visitors don't see the model's internal queries, and a `retract` event (no data) for a Retraction. The Trace endpoint returns Searches in order, with their Message retrievals nested.
 - **Analytics.** Usage rollups add a search count per Agent Version per day. Version KPIs and Version comparison add mean searches per reply. The Version list and Diff show the Retrieval Mode.
 - **Studio UI.**
   - **Retrieval section:** a segmented control for the Retrieval Mode with its one-sentence trade-off, and the Search limit field, shown only in Agentic mode.
   - **Model picker:** marks models that support tools.
-  - **Playground:** a "Searching: …" line per Search, in reply order.
+  - **Playground:** a "Searching: …" line per Search, in reply order. A Retraction clears the answer text shown so far.
   - **Trace drawer:** a Search list with nested Chunks, plus the limit-hit and Automatic-fallback warnings.
   - All of it uses the Tidepool design system.
-- **Widget.** A searching status row while Searches run, using the `searching_status` override. It's announced once per reply through the existing polite live region (the Reply announcement pattern), and replaced when the answer starts streaming.
+- **Widget.** A searching status row while Searches run, using the `searching_status` override. It's announced once per reply through the existing polite live region (the Reply announcement pattern), and replaced when the answer starts streaming. A Retraction clears the reply's text and shows the status row again; retracted text is never announced.
 - **Demo provider.** In Agentic mode the Demo model and the Naive demo model make one Knowledge Search with the Visitor's question, then answer as they do today from the first Chunk the Search returned.
 - **Seed.**
   - The Demo Organisation has one Agentic and one Automatic Agent over the same Project, and the Five-minute demo script points out the difference in their Traces.
@@ -184,7 +185,7 @@ Because the Retrieval Mode is in AgentConfig, it's part of every Version. An Edi
 ## Further Notes
 
 - **Keep `run_turn` and `retrieve` small and stable.** Agentic mode should be a branch inside the runtime, not a second runtime, so specs 06–08 keep working unchanged.
-- **Tool calls happen before the final answer streams.** Pydantic AI runs them before it starts streaming the final text, so the Fallback decision needs no buffering. If a provider interleaves text with tool calls, keep that pre-tool text out of the stream rather than sending it and then replacing it.
+- **Agentic answers stream word by word, with Retraction (ticket 13-10).** Spec 13 first held each response's text until the response ended, so text a model wrote before calling Knowledge Search was never sent. The product owner chose streaming instead: Agentic replies stream like Automatic ones, and pre-tool text that was sent is retracted with a `retract` event. Pydantic AI still runs each tool call before the next model response streams, so the Fallback decision is made as that response starts, with no answer tokens sent first.
 - **Agentic replies are slower.** Each Search adds a model round trip. The searching status is what keeps that from looking like a hang, so don't drop it as polish.
 - **The Knowledge Base is a confounder.** It is live and unversioned (ADR-0003), and Agentic mode makes more of it reachable per reply, so the Confounder note on Version comparison matters more when comparing across modes.
-- **Tickets:** [`docs/tickets/13-agentic-retrieval/`](../tickets/README.md#13-agentic-retrieval): nine tickets, 13-01 to 13-09. 13-01 is a prefactor and 13-02 the tracer; 13-03 to 13-06 and 13-08 can start once the tracer lands, 13-07 follows 13-04, and 13-09 switches the default to Agentic last.
+- **Tickets:** [`docs/tickets/13-agentic-retrieval/`](../tickets/README.md#13-agentic-retrieval): ten tickets, 13-01 to 13-10. 13-01 is a prefactor and 13-02 the tracer; 13-03 to 13-06 and 13-08 can start once the tracer lands, 13-07 follows 13-04, and 13-09 switches the default to Agentic. 13-10, a later product owner decision, streams Agentic answers word by word with retraction.

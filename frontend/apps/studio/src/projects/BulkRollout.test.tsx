@@ -80,12 +80,15 @@ test("publishing Instructions opens the rollout dialog with the Agents that can 
   expect(within(rows[1] as HTMLElement).getByText("Draft")).toHaveAttribute("title", "Unpublished Draft changes are not included.");
   expect(within(rows[3] as HTMLElement).getByText("Not live")).toHaveClass("rounded-full");
 
+  const notNow = within(dialog).getByRole("button", { name: "Not now" });
   await userEvent.click(within(dialog).getByRole("button", { name: "Publish to 2 Agents" }));
 
   expect(requests).toEqual([
     { route: "bulk-publish", body: { agent_ids: [hrHelper.id, benefits.id], instructions_version_id: v3.id } },
   ]);
   const results = await within(dialog).findByRole("list", { name: "Results" });
+  // Done is a new button: Not now restyled as Done would fade from its colours to Done's.
+  expect(notNow).not.toBeInTheDocument();
   expect(within(results).getAllByRole("listitem").map((row) => row.textContent)).toEqual([
     "HR helper — Done: Published v3 with Instructions v3. It is now Live.",
     "Benefits FAQ — Done: Published v5 with Instructions v3. It is now Live.",
@@ -303,10 +306,13 @@ test("reverting Instructions offers to bulk-revert the Agents pinned to the reve
   expect(within(dialog).getByRole("button", { name: "Revert 0 Agents" })).toBeDisabled();
   await userEvent.click(within(dialog).getByRole("checkbox", { name: "Benefits FAQ (Live v5)" }));
   await userEvent.click(within(dialog).getByRole("checkbox", { name: "HR helper (Live v3)" }));
+  const notNow = within(dialog).getByRole("button", { name: "Not now" });
   await userEvent.click(within(dialog).getByRole("button", { name: "Revert 2 Agents" }));
 
   expect(requests).toEqual([{ route: "bulk-revert", body: { agent_ids: [hrHelper.id, benefits.id] } }]);
   const results = await within(dialog).findByRole("list", { name: "Results" });
+  // Done is a new button: Not now restyled as Done would fade from its colours to Done's.
+  expect(notNow).not.toBeInTheDocument();
   expect(within(results).getAllByRole("listitem").map((row) => row.textContent)).toEqual([
     "HR helper — Done: Reverted to v2 without Project Instructions. It is now Live.",
     "Benefits FAQ — Done: Reverted to v4 without Project Instructions. It is now Live.",

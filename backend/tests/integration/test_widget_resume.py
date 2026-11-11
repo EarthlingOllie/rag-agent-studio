@@ -9,7 +9,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
-from tests.agents import answer_with, create_agent, parse_sse
+from tests.agents import answer_with, create_agent, create_automatic_agent, parse_sse
 from tests.conftest import ClientFactory, SignedUpMember
 from tests.fakes.clock import ControllableClock
 from tests.integration.test_agent_archive import archive as archive_agent
@@ -46,9 +46,9 @@ async def end(visitor: httpx.AsyncClient, public_id: str, token: str) -> httpx.R
 
 
 async def chatting_agent(app: FastAPI, owner: SignedUpMember) -> str:
-    """A live Agent with a Document to cite; returns its public ID."""
+    """A live Automatic Agent with a Document to cite; returns its public ID."""
     project_id = await knowledgeable_project(app, owner)
-    created = await create_agent(owner, project_id)
+    created = await create_automatic_agent(owner, project_id)
     await published(owner, project_id, created["id"])
     public_id: str = created["public_id"]
     return public_id

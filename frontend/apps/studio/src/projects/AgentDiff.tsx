@@ -6,6 +6,18 @@ import type { AgentDiff } from "./agents";
 type FieldChange = Schemas["FieldChangeOut"];
 type DiffLine = Schemas["DiffLineOut"];
 type JsonValue = FieldChange["before"];
+export type RetrievalMode = Schemas["RetrievalMode"];
+
+const RETRIEVAL_MODES: Record<RetrievalMode, string> = { automatic: "Automatic", agentic: "Agentic" };
+
+/** A Retrieval Mode as Editors read it: "Automatic" or "Agentic". */
+export const retrievalModeName = (mode: RetrievalMode) => RETRIEVAL_MODES[mode];
+
+/** The Retrieval Mode row of a Version Diff: both Versions' modes, or the one they share. */
+function ModesRow({ modes }: { modes: { from: RetrievalMode; to: RetrievalMode } }) {
+  const [from, to] = [retrievalModeName(modes.from), retrievalModeName(modes.to)];
+  return <p className="text-sm font-medium">{from === to ? `Retrieval Mode: ${from} in both` : `Retrieval Mode: ${from} → ${to}`}</p>;
+}
 
 const GROUPS: Record<string, string> = {
   behaviour: "Behaviour",
@@ -14,8 +26,20 @@ const GROUPS: Record<string, string> = {
   guardrails: "Guardrails",
 };
 
+/** Settings whose name isn't their place in the AgentConfig, by their path. */
+const SETTING_NAMES: Record<string, string> = {
+  "retrieval.mode": "Retrieval › Retrieval mode",
+};
+
+/** Values that read better as words, by the path of their setting. */
+const VALUE_NAMES: Record<string, Record<string, string>> = {
+  "retrieval.mode": { automatic: "Automatic", agentic: "Agentic" },
+};
+
 /** "retrieval.tag_ids" → "Retrieval › Tag ids". */
 export function settingName(path: string): string {
+  const named = SETTING_NAMES[path];
+  if (named) return named;
   return path
     .split(".")
     .map((part, index) => {
@@ -54,8 +78,9 @@ function LinesDiff({ lines, label }: { lines: DiffLine[]; label: string }) {
   return <Diff label={label} before={sideText(lines, "before")} after={sideText(lines, "after")} />;
 }
 
-function Change({ change, names }: { change: FieldChange; names: Record<string, string> }) {
+function Change({ change, names: given }: { change: FieldChange; names: Record<string, string> }) {
   const name = settingName(change.path);
+  const names = { ...given, ...VALUE_NAMES[change.path] };
   let detail;
   if (change.lines) {
     detail = <LinesDiff lines={change.lines} label={`${name} changes`} />;
@@ -86,19 +111,37 @@ const side = (found: Schemas["DiffSideOut"]) => (found.version ? `v${String(foun
 
 /**
  * Every setting that differs between two sides, with a line diff for markdown and, between two
- * Versions, the change of pinned Project Instructions. `names` turns IDs (Tags) into names.
+ * Versions, the change of pinned Project Instructions. `names` turns IDs (Tags) into names. A
+ * Version Diff given both Versions' `modes` shows the Retrieval Mode first, changed or not.
  */
-export function AgentDiffView({ diff, names = {} }: { diff: AgentDiff; names?: Record<string, string> }) {
+export function AgentDiffView({
+  diff,
+  names = {},
+  modes,
+}: {
+  diff: AgentDiff;
+  names?: Record<string, string>;
+  modes?: { from: RetrievalMode; to: RetrievalMode } | undefined;
+}) {
   const title = `Changes from ${side(diff.from)} to ${side(diff.to)}`;
   const pinned = diff.instructions;
-  if (diff.changes.length === 0 && !pinned) {
-    return <p className="text-sm text-muted">No differences: {side(diff.from)} and {side(diff.to)} have the same settings.</p>;
+  // The Retrieval Mode row says it, so the change isn't listed twice.
+  const changes = modes ? diff.changes.filter((change) => change.path !== "retrieval.mode") : diff.changes;
+  const modesRow = modes && <ModesRow modes={modes} />;
+  if (changes.length === 0 && !pinned) {
+    return (
+      <div className="space-y-3">
+        {modesRow}
+        <p className="text-sm text-muted">No differences: {side(diff.from)} and {side(diff.to)} have the same settings.</p>
+      </div>
+    );
   }
   return (
     <div className="space-y-3">
-      {diff.changes.length > 0 && (
+      {modesRow}
+      {changes.length > 0 && (
         <ul aria-label={title} className="space-y-2">
-          {diff.changes.map((change) => (
+          {changes.map((change) => (
             <Change key={change.path} change={change} names={names} />
           ))}
         </ul>

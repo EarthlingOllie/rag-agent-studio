@@ -100,6 +100,14 @@
     },
     {
       "provider": "bedrock",
+      "model": "mistral.mistral-7b-instruct-v0:2",
+      "effective_from": "2024-03-01",
+      "input": "0.15",
+      "output": "0.2",
+      "cached_input": "0.15"
+    },
+    {
+      "provider": "bedrock",
       "model": "amazon.titan-embed-text-v2:0",
       "effective_from": "2024-04-30",
       "input": "0.02",

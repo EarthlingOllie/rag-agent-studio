@@ -1,10 +1,11 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { type ReactNode, useId, useState } from "react";
 
-import { Icon, surface } from "../design";
+import { Icon, Notice, surface } from "../design";
 import { type Trace, instructionsUsed, useTrace } from "./agents";
 
 type TraceChunk = Trace["chunks"][number];
+type TraceSearch = Trace["searches"][number];
 type GuardrailOutcome = Trace["guardrail_outcomes"][number];
 
 const LAYERS: Record<GuardrailOutcome["layer"], string> = {
@@ -94,6 +95,68 @@ function chunkTone(chunk: TraceChunk): string {
   return chunk.cited ? "font-medium text-accent" : "";
 }
 
+/** Chunks a search found: given to the model (by Chunk label) and cited or not, or left out
+ * and why. */
+function ChunkTable({ caption, chunks }: { caption: string; chunks: TraceChunk[] }) {
+  return (
+    <table className="w-full text-left text-sm [&_td]:py-1 [&_td]:pr-3 [&_th]:pr-3">
+      <caption className="text-left font-medium">{caption}</caption>
+      <thead>
+        <tr className="border-b border-line">
+          <th scope="col">Chunk</th>
+          <th scope="col">Document</th>
+          <th scope="col">Excerpt</th>
+          <th scope="col">Score</th>
+          <th scope="col">Relevance</th>
+          <th scope="col">Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        {chunks.map((chunk, index) => (
+          <tr
+            // A deleted Document's Chunk has no ID left; the Trace's order is fixed.
+            key={index}
+            className="border-b border-line-soft align-top"
+          >
+            <td className={chunkTone(chunk)}>{chunk.rank === null ? "—" : `C${String(chunk.rank)}`}</td>
+            <td>{documentText(chunk)}</td>
+            <td className="text-xs whitespace-pre-wrap text-muted">{chunk.text ?? "—"}</td>
+            <td>{chunk.score.toFixed(3)}</td>
+            <td>{chunk.relevance.toFixed(3)}</td>
+            <td className={chunkTone(chunk)}>{outcome(chunk)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Agentic Retrieval Mode: each Knowledge Search in order, with its query, how long it took and
+ * the Chunks it found. A Chunk found again keeps its first label. */
+function Searches({ searches }: { searches: TraceSearch[] }) {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} className="space-y-3 text-sm">
+      <h3 id={headingId} className="font-medium">
+        Searches
+      </h3>
+      <ol aria-labelledby={headingId} className="space-y-4">
+        {searches.map((search) => (
+          <li key={search.order} className="space-y-2">
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <h4 className="font-medium text-ink">
+                Search {search.order}: <em>{search.query}</em>
+              </h4>
+              <span className="font-mono text-xs text-muted">{search.latency_ms} ms</span>
+            </div>
+            <ChunkTable caption={`Chunks found by Search ${String(search.order)}`} chunks={search.chunks} />
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function TraceBody({ trace }: { trace: Trace }) {
   const guardrailsId = useId();
   const facts: [string, string][] = [
@@ -126,6 +189,13 @@ function TraceBody({ trace }: { trace: Trace }) {
           </div>
         ))}
       </dl>
+      {trace.automatic_fallback && (
+        <Notice tone="warning">
+          This Agent is Agentic, but its model can't use tools, so it answered as Automatic: it
+          searched once with the question, before the model. Choose a model that supports tools,
+          or set the Retrieval Mode to Automatic.
+        </Notice>
+      )}
       {trace.fallback && (
         <p className="text-sm text-muted">
           No Chunk reached the minimum score, so the Agent replied with its
@@ -155,37 +225,11 @@ function TraceBody({ trace }: { trace: Trace }) {
           </ul>
         )}
       </section>
-      <table className="w-full text-left text-sm [&_td]:py-1 [&_td]:pr-3 [&_th]:pr-3">
-        <caption className="text-left font-medium">Retrieved Chunks</caption>
-        <thead>
-          <tr className="border-b border-line">
-            <th scope="col">Chunk</th>
-            <th scope="col">Document</th>
-            <th scope="col">Excerpt</th>
-            <th scope="col">Score</th>
-            <th scope="col">Relevance</th>
-            <th scope="col">Outcome</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trace.chunks.map((chunk, index) => (
-            <tr
-              // A deleted Document's Chunk has no ID left; the Trace's order is fixed.
-              key={index}
-              className="border-b border-line-soft align-top"
-            >
-              <td className={chunkTone(chunk)}>{chunk.rank === null ? "—" : `C${String(chunk.rank)}`}</td>
-              <td>{documentText(chunk)}</td>
-              <td className="text-xs whitespace-pre-wrap text-muted">
-                {chunk.text ?? "—"}
-              </td>
-              <td>{chunk.score.toFixed(3)}</td>
-              <td>{chunk.relevance.toFixed(3)}</td>
-              <td className={chunkTone(chunk)}>{outcome(chunk)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {trace.searches.length > 0 ? (
+        <Searches searches={trace.searches} />
+      ) : (
+        <ChunkTable caption="Retrieved Chunks" chunks={trace.chunks} />
+      )}
     </div>
   );
 }

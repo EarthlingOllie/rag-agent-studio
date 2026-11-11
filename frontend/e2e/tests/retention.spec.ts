@@ -67,6 +67,8 @@ test.describe("Retention and tombstones", () => {
     const agent = await page.request.post(`${organisation}/projects/${projectId}/agents`, { data: { name: "HR helper" } });
     const { id: agentId, public_id: publicId } = (await agent.json()) as { id: string; public_id: string };
     const agentApi = `${organisation}/projects/${projectId}/agents/${agentId}`;
+    // Automatic: one search up front, whose Chunks the Trace's table lists (a new Agent is Agentic).
+    expect((await page.request.put(`${agentApi}/draft`, { data: { retrieval: { mode: "automatic" } } })).ok()).toBe(true);
     expect((await page.request.post(`${agentApi}/versions`, { data: { note: "First release" } })).status()).toBe(201);
 
     // A Visitor (another browser, no Studio session) asks about leave through the widget API.

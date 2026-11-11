@@ -1,0 +1,26 @@
+cd backend && TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:5432/studio_test_t06 TEST_REDIS_URL=redis://localhost:6379/3 uv run pytest -n 3 -p no:cacheprovider   (at f6a4f8b4)
+created: 3/3 workers
+3 workers [2569 items]
+E   asyncpg.exceptions.ForeignKeyViolationError: update or delete on table "agent_versions" violates foreign key constraint "fk_messages_agent_version_id_agent_versions" on table "messages"
+E   DETAIL:  Key (id)=(fc2a701f-304f-46de-8b22-f5d58814d531) is still referenced from table "messages".
+E                   sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.ForeignKeyViolationError: update or delete on table "agent_versions" violates foreign key constraint "fk_messages_agent_version_id_agent_versions" on table "messages"
+E                   sqlalchemy.exc.IntegrityError: (sqlalchemy.dialects.postgresql.asyncpg.ForeignKeyViolationError) update or delete on table "agent_versions" violates foreign key constraint "fk_messages_agent_version_id_agent_versions" on table "messages"
+E                   [SQL: DELETE FROM agents WHERE agents.id = $1::UUID]
+E                   [parameters: (UUID('49f5a373-8656-4964-909b-bf41c1bbe04a'),)]
+E                   (Background on this error at: https://sqlalche.me/e/21/gkpj)
+E       AssertionError: 'Uvicorn running on' not logged; got:
+E       AssertionError: 'Uvicorn running on' not logged; got:
+E       AssertionError: 'ready' not logged; got:
+E       AssertionError: 'Starting' not logged; got:
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.18-final-0 _______________
+TOTAL                                 12212      0   1520      0   100%
+Coverage XML written to file coverage.xml
+Required test coverage of 100.0% reached. Total coverage: 100.00%
+FAILED tests/integration/test_agent_versions.py::test_deleting_the_agent_or_erasing_the_organisation_removes_its_versions
+FAILED tests/integration/test_logging.py::test_the_api_server_writes_only_json_lines
+FAILED tests/integration/test_logging.py::test_the_api_server_leaves_forwarding_headers_to_the_app
+FAILED tests/integration/test_logging.py::test_the_worker_writes_only_json_lines
+FAILED tests/integration/test_logging.py::test_beat_writes_only_json_lines - ...
+================= 5 failed, 2564 passed in 4271.97s (1:11:11) ==================
+exit 1

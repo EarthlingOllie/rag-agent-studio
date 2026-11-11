@@ -26,7 +26,12 @@ export type Boot = {
   avatar_url: string | null;
   greeting: string;
   starter_questions: string[];
-  ui_text: { send_button: string | null; rate_conversation: string | null; unavailable_message: string | null };
+  ui_text: {
+    send_button: string | null;
+    rate_conversation: string | null;
+    unavailable_message: string | null;
+    searching_status: string | null;
+  };
   citations: boolean;
   /** After how many replies the Visitor is asked to rate the Conversation; 0 asks only when they end the chat. */
   rating_prompt_after: number;
@@ -110,9 +115,13 @@ export async function startConversation(boot: Boot): Promise<string> {
 }
 
 export type Handlers = {
+  /** An Agentic Agent started a Knowledge Search; the widget is never told its query. */
+  onSearch: () => void;
   onToken: (text: string) => void;
   onCitation: (citation: Citation) => void;
   onReplace: (text: string) => void;
+  /** The text streamed so far was not the answer (the Agent went on to search): clear it. */
+  onRetract: () => void;
   /** The input Guardrail blocked the message: the Agent's refusal text is the whole reply. */
   onRefusal: (text: string) => void;
 };
@@ -138,11 +147,17 @@ export async function ask(boot: Boot, token: string, question: string, handlers:
       ) as { event: string; data: string };
       const data = JSON.parse(fields.data) as { text: string; message: string; passage: string; message_id: string } & Citation;
       switch (fields.event) {
+        case "search":
+          handlers.onSearch();
+          break;
         case "token":
           handlers.onToken(data.text);
           break;
         case "replace":
           handlers.onReplace(data.text);
+          break;
+        case "retract":
+          handlers.onRetract();
           break;
         case "refusal":
           handlers.onRefusal(data.text);

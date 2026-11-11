@@ -21,14 +21,15 @@ test.describe("Diffs and Draft management", () => {
     const agentApi = page.url().replace(/^https?:\/\/[^/]+/, "/api");
 
     // v1 and v2 are published through the API; then the Draft is edited.
-    const prompt = (system_prompt: string) => ({ behaviour: { system_prompt } });
+    const prompt = (system_prompt: string) => ({ behaviour: { system_prompt }, retrieval: { mode: "automatic" } });
     const publish = async (system_prompt: string, note: string) => {
       expect((await page.request.put(`${agentApi}/draft`, { data: prompt(system_prompt) })).ok()).toBe(true);
       expect((await page.request.post(`${agentApi}/versions`, { data: { note } })).status()).toBe(201);
     };
     await publish("Answer from the handbook.", "First release");
     await publish("Answer from the handbook.\nBe brief.", "Shorter answers");
-    expect((await page.request.put(`${agentApi}/draft`, { data: prompt("Answer from the handbook.\nBe very brief.") })).ok()).toBe(true);
+    const edited = { ...prompt("Answer from the handbook.\nBe very brief."), retrieval: { mode: "agentic", search_limit: 4 } };
+    expect((await page.request.put(`${agentApi}/draft`, { data: edited })).ok()).toBe(true);
     await page.reload();
 
     // The badges, and the publish dialog's Draft-to-Live diff.
@@ -39,6 +40,10 @@ test.describe("Diffs and Draft management", () => {
     const changes = page.getByRole("region", { name: "Changes to publish" });
     const promptRows = changes.getByRole("table", { name: "Behaviour › System prompt changes" }).locator("tbody").getByRole("row");
     await expect(promptRows).toHaveText(["11Answer from the handbook.", "2−RemovedBe brief.", "2+AddedBe very brief."], { timeout: 15_000 });
+    // The Retrieval Mode and Search limit read plainly.
+    const changeList = changes.getByRole("list", { name: "Changes from v2 to the Draft" });
+    await expect(changeList.getByRole("listitem").filter({ hasText: "Retrieval › Retrieval mode" })).toContainText("Automatic → Agentic");
+    await expect(changeList.getByRole("listitem").filter({ hasText: "Retrieval › Search limit" })).toContainText("3 → 4");
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await page.getByRole("dialog").getByRole("button", { name: "Close" }).click();
 

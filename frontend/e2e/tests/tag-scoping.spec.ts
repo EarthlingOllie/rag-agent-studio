@@ -62,6 +62,8 @@ test.describe("Tag scoping", () => {
     await tag("Sales", "price-list.md");
     const agent = await page.request.post(`${projectApi}/agents`, { data: { name: "HR helper" } });
     const agentId = ((await agent.json()) as { id: string }).id;
+    // Automatic: one search up front, whose Chunks the Trace's table lists (a new Agent is Agentic).
+    expect((await page.request.put(`${projectApi}/agents/${agentId}/draft`, { data: { retrieval: { mode: "automatic" } } })).ok()).toBe(true);
 
     // The Editor limits the Agent to HR in its Retrieval settings.
     await page.goto(`/organisations/${organisationId}/projects/${projectId}/agents/${agentId}`);

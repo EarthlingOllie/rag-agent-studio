@@ -10,6 +10,7 @@ from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
 
 from tests.agents import (
+    AUTOMATIC,
     answer_with,
     ask,
     create_agent,
@@ -47,7 +48,7 @@ async def scoped_agent(
 ) -> str:
     agent_id: str = (await create_agent(member, project_id, name))["id"]
     saved = await save_draft(
-        member, project_id, agent_id, {"retrieval": {"tag_ids": tag_ids, "top_k": 3}}
+        member, project_id, agent_id, {"retrieval": {**AUTOMATIC, "tag_ids": tag_ids, "top_k": 3}}
     )
     assert saved.status_code == 200, saved.text
     assert saved.json()["draft"]["retrieval"]["tag_ids"] == tag_ids

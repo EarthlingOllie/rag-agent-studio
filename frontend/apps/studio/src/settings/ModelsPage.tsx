@@ -4,6 +4,7 @@ import { type SubmitEvent, useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { button, field, surface, text, useToast } from "../design";
 import { type Credential, credentialFailure, type ProviderId, useCredentials } from "./credentials";
+import { ChatModelOptions, withoutTools } from "./ModelOptions";
 import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
 import { PriceTable } from "./PriceTable";
 
@@ -23,12 +24,17 @@ function Current({ organisationId }: { organisationId: string }) {
   if (current.isError) return <p role="alert" className={text.muted}>The Default Model could not be loaded. Try again shortly.</p>;
   if (current.isPending) return <p className={text.muted}>Loading…</p>;
   if (current.data === null) return <p className={text.muted}>No Default Model yet. New Agents need one to answer.</p>;
-  const { model_name: modelName, credential_name: credentialName, provider } = current.data;
+  const { model_name: modelName, credential_name: credentialName, provider, supports_tools: tools } = current.data;
   return (
-    <p className="text-sm text-ink">
-      <span className="font-medium text-ink-2">Current: </span>
-      <span>{`${modelName}, using ${label(credentialName, provider)}`}</span>
-    </p>
+    <div className="space-y-1">
+      <p className="text-sm text-ink">
+        <span className="font-medium text-ink-2">Current: </span>
+        <span>{`${modelName}, using ${label(credentialName, provider)}`}</span>
+      </p>
+      {!tools && (
+        <p className={text.muted}>It can't use tools, so Agentic Agents without their own model answer as Automatic.</p>
+      )}
+    </div>
   );
 }
 
@@ -50,6 +56,7 @@ function Picker({
   const options = models.data ?? [];
   // The wanted model if this credential offers it, otherwise its first chat model.
   const model = options.some((option) => option.id === wanted) ? wanted : (options[0]?.id ?? "");
+  const plain = withoutTools(options, model);
   return (
     <form
       aria-label="Choose the Default Model"
@@ -95,13 +102,14 @@ function Picker({
               setWanted(event.target.value);
             }}
           >
-            {options.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
+            <ChatModelOptions models={options} />
           </select>
         </label>
+      )}
+      {plain && (
+        <p className={text.muted}>
+          {`${plain.name} can't use tools: Agentic Agents that use the Default Model will answer as Automatic.`}
+        </p>
       )}
       <button type="submit" className={`${button.primary} self-start`} disabled={save.isPending || model === ""}>
         {save.isPending ? "Saving…" : "Save Default Model"}
