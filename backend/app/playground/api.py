@@ -6,7 +6,9 @@ it names (``instructions_version_id``, any of the Project's Versions). Each answ
 which: ``instructions_source`` is ``draft`` or ``version``, with the Version's ID and number.
 
 In Agentic Retrieval Mode a ``search`` event (``{"query": …, "order": …}``) is sent as each
-Knowledge Search starts, before the answer streams. The stream sends ``token`` events
+Knowledge Search starts. When the model streamed text before calling Knowledge Search, that text
+is retracted first: a ``retract`` event (``{}``) tells the Studio to clear the answer text shown
+so far, and it is no part of the saved answer. The stream sends ``token`` events
 (``{"text": …}``) as the answer arrives, then a ``citation``
 event per Chunk the answer cites, then one ``done`` event with the saved Message's ID, the
 Instructions it ran with, its token counts and latency, whether the answer is the Agent's
@@ -389,7 +391,9 @@ _STREAM: dict[int | str, dict[str, Any]] = {
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
         "description": (
             "Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) "
-            "as each Knowledge Search starts; `token` events, then `citation` events and one "
+            "as each Knowledge Search starts, preceded by a `retract` event (no data) when text "
+            "the model streamed before the Search must be cleared from the answer; "
+            "`token` events, then `citation` events and one "
             "`done` event; "
             "or, when the answer leaks the Canary token, a `replace` event then `done`; "
             "or, when the input Guardrail blocks the question, a `refusal` event (`text`, the "

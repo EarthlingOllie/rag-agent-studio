@@ -12,16 +12,20 @@ one tool, Knowledge Search, whose only argument is the query: it runs ``retrieve
 Agent's Retrieval settings and returns the Chunks it found as a spotlighted, labelled data block
 (``app.runtime.prompt.search_results``). A ``SearchEvent`` is streamed as each Search starts, and
 the ``DoneEvent`` lists the reply's Searches (``Searched``). Searches run one at a time, even
-when the model asks for several at once. Tool calls finish before the answer streams: the text
-of each model response is held until the response ends, so text a model writes before calling
-the tool is never sent. Token use is summed over every model call of the reply.
+when the model asks for several at once. Each model response's text streams as it arrives, as
+in Automatic mode (ticket 13-10). A response that turns out to call Knowledge Search was not the
+answer: once it ends, a ``RetractEvent`` tells clients to clear the text sent so far (a
+Retraction), and its Search follows. Retracted text is never part of the reply: not its saved
+answer, Trace or Citations. Token use is summed over every model call of the reply.
 
 A reply makes at most the Agent's Search limit of Searches: a call beyond it searches nothing,
 streams no ``SearchEvent`` and tells the model "search limit reached; answer from what you
 have"; it is recorded as a ``Searched`` with ``limit_refused``, so the Trace shows the limit was
-hit. If the model searched and no Search found a Chunk reaching the minimum score, the model's
-answer is discarded before any of it streams, and the reply is the Agent's fallback text with
-``fallback`` true. A reply that made no Search (a greeting) is never a fallback.
+hit. If the model searched and no Search found a Chunk reaching the minimum score, the Fallback
+Text is decided as the next response starts: every Search so far is known by then, so the
+Fallback Text is sent at once, with none of the model's text, and the reply is the Agent's
+fallback text with ``fallback`` true. Should that response search again, the Fallback Text is
+retracted like any other text. A reply that made no Search (a greeting) is never a fallback.
 
 The turn streams ``TokenEvent``s as the answer arrives, then a ``CitationEvent`` for each Chunk
 the answer cites (``app.runtime.citations``), then one ``DoneEvent``. The reply keeps one record
@@ -33,11 +37,13 @@ structured output is asked for a ``CitedAnswer`` through the provider's native J
 output (not an output tool), and its answer text is streamed as the JSON arrives; any other
 model answers in text, and its citations are the labels written in it.
 
-Every model call carries a fresh Canary token in its preamble, and the answer streams through a
-``CanaryFilter``. If the canary starts to appear, the model stream is stopped, nothing more of
-the answer is sent, and a ``ReplaceEvent`` carrying the fallback text replaces what was sent; the
-``DoneEvent``'s answer is then the fallback text. A completed answer is checked again for an
-encoded canary, which is logged and flagged but can't be un-sent. In Agentic mode each search
+Every model call carries a fresh Canary token in its preamble, and the text of every model
+response, retracted or not, streams through the reply's ``CanaryFilter``. If the canary starts to
+appear, the model stream is stopped, nothing more of the answer is sent, and a ``ReplaceEvent``
+carrying the fallback text replaces what was sent; the ``DoneEvent``'s answer is then the
+fallback text. On a Retraction the text the filter held back is dropped, never released, and the
+next response is checked afresh. A completed answer, and any text retracted before it, is
+checked again for an encoded canary, which is logged and flagged but can't be un-sent. In Agentic mode each search
 query is checked for the canary (in any form) before it runs: a query carrying it is never run
 or recorded, and the reply ends as a canary leak, with the fallback text and a ``replaced``
 Guardrail outcome.

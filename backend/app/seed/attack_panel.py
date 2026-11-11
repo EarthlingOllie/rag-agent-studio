@@ -8,7 +8,8 @@ Organisation's Guardrail demo Agent and shows the reply and which Guardrail laye
 - ``POST /api/demo/attacks/{attack_id}``: sends that attack's payload to the Agent's Live Version
   exactly as the widget does (a new Visitor Conversation, admission control, the Guardrail
   pipeline, the answer saved with its Trace) and streams the same Server-Sent Events the widget
-  gets (``token``, ``citation``, ``replace``, ``refusal``, ``error``, ``unavailable``). Before
+  gets (``token``, ``citation``, ``replace``, ``retract``, ``refusal``, ``error``, ``unavailable``,
+  but no ``search``). Before
   ``done`` it adds what a Visitor never sees, the ``trace`` event: each Guardrail layer's
   outcome (the input Guardrail: ``blocked``, ``flagged``, ``logged``, ``allowed`` or ``passed``;
   the Canary token: ``replaced``, ``flagged``, ``quiet``, or ``not_reached`` when the input
