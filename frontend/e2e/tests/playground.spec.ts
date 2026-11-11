@@ -279,7 +279,10 @@ test.describe("Agent and Playground", () => {
     // The model picker marks which of the Bedrock models support tools (choosing none saves nothing).
     const override = page.getByRole("group", { name: "Model override" });
     await override.getByLabel("Credential").selectOption("Bedrock chat (Amazon Bedrock)");
-    await expect(override.getByRole("group", { name: "No tools: Automatic only" }).getByRole("option")).toHaveText(["Mistral 7B Instruct"]);
+    // Native <optgroup>s: Playwright's role engine doesn't name them, so match the label attribute.
+    await expect(override.getByLabel("Model").locator('optgroup[label="No tools: Automatic only"]').getByRole("option")).toHaveText([
+      "Mistral 7B Instruct",
+    ]);
 
     // No Search: the answer comes from the one search up front, and the Trace warns of it.
     await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");

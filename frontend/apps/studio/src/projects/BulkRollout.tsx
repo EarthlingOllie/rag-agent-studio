@@ -103,8 +103,10 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
     body = <BulkResults result={publish.data} verb="Published" />;
   }
   if (publish.isSuccess) {
+    // Keyed, so React mounts a new button rather than restyling Not now in place, which would
+    // fade (transition-colors) from Not now's colours to Done's at too low a contrast.
     footer = (
-      <button type="button" className={button.primary} onClick={onClose}>
+      <button key="done" type="button" className={button.primary} onClick={onClose}>
         Done
       </button>
     );
@@ -205,7 +207,8 @@ export function BulkRevertOffer({
       closeButton={false}
       footer={
         revert.isSuccess ? (
-          <button type="button" className={button.primary} onClick={onClose}>
+          // Keyed so it is a new button, not Not now fading into Done's colours (see RolloutDialog).
+          <button key="done" type="button" className={button.primary} onClick={onClose}>
             Done
           </button>
         ) : (
