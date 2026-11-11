@@ -12,7 +12,7 @@
 
 ![The Product FAQ Agent embedded as a chat bubble on the demo shop page](docs/screenshots/37-widget-on-host.png)
 
-Contents: [Five-minute demo](#five-minute-demo) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Stack](#stack) · [Testing](#testing) · [Security](#security) · [Deploy and destroy](#deploy-and-destroy-aws-demo) · [Documentation](#documentation)
+Contents: [Demo videos](docs/demo.md) · [Five-minute demo](#five-minute-demo) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Stack](#stack) · [Testing](#testing) · [Security](#security) · [Deploy and destroy](#deploy-and-destroy-aws-demo) · [Documentation](#documentation)
 
 ## What it does
 
@@ -26,6 +26,8 @@ Contents: [Five-minute demo](#five-minute-demo) · [Quickstart](#quickstart) · 
 - **Guardrails.** An input Guardrail (a local ONNX classifier, or an LLM classifier) in block, warn or log mode, a Canary token that stops prompt leaks, Guardrail analytics and alerts, and an Attack evaluation suite run in CI.
 
 ## Five-minute demo
+
+**Prefer to watch?** [docs/demo.md](docs/demo.md) has a short screen recording of each core user story: signing up, building a Knowledge Base, creating, publishing and embedding an Agent, Versions and revert, Conversations and analytics, Agentic retrieval, the Guardrails, and team, cost and audit.
 
 Run the [Quickstart](#quickstart) first (`make dev`, then `make seed`), or use a seeded [AWS demo](#deploy-and-destroy-aws-demo) at its CloudFront URL. Sign in at <http://localhost:5173> as the demo **Owner** `owner@northwind.example` / `northwind-owner-demo` (or the **Editor** `editor@northwind.example` / `northwind-editor-demo`); `make seed` prints these too. Everything below is seeded, synthetic and answered by the labelled demo model, so no API key is needed.
 
@@ -153,6 +155,7 @@ The AWS demo is applied on demand and destroyed after use; nothing is always on.
   [0010 AWS runtime shape](docs/adr/0010-aws-runtime-shape.md) ·
   [0011 single CloudFront origin](docs/adr/0011-single-cloudfront-origin.md) ·
   [0012 demo seed through the API](docs/adr/0012-demo-seed-through-the-api.md)
+- [docs/demo.md](docs/demo.md): a screen recording of each core user story, and how to regenerate them.
 - [docs/plan.md](docs/plan.md): the build plan, architecture and delivery slices.
 - [docs/specs](docs/specs/README.md): the ten specs, one per slice, with the shared test seams.
 - [docs/tickets](docs/tickets/README.md): every ticket, its acceptance criteria and its evidence folder.
