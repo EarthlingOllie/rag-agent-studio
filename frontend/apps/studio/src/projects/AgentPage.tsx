@@ -215,6 +215,10 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
         (search) => {
           appendToAnswer((answer) => ({ ...answer, searches: [...(answer.searches ?? []), search.query] }));
         },
+        () => {
+          // The model went on to search: what streamed so far wasn't the answer, so it is cleared.
+          appendToAnswer((answer) => ({ ...answer, content: "" }));
+        },
       );
       appendToAnswer((answer) => ({
         ...answer,

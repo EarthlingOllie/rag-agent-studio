@@ -195,6 +195,17 @@ test.describe("Agent and Playground", () => {
     await openSettings(page, "Retrieval");
     await expect(page.getByRole("group", { name: "Retrieval" }).getByRole("radio", { name: "Agentic" })).toBeChecked();
 
+    // The compose stack's fake model never writes before it searches, so the stream is given
+    // text and its `retract` event before the first `search`, as from a model that does (ticket
+    // 13-10): the retracted text must be cleared from the answer.
+    await page.route("**/playground/conversations/*/messages", async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      const at = body.indexOf("event: search");
+      const retracted = `event: token\ndata: ${JSON.stringify({ text: "Let me look that up for you first. " })}\n\nevent: retract\ndata: {}\n\n`;
+      await route.fulfill({ response, body: at === -1 ? body : body.slice(0, at) + retracted + body.slice(at) });
+    });
+
     // The fake model searches once with the question: the Search shows as it happens, then the
     // answer cites the Chunk the Search found.
     const question = "How many days of annual leave do I get?";
@@ -203,6 +214,7 @@ test.describe("Agent and Playground", () => {
     const answer = page.getByRole("list", { name: "Playground messages" }).getByRole("listitem", { name: "HR searcher" });
     await expect(answer.getByRole("list", { name: "Searches" }).getByRole("listitem")).toHaveText([`Searching: ${question}`], { timeout: 15_000 });
     await expect(answer).toContainText("Fake reply from anthropic:claude-haiku-4-5.");
+    await expect(answer).not.toContainText("look that up");
     await expect(answer.getByRole("list", { name: "Sources" }).getByRole("link", { name: /^C1 northwind-staff-handbook\.md$/ })).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 

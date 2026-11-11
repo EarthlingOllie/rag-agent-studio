@@ -7,7 +7,7 @@ The model is told never to reveal it, so seeing it in a reply means the prompt i
   longer be the start of a canary straddling chunk boundaries. The comparison ignores
   whitespace and case, so ``3F9A 1C7E…`` or a canary broken over lines is caught too. When the
   canary appears, the filter says so and releases nothing more: the caller stops the model and
-  replaces the reply.
+  replaces the reply. When text already fed is retracted, the held-back part is dropped.
 - ``carries_canary`` checks a whole text the model wrote before it is used (a Knowledge Search
   query, ADR-0015): the canary in any form either check matches.
 - ``encoded_leak`` is the post-completion check of the whole answer, for disguised leaks the
@@ -64,6 +64,12 @@ class CanaryFilter:
             return ""
         released, self._pending = self._pending[:cut], self._pending[cut:]
         return released
+
+    def retract(self) -> None:
+        """What was fed so far is withdrawn (Agentic mode: the model response called Knowledge
+        Search): the held-back text is dropped, never released, and the next text is checked
+        from scratch."""
+        self._pending = ""
 
     def finish(self) -> str:
         """The answer is complete: the held-back text is safe (it was checked as it arrived)."""

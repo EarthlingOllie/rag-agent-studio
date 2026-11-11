@@ -397,7 +397,7 @@ async def test_searches_the_model_makes_at_once_each_run_and_are_traced(
     assert found == {LEAVE: [LEAVE], EXPENSES: [EXPENSES]}
 
 
-async def test_text_the_model_writes_before_searching_is_kept_out_of_the_answer(
+async def test_text_the_model_writes_before_searching_is_retracted_and_kept_out_of_the_answer(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
     async def says_it_will_search(
@@ -415,9 +415,13 @@ async def test_text_the_model_writes_before_searching_is_kept_out_of_the_answer(
 
     events, trace = await asked(owner, project_id, agent_id, "How much leave do I get?")
 
-    # The model searches although it wrote text first, and only its answer is sent.
-    assert events[0] == ("search", {"query": "annual leave", "order": 1})
-    answer = "".join(data["text"] for event, data in events if event == "token")
+    # The model searches although it wrote text first. That text streamed, so it is retracted
+    # before the Search (ticket 13-10), and only the answer that follows is kept.
+    names = [event for event, _ in events]
+    retract = names.index("retract")
+    assert events[retract + 1] == ("search", {"query": "annual leave", "order": 1})
+    assert set(names[:retract]) == {"token"}
+    answer = "".join(data["text"] for event, data in events[retract:] if event == "token")
     assert answer == "You get 25 days [C1]."
     assert [data["label"] for event, data in events if event == "citation"] == ["C1"]
     assert trace["search_count"] == 1

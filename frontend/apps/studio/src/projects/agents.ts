@@ -342,7 +342,8 @@ function parseEvent(block: string): StreamEvent {
  * `onCitation` each Chunk it cites; `onReplace` the text that replaces everything streamed so
  * far when the answer leaked the Canary token; `onRefusal` the Agent's refusal text, the whole
  * reply, when the input Guardrail blocked the question; `onSearch` each Knowledge Search as it
- * starts, in Agentic Retrieval Mode. The returned promise resolves with the `done`
+ * starts, in Agentic Retrieval Mode, and `onRetract` that the text streamed so far was not the
+ * answer (the model went on to search), so it is cleared. The returned promise resolves with the `done`
  * event once the answer is complete and saved, or rejects with a `ProviderError` when the
  * stream ends with an `error` event because the model provider failed.
  */
@@ -356,6 +357,7 @@ export async function askPlayground(
   onReplace: (text: string) => void,
   onRefusal: (text: string) => void,
   onSearch: (search: SearchStarted) => void,
+  onRetract: () => void,
 ): Promise<AnswerDone> {
   const { data, error, response } = await api.POST(
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages",
@@ -379,6 +381,7 @@ export async function askPlayground(
       buffered = buffered.slice(end + 2);
       end = buffered.indexOf("\n\n");
       if (event.event === "search") onSearch(event.data as SearchStarted);
+      if (event.event === "retract") onRetract();
       if (event.event === "token")
         onToken((event.data as { text: string }).text);
       if (event.event === "citation") onCitation(event.data as Citation);

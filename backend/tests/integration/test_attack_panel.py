@@ -27,6 +27,7 @@ from tests.agents import parse_sse
 from tests.conftest import ClientFactory, SignedUpMember
 from tests.integration.test_agent_versions import published
 from tests.integration.test_agentic_retrieval import agentic, searching
+from tests.integration.test_agentic_streaming import Scripted, Search
 from tests.integration.test_seed import ASSETS, demo_project, get, signed_in
 
 pytestmark = pytest.mark.usefixtures("quiet_seed_history")
@@ -359,3 +360,36 @@ async def test_an_agentic_guardrail_demo_agent_searches_but_the_panel_streams_no
     assert built  # the scripted model answered, and it searched first
     assert [kind for kind, _ in events] == ["token", "trace", "done"], events
     assert streamed(events) == "Leave is 25 days."
+
+
+async def test_an_agentic_guardrail_demo_agent_retracts_what_it_wrote_before_searching(
+    seeded: FastAPI,
+    visitor: httpx.AsyncClient,
+    new_client: ClientFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Text the model streamed before a Search is retracted on the panel too (ticket 13-10)."""
+    owner = await signed_in(new_client, content.OWNER)
+    project = await demo_project(owner)
+    agents = {a["name"]: a for a in await get(owner, "projects", project["id"], "agents")}
+    target = agents["Guardrail demo"]
+    await agentic(owner, project["id"], target["id"])
+    await published(owner, project["id"], target["id"])
+    pre_search = ["Let me ", "search the ", "knowledge base ", "for the leave ", "policy first. "]
+
+    def chat_model(*args: object) -> FunctionModel:
+        return FunctionModel(
+            stream_function=Scripted([*pre_search, Search("leave policy")], ["Leave is 25 days."]),
+            profile={"supports_json_schema_output": False},
+        )
+
+    monkeypatch.setattr(seeded.state.model_gateway, "chat_model", chat_model)
+
+    events = await fire(visitor, "benign-control")
+
+    kinds = [kind for kind, _ in events]
+    retract = kinds.index("retract")
+    assert events[retract] == ("retract", {})
+    assert set(kinds[:retract]) == {"token"}
+    assert kinds[retract:] == ["retract", "token", "trace", "done"]
+    assert streamed(events[retract:]) == "Leave is 25 days."

@@ -65,6 +65,7 @@ from app.runtime.runtime import (
     CitationEvent,
     DoneEvent,
     ReplaceEvent,
+    RetractEvent,
     Searched,
     SearchEvent,
     TokenEvent,
@@ -413,7 +414,9 @@ def _elapsed_ms(started: float) -> int:
     return round((time.perf_counter() - started) * 1000)
 
 
-AnswerEvent = TokenEvent | ReplaceEvent | RefusalEvent | CitationEvent | ErrorEvent | Answered
+AnswerEvent = (
+    TokenEvent | ReplaceEvent | RetractEvent | RefusalEvent | CitationEvent | ErrorEvent | Answered
+)
 
 
 @overload
@@ -505,7 +508,9 @@ async def answer(
                     first_token_ms = _elapsed_ms(started)
                 yield event
                 continue
-            if isinstance(event, CitationEvent | ReplaceEvent | RefusalEvent | ErrorEvent):
+            if isinstance(
+                event, CitationEvent | ReplaceEvent | RetractEvent | RefusalEvent | ErrorEvent
+            ):
                 yield event
                 continue
             if isinstance(event, SearchEvent):

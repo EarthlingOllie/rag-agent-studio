@@ -8,7 +8,8 @@ Organisation's Guardrail demo Agent and shows the reply and which Guardrail laye
 - ``POST /api/demo/attacks/{attack_id}``: sends that attack's payload to the Agent's Live Version
   exactly as the widget does (a new Visitor Conversation, admission control, the Guardrail
   pipeline, the answer saved with its Trace) and streams the same Server-Sent Events the widget
-  gets (``token``, ``citation``, ``replace``, ``refusal``, ``error``, ``unavailable``). Before
+  gets (``token``, ``citation``, ``replace``, ``retract``, ``refusal``, ``error``, ``unavailable``,
+  but no ``search``). Before
   ``done`` it adds what a Visitor never sees, the ``trace`` event: each Guardrail layer's
   outcome (the input Guardrail: ``blocked``, ``flagged``, ``logged``, ``allowed`` or ``passed``;
   the Canary token: ``replaced``, ``flagged``, ``quiet``, or ``not_reached`` when the input
@@ -42,7 +43,7 @@ from app.embed.api import (
 from app.guardrails.pipeline import RefusalEvent
 from app.playground.service import Answered, answer
 from app.runtime.errors import ErrorEvent
-from app.runtime.runtime import CitationEvent, ReplaceEvent, TokenEvent
+from app.runtime.runtime import CitationEvent, ReplaceEvent, RetractEvent, TokenEvent
 from app.seed import content
 from app.seed.demo_pages import NOT_SEEDED, demo_pages_on, live_demo_agents
 
@@ -179,6 +180,8 @@ async def fire_attack(
                 yield _sse("token", {"text": event.text})
             elif isinstance(event, ReplaceEvent):
                 yield _sse("replace", {"text": event.text})
+            elif isinstance(event, RetractEvent):
+                yield _sse("retract", {})
             elif isinstance(event, RefusalEvent):
                 yield _sse("refusal", {"text": event.text})
             elif isinstance(event, ErrorEvent):

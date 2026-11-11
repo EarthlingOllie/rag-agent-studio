@@ -44,7 +44,7 @@ from app.projects.models import FlaggedChunkMode
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.errors import ErrorEvent
 from app.runtime.prompt import Turn
-from app.runtime.runtime import DoneEvent, ReplaceEvent, TokenEvent
+from app.runtime.runtime import DoneEvent, ReplaceEvent, RetractEvent, TokenEvent
 
 POISONED_DOCUMENT = "uploaded-document.md"
 
@@ -192,6 +192,8 @@ async def run_case(
 
     history: list[Turn] = []
     replies: list[str] = []
+    # Text streamed and then retracted (Agentic mode): no reply, but the Visitor saw it.
+    retracted: list[str] = []
     outcomes: list[list[GuardrailOutcome]] = []
     error: str | None = None
     for question in case.turns:
@@ -202,6 +204,9 @@ async def run_case(
         ):
             if isinstance(event, TokenEvent):
                 reply += event.text
+            elif isinstance(event, RetractEvent):
+                retracted.append(reply)
+                reply = ""
             elif isinstance(event, ReplaceEvent | RefusalEvent):
                 reply = event.text
             elif isinstance(event, ErrorEvent):
@@ -215,7 +220,7 @@ async def run_case(
         if not blocked([o.as_dict() for o in done.guardrail_outcomes]):
             history.append(Turn(question, done.answer))
     actions = {(o.layer, o.action) for turn in outcomes for o in turn}
-    sent = "\n".join(replies).casefold()
+    sent = "\n".join([*retracted, *replies]).casefold()
     observed = Expected(
         ingestion=ingestion,
         input=_strongest(

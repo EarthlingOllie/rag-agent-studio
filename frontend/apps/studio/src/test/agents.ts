@@ -387,9 +387,12 @@ export function streamedAnswer(
     instructions?: InstructionsUsed;
     /** Agentic Retrieval Mode: a `search` event per query, in order, before the answer. */
     searches?: string[];
+    /** Events sent first, as they are: say, text the model wrote, its `retract` and a `search`. */
+    prelude?: [string, unknown][];
   } = {},
 ) {
   const body =
+    (options.prelude ?? []).map(([event, data]) => sse(event, data)).join("") +
     (options.searches ?? []).map((query, index) => sse("search", { query, order: index + 1 })).join("") +
     tokens.map((text) => sse("token", { text })).join("") +
     (options.refusal === undefined
