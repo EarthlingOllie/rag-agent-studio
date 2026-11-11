@@ -1,0 +1,6 @@
+$ sh -c cd frontend && pnpm typecheck (at 3777a673)
+
+> rag-agent-studio-frontend@ typecheck /home/user/wt-12-07/frontend
+> tsc
+
+exit 0

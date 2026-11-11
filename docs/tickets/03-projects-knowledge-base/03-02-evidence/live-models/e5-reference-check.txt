@@ -1,0 +1,5 @@
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 28174.40it/s]
+max abs diff app vs reference: 9.12696123123169e-08
+reference cos(q_holiday, leave)=0.7957 cos(q_holiday, expenses)=0.8050
+reference cos(q_leave, leave)=0.8450 cos(q_leave, expenses)=0.8193
+reference cos(q_expenses, leave)=0.7608 cos(q_expenses, expenses)=0.8580

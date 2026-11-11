@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northwind Traders: fine foods from small producers</title>
+<style>
+:root{--olive:#3f5f2a;--saffron:#9a4508;--paper:#fbf8f1;--ink:#1f2419;--muted:#4b5142}
+*{box-sizing:border-box}
+body{font:16px/1.5 Georgia,"Times New Roman",serif;margin:0;background:var(--paper);color:var(--ink)}
+header{background:var(--olive);color:#fff;padding:16px 24px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline}
+header a{color:#fff}
+header .brand{font-size:1.5rem;font-weight:bold;margin:0}
+nav ul{display:flex;flex-wrap:wrap;gap:16px;list-style:none;margin:0;padding:0}
+main{max-width:880px;margin:0 auto;padding:24px}
+.notice{border-left:4px solid var(--saffron);background:#fff;padding:12px 16px}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:0;list-style:none}
+.products li{background:#fff;border:1px solid #d9d4c5;border-radius:6px;padding:16px}
+.products h3{margin-top:0;color:var(--olive)}
+button{font:inherit;background:var(--saffron);color:#fff;border:0;border-radius:6px;padding:10px 16px;cursor:pointer}
+footer{max-width:880px;margin:0 auto;padding:24px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<header>
+<p class="brand"><a href="./">Northwind Traders</a></p>
+<nav aria-label="Demo pages"><ul>
+<li><a href="./">Shop (bubble)</a></li>
+<li><a href="inline.html">Help centre (inline)</a></li>
+<li><a href="budget.html">Low-budget helper</a></li>
+<li><a href="attacks.html">Attack panel</a></li>
+</ul></nav>
+</header>
+<main>
+<h1>Fine foods from small producers</h1>
+<p>Our spring range has just landed. Questions about an order, delivery or returns? Ask our helper: the chat button is in the bottom corner.</p>
+<p class="notice" id="demo-status" role="status">This shop embeds the Product FAQ Agent as a bubble with its Embed Snippet. This site's origin is in the Agent's Allowed Origins, so the chat shows.</p>
+<h2>Spring range</h2>
+<ul class="products" aria-label="Spring range">
+<li><h3>Smoked paprika from Extremadura</h3><p>Oak-smoked, sweet and bittersweet. 75 g tins.</p></li>
+<li><h3>Wildflower honey from Crete</h3><p>Raw, unfiltered honey from thyme and wildflower meadows. Sold in 250 g jars.</p></li>
+<li><h3>Yuzu kosho from Kyushu</h3><p>Fermented chilli and yuzu paste. 80 g jars.</p></li>
+</ul>
+</main>
+<footer><p>Northwind Traders is a fictional company. This page is part of the RAG Agent Studio demo: all content is synthetic.</p></footer>
+<script>
+// Ask the API which of the Demo Organisation's Agents to embed and where its loader is, then
+// paste that Agent's Embed Snippet, as a customer would paste the one the Studio shows.
+(async () => {
+  const status = document.getElementById("demo-status");
+  try {
+    const response = await fetch("/api/demo/agents");
+    const demo = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(demo.detail || "The demo isn't available.");
+    const agent = demo.shop;
+    const snippet = document.createElement("script");
+    snippet.src = demo.widget_url + "/embed.js";
+    snippet.dataset.agent = agent.public_id;
+    snippet.dataset.launcher = "bubble";
+    snippet.async = true;
+    document.body.append(snippet);
+    
+  } catch (error) {
+    status.textContent = "The demo isn't ready: " + error.message;
+  }
+})();
+</script>
+</body>
+</html>

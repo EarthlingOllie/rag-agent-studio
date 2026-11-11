@@ -7,10 +7,10 @@
 **Blocked by:**
 - [03-02: Upload a Document to Ready](02-upload-document-to-ready.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Tags can be created, renamed and deleted per Project
-- [ ] Several Tags can be applied to a Document, and Tags can be bulk-applied to many Documents
-- [ ] The Document list filters and searches by name, status and Tag
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Tags can be created, renamed and deleted per Project
+- [x] Several Tags can be applied to a Document, and Tags can be bulk-applied to many Documents
+- [x] The Document list filters and searches by name, status and Tag
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

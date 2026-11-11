@@ -1,0 +1,38 @@
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0111/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0111/frontend
+> tsc
+
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0111/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0111/frontend
+      Coverage enabled with v8
+
+
+ Test Files  10 passed (10)
+      Tests  69 passed (69)
+   Start at  03:23:26
+   Duration  12.74s (tests 50%, environment 29%, setup 9%, import 6%, transform 3%, worker 2%)
+
+Environment  jsdom was created 10 times · 9.32s total, 29% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+18 files fully covered.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 313/313 )
+Branches     : 100% ( 178/178 )
+Functions    : 100% ( 128/128 )
+Lines        : 100% ( 272/272 )
+================================================================================

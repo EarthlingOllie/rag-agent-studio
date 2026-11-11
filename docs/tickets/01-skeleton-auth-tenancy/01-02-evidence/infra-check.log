@@ -1,0 +1,97 @@
+$ make infra-check
+terraform fmt -check -recursive -diff infra
+== infra/envs/demo/
+Success! The configuration is valid.
+
+tests/demo.tftest.hcl... in progress
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "rejects_an_unknown_environment"... pass
+tests/demo.tftest.hcl... tearing down
+tests/demo.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+
+tests/contract.tftest.hcl... in progress
+  run "names_resources_from_the_prefix"... pass
+  run "rejects_an_invalid_prefix"... pass
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... pass
+
+Success! 2 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+
+exit=0

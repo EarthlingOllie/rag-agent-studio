@@ -1,0 +1,276 @@
+### modules/cdn/main.tf: dynamic paths cached for a day
+<   default_ttl = 0
+>   default_ttl = 86400
+  run "never_caches_dynamic_paths"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: Host forwarded to the ALB
+<     header_behavior = "allExcept"
+>     header_behavior = "allViewer"
+  run "forwards_viewer_headers_cookies_and_query_strings_to_the_api"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: cookies not forwarded to the API
+<     cookie_behavior = "all"
+>     cookie_behavior = "none"
+  run "forwards_viewer_headers_cookies_and_query_strings_to_the_api"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: query strings not forwarded to the API
+<     query_string_behavior = "all"
+>     query_string_behavior = "none"
+  run "forwards_viewer_headers_cookies_and_query_strings_to_the_api"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: SSE responses compressed
+<       compress                   = false
+>       compress                   = true
+  run "routes_the_api_and_widget_shell_to_the_alb_uncached"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: API reachable only for GET
+<       allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+>       allowed_methods            = ["GET", "HEAD"]
+  run "routes_the_api_and_widget_shell_to_the_alb_uncached"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: read timeout ignores the variable
+<       origin_read_timeout      = var.origin_read_timeout
+>       origin_read_timeout      = 30
+  run "the_alb_origin_carries_the_secret_header_and_a_long_read_timeout"... fail
+  run "the_read_timeout_is_configurable"... fail
+tests/contract.tftest.hcl... fail
+Failure! 23 passed, 2 failed.
+exit=1
+
+### modules/cdn/main.tf: origin header secret not sent
+<       value = var.origin_header_value
+>       value = "not-the-secret"
+  run "the_alb_origin_carries_the_secret_header_and_a_long_read_timeout"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: ALB origin over HTTPS
+<       origin_protocol_policy   = "http-only"
+>       origin_protocol_policy   = "https-only"
+  run "the_alb_origin_carries_the_secret_header_and_a_long_read_timeout"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: static bucket without origin access control
+<     origin_access_control_id = var.static_origin_access_control_id
+  run "serves_the_studio_from_the_static_bucket_through_origin_access_control"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: /embed.js has no behaviour
+<   static_paths  = ["/embed.js", "/widget/assets/*"]
+>   static_paths  = ["/widget/assets/*"]
+  run "serves_embed_js_and_widget_assets_from_the_static_bucket_cached"... fail
+  run "gives_each_path_its_own_behaviour"... fail
+  run "adds_security_headers_without_overriding_the_api"... fail
+tests/contract.tftest.hcl... fail
+exit=1
+
+### modules/cdn/main.tf: /widget/a/* served from S3
+<   dynamic_paths = ["/api/*", "/widget/a/*"]
+>   dynamic_paths = ["/api/*"]
+  run "gives_each_path_its_own_behaviour"... fail
+  run "routes_the_api_and_widget_shell_to_the_alb_uncached"... fail
+  run "adds_security_headers_without_overriding_the_api"... fail
+tests/contract.tftest.hcl... fail
+exit=1
+
+### modules/cdn/main.tf: static assets vary on cookies (session in the cache)
+<       cookie_behavior = "none"
+>       cookie_behavior = "all"
+  run "caches_static_paths"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: SPA fallback on responses instead of requests
+<       event_type   = "viewer-request"
+>       event_type   = "viewer-response"
+  run "a_function_gives_the_studio_spa_fallback_routing"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: Studio served over plain HTTP
+<     viewer_protocol_policy     = "redirect-to-https"
+>     viewer_protocol_policy     = "allow-all"
+  run "serves_the_studio_from_the_static_bucket_through_origin_access_control"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: every edge location (cost)
+<   price_class         = "PriceClass_100"
+>   price_class         = "PriceClass_All"
+  run "serves_the_studio_from_the_static_bucket_through_origin_access_control"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: custom domain still on the default certificate
+<     cloudfront_default_certificate = !local.custom_domain
+>     cloudfront_default_certificate = true
+  run "a_domain_adds_an_acm_certificate_in_us_east_1"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: custom domain allows TLS 1.0
+<     minimum_protocol_version       = local.custom_domain ? "TLSv1.2_2021" : "TLSv1"
+>     minimum_protocol_version       = "TLSv1"
+  run "a_domain_adds_an_acm_certificate_in_us_east_1"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: certificate outside us-east-1
+<   region            = "us-east-1" # The only region CloudFront reads certificates from.
+>   region            = "eu-west-2" # The only region CloudFront reads certificates from.
+  run "a_domain_adds_an_acm_certificate_in_us_east_1"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: no IPv6 record
+<   for_each = toset(local.custom_domain ? ["A", "AAAA"] : [])
+>   for_each = toset(local.custom_domain ? ["A"] : [])
+  run "a_domain_adds_route53_alias_records"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: distribution does not answer on the domain
+<   aliases             = local.custom_domain ? [var.domain_name] : []
+>   aliases             = []
+  run "a_domain_adds_an_acm_certificate_in_us_east_1"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: certificate created without a domain
+<   count = local.custom_domain ? 1 : 0
+>   count = 1
+  run "serves_the_studio_from_the_static_bucket_through_origin_access_control"... fail
+tests/contract.tftest.hcl... fail
+Failure! 0 passed, 1 failed, 24 skipped.
+exit=1
+
+### modules/cdn/main.tf: Studio may be framed
+<       frame_option = "DENY"
+>       frame_option = "SAMEORIGIN"
+  run "adds_security_headers_without_overriding_the_api"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/main.tf: API nosniff overrides the API
+<       override = false
+>       override = true
+  run "adds_security_headers_without_overriding_the_api"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/outputs.tf: URL always the cloudfront.net name
+<   value       = "https://${local.custom_domain ? var.domain_name : aws_cloudfront_distribution.this.domain_name}"
+>   value       = "https://${aws_cloudfront_distribution.this.domain_name}"
+  run "a_domain_adds_route53_alias_records"... fail
+tests/contract.tftest.hcl... fail
+Failure! 24 passed, 1 failed.
+exit=1
+
+### modules/cdn/functions/spa-fallback.js: files rewritten to index.html too
+<   if (lastSegment.indexOf(".") === -1) {
+>   if (true) {
+not ok 4 - a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
+# pass 5
+# fail 1
+exit=1
+
+### modules/cdn/functions/spa-fallback.js: routes not rewritten
+<     request.uri = "/index.html";
+>     request.uri = request.uri;
+not ok 1 - a deep link to a Studio route loads the Studio's index.html
+not ok 2 - the root loads index.html
+not ok 3 - a route with a trailing slash loads index.html
+not ok 5 - a dot in an earlier path segment does not make a route a file
+exit=1
+
+### modules/cdn/functions/spa-fallback.js: only the first segment checked
+<   var lastSegment = request.uri.substring(request.uri.lastIndexOf("/") + 1);
+>   var lastSegment = request.uri.substring(request.uri.indexOf("/") + 1);
+not ok 5 - a dot in an earlier path segment does not make a route a file
+# pass 5
+# fail 1
+exit=1
+
+### envs/demo/main.tf: Documents CORS not wired to the CloudFront origin
+<   documents_cors_allowed_origin  = module.cdn.url
+>   documents_cors_allowed_origin  = null
+  run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb"... fail
+tests/demo.tftest.hcl... fail
+Failure! 5 passed, 1 failed.
+exit=1
+
+### envs/demo/main.tf: static bucket trusts no distribution
+<   static_assets_distribution_arn = module.cdn.distribution_arn
+>   static_assets_distribution_arn = null
+  run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb"... fail
+tests/demo.tftest.hcl... fail
+Failure! 5 passed, 1 failed.
+exit=1
+
+### envs/demo/main.tf: custom domain not passed to the cdn
+<   domain_name                        = var.domain_name
+>   domain_name                        = null
+  run "a_domain_name_adds_acm_and_route53_to_the_demo"... fail
+tests/demo.tftest.hcl... fail
+Failure! 5 passed, 1 failed.
+exit=1
+
+### envs/demo/outputs.tf: no CloudFront URL output
+<   value       = module.cdn.url
+>   value       = module.storage.documents_cors_allowed_origin == null ? "" : "https://wrong"
+  run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb"... fail
+  run "a_domain_name_adds_acm_and_route53_to_the_demo"... fail
+tests/demo.tftest.hcl... fail
+Failure! 4 passed, 2 failed.
+exit=1
+
+### modules/cdn/main.tf: without the CKV_AWS_174 skip
+Passed checks: 0, Failed checks: 1, Skipped checks: 0
+Check: CKV_AWS_174: "Verify CloudFront Distribution Viewer Certificate is using TLS v1.2 or higher"
+	FAILED for resource: module.cdn.aws_cloudfront_distribution.this
+
+### modules/cdn/main.tf: without the CKV_AWS_259 skip
+Passed checks: 0, Failed checks: 2, Skipped checks: 0
+Check: CKV_AWS_259: "Ensure CloudFront response header policy enforces Strict Transport Security"
+	FAILED for resource: module.cdn.aws_cloudfront_response_headers_policy.static
+Check: CKV_AWS_259: "Ensure CloudFront response header policy enforces Strict Transport Security"
+
+### modules/cdn/main.tf: without the CKV_AWS_68 skip
+Passed checks: 0, Failed checks: 1, Skipped checks: 0
+Check: CKV_AWS_68: "CloudFront Distribution should have WAF enabled"
+	FAILED for resource: module.cdn.aws_cloudfront_distribution.this
+

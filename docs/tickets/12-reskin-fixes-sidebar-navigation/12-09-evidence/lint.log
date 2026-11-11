@@ -1,0 +1,11 @@
+$ make lint-frontend (at 7ceadcfd)
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint /home/user/wt-12-09/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /home/user/wt-12-09/frontend
+> tsc
+
+exit 0

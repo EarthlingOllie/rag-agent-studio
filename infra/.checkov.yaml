@@ -1,0 +1,8 @@
+# Policy checks for every Terraform file under infra/. Any failed check fails the run.
+directory:
+  - .
+framework:
+  - terraform
+compact: true
+quiet: true
+skip-download: true

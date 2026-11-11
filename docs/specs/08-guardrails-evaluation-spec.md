@@ -95,9 +95,9 @@ Every Guardrail outcome is recorded in the Trace and counted in analytics. An at
 - Output moderation for toxicity or brand safety beyond the canary (possible future layer).
 - Training or fine-tuning a custom classifier.
 - PII detection and redaction in Visitor input.
-- Tools for Agents, and therefore tool-use defences (ADR-0007).
+- Tools that act outside the Conversation (ADR-0007). Spec 13 adds the read-only Knowledge Search tool, with its own canary check and both-mode evaluation (ADR-0015).
 
 ## Further Notes
 
-- The honest framing for interviews: no layer is perfect. The design limits the blast radius (no tools), adds independent detection layers, and *measures* resilience with the evaluation suite.
+- The honest framing for interviews: no layer is perfect. The design limits the blast radius (no tools that act outside the Conversation), adds independent detection layers, and *measures* resilience with the evaluation suite.
 - Keep the mocked "naive model" in the eval runner. If the mock refused attacks by itself, the suite would only test the mock.

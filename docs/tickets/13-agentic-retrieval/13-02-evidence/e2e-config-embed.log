@@ -1,0 +1,99 @@
+
+Running 5 tests using 1 worker
+
+  ✘  1 [studio] › e2e/tests/agent-config.spec.ts:22:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (20.9s)
+  ✓  2 [studio] › e2e/tests/agent-drafts.spec.ts:6:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (8.0s)
+  ✓  3 [studio] › e2e/tests/agent-revert.spec.ts:6:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (5.8s)
+  ✘  4 [studio] › e2e/tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (10.1s)
+  ✓  5 [studio] › e2e/tests/token-budget.spec.ts:18:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (13.0s)
+
+
+  1) [studio] › e2e/tests/agent-config.spec.ts:22:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator: getByRole('group', { name: 'Experience' }).getByLabel('Greeting')
+    Expected: "Hi! Ask me about leave."
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toHaveValue" getByRole('group', { name: 'Experience' }).getByLabel('Greeting') with timeout 5000ms
+      - waiting for getByRole('group', { name: 'Experience' }).getByLabel('Greeting')
+
+
+      106 |     await expect(page.getByRole("group", { name: "Behaviour" }).getByLabel("Temperature")).toHaveValue("0.3", { timeout: 15_000 });
+      107 |     await expect(page.getByRole("group", { name: "Model override" }).getByLabel("Model")).toHaveValue("gpt-4.1-mini");
+    > 108 |     await expect(page.getByRole("group", { name: "Experience" }).getByLabel("Greeting")).toHaveValue("Hi! Ask me about leave.");
+          |                                                                                          ^
+      109 |     await expect(page.getByLabel("Input Guardrail mode")).toHaveValue("warn");
+      110 |   });
+      111 | });
+        at /home/user/wt-13-02/frontend/e2e/tests/agent-config.spec.ts:108:90
+
+    Error Context: test-results/tests-agent-config-Full-Ag-f70ae-und-uses-the-Model-override-studio/error-context.md
+
+  2) [studio] › e2e/tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 40
+
+    - Array []
+    + Array [
+    +   Object {
+    +     "description": "Ensure that elements labelled through their content must have their visible text as part of their accessible name",
+    +     "help": "Elements must have their visible text as part of their accessible name",
+    +     "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=playwright",
+    +     "id": "label-content-name-mismatch",
+    +     "impact": "serious",
+    +     "nodes": Array [
+    +       Object {
+    +         "all": Array [],
+    +         "any": Array [
+    +           Object {
+    +             "data": null,
+    +             "id": "label-content-name-mismatch",
+    +             "impact": "serious",
+    +             "message": "Text inside the element is not included in the accessible name",
+    +             "relatedNodes": Array [],
+    +           },
+    +         ],
+    +         "failureSummary": "Fix any of the following:
+    +   Text inside the element is not included in the accessible name",
+    +         "html": "<button type=\"button\" aria-label=\"Copy Embed Snippet\" class=\"aria-expanded:bg-acc...\">",
+    +         "impact": "serious",
+    +         "none": Array [],
+    +         "target": Array [
+    +           ".absolute",
+    +         ],
+    +       },
+    +     ],
+    +     "tags": Array [
+    +       "cat.semantics",
+    +       "wcag21a",
+    +       "wcag253",
+    +       "EN-301-549",
+    +       "EN-9.2.5.3",
+    +       "RGAAv4",
+    +       "RGAA-6.1.5",
+    +     ],
+    +   },
+    + ]
+
+      72 |     await origins.getByRole("button", { name: "Save Allowed Origins" }).click();
+      73 |     await expect(origins.getByText("Saved. Pages on these sites can show the Agent now.")).toBeVisible({ timeout: 15_000 });
+    > 74 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+         |                                                           ^
+      75 |
+      76 |     // The shell may be framed by that origin only.
+      77 |     const shell = await page.request.get(`/widget/a/${publicId}`);
+        at /home/user/wt-13-02/frontend/e2e/tests/embed.spec.ts:74:59
+
+    Error Context: test-results/tests-embed-Embed-an-Agent-a2370-chats-with-the-Live-Version-studio/error-context.md
+
+  2 failed
+    [studio] › e2e/tests/agent-config.spec.ts:22:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override 
+    [studio] › e2e/tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version 
+  3 passed (1.0m)

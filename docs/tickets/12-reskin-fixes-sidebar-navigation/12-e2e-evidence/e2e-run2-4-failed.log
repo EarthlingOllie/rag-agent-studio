@@ -1,0 +1,216 @@
+
+> rag-agent-studio-frontend@ e2e /home/user/wt-integ/frontend
+> playwright test --trace off
+
+
+Running 118 tests using 2 workers
+
+  ✓    1 [harness] › e2e/harness/agent-navigation.spec.ts:59:3 › navigation helpers on an Agent › Agent views are read from the tab row (1.0s)
+  ✓    2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (897ms)
+  ✓    4 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (508ms)
+  ✓    3 [harness] › e2e/harness/agent-navigation.spec.ts:70:3 › navigation helpers on an Agent › the Agents switcher is the ▾ on the Agent's name (891ms)
+  ✓    5 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (376ms)
+  ✓    7 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (237ms)
+  ✓    8 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (2ms)
+  ✓    9 [harness] › e2e/harness/drawer.spec.ts:36:3 › drawer helpers › navigationButton is the top bar's Open navigation button (520ms)
+  ✓    6 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.1s)
+  ✓   10 [harness] › e2e/harness/drawer.spec.ts:40:3 › drawer helpers › openDrawer presses it and returns the drawer once its navigation is shown (775ms)
+  ✓   12 [harness] › e2e/harness/navigation.spec.ts:69:3 › navigation helpers › openSection follows a sidebar link, not a crumb of the same name (596ms)
+  ✓   11 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.3s)
+  ✓   13 [harness] › e2e/harness/navigation.spec.ts:76:3 › navigation helpers › sectionNames lists a sidebar group's links, without their hidden icons (393ms)
+  ✓   14 [harness] › e2e/harness/navigation.spec.ts:81:3 › navigation helpers › the Organisations switcher is the sidebar's (590ms)
+  ✓   16 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (113ms)
+  ✓   15 [harness] › e2e/harness/navigation.spec.ts:90:3 › navigation helpers › Organisation settings are read from the tab row in the page (636ms)
+  ✓   17 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (207ms)
+  ✓   18 [harness] › e2e/harness/navigation.spec.ts:99:3 › navigation helpers › breadcrumb reads the crumbs shown and the current one (329ms)
+  ✓   19 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (210ms)
+  ✓   20 [harness] › e2e/harness/navigation.spec.ts:103:3 › navigation helpers › a top bar menu opens, is listed and closes as before (625ms)
+  ✓   22 [studio] › e2e/tests/agent-archive.spec.ts:6:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (13.4s)
+  ✓   23 [studio] › e2e/tests/agent-config.spec.ts:22:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (22.2s)
+  ✓   24 [studio] › e2e/tests/agent-drafts.spec.ts:6:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (13.1s)
+  ✓   25 [studio] › e2e/tests/agent-publish.spec.ts:6:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (9.0s)
+  ✘   21 [studio] › e2e/tests/accessibility.spec.ts:14:3 › Accessibility › every signed-in page has no WCAG 2.2 AA violations, in the light and the dark Appearance (1.1m)
+  ✓   27 [studio] › e2e/tests/attack-panel.spec.ts:28:3 › Attack panel › has a button per attack category and a benign control (1.6s)
+  ✓   26 [studio] › e2e/tests/agent-revert.spec.ts:6:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (12.1s)
+  ✓   28 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Instruction override: shows the reply and each Guardrail layer's outcome (1.9s)
+  ✓   30 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Prompt extraction: shows the reply and each Guardrail layer's outcome (2.9s)
+  ✓   29 [studio] › e2e/tests/audit.spec.ts:5:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (5.1s)
+  ✓   31 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Role-play jailbreak: shows the reply and each Guardrail layer's outcome (1.9s)
+  ✓   33 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Encoded attack (base64): shows the reply and each Guardrail layer's outcome (2.2s)
+  ✓   32 [studio] › e2e/tests/auth.spec.ts:6:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (3.9s)
+  ✓   34 [studio] › e2e/tests/attack-panel.spec.ts:38:5 › Attack panel › Benign control: shows the reply and each Guardrail layer's outcome (3.0s)
+  ✓   36 [studio] › e2e/tests/attack-panel.spec.ts:54:3 › Attack panel › the canary cuts off the encoded attack's leak: the secret never reaches the page (978ms)
+  ✓   35 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (3.3s)
+  ✓   38 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (2.6s)
+  ✓   39 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.8s)
+  ✓   40 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (2.8s)
+  ✓   37 [studio] › e2e/tests/bedrock-credentials.spec.ts:20:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (9.1s)
+  ✓   41 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (3.3s)
+  ✓   42 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (8.1s)
+  ✓   43 [studio] › e2e/tests/bulk-rollout.spec.ts:16:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (13.9s)
+  ✓   45 [studio] › e2e/tests/conversations.spec.ts:9:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (7.9s)
+  ✓   44 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (17.0s)
+  ✓   47 [studio] › e2e/tests/demo-pages.spec.ts:19:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (3.9s)
+  ✓   46 [studio] › e2e/tests/credentials.spec.ts:20:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (5.6s)
+  ✓   48 [studio] › e2e/tests/demo-pages.spec.ts:37:3 › Demo host pages › the help-centre page shows the same Agent inline (2.6s)
+  ✓   50 [studio] › e2e/tests/demo-pages.spec.ts:49:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (1.7s)
+  ✓   49 [studio] › e2e/tests/credentials.spec.ts:82:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (6.1s)
+  ✓   51 [studio] › e2e/tests/demo-pages.spec.ts:70:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (7.0s)
+  ✓   53 [studio] › e2e/tests/documents.spec.ts:11:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (13.3s)
+  ✓   52 [studio] › e2e/tests/document-editions.spec.ts:11:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (19.3s)
+  ✓   54 [studio] › e2e/tests/documents.spec.ts:39:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (14.1s)
+  ✓   55 [studio] › e2e/tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (18.4s)
+  ✓   56 [studio] › e2e/tests/documents.spec.ts:70:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (15.8s)
+  ✓   57 [studio] › e2e/tests/embedding-models.spec.ts:18:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (10.9s)
+  ✓   59 [studio] › e2e/tests/embedding-models.spec.ts:85:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (16.7s)
+  ✓   58 [studio] › e2e/tests/five-minute-demo.spec.ts:40:1 › the five-minute demo (22.1s)
+  ✓   61 [studio] › e2e/tests/ingestion-failures.spec.ts:6:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (8.2s)
+  ✓   60 [studio] › e2e/tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome (12.8s)
+  ✓   62 [studio] › e2e/tests/instructions-versions.spec.ts:5:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (8.2s)
+  ✓   63 [studio] › e2e/tests/instructions.spec.ts:5:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (10.5s)
+  ✓   64 [studio] › e2e/tests/invites.spec.ts:19:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (12.5s)
+  ✓   66 [studio] › e2e/tests/invites.spec.ts:82:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (7.5s)
+  ✓   65 [studio] › e2e/tests/llm-classifier.spec.ts:18:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (21.6s)
+  ✓   67 [studio] › e2e/tests/members.spec.ts:43:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (11.7s)
+  ✓   68 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (13.1s)
+  ✓   69 [studio] › e2e/tests/members.spec.ts:101:3 › members and roles › an Editor leaves, and the last Owner can't (7.9s)
+  ✓   71 [studio] › e2e/tests/models.spec.ts:25:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (6.6s)
+  ✓   70 [studio] › e2e/tests/mfa.spec.ts:23:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (14.4s)
+  ✓   73 [studio] › e2e/tests/mfa.spec.ts:83:1 › a wrong code keeps the Member on the challenge (4.1s)
+  ✓   72 [studio] › e2e/tests/ocr.spec.ts:11:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (16.5s)
+  ✓   74 [studio] › e2e/tests/operational-settings.spec.ts:9:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (9.5s)
+  ✓   75 [studio] › e2e/tests/organisation-cost.spec.ts:9:3 › Organisation cost › an Owner opens the Cost page from the navigation and sees each Project's and Agent's cost, the Playground in its own column (9.2s)
+  ✓   76 [studio] › e2e/tests/organisation-switcher.spec.ts:6:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (10.9s)
+  ✓   77 [studio] › e2e/tests/password-reset.spec.ts:9:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (6.3s)
+  ✓   79 [studio] › e2e/tests/password-reset.spec.ts:43:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (4.8s)
+  ✓   80 [studio] › e2e/tests/password-reset.spec.ts:81:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (2.7s)
+  ✓   81 [studio] › e2e/tests/password-reset.spec.ts:81:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.1s)
+  ✓   82 [studio] › e2e/tests/password-reset.spec.ts:89:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (3.6s)
+  ✓   78 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (22.4s)
+  ✓   83 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (10.4s)
+  ✓   85 [studio] › e2e/tests/prices.spec.ts:15:3 › prices › an Owner sees the platform price table and overrides a price for one credential (7.1s)
+  ✓   86 [studio] › e2e/tests/project-deletion.spec.ts:10:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (14.2s)
+  ✓   84 [studio] › e2e/tests/playground.spec.ts:14:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (30.4s)
+  ✓   87 [studio] › e2e/tests/projects.spec.ts:46:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (8.9s)
+  ✓   88 [studio] › e2e/tests/rate-limits.spec.ts:14:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (10.2s)
+  ✓   89 [studio] › e2e/tests/projects.spec.ts:107:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (10.2s)
+  ✓   90 [studio] › e2e/tests/require-mfa.spec.ts:46:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (12.2s)
+  ✓   92 [studio] › e2e/tests/retention.spec.ts:10:3 › Retention and tombstones › an Owner sets the Retention Window, and the change is audited (5.1s)
+  ✓   91 [studio] › e2e/tests/reranker.spec.ts:24:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (19.1s)
+  ✓   94 [studio] › e2e/tests/seed.spec.ts:11:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (4.5s)
+  ✓   95 [studio] › e2e/tests/seed.spec.ts:36:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (3.7s)
+  ✓   96 [studio] › e2e/tests/select-chevron.spec.ts:27:1 › selects draw the design system's chevron, inset like their text, in both Appearances (2.5s)
+  ✓   93 [studio] › e2e/tests/retention.spec.ts:34:3 › Retention and tombstones › a Trace keeps a deleted Document's name as a tombstone, and an Owner deletes a Conversation on request (19.7s)
+  ✓   98 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.9s)
+  ✓   97 [studio] › e2e/tests/sidebar.spec.ts:5:3 › Sidebar › an Owner moves around the Organisation and a Project from the sidebar, which marks where they are (6.7s)
+  ✓   99 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (3.1s)
+  ✓  100 [studio] › e2e/tests/sidebar.spec.ts:52:3 › Sidebar › the main content keeps its 1160 px column beside a sidebar of about 240 px (2.5s)
+  ✓  102 [studio] › e2e/tests/sidebar.spec.ts:68:3 › Sidebar › on a phone the sidebar is a drawer behind Open navigation, which holds focus and closes on Escape, outside or a link (5.5s)
+  ✓  103 [studio] › e2e/tests/sidebar.spec.ts:115:3 › Sidebar › the breadcrumb is a plain path of links, and on a phone shows only its last two crumbs on one row (7.0s)
+  ✓  101 [studio] › e2e/tests/tag-scoping.spec.ts:20:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (23.0s)
+  ✓  105 [studio] › e2e/tests/theme.spec.ts:61:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (6.1s)
+  ✓  106 [studio] › e2e/tests/theme.spec.ts:100:3 › Theme editor › an Editor views the Theme and its preview but can't change it (4.9s)
+  ✓  107 [studio] › e2e/tests/theme.spec.ts:117:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (6.4s)
+  ✓  108 [studio] › e2e/tests/theme.spec.ts:164:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (6.0s)
+  ✓  109 [studio] › e2e/tests/time-series.spec.ts:13:3 › Time series › the Editor sees a Visitor's Conversation over time, markers where the Live Version changed, and a confounder note once a Document is added (10.3s)
+  ✓  110 [studio] › e2e/tests/token-budget.spec.ts:18:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (19.4s)
+  ✘  111 [studio] › e2e/tests/version-comparison.spec.ts:11:3 › Version comparison › an Editor compares two Versions side by side with the config diff, and exports the comparison as CSV (11.4s)
+  ✘  112 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (5.2s)
+  ✓  113 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (6.4s)
+  ✘  104 [studio] › e2e/tests/tags.spec.ts:22:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (1.5m)
+  ✓  114 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (6.8s)
+  ✓  115 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (8.9s)
+  ✓  116 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (7.5s)
+  ✓  117 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (2.7s)
+  ✓  118 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (3.6s)
+
+
+  1) [studio] › e2e/tests/accessibility.spec.ts:14:3 › Accessibility › every signed-in page has no WCAG 2.2 AA violations, in the light and the dark Appearance 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { level: 1 })
+    Expected: visible
+    Error: strict mode violation: getByRole('heading', { level: 1 }) resolved to 2 elements:
+        1) <h1 class="text-[32px] leading-tight font-medium tracking-[-0.02em] text-ink">Northwind HR</h1> aka getByRole('heading', { name: 'Northwind HR' })
+        2) <h1>Northwind Traders staff handbook</h1> aka getByRole('heading', { name: 'Northwind Traders staff' })
+
+    Call log:
+      - Expect "toBeVisible" getByRole('heading', { level: 1 }) with timeout 15000ms
+      - waiting for getByRole('heading', { level: 1 })
+
+
+      58 |       for (const target of SIGNED_IN_PAGES) {
+      59 |         await page.goto(pagePath(target, ids));
+    > 60 |         await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 15_000 });
+         |                                                               ^
+      61 |         await page.waitForLoadState("networkidle");
+      62 |         const found = (await makeAxeBuilder().analyze()).violations.map((violation) => violation.id);
+      63 |         if (found.length > 0) violations[`${appearance} ${target.name}`] = found;
+        at /home/user/wt-integ/frontend/e2e/tests/accessibility.spec.ts:60:63
+
+    Error Context: test-results/tests-accessibility-Access-85f5a-ght-and-the-dark-Appearance-studio/error-context.md
+
+  2) [studio] › e2e/tests/tags.spec.ts:22:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag 
+
+    Test timeout of 90000ms exceeded.
+
+    Error Context: test-results/tests-tags-Tags-an-Editor--0d2b4-list-by-name-status-and-Tag-studio/error-context.md
+
+  3) [studio] › e2e/tests/version-comparison.spec.ts:11:3 › Version comparison › an Editor compares two Versions side by side with the config diff, and exports the comparison as CSV 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('region', { name: 'Configuration changes' }).getByRole('list', { name: 'Behaviour › System prompt changes' })
+    Expected substring: "Answer in one sentence."
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByRole('region', { name: 'Configuration changes' }).getByRole('list', { name: 'Behaviour › System prompt changes' }) with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Configuration changes' }).getByRole('list', { name: 'Behaviour › System prompt changes' })
+
+
+      73 |     const changes = page.getByRole("region", { name: "Configuration changes" });
+      74 |     await expect(changes.getByText("Behaviour › System prompt")).toBeVisible();
+    > 75 |     await expect(changes.getByRole("list", { name: "Behaviour › System prompt changes" })).toContainText("Answer in one sentence.");
+         |                                                                                            ^
+      76 |     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+      77 |
+      78 |     // A date range with no Visitor use leaves nothing to compare.
+        at /home/user/wt-integ/frontend/e2e/tests/version-comparison.spec.ts:75:92
+
+    Error Context: test-results/tests-version-comparison-V-e5c71-ports-the-comparison-as-CSV-studio/error-context.md
+
+  4) [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator: getByLabel('Agent')
+    Expected: "f34abc64-a9b0-4f86-9d1f-cdaca46559ee"
+    Error: Not an input element
+
+    Call log:
+      - Expect "toHaveValue" getByLabel('Agent') with timeout 5000ms
+      - waiting for getByLabel('Agent')
+
+
+      69 |     // The Editor reads the Live Version's KPIs, today's partial day included.
+      70 |     await page.goto(`/organisations/${organisationId}/projects/${projectId}/analytics`);
+    > 71 |     await expect(page.getByLabel("Agent")).toHaveValue(agentId);
+         |                                            ^
+      72 |     await expect(page.getByRole("combobox", { name: /^Version/ })).toHaveText("v1 (Live)");
+      73 |     const card = (name: string) => page.getByRole("list", { name: "Key numbers for v1" }).getByRole("listitem", { name });
+      74 |     await expect(card("Volume")).toContainText("1 Conversation", { timeout: 15_000 });
+        at /home/user/wt-integ/frontend/e2e/tests/version-kpis.spec.ts:71:44
+
+    Error Context: test-results/tests-version-kpis-Version-5b747-he-Playground-doesn-t-count-studio/error-context.md
+
+  4 failed
+    [studio] › e2e/tests/accessibility.spec.ts:14:3 › Accessibility › every signed-in page has no WCAG 2.2 AA violations, in the light and the dark Appearance 
+    [studio] › e2e/tests/tags.spec.ts:22:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag 
+    [studio] › e2e/tests/version-comparison.spec.ts:11:3 › Version comparison › an Editor compares two Versions side by side with the config diff, and exports the comparison as CSV 
+    [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count 
+  114 passed (8.8m)
+ ELIFECYCLE  Command failed with exit code 1.
+exit 1

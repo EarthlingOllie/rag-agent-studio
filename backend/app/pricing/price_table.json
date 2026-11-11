@@ -1,0 +1,182 @@
+{
+  "_comment": [
+    "The platform price table: US dollars per million tokens, by provider and model, from the date each price took effect.",
+    "Migrating loads this file into the model_prices table (app.pricing.sync); edit it and run `make migrate` to change prices.",
+    "To change a price from a date, add a new entry with that effective_from rather than editing the old one, so past costs keep their price.",
+    "Embedding and rerank models have no output tokens (output 0) and no cache discount (cached_input = input).",
+    "Cohere Rerank 3.5 on Bedrock is priced per search query, not per token, so it has no entry; Owners can override it per credential.",
+    "The demo model (provider demo) costs nothing: it answers with canned text and calls no provider."
+  ],
+  "currency": "USD",
+  "unit": "per million tokens",
+  "prices": [
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-1",
+      "effective_from": "2025-08-05",
+      "input": "15",
+      "output": "75",
+      "cached_input": "1.5"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-5",
+      "effective_from": "2025-09-29",
+      "input": "3",
+      "output": "15",
+      "cached_input": "0.3"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "effective_from": "2025-10-15",
+      "input": "1",
+      "output": "5",
+      "cached_input": "0.1"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "effective_from": "2025-04-14",
+      "input": "2",
+      "output": "8",
+      "cached_input": "0.5"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4.1-mini",
+      "effective_from": "2025-04-14",
+      "input": "0.4",
+      "output": "1.6",
+      "cached_input": "0.1"
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "effective_from": "2024-07-18",
+      "input": "0.15",
+      "output": "0.6",
+      "cached_input": "0.075"
+    },
+    {
+      "provider": "openai",
+      "model": "text-embedding-3-small",
+      "effective_from": "2024-01-25",
+      "input": "0.02",
+      "output": "0",
+      "cached_input": "0.02"
+    },
+    {
+      "provider": "openai",
+      "model": "text-embedding-3-large",
+      "effective_from": "2024-01-25",
+      "input": "0.13",
+      "output": "0",
+      "cached_input": "0.13"
+    },
+    {
+      "provider": "bedrock",
+      "model": "anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "effective_from": "2025-09-29",
+      "input": "3",
+      "output": "15",
+      "cached_input": "0.3"
+    },
+    {
+      "provider": "bedrock",
+      "model": "anthropic.claude-haiku-4-5-20251001-v1:0",
+      "effective_from": "2025-10-15",
+      "input": "1",
+      "output": "5",
+      "cached_input": "0.1"
+    },
+    {
+      "provider": "bedrock",
+      "model": "amazon.nova-pro-v1:0",
+      "effective_from": "2024-12-03",
+      "input": "0.8",
+      "output": "3.2",
+      "cached_input": "0.2"
+    },
+    {
+      "provider": "bedrock",
+      "model": "mistral.mistral-7b-instruct-v0:2",
+      "effective_from": "2024-03-01",
+      "input": "0.15",
+      "output": "0.2",
+      "cached_input": "0.15"
+    },
+    {
+      "provider": "bedrock",
+      "model": "amazon.titan-embed-text-v2:0",
+      "effective_from": "2024-04-30",
+      "input": "0.02",
+      "output": "0",
+      "cached_input": "0.02"
+    },
+    {
+      "provider": "bedrock",
+      "model": "cohere.embed-multilingual-v3",
+      "effective_from": "2023-11-13",
+      "input": "0.1",
+      "output": "0",
+      "cached_input": "0.1"
+    },
+    {
+      "provider": "voyage",
+      "model": "voyage-3.5",
+      "effective_from": "2025-05-20",
+      "input": "0.06",
+      "output": "0",
+      "cached_input": "0.06"
+    },
+    {
+      "provider": "voyage",
+      "model": "voyage-3.5-lite",
+      "effective_from": "2025-05-20",
+      "input": "0.02",
+      "output": "0",
+      "cached_input": "0.02"
+    },
+    {
+      "provider": "voyage",
+      "model": "voyage-multilingual-2",
+      "effective_from": "2024-06-10",
+      "input": "0.12",
+      "output": "0",
+      "cached_input": "0.12"
+    },
+    {
+      "provider": "voyage",
+      "model": "rerank-2.5",
+      "effective_from": "2025-08-11",
+      "input": "0.05",
+      "output": "0",
+      "cached_input": "0.05"
+    },
+    {
+      "provider": "voyage",
+      "model": "rerank-2.5-lite",
+      "effective_from": "2025-08-11",
+      "input": "0.02",
+      "output": "0",
+      "cached_input": "0.02"
+    },
+    {
+      "provider": "demo",
+      "model": "demo-chat",
+      "effective_from": "2026-11-06",
+      "input": "0",
+      "output": "0",
+      "cached_input": "0"
+    },
+    {
+      "provider": "demo",
+      "model": "demo-naive",
+      "effective_from": "2026-11-08",
+      "input": "0",
+      "output": "0",
+      "cached_input": "0"
+    }
+  ]
+}

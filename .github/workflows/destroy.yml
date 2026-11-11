@@ -1,0 +1,57 @@
+name: destroy
+
+# Tears the demo environment down (spec 09 story 27). A separate manual run from deploy.yml, and it does nothing
+# unless the confirmation is typed exactly as "destroy demo" (scripts/deploy/destroy.sh checks it). The state bucket
+# and the OIDC deploy role (infra/bootstrap) stay.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy demo" to destroy the demo environment and everything in it.'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  destroy:
+    name: Destroy the demo environment
+    runs-on: ubuntu-latest
+    environment: demo
+    # Shared with deploy.yml, so a destroy never runs alongside a deploy.
+    concurrency:
+      group: demo-environment
+      cancel-in-progress: false
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      CONFIRM: ${{ inputs.confirm }}
+    steps:
+      - uses: actions/checkout@v4
+      # Checked before any credentials are requested, so a mistyped run touches nothing.
+      - name: Check the confirmation
+        run: |
+          if [ "$CONFIRM" != "destroy demo" ]; then
+            echo "::error title=Not destroyed::Type exactly 'destroy demo' to destroy the demo environment. Nothing was changed."
+            exit 1
+          fi
+      - name: Check for AWS access
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ] || [ -z "$TF_STATE_BUCKET" ]; then
+            echo "::error title=Destroy not configured::Set the AWS_DEPLOY_ROLE_ARN secret and the TF_STATE_BUCKET variable from the bootstrap's outputs (docs/infra-bootstrap.md)."
+            exit 1
+          fi
+      - name: Install Terraform
+        run: scripts/ci/install-tools.sh terraform
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform destroy
+        run: scripts/deploy/destroy.sh "$CONFIRM"

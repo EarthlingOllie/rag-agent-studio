@@ -1,0 +1,118 @@
+$ STUDIO_URL=http://localhost:45173 docker compose -p rag0109 -f docker-compose.yml -f compose.sandbox.yml up -d --wait   (images built from this fresh clone at 2c113e7 by build.sh; fresh volumes)
+ Volume rag0109_postgres-data Creating 
+ Network rag0109_default Creating 
+ Volume rag0109_rustfs-data Creating 
+ Network rag0109_default Creating 
+ Volume rag0109_rustfs-data Creating 
+ Volume rag0109_postgres-data Creating 
+ Volume rag0109_postgres-data Created 
+ Volume rag0109_postgres-data Created 
+ Volume rag0109_rustfs-data Created 
+ Volume rag0109_rustfs-data Created 
+ Network rag0109_default Created 
+ Network rag0109_default Created 
+ Container rag0109-rustfs-1 Creating 
+ Container rag0109-mailpit-1 Creating 
+ Container rag0109-redis-1 Creating 
+ Container rag0109-postgres-1 Creating 
+ Container rag0109-mailpit-1 Created 
+ Container rag0109-redis-1 Created 
+ Container rag0109-rustfs-1 Created 
+ Container rag0109-postgres-1 Created 
+ Container rag0109-worker-1 Creating 
+ Container rag0109-api-1 Creating 
+ Container rag0109-beat-1 Creating 
+ Container rag0109-beat-1 Created 
+ Container rag0109-api-1 Created 
+ Container rag0109-studio-1 Creating 
+ Container rag0109-worker-1 Created 
+ Container rag0109-studio-1 Created 
+ Container rag0109-postgres-1 Starting 
+ Container rag0109-mailpit-1 Starting 
+ Container rag0109-rustfs-1 Starting 
+ Container rag0109-redis-1 Starting 
+ Container rag0109-postgres-1 Started 
+ Container rag0109-mailpit-1 Started 
+ Container rag0109-rustfs-1 Started 
+ Container rag0109-redis-1 Started 
+ Container rag0109-postgres-1 Waiting 
+ Container rag0109-redis-1 Waiting 
+ Container rag0109-redis-1 Waiting 
+ Container rag0109-postgres-1 Waiting 
+ Container rag0109-postgres-1 Waiting 
+ Container rag0109-redis-1 Waiting 
+ Container rag0109-postgres-1 Healthy 
+ Container rag0109-postgres-1 Healthy 
+ Container rag0109-postgres-1 Healthy 
+ Container rag0109-redis-1 Healthy 
+ Container rag0109-beat-1 Starting 
+ Container rag0109-redis-1 Healthy 
+ Container rag0109-worker-1 Starting 
+ Container rag0109-redis-1 Healthy 
+ Container rag0109-api-1 Starting 
+ Container rag0109-beat-1 Started 
+ Container rag0109-worker-1 Started 
+ Container rag0109-api-1 Started 
+ Container rag0109-api-1 Waiting 
+ Container rag0109-api-1 Healthy 
+ Container rag0109-studio-1 Starting 
+ Container rag0109-studio-1 Started 
+ Container rag0109-studio-1 Waiting 
+ Container rag0109-api-1 Waiting 
+ Container rag0109-mailpit-1 Waiting 
+ Container rag0109-beat-1 Waiting 
+ Container rag0109-redis-1 Waiting 
+ Container rag0109-rustfs-1 Waiting 
+ Container rag0109-worker-1 Waiting 
+ Container rag0109-postgres-1 Waiting 
+ Container rag0109-beat-1 Healthy 
+ Container rag0109-rustfs-1 Healthy 
+ Container rag0109-redis-1 Healthy 
+ Container rag0109-api-1 Healthy 
+ Container rag0109-mailpit-1 Healthy 
+ Container rag0109-worker-1 Healthy 
+ Container rag0109-postgres-1 Healthy 
+ Container rag0109-studio-1 Healthy 
+exit 0
+
+$ E2E_BASE_URL=http://localhost:45173 E2E_MAILPIT_URL=http://localhost:48025 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome pnpm e2e
+
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0109/frontend
+> playwright test
+
+
+Running 30 tests using 2 workers
+
+  ✓   1 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (724ms)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (361ms)
+  ✓   2 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.5s)
+  ✓   4 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (384ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (352ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (17ms)
+  ✓   5 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.2s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (143ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (216ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (208ms)
+  ✓  12 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (2.6s)
+  ✓  11 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (3.5s)
+  ✓  13 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (2.4s)
+  ✓  15 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (1.3s)
+  ✓  16 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (2.0s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (1.7s)
+  ✓  18 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (2.4s)
+  ✓  14 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (9.8s)
+  ✓  20 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (5.4s)
+  ✓  19 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (8.9s)
+  ✓  22 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (6.0s)
+  ✓  21 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (10.0s)
+  ✓  23 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (3.8s)
+  ✓  24 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (3.1s)
+  ✓  26 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (1.4s)
+  ✓  27 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (1.9s)
+  ✓  25 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (4.3s)
+  ✓  28 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (1.5s)
+  ✓  29 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (1.6s)
+  ✓  30 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (2.1s)
+
+  30 passed (46.7s)
+exit 0

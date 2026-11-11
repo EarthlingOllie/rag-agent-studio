@@ -1,0 +1,479 @@
+{
+ "seed_report": [
+  "Seeded the demo Organisation 'Northwind Traders'.",
+  "Studio: https://studio.example.test/",
+  "  Owner:  owner@northwind.example  password: northwind-owner-demo",
+  "  Editor: editor@northwind.example  password: northwind-editor-demo",
+  "Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).",
+  "Default Model: Demo model (Northwind demo model)",
+  "Demo pages: https://studio.example.test/demo/"
+ ],
+ "agents": {
+  "HR helper": {
+   "live_history": [
+    [
+     "2026-11-05T07:30:00.087280Z",
+     "publish",
+     1,
+     3,
+     "Eli Edwards"
+    ],
+    [
+     "2026-10-29T07:30:00.012246Z",
+     "revert",
+     2,
+     1,
+     "Nadia Novak"
+    ],
+    [
+     "2026-10-22T07:30:00.063272Z",
+     "publish",
+     1,
+     2,
+     "Eli Edwards"
+    ],
+    [
+     "2026-10-11T07:30:00.052369Z",
+     "publish",
+     null,
+     1,
+     "Nadia Novak"
+    ]
+   ],
+   "metrics": {
+    "start": "2026-10-10",
+    "end": "2026-11-08",
+    "versions": [
+     {
+      "number": 1,
+      "is_live": false,
+      "conversations": 90,
+      "messages": 152,
+      "low_confidence": false,
+      "thumbs_up": {
+       "up": 76,
+       "down": 28,
+       "n": 104,
+       "rate": 0.7307692307692307,
+       "low": 0.6384304486194915,
+       "high": 0.8066673878239922,
+       "low_confidence": false
+      },
+      "rating": {
+       "n": 39,
+       "mean": 4.0,
+       "low_confidence": false
+      },
+      "tokens": {
+       "n": 152,
+       "mean": 97.26315789473684,
+       "p95": 105.13960684593164
+      },
+      "fallback": {
+       "count": 0,
+       "rate": 0.0
+      }
+     },
+     {
+      "number": 2,
+      "is_live": false,
+      "conversations": 35,
+      "messages": 57,
+      "low_confidence": false,
+      "thumbs_up": {
+       "up": 16,
+       "down": 28,
+       "n": 44,
+       "rate": 0.36363636363636365,
+       "low": 0.23783529708820186,
+       "high": 0.5113362312095656,
+       "low_confidence": false
+      },
+      "rating": {
+       "n": 15,
+       "mean": 2.3333333333333335,
+       "low_confidence": true
+      },
+      "tokens": {
+       "n": 57,
+       "mean": 97.49122807017544,
+       "p95": 105.69772312351904
+      },
+      "fallback": {
+       "count": 0,
+       "rate": 0.0
+      }
+     },
+     {
+      "number": 3,
+      "is_live": true,
+      "conversations": 15,
+      "messages": 25,
+      "low_confidence": true,
+      "thumbs_up": {
+       "up": 18,
+       "down": 2,
+       "n": 20,
+       "rate": 0.9,
+       "low": 0.6989663547715128,
+       "high": 0.9721335187862319,
+       "low_confidence": true
+      },
+      "rating": {
+       "n": 9,
+       "mean": 4.555555555555555,
+       "low_confidence": true
+      },
+      "tokens": {
+       "n": 25,
+       "mean": 96.92,
+       "p95": 105.5062417410489
+      },
+      "fallback": {
+       "count": 0,
+       "rate": 0.0
+      }
+     }
+    ]
+   }
+  },
+  "Product FAQ": {
+   "live_history": [
+    [
+     "2026-10-11T06:00:06.256265Z",
+     "publish",
+     null,
+     1,
+     "Nadia Novak"
+    ]
+   ],
+   "metrics": {
+    "start": "2026-10-10",
+    "end": "2026-11-08",
+    "versions": [
+     {
+      "number": 1,
+      "is_live": true,
+      "conversations": 84,
+      "messages": 142,
+      "low_confidence": false,
+      "thumbs_up": {
+       "up": 72,
+       "down": 21,
+       "n": 93,
+       "rate": 0.7741935483870968,
+       "low": 0.6793354933632197,
+       "high": 0.8472984568174416,
+       "low_confidence": false
+      },
+      "rating": {
+       "n": 35,
+       "mean": 4.228571428571429,
+       "low_confidence": false
+      },
+      "tokens": {
+       "n": 142,
+       "mean": 193.70422535211267,
+       "p95": 438.8724088535501
+      },
+      "fallback": {
+       "count": 0,
+       "rate": 0.0
+      }
+     }
+    ]
+   }
+  },
+  "Low-budget helper": {
+   "live_history": [
+    [
+     "2026-11-02T07:30:00.260938Z",
+     "bulk_publish",
+     1,
+     2,
+     "Nadia Novak"
+    ],
+    [
+     "2026-10-11T06:00:06.555896Z",
+     "publish",
+     null,
+     1,
+     "Nadia Novak"
+    ]
+   ],
+   "metrics": {
+    "start": "2026-10-10",
+    "end": "2026-11-08",
+    "versions": [
+     {
+      "number": 1,
+      "is_live": false,
+      "conversations": 0,
+      "messages": 0,
+      "low_confidence": true,
+      "thumbs_up": {
+       "up": 0,
+       "down": 0,
+       "n": 0,
+       "rate": null,
+       "low": null,
+       "high": null,
+       "low_confidence": true
+      },
+      "rating": {
+       "n": 0,
+       "mean": null,
+       "low_confidence": true
+      },
+      "tokens": {
+       "n": 0,
+       "mean": null,
+       "p95": null
+      },
+      "fallback": {
+       "count": 0,
+       "rate": null
+      }
+     },
+     {
+      "number": 2,
+      "is_live": true,
+      "conversations": 0,
+      "messages": 0,
+      "low_confidence": true,
+      "thumbs_up": {
+       "up": 0,
+       "down": 0,
+       "n": 0,
+       "rate": null,
+       "low": null,
+       "high": null,
+       "low_confidence": true
+      },
+      "rating": {
+       "n": 0,
+       "mean": null,
+       "low_confidence": true
+      },
+      "tokens": {
+       "n": 0,
+       "mean": null,
+       "p95": null
+      },
+      "fallback": {
+       "count": 0,
+       "rate": null
+      }
+     }
+    ]
+   }
+  }
+ },
+ "instructions_rollout": {
+  "current_version": {
+   "id": "af706bd8-ef00-45db-b3a2-5fefee561217",
+   "number": 2
+  },
+  "behind": 1,
+  "agents": [
+   {
+    "id": "068ed0cb-98e6-4c1a-8f59-2f361edcd8e9",
+    "name": "Low-budget helper",
+    "live_version": {
+     "id": "0d425980-46f2-40a6-903c-28a41ef6086e",
+     "number": 2
+    },
+    "instructions_version": {
+     "id": "af706bd8-ef00-45db-b3a2-5fefee561217",
+     "number": 2
+    },
+    "has_draft_changes": false,
+    "behind": false
+   },
+   {
+    "id": "885695f0-5637-4682-a91b-2ed2f1924701",
+    "name": "HR helper",
+    "live_version": {
+     "id": "db209025-598e-46ea-b6f9-bd395966f1fd",
+     "number": 3
+    },
+    "instructions_version": {
+     "id": "af706bd8-ef00-45db-b3a2-5fefee561217",
+     "number": 2
+    },
+    "has_draft_changes": false,
+    "behind": false
+   },
+   {
+    "id": "a8574e65-9a34-49e8-8ada-f06f4385c8f7",
+    "name": "Product FAQ",
+    "live_version": {
+     "id": "704794af-29c8-4e3b-990a-dcabec093a09",
+     "number": 1
+    },
+    "instructions_version": {
+     "id": "2b618412-3038-49ff-a673-b8f3d8c13ff9",
+     "number": 1
+    },
+    "has_draft_changes": false,
+    "behind": true
+   }
+  ]
+ },
+ "audit_events": {
+  "total": 24,
+  "newest_100": [
+   [
+    "2026-11-08T12:23:11.103001Z",
+    "organisation.created"
+   ],
+   [
+    "2026-11-05T07:30:00.087280Z",
+    "agent.published"
+   ],
+   [
+    "2026-11-02T07:30:00.260938Z",
+    "project.agents_bulk_published"
+   ],
+   [
+    "2026-11-02T07:30:00.260938Z",
+    "agent.bulk_published"
+   ],
+   [
+    "2026-11-02T07:30:00.197983Z",
+    "project.instructions_published"
+   ],
+   [
+    "2026-11-02T07:30:00.102097Z",
+    "project.instructions_updated"
+   ],
+   [
+    "2026-10-29T07:30:00.012246Z",
+    "agent.reverted"
+   ],
+   [
+    "2026-10-22T07:30:00.063272Z",
+    "agent.published"
+   ],
+   [
+    "2026-10-11T07:30:00.052369Z",
+    "agent.published"
+   ],
+   [
+    "2026-10-11T06:00:06.628389Z",
+    "agent.operational_settings_changed"
+   ],
+   [
+    "2026-10-11T06:00:06.555896Z",
+    "agent.published"
+   ],
+   [
+    "2026-10-11T06:00:06.486868Z",
+    "agent.created"
+   ],
+   [
+    "2026-10-11T06:00:06.456364Z",
+    "agent.operational_settings_changed"
+   ],
+   [
+    "2026-10-11T06:00:06.256265Z",
+    "agent.published"
+   ],
+   [
+    "2026-10-11T06:00:06.134977Z",
+    "agent.created"
+   ],
+   [
+    "2026-10-11T06:00:06.071656Z",
+    "agent.created"
+   ],
+   [
+    "2026-10-11T06:00:05.996351Z",
+    "project.instructions_published"
+   ],
+   [
+    "2026-10-11T06:00:05.952257Z",
+    "project.instructions_updated"
+   ],
+   [
+    "2026-10-11T06:00:02.667658Z",
+    "project.created"
+   ],
+   [
+    "2026-10-11T06:00:02.495671Z",
+    "theme.updated"
+   ],
+   [
+    "2026-10-11T06:00:02.367275Z",
+    "default_model.changed"
+   ],
+   [
+    "2026-10-11T06:00:02.307211Z",
+    "credential.created"
+   ],
+   [
+    "2026-10-11T06:00:00.981658Z",
+    "invite.accepted"
+   ],
+   [
+    "2026-10-11T06:00:00.937656Z",
+    "invite.created"
+   ]
+  ]
+ },
+ "conversations": {
+  "total": 224,
+  "newest_5": [
+   [
+    "2026-11-07T17:49:11.558476Z",
+    "HR helper",
+    [
+     3
+    ],
+    1,
+    0,
+    4
+   ],
+   [
+    "2026-11-07T17:49:00.252622Z",
+    "HR helper",
+    [
+     3
+    ],
+    1,
+    0,
+    null
+   ],
+   [
+    "2026-11-07T17:03:51.901390Z",
+    "HR helper",
+    [
+     3
+    ],
+    1,
+    0,
+    null
+   ],
+   [
+    "2026-11-07T15:28:05.974078Z",
+    "HR helper",
+    [
+     3
+    ],
+    2,
+    0,
+    null
+   ],
+   [
+    "2026-11-07T13:45:59.713940Z",
+    "HR helper",
+    [
+     3
+    ],
+    3,
+    0,
+    5
+   ]
+  ]
+ }
+}

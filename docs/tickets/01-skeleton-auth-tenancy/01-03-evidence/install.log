@@ -1,0 +1,11 @@
+$ make install
+# fresh clone of ticket/01-03-telemetry-scrubbing at 1bdc0b4; TEST_DATABASE_URL=postgresql+asyncpg://studio:studio@localhost:5432/studio_test_0103 TEST_REDIS_URL=redis://localhost:6379/14
+cd backend && uv sync --frozen
+Checked 88 packages in 0.87ms
+cd frontend && pnpm install --frozen-lockfile
+Scope: all 3 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 618ms using pnpm v10.28.0
+exit=0

@@ -1,0 +1,4 @@
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+399 files already formatted
+Success: no issues found in 399 source files

@@ -1,0 +1,15 @@
+commit 87d418a (stack from the e2e run)
+$ celery inspect registered (worker)
+->  celery@bded6957f58f: OK
+    * analytics.roll_up_usage
+$ beat schedule
+{'worker-health-check': ('worker.health_check', '300.0'), 'clear-token-budget-alerts': ('embed.clear_budget_alerts', '<crontab: 0 0 * * * (m/h/dM/MY/d)>'), 'usage-rollup': ('analytics.roll_up_usage', '<crontab: 5 * * * * (m/h/dM/MY/d)>')}
+$ celery call analytics.roll_up_usage, then the rows it wrote
+2914c4df-40a3-40f1-8382-136930939389
+    day     | versions | conversations | messages | up | down | ratings | fallbacks 
+------------+----------+---------------+----------+----+------+---------+-----------
+ 2026-11-08 |       12 |            15 |       19 |  1 |    2 |       3 |        16
+(1 row)
+
+Task analytics.roll_up_usage[2914c4df-40a3-40f1-8382-136930939389] received
+Task analytics.roll_up_usage[2914c4df-40a3-40f1-8382-136930939389] succeeded in 0.07330311699479353s

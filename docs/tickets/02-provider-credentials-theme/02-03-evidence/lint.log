@@ -1,0 +1,16 @@
+# commit aa17f5d, fresh clone of ticket/02-03-model-gateway-default-model
+$ make lint
+cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy
+All checks passed!
+135 files already formatted
+Success: no issues found in 135 source files
+cd frontend && pnpm lint && pnpm typecheck
+
+> rag-agent-studio-frontend@ lint <scratch>/clean0203/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck <scratch>/clean0203/frontend
+> tsc
+
+[exit code 0]

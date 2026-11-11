@@ -7,9 +7,9 @@
 **Blocked by:**
 - [05-01: Project Instructions Versions](01-project-instructions-versions.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The picker offers the Instructions Draft (the default) or any Version
-- [ ] Playground Messages record the Instructions Version or a Draft marker
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The picker offers the Instructions Draft (the default) or any Version
+- [x] Playground Messages record the Instructions Version or a Draft marker
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

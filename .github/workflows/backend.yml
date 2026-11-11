@@ -1,0 +1,38 @@
+name: backend
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://studio:studio@localhost:5432/studio_test
+      TEST_REDIS_URL: redis://localhost:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Postgres, Redis and RustFS from docker-compose.yml
+        # The services `make dev` runs, started detached and waited on until healthy.
+        working-directory: .
+        run: make services
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      - name: Install
+        run: uv sync --frozen
+      - name: Lint (ruff)
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Type check (mypy --strict)
+        run: uv run mypy
+      - name: Tests, Alembic round trip and 100% line + branch coverage gate
+        # fail_under = 100 with branch coverage is set in pyproject.toml (ADR-0008). One
+        # pytest-xdist worker per CPU, each on its own database; pytest-cov combines their coverage.
+        run: uv run pytest -n auto

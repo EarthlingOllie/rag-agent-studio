@@ -1,0 +1,17 @@
+# registry.terraform.io is blocked by the sandbox egress proxy, releases.hashicorp.com is not:
+$ curl -sS -o /dev/null -w "%{http_code}" https://registry.terraform.io/v1/providers/hashicorp/aws/versions
+curl: (56) CONNECT tunnel failed, response 403
+000
+$ curl -fsSL -o aws.zip https://releases.hashicorp.com/terraform-provider-aws/6.72.0/terraform-provider-aws_6.72.0_linux_amd64.zip
+$ curl -fsSL -O https://releases.hashicorp.com/terraform-provider-aws/6.72.0/terraform-provider-aws_6.72.0_SHA256SUMS
+$ grep linux_amd64 terraform-provider-aws_6.72.0_SHA256SUMS; sha256sum aws.zip
+2ffb6b2caaf320b61b406cff192d6e4303b64e32990b69384a056fe5af3d015b  terraform-provider-aws_6.72.0_linux_amd64.zip
+2ffb6b2caaf320b61b406cff192d6e4303b64e32990b69384a056fe5af3d015b  aws.zip
+# unzipped into <mirror>/registry.terraform.io/hashicorp/aws/6.72.0/linux_amd64/, used through TF_CLI_CONFIG_FILE:
+provider_installation {
+  filesystem_mirror {
+    path    = "<scratch>/tfmirror"
+    include = ["registry.terraform.io/hashicorp/aws"]
+  }
+}
+# The committed .terraform.lock.hcl files hold the h1 hash terraform computed plus a zh hash for every platform zip in the SHA256SUMS above, which is the set terraform records when it installs from the registry.

@@ -1,0 +1,31 @@
+$ make test-frontend @ ceb3d41
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test $SCRATCH/wt-0302live/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 $SCRATCH/wt-0302live/frontend
+      Coverage enabled with v8
+
+
+ Test Files  38 passed (38)
+      Tests  471 passed (471)
+   Start at  13:17:42
+   Duration  170.69s (tests 66%, environment 16%, import 8%, setup 7%, transform 2%, worker 1%)
+
+    Isolate  38 workers spawned · ~2.33s startup each (spawn + environment, per file)
+             at least ~27.19s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+61 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 2329/2329 )
+Branches     : 100% ( 1391/1391 )
+Functions    : 100% ( 896/896 )
+Lines        : 100% ( 2062/2062 )
+================================================================================
+exit 0

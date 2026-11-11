@@ -1,0 +1,29 @@
+$ git rev-parse HEAD
+196bc63c24b5ddc5dd86e58d1a753c4257339e8d
+$ make test-frontend
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /home/user/rag-agent-studio/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /home/user/rag-agent-studio/frontend
+      Coverage enabled with v8
+
+
+ Test Files  2 passed (2)
+      Tests  8 passed (8)
+   Start at  00:29:10
+   Duration  2.25s (environment 39%, tests 38%, setup 14%, import 5%, worker 2%, transform 2%)
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+7 files fully covered.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 39/39 )
+Branches     : 100% ( 32/32 )
+Functions    : 100% ( 14/14 )
+Lines        : 100% ( 37/37 )
+================================================================================
+exit=0

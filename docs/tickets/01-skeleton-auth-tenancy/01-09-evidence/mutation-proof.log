@@ -1,0 +1,20 @@
+$ python3 mutate.py <worktree at 2c113e7>  (TEST_DATABASE_URL=…/studio_test_w0109 TEST_REDIS_URL=…/9)
+caught    Editors pass the Owner-only policy  (backend/app/tenancy/policy.py)
+caught    Owner-only policy refuses with 404 instead of 403  (backend/app/tenancy/policy.py)
+caught    No last-Owner check  (backend/app/tenancy/members.py)
+caught    Last-Owner count off by one  (backend/app/tenancy/members.py)
+caught    Organisation row not locked  (backend/app/tenancy/members.py)
+caught    Demotion skips the last-Owner check  (backend/app/tenancy/members.py)
+caught    Removal keeps the membership  (backend/app/tenancy/members.py)
+caught    Role change not recorded  (backend/app/tenancy/members.py)
+caught    Removal recorded as leaving  (backend/app/tenancy/members.py)
+caught    Members list open to Editors  (backend/app/tenancy/members_api.py)
+caught    Leaving needs an Owner  (backend/app/tenancy/members_api.py)
+caught    Members tab shown to Editors  (frontend/apps/studio/src/settings/OrganisationSettings.tsx)
+caught    Role change doesn't refresh the session  (frontend/apps/studio/src/settings/members.ts)
+caught    Last-Owner refusal shown as a generic error  (frontend/apps/studio/src/settings/members.ts)
+caught    Remove offered on your own row  (frontend/apps/studio/src/settings/MembersList.tsx)
+caught    Remove without confirming  (frontend/apps/studio/src/settings/MembersList.tsx)
+unmodified code passes: True
+16/16 mutations caught
+exit 0

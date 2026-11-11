@@ -1,0 +1,17 @@
+created: 3/3 workers
+3 workers [2568 items]
+E       AssertionError: 'Uvicorn running on' not logged; got:
+E       AssertionError: 'Uvicorn running on' not logged; got:
+E       AssertionError: 'ready' not logged; got:
+E       AssertionError: 'Starting' not logged; got:
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.18-final-0 _______________
+TOTAL                                 12212      0   1520      1    99%
+Coverage XML written to file coverage.xml
+FAIL Required test coverage of 100.0% not reached. Total coverage: 99.99%
+FAILED tests/integration/test_logging.py::test_the_api_server_writes_only_json_lines
+FAILED tests/integration/test_logging.py::test_the_api_server_leaves_forwarding_headers_to_the_app
+FAILED tests/integration/test_logging.py::test_the_worker_writes_only_json_lines
+FAILED tests/integration/test_logging.py::test_beat_writes_only_json_lines - ...
+================= 4 failed, 2564 passed in 4541.29s (1:15:41) ==================
+exit 1

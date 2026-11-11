@@ -1,0 +1,90 @@
+name: infra
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: fmt, validate, tflint, checkov, terraform test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.32"
+      # The CloudFront Function tests (infra/modules/*/functions) use Node 22's coverage thresholds.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Terraform, TFLint and Checkov
+        run: scripts/ci/install-tools.sh terraform tflint checkov
+      - name: Run every infrastructure gate
+        env:
+          # tflint --init fetches the pinned AWS ruleset through the GitHub API.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make infra-check
+
+  plan-gate:
+    name: Should terraform plan run?
+    # Pull requests only. The plan job below runs only when the OIDC role secret exists and the pull request touches
+    # infrastructure; otherwise it shows as skipped, not failed (spec 09, user story 28).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check for AWS access and infrastructure changes
+        id: gate
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: scripts/ci/plan-gate.sh "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
+
+  plan:
+    name: terraform plan (demo)
+    needs: [checks, plan-gate]
+    if: needs.plan-gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Terraform
+        run: scripts/ci/install-tools.sh terraform
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: terraform init
+        working-directory: infra/envs/demo
+        run: terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET" -backend-config="region=$AWS_REGION"
+      - name: terraform plan
+        working-directory: infra/envs/demo
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -lock-timeout=5m | tee "$RUNNER_TEMP/plan.txt"
+      - name: Post the plan on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "### terraform plan (infra/envs/demo)"
+            echo '```'
+            tail -c 60000 "$RUNNER_TEMP/plan.txt"
+            echo '```'
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR" --body-file "$RUNNER_TEMP/comment.md"

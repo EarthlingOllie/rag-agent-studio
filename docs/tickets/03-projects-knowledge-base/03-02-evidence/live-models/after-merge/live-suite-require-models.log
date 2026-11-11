@@ -1,0 +1,165 @@
+$ (same env) LIVE_REQUIRE_MODELS=1 make test-live @ eef1e76
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: $SCRATCH/wt-0302live/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 7 items
+
+tests/live/test_docling_live.py ...F                                     [ 57%]
+tests/live/test_local_embedder_live.py ...                               [100%]
+
+=================================== FAILURES ===================================
+_____________ test_real_docling_reads_a_scanned_pdf_only_with_ocr ______________
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+>           yield
+
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:250: in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py:256: in handle_request
+    raise exc from None
+.venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py:236: in handle_request
+    response = connection.handle_request(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <TunnelHTTPConnection ['http://127.0.0.1:41687', HTTP/1.1, CLOSED, Request Count: 1]>
+request = <Request [b'HEAD']>
+
+    def handle_request(self, request: Request) -> Response:
+        timeouts = request.extensions.get("timeout", {})
+        timeout = timeouts.get("connect", None)
+    
+        with self._connect_lock:
+            if not self._connected:
+                target = b"%b:%d" % (self._remote_origin.host, self._remote_origin.port)
+    
+                connect_url = URL(
+                    scheme=self._proxy_origin.scheme,
+                    host=self._proxy_origin.host,
+                    port=self._proxy_origin.port,
+                    target=target,
+                )
+                connect_headers = merge_headers(
+                    [(b"Host", target), (b"Accept", b"*/*")], self._proxy_headers
+                )
+                connect_request = Request(
+                    method=b"CONNECT",
+                    url=connect_url,
+                    headers=connect_headers,
+                    extensions=request.extensions,
+                )
+                connect_response = self._connection.handle_request(
+                    connect_request
+                )
+    
+                if connect_response.status < 200 or connect_response.status > 299:
+                    reason_bytes = connect_response.extensions.get("reason_phrase", b"")
+                    reason_str = reason_bytes.decode("ascii", errors="ignore")
+                    msg = "%d %s" % (connect_response.status, reason_str)
+                    self._connection.close()
+>                   raise ProxyError(msg)
+E                   httpcore.ProxyError: 403 Forbidden
+
+.venv/lib/python3.13/site-packages/httpcore/_sync/http_proxy.py:297: ProxyError
+
+The above exception was the direct cause of the following exception:
+
+    def require_ocr_models() -> None:
+        """RapidOCR's models: on disk with Docling's (the worker image), or downloadable."""
+        artifacts = os.environ.get("DOCLING_ARTIFACTS_PATH")
+        if artifacts and (Path(artifacts) / "RapidOcr").is_dir():
+            return
+        try:
+>           httpx.head(RAPIDOCR_MODELS_URL, timeout=10, follow_redirects=True).raise_for_status()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/live/models.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.13/site-packages/httpx/_api.py:267: in head
+    return request(
+.venv/lib/python3.13/site-packages/httpx/_api.py:109: in request
+    return client.request(
+.venv/lib/python3.13/site-packages/httpx/_client.py:825: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:914: in send
+    response = self._send_handling_auth(
+.venv/lib/python3.13/site-packages/httpx/_client.py:942: in _send_handling_auth
+    response = self._send_handling_redirects(
+.venv/lib/python3.13/site-packages/httpx/_client.py:979: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_client.py:1014: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:249: in handle_request
+    with map_httpcore_exceptions():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.13/contextlib.py:162: in __exit__
+    self.gen.throw(value)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    @contextlib.contextmanager
+    def map_httpcore_exceptions() -> typing.Iterator[None]:
+        global HTTPCORE_EXC_MAP
+        if len(HTTPCORE_EXC_MAP) == 0:
+            HTTPCORE_EXC_MAP = _load_httpcore_exceptions()
+        try:
+            yield
+        except Exception as exc:
+            mapped_exc = None
+    
+            for from_exc, to_exc in HTTPCORE_EXC_MAP.items():
+                if not isinstance(exc, from_exc):
+                    continue
+                # We want to map to the most specific exception we can find.
+                # Eg if `exc` is an `httpcore.ReadTimeout`, we want to map to
+                # `httpx.ReadTimeout`, not just `httpx.TimeoutException`.
+                if mapped_exc is None or issubclass(to_exc, mapped_exc):
+                    mapped_exc = to_exc
+    
+            if mapped_exc is None:  # pragma: no cover
+                raise
+    
+            message = str(exc)
+>           raise mapped_exc(message) from exc
+E           httpx.ProxyError: 403 Forbidden
+
+.venv/lib/python3.13/site-packages/httpx/_transports/default.py:118: ProxyError
+
+During handling of the above exception, another exception occurred:
+
+    def test_real_docling_reads_a_scanned_pdf_only_with_ocr() -> None:
+        """The scanned sample is an image of text, with no text layer (``make_sample_documents``)."""
+        require_models(DOCLING_LAYOUT)
+>       require_ocr_models()
+
+tests/live/test_docling_live.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/live/models.py:84: in require_ocr_models
+    _skip_or_fail(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+message = "RapidOCR's models are not on disk and can't be downloaded (https://www.modelscope.cn/models/RapidAI/RapidOCR: ProxyError: 403 Forbidden). Run the live suite where www.modelscope.cn is reachable, or in the worker image."
+
+    def _skip_or_fail(message: str) -> None:
+        if os.environ.get("LIVE_REQUIRE_MODELS") == "1":
+>           pytest.fail(message)
+E           Failed: RapidOCR's models are not on disk and can't be downloaded (https://www.modelscope.cn/models/RapidAI/RapidOCR: ProxyError: 403 Forbidden). Run the live suite where www.modelscope.cn is reachable, or in the worker image.
+
+tests/live/models.py:72: Failed
+========================= 1 failed, 6 passed in 36.01s =========================
+make: *** [Makefile:34: test-live] Error 1
+exit 2

@@ -1,0 +1,21 @@
+e2e at d21c435 at load 35-67 with the kernel killing processes for memory: embed and message-feedback pass; bulk-rollout, theme and widget-lifecycle time out (not touched by this ticket; pass in the final run).
+(trimmed: failed tests, their errors and the summary; the full log is ~600 KB)
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0702-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-02-evidence/compose.sandbox.yml' @ d21c435 (images from build.sh at c015f51; d21c435 changes only frontend/e2e)
+  ✘  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (31.2s)
+  ✘  75 [studio] › e2e/tests/widget-lifecycle.spec.ts:126:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (1.1m)
+  ✘  74 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (42.9s)
+  ✘  76 [studio] › e2e/tests/widget-lifecycle.spec.ts:126:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (retry #1) (33.4s)
+  ✘  77 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (retry #1) (33.5s)
+  ✘  79 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (33.0s)
+  ✘  80 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (retry #1) (30.4s)
+    Error: locator.click: Target page, context or browser has been closed
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Error: page.goto: Test ended.
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Error: page.goto: Test timeout of 30000ms exceeded.
+    Error: apiRequestContext.get: Test timeout of 30000ms exceeded.
+  3 failed
+  1 flaky
+  72 passed (11.6m)
+exit 2

@@ -1,0 +1,10 @@
+commit 87d418a
++ docker build -t rag-agent-studio/api:0704 backend (WITH_PDF=false BUNDLE_MODELS=true, sandbox CA)
+#22 naming to docker.io/rag-agent-studio/api:0704 done
++ docker run: the bundled classifier loads with no network and flags an attack
+attack: [InjectionFlag(label='prompt_injection', score=1.0, reason='The local classifier scored the message 1.00 as a prompt injection.')]
+benign: [None]
+api image size: 3428147412 bytes
++ docker build -t rag-agent-studio/studio:0704 frontend (sandbox CA)
+#23 naming to docker.io/rag-agent-studio/studio:0704 done
+build exit 0

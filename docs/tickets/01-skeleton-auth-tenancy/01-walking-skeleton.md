@@ -6,14 +6,16 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One command starts Postgres with pgvector, Redis, RustFS, Mailpit, the API, the worker, Beat and the Studio
-- [ ] Make targets exist for dev, test, lint and client generation
-- [ ] Settings are typed and validated at startup; a missing required setting fails fast with a clear message
-- [ ] A Studio page shows API health through the generated client, and a Celery health task completes a round trip
-- [ ] Alembic is configured, with an upgrade-to-head / downgrade-to-base round-trip test
-- [ ] Backend and frontend CI workflows run lint, type checks and tests, and fail below 100% line or branch coverage
-- [ ] CI fails when the committed API client differs from a fresh generation
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] One command starts Postgres with pgvector, Redis, RustFS, Mailpit, the API, the worker, Beat and the Studio
+- [x] Make targets exist for dev, test, lint and client generation
+- [x] Settings are typed and validated at startup; a missing required setting fails fast with a clear message
+- [x] A Studio page shows API health through the generated client, and a Celery health task completes a round trip
+- [x] Alembic is configured, with an upgrade-to-head / downgrade-to-base round-trip test
+- [x] Backend and frontend CI workflows run lint, type checks and tests, and fail below 100% line or branch coverage
+- [x] CI fails when the committed API client differs from a fresh generation
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+
+**Evidence:** [01-01-evidence](./01-01-evidence/README.md)

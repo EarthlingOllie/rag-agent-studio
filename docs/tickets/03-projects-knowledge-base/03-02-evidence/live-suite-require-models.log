@@ -1,0 +1,104 @@
+$ LIVE_REQUIRE_MODELS=1 make test-live   # the skips become failures
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 5 items
+
+tests/live/test_docling_live.py F..                                      [ 60%]
+tests/live/test_local_embedder_live.py EE                                [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at setup of test_the_local_model_embeds_passages_into_unit_vectors_of_its_dimension _
+
+    @pytest.fixture(autouse=True)
+    def _model_available() -> None:
+>       require_models(LOCAL_EMBEDDING_MODEL)
+
+tests/live/test_local_embedder_live.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repo_ids = ('intfloat/multilingual-e5-small',)
+
+    def require_models(*repo_ids: str) -> None:
+        for repo_id in repo_ids:
+            if _on_disk(repo_id):
+                continue
+            reason = _unreachable(repo_id)
+            if reason is None:
+                continue
+            message = (
+                f"Hugging Face model {repo_id} is not on disk and can't be downloaded ({reason}). "
+                "Run the live suite where huggingface.co is reachable, or in the worker image."
+            )
+            if os.environ.get("LIVE_REQUIRE_MODELS") == "1":
+>               pytest.fail(message)
+E               Failed: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (https://huggingface.co/api/models/intfloat/multilingual-e5-small: ProxyError: 403 Forbidden). Run the live suite where huggingface.co is reachable, or in the worker image.
+
+tests/live/models.py:58: Failed
+_ ERROR at setup of test_the_chunker_counts_tokens_with_the_models_own_tokenizer _
+
+    @pytest.fixture(autouse=True)
+    def _model_available() -> None:
+>       require_models(LOCAL_EMBEDDING_MODEL)
+
+tests/live/test_local_embedder_live.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repo_ids = ('intfloat/multilingual-e5-small',)
+
+    def require_models(*repo_ids: str) -> None:
+        for repo_id in repo_ids:
+            if _on_disk(repo_id):
+                continue
+            reason = _unreachable(repo_id)
+            if reason is None:
+                continue
+            message = (
+                f"Hugging Face model {repo_id} is not on disk and can't be downloaded ({reason}). "
+                "Run the live suite where huggingface.co is reachable, or in the worker image."
+            )
+            if os.environ.get("LIVE_REQUIRE_MODELS") == "1":
+>               pytest.fail(message)
+E               Failed: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (https://huggingface.co/api/models/intfloat/multilingual-e5-small: ProxyError: 403 Forbidden). Run the live suite where huggingface.co is reachable, or in the worker image.
+
+tests/live/models.py:58: Failed
+=================================== FAILURES ===================================
+___ test_real_docling_converts_and_chunks_the_sample[northwind-handbook.pdf] ___
+
+sample = 'northwind-handbook.pdf'
+
+    @pytest.mark.parametrize(
+        "sample", ["northwind-handbook.pdf", "northwind-handbook.docx", "northwind-handbook.pptx"]
+    )
+    def test_real_docling_converts_and_chunks_the_sample(sample: str) -> None:
+        if sample.endswith(".pdf"):
+>           require_models(DOCLING_LAYOUT)
+
+tests/live/test_docling_live.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+repo_ids = ('docling-project/docling-layout-heron',)
+
+    def require_models(*repo_ids: str) -> None:
+        for repo_id in repo_ids:
+            if _on_disk(repo_id):
+                continue
+            reason = _unreachable(repo_id)
+            if reason is None:
+                continue
+            message = (
+                f"Hugging Face model {repo_id} is not on disk and can't be downloaded ({reason}). "
+                "Run the live suite where huggingface.co is reachable, or in the worker image."
+            )
+            if os.environ.get("LIVE_REQUIRE_MODELS") == "1":
+>               pytest.fail(message)
+E               Failed: Hugging Face model docling-project/docling-layout-heron is not on disk and can't be downloaded (https://huggingface.co/api/models/docling-project/docling-layout-heron: ProxyError: 403 Forbidden). Run the live suite where huggingface.co is reachable, or in the worker image.
+
+tests/live/models.py:58: Failed
+==================== 1 failed, 2 passed, 2 errors in 1.64s =====================
+make: *** [Makefile:33: test-live] Error 1

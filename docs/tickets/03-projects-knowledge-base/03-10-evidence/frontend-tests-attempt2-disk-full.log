@@ -1,0 +1,65 @@
+$ make test-frontend @ 4b0dfd0
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310r2/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0310r2/frontend
+      Coverage enabled with v8
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯⎯ Test Run Error ⎯⎯⎯⎯⎯⎯⎯
+Error: ENOSPC: no space left on device, write
+ ❯ write node:internal/fs/promises:744:8
+ ❯ writeFileHandle node:internal/fs/promises:501:7
+ ❯ writeCoverageFile node_modules/.pnpm/@vitest+coverage-v8@5.1.0_vitest@5.1.0/node_modules/@vitest/coverage-v8/dist/commands-C6w5FFZp.js:170:3
+ ❯ Object.takeCoverage node_modules/.pnpm/@vitest+coverage-v8@5.1.0_vitest@5.1.0/node_modules/@vitest/coverage-v8/dist/index.js:72:10
+ ❯ testRunner.onAfterRunFiles node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1.0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/vitest/dist/chunks/index.w_oBZ9N8.js:186:20
+ ❯ startTests node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1.0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/vitest/dist/chunks/run.CjdgFZiW.js:4215:3
+ ❯ node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1.0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/vitest/dist/chunks/base.Cof-UHJf.js:97:6
+ ❯ run node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1.0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/vitest/dist/chunks/base.Cof-UHJf.js:87:3
+ ❯ runBaseTests node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1.0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/vitest/dist/chunks/base.Cof-UHJf.js:229:2
+ ❯ execute node_modules/.pnpm/vitest@5.1.0_@types+node@22.20.5_@vitest+coverage-v8@5.1.0_jsdom@30.1.3_msw@3.0.3_@type_9b95f1b9bf6dc9b751f2cbfc60c87295/node_modules/vitest/dist/chunks/init.CO4AB7HZ.js:187:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { errno: -28, code: 'ENOSPC', syscall: 'write' }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  38 passed (38)
+      Tests  473 passed (473)
+     Errors  1 error
+   Start at  12:34:53
+   Duration  162.95s (tests 66%, environment 16%, import 8%, setup 6%, transform 2%, worker 1%)
+
+    Isolate  38 workers spawned · ~2.28s startup each (spawn + environment, per file)
+             at least ~26.58s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   99.06 |    99.35 |   98.77 |   99.08 |                   
+ ...o/src/settings |   96.91 |     97.9 |   95.86 |   96.96 |                   
+  MembersList.tsx  |   55.17 |    77.77 |   27.27 |   51.85 | 37-76,120-136     
+  members.ts       |   75.67 |    73.68 |      80 |      80 | 51,61-66,76-79    
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 99.06% ( 2325/2347 )
+Branches     : 99.35% ( 1394/1403 )
+Functions    : 98.77% ( 890/901 )
+Lines        : 99.08% ( 2060/2079 )
+================================================================================
+ERROR: Coverage for lines (99.08%) does not meet global threshold (100%)
+ERROR: Coverage for functions (98.77%) does not meet global threshold (100%)
+ERROR: Coverage for statements (99.06%) does not meet global threshold (100%)
+ERROR: Coverage for branches (99.35%) does not meet global threshold (100%)
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:37: test-frontend] Error 1
+exit 2

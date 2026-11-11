@@ -1,0 +1,6 @@
+$ (env from e2e.env) CI=1 make e2e COMPOSE='docker compose -p rag0704-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-04-evidence/compose.sandbox.yml' @ 18d9e09 (CI settings: one retry; images from build.sh at b9e473e, whose image inputs are unchanged)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (233ms)
+  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (4.5s)
+  ✓  74 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (7.1s)
+  83 passed (4.6m)
+make exit 0

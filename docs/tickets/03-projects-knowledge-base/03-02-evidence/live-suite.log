@@ -1,0 +1,19 @@
+$ make test-live   # Hugging Face blocked by the sandbox egress proxy
+cd backend && uv run --group pdf pytest -m live --no-cov -rs tests/live
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt-0302/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 5 items
+
+tests/live/test_docling_live.py s..                                      [ 60%]
+tests/live/test_local_embedder_live.py ss                                [100%]
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/live/models.py:59: Hugging Face model docling-project/docling-layout-heron is not on disk and can't be downloaded (https://huggingface.co/api/models/docling-project/docling-layout-heron: ProxyError: 403 Forbidden). Run the live suite where huggingface.co is reachable, or in the worker image.
+SKIPPED [1] tests/live/test_local_embedder_live.py:20: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (https://huggingface.co/api/models/intfloat/multilingual-e5-small: ProxyError: 403 Forbidden). Run the live suite where huggingface.co is reachable, or in the worker image.
+SKIPPED [1] tests/live/test_local_embedder_live.py:40: Hugging Face model intfloat/multilingual-e5-small is not on disk and can't be downloaded (https://huggingface.co/api/models/intfloat/multilingual-e5-small: ProxyError: 403 Forbidden). Run the live suite where huggingface.co is reachable, or in the worker image.
+========================= 2 passed, 3 skipped in 1.50s =========================

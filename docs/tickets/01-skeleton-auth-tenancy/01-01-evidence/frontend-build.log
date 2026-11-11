@@ -1,0 +1,22 @@
+$ git rev-parse HEAD
+820d78637060320270a5ef829d20d59961a93ed6
+$ cd frontend && pnpm build
+
+> rag-agent-studio-frontend@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend
+> pnpm --filter @studio/studio build
+
+
+> @studio/studio@ build /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean/frontend/apps/studio
+> vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 155 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.40 kB │ gzip:   0.27 kB
+dist/assets/index-D5id3fwZ.css    7.38 kB │ gzip:   2.33 kB
+dist/assets/index-CIMXE-gJ.js   336.77 kB │ gzip: 107.78 kB
+
+✓ built in 456ms
+exit=0

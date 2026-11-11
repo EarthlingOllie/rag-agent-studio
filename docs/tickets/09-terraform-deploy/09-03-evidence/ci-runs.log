@@ -1,0 +1,35 @@
+# GitHub Actions runs on ticket/09-03-data-modules (via the GitHub Actions API), commit 0dcbf16 = the implementation commit
+# sha	workflow	status	conclusion	url
+0dcbf16	infra	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952499952
+0dcbf16	backend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952499862
+0dcbf16	frontend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952499864
+0dcbf16	security	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952499900
+0dcbf16	deploy	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952499955
+0dcbf16	e2e	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952500161
+0dcbf16	guardrails-eval	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41952499964
+800f350	infra	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950543190
+800f350	backend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950543236
+800f350	frontend	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950544434
+800f350	security	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950543212
+800f350	deploy	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950543179
+800f350	e2e	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950543119
+800f350	guardrails-eval	completed	success	https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41950543195
+
+# infra run 41952499952: job 'fmt, validate, tflint, checkov, terraform test' (126999485978) = success;
+# job 'terraform plan (demo)' = skipped (pull_request only, AWS_DEPLOY_ROLE_ARN unset)
+# Excerpt of the gate job log (the AWS provider installed from the public registry, verifying the committed lock files):
+== infra/modules/storage/
+Success! The configuration is valid.
+  run "both_buckets_are_private_and_encrypted"... pass
+  run "documents_cors_allows_only_the_cloudfront_origin"... pass
+  run "documents_allow_no_cross_origin_requests_until_the_origin_is_known"... pass
+  run "static_assets_are_readable_only_by_the_cloudfront_distribution"... pass
+  run "static_assets_are_readable_by_no_one_until_the_distribution_is_known"... pass
+  run "every_bucket_refuses_requests_without_tls"... pass
+  ...
+Success! 19 passed, 0 failed.
+cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"
+All plugins are already installed
+cd infra && checkov --config-file .checkov.yaml
+Passed checks: 119, Failed checks: 0, Skipped checks: 22
+# Same job, earlier lines: kms 12 passed, network 16 passed (full log at the run URL).

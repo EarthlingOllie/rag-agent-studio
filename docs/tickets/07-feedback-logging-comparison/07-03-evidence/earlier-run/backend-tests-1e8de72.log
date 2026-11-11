@@ -1,0 +1,4 @@
+$ make test-backend @ 1e8de72 (fresh rag0703 Postgres/pgvector :47032, Redis :47033, RustFS :47034; OpenTelemetry span and JSON log lines filtered out)
+TOTAL                                 10068      0   1172      0   100%
+=============== 2261 passed, 24 deselected in 2681.96s (0:44:41) ===============
+exit 0

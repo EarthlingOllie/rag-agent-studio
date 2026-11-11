@@ -1,0 +1,20 @@
+$ uv run pytest --no-cov tests/integration/test_logging.py (rerun of the one failure, fresh rag0605-pg/redis) @ 2eb3044
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0605/backend/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/wt0605/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 7 items
+
+tests/integration/test_logging.py::test_api_logs_are_json_and_carry_the_request_trace PASSED [ 14%]
+tests/integration/test_logging.py::test_sensitive_log_fields_are_redacted_and_exceptions_are_kept PASSED [ 28%]
+tests/integration/test_logging.py::test_the_api_server_writes_only_json_lines PASSED [ 42%]
+tests/integration/test_logging.py::test_the_worker_writes_only_json_lines PASSED [ 57%]
+tests/integration/test_logging.py::test_beat_writes_only_json_lines PASSED [ 71%]
+tests/integration/test_logging.py::test_migrations_write_only_json_lines PASSED [ 85%]
+tests/integration/test_logging.py::test_worker_task_logs_leave_out_task_arguments_and_results PASSED [100%]
+
+============================== 7 passed in 51.54s ==============================
+exit 0

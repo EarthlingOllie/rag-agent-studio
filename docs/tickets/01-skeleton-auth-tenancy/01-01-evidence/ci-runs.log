@@ -1,0 +1,24 @@
+# GitHub Actions runs on branch ticket/01-01-walking-skeleton (read via the GitHub API)
+
+## Commit 196bc63 ("Format worker health route"; includes the worker health task-failure fix 5ece02a)  -- both green
+backend   run 41941689400  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41941689400
+  job checks: Install, Lint, Type check, Tests (15 passed incl. task-failure path), 100% coverage gate -> success
+frontend  run 41941689384  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41941689384
+  job checks + api-client-drift (regenerated client for the updated 503 description)  -> success
+
+## Commit 820d786 ("Ignore Celery's unclosed result-backend pub/sub sockets...")  -- both green
+backend   run 41940922662  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41940922662
+  job checks: Install, Lint (ruff), Type check (mypy --strict),
+              Tests, Alembic round trip and 100% line + branch coverage gate      -> success
+frontend  run 41940922735  conclusion=success  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41940922735
+  job checks:           Install, Lint (eslint), Type check (tsc),
+                        Tests and 100% line + branch coverage gate, Build          -> success
+  job api-client-drift: make install, make check-client                            -> success
+
+## Commit 9339730 (first skeleton commit) -- backend red, showing the gate bites
+backend   run 41940448292  conclusion=failure  https://github.com/EarthlingOllie/rag-agent-studio/actions/runs/41940448292
+  FAILED tests/integration/test_worker_health.py::test_worker_health_is_unavailable_when_no_worker_replies
+    - pytest.PytestUnraisableExceptionWarning: Exception ignored in: <socket.socket ... raddr=('::1', 6379, 0, 0)>
+  (Celery's Redis result backend leaves its pub/sub socket open; pytest runs with filterwarnings=error.
+   Fixed in 820d786 with a targeted warning filter.)
+frontend  run 41940448266  conclusion=success

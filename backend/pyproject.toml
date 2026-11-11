@@ -1,0 +1,123 @@
+[project]
+name = "rag-agent-studio-backend"
+version = "0.1.0"
+description = "RAG Agent Studio API, worker and Beat"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "alembic>=1.20.1",
+    "argon2-cffi>=25.1.0",
+    "asyncpg>=0.32.0",
+    "boto3>=1.43.124",
+    "celery[redis]>=5.6.3",
+    "cryptography>=50.0.2",
+    "docling-slim[feat-chunking,format-docx,format-html,format-markdown,format-pptx]>=2.147.0",
+    "fastapi>=0.162.0",
+    "fastembed>=0.9.1",
+    "httpx>=0.28.1",
+    "logfire[celery,fastapi,httpx,sqlalchemy]>=5.4.0",
+    "pgvector>=0.4.1",
+    "pydantic-ai-slim[anthropic,openai]>=2.66.0",
+    "pydantic-settings>=2.16.2",
+    "pyotp>=2.10.0",
+    "redis>=8.1.0",
+    "segno>=1.6.6",
+    "sqlalchemy[asyncio]>=2.1.8",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.uv]
+package = false
+
+# PyTorch from its CPU-only index: the PyPI wheels bundle CUDA, which the worker doesn't use.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[dependency-groups]
+# PDF conversion: Docling's PDF backend, its layout models (PyTorch, CPU build), the spatial
+# index its layout post-processing needs (``convert-core``: rtree) and RapidOCR (ONNX) for
+# Projects with OCR on. Heavy, so it is its own group: the worker image installs it;
+# tests and the API don't need it.
+pdf = [
+    "docling-slim[convert-core,feat-ocr-rapidocr-onnx,format-pdf,models-local]>=2.147.0",
+    "torch>=2.2.2",
+    "torchvision>=0.17",
+]
+dev = [
+    "aiosmtpd>=1.4.6",
+    "asgi-lifespan>=2.1.0",
+    "boto3-stubs[kms,s3,sesv2]>=1.43.124",
+    "celery-types>=0.26.0",
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "pytest-cov>=7.1.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-m 'not live' --strict-markers --cov=app --cov-branch --cov-report=term-missing --cov-report=xml"
+markers = ["live: calls real external providers; runs outside the coverage gate"]
+filterwarnings = [
+    "error",
+    # Celery's Redis result backend still calls redis-py's deprecated setex (celery/celery#9xxx upstream).
+    "ignore:Call to deprecated setex:DeprecationWarning",
+    # Celery's Redis result backend opens a pub/sub connection per thread-local backend when a
+    # task is sent, and never closes it; it is collected at an arbitrary later point in the run.
+    "ignore:unclosed <socket.socket:ResourceWarning",
+    "ignore:Exception ignored in. <socket.socket:pytest.PytestUnraisableExceptionWarning",
+    # Docling's own PDF pipeline reads its deprecated `generate_table_images` option (live suite only).
+    "ignore:This field is deprecated. Use `generate_page_images=True`:DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+# SQLAlchemy's async layer runs ORM code in greenlets; without this those lines go unmeasured.
+concurrency = ["greenlet", "thread"]
+source = ["app"]
+# The local Embedding Model and the local injection classifier's model need their models
+# downloaded from Hugging Face, so their adapters are exercised by the live suite (tests/live)
+# instead, as the spec's live suite intends.
+omit = ["migrations/*", "app/embeddings/local.py", "app/guardrails/onnx_model.py"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = false
+exclude_also = ['if __name__ == "__main__":']
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF", "N", "S", "PT"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, hold fake secrets, and start the services as processes.
+"tests/**" = ["S101", "S105", "S603"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+files = ["app", "tests", "migrations"]
+
+[[tool.mypy.overrides]]
+# ONNX Runtime ships no type information.
+module = ["onnxruntime"]
+ignore_missing_imports = true
+
+[tool.logfire]
+# Instrumentation is attached when the app is built; it records once `configure_telemetry`
+# runs at startup with validated settings, so the early-instrumentation warning is expected.
+ignore_no_config = true

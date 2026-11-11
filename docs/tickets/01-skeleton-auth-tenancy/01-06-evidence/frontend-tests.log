@@ -1,0 +1,32 @@
+# fresh git clone of ticket/01-06-sign-in-rate-limiting at 655bfaa; TEST_DATABASE_URL=…/studio_test_fc0106 (new, empty database) TEST_REDIS_URL=…/7 (shared compose Postgres/Redis)
+$ make test-frontend
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0106/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/fc0106/frontend
+      Coverage enabled with v8
+
+
+ Test Files  6 passed (6)
+      Tests  46 passed (46)
+   Start at  03:17:27
+   Duration  7.48s (tests 49%, environment 28%, setup 11%, import 5%, transform 4%, worker 2%)
+
+Environment  jsdom was created 6 times · 5.70s total, 28% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+15 files fully covered.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 215/215 )
+Branches     : 100% ( 124/124 )
+Functions    : 100% ( 91/91 )
+Lines        : 100% ( 183/183 )
+================================================================================
+exit=0

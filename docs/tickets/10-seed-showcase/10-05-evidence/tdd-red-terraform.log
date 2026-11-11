@@ -1,0 +1,16 @@
+$ cd infra/modules/ecs && terraform test   # the new seed runs before seed.tf existed (tail)
+tests/contract.tftest.hcl... tearing down
+tests/contract.tftest.hcl... fail
+
+Warning: Invalid override target
+
+  on tests/contract.tftest.hcl line 74, in override_resource:
+  74:   target = aws_iam_role.seed_task
+
+The override target aws_iam_role.seed_task does not exist within the
+configuration under test. This could indicate a typo in the target address or
+an unnecessary override.
+
+(and one more similar warning elsewhere)
+
+Failure! 51 passed, 1 failed, 9 skipped.

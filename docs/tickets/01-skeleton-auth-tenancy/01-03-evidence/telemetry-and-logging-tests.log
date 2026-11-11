@@ -1,0 +1,26 @@
+$ uv run pytest -v tests/integration/test_telemetry.py tests/integration/test_logging.py --no-cov
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.2.0, pluggy-1.7.0 -- /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0103/backend/.venv/bin/python
+rootdir: /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/clean0103/backend
+configfile: pyproject.toml
+plugins: logfire-sdk-5.4.0, anyio-4.16.0, asyncio-1.4.1.post1, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 14 items
+
+tests/integration/test_telemetry.py::test_an_api_request_is_traced_through_fastapi_and_the_database PASSED [  7%]
+tests/integration/test_telemetry.py::test_a_task_is_traced_from_the_api_through_the_worker PASSED [ 14%]
+tests/integration/test_telemetry.py::test_outbound_http_calls_are_traced PASSED [ 21%]
+tests/integration/test_telemetry.py::test_exported_spans_never_contain_message_text_cookies_auth_headers_or_secrets PASSED [ 28%]
+tests/integration/test_telemetry.py::test_without_a_logfire_token_spans_are_written_to_the_console_as_json PASSED [ 35%]
+tests/integration/test_telemetry.py::test_with_a_logfire_token_scrubbed_spans_are_sent_to_logfire_instead_of_the_console PASSED [ 42%]
+tests/integration/test_telemetry.py::test_task_spans_never_contain_the_message_text_a_task_carries PASSED [ 50%]
+tests/integration/test_logging.py::test_api_logs_are_json_and_carry_the_request_trace PASSED [ 57%]
+tests/integration/test_logging.py::test_sensitive_log_fields_are_redacted_and_exceptions_are_kept PASSED [ 64%]
+tests/integration/test_logging.py::test_the_api_server_writes_only_json_lines PASSED [ 71%]
+tests/integration/test_logging.py::test_the_worker_writes_only_json_lines PASSED [ 78%]
+tests/integration/test_logging.py::test_beat_writes_only_json_lines PASSED [ 85%]
+tests/integration/test_logging.py::test_migrations_write_only_json_lines PASSED [ 92%]
+tests/integration/test_logging.py::test_worker_task_logs_leave_out_task_arguments_and_results PASSED [100%]
+
+============================== 14 passed in 9.93s ==============================
+exit=0

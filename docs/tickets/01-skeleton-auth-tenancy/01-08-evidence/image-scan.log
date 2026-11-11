@@ -1,0 +1,5 @@
+$ trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL rag-agent-studio/{api,studio}:0108   (the image-scan target's commands, on the images build.sh built from the fresh clone at 4aee765; 'make image-scan' itself rebuilds the images without the sandbox proxy CA, which fails here)
+rag-agent-studio/api:0108: targets with a fixable HIGH/CRITICAL: 0; OS line: │ rag-agent-studio/api:0108 (debian 13.7) │ debian │ 0 │ - │
+exit 0
+rag-agent-studio/studio:0108: targets with a fixable HIGH/CRITICAL: 0; OS line: │ rag-agent-studio/studio:0108 (debian 12.15) │ debian │ 0 │ - │
+exit 0

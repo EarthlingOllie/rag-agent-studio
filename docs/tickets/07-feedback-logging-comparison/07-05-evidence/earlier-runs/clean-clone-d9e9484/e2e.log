@@ -1,0 +1,208 @@
+docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml up -d --build --wait
+ Network rag0705-e2e_default Creating 
+ Volume rag0705-e2e_postgres-data Creating 
+ Network rag0705-e2e_default Creating 
+ Volume rag0705-e2e_postgres-data Creating 
+ Volume rag0705-e2e_rustfs-data Creating 
+ Volume rag0705-e2e_rustfs-data Creating 
+ Volume rag0705-e2e_rustfs-data Created 
+ Volume rag0705-e2e_rustfs-data Created 
+ Volume rag0705-e2e_postgres-data Created 
+ Volume rag0705-e2e_postgres-data Created 
+ Network rag0705-e2e_default Created 
+ Network rag0705-e2e_default Created 
+ Container rag0705-e2e-widget-1 Creating 
+ Container rag0705-e2e-postgres-1 Creating 
+ Container rag0705-e2e-redis-1 Creating 
+ Container rag0705-e2e-mailpit-1 Creating 
+ Container rag0705-e2e-host-1 Creating 
+ Container rag0705-e2e-rustfs-1 Creating 
+ Container rag0705-e2e-host-1 Created 
+ Container rag0705-e2e-mailpit-1 Created 
+ Container rag0705-e2e-rustfs-1 Created 
+ Container rag0705-e2e-postgres-1 Created 
+ Container rag0705-e2e-widget-1 Created 
+ Container rag0705-e2e-redis-1 Created 
+ Container rag0705-e2e-worker-1 Creating 
+ Container rag0705-e2e-beat-1 Creating 
+ Container rag0705-e2e-api-1 Creating 
+ Container rag0705-e2e-api-1 Created 
+ Container rag0705-e2e-worker-1 Created 
+ Container rag0705-e2e-studio-1 Creating 
+ Container rag0705-e2e-beat-1 Created 
+ Container rag0705-e2e-studio-1 Created 
+ Container rag0705-e2e-widget-1 Starting 
+ Container rag0705-e2e-mailpit-1 Starting 
+ Container rag0705-e2e-redis-1 Starting 
+ Container rag0705-e2e-postgres-1 Starting 
+ Container rag0705-e2e-rustfs-1 Starting 
+ Container rag0705-e2e-host-1 Starting 
+ Container rag0705-e2e-widget-1 Started 
+ Container rag0705-e2e-mailpit-1 Started 
+ Container rag0705-e2e-redis-1 Started 
+ Container rag0705-e2e-postgres-1 Started 
+ Container rag0705-e2e-rustfs-1 Started 
+ Container rag0705-e2e-postgres-1 Waiting 
+ Container rag0705-e2e-redis-1 Waiting 
+ Container rag0705-e2e-postgres-1 Waiting 
+ Container rag0705-e2e-redis-1 Waiting 
+ Container rag0705-e2e-rustfs-1 Waiting 
+ Container rag0705-e2e-rustfs-1 Waiting 
+ Container rag0705-e2e-postgres-1 Waiting 
+ Container rag0705-e2e-redis-1 Waiting 
+ Container rag0705-e2e-rustfs-1 Waiting 
+ Container rag0705-e2e-host-1 Started 
+ Container rag0705-e2e-redis-1 Healthy 
+ Container rag0705-e2e-redis-1 Healthy 
+ Container rag0705-e2e-redis-1 Healthy 
+ Container rag0705-e2e-rustfs-1 Healthy 
+ Container rag0705-e2e-rustfs-1 Healthy 
+ Container rag0705-e2e-rustfs-1 Healthy 
+ Container rag0705-e2e-postgres-1 Healthy 
+ Container rag0705-e2e-beat-1 Starting 
+ Container rag0705-e2e-postgres-1 Healthy 
+ Container rag0705-e2e-api-1 Starting 
+ Container rag0705-e2e-postgres-1 Healthy 
+ Container rag0705-e2e-worker-1 Starting 
+ Container rag0705-e2e-beat-1 Started 
+ Container rag0705-e2e-api-1 Started 
+ Container rag0705-e2e-widget-1 Waiting 
+ Container rag0705-e2e-api-1 Waiting 
+ Container rag0705-e2e-worker-1 Started 
+ Container rag0705-e2e-widget-1 Healthy 
+ Container rag0705-e2e-api-1 Healthy 
+ Container rag0705-e2e-studio-1 Starting 
+ Container rag0705-e2e-studio-1 Started 
+ Container rag0705-e2e-redis-1 Waiting 
+ Container rag0705-e2e-mailpit-1 Waiting 
+ Container rag0705-e2e-postgres-1 Waiting 
+ Container rag0705-e2e-rustfs-1 Waiting 
+ Container rag0705-e2e-beat-1 Waiting 
+ Container rag0705-e2e-host-1 Waiting 
+ Container rag0705-e2e-api-1 Waiting 
+ Container rag0705-e2e-worker-1 Waiting 
+ Container rag0705-e2e-widget-1 Waiting 
+ Container rag0705-e2e-studio-1 Waiting 
+ Container rag0705-e2e-redis-1 Healthy 
+ Container rag0705-e2e-widget-1 Healthy 
+ Container rag0705-e2e-mailpit-1 Healthy 
+ Container rag0705-e2e-rustfs-1 Healthy 
+ Container rag0705-e2e-worker-1 Healthy 
+ Container rag0705-e2e-beat-1 Healthy 
+ Container rag0705-e2e-api-1 Healthy 
+ Container rag0705-e2e-postgres-1 Healthy 
+ Container rag0705-e2e-host-1 Healthy 
+ Container rag0705-e2e-studio-1 Healthy 
+make seed
+make[1]: Entering directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/evalA0705'
+docker compose -p rag0705-e2e -f docker-compose.yml -f docs/tickets/07-feedback-logging-comparison/07-05-evidence/compose.sandbox.yml run --rm --no-deps -v "/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/evalA0705/seed:/seed:ro" -e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 -e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api sh -c "alembic upgrade head && python -m app.seed"
+ Container rag0705-e2e-api-run-8f0d82c128df Creating 
+ Container rag0705-e2e-api-run-8f0d82c128df Created 
+[0;93m2026-11-08 22:21:28.778721646 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/app/app/main.py:161: LogfireNotConfiguredWarning: Instrumentation will have no effect until `logfire.configure()` has been called. Set the environment variable LOGFIRE_IGNORE_NO_CONFIG=1 or add ignore_no_config=true in pyproject.toml to suppress this warning.
+  logfire.instrument_fastapi(app, capture_headers=True)
+Z", "end_time": "2026-11-08T22:21:59.767357Z", "status": {"status_code": "UNSET"}, "attributes": {"logfire.span_type": "span", "logfire.msg": "INSERT INTO mess\u2026vals (organisatio\u2026_reason, id) VALUES ($1::UUID, $\u2026, $11::UUID)", "net.peer.name": "postgres", "net.peer.port": 5432, "db.name": "studio", "db.user": "studio", "db.statement": "INSERT INTO message_retrievals (organisation_id, message_id, chunk_id, document_id, position, score, relevance, rank, cited, excluded_reason, id) VALUES ($1::UUID, $2::UUID, $3::UUID, $4::UUID, $5::INTEGER, $6::FLOAT, $7::FLOAT, $8::INTEGER, $9::BOOLEAN, $10::VARCHAR, $11::UUID), ($12::UUID, $13::UUID, $14::UUID, $15::UUID, $16::INTEGER, $17::FLOAT, $18::FLOAT, $19::INTEGER, $20::BOOLEAN, $21::VARCHAR, $22::UUID), ($23::UUID, $24::UUID, $25::UUID, $26::UUID, $27::INTEGER, $28::FLOAT, $29::FLOAT, $30::INTEGER, $31::BOOLEAN, $32::VARCHAR, $33::UUID), ($34::UUID, $35::UUID, $36::UUID, $37::UUID, $38::INTEGER, $39::FLOAT, $40::FLOAT, $41::INTEGER, $42::BOOLEAN, $43::VARCHAR, $44::UUID), ($45::UUID, $46::UUID, $47::UUID, $48::UUID, $49::INTEGER, $50::FLOAT, $51::FLOAT, $52::INTEGER, $53::BOOLEAN, $54::VARCHAR, $55::UUID), ($56::UUID, $57::UUID, $58::UUID, $59::UUID, $60::INTEGER, $61::FLOAT, $62::FLOAT, $63::INTEGER, $64::BOOLEAN, $65::VARCHAR, $66::UUID), ($67::UUID, $68::UUID, $69::UUID, $70::UUID, $71::INTEGER, $72::FLOAT, $73::FLOAT, $74::INTEGER, $75::BOOLEAN, $76::VARCHAR, $77::UUID), ($78::UUID, $79::UUID, $80::UUID, $81::UUID, $82::INTEGER, $83::FLOAT, $84::FLOAT, $85::INTEGER, $86::BOOLEAN, $87::VARCHAR, $88::UUID), ($89::UUID, $90::UUID, $91::UUID, $92::UUID, $93::INTEGER, $94::FLOAT, $95::FLOAT, $96::INTEGER, $97::BOOLEAN, $98::VARCHAR, $99::UUID), ($100::UUID, $101::UUID, $102::UUID, $103::UUID, $104::INTEGER, $105::FLOAT, $106::FLOAT, $107::INTEGER, $108::BOOLEAN, $109::VARCHAR, $110::UUID), ($111::UUID, $112::UUID, $113::UUID, $114::UUID, $115::INTEGER, $116::FLOAT, $117::FLOAT, $118::INTEGER, $119::BOOLEAN, $120::VARCHAR, $121::UUID), ($122::UUID, $123::UUID, $124::UUID, $125::UUID, $126::INTEGER, $127::FLOAT, $128::FLOAT, $129::INTEGER, $130::BOOLEAN, $131::VARCHAR, $132::UUID), ($133::UUID, $134::UUID, $135::UUID, $136::UUID, $137::INTEGER, $138::FLOAT, $139::FLOAT, $140::INTEGER, $141::BOOLEAN, $142::VARCHAR, $143::UUID), ($144::UUID, $145::UUID, $146::UUID, $147::UUID, $148::INTEGER, $149::FLOAT, $150::FLOAT, $151::INTEGER, $152::BOOLEAN, $153::VARCHAR, $154::UUID), ($155::UUID, $156::UUID, $157::UUID, $158::UUID, $159::INTEGER, $160::FLOAT, $161::FLOAT, $162::INTEGER, $163::BOOLEAN, $164::VARCHAR, $165::UUID), ($166::UUID, $167::UUID, $168::UUID, $169::UUID, $170::INTEGER, $171::FLOAT, $172::FLOAT, $173::INTEGER, $174::BOOLEAN, $175::VARCHAR, $176::UUID), ($177::UUID, $178::UUID, $179::UUID, $180::UUID, $181::INTEGER, $182::FLOAT, $183::FLOAT, $184::INTEGER, $185::BOOLEAN, $186::VARCHAR, $187::UUID), ($188::UUID, $189::UUID, $190::UUID, $191::UUID, $192::INTEGER, $193::FLOAT, $194::FLOAT, $195::INTEGER, $196::BOOLEAN, $197::VARCHAR, $198::UUID), ($199::UUID, $200::UUID, $201::UUID, $202::UUID, $203::INTEGER, $204::FLOAT, $205::FLOAT, $206::INTEGER, $207::BOOLEAN, $208::VARCHAR, $209::UUID), ($210::UUID, $211::UUID, $212::UUID, $213::UUID, $214::INTEGER, $215::FLOAT, $216::FLOAT, $217::INTEGER, $218::BOOLEAN, $219::VARCHAR, $220::UUID) RETURNING message_retrievals.created_at, message_retrievals.id", "db.system": "postgresql", "db.operation": "INSERT"}, "events": [], "links": [], "resource": {"attributes": {"process.runtime.name": "cpython", "process.runtime.version": "3.13.18", "process.runtime.description": "3.13.18 (main, Nov  5 2026, 07:59:38) [GCC 14.2.0]", "host.name": "8775f4f26d34", "host.arch": "x86_64", "os.type": "linux", "os.version": "6.18.44-fc-v310", "service.instance.id": "6e18cd73-2be3-4a10-97de-b3ec4901597e", "telemetry.sdk.language": "python", "telemetry.sdk.name": "opentelemetry", "telemetry.sdk.version": "1.45.2", "service.name": "api", "deployment.environment.name": "local", "logfire.version": "5.4.0", "process.pid": 11}, "schema_url": ""}}
+Seeded the demo Organisation 'Northwind Traders'.
+Studio: http://localhost:29583/
+  Owner:  owner@northwind.example  password: northwind-owner-demo
+  Editor: editor@northwind.example  password: northwind-editor-demo
+Project 'Northwind Handbook': 4 Documents (ingestion may take a minute).
+Default Model: Demo model (Northwind demo model)
+Demo pages: http://localhost:29575/demo/
+make[1]: Leaving directory '/tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/evalA0705'
+cd frontend && pnpm e2e
+> rag-agent-studio-frontend@ e2e /tmp/claude-0/-home-user-rag-agent-studio/6b18ab77-5c70-5cfd-b109-1e70fc51c71e/scratchpad/evalA0705/frontend
+> playwright test
+Running 90 tests using 2 workers
+  ✓   2 [harness] › e2e/harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member (610ms)
+  ✓   1 [harness] › e2e/harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page (1.2s)
+  ✓   3 [harness] › e2e/harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out (364ms)
+  ✓   5 [harness] › e2e/harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page (470ms)
+  ✓   6 [harness] › e2e/harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status (230ms)
+  ✓   7 [harness] › e2e/harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email (13ms)
+  ✓   4 [harness] › e2e/harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation (1.4s)
+  ✓   8 [harness] › e2e/harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy (150ms)
+  ✓   9 [harness] › e2e/harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy (220ms)
+  ✓  10 [harness] › e2e/harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening (205ms)
+  ✓  11 [studio] › e2e/tests/agent-archive.spec.ts:4:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name (12.8s)
+  ✓  13 [studio] › e2e/tests/agent-drafts.spec.ts:4:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save (18.0s)
+  ✓  12 [studio] › e2e/tests/agent-config.spec.ts:21:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override (29.6s)
+  ✓  14 [studio] › e2e/tests/agent-publish.spec.ts:4:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log (13.4s)
+  ✓  15 [studio] › e2e/tests/agent-revert.spec.ts:4:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log (14.9s)
+  ✓  16 [studio] › e2e/tests/audit.spec.ts:4:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab (5.1s)
+  ✓  17 [studio] › e2e/tests/auth.spec.ts:5:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out (7.2s)
+  ✓  19 [studio] › e2e/tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password (4.4s)
+  ✓  18 [studio] › e2e/tests/bedrock-credentials.spec.ts:19:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys (10.9s)
+  ✓  20 [studio] › e2e/tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation (3.5s)
+  ✓  22 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations (4.6s)
+  ✓  23 [studio] › e2e/tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations (3.4s)
+  ✓  21 [studio] › e2e/tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark (12.9s)
+  ✓  24 [studio] › e2e/tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations (5.0s)
+  ✓  25 [studio] › e2e/tests/bulk-rollout.spec.ts:15:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions (17.0s)
+  ✓  26 [studio] › e2e/tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating (19.6s)
+  ✓  28 [studio] › e2e/tests/credentials.spec.ts:19:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown (6.8s)
+  ✓  27 [studio] › e2e/tests/conversations.spec.ts:8:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace (11.3s)
+  ✓  30 [studio] › e2e/tests/demo-pages.spec.ts:18:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it (4.6s)
+  ✓  31 [studio] › e2e/tests/demo-pages.spec.ts:36:3 › Demo host pages › the help-centre page shows the same Agent inline (3.2s)
+  ✓  29 [studio] › e2e/tests/credentials.spec.ts:81:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them (10.2s)
+  ✓  32 [studio] › e2e/tests/demo-pages.spec.ts:48:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget (1.6s)
+  ✓  34 [studio] › e2e/tests/demo-pages.spec.ts:69:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert (7.7s)
+  ✓  33 [studio] › e2e/tests/document-editions.spec.ts:9:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it (13.3s)
+  ✓  35 [studio] › e2e/tests/documents.spec.ts:10:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready (11.4s)
+  ✓  37 [studio] › e2e/tests/documents.spec.ts:37:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original (7.5s)
+  ✓  36 [studio] › e2e/tests/embed.spec.ts:13:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version (17.1s)
+  ✓  38 [studio] › e2e/tests/documents.spec.ts:67:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it (8.1s)
+  ✓  39 [studio] › e2e/tests/embedding-models.spec.ts:17:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted (8.8s)
+  ✓  40 [studio] › e2e/tests/ingestion-failures.spec.ts:4:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried (6.1s)
+  ✓  42 [studio] › e2e/tests/instructions-versions.spec.ts:4:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited (7.6s)
+  ✓  41 [studio] › e2e/tests/embedding-models.spec.ts:77:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over (11.3s)
+  ✓  43 [studio] › e2e/tests/instructions.spec.ts:4:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited (10.6s)
+  ✓  44 [studio] › e2e/tests/invites.spec.ts:18:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account (17.5s)
+  ✓  46 [studio] › e2e/tests/invites.spec.ts:80:3 › invites › an existing Member accepts a copied link, and a revoked link stops working (14.5s)
+  ✓  45 [studio] › e2e/tests/llm-classifier.spec.ts:17:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage (25.9s)
+  ✓  47 [studio] › e2e/tests/members.spec.ts:41:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends (18.6s)
+  ✓  48 [studio] › e2e/tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer (16.7s)
+  ✓  49 [studio] › e2e/tests/members.spec.ts:98:3 › members and roles › an Editor leaves, and the last Owner can't (12.6s)
+  ✓  50 [studio] › e2e/tests/mfa.spec.ts:22:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off (17.2s)
+  ✓  52 [studio] › e2e/tests/mfa.spec.ts:82:1 › a wrong code keeps the Member on the challenge (5.5s)
+  ✓  51 [studio] › e2e/tests/models.spec.ts:24:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted (12.6s)
+  ✓  54 [studio] › e2e/tests/operational-settings.spec.ts:7:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget (11.1s)
+  ✓  53 [studio] › e2e/tests/ocr.spec.ts:9:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry (14.4s)
+  ✓  56 [studio] › e2e/tests/password-reset.spec.ts:8:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in (8.9s)
+  ✓  57 [studio] › e2e/tests/password-reset.spec.ts:42:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions (8.8s)
+  ✓  55 [studio] › e2e/tests/organisation-switcher.spec.ts:5:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins (18.8s)
+  ✓  58 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations (3.3s)
+  ✓  60 [studio] › e2e/tests/password-reset.spec.ts:80:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations (3.7s)
+  ✓  61 [studio] › e2e/tests/password-reset.spec.ts:88:3 › accessibility › the Profile page has no WCAG 2.2 AA violations (5.0s)
+  ✓  59 [studio] › e2e/tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation (25.2s)
+  ✓  62 [studio] › e2e/tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which (18.8s)
+  ✓  64 [studio] › e2e/tests/prices.spec.ts:14:3 › prices › an Owner sees the platform price table and overrides a price for one credential (10.1s)
+  ✓  65 [studio] › e2e/tests/project-deletion.spec.ts:9:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too (14.1s)
+  ✓  63 [studio] › e2e/tests/playground.spec.ts:12:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in (38.0s)
+  ✓  66 [studio] › e2e/tests/projects.spec.ts:43:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited (11.7s)
+  ✓  67 [studio] › e2e/tests/rate-limits.spec.ts:12:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt (14.4s)
+  ✓  68 [studio] › e2e/tests/projects.spec.ts:104:3 › Projects › an Editor creates and archives a Project but only an Owner restores it (15.6s)
+  ✓  69 [studio] › e2e/tests/require-mfa.spec.ts:48:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit (16.8s)
+  ✓  70 [studio] › e2e/tests/reranker.spec.ts:23:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top (17.0s)
+  ✓  71 [studio] › e2e/tests/seed.spec.ts:10:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents (6.1s)
+  ✓  72 [studio] › e2e/tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational (3.0s)
+  ✓  73 [studio] › e2e/tests/seed.spec.ts:35:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo (4.5s)
+  ✓  74 [studio] › e2e/tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations (4.3s)
+  ✓  76 [studio] › e2e/tests/tags.spec.ts:20:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag (15.7s)
+  ✓  75 [studio] › e2e/tests/tag-scoping.spec.ts:18:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it (21.1s)
+  ✓  77 [studio] › e2e/tests/theme.spec.ts:60:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves (9.6s)
+  ✓  79 [studio] › e2e/tests/theme.spec.ts:99:3 › Theme editor › an Editor views the Theme and its preview but can't change it (6.8s)
+  ✓  78 [studio] › e2e/tests/time-series.spec.ts:13:3 › Time series › the Editor sees a Visitor's Conversation over time, markers where the Live Version changed, and a confounder note once a Document is added (18.8s)
+  ✓  80 [studio] › e2e/tests/theme.spec.ts:116:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them (10.6s)
+  ✓  82 [studio] › e2e/tests/theme.spec.ts:163:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them (9.8s)
+  ✓  81 [studio] › e2e/tests/token-budget.spec.ts:16:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers (19.9s)
+  ✓  83 [studio] › e2e/tests/version-comparison.spec.ts:11:3 › Version comparison › an Editor compares two Versions side by side with the config diff, and exports the comparison as CSV (15.7s)
+  ✓  84 [studio] › e2e/tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count (11.1s)
+  ✓  85 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations (11.5s)
+  ✓  86 [studio] › e2e/tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so (12.1s)
+  ✓  88 [studio] › e2e/tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page (4.1s)
+  ✓  87 [studio] › e2e/tests/widget-accessibility.spec.ts:73:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations (12.0s)
+  ✓  89 [studio] › e2e/tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh (13.1s)
+  ✓  90 [studio] › e2e/tests/widget-accessibility.spec.ts:136:1 › axe finds no AA violations on the inline widget in light and dark mode (14.7s)
+  90 passed (8.2m)
+exit 0

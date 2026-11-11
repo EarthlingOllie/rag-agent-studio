@@ -1,0 +1,33 @@
+$ docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' rag-agent-studio/api:pdf
+0B	CMD ["python" "-m" "app.serve"]
+0B	EXPOSE [8000/tcp]
+0B	USER studio
+0B	RUN |3 WITH_PDF=true BUNDLE_MODELS=true BUNDLE_OCR_MODELS=false /bin/sh -c useradd --system --uid 10001 studio # buildkit
+0B	RUN |3 WITH_PDF=true BUNDLE_MODELS=true BUNDLE_OCR_MODELS=false /bin/sh -c mkdir -p /opt/models/docling     && if [ "$BUNDLE_MODELS" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.ru
+0B	ENV HF_HOME=/opt/models/huggingface FASTEMBED_CACHE_PATH=/opt/models/fastembed DOCLING_ARTIFACTS_PATH=/opt/models/docling
+0B	ARG BUNDLE_OCR_MODELS=false
+0B	ARG BUNDLE_MODELS=true
+0B	ARG WITH_PDF=true
+0B	COPY migrations ./migrations # buildkit
+0B	COPY app ./app # buildkit
+0B	COPY alembic.ini ./ # buildkit
+0B	WORKDIR /app
+0B	COPY /opt/venv /opt/venv # buildkit
+0B	ENV PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PYTHONUNBUFFERED=1
+0B	RUN /bin/sh -c python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip # buildkit
+0B	RUN /bin/sh -c apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/* # buildkit
+0B	ENV SSL_CERT_FILE=/etc/ssl/certs/sandbox-ca.crt REQUESTS_CA_BUNDLE=/etc/ssl/certs/sandbox-ca.crt PIP_CERT=/etc/ssl/certs/sandbox-ca.crt NODE_EXTRA_CA_CERTS=/etc/ssl/certs/sandbox-ca.crt HTTPS_PROXY=<proxy> https_proxy=<proxy> C
+0B	COPY ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt # buildkit
+0B	CMD ["python3"]
+16.4kB	RUN /bin/sh -c set -eux;  for src in idle3 pip3 pydoc3 python3 python3-config; do   dst="$(echo "$src" | tr -d 3)";   [ -s "/usr/local/bin/$src" ];   [ ! -e "/usr/local/bin/$dst" ];   ln -svT "$src" "/usr/local/bin/$dst";  done # buildkit
+40.5MB	RUN /bin/sh -c set -eux;   savedAptMark="$(apt-mark showmanual)";  apt-get update;  apt-get install -y --no-install-recommends   dpkg-dev   g++   gcc   gnupg   libbluetooth-dev   libbz2-dev   libc6-dev   libdb-dev   libffi-dev   libgdbm-dev   liblzma-de
+0B	ENV PYTHON_SHA256=abb0102e6d4ae027509bcb82327d9dd85515b44a3ba8ad538cfc5e9847029f68
+0B	ENV PYTHON_VERSION=3.13.18
+0B	ENV GPG_KEY=<the python:3.13-slim base image's CPython release-signing key fingerprint, left out>
+4.93MB	RUN /bin/sh -c set -eux;  apt-get update;  apt-get install -y --no-install-recommends   ca-certificates   netbase   tzdata  ;  apt-get dist-clean # buildkit
+0B	ENV LANG=C.UTF-8
+0B	ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+87.7MB	# debian.sh --arch 'amd64' out/ 'trixie' '@1793827419'
+exit 0
+$ docker image inspect rag-agent-studio/api:pdf --format '{{.Id}} {{.Size}} {{.Config.Env}}'
+sha256:36d766fad5173cd95a7a73d4b6d5e35c2b96915952c48c7cd3b8885b70a1aa70 1623835713

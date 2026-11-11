@@ -1,0 +1,5 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/select-chevron.spec.ts (at d6afbc1f)
+Listing tests:
+  [studio] › tests/select-chevron.spec.ts:27:1 › selects draw the design system's chevron, inset like their text, in both Appearances
+Total: 1 test in 1 file
+exit 0

@@ -1,0 +1,8 @@
+$ pytest --no-cov (failing tests of the full run + touched modules) @ 2bfa01b, clean tree: 0 changes
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+........................................................................ [ 30%]
+........................................................................ [ 60%]
+........................................................................ [ 90%]
+........................                                                 [100%]
+240 passed in 418.11s (0:06:58)
+exit 0

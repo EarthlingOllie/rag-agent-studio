@@ -1,0 +1,43 @@
+import { Link } from "@tanstack/react-router";
+import type { SubmitEvent } from "react";
+
+import { AuthLayout, ErrorNotice, Field, formValues, PANEL_LINK, SubmitButton } from "./AuthLayout";
+import { Notice } from "../design";
+import { AuthRequestError, useRequestPasswordReset } from "./session";
+
+function errorMessage(error: Error | null): string | undefined {
+  if (error === null) return undefined;
+  if (error instanceof AuthRequestError && error.status === 422) return "Enter a valid email address.";
+  return "Something went wrong. Try again.";
+}
+
+const backToSignIn = (
+  <Link to="/sign-in" className={PANEL_LINK}>
+    Back to sign in
+  </Link>
+);
+
+/** `/forgot-password`: asks for a reset link. The answer never says whether the email is registered. */
+export function ForgotPasswordPage() {
+  const requestReset = useRequestPasswordReset();
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    requestReset.mutate(formValues(event.currentTarget, ["email"]));
+  }
+
+  return (
+    <AuthLayout title="Reset your password" footer={backToSignIn}>
+      {requestReset.isSuccess ? (
+        <Notice tone="success">If that email is registered, a reset link is on its way. Check your inbox.</Notice>
+      ) : (
+        <form onSubmit={onSubmit} className="space-y-4" aria-label="Reset your password">
+          <ErrorNotice message={errorMessage(requestReset.error)} />
+          <p className="text-sm text-muted">Enter your email and we'll send you a link to choose a new password.</p>
+          <Field label="Email" name="email" type="email" autoComplete="email" />
+          <SubmitButton pending={requestReset.isPending} label="Send reset link" pendingLabel="Sending…" />
+        </form>
+      )}
+    </AuthLayout>
+  );
+}

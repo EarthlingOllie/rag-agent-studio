@@ -1,0 +1,57 @@
+name: seed
+
+# Seeds the deployed demo environment with the demo data (ticket 10-05; spec 10 story 4), as `make seed` does locally.
+# A manual run after deploy.yml: scripts/deploy/seed.sh runs `python -m app.seed` as a one-off ECS task on the image
+# the last deploy applied, waits for it and prints its output (the demo sign-in details) in the log and job summary.
+# Running it again is idempotent: the seed completes the demo Organisation and duplicates nothing. "reset" erases the
+# demo Organisation (only that one) and seeds it again, like `make seed-reset`.
+on:
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: "Erase the demo Organisation first and seed it again (make seed-reset)."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: Seed the demo environment
+    runs-on: ubuntu-latest
+    environment: demo
+    # Shared with deploy.yml and destroy.yml, so a seed never runs during a deploy or a destroy.
+    concurrency:
+      group: demo-environment
+      cancel-in-progress: false
+    timeout-minutes: 75
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-2' }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      RESET: ${{ inputs.reset }}
+    steps:
+      - name: Check for AWS access
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ] || [ -z "$TF_STATE_BUCKET" ]; then
+            echo "::error title=Seed not configured::Set the AWS_DEPLOY_ROLE_ARN secret and the TF_STATE_BUCKET variable from the bootstrap's outputs (docs/infra-bootstrap.md)."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Install Terraform
+        run: scripts/ci/install-tools.sh terraform
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Run the seed task and wait for it
+        run: |
+          if [ "$RESET" = true ]; then
+            scripts/deploy/seed.sh --reset
+          else
+            scripts/deploy/seed.sh
+          fi

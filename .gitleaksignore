@@ -1,0 +1,37 @@
+# Fake credentials in test fixtures. gitleaks scans the whole history, so a finding in an
+# earlier commit is allowlisted here by fingerprint (<commit>:<file>:<rule>:<line>).
+# backend/tests/integration/test_telemetry.py: PASSWORD is a made-up value the scrubbing test checks is never exported.
+1bdc0b45f64a33fd10fa800aaaaeb29142f1603d:backend/tests/integration/test_telemetry.py:generic-api-key:141
+# backend/tests/integration/test_audit_events.py (branch ticket/01-05-audit-events): "sk-before-1234" and
+# "sk-after-5678" are made-up keys the audit redaction test checks are never stored. CI's full-history scan
+# reads every fetched branch, so these fingerprints fail every branch until they are allowlisted.
+15952996298f42d020159e30a60a6314a63ccadd:backend/tests/integration/test_audit_events.py:generic-api-key:148
+15952996298f42d020159e30a60a6314a63ccadd:backend/tests/integration/test_audit_events.py:generic-api-key:154
+# The same made-up keys as they landed on candidate in the squash merge of PR #11.
+c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_events.py:generic-api-key:148
+c603cb00af66e059378daad10009a6f89417eb3b:backend/tests/integration/test_audit_events.py:generic-api-key:154
+# Ticket 02-01 (branch ticket/02-01-api-key-provider-credentials): made-up Provider Credential keys
+# the credential tests save through the fake verifier, and the test-only local key wrapper key
+# ("test-only-local-key-wrapper-key!" in base64). None is a real secret.
+aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/integration/test_tenant_isolation.py:generic-api-key:95
+aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:frontend/apps/studio/src/settings/CredentialsPage.test.tsx:generic-api-key:261
+aaba3b05c088f2ca0afd1e6163fb5eadb7dde209:backend/tests/unit/test_http_credential_verifier.py:generic-api-key:125
+# Ticket 03-02 (branch ticket/03-02-upload-document-ready): the evidence's hoststack.env repeats
+# docker-compose.yml's development-only local key wrapper key ("local-dev-only-key-not-a-secret!"
+# in base64), which compose already commits as its default. Not a real secret.
+e1b3c4bbfb767d84788aa8660d4c568276eb9463:docs/tickets/03-projects-knowledge-base/03-02-evidence/hoststack.env:generic-api-key:6
+# Ticket 03-09 (Provider Embedding Models, PR #30 on candidate): VOYAGE_CREDENTIAL is a made-up
+# Provider Credential id (a UUID) that trips generic-api-key. Not a secret.
+a7613be7aa3c5531bfb5fba811bfdc789cc8eeb9:frontend/apps/studio/src/projects/EmbeddingModel.test.tsx:generic-api-key:17
+# Ticket 03-02 gap closure (branch ticket/03-02-live-docling-models): `docker history` of the PDF image
+# listed the python:3.13-slim base image's `ENV GPG_KEY=` (CPython's public release-signing key
+# fingerprint), which the generic rule matches. It is public, not a secret; the line was then edited out.
+082333e8224056dae3aeff0825d5541ed5332ff8:docs/tickets/03-projects-knowledge-base/03-02-evidence/live-models/image-pdf-history.txt:generic-api-key:26
+# backend/tests/unit/test_aws_task_settings.py (ticket 09-06): made-up REDIS_AUTH_TOKEN, SESSION_SECRET and
+# LOCAL_KEY_WRAPPER_KEY values in the shapes the Terraform modules generate, for the URL-escaping test.
+749674de737d288512ed9708742dfe3baa6ce7ff:backend/tests/unit/test_aws_task_settings.py:generic-api-key:27
+749674de737d288512ed9708742dfe3baa6ce7ff:backend/tests/unit/test_aws_task_settings.py:generic-api-key:28
+749674de737d288512ed9708742dfe3baa6ce7ff:backend/tests/unit/test_aws_task_settings.py:generic-api-key:30
+# docs/tickets/08-guardrails-evaluation/08-05-evidence/merged3-e2e.log: a one-time invite token from an e2e run
+# against a throwaway local stack, in the accept-invite URL Playwright logged.
+1dd64d55d339a2dac5b588c45ac8e85f347a9ffb:docs/tickets/08-guardrails-evaluation/08-05-evidence/merged3-e2e.log:generic-api-key:668

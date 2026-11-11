@@ -1,0 +1,18 @@
+$ sh -c cd frontend && pnpm exec playwright test --project=studio --list e2e/tests/sidebar.spec.ts e2e/tests/organisation-switcher.spec.ts e2e/tests/require-mfa.spec.ts e2e/tests/mfa.spec.ts e2e/tests/auth.spec.ts e2e/tests/invites.spec.ts (at 2bdda60d)
+Listing tests:
+  [studio] › tests/auth.spec.ts:6:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out
+  [studio] › tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password
+  [studio] › tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation
+  [studio] › tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations
+  [studio] › tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations
+  [studio] › tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations
+  [studio] › tests/invites.spec.ts:19:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account
+  [studio] › tests/invites.spec.ts:81:3 › invites › an existing Member accepts a copied link, and a revoked link stops working
+  [studio] › tests/mfa.spec.ts:23:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off
+  [studio] › tests/mfa.spec.ts:83:1 › a wrong code keeps the Member on the challenge
+  [studio] › tests/organisation-switcher.spec.ts:6:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins
+  [studio] › tests/require-mfa.spec.ts:45:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit
+  [studio] › tests/sidebar.spec.ts:5:3 › Sidebar › an Owner moves around the Organisation and a Project from the sidebar, which marks where they are
+  [studio] › tests/sidebar.spec.ts:51:3 › Sidebar › the main content keeps its 1160 px column beside a sidebar of about 240 px
+Total: 14 tests in 6 files
+exit 0

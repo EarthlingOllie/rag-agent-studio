@@ -1,0 +1,131 @@
+# Demo environment (ticket 01-02 stub; ticket 09-02 adds the AWS provider and the real network module;
+# ticket 09-03 adds the real database, cache, storage and kms modules; ticket 09-04 adds ecr and the real ecs module;
+# ticket 09-05 adds the real cdn module; ticket 09-06 adds the migration task and the deploy output that
+# scripts/deploy/deploy.sh reads; ticket 10-05 adds the seed task that scripts/deploy/seed.sh runs).
+# State is in S3 (backend.tf).
+# The GitHub OIDC deploy role is not here: infra/bootstrap creates it once, before this environment can be planned.
+locals {
+  name_prefix = "studio-${var.environment}"
+  tags        = { Environment = var.environment, Project = "rag-agent-studio" }
+}
+
+# Credentials come from the environment (GitHub OIDC in CI). default_tags backs up each module's own tags.
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = merge(local.tags, { ManagedBy = "terraform" })
+  }
+}
+
+module "network" {
+  source             = "../../modules/network"
+  name_prefix        = local.name_prefix
+  tags               = local.tags
+  availability_zones = ["${var.aws_region}a", "${var.aws_region}b"]
+}
+
+# Only the API, the worker and the one-off migration and seed tasks connect to Postgres; Beat only needs Redis.
+module "database" {
+  source      = "../../modules/database"
+  name_prefix = local.name_prefix
+  tags        = local.tags
+  vpc_id      = module.network.vpc_id
+  subnet_ids  = module.network.private_subnet_ids
+  kms_key_arn = module.kms.data_key_arn
+  client_security_group_ids = merge(
+    { for k in ["api", "worker"] : k => module.ecs.service_security_group_ids[k] },
+    { migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id },
+  )
+}
+
+module "cache" {
+  source      = "../../modules/cache"
+  name_prefix = local.name_prefix
+  tags        = local.tags
+  vpc_id      = module.network.vpc_id
+  subnet_ids  = module.network.private_subnet_ids
+  kms_key_arn = module.kms.data_key_arn
+  # The seed task (ticket 10-05) queues the demo Documents' ingestion for the worker.
+  client_security_group_ids = merge(
+    { for k in ["api", "worker", "beat"] : k => module.ecs.service_security_group_ids[k] },
+    { seed = module.ecs.seed_security_group_id },
+  )
+}
+
+# Browsers upload Documents only from the CloudFront origin, and only the distribution reads static assets.
+module "storage" {
+  source                         = "../../modules/storage"
+  name_prefix                    = local.name_prefix
+  tags                           = local.tags
+  kms_key_arn                    = module.kms.data_key_arn
+  force_destroy                  = true # The demo is torn down with one destroy run (spec 09 story 27).
+  documents_cors_allowed_origin  = module.cdn.url
+  static_assets_distribution_arn = module.cdn.distribution_arn
+}
+
+module "kms" {
+  source      = "../../modules/kms"
+  name_prefix = local.name_prefix
+  tags        = local.tags
+}
+
+# The deploy workflow pushes rag-agent-studio/api (API, worker and Beat) and rag-agent-studio/studio.
+module "ecr" {
+  source           = "../../modules/ecr"
+  name_prefix      = local.name_prefix
+  tags             = local.tags
+  repository_names = ["rag-agent-studio/api", "rag-agent-studio/studio"]
+  kms_key_arn      = module.kms.data_key_arn
+  force_delete     = true # The demo is torn down with one destroy run (spec 09 story 27).
+}
+
+# The cdn module reads origin_header_name and origin_header_value and points /api/* and /widget/a/* at alb_dns_name.
+module "ecs" {
+  source               = "../../modules/ecs"
+  name_prefix          = local.name_prefix
+  tags                 = local.tags
+  vpc_id               = module.network.vpc_id
+  vpc_cidr             = module.network.vpc_cidr
+  public_subnet_ids    = module.network.public_subnet_ids
+  private_subnet_ids   = module.network.private_subnet_ids
+  image_repository_url = module.ecr.repository_urls["rag-agent-studio/api"]
+  image_repository_arn = module.ecr.repository_arns["rag-agent-studio/api"]
+  image_tag            = var.image_tag
+  documents_bucket_arn = module.storage.documents_bucket_arn
+  credentials_key_arn  = module.kms.credentials_key_arn
+  data_key_arn         = module.kms.data_key_arn
+  studio_url           = module.cdn.url
+  # The demo pages under /demo/ (ticket 10-03) ask the API which seeded Agents to embed.
+  demo_pages = true
+
+  database = {
+    address             = module.database.address
+    port                = module.database.port
+    name                = module.database.database_name
+    username            = module.database.master_username
+    password_secret_arn = module.database.password_secret_arn
+    security_group_id   = module.database.security_group_id
+  }
+
+  cache = {
+    address               = module.cache.primary_endpoint_address
+    port                  = module.cache.port
+    auth_token_secret_arn = module.cache.auth_token_secret_arn
+    security_group_id     = module.cache.security_group_id
+  }
+}
+
+# One distribution serves the Studio and widget from the static bucket and the API from the ALB (ADR-0011).
+module "cdn" {
+  source                             = "../../modules/cdn"
+  name_prefix                        = local.name_prefix
+  tags                               = local.tags
+  static_bucket_regional_domain_name = module.storage.static_bucket_regional_domain_name
+  static_origin_access_control_id    = module.storage.static_origin_access_control_id
+  alb_dns_name                       = module.ecs.alb_dns_name
+  origin_header_name                 = module.ecs.origin_header_name
+  origin_header_value                = module.ecs.origin_header_value
+  domain_name                        = var.domain_name
+  hosted_zone_name                   = var.hosted_zone_name
+}

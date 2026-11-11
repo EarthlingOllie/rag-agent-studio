@@ -1,0 +1,11 @@
+$ sh -c cd frontend && SHOTS_DIR=../docs/tickets/12-reskin-fixes-sidebar-navigation/12-06-evidence/screenshots pnpm exec vitest run --config ../docs/tickets/12-reskin-fixes-sidebar-navigation/12-06-evidence/shots.config.mjs (at 4de8aa96)
+
+ RUN  v5.1.0 /home/user/wt-12-06/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  00:31:07
+   Duration  107.66s (tests 99%, import 1%)
+
+exit 0

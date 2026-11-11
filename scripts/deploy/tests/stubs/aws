@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Stand-in for the AWS CLI in the deploy script tests: logs each call and answers as the STUB_* variables say.
+echo "aws $*" >>"$STUB_CALLS"
+case "$1 $2" in
+  "sts get-caller-identity") echo 123456789012 ;;
+  "ecr describe-images") exit "${STUB_IMAGE_IN_ECR:-254}" ;;
+  "ecr get-login-password") echo not-a-real-password ;;
+  "ecs run-task") echo "${STUB_RUN_TASK_ARN-arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef}" ;;
+  "ecs wait")
+    [ "$3" = services-stable ] && exit "${STUB_STABLE_EXIT:-0}"
+    # tasks-stopped: the waiter gives up (exit 255) until it has been called STUB_TASK_STOPS_AFTER_WAITS times.
+    [ "$(grep -c '^aws ecs wait tasks-stopped' "$STUB_CALLS")" -ge "${STUB_TASK_STOPS_AFTER_WAITS:-1}" ] || exit 255
+    exit 0 ;;
+  "ecs describe-tasks") echo "${STUB_TASK_EXIT_CODE-${STUB_MIGRATION_EXIT_CODE-0}}" ;;
+  "ecs update-service") exit 0 ;;
+  "s3 sync")
+    # Keep what would have been uploaded, so the tests can check the bucket's layout.
+    mkdir -p "$STUB_UPLOADED" && cp -R "$3/." "$STUB_UPLOADED/" ;;
+  "s3 cp") exit 0 ;;
+  "cloudfront create-invalidation") echo I2J0I21PCUYOIK ;;
+  "cloudfront wait") exit 0 ;;
+  "logs get-log-events")
+    [ "${STUB_LOGS_EXIT:-0}" = 0 ] || exit "$STUB_LOGS_EXIT"
+    printf '%s\n' "${STUB_LOG_MESSAGES-}" ;;
+  *) echo "unexpected aws call: $*" >&2; exit 99 ;;
+esac

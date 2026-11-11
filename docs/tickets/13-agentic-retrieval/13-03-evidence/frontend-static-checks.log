@@ -1,0 +1,123 @@
+
+> rag-agent-studio-frontend@ check-embed-size /home/user/wt-13-03/frontend
+> pnpm --filter @studio/widget build && pnpm --filter @studio/widget check-size
+
+
+> @studio/widget@ build /home/user/wt-13-03/frontend/apps/widget
+> vite build && vite build --config vite.embed.config.ts
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 78 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/widget/assets/widget.js  651.81 kB │ gzip: 205.01 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.22s
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 3 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/embed.js  1.36 kB │ gzip: 0.77 kB
+
+✓ built in 37ms
+
+> @studio/widget@ check-size /home/user/wt-13-03/frontend/apps/widget
+> node scripts/check-size.mjs
+
+embed.js: 1367 bytes, 778 gzipped (budget 2048 and 1024)
+
+> rag-agent-studio-frontend@ palette-ratchet /home/user/wt-13-03/frontend
+> node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 --test-coverage-include=scripts/palette-ratchet/ratchet.mjs scripts/palette-ratchet/ratchet.test.mjs && node scripts/palette-ratchet/cli.mjs
+
+TAP version 13
+# Subtest: counts palette classes, dark: variants and white text or backgrounds under apps/studio/src only
+ok 1 - counts palette classes, dark: variants and white text or backgrounds under apps/studio/src only
+  ---
+  duration_ms: 20.241332
+  type: 'test'
+  ...
+# Subtest: token utilities are not palette classes
+ok 2 - token utilities are not palette classes
+  ---
+  duration_ms: 0.693446
+  type: 'test'
+  ...
+# Subtest: a `dark` key or a colour named in prose is not a class; the dark: variant is
+ok 3 - a `dark` key or a colour named in prose is not a class; the dark: variant is
+  ---
+  duration_ms: 1.89302
+  type: 'test'
+  ...
+# Subtest: the same count as the baseline passes
+ok 4 - the same count as the baseline passes
+  ---
+  duration_ms: 8.875857
+  type: 'test'
+  ...
+# Subtest: a rise fails and names the files that have them
+ok 5 - a rise fails and names the files that have them
+  ---
+  duration_ms: 1.228681
+  type: 'test'
+  ...
+# Subtest: a fall passes and prints the new baseline to commit
+ok 6 - a fall passes and prints the new baseline to commit
+  ---
+  duration_ms: 1.156258
+  type: 'test'
+  ...
+# Subtest: --write lowers the baseline to the new count, but never raises it
+ok 7 - --write lowers the baseline to the new count, but never raises it
+  ---
+  duration_ms: 10.130921
+  type: 'test'
+  ...
+# Subtest: with no baseline file none are allowed
+ok 8 - with no baseline file none are allowed
+  ---
+  duration_ms: 1.441035
+  type: 'test'
+  ...
+# Subtest: an unknown argument is a usage error
+ok 9 - an unknown argument is a usage error
+  ---
+  duration_ms: 4.955043
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 200.429069
+# start of coverage report
+# ------------------------------------------------------------------
+# file              | line % | branch % | funcs % | uncovered lines
+# ------------------------------------------------------------------
+# scripts           |        |          |         | 
+#  palette-ratchet  |        |          |         | 
+#   ratchet.mjs     | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# all files         | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# end of coverage report
+0 palette-class uses under apps/studio/src (none allowed).
+
+> rag-agent-studio-frontend@ lint /home/user/wt-13-03/frontend
+> eslint . --max-warnings=0
+
+
+> rag-agent-studio-frontend@ typecheck /home/user/wt-13-03/frontend
+> tsc
+
+exit 0

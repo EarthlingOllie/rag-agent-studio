@@ -1,0 +1,255 @@
+$ build.sh (sandbox make images) @ 93d3ffe
++ docker build -t rag-agent-studio/api:0601 backend (WITH_PDF=false BUNDLE_MODELS=false, sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.backend
+#1 transferring dockerfile: 3.13kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.13-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 125B done
+#4 DONE 0.0s
+
+#5 [build 1/6] FROM docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc
+#5 resolve docker.io/library/python:3.13-slim@sha256:09a17cad02668ae61ece136b4fd36ac3849e14f670ebedb637ea3e15580525bc 0.0s done
+#5 CACHED
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 186.71kB done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.52MB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 3/6] RUN pip install --no-cache-dir uv==0.11.32
+#8 CACHED
+
+#9 [build 5/6] COPY pyproject.toml uv.lock ./
+#9 CACHED
+
+#10 [build 2/6] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#10 CACHED
+
+#11 [build 4/6] WORKDIR /app
+#11 CACHED
+
+#12 [build 6/6] RUN uv sync --frozen --no-dev --no-install-project $([ "false" = "true" ] && echo --group pdf)
+#12 CACHED
+
+#13 [stage-1  2/10] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#13 0.074 Ign:1 http://deb.debian.org/debian trixie InRelease
+#13 0.074 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 0.074 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 1.077 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 1.077 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 1.077 Ign:1 http://deb.debian.org/debian trixie InRelease
+#13 3.079 Ign:1 http://deb.debian.org/debian trixie InRelease
+#13 3.080 Ign:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 3.080 Ign:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 7.082 Err:3 http://deb.debian.org/debian-security trixie-security InRelease
+#13 7.082   Could not resolve 'deb.debian.org'
+#13 7.082 Err:2 http://deb.debian.org/debian trixie-updates InRelease
+#13 7.082   Could not resolve 'deb.debian.org'
+#13 7.082 Err:1 http://deb.debian.org/debian trixie InRelease
+#13 7.082   Could not resolve 'deb.debian.org'
+#13 7.087 Reading package lists...
+#13 7.094 W: Failed to fetch http://deb.debian.org/debian/dists/trixie/InRelease  Could not resolve 'deb.debian.org'
+#13 7.094 W: Failed to fetch http://deb.debian.org/debian/dists/trixie-updates/InRelease  Could not resolve 'deb.debian.org'
+#13 7.094 W: Failed to fetch http://deb.debian.org/debian-security/dists/trixie-security/InRelease  Could not resolve 'deb.debian.org'
+#13 7.094 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#13 7.101 Reading package lists...
+#13 7.109 Building dependency tree...
+#13 7.110 Reading state information...
+#13 7.112 Calculating upgrade...
+#13 7.118 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#13 DONE 7.2s
+
+#14 [stage-1  3/10] RUN python -m pip uninstall --yes --no-cache-dir pip     && rm -rf /usr/local/lib/python3.13/ensurepip
+#14 1.090 Found existing installation: pip 26.2.2
+#14 1.113 Uninstalling pip-26.2.2:
+#14 1.187   Successfully uninstalled pip-26.2.2
+#14 1.204 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#14 DONE 1.3s
+
+#15 [stage-1  4/10] COPY --from=build /opt/venv /opt/venv
+#15 DONE 2.6s
+
+#16 [stage-1  5/10] WORKDIR /app
+#16 DONE 0.2s
+
+#17 [stage-1  6/10] COPY alembic.ini ./
+#17 DONE 0.0s
+
+#18 [stage-1  7/10] COPY app ./app
+#18 DONE 0.0s
+
+#19 [stage-1  8/10] COPY migrations ./migrations
+#19 DONE 0.0s
+
+#20 [stage-1  9/10] RUN mkdir -p /opt/models/docling     && if [ "false" = "true" ]; then         python -c "import asyncio; from app.embeddings.local import LocalEmbedder as E; e = E(); asyncio.run(e.embed_passages(['warm up'])); e.tokenizer(512)"         && if [ "false" = "true" ]; then             python -c "from docling.utils.model_downloader import download_models; from pathlib import Path; download_models(output_dir=Path('/opt/models/docling'), with_code_formula=False, with_picture_classifier=False, with_rapidocr='true' == 'true')";         fi;     fi
+#20 DONE 0.1s
+
+#21 [stage-1 10/10] RUN useradd --system --uid 10001 studio
+#21 0.056 useradd warning: studio's uid 10001 is greater than SYS_UID_MAX 999
+#21 DONE 0.1s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 21.8s done
+#22 exporting manifest sha256:22b915b237ac8631312bfcce44c0f664f007b209ca17515497b51c15a71cffa4 done
+#22 exporting config sha256:683ac3f13c9ff29861d173bde0c93bc12372c73cca6a1817b5a4d4fb763af524 done
+#22 exporting attestation manifest sha256:bd7b6b5510f81e5053ef84e731925d1de9fdf56b212132abdb17ba9430166f4d done
+#22 exporting manifest list sha256:b482ec10839f7a9ad29038e8fd259f4a580926baebcd8fde0355339db5559cd4 done
+#22 naming to docker.io/rag-agent-studio/api:0601 done
+#22 unpacking to docker.io/rag-agent-studio/api:0601
+#22 unpacking to docker.io/rag-agent-studio/api:0601 5.5s done
+#22 DONE 27.3s
++ docker build -t rag-agent-studio/studio:0601 frontend (sandbox CA)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile.frontend
+#1 transferring dockerfile: 1.84kB done
+#1 DONE 0.0s
+
+#2 [context sandboxca] load .dockerignore
+#2 transferring sandboxca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 104B done
+#4 DONE 0.0s
+
+#5 [install  1/12] FROM docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d
+#5 resolve docker.io/library/node:22-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d done
+#5 CACHED
+
+#6 [context sandboxca] load from client
+#6 transferring sandboxca: 186.71kB done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 2.15MB 0.0s done
+#7 DONE 0.0s
+
+#8 [install  5/12] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#8 CACHED
+
+#9 [install  3/12] RUN corepack enable
+#9 CACHED
+
+#10 [install  4/12] WORKDIR /app
+#10 CACHED
+
+#11 [install  7/12] COPY apps/widget/package.json apps/widget/
+#11 CACHED
+
+#12 [install  2/12] COPY --from=sandboxca ca-bundle.crt /etc/ssl/certs/sandbox-ca.crt
+#12 CACHED
+
+#13 [install  9/12] COPY packages/ui/package.json packages/ui/
+#13 CACHED
+
+#14 [install  8/12] COPY packages/api-client/package.json packages/api-client/
+#14 CACHED
+
+#15 [install  6/12] COPY apps/studio/package.json apps/studio/
+#15 CACHED
+
+#16 [install 10/12] RUN pnpm install --frozen-lockfile
+#16 CACHED
+
+#17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#17 0.088 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#17 0.088 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 0.088 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 ...
+
+#18 [install 11/12] COPY . .
+#18 DONE 0.9s
+
+#17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#17 1.089 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#17 1.089 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 1.089 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 ...
+
+#19 [install 12/12] RUN pnpm --filter @studio/widget build
+#19 0.321 
+#19 0.321 > @studio/widget@ build /app/apps/widget
+#19 0.321 > vite build && vite build --config vite.embed.config.ts
+#19 0.321 
+#19 0.500 vite v8.3.5 building client environment for production...
+#19 0.512 transforming...
+#19 0.554 ✓ 15 modules transformed.
+#19 0.568 rendering chunks...
+#19 0.602 computing gzip size...
+#19 0.605 dist/widget/assets/widget.js  223.47 kB │ gzip: 70.23 kB
+#19 0.605 
+#19 0.606 ✓ built in 105ms
+#19 0.755 vite v8.3.5 building client environment for production...
+#19 0.767 transforming...
+#19 0.768 ✓ 3 modules transformed.
+#19 0.772 rendering chunks...
+#19 0.775 computing gzip size...
+#19 0.776 dist/embed.js  0.41 kB │ gzip: 0.31 kB
+#19 0.776 
+#19 0.776 ✓ built in 20ms
+#19 DONE 0.8s
+
+#17 [stage-1 2/5] RUN apt-get update     && apt-get upgrade --yes --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+#17 3.089 Ign:1 http://deb.debian.org/debian bookworm InRelease
+#17 3.089 Ign:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 3.089 Ign:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 7.091 Err:1 http://deb.debian.org/debian bookworm InRelease
+#17 7.091   Could not resolve 'deb.debian.org'
+#17 7.091 Err:2 http://deb.debian.org/debian bookworm-updates InRelease
+#17 7.091   Could not resolve 'deb.debian.org'
+#17 7.091 Err:3 http://deb.debian.org/debian-security bookworm-security InRelease
+#17 7.091   Could not resolve 'deb.debian.org'
+#17 7.094 Reading package lists...
+#17 7.100 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Could not resolve 'deb.debian.org'
+#17 7.100 W: Failed to fetch http://deb.debian.org/debian/dists/bookworm-updates/InRelease  Could not resolve 'deb.debian.org'
+#17 7.100 W: Failed to fetch http://deb.debian.org/debian-security/dists/bookworm-security/InRelease  Could not resolve 'deb.debian.org'
+#17 7.100 W: Some index files failed to download. They have been ignored, or old ones used instead.
+#17 7.106 Reading package lists...
+#17 7.112 Building dependency tree...
+#17 7.112 Reading state information...
+#17 7.113 Calculating upgrade...
+#17 7.116 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+#17 DONE 7.1s
+
+#20 [stage-1 3/5] RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack     /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+#20 DONE 0.2s
+
+#21 [stage-1 4/5] COPY --from=install --chown=node:node /app /app
+#21 DONE 1.3s
+
+#22 [stage-1 5/5] WORKDIR /app/apps/studio
+#22 DONE 0.1s
+
+#23 exporting to image
+#23 exporting layers
+#23 exporting layers 8.3s done
+#23 exporting manifest sha256:40462390e723a363d1ddc4780036cfabbda0782222bdf60c480093a8aa413ab3 done
+#23 exporting config sha256:4810c90a3f1b4384ee0832c24013943d41d684f0bb786f14d99813dc077d8693 done
+#23 exporting attestation manifest sha256:485d478c318368f4e78ba698502d7bf313bd75c9f092f306a44c33dc86eaf486 done
+#23 exporting manifest list sha256:b7bec3d687e2c180448d13c30dc4a604d8f308d614f9adf00a11f51a630d30cf done
+#23 naming to docker.io/rag-agent-studio/studio:0601 done
+#23 unpacking to docker.io/rag-agent-studio/studio:0601
+#23 unpacking to docker.io/rag-agent-studio/studio:0601 2.4s done
+#23 DONE 10.7s
+exit 0

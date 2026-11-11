@@ -1,0 +1,147 @@
+$ make test-frontend (fresh clone at 97718d3)
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test <scratchpad>/clean0302/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 <scratchpad>/clean0302/frontend
+      Coverage enabled with v8
+
+ ❯ apps/studio/src/invites/AcceptInvitePage.test.tsx (24 tests | 1 failed) 11320ms
+   × a person without an account creates one and joins in one step 1302ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/studio/src/invites/AcceptInvitePage.test.tsx > a person without an account creates one and joins in one step
+TestingLibraryElementError: Unable to find role="heading" and name "Join Difference Engines"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-slate-900"[39m
+    [36m>[39m
+      [36m<main[39m
+        [33mclass[39m=[32m"w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"text-sm font-semibold text-slate-700"[39m
+        [36m>[39m
+          [0mRAG Agent Studio[0m
+        [36m</p>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"mt-2 text-2xl font-semibold"[39m
+        [36m>[39m
+          [0mAccept invite[0m
+        [36m</h1>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-6"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mLoading…[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-6 text-sm text-slate-700"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"font-medium text-slate-900 underline"[39m
+            [33mhref[39m=[32m"/sign-in"[39m
+          [36m>[39m
+            [0mSign in[0m
+          [36m</a>[39m
+        [36m</p>[39m
+      [36m</main>[39m
+      [36m<footer[39m
+        [33mclass[39m=[32m"mt-6 text-sm"[39m
+      [36m>[39m
+        [36m<a[39m
+          [33mclass[39m=[32m"text-slate-700 underline"[39m
+          [33mhref[39m=[32m"/status"[39m
+        [36m>[39m
+          [0mSystem status[0m
+        [36m</a>[39m
+      [36m</footer>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 text-slate-900"[39m
+    [36m>[39m
+      [36m<main[39m
+        [33mclass[39m=[32m"w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm"[39m
+      [36m>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"text-sm font-semibold text-slate-700"[39m
+        [36m>[39m
+          [0mRAG Agent Studio[0m
+        [36m</p>[39m
+        [36m<h1[39m
+          [33mclass[39m=[32m"mt-2 text-2xl font-semibold"[39m
+        [36m>[39m
+          [0mAccept invite[0m
+        [36m</h1>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-6"[39m
+        [36m>[39m
+          [36m<p[39m
+            [33mrole[39m=[32m"status"[39m
+          [36m>[39m
+            [0mLoading…[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<p[39m
+          [33mclass[39m=[32m"mt-6 text-sm text-slate-700"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"font-medium text-slate-900 underline"[39m
+            [33mhref[39m=[32m"/sign-in"[39m
+          [36m>[39m
+            [0mSign in[0m
+          [36m</a>[39m
+        [36m</p>[39m
+      [36m</main>[39m
+      [36m<footer[39m
+        [33mclass[39m=[32m"mt-6 text-sm"[39m
+      [36m>[39m
+        [36m<a[39m
+          [33mclass[39m=[32m"text-slate-700 underline"[39m
+          [33mhref[39m=[32m"/status"[39m
+        [36m>[39m
+          [0mSystem status[0m
+        [36m</a>[39m
+      [36m</footer>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/.pnpm/@testing-library+dom@10.4.2/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ apps/studio/src/invites/AcceptInvitePage.test.tsx:30:23
+     28|   renderStudio(path);
+     29|
+     30|   expect(await screen.findByRole("heading", { name: "Join Difference E…
+       |                       ^
+     31|   expect(screen.getByText(/Charles Babbage invited/)).toHaveTextConten…
+     32|     "Charles Babbage invited grace@example.test to join Difference Eng…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 24 passed (25)
+      Tests  1 failed | 250 passed (251)
+   Start at  11:17:59
+   Duration  100.57s (tests 62%, environment 22%, setup 7%, import 5%, transform 2%, worker 2%)
+
+    Isolate  25 workers spawned · ~2.83s startup each (spawn + environment, per file)
+             at least ~20.78s faster with isolate: false — reuses workers across files instead of one per file
+
+ ELIFECYCLE  Test failed. See above for more details.
+make: *** [Makefile:36: test-frontend] Error 1
+exit=2

@@ -1,0 +1,29 @@
+$ python3 -I tagcheck.py <aws provider 6.72.0 schema> main.tf tests/contract.tftest.hcl
+# tagcheck.py: for every resource block in main.tf, does the provider schema have a tags argument, does main.tf set it, and does a tag run in the test assert on it
+resource                                                   taggable  sets tags  asserted
+aws_vpc.this                                               True      True       True
+aws_default_security_group.this                            True      True       True
+aws_subnet.public                                          True      True       True
+aws_subnet.private                                         True      True       True
+aws_internet_gateway.this                                  True      True       True
+aws_route_table.public                                     True      True       True
+aws_route.public_internet                                  False     False      False
+aws_route_table_association.public                         False     False      False
+aws_route_table.private                                    True      True       True
+aws_route_table_association.private                        False     False      False
+aws_eip.nat                                                True      True       True
+aws_nat_gateway.this                                       True      True       True
+aws_security_group.fck_nat                                 True      True       True
+aws_vpc_security_group_ingress_rule.fck_nat_from_vpc       True      True       True
+aws_vpc_security_group_egress_rule.fck_nat_to_internet     True      True       True
+aws_network_interface.fck_nat                              True      True       True
+aws_eip_association.fck_nat                                False     False      False
+aws_instance.fck_nat                                       True      True       True
+aws_route.private_egress                                   False     False      False
+aws_vpc_endpoint.s3                                        True      True       True
+aws_security_group.endpoints                               True      True       True
+aws_vpc_security_group_ingress_rule.endpoints_https        True      True       True
+aws_vpc_endpoint.interface                                 True      True       True
+
+23 resources, 18 taggable, 0 missing tags or a tag assertion
+exit=0

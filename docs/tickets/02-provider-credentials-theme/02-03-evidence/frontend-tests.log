@@ -1,0 +1,32 @@
+# commit aa17f5d, fresh clone of ticket/02-03-model-gateway-default-model
+$ make test-frontend
+cd frontend && pnpm test
+
+> rag-agent-studio-frontend@ test <scratch>/clean0203/frontend
+> vitest run --coverage
+
+
+ RUN  v5.1.0 <scratch>/clean0203/frontend
+      Coverage enabled with v8
+
+
+ Test Files  25 passed (25)
+      Tests  249 passed (249)
+   Start at  10:50:38
+   Duration  55.84s (tests 63%, environment 21%, setup 7%, import 5%, transform 2%, worker 2%)
+
+    Isolate  25 workers spawned · ~1.53s startup each (spawn + environment, per file)
+             at least ~11.20s faster with isolate: false — reuses workers across files instead of one per file
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+No files with missing coverage.
+40 files fully covered.
+1 empty file skipped.
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 1191/1191 )
+Branches     : 100% ( 678/678 )
+Functions    : 100% ( 475/475 )
+Lines        : 100% ( 1040/1040 )
+================================================================================
+[exit code 0]

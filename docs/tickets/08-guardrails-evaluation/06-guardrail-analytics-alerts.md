@@ -9,10 +9,10 @@
 - [07-04: Rollups and Version KPIs](../07-feedback-logging-comparison/04-rollups-version-kpis.md)
 - [06-06: Token Budget](../06-embed-widget-operational-settings/06-token-budget.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The block rate is included in rollups and KPI cards
-- [ ] Conversations can be filtered by Guardrail outcome
-- [ ] A spike sets an alert flag and shows the badge
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The block rate is included in rollups and KPI cards
+- [x] Conversations can be filtered by Guardrail outcome
+- [x] A spike sets an alert flag and shows the badge
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

@@ -76,7 +76,7 @@ The Playground lets an Editor chat with the Draft. Answers stream in with citati
   Excluded candidates and their reasons feed the Trace.
 - **Agent runtime module.** One operation: `run_turn(conversation context, AgentConfig, Instructions text, Visitor input) → async stream of events (token, citation, final usage and Trace)`. It:
   - assembles the prompt in a fixed order: platform preamble (spotlighting rules; the canary placeholder is wired here and enforced in spec 08), Project Instructions, the Agent system prompt, remembered turns, then retrieved Chunks and Visitor input in labelled, delimited data blocks;
-  - calls the model through a Pydantic AI agent built by the model gateway, with no tools registered (ADR-0007);
+  - calls the model through a Pydantic AI agent built by the model gateway, with no tools that act outside the Conversation (ADR-0007). Spec 13 adds Knowledge Search, a read-only tool, for Agents in Agentic Retrieval Mode (ADR-0015);
   - uses the fallback text when retrieval returns nothing above the threshold;
   - works out citations by asking the model to reference Chunk labels and resolving them back to Chunk IDs.
   The runtime knows nothing about HTTP, Playground or widget; spec 06 reuses it unchanged.
@@ -111,7 +111,7 @@ The Playground lets an Editor chat with the Draft. Answers stream in with citati
 - Serving to Visitors, Operational Settings and enforcing the Token Budget (spec 06).
 - Feedback, ratings and analytics (spec 07).
 - Enforcing Guardrails beyond prompt structure (spec 08). The settings are stored and passed through.
-- Tools of any kind for Agents (ADR-0007).
+- Tools for Agents (ADR-0007). Spec 13 later adds the read-only Knowledge Search tool (ADR-0015).
 
 ## Further Notes
 

@@ -1,0 +1,61 @@
+# Run in the branch worktree at 655bfaa with sb0106/mutate.py: each mutation is applied alone, tests/integration/test_sign_in_throttling.py is run, the file is restored.
+== mutation: unknown emails don't count on the account counter
+   CAUGHT; failing tests:
+     test_throttling_is_identical_for_an_unknown_email_and_a_wrong_password
+== mutation: a stale counter is never reset
+   CAUGHT; failing tests:
+     test_failures_are_forgotten_once_the_lockout_time_passes_without_another
+== mutation: success doesn't clear the account counter
+   CAUGHT; failing tests:
+     test_a_successful_sign_in_clears_the_account_failures
+== mutation: refused attempts are counted
+   CAUGHT; failing tests:
+     test_repeated_failures_lock_the_account_even_for_the_right_password
+     test_after_three_free_failures_each_attempt_waits_progressively_longer
+     test_a_delay_refuses_even_the_right_password_until_it_has_passed
+     test_the_lockout_expires_after_the_configured_time
+     test_many_failures_from_one_ip_lock_that_ip_out_for_every_account
+== mutation: no per-IP counter
+   CAUGHT; failing tests:
+     test_many_failures_from_one_ip_lock_that_ip_out_for_every_account
+     test_an_ip_waits_progressively_longer_after_its_free_failures
+     test_an_ip_lockout_is_recorded_for_the_member_whose_sign_in_tripped_it
+== mutation: constant delay instead of progressive
+   CAUGHT; failing tests:
+     test_after_three_free_failures_each_attempt_waits_progressively_longer
+     test_a_delay_refuses_even_the_right_password_until_it_has_passed
+     test_throttling_is_identical_for_an_unknown_email_and_a_wrong_password
+== mutation: lockout ignores SIGN_IN_LOCKOUT_SECONDS
+   CAUGHT; failing tests:
+     test_repeated_failures_lock_the_account_even_for_the_right_password
+     test_after_three_free_failures_each_attempt_waits_progressively_longer
+     test_the_lockout_expires_after_the_configured_time
+     test_failures_are_forgotten_once_the_lockout_time_passes_without_another
+     test_many_failures_from_one_ip_lock_that_ip_out_for_every_account
+     test_an_account_lockout_is_recorded_as_an_audit_event
+     test_an_ip_lockout_is_recorded_for_the_member_whose_sign_in_tripped_it
+== mutation: lockout not audited
+   CAUGHT; failing tests:
+     test_an_account_lockout_is_recorded_as_an_audit_event
+     test_an_ip_lockout_is_recorded_for_the_member_whose_sign_in_tripped_it
+== mutation: delay refuses nothing (correct password gets through)
+   CAUGHT; failing tests:
+     test_after_three_free_failures_each_attempt_waits_progressively_longer
+     test_a_delay_refuses_even_the_right_password_until_it_has_passed
+     test_an_ip_waits_progressively_longer_after_its_free_failures
+     test_throttling_is_identical_for_an_unknown_email_and_a_wrong_password
+
+9/9 mutations caught
+unmodified code: 11 passed in 16.66s
+
+== frontend mutation: the Studio ignores 429 throttling details (no lockout message)
+1
+   × explains a lockout and how long it lasts 158ms
+   × rounds a lockout's remaining time up to whole minutes 149ms
+   × says a lockout ending within the minute lasts 1 minute 145ms
+   × asks the Member to wait out a short delay 134ms
+   × says 1 second for a one-second delay 131ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  5 failed | 8 passed (13)
+== unmodified:
+      Tests  13 passed (13)

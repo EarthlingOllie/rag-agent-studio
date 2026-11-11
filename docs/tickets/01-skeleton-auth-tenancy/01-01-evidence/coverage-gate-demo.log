@@ -1,0 +1,52 @@
+# Backend gate: deselect the test covering the Redis-down branch; the coverage gate must fail
+$ cd backend && uv run pytest --deselect tests/integration/test_health.py::test_health_is_unavailable_when_redis_is_unreachable
+                                                                         [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.18-final-0 _______________
+Name                       Stmts   Miss Branch BrPart  Cover   Missing
+----------------------------------------------------------------------
+app/__init__.py                0      0      0      0   100%
+app/api/__init__.py            0      0      0      0   100%
+app/api/health.py             62      2      6      0    97%   53-54
+app/core/__init__.py           0      0      0      0   100%
+app/core/db.py                 4      0      0      0   100%
+app/core/settings.py          17      0      0      0   100%
+app/main.py                   24      0      0      0   100%
+app/openapi.py                 6      0      0      0   100%
+app/worker/__init__.py         0      0      0      0   100%
+app/worker/celery_app.py       8      0      0      0   100%
+app/worker/main.py             3      0      0      0   100%
+app/worker/tasks.py            4      0      0      0   100%
+----------------------------------------------------------------------
+TOTAL                        128      2      6      0    99%
+Coverage XML written to file coverage.xml
+FAIL Required test coverage of 100.0% not reached. Total coverage: 98.51%
+======================= 13 passed, 1 deselected in 2.50s =======================
+exit=1
+
+# Frontend gate: skip the test covering main.tsx's missing-#root branch; the coverage gate must fail
+diff --git a/frontend/apps/studio/src/main.test.tsx b/frontend/apps/studio/src/main.test.tsx
+index 370e970..ab7c4c8 100644
+--- a/frontend/apps/studio/src/main.test.tsx
++++ b/frontend/apps/studio/src/main.test.tsx
+@@ -13,7 +13,7 @@ test("mounts the Studio into the page's root element", async () => {
+   expect(await screen.findByText("All systems operational")).toBeInTheDocument();
+ });
+ 
+-test("explains what is missing when the page has no root element", async () => {
++test.skip("explains what is missing when the page has no root element", async () => {
+   document.body.innerHTML = "";
+ 
+   await expect(import("./main")).rejects.toThrow("The Studio needs a #root element to mount into.");
+$ make test-frontend
+      Tests  7 passed | 1 skipped (8)
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+  main.tsx         |      75 |       50 |     100 |      75 | 12                
+Statements   : 97.43% ( 38/39 )
+Branches     : 96.87% ( 31/32 )
+Lines        : 97.29% ( 36/37 )
+ERROR: Coverage for lines (97.29%) does not meet global threshold (100%)
+ERROR: Coverage for statements (97.43%) does not meet global threshold (100%)
+ERROR: Coverage for branches (96.87%) does not meet global threshold (100%)
+exit=2
+# reverted

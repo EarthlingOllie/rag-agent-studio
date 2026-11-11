@@ -7,13 +7,15 @@
 **Blocked by:**
 - [01-04: Sign up, sign in, sign out](04-sign-up-sign-in-sign-out.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The envelope-encryption module provides seal and open with AES-256-GCM, a fresh data key per record, a versioned format and a local key wrapper; tamper detection is tested
-- [ ] Enrolment shows a QR code and requires a confirming code; ten single-use recovery codes are shown once and stored hashed
-- [ ] Sign-in for an MFA-enabled Member returns an MFA-pending state, and a full session follows a valid code (±1 step) or a recovery code
-- [ ] Disabling MFA requires the password and a code
-- [ ] Enrolment, disabling and recovery-code use are recorded as Audit Events
-- [ ] The Studio has screens for enrolment, the challenge and recovery codes
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+Evidence: [01-11-evidence/README.md](01-11-evidence/README.md)
+
+- [x] The envelope-encryption module provides seal and open with AES-256-GCM, a fresh data key per record, a versioned format and a local key wrapper; tamper detection is tested
+- [x] Enrolment shows a QR code and requires a confirming code; ten single-use recovery codes are shown once and stored hashed
+- [x] Sign-in for an MFA-enabled Member returns an MFA-pending state, and a full session follows a valid code (±1 step) or a recovery code
+- [x] Disabling MFA requires the password and a code
+- [x] Enrolment, disabling and recovery-code use are recorded as Audit Events
+- [x] The Studio has screens for enrolment, the challenge and recovery codes
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

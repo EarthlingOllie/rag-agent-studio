@@ -1,0 +1,29 @@
+$ sh -c docker build --network host --build-arg HTTP_PROXY=http://127.0.0.1:37611 --build-arg HTTPS_PROXY=http://127.0.0.1:37611 --build-arg http_proxy=http://127.0.0.1:37611 --build-arg https_proxy=http://127.0.0.1:37611 -f docs/tickets/12-reskin-fixes-sidebar-navigation/12-08-evidence/stack/frontend.Dockerfile --build-context ca=/tmp/claude-0/-home-user-rag-agent-studio/bcad6aa7-1c76-5734-905e-53af2ccd514e/scratchpad/e2e-stack/ca -t rag-agent-studio-studio frontend   && docker build --network host --build-arg HTTP_PROXY=http://127.0.0.1:37611 --build-arg HTTPS_PROXY=http://127.0.0.1:37611 --build-arg http_proxy=http://127.0.0.1:37611 --build-arg https_proxy=http://127.0.0.1:37611 --build-arg WITH_PDF=false --build-arg BUNDLE_MODELS=false -f docs/tickets/12-reskin-fixes-sidebar-navigation/12-08-evidence/stack/backend.Dockerfile --build-context ca=/tmp/claude-0/-home-user-rag-agent-studio/bcad6aa7-1c76-5734-905e-53af2ccd514e/scratchpad/e2e-stack/ca --build-context seed=seed -t rag-agent-studio-api backend   && for s in worker beat; do docker tag rag-agent-studio-api rag-agent-studio-$s; done   && for s in widget host; do docker tag rag-agent-studio-studio rag-agent-studio-$s; done   && docker compose -f docker-compose.yml -f docs/tickets/12-reskin-fixes-sidebar-navigation/12-08-evidence/stack/env-override.yml up -d --no-build --wait   && { make seed COMPOSE='docker compose -f docker-compose.yml -f docs/tickets/12-reskin-fixes-sidebar-navigation/12-08-evidence/stack/env-override.yml' >/tmp/12-08-seed.out 2>&1; rc=$?; tail -8 /tmp/12-08-seed.out; exit $rc; } (at cfab1d56)
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from frontend.Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from frontend.Dockerfile
+#1 transferring dockerfile: 1.58kB done
+#1 DONE 0.0s
+
+#2 [context ca] load .dockerignore
+#2 transferring ca: 2B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22-slim
+#3 ERROR: unexpected status from HEAD request to https://registry-1.docker.io/v2/library/node/manifests/22-slim: 429 Too Many Requests
+------
+ > [internal] load metadata for docker.io/library/node:22-slim:
+------
+frontend.Dockerfile:5
+--------------------
+   3 |     
+   4 |     # Install stage: pnpm (through corepack) installs the locked workspace dependencies.
+   5 | >>> FROM node:22-slim AS install
+   6 |     COPY --from=ca ca-bundle.crt /etc/ssl/ccr-ca.crt
+   7 |     ENV NODE_EXTRA_CA_CERTS=/etc/ssl/ccr-ca.crt
+--------------------
+ERROR: failed to build: failed to solve: node:22-slim: failed to resolve source metadata for docker.io/library/node:22-slim: unexpected status from HEAD request to https://registry-1.docker.io/v2/library/node/manifests/22-slim: 429 Too Many Requests
+exit 1

@@ -1,7 +1,9 @@
 # Tickets
 
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
-Work the **frontier**: any ticket whose blockers are all done. `01-01` is the only ticket with no blockers.
+Work the **frontier**: any ticket whose blockers are all done. `01-01` and `11-01` are the only tickets with no blockers.
+
+New tickets start from [TEMPLATE.md](./TEMPLATE.md). Its standing criteria apply to every ticket: new Studio UI uses the [design system](../design/README.md) (the palette ratchet enforces it), tests sit at the highest seam with 100% coverage, and the glossary and ADRs stay current.
 
 ## 01: Skeleton, CI, auth and tenancy
 
@@ -130,3 +132,58 @@ Work the **frontier**: any ticket whose blockers are all done. `01-01` is the on
 | `10-04` | [Attack panel](./10-seed-showcase/04-attack-panel.md) | 10-02, 08-01, 08-04 |
 | `10-05` | [Seed in AWS](./10-seed-showcase/05-seed-in-aws.md) | 10-02, 09-06 |
 | `10-06` | [README and automated demo](./10-seed-showcase/06-readme-demo.md) | 10-03, 10-04 |
+
+## 11: Studio design system and reskin
+
+These tickets are worked on the `candidate-reskin` branch: each ticket branches from it and merges back into it, not into `candidate`. `11-01` begins by merging `candidate` in. When `11-13` is done, `candidate-reskin` merges into `candidate`.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `11-01` | [Palette ratchet and design system round 2](./11-studio-design/01-ratchet-design-system-round-2.md) | none |
+| `11-02` | [Foundation: tokens, fonts and Appearance](./11-studio-design/02-foundation.md) | 11-01 |
+| `11-03` | [Colour codemod](./11-studio-design/03-colour-codemod.md) | 11-02 |
+| `11-04` | [Shell, breadcrumb and navigation test helpers](./11-studio-design/04-shell-navigation.md) | 11-03 |
+| `11-05` | [Project frame](./11-studio-design/05-project-frame.md) | 11-04 |
+| `11-06` | [Documents and Document viewer](./11-studio-design/06-documents.md) | 11-05 |
+| `11-07` | [Instructions, Versions and rollout dialog](./11-studio-design/07-instructions-versions-rollout.md) | 11-05 |
+| `11-08` | [Agent page and its four views](./11-studio-design/08-agent-views.md) | 11-05 |
+| `11-09` | [Agents list and bulk actions](./11-studio-design/09-agents-list-bulk.md) | 11-05 |
+| `11-10` | [Conversations and Analytics](./11-studio-design/10-conversations-analytics.md) | 11-05, 11-08 |
+| `11-11` | [Organisation settings](./11-studio-design/11-organisation-settings.md) | 11-04 |
+| `11-12` | [Signed-out pages, profile, security and status](./11-studio-design/12-signed-out-account-pages.md) | 11-04 |
+| `11-13` | [Polish: narrow screens, accessibility and screenshots](./11-studio-design/13-polish.md) | 11-06, 11-07, 11-08, 11-09, 11-10, 11-11, 11-12 |
+
+## 12: Reskin fixes and sidebar navigation
+
+From the [candidate-reskin design review](../reviews/candidate-reskin/README.md). Like section 11, these tickets are worked on the `candidate-reskin` branch: each ticket branches from it and merges back into it.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `12-01` | [Dropdown chevron token and base rule](./12-reskin-fixes-sidebar-navigation/01-select-chevron.md) | none |
+| `12-02` | [Project details dialog (New Project and Edit details)](./12-reskin-fixes-sidebar-navigation/02-project-details-dialog.md) | none |
+| `12-03` | [Projects list reskin](./12-reskin-fixes-sidebar-navigation/03-projects-list-reskin.md) | 12-02 |
+| `12-04` | [Organisation cost reskin](./12-reskin-fixes-sidebar-navigation/04-organisation-cost-reskin.md) | none |
+| `12-05` | [Invite dialog](./12-reskin-fixes-sidebar-navigation/05-invite-dialog.md) | none |
+| `12-06` | [Project Settings reskin and Embedding Model dialog](./12-reskin-fixes-sidebar-navigation/06-project-settings-reskin.md) | none |
+| `12-07` | [Remove the legacy BUTTON / INPUT strings](./12-reskin-fixes-sidebar-navigation/07-remove-legacy-classes.md) | 12-03, 12-04, 12-06 |
+| `12-08` | [Sidebar navigation on desktop](./12-reskin-fixes-sidebar-navigation/08-sidebar.md) | none |
+| `12-09` | [Sidebar drawer on narrow screens](./12-reskin-fixes-sidebar-navigation/09-sidebar-drawer.md) | 12-08 |
+| `12-10` | [Agent view tabs](./12-reskin-fixes-sidebar-navigation/10-agent-view-tabs.md) | 12-08 |
+| `12-11` | [Plain breadcrumb, account menu cleanup and docs](./12-reskin-fixes-sidebar-navigation/11-plain-breadcrumb-docs.md) | 12-08, 12-09, 12-10 |
+
+## 13: Agentic retrieval
+
+Retrieval Mode (Automatic or Agentic) and the read-only Knowledge Search tool ([ADR-0015](../adr/0015-read-only-knowledge-search-tool.md)). Worked on the `candidate-reskin` branch: each ticket branches from it and merges back into it.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `13-01` | [Prefactor: Chunk labels assigned per reply](./13-agentic-retrieval/01-per-reply-chunk-labels.md) | none |
+| `13-02` | [Agentic tracer: one Knowledge Search, end to end](./13-agentic-retrieval/02-agentic-tracer.md) | 13-01 |
+| `13-03` | [Models that support tools](./13-agentic-retrieval/03-tool-capable-models.md) | 13-02 |
+| `13-04` | [Search limit and Fallback Text](./13-agentic-retrieval/04-search-limit-fallback.md) | 13-02 |
+| `13-05` | [Retrieval Mode in the Agent editor](./13-agentic-retrieval/05-retrieval-mode-editor.md) | 13-02 |
+| `13-06` | [Widget searching status and Token Budget](./13-agentic-retrieval/06-widget-searching-status.md) | 13-02 |
+| `13-07` | [Guardrails in both modes](./13-agentic-retrieval/07-guardrails-both-modes.md) | 13-04 |
+| `13-08` | [Searches in metrics and retention](./13-agentic-retrieval/08-searches-metrics-retention.md) | 13-02 |
+| `13-09` | [Agentic by default, with the demo and seed](./13-agentic-retrieval/09-agentic-default-demo-seed.md) | 13-03, 13-04, 13-07 |
+| `13-10` | [Agentic answers stream word by word](./13-agentic-retrieval/10-stream-agentic-answers.md) | 13-04, 13-06, 13-07 |
