@@ -1,0 +1,90 @@
+cd backend && uv run python -m app.openapi ../frontend/packages/api-client/openapi.json
+warning: The `UV_NATIVE_TLS` environment variable is deprecated and will be removed in a future release. Use `UV_SYSTEM_CERTS` instead.
+cd frontend && pnpm gen-client
+
+> rag-agent-studio-frontend@ gen-client /home/user/wt-13-10/frontend
+> pnpm --filter @studio/api-client generate
+
+
+> @studio/api-client@ generate /home/user/wt-13-10/frontend/packages/api-client
+> openapi-typescript ./openapi.json --output ./src/schema.gen.ts
+
+✨ openapi-typescript 7.13.0
+🚀 ./openapi.json → ./src/schema.gen.ts [637.1ms]
+API client is up to date.
+node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
+	scripts/ci/tests/links.test.mjs
+TAP version 13
+# Subtest: links to files and folders that exist pass, relative to the linking file or to the root
+ok 1 - links to files and folders that exist pass, relative to the linking file or to the root
+  ---
+  duration_ms: 2.889587
+  type: 'test'
+  ...
+# Subtest: a link to a missing file is reported with its file and line
+ok 2 - a link to a missing file is reported with its file and line
+  ---
+  duration_ms: 0.612664
+  type: 'test'
+  ...
+# Subtest: external links, mail links and links in code are not checked
+ok 3 - external links, mail links and links in code are not checked
+  ---
+  duration_ms: 0.305501
+  type: 'test'
+  ...
+# Subtest: reference-style link definitions are checked; footnotes are not links
+ok 4 - reference-style link definitions are checked; footnotes are not links
+  ---
+  duration_ms: 0.401201
+  type: 'test'
+  ...
+# Subtest: anchors must name a heading in the target Markdown file, or in the same file
+ok 5 - anchors must name a heading in the target Markdown file, or in the same file
+  ---
+  duration_ms: 2.931212
+  type: 'test'
+  ...
+# Subtest: slugs follow GitHub's rules
+ok 6 - slugs follow GitHub's rules
+  ---
+  duration_ms: 0.212715
+  type: 'test'
+  ...
+# Subtest: the files come from git: tracked Markdown only
+ok 7 - the files come from git: tracked Markdown only
+  ---
+  duration_ms: 23.035665
+  type: 'test'
+  ...
+# Subtest: main prints each broken link and fails, or says how many links it checked
+ok 8 - main prints each broken link and fails, or says how many links it checked
+  ---
+  duration_ms: 1.637094
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 175.44285
+# start of coverage report
+# ------------------------------------------------------------------
+# file              | line % | branch % | funcs % | uncovered lines
+# ------------------------------------------------------------------
+# scripts           |        |          |         | 
+#  ci               |        |          |         | 
+#   links.mjs       | 100.00 |   100.00 |  100.00 | 
+#   tests           |        |          |         | 
+#    links.test.mjs | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# all files         | 100.00 |   100.00 |  100.00 | 
+# ------------------------------------------------------------------
+# end of coverage report
+node scripts/ci/link-check.mjs
+Checked 2846 relative links in 285 Markdown files: all resolve.
+exit 0

@@ -1,0 +1,129 @@
+
+> rag-agent-studio-frontend@ e2e /home/user/wt-13-10/frontend
+> playwright test --list
+
+Listing tests:
+  [harness] › harness/agent-navigation.spec.ts:59:3 › navigation helpers on an Agent › Agent views are read from the tab row
+  [harness] › harness/agent-navigation.spec.ts:70:3 › navigation helpers on an Agent › the Agents switcher is the ▾ on the Agent's name
+  [harness] › harness/auth.spec.ts:5:3 › signed-in page helpers › signedInPage is signed in as a newly signed-up Member
+  [harness] › harness/auth.spec.ts:10:3 › signed-in page helpers › an ordinary page stays signed out
+  [harness] › harness/auth.spec.ts:15:3 › signed-in page helpers › signInAs signs an existing Member into a page
+  [harness] › harness/auth.spec.ts:23:3 › signed-in page helpers › a failed auth call names the route and status
+  [harness] › harness/auth.spec.ts:32:3 › signed-in page helpers › each new Member has a unique email
+  [harness] › harness/axe.spec.ts:4:3 › axe accessibility checks › pass on an accessible page
+  [harness] › harness/axe.spec.ts:10:3 › axe accessibility checks › report a WCAG violation
+  [harness] › harness/drawer.spec.ts:36:3 › drawer helpers › navigationButton is the top bar's Open navigation button
+  [harness] › harness/drawer.spec.ts:40:3 › drawer helpers › openDrawer presses it and returns the drawer once its navigation is shown
+  [harness] › harness/navigation.spec.ts:69:3 › navigation helpers › openSection follows a sidebar link, not a crumb of the same name
+  [harness] › harness/navigation.spec.ts:76:3 › navigation helpers › sectionNames lists a sidebar group's links, without their hidden icons
+  [harness] › harness/navigation.spec.ts:81:3 › navigation helpers › the Organisations switcher is the sidebar's
+  [harness] › harness/navigation.spec.ts:90:3 › navigation helpers › Organisation settings are read from the tab row in the page
+  [harness] › harness/navigation.spec.ts:99:3 › navigation helpers › breadcrumb reads the crumbs shown and the current one
+  [harness] › harness/navigation.spec.ts:103:3 › navigation helpers › a top bar menu opens, is listed and closes as before
+  [harness] › harness/stack.spec.ts:7:3 › stack readiness › waits until the API and the worker report healthy
+  [harness] › harness/stack.spec.ts:17:3 › stack readiness › fails naming the check that never became healthy
+  [harness] › harness/stack.spec.ts:28:3 › stack readiness › fails when nothing is listening
+  [studio] › tests/accessibility.spec.ts:14:3 › Accessibility › every signed-in page has no WCAG 2.2 AA violations, in the light and the dark Appearance
+  [studio] › tests/agent-archive.spec.ts:6:3 › Agent Archive and delete › an Owner archives an Agent, restores it, then deletes it permanently after typing its name
+  [studio] › tests/agent-config.spec.ts:22:3 › Full AgentConfig editor › an Owner configures every group, the Draft autosaves and the Playground uses the Model override
+  [studio] › tests/agent-drafts.spec.ts:6:3 › Diffs and Draft management › an Owner reviews the Draft against the Live Version, discards it, starts it from an earlier Version, compares Versions and resolves a colleague's conflicting save
+  [studio] › tests/agent-publish.spec.ts:6:3 › Publish an Agent to its Live Version › an Owner publishes a not-live Agent pinning the Current Instructions, and it goes Live, recorded in the Live History and the Audit log
+  [studio] › tests/agent-revert.spec.ts:6:3 › Revert an Agent via its Live History › an Owner reverts an Agent to the Version Live before, restoring its pinned Instructions, shown in the Live History timeline and the Audit log
+  [studio] › tests/attack-panel.spec.ts:28:3 › Attack panel › has a button per attack category and a benign control
+  [studio] › tests/attack-panel.spec.ts:38:5 › Attack panel › Instruction override: shows the reply and each Guardrail layer's outcome
+  [studio] › tests/attack-panel.spec.ts:38:5 › Attack panel › Prompt extraction: shows the reply and each Guardrail layer's outcome
+  [studio] › tests/attack-panel.spec.ts:38:5 › Attack panel › Role-play jailbreak: shows the reply and each Guardrail layer's outcome
+  [studio] › tests/attack-panel.spec.ts:38:5 › Attack panel › Encoded attack (base64): shows the reply and each Guardrail layer's outcome
+  [studio] › tests/attack-panel.spec.ts:38:5 › Attack panel › Benign control: shows the reply and each Guardrail layer's outcome
+  [studio] › tests/attack-panel.spec.ts:54:3 › Attack panel › text retracted before a Search is cleared from the reply
+  [studio] › tests/attack-panel.spec.ts:73:3 › Attack panel › the canary cuts off the encoded attack's leak: the secret never reaches the page
+  [studio] › tests/audit.spec.ts:5:3 › Audit tab › an Owner finds their Organisation's creation in the Audit tab
+  [studio] › tests/auth.spec.ts:6:3 › sign up, sign in, sign out › a visitor signs up, sees the signed-in shell and signs out
+  [studio] › tests/auth.spec.ts:39:3 › sign up, sign in, sign out › a Member signs back in after a wrong password
+  [studio] › tests/auth.spec.ts:57:3 › sign up, sign in, sign out › the signedInPage fixture opens the Member's Organisation
+  [studio] › tests/auth.spec.ts:67:5 › accessibility › /sign-in has no WCAG 2.2 AA violations
+  [studio] › tests/auth.spec.ts:67:5 › accessibility › /sign-up has no WCAG 2.2 AA violations
+  [studio] › tests/auth.spec.ts:75:3 › accessibility › the signed-in shell has no WCAG 2.2 AA violations
+  [studio] › tests/bedrock-credentials.spec.ts:20:3 › Bedrock credentials › an Owner connects Bedrock with a role, guided by the trust policy to paste, or with access keys
+  [studio] › tests/branded-widget.spec.ts:64:3 › Branded widget › the widget wears the Theme with the Agent's own colour, as a bubble, full-screen on a phone, inline, light and dark
+  [studio] › tests/bulk-rollout.spec.ts:16:3 › Bulk publish, bulk revert and the Instructions rollout › an Owner rolls Instructions v2 out to one of two Agents, sees the other behind, reverts the first from the Agent list, then bulk-reverts after reverting the Instructions
+  [studio] › tests/conversation-rating.spec.ts:12:3 › Conversation Rating › Visitors are asked to rate after the Nth reply and on End chat, can dismiss or change it; the Editor finds Conversations by rating
+  [studio] › tests/conversations.spec.ts:9:3 › Conversations viewer › an Editor finds a Visitor's Conversation beside a flagged Playground one, filters the list and reads a reply's Trace
+  [studio] › tests/credentials.spec.ts:20:3 › provider credentials › an Owner adds, re-checks, rotates and deletes a credential; a failed check says why; the key is never shown
+  [studio] › tests/credentials.spec.ts:82:3 › provider credentials › an Editor sees the Organisation's credentials but can't manage them
+  [studio] › tests/demo-pages.spec.ts:19:3 › Demo host pages › the shop page on the allowed origin shows the Product FAQ as a bubble, and a Visitor chats with it
+  [studio] › tests/demo-pages.spec.ts:37:3 › Demo host pages › the help-centre page shows the same Agent inline
+  [studio] › tests/demo-pages.spec.ts:49:3 › Demo host pages › a page on a disallowed origin pastes the same snippet, and the browser refuses to show the widget
+  [studio] › tests/demo-pages.spec.ts:70:3 › Demo host pages › one click spends the Low-budget helper's Token Budget: the widget shows its unavailable text and the Studio its alert
+  [studio] › tests/document-editions.spec.ts:11:3 › Document editions › a duplicate is refused, a new edition replaces the Document in place, and delete removes it
+  [studio] › tests/documents.spec.ts:11:3 › Documents › an Owner uploads the seed handbook and it goes from Queued to Ready
+  [studio] › tests/documents.spec.ts:39:3 › Documents › an Owner opens the handbook in the Document viewer and downloads the original
+  [studio] › tests/documents.spec.ts:70:3 › Documents › the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it
+  [studio] › tests/embed.spec.ts:15:3 › Embed an Agent › an Editor copies a live Agent's Embed Snippet, allows the host page's origin, and a Visitor there chats with the Live Version
+  [studio] › tests/embedding-models.spec.ts:18:3 › Embedding Models › an Owner chooses a Voyage Embedding Model; the handbook embeds with it and its credential can't be deleted
+  [studio] › tests/embedding-models.spec.ts:85:3 › Embedding Models › changing the model of a Project with Documents re-embeds it in the background and switches over
+  [studio] › tests/five-minute-demo.spec.ts:40:1 › the five-minute demo
+  [studio] › tests/guardrail-analytics.spec.ts:11:3 › Guardrail analytics › a Visitor's blocked attack shows in the Version's block rate and in the Conversations filtered by Guardrail outcome
+  [studio] › tests/ingestion-failures.spec.ts:6:3 › Ingestion failures › an unsupported file is refused before upload, and a broken one fails with its category and can be retried
+  [studio] › tests/instructions-versions.spec.ts:5:3 › Project Instructions Versions › an Owner publishes the Instructions twice with notes, browses the history and reverts, all audited
+  [studio] › tests/instructions.spec.ts:5:3 › Project Instructions › an Owner formats Instructions in the markdown editor and the markdown is saved and audited
+  [studio] › tests/invites.spec.ts:19:3 › invites › an Owner invites an Editor, who opens the email in Mailpit and joins with a new account
+  [studio] › tests/invites.spec.ts:82:3 › invites › an existing Member accepts a copied link, and a revoked link stops working
+  [studio] › tests/llm-classifier.spec.ts:18:3 › LLM classifier › an Agent's LLM classifier refuses what it flags, and its fail mode decides an outage
+  [studio] › tests/members.spec.ts:43:3 › members and roles › an Owner sees roles, can't demote the last Owner, changes roles and removes a Member, whose access ends
+  [studio] › tests/members.spec.ts:101:3 › members and roles › an Editor leaves, and the last Owner can't
+  [studio] › tests/message-feedback.spec.ts:11:3 › Message Feedback › a Visitor gives a reply a thumbs down with a comment and changes it; the Editor finds it by its feedback in the Conversations viewer
+  [studio] › tests/mfa.spec.ts:23:1 › a Member enrols in MFA, signs in with a code and a recovery code, then turns MFA off
+  [studio] › tests/mfa.spec.ts:83:1 › a wrong code keeps the Member on the challenge
+  [studio] › tests/models.spec.ts:25:3 › models › an Owner sets the Default Model from a chat-capable credential, and that credential can't then be deleted
+  [studio] › tests/ocr.spec.ts:11:3 › OCR toggle › an Owner turns OCR on for a Project and reprocesses a Document with it through retry
+  [studio] › tests/operational-settings.spec.ts:9:3 › Operational Settings › an Editor allows only the host page's origin and words the unavailable text; a page on another origin can't frame the widget
+  [studio] › tests/organisation-cost.spec.ts:9:3 › Organisation cost › an Owner opens the Cost page from the navigation and sees each Project's and Agent's cost, the Playground in its own column
+  [studio] › tests/organisation-switcher.spec.ts:6:3 › organisation switcher › a Member of two Organisations switches between them, and the choice survives reloads and sign-ins
+  [studio] › tests/password-reset.spec.ts:9:3 › password reset and change password › request a reset, open the email in Mailpit, set a new password and sign in
+  [studio] › tests/password-reset.spec.ts:43:3 › password reset and change password › a Member renames themselves and changes their password, ending their other sessions
+  [studio] › tests/password-reset.spec.ts:81:5 › accessibility › /forgot-password has no WCAG 2.2 AA violations
+  [studio] › tests/password-reset.spec.ts:81:5 › accessibility › /reset-password?token=example has no WCAG 2.2 AA violations
+  [studio] › tests/password-reset.spec.ts:89:3 › accessibility › the Profile page has no WCAG 2.2 AA violations
+  [studio] › tests/playground-errors.spec.ts:13:3 › Playground errors and reset › a provider failure is explained, and a reset starts a new Conversation
+  [studio] › tests/playground-instructions.spec.ts:8:3 › Playground Instructions picker › an Owner asks the Agent's Draft with the Instructions Draft, then with a Version, and each answer records which
+  [studio] › tests/playground.spec.ts:14:3 › Agent and Playground › an Owner creates an Agent, asks its Draft a question and the answer streams in
+  [studio] › tests/playground.spec.ts:162:3 › Agent and Playground › a new Agent is Agentic: it searches the Knowledge Base, cites what it found and the Trace lists the Search
+  [studio] › tests/playground.spec.ts:231:3 › Agent and Playground › an Agentic Agent whose Default Model can't use tools answers as Automatic, and the Trace says so
+  [studio] › tests/prices.spec.ts:15:3 › prices › an Owner sees the platform price table and overrides a price for one credential
+  [studio] › tests/project-deletion.spec.ts:10:3 › Permanent Project deletion › an Owner deletes an archived Project after typing its name, and its stored files go too
+  [studio] › tests/projects.spec.ts:46:3 › Projects › an Owner creates, renames, archives and restores a Project, and each step is audited
+  [studio] › tests/projects.spec.ts:107:3 › Projects › an Editor creates and archives a Project but only an Owner restores it
+  [studio] › tests/rate-limits.spec.ts:14:3 › Rate limits › an Editor limits each Conversation to one message a minute; a Visitor's second message gets the unavailable text, and the Playground is exempt
+  [studio] › tests/require-mfa.spec.ts:46:1 › an Owner requires MFA, and an Editor is forced to enrol on their next visit
+  [studio] › tests/reranker.spec.ts:24:3 › Reranker › an Editor turns on a reranker and the best Chunk rises to the top
+  [studio] › tests/retention.spec.ts:10:3 › Retention and tombstones › an Owner sets the Retention Window, and the change is audited
+  [studio] › tests/retention.spec.ts:34:3 › Retention and tombstones › a Trace keeps a deleted Document's name as a tombstone, and an Owner deletes a Conversation on request
+  [studio] › tests/seed.spec.ts:12:3 › Seeded demo Organisation › the demo Owner finds Northwind's Project, Documents, Tags and Agents
+  [studio] › tests/seed.spec.ts:37:3 › Seeded demo Organisation › one seeded Agent is Agentic and one Automatic, over the same Project; the Guardrail demo Agent is Automatic
+  [studio] › tests/seed.spec.ts:59:3 › Seeded demo Organisation › the demo model is the Default Model, labelled as a demo
+  [studio] › tests/select-chevron.spec.ts:27:1 › selects draw the design system's chevron, inset like their text, in both Appearances
+  [studio] › tests/sidebar.spec.ts:5:3 › Sidebar › an Owner moves around the Organisation and a Project from the sidebar, which marks where they are
+  [studio] › tests/sidebar.spec.ts:52:3 › Sidebar › the main content keeps its 1160 px column beside a sidebar of about 240 px
+  [studio] › tests/sidebar.spec.ts:68:3 › Sidebar › on a phone the sidebar is a drawer behind Open navigation, which holds focus and closes on Escape, outside or a link
+  [studio] › tests/sidebar.spec.ts:115:3 › Sidebar › the breadcrumb is a plain path of links, and on a phone shows only its last two crumbs on one row
+  [studio] › tests/smoke.spec.ts:4:3 › Studio smoke › the System status page shows every service operational
+  [studio] › tests/smoke.spec.ts:14:3 › Studio smoke › the System status page has no WCAG 2.2 AA violations
+  [studio] › tests/tag-scoping.spec.ts:20:3 › Tag scoping › an Agent limited to a Tag is given only that material, and deleting the Tag warns which Agents use it
+  [studio] › tests/tags.spec.ts:22:3 › Tags › an Editor organises Documents with Tags and filters the list by name, status and Tag
+  [studio] › tests/theme.spec.ts:61:3 › Theme editor › an Owner changes the primary colour, sees the preview update and the contrast warning, and saves
+  [studio] › tests/theme.spec.ts:100:3 › Theme editor › an Editor views the Theme and its preview but can't change it
+  [studio] › tests/theme.spec.ts:117:3 › Theme editor › an Owner uploads, replaces and removes the logo and avatar, and the preview shows them
+  [studio] › tests/theme.spec.ts:164:3 › Theme editor › an Editor sees the Theme's images but can't upload or remove them
+  [studio] › tests/time-series.spec.ts:13:3 › Time series › the Editor sees a Visitor's Conversation over time, markers where the Live Version changed, and a confounder note once a Document is added
+  [studio] › tests/token-budget.spec.ts:18:3 › Token Budget › an Editor sets a tiny daily Token Budget; once a Visitor's reply spends it the next message gets the unavailable text, the Studio shows the alert and meter, the Owner is emailed, and the Playground still answers
+  [studio] › tests/version-comparison.spec.ts:11:3 › Version comparison › an Editor compares two Versions side by side with the config diff, and exports the comparison as CSV
+  [studio] › tests/version-kpis.spec.ts:9:3 › Version KPIs › a Visitor's feedback and rating show in the Live Version's KPI cards, marked low confidence; the Playground doesn't count
+  [studio] › tests/widget-accessibility.spec.ts:128:3 › a keyboard and screen-reader Visitor uses the bubble in light mode (no-preference motion), and axe finds no AA violations
+  [studio] › tests/widget-accessibility.spec.ts:128:3 › a keyboard and screen-reader Visitor uses the bubble in dark mode (reduce motion), and axe finds no AA violations
+  [studio] › tests/widget-accessibility.spec.ts:205:1 › axe finds no AA violations on the inline widget in light and dark mode
+  [studio] › tests/widget-lifecycle.spec.ts:60:3 › Widget Conversation lifecycle › a Visitor's Conversation comes back after a reload; New chat and End chat start afresh; a retired Agent says so
+  [studio] › tests/widget-lifecycle.spec.ts:128:3 › Widget Conversation lifecycle › an Agent that was never published shows the no longer available shell on the host page
+  [studio] › tests/widget-lifecycle.spec.ts:143:3 › Widget Conversation lifecycle › when the browser blocks the iframe's storage, the Visitor still chats and a reload starts afresh
+Total: 122 tests in 65 files
+exit 0
