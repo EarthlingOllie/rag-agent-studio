@@ -43,10 +43,10 @@ appear, the model stream is stopped, nothing more of the answer is sent, and a `
 carrying the fallback text replaces what was sent; the ``DoneEvent``'s answer is then the
 fallback text. On a Retraction the text the filter held back is dropped, never released, and the
 next response is checked afresh. A completed answer, and any text retracted before it, is
-checked again for an encoded canary, which is logged and flagged but can't be un-sent. In Agentic mode each search
-query is checked for the canary (in any form) before it runs: a query carrying it is never run
-or recorded, and the reply ends as a canary leak, with the fallback text and a ``replaced``
-Guardrail outcome.
+checked again for an encoded canary, which is logged and flagged but can't be un-sent. In
+Agentic mode each search query is checked for the canary (in any form) before it runs: a query
+carrying it is never run or recorded, and the reply ends as a canary leak, with the fallback
+text and a ``replaced`` Guardrail outcome.
 
 With ``cautioned`` (the input Guardrail's warn mode flagged the message), the prompt carries a
 caution block after the system prompt (``app.runtime.prompt.CAUTION``).

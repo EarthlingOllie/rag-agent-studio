@@ -8,7 +8,7 @@ the widget, then the saved Conversation and the Trace read back through the API.
 
 import base64
 import json
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -67,7 +67,7 @@ class Scripted:
     pieces, pieces made from the reply's canary, and Knowledge Search calls. Counts the pieces
     it got to stream."""
 
-    def __init__(self, *responses: list[Piece]) -> None:
+    def __init__(self, *responses: Sequence[Piece]) -> None:
         self.responses = responses
         self.streamed = 0
 
@@ -142,8 +142,8 @@ async def asked(owner: SignedUpMember, project_id: str, agent_id: str, question:
 async def test_an_agentic_answer_streams_word_by_word(app: FastAPI, owner: SignedUpMember) -> None:
     # The provider fails after most of the answer: what streamed before it had been sent, so
     # the answer was streaming as the model wrote it, not held until it finished.
-    words = "Everyone gets twenty-five days of annual leave in each calendar year, and ".split()
-    answer_with(app, Scripted([Search("annual leave")], [*(f"{w} " for w in words), Fail()]))
+    words = ["Everyone ", "gets ", "twenty-five ", "days ", "of ", "annual ", "leave ", "in "]
+    answer_with(app, Scripted([Search("annual leave")], [*words, "each calendar year. ", Fail()]))
     project_id, agent_id = await leave_agent(app, owner)
     conversation = await start_conversation(owner, project_id, agent_id)
 
@@ -156,7 +156,7 @@ async def test_an_agentic_answer_streams_word_by_word(app: FastAPI, owner: Signe
     assert names.count("token") > 1
     streamed = "".join(data["text"] for event, data in events if event == "token")
     assert streamed
-    assert " ".join(words).startswith(streamed.strip())
+    assert "".join(words).startswith(streamed)
 
 
 async def test_an_agentic_answer_streams_in_pieces_then_cites(
@@ -208,7 +208,7 @@ async def test_text_before_each_of_several_searches_is_retracted_and_its_labels_
         app,
         Scripted(
             [*PRE_SEARCH, Search(LEAVE)],
-            ["From what I found so far, ", "[C1] says something; ", "let me check ", Search(EXPENSES)],
+            ["From what I found so far, ", "[C1] says something; ", "now ", Search(EXPENSES)],
             ["Expenses are claimed ", "within thirty days ", "[C2]."],
         ),
     )
@@ -247,9 +247,7 @@ async def test_text_the_canary_filter_held_back_is_dropped_on_a_retraction(
 ) -> None:
     # The filter holds back the last 20 non-space characters of what streamed: on a retraction
     # they are dropped, never released into the answer that follows.
-    answer_with(
-        app, Scripted([*PRE_SEARCH, "HELD-BACK-TAIL-XYZ", Search("annual leave")], ANSWER)
-    )
+    answer_with(app, Scripted([*PRE_SEARCH, "HELD-BACK-TAIL-XYZ", Search("annual leave")], ANSWER))
     project_id, agent_id = await leave_agent(app, owner)
 
     reply = await asked(owner, project_id, agent_id, "How much leave?")
