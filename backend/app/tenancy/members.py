@@ -4,7 +4,8 @@ The last-Owner invariant lives here: an Organisation always keeps at least one O
 demoting, removing or leaving as its last Owner is refused. Each change locks the
 Organisation's row first, so two concurrent changes can't both remove "the other" Owner.
 Access is resolved from memberships on every request, so a removed Member loses access to the
-Organisation at once.
+Organisation at once. An Owner who is demoted, removed or leaves loses their pending Invites
+too (they are revoked), so they can't use one to come back as an Owner.
 """
 
 import uuid
@@ -15,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
+from app.tenancy import invites
 from app.tenancy.models import Member, Membership, Organisation, Role
 from app.tenancy.repository import OrganisationScope
 
@@ -96,6 +98,10 @@ async def change_role(
             await _refuse_if_last_owner(session, membership)
         before = membership.role
         membership.role = role
+        if before is Role.OWNER:
+            await invites.revoke_invites_from(
+                session, scope.organisation_id, member.id, actor_id=scope.member_id, now=now
+            )
         await audit.record(
             session,
             organisation_id=scope.organisation_id,
@@ -122,6 +128,10 @@ async def _end_membership(
     membership, member = await _locked_membership(session, scope, member_id)
     await _refuse_if_last_owner(session, membership)
     await session.delete(membership)
+    if membership.role is Role.OWNER:
+        await invites.revoke_invites_from(
+            session, scope.organisation_id, member.id, actor_id=scope.member_id, now=now
+        )
     await audit.record(
         session,
         organisation_id=scope.organisation_id,

@@ -4,6 +4,10 @@ An Invite is addressed to one email, with a role. Its link carries a random toke
 only the SHA-256 is stored. The link works once (accepting uses it up), until it expires, and
 not after an Owner revokes the Invite. Renewing a pending Invite replaces its token, so an
 Owner can always copy a working link even though the old one can't be shown again.
+
+An Invite speaks for the Owner who sent it, so it lasts only while they are still an Owner of
+the Organisation: demoting or removing an Owner (or their leaving) revokes their pending
+Invites, and a link is refused if its inviter is no longer an Owner there.
 """
 
 import hashlib
@@ -12,7 +16,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -174,6 +178,42 @@ async def revoke_invite(
     await session.commit()
 
 
+async def revoke_invites_from(
+    session: AsyncSession,
+    organisation_id: uuid.UUID,
+    inviter_id: uuid.UUID,
+    *,
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> None:
+    """Revokes every pending Invite the inviter sent to the Organisation, each audited.
+
+    Called when the inviter stops being an Owner there. The caller commits.
+    """
+    pending = await session.scalars(
+        select(Invite)
+        .where(
+            Invite.organisation_id == organisation_id,
+            Invite.invited_by_id == inviter_id,
+            Invite.accepted_at.is_(None),
+            Invite.revoked_at.is_(None),
+        )
+        .order_by(Invite.created_at)
+        .with_for_update()
+    )
+    for invite in pending:
+        invite.revoked_at = now
+        await audit.record(
+            session,
+            organisation_id=organisation_id,
+            actor_id=actor_id,
+            action="invite.revoked",
+            target=audit.AuditTarget("invite", invite.id),
+            before=_invite_values(invite),
+            occurred_at=now,
+        )
+
+
 async def renew_invite(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -214,11 +254,17 @@ class InvitePreview:
 async def _usable_invite(
     session: AsyncSession, token: str, now: datetime, *, lock: bool = False
 ) -> Invite:
+    inviter_is_owner = exists().where(
+        Membership.organisation_id == Invite.organisation_id,
+        Membership.member_id == Invite.invited_by_id,
+        Membership.role == Role.OWNER,
+    )
     query = select(Invite).where(
         Invite.token_hash == _token_hash(token),
         Invite.accepted_at.is_(None),
         Invite.revoked_at.is_(None),
         Invite.expires_at > now,
+        inviter_is_owner,
     )
     invite = await session.scalar(query.with_for_update() if lock else query)
     if invite is None:

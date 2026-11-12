@@ -3,6 +3,8 @@
 Owners manage an Organisation's Invites under ``/api/organisations/{organisation_id}/invites``.
 The invited person looks an Invite up and accepts it under ``/api/invites``, by the token from
 the link. Tokens travel in request bodies, never in paths, so they don't appear in access logs.
+Invite emails are rate limited per Owner and per Organisation (``invite_throttle``); over the
+limit, the Invite is still made and its link returned, but no email is sent.
 """
 
 import logging
@@ -33,6 +35,7 @@ from app.mail import templates
 from app.mail.port import Mailer
 from app.tenancy import invites
 from app.tenancy.api import ORGANISATION_PREFIX
+from app.tenancy.invite_throttle import InviteEmailThrottle
 from app.tenancy.models import Invite, Member, Role
 from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope
 from app.tenancy.repository import OrganisationScope, get_organisation
@@ -115,11 +118,19 @@ async def _issued(
     send_email: bool,
     now: datetime,
 ) -> IssuedInviteOut:
-    """The Invite and its link; emails the link first if asked. A failed email is reported."""
+    """The Invite and its link; emails the link first if asked and allowed.
+
+    A failed or refused email is reported as ``email_sent: false``.
+    """
     settings: Settings = request.app.state.settings
     link = templates.invite_link(str(settings.studio_url), issued.token)
     email_sent = False
-    if send_email:
+    throttle = InviteEmailThrottle(request.app.state.redis, request.app.state.clock)
+    if send_email and not await throttle.allow(
+        organisation_id=scope.organisation_id, owner_id=member.id
+    ):
+        logger.warning("Invite email not sent: the invite email limit is reached")
+    elif send_email:
         organisation = await get_organisation(db, scope)
         mailer: Mailer = request.app.state.mailer
         try:

@@ -24,6 +24,7 @@ from tests.conftest import (
     STUDIO_URL,
     TEST_DATABASE_URL,
     ClientFactory,
+    MemberFactory,
     SignedUpMember,
     TenantFactory,
 )
@@ -652,3 +653,116 @@ async def test_an_owner_cannot_revoke_or_renew_another_organisations_invite(
     assert (renewed.status_code, renewed.json()) == (404, {"detail": "Not found"})
     assert [i["id"] for i in await pending(first)] == [body["invite"]["id"]]
     assert (await look_up(client, token_from(body["link"]))).status_code == 200
+
+
+# An Owner who loses the role takes their pending invites with them (TEN-F1)
+
+
+async def _lose_ownership(how: str, owner: SignedUpMember, co_owner: SignedUpMember) -> str:
+    """Ends the co-Owner's ownership one way; returns the ID of the Member who did it."""
+    members = f"/api/organisations/{owner.organisation_id}/members"
+    if how == "demoted":
+        response = await owner.client.patch(
+            f"{members}/{co_owner.member_id}", json={"role": "editor"}
+        )
+        assert response.status_code == 200, response.text
+        return owner.member_id
+    if how == "removed":
+        response = await owner.client.delete(f"{members}/{co_owner.member_id}")
+        assert response.status_code == 204, response.text
+        return owner.member_id
+    response = await co_owner.client.post(f"/api/organisations/{owner.organisation_id}/leave")
+    assert response.status_code == 204, response.text
+    return co_owner.member_id
+
+
+@pytest.mark.parametrize("how", ["demoted", "removed", "left"])
+async def test_an_owner_who_loses_the_role_cannot_rejoin_through_their_own_invites(
+    how: str,
+    owner: SignedUpMember,
+    member_factory: MemberFactory,
+    client: httpx.AsyncClient,
+    new_client: ClientFactory,
+) -> None:
+    co_owner = await member_factory(owner, "owner")
+    comeback_email, editor_email = unique_email("comeback"), unique_email("helper")
+    comeback = await invite_ok(co_owner, comeback_email, role="owner", send_email=False)
+    helper = await invite_ok(co_owner, editor_email, send_email=False)
+    kept = await invite_ok(owner, unique_email("kept"), send_email=False)
+
+    actor_id = await _lose_ownership(how, owner, co_owner)
+
+    for body in (comeback, helper):
+        token = token_from(body["link"])
+        assert (await look_up(client, token)).json() == INVALID_INVITE
+        signed_up = await sign_up_with(await new_client(), token)
+        assert (signed_up.status_code, signed_up.json()) == (400, INVALID_INVITE)
+    assert [i["id"] for i in await pending(owner)] == [kept["invite"]["id"]]
+    assert (await look_up(client, token_from(kept["link"]))).status_code == 200
+    revoked = await audit_events(owner, "invite.revoked")
+    assert sorted((e["target"]["id"], e["actor"]["id"], e["before"]["role"]) for e in revoked) == (
+        sorted(
+            [
+                (comeback["invite"]["id"], actor_id, "owner"),
+                (helper["invite"]["id"], actor_id, "editor"),
+            ]
+        )
+    )
+
+
+async def test_promoting_an_editor_or_keeping_an_owner_leaves_their_invites_alone(
+    owner: SignedUpMember, member_factory: MemberFactory, client: httpx.AsyncClient
+) -> None:
+    co_owner = await member_factory(owner, "owner")
+    body = await invite_ok(co_owner, unique_email(), send_email=False)
+    editor = await member_factory(owner, "editor")
+    members = f"/api/organisations/{owner.organisation_id}/members"
+
+    same = await owner.client.patch(f"{members}/{co_owner.member_id}", json={"role": "owner"})
+    promoted = await owner.client.patch(f"{members}/{editor.member_id}", json={"role": "owner"})
+    removed_editor = await member_factory(owner, "editor")
+    gone = await owner.client.delete(f"{members}/{removed_editor.member_id}")
+
+    assert (same.status_code, promoted.status_code, gone.status_code) == (200, 200, 204)
+    assert (await look_up(client, token_from(body["link"]))).status_code == 200
+    assert await audit_events(owner, "invite.revoked") == []
+
+
+async def _set_role_behind_the_api(owner: SignedUpMember, member_id: str, role: str | None) -> None:
+    """Changes or deletes a membership in the database, skipping the members service."""
+    engine = create_async_engine(TEST_DATABASE_URL)
+    try:
+        async with engine.begin() as connection:
+            params = {"org": owner.organisation_id, "member": member_id, "role": role}
+            where = "WHERE organisation_id = :org AND member_id = :member"
+            if role is None:
+                await connection.execute(text(f"DELETE FROM memberships {where}"), params)  # noqa: S608
+            else:
+                await connection.execute(
+                    text(f"UPDATE memberships SET role = :role {where}"),  # noqa: S608
+                    params,
+                )
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.parametrize("role", ["editor", None])
+async def test_an_invite_works_only_while_its_inviter_is_still_an_owner(
+    role: str | None,
+    owner: SignedUpMember,
+    member_factory: MemberFactory,
+    client: httpx.AsyncClient,
+    tenant_factory: TenantFactory,
+) -> None:
+    co_owner = await member_factory(owner, "owner")
+    colleague = await tenant_factory()
+    new_person = await invite_ok(co_owner, unique_email(), role="owner", send_email=False)
+    existing = await invite_ok(co_owner, colleague.email, role="owner", send_email=False)
+
+    await _set_role_behind_the_api(owner, co_owner.member_id, role)
+
+    token = token_from(new_person["link"])
+    assert (await look_up(client, token)).json() == INVALID_INVITE
+    assert (await sign_up_with(client, token)).status_code == 400
+    accepted = await accept(colleague.client, token_from(existing["link"]))
+    assert (accepted.status_code, accepted.json()) == (400, INVALID_INVITE)

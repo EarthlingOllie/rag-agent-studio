@@ -1,5 +1,12 @@
-"""The emails the Studio sends. Each template renders an ``Email`` from its variables."""
+"""The emails the Studio sends. Each template renders an ``Email`` from its variables.
 
+Names that a signed-up person chooses (their own, their Organisation's) reach other people's
+inboxes in invite emails, so they go in only as short, single-line text without links: a
+name can't add lines, headers or a clickable address to an email the Studio sends.
+"""
+
+import re
+import unicodedata
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -21,6 +28,25 @@ def _duration(duration: timedelta) -> str:
 
 
 _ROLE_PHRASES = {"owner": "an Owner", "editor": "an Editor"}
+
+NAME_MAX = 60
+# A URL with a scheme, or starting www., up to the next space: left out entirely.
+_URL = re.compile(r"(?:\b[a-z][a-z0-9+.-]*://|\bwww\.)\S*", re.IGNORECASE)
+# The dot before a domain's last label (example.com, user@host.org): defanged to [.] so mail
+# clients don't turn it into a link.
+_DOMAIN_DOT = re.compile(r"(?<=\w)\.(?=[a-z]{2,63}\b)", re.IGNORECASE)
+
+
+def _untrusted_name(name: str, fallback: str) -> str:
+    """A name someone chose, made safe to show in an email to someone else."""
+    visible = "".join(" " if unicodedata.category(c).startswith("C") else c for c in name)
+    without_links = _DOMAIN_DOT.sub("[.]", _URL.sub(" ", visible))
+    single_line = " ".join(without_links.split())
+    if not single_line:
+        return fallback
+    if len(single_line) > NAME_MAX:
+        return single_line[: NAME_MAX - 1].rstrip() + "…"
+    return single_line
 
 
 def invite_link(studio_url: str, token: str) -> str:
@@ -55,6 +81,8 @@ def invite(
     link: str,
     valid_for: timedelta,
 ) -> Email:
+    organisation_name = _untrusted_name(organisation_name, "an Organisation")
+    inviter_name = _untrusted_name(inviter_name, "Someone")
     return Email(
         to=to,
         subject=f"Join {organisation_name} on {PRODUCT}",
