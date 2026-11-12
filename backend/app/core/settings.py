@@ -19,6 +19,10 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app.core.client_ip import Network, trusted_networks
 
+# The LOCAL_KEY_WRAPPER_KEY docker-compose.yml falls back to. It is committed, so it is public:
+# outside a local stack it would let anyone forge widget tokens and unwrap stored secrets.
+DEVELOPMENT_KEY_WRAPPER_KEY = "bG9jYWwtZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldCE="
+
 
 class SettingsError(RuntimeError):
     """Raised when the environment is missing a required setting or holds an invalid one."""
@@ -46,6 +50,8 @@ class Settings(BaseSettings):
     redis_auth_token: SecretStr | None = None
     celery_task_always_eager: bool = False
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
+    # How long the worker health route reuses its last answer instead of enqueueing a new task.
+    worker_health_cache_seconds: float = Field(default=5.0, ge=0)
     # How long a Studio session lasts without signing in again.
     session_ttl_seconds: int = Field(default=14 * 24 * 60 * 60, gt=0)
     # Sign-in protection. Failed sign-ins are counted per account (email) and per IP address.
@@ -221,6 +227,18 @@ class Settings(BaseSettings):
         if len(key) != 32:
             raise ValueError("must be 32 bytes, base64-encoded")
         return value
+
+    @model_validator(mode="after")
+    def _key_is_not_the_development_default(self) -> "Settings":
+        if (
+            self.environment not in ("local", "test")
+            and self.local_key_wrapper_key.get_secret_value() == DEVELOPMENT_KEY_WRAPPER_KEY
+        ):
+            raise ValueError(
+                "LOCAL_KEY_WRAPPER_KEY is the public development default; set a random key "
+                "(openssl rand -base64 32)"
+            )
+        return self
 
     @model_validator(mode="after")
     def _kms_has_a_key(self) -> "Settings":

@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models.function import FunctionModel
 
-from app.embed.admission import Admission
+from app.embed.admission import Admission, utc_date
 from app.embed.service import DEFAULT_UNAVAILABLE_TEXT
 from app.guardrails.fake import FakeRule
 from app.seed import content
@@ -144,8 +144,6 @@ async def test_an_attack_the_input_guardrail_flags_is_refused_before_the_model_s
     assert input_layer["reason"] == "Prompt injection detected."
     assert input_layer["score"] is not None
     assert canary_layer["name"] == "Canary token"
-    assert trace["answer"] == "Sorry, I can't help with that request."
-    assert trace["model"] is None  # no model was asked
     assert events[-1][1]["message_id"] == trace["message_id"]
 
 
@@ -166,8 +164,6 @@ async def test_an_encoded_attack_slips_past_the_input_guardrail_and_the_canary_c
     assert layers(events) == {"input": ("passed", None), "canary": ("replaced", "leak")}
     (trace,) = [data for kind, data in events if kind == "trace"]
     assert trace["acted"] == "canary"
-    assert trace["answer"] == FALLBACK
-    assert trace["model"] == "demo-naive"
 
 
 async def test_the_benign_control_is_answered_and_no_layer_acts(
@@ -185,7 +181,6 @@ async def test_the_benign_control_is_answered_and_no_layer_acts(
     assert layers(events) == {"input": ("passed", None), "canary": ("quiet", None)}
     (trace,) = [data for kind, data in events if kind == "trace"]
     assert trace["acted"] is None
-    assert trace["answer"] == answer
 
 
 async def test_each_attack_is_a_visitor_conversation_the_studio_can_trace(
@@ -218,11 +213,11 @@ async def test_each_attack_is_a_visitor_conversation_the_studio_can_trace(
     ]
 
 
-async def test_the_input_guardrails_other_actions_are_reported_too(
+async def test_an_old_warn_setting_is_ignored_and_the_attack_is_still_blocked(
     seeded: FastAPI, visitor: httpx.AsyncClient, new_client: ClientFactory
 ) -> None:
-    """Switched to warn mode in the Studio, the Agent answers a flagged attack: the input layer
-    reports it flagged, and the canary still stops the recital."""
+    """A Version published with the old warn mode in its Guardrails still blocks a flagged
+    attack: no setting lets a detected prompt injection reach the model."""
     owner = await signed_in(new_client, content.OWNER)
     project = await demo_project(owner)
     agents = {a["name"]: a for a in await get(owner, "projects", project["id"], "agents")}
@@ -236,9 +231,9 @@ async def test_the_input_guardrails_other_actions_are_reported_too(
 
     events = await fire(visitor, "prompt-extraction")
 
-    assert layers(events) == {"input": ("flagged", "injection"), "canary": ("replaced", "leak")}
+    assert layers(events) == {"input": ("blocked", "injection"), "canary": ("not_reached", None)}
     (trace,) = [data for kind, data in events if kind == "trace"]
-    assert trace["acted"] == "input, canary"
+    assert trace["acted"] == "input"
 
 
 async def test_the_agents_rate_limits_still_apply(
@@ -393,3 +388,28 @@ async def test_an_agentic_guardrail_demo_agent_retracts_what_it_wrote_before_sea
     assert set(kinds[:retract]) == {"token"}
     assert kinds[retract:] == ["retract", "token", "trace", "done"]
     assert streamed(events[retract:]) == "Leave is 25 days."
+
+
+async def test_the_anonymous_trace_names_no_model_and_no_saved_answer(
+    seeded: FastAPI, visitor: httpx.AsyncClient
+) -> None:
+    """The panel needs no Studio login, so its trace shows only the Guardrail layers (WID-F3)."""
+    for attack_id in ("encoded-attack", "benign-control"):
+        events = await fire(visitor, attack_id)
+
+        (trace,) = [data for kind, data in events if kind == "trace"]
+        assert set(trace) == {"message_id", "layers", "acted"}
+        assert "demo-naive" not in str(events)
+
+
+async def test_the_panels_replies_count_against_the_agents_token_budget(
+    seeded: FastAPI, visitor: httpx.AsyncClient
+) -> None:
+    """An anonymous caller must not be able to spend the model's tokens for free (WID-F3)."""
+    public_id = (await panel(visitor))["agent"]["public_id"]
+    admission = Admission(seeded.state.redis, seeded.state.clock)
+    today = utc_date(seeded.state.clock.now())
+
+    await fire(visitor, "benign-control")
+
+    assert await admission.tokens_used(public_id, today) > 0

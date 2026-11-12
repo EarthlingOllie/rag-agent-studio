@@ -13,12 +13,13 @@ Organisation's Guardrail demo Agent and shows the reply and which Guardrail laye
   ``done`` it adds what a Visitor never sees, the ``trace`` event: each Guardrail layer's
   outcome (the input Guardrail: ``blocked``, ``flagged``, ``logged``, ``allowed`` or ``passed``;
   the Canary token: ``replaced``, ``flagged``, ``quiet``, or ``not_reached`` when the input
-  Guardrail blocked the message), which layers acted, the model asked and the saved answer.
+  Guardrail blocked the message) and which layers acted.
 
-Like a Playground's Trace, but without a Studio login, which is why it exists only in demo mode.
-Only the fixed payloads can be sent, so it is no free chat endpoint; the Agent's rate limits
-apply, and as in the Playground its replies don't count against the Token Budget. Not in the
-OpenAPI document: no Studio code calls it.
+Like a Playground's Trace, but without a Studio login, which is why it exists only in demo mode
+and shows only the Guardrail layers: not the model asked or the saved answer. Only the fixed
+payloads can be sent, so it is no free chat endpoint; the Agent's rate limits apply, and as in
+the widget its replies count against the Agent's Token Budget. Not in the OpenAPI document: no
+Studio code calls it.
 """
 
 import json
@@ -196,13 +197,16 @@ async def fire_attack(
                     },
                 )
             else:
-                yield _sse("trace", _trace(event, prepared.chat.model))
+                # The reply's actual usage counts against today's Token Budget, as the widget's.
+                used = event.event.input_tokens + event.event.output_tokens
+                await admission.record_usage(admitted.limits.public_id, used)
+                yield _sse("trace", _trace(event))
                 yield _sse("done", {"message_id": str(event.message_id)})
 
     return _stream(events())
 
 
-def _trace(answered: Answered, model: str) -> dict[str, Any]:
+def _trace(answered: Answered) -> dict[str, Any]:
     done = answered.event
     found = layers([o.as_dict() for o in done.guardrail_outcomes])
     acted = [
@@ -214,9 +218,6 @@ def _trace(answered: Answered, model: str) -> dict[str, Any]:
         "message_id": str(answered.message_id),
         "layers": found,
         "acted": ", ".join(acted) or None,
-        # A refusal (or a fallback reply) asked no model.
-        "model": None if done.refused or done.fallback else model,
-        "answer": done.answer,
     }
 
 

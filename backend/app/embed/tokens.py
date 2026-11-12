@@ -20,6 +20,10 @@ import uuid
 from datetime import datetime, timedelta
 
 BOOTSTRAP_TTL = timedelta(minutes=15)
+# How far ahead of this process's clock a bootstrap token's issue time may be: the API's tasks'
+# clocks may differ a little. A token dated further ahead is forged, and would otherwise never
+# expire.
+BOOTSTRAP_CLOCK_SKEW = timedelta(minutes=1)
 CONVERSATION_IDLE_TTL = timedelta(hours=24)
 
 _BOOTSTRAP = "wb1"
@@ -57,7 +61,8 @@ class TokenSigner:
         if parts is None or not parts[1].isdigit():
             return None
         public_id, issued = parts
-        if now.timestamp() - int(issued) > BOOTSTRAP_TTL.total_seconds():
+        age = now.timestamp() - int(issued)
+        if not -BOOTSTRAP_CLOCK_SKEW.total_seconds() <= age <= BOOTSTRAP_TTL.total_seconds():
             return None
         return public_id
 

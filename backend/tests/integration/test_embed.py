@@ -255,6 +255,20 @@ async def test_tampered_expired_and_other_agents_bootstrap_tokens_are_refused(
     assert (await exchange(visitor, agent["public_id"], bootstrap)).status_code == 401
 
 
+async def test_a_bootstrap_token_dated_in_the_future_is_refused(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    """A token whose issue time is far ahead would otherwise never expire (WID-R2-F1)."""
+    agent = await live_agent(owner)
+    signer = app.state.widget_tokens
+    far_future = signer.bootstrap(agent["public_id"], now=clock.now() + timedelta(days=365))
+    slightly_ahead = signer.bootstrap(agent["public_id"], now=clock.now() + timedelta(seconds=30))
+
+    assert (await exchange(visitor, agent["public_id"], far_future)).status_code == 401
+    # A little clock skew between API tasks is tolerated.
+    assert (await exchange(visitor, agent["public_id"], slightly_ahead)).status_code == 201
+
+
 async def test_a_visitor_who_waits_past_the_bootstrap_token_gets_a_fresh_one_from_the_shell(
     owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
 ) -> None:

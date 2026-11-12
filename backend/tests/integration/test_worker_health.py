@@ -1,16 +1,20 @@
 """Task seam: the API enqueues the Celery health task and waits for the worker's reply."""
 
+import asyncio
 from collections.abc import AsyncIterator, Iterator
+from datetime import timedelta
 
 import httpx
 import pytest
 import redis
 from asgi_lifespan import LifespanManager
 from celery.contrib.testing.worker import start_worker
+from fastapi import FastAPI
 
 from app.main import create_app
 from app.worker.celery_app import HEALTH_CHECK_TASK, celery_app
 from tests.conftest import TEST_REDIS_URL
+from tests.fakes.clock import ControllableClock
 
 
 @pytest.fixture(autouse=True)
@@ -73,3 +77,43 @@ async def test_worker_health_is_unavailable_when_the_health_task_fails(
 
     assert response.status_code == 503
     assert response.json() == {"status": "error", "reply": None}
+
+
+def queued_health_tasks() -> int:
+    """How many health tasks wait in the broker's default queue for a worker."""
+    with redis.Redis.from_url(TEST_REDIS_URL) as connection:
+        return int(connection.llen("celery"))
+
+
+async def test_concurrent_anonymous_calls_share_one_health_task(
+    broker_client: httpx.AsyncClient,
+) -> None:
+    """The route is unauthenticated: callers must not be able to flood the queue (AUTH-F2)."""
+    responses = await asyncio.gather(*(broker_client.get("/api/health/worker") for _ in range(5)))
+
+    assert [response.status_code for response in responses] == [503] * 5
+    assert queued_health_tasks() == 1
+
+
+async def test_a_recent_answer_is_reused_until_it_is_stale(
+    app: FastAPI, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clock = ControllableClock()
+    app.state.clock = clock
+    runs: list[None] = []
+
+    def counting_health_check() -> str:
+        runs.append(None)
+        return "pong"
+
+    monkeypatch.setattr(celery_app.tasks[HEALTH_CHECK_TASK], "run", counting_health_check)
+    for _ in range(3):
+        assert (await client.get("/api/health/worker")).json() == {"status": "ok", "reply": "pong"}
+    assert len(runs) == 1
+
+    clock.advance(timedelta(seconds=4))
+    await client.get("/api/health/worker")
+    assert len(runs) == 1
+    clock.advance(timedelta(seconds=1))
+    await client.get("/api/health/worker")
+    assert len(runs) == 2

@@ -22,6 +22,7 @@ from app.auth import account_api, mfa_api
 from app.auth import api as auth_api
 from app.conversations import api as conversations_api
 from app.core.clock import SystemClock
+from app.core.csrf import CsrfMiddleware
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
@@ -111,6 +112,7 @@ def _lifespan(
         app.state.envelope = build_envelope(settings)
         app.state.widget_tokens = TokenSigner(settings.local_key_wrapper_key.get_secret_value())
         configure_celery(settings)
+        app.state.worker_probe = health.WorkerProbe(settings)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)
         app.state.sessionmaker = create_sessionmaker(app.state.engine)
@@ -161,6 +163,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(project_embedding_references)
     for router in ROUTERS:
         app.include_router(router)
+    app.add_middleware(CsrfMiddleware)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app

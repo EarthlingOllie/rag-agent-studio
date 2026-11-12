@@ -3,7 +3,7 @@
 import pytest
 from asgi_lifespan import LifespanManager
 
-from app.core.settings import SettingsError
+from app.core.settings import SettingsError, load_settings
 from app.main import create_app
 
 
@@ -57,3 +57,32 @@ async def test_startup_fails_fast_on_a_trusted_proxy_that_is_not_an_address(
     ):
         async with LifespanManager(create_app()):
             pass  # startup must not complete
+
+
+# The LOCAL_KEY_WRAPPER_KEY that docker-compose.yml falls back to: it is public, so anyone could
+# forge widget tokens and unwrap secrets with it (WID-R2-F1).
+COMMITTED_DEFAULT_KEY = "bG9jYWwtZGV2LW9ubHkta2V5LW5vdC1hLXNlY3JldCE="
+
+
+@pytest.mark.parametrize("environment", ["demo", "production"])
+async def test_startup_refuses_the_committed_default_key_outside_local_and_test(
+    settings_env: pytest.MonkeyPatch, environment: str
+) -> None:
+    settings_env.setenv("ENVIRONMENT", environment)
+    settings_env.setenv("LOCAL_KEY_WRAPPER_KEY", COMMITTED_DEFAULT_KEY)
+
+    with pytest.raises(
+        SettingsError, match=r"LOCAL_KEY_WRAPPER_KEY is the public development default"
+    ):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete
+
+
+@pytest.mark.parametrize("environment", ["local", "test"])
+def test_the_committed_default_key_is_allowed_locally(
+    settings_env: pytest.MonkeyPatch, environment: str
+) -> None:
+    settings_env.setenv("ENVIRONMENT", environment)
+    settings_env.setenv("LOCAL_KEY_WRAPPER_KEY", COMMITTED_DEFAULT_KEY)
+
+    assert load_settings().environment == environment
