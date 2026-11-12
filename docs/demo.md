@@ -1,118 +1,120 @@
-# Demo
+# Demo videos: the core user stories
 
-Screen recordings of eight core user journeys through RAG Agent Studio, then a five-minute walkthrough you can follow on your own machine. Everything shown runs locally against the seeded **Northwind Traders** demo Organisation (`make dev`, then `make seed`; see the [Quickstart](../README.md#quickstart)). The content is synthetic, and answers come from a clearly labelled demo model unless a real provider key is configured.
+Each video below is a screen recording of one core user story, run end to end against the seeded stack (`make dev`, then `make seed-reset`). The Studio is answered by the labelled demo model, so no provider key was used and every cost shows as $0.00. Captions at the bottom of the screen narrate each step, and an amber outline marks each control just before it is used.
 
-| # | Journey | What it shows |
-|---|---|---|
-| 1 | [Build a Knowledge Base](#1-build-a-knowledge-base) | Document ingestion, chunking, and indirect prompt-injection detection |
-| 2 | [Create an Agent and test it in the Playground](#2-create-an-agent-and-test-it-in-the-playground) | Prompting, Tag scoping, citations and the Trace |
-| 3 | [Automatic versus Agentic retrieval](#3-automatic-versus-agentic-retrieval) | A fixed RAG pipeline against a model that decides when and how to search |
-| 4 | [Version, publish, compare and revert](#4-version-publish-compare-and-revert) | Shipping Agents like code |
-| 5 | [Embed the Agent on a website](#5-embed-the-agent-on-a-website) | The widget, Allowed Origins and the browser refusing other sites |
-| 6 | [Defend against prompt injection](#6-defend-against-prompt-injection) | The input Guardrail, the Canary token and Token Budgets under attack |
-| 7 | [Measure quality and cost](#7-measure-quality-and-cost) | Comparing Versions with confidence intervals, Conversations and spend |
-| 8 | [Run an Organisation securely](#8-run-an-organisation-securely) | Members and roles, MFA, encrypted credentials, models and the Audit log |
+Select a poster to play its video. The [five-minute walkthrough](#five-minute-walkthrough) at the end covers the same ground at your own pace.
 
----
+| # | Story | Who | Length |
+| --- | --- | --- | --- |
+| 1 | [Sign up and create a Project](#1-sign-up-and-create-a-project) | New Owner | 0:29 |
+| 2 | [Build a Knowledge Base](#2-build-a-knowledge-base) | Owner or Editor | 0:32 |
+| 3 | [Create an Agent and test it in the Playground](#3-create-an-agent-and-test-it-in-the-playground) | Editor | 0:36 |
+| 4 | [Publish an Agent and embed it on a website](#4-publish-an-agent-and-embed-it-on-a-website) | Editor, then a Visitor | 0:42 |
+| 5 | [Iterate safely with Versions, Diffs and revert](#5-iterate-safely-with-versions-diffs-and-revert) | Editor | 0:32 |
+| 6 | [Review Conversations and compare Versions](#6-review-conversations-and-compare-versions) | Editor | 0:36 |
+| 7 | [Choose Automatic or Agentic retrieval](#7-choose-automatic-or-agentic-retrieval) | Editor, then a Visitor | 0:49 |
+| 8 | [See the Guardrails stop prompt injection](#8-see-the-guardrails-stop-prompt-injection) | Organisation | 0:37 |
+| 9 | [Manage the team, spending and audit trail](#9-manage-the-team-spending-and-audit-trail) | Owner | 0:49 |
 
-## 1. Build a Knowledge Base
+## 1. Sign up and create a Project
 
-Upload documents into a Project and watch them become searchable Chunks.
+> As a team lead new to RAG Agent Studio, I want to sign up, get my own Organisation and create a first Project, so that I have somewhere to build an assistant for my team.
 
-- Upload PDF, DOCX, PPTX, HTML and Markdown files; a Celery worker converts and chunks them with Docling and embeds them into pgvector.
-- Tag Documents (here, **HR** and **Products**) so each Agent only retrieves what it should.
-- Open the Document viewer to see every Chunk beside the source. The staff handbook contains a planted "A note for AI assistants" section: the ingestion scan has flagged it as possible instructions to an AI, with the classifier's score, so it can be marked or kept out of retrieval.
+[![Sign up and create a Project](demo/01-get-started.jpg)](demo/01-get-started.mp4)
 
-<!-- Recording 1: paste the GitHub video URL on its own line here. -->
+- Sign up with a name, email, password and Organisation name. The new Member is the Organisation's Owner.
+- **New Project** opens a dialog. The new Project opens on its empty Documents section.
+- Organisation settings hold the provider Credentials, Models, Theme, Members and Audit log.
 
-![The Document viewer, a flagged Chunk among the Chunks](screenshots/67-document-viewer-light.png)
+## 2. Build a Knowledge Base
 
-## 2. Create an Agent and test it in the Playground
+> As a Member, I want to upload my team's documents and see exactly how they were read, so that I can trust what an Agent will answer from.
 
-Configure an Agent and see exactly how it reaches each answer.
+[![Build a Knowledge Base](demo/02-knowledge-base.jpg)](demo/02-knowledge-base.mp4)
 
-- Write the system prompt in Markdown, scope retrieval to the **HR** Tag, and tune retrieval and model settings, including a per-Agent model override.
-- Ask the Playground *"How many days of annual leave do I get?"*. The answer streams back with citations to the handbook.
-- Open the **Trace**: the model, tokens, cost and latency, and every Chunk retrieved, with the cited one first.
+- Upload four files at once: two Markdown files, a DOCX and a PPTX.
+- Each one goes from Queued to Processing to Ready while it is converted to Markdown, split into Chunks and embedded with the local Embedding Model.
+- The Document viewer shows the converted Markdown beside its Chunks.
+- The planted "note for AI assistants" in the returns policy is flagged at ingestion: the first defence against indirect prompt injection.
 
-<!-- Recording 2: paste the GitHub video URL on its own line here. -->
+## 3. Create an Agent and test it in the Playground
 
-![An Agent's Playground beside its configuration](screenshots/70-agent-playground-light.png)
+> As an Editor, I want to create an Agent, tell it how to behave and which Documents to use, and try it before anyone else can, so that I only publish something I've seen work.
 
-## 3. Automatic versus Agentic retrieval
+[![Create an Agent and test it in the Playground](demo/03-build-an-agent.jpg)](demo/03-build-an-agent.mp4)
 
-The same Knowledge Base, two retrieval strategies, and the trade-off between them.
+- **New Agent** creates a Draft. The configuration autosaves.
+- Write the system prompt and scope retrieval to the Products Tag.
+- Ask the Playground a question. The answer streams in with Source chips that link to the cited Chunk.
+- The Trace shows the model, tokens, cost, latency and every Chunk retrieved, given to the model or excluded.
 
-- **HR helper** is *Automatic*: one search on the user's exact words before the model is called. One model call, cheap and predictable.
-- **Product FAQ** is *Agentic*: the model has a search tool. Asked *"Can I return a jar of honey?"*, the Playground shows **Searching: …** as the model writes its own query, and the Trace lists each search with the query and the Chunks it returned.
-- The Trace makes the cost visible: two model calls and more tokens, in exchange for the model choosing whether, how often and with what words to search.
+## 4. Publish an Agent and embed it on a website
 
-<!-- Recording 3: paste the GitHub video URL on its own line here. -->
+> As an Editor, I want to publish my Agent and put it on our website, only on sites we allow, so that customers can use it safely. As a Visitor, I want to ask a question and rate the answer.
 
-![A Conversation with its Trace](screenshots/73-conversation-light.png)
+[![Publish an Agent and embed it on a website](demo/04-publish-and-embed.jpg)](demo/04-publish-and-embed.mp4)
 
-## 4. Version, publish, compare and revert
+- **Publish** freezes the Draft as v1 with a note and makes it Live.
+- **Embed & limits** gives the one-line Embed Snippet. Adding the shop's origin to the Allowed Origins lets that site show it; the browser refuses any other site.
+- The same tab holds rate limits, the daily Token Budget and the widget's text.
+- On the shop's own site, a Visitor opens the chat, gets an answer with its Sources and gives it a thumbs-up.
 
-Agents change safely, with a full history.
+## 5. Iterate safely with Versions, Diffs and revert
 
-- Publishing creates an immutable Version and moves the **Live** pointer to it; editing never touches what Visitors see.
-- **Live History** for HR helper: v1 published, v2 (*"Shorter answers, without citations"*) published, reverted to v1, then v3 published.
-- Diff any two Versions side by side, and see in the Instructions rollout which Agents are behind the Project's latest Instructions, then bulk-publish them.
+> As an Editor, I want every change I publish kept as a Version I can compare and go back to, so that trying an improvement is never a one-way door.
 
-<!-- Recording 4: paste the GitHub video URL on its own line here. -->
+[![Iterate safely with Versions, Diffs and revert](demo/05-versions.jpg)](demo/05-versions.mp4)
 
-![An Agent's Versions: Live History, Versions and Compare](screenshots/71-agent-versions-light.png)
+- The HR helper's Live History: v1 published, v2 ("shorter answers, without citations") published, reverted to v1, then v3 published.
+- Every Version is an immutable snapshot of the Agent's configuration, with its Retrieval Mode and notes.
+- Reverting puts an earlier Version Live again without touching the Draft.
+- Project Instructions are versioned too.
 
-## 5. Embed the Agent on a website
+## 6. Review Conversations and compare Versions
 
-From the Studio to a customer's website with a one-line snippet.
+> As an Editor, I want to read what Visitors asked, see which answers they disliked and why, and compare Versions on real numbers, so that I know whether a change made things better.
 
-- Copy the embed snippet and set the Agent's **Allowed Origins**, branding and limits.
-- On the demo shop (<http://localhost:5175/demo/>), open the chat bubble and ask the Product FAQ a question. Visitors see *"Searching the knowledge base…"*, never the model's query, then a cited answer. `inline.html` shows the same Agent inline.
-- On <http://localhost:5176/>, the same snippet on a site that isn't allowed: the browser refuses to render the frame (`frame-ancestors`).
+[![Review Conversations and compare Versions](demo/06-conversations-analytics.jpg)](demo/06-conversations-analytics.mp4)
 
-<!-- Recording 5: paste the GitHub video URL on its own line here. -->
+- Conversations can be filtered by source (Visitors or Playground), Version, feedback, rating and Guardrail outcome. The video filters to Visitor thumbs-down.
+- A Conversation shows each reply with the Version that wrote it and its Trace.
+- Analytics shows KPIs per Version: volume, tokens, cost, the thumbs-up rate with its 95% interval, fallback rate, Guardrail block rate, searches per reply and latency. v2 is clearly worse than v1.
+- **Compare two Versions** sets them side by side, with the configuration changes that explain the difference.
 
-![The Product FAQ Agent in the chat bubble on the demo shop page](screenshots/37-widget-on-host.png)
+## 7. Choose Automatic or Agentic retrieval
 
-## 6. Defend against prompt injection
+> As an Editor, I want to choose per Agent between one cheap, predictable search and letting the model search the Knowledge Base itself, so that I can trade cost against accuracy where it matters.
 
-Live attacks against the embedded Agent, and which defence stopped each one.
+[![Choose Automatic or Agentic retrieval](demo/07-agentic-retrieval.jpg)](demo/07-agentic-retrieval.mp4)
 
-- On the attack panel (<http://localhost:5175/demo/attacks.html>), instruction override, prompt extraction and a role-play jailbreak are **blocked by the input Guardrail**.
-- A base64-encoded attack slips past the classifier and the naive demo model starts to leak its prompt; the **Canary token** detects the leak and replaces the reply. A benign control question is answered normally.
-- On `budget.html`, using up the day's **Token Budget** switches the widget to the Agent's unavailable message, and the Studio marks the Agent **Budget exhausted**.
+- The HR helper is **Automatic**: its Trace shows one up-front search and a single Retrieved Chunks table.
+- The Product FAQ is **Agentic**: the model has one read-only tool, Knowledge Search, and a Search limit.
+- The Playground shows "Searching: …" with the query the model wrote. The Trace lists each Search with the Chunks it found.
+- On the shop page, Visitors see "Searching the knowledge base…", never the model's query.
 
-<!-- Recording 6: paste the GitHub video URL on its own line here. -->
+## 8. See the Guardrails stop prompt injection
 
-![The attack panel, showing which layer acted on each attack](screenshots/58-attack-panel.png)
+> As an Organisation, I want attacks on our Agents stopped, and to see which defence stopped each one, so that a public chat box isn't a liability.
 
-## 7. Measure quality and cost
+[![See the Guardrails stop prompt injection](demo/08-guardrails.jpg)](demo/08-guardrails.mp4)
 
-Decide which Version is better with evidence, not anecdotes.
+- The attack panel (`/demo/attacks.html`) sends real attacks to a demo Agent.
+- Instruction override and prompt extraction are blocked by the input Guardrail, a local classifier.
+- A base64-encoded attack gets past the classifier. The naive model starts to leak its prompt, and the Canary token replaces the reply.
+- A benign question is answered normally.
+- Guardrail outcomes are counted in Analytics.
 
-- **Analytics → HR helper**: four weeks of seeded Conversations. v2's thumbs-up rate is clearly below v1's, with non-overlapping 95% Wilson intervals; v3 is better again but marked **Low confidence** (fewer than 30 Conversations).
-- Open the Conversations viewer to read any Conversation with its Visitor feedback and Trace.
-- **Cost** shows what each Project spent, with Visitors and the Playground in separate columns, and breaks down by Agent.
+## 9. Manage the team, spending and audit trail
 
-<!-- Recording 7: paste the GitHub video URL on its own line here. -->
+> As an Owner, I want to invite colleagues with the right role, cap and see what our Agents spend, and know who changed what, so that the Organisation stays under control.
 
-![Per-Version analytics with confidence intervals](screenshots/74-analytics-light.png)
+[![Manage the team, spending and audit trail](demo/09-team-and-cost.jpg)](demo/09-team-and-cost.mp4)
 
-## 8. Run an Organisation securely
-
-The multi-tenant administration around the AI.
-
-- Sign up, create an Organisation and invite Members as **Owner** or **Editor**; invite emails arrive in Mailpit.
-- Turn on TOTP MFA, and optionally require it for everyone in the Organisation.
-- Add provider credentials (Anthropic, OpenAI or an AWS Bedrock role), stored with envelope encryption, and choose the Default Model and its prices.
-- Every publish, revert, credential change and Member change lands in the **Audit** log with actor and before/after.
-
-<!-- Recording 8: paste the GitHub video URL on its own line here. -->
-
-![Profile security: TOTP MFA](screenshots/84-security-light.png)
-
----
+- **Invite someone** emails an Editor invite (shown arriving in the stack's Mailpit). Its link stays on the page to copy.
+- General settings let an Owner require two-factor authentication and set the Retention Window.
+- A spent daily Token Budget makes the widget show the Agent's own "unavailable" text.
+- Organisation cost shows spend by Project or by Agent, with Visitors and the Playground apart.
+- The Audit log filters every change by action, actor and date.
 
 ## Five-minute walkthrough
 
@@ -131,3 +133,16 @@ Run the [Quickstart](../README.md#quickstart) first (`make dev`, then `make seed
 11. **The Audit tab** (15 s). **Organisation settings → Audit**: every publish, revert, bulk publish and Instructions change, with actor and before/after.
 
 This walkthrough is automated as one Playwright test, [`five-minute-demo.spec.ts`](../frontend/e2e/tests/five-minute-demo.spec.ts), which `make e2e` runs after `make seed`. Step 6 is local-only.
+
+## Regenerating the videos
+
+The recordings come from [`scripts/demo-videos/record.cjs`](../scripts/demo-videos/record.cjs), which drives the Studio with Playwright using the same accessible names as the e2e suite, and [`scripts/demo-videos/encode.sh`](../scripts/demo-videos/encode.sh), which turns them into these MP4s and posters. They need `ffmpeg`.
+
+```sh
+make dev                                  # in another terminal
+make seed-reset                           # the stories change the demo data, so start fresh
+node scripts/demo-videos/record.cjs scripts/demo-videos/out
+scripts/demo-videos/encode.sh scripts/demo-videos/out
+```
+
+Stories 1 and 2 share the Organisation that story 1 signs up, and story 4 publishes the Agent story 3 creates, so run them together. Pass slugs after the output folder to record only some, for example `node scripts/demo-videos/record.cjs out 07-agentic-retrieval`.

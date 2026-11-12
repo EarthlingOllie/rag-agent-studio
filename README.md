@@ -11,9 +11,9 @@
 
 Teams upload their documents, configure an Agent, test it in a Playground with full traces, publish immutable Versions, and embed it as a chat widget. Every answer cites its sources, every change can be diffed and reverted, every Visitor message passes layered prompt-injection defences, and analytics compare Versions with confidence intervals rather than guesswork.
 
-![The Product FAQ Agent embedded as a chat widget on a demo shop page](docs/screenshots/37-widget-on-host.png)
+[![Video: publishing an Agent and embedding it on a website](docs/demo/04-publish-and-embed.jpg)](docs/demo/04-publish-and-embed.mp4)
 
-**[▶ Watch the demo: eight core user journeys](docs/demo.md)**
+**[▶ Watch the demo videos: nine core user journeys in under six minutes](docs/demo.md)**
 
 Contents: [Highlights](#highlights) · [Demo](#demo) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Stack](#stack) · [Engineering practices](#engineering-practices) · [Testing](#testing) · [Security](#security) · [Deploy and destroy](#deploy-and-destroy-aws-demo) · [Documentation](#documentation)
 
@@ -30,11 +30,23 @@ Contents: [Highlights](#highlights) · [Demo](#demo) · [Quickstart](#quickstart
 
 ## Demo
 
-[**docs/demo.md**](docs/demo.md) has screen recordings of eight core user journeys, from uploading a Knowledge Base to comparing Versions in analytics, plus a five-minute walkthrough you can follow on your own machine. That walkthrough is also automated as a single Playwright test, [`five-minute-demo.spec.ts`](frontend/e2e/tests/five-minute-demo.spec.ts).
+Short screen recordings, each one user journey run end to end against the seeded stack:
+
+1. [Sign up and create a Project](docs/demo.md#1-sign-up-and-create-a-project)
+2. [Build a Knowledge Base](docs/demo.md#2-build-a-knowledge-base)
+3. [Create an Agent and test it in the Playground](docs/demo.md#3-create-an-agent-and-test-it-in-the-playground)
+4. [Publish an Agent and embed it on a website](docs/demo.md#4-publish-an-agent-and-embed-it-on-a-website)
+5. [Iterate safely with Versions, Diffs and revert](docs/demo.md#5-iterate-safely-with-versions-diffs-and-revert)
+6. [Review Conversations and compare Versions](docs/demo.md#6-review-conversations-and-compare-versions)
+7. [Choose Automatic or Agentic retrieval](docs/demo.md#7-choose-automatic-or-agentic-retrieval)
+8. [See the Guardrails stop prompt injection](docs/demo.md#8-see-the-guardrails-stop-prompt-injection)
+9. [Manage the team, spending and audit trail](docs/demo.md#9-manage-the-team-spending-and-audit-trail)
+
+To try it yourself, follow the [five-minute walkthrough](docs/demo.md#five-minute-walkthrough) after the [Quickstart](#quickstart); it is also automated as one Playwright test.
 
 ## Quickstart
 
-Run the whole product locally with one command. No API key needed: the seeded demo answers with a clearly labelled demo model.
+Run the whole product locally with two commands. No API key is needed: the seeded demo answers with a clearly labelled demo model.
 
 **Prerequisites:** Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/), and Node 22 with pnpm (`corepack enable`).
 
@@ -122,11 +134,7 @@ The project was built the way a team would build it, and the paper trail is in t
 
 ## Testing
 
-- **100% line and branch coverage, enforced** for the backend and frontend ([ADR-0008](docs/adr/0008-full-line-and-branch-coverage.md)); a build below it fails. Live-model tests are marked `live` and sit outside the gate.
-- **Tests at seams, not internals.** Behaviour is tested at the highest useful seam: the HTTP API in process against real Postgres and Redis, components through the DOM with MSW, the whole stack through Playwright. Model providers, classifiers and clocks are swapped for test doubles at their ports. See the [shared test seams](docs/specs/README.md#shared-test-seams).
-- **End to end.** `make e2e` starts the compose stack, seeds it and runs every Playwright spec with axe accessibility scans (WCAG 2.2 AA), including the automated five-minute demo.
-- **LLM evaluation.** `make eval` runs the Attack evaluation suite (`backend/evals/attack_suite.json`) through the real Guardrail pipeline in both retrieval modes on every push; `make eval-live` runs it nightly against a real model with a minimum pass rate.
-- **Infrastructure and docs.** `make infra-check` runs `terraform test` with mocked providers, TFLint and Checkov; `make link-check` checks every relative link and anchor in the Markdown.
+Backend and frontend are held at **100% line and branch coverage**, enforced in CI ([ADR-0008](docs/adr/0008-full-line-and-branch-coverage.md)). Behaviour is tested at the highest useful seam: the HTTP API against real Postgres and Redis, components through the DOM with MSW, and the whole stack through Playwright with axe accessibility scans; model providers, classifiers and clocks are swapped for test doubles at their ports ([shared test seams](docs/specs/README.md#shared-test-seams)). The Attack evaluation suite runs through the real Guardrail pipeline on every push (`make eval`) and nightly against a live model (`make eval-live`).
 
 | Command | What it runs |
 |---|---|
@@ -159,7 +167,7 @@ The AWS demo is applied on demand from GitHub Actions and destroyed after use; n
 
 ## Documentation
 
-- [docs/demo.md](docs/demo.md): screen recordings of the core user journeys and the five-minute walkthrough.
+- [docs/demo.md](docs/demo.md): the demo videos, the five-minute walkthrough and how to regenerate the recordings.
 - [GLOSSARY.md](GLOSSARY.md): the domain language used in code, UI and docs.
 - [docs/adr](docs/adr): the architecture decisions:
   [0001 pgvector hybrid search](docs/adr/0001-pgvector-hybrid-search.md) ·
