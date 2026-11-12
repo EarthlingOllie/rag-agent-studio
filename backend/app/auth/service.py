@@ -129,6 +129,14 @@ async def _record_lockout(
     await session.commit()
 
 
+async def record_mfa_lockout(
+    session: AsyncSession, member_id: uuid.UUID, ip: str, lockout: Lockout, at: datetime
+) -> None:
+    """Records that wrong MFA codes have just locked the Member's codes out."""
+    member = await session.get_one(Member, member_id)
+    await _record_lockout(session, member, ip, lockout, at)
+
+
 class InvalidResetTokenError(Exception):
     """The reset token is unknown, already used or expired."""
 
@@ -150,10 +158,13 @@ async def request_password_reset(
     valid_for: timedelta,
     studio_url: str,
 ) -> None:
-    """Emails a single-use reset link if the email is registered; otherwise does nothing."""
+    """Emails a single-use reset link if the email is registered; otherwise does nothing.
+
+    The new link supersedes the Member's earlier ones, which stop working."""
     member = await session.scalar(select(Member).where(Member.email == normalise_email(email)))
     if member is None:
         return
+    await _use_up_reset_links(session, member.id, now)
     token = secrets.token_urlsafe(32)
     session.add(
         PasswordResetToken(

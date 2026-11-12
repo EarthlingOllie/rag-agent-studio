@@ -3,6 +3,8 @@
 import hashlib
 import logging
 import re
+import uuid
+from contextlib import AsyncExitStack
 from datetime import timedelta
 
 import httpx
@@ -14,6 +16,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.mail.outbox import OutboxMailer
 from app.mail.port import Email
 from tests.conftest import (
+    BASE_URL,
     STUDIO_URL,
     TEST_DATABASE_URL,
     ClientFactory,
@@ -116,15 +119,15 @@ async def test_a_reset_link_expires_after_an_hour(
     await request_reset(client, owner.email)
     expiring = reset_token(outbox, owner.email)
     assert "expires in 60 minutes" in outbox.sent[-1].text
-    await request_reset(client, owner.email)
-    fresh = reset_token(outbox, owner.email)
 
     clock.advance(timedelta(minutes=60))
     expired = await complete_reset(client, expiring)
 
     assert expired.status_code == 400
     assert expired.json() == INVALID_LINK
-    clock.advance(timedelta(minutes=-1))
+    await request_reset(client, owner.email)
+    fresh = reset_token(outbox, owner.email)
+    clock.advance(timedelta(minutes=59))
     assert (await complete_reset(client, fresh)).status_code == 204
 
 
@@ -232,3 +235,75 @@ async def test_changing_the_password_uses_up_outstanding_reset_links(
     assert changed.status_code == 204
 
     assert (await complete_reset(client, token)).status_code == 400
+
+
+# AUTH-R2-F2: reset requests are limited per email and per IP address. Over the limit the
+# answer is the same 202 and nothing is sent, so the limit reveals nothing about the email.
+RESETS_PER_EMAIL = 3
+RESETS_PER_IP = 20
+
+
+async def _client_from(app: FastAPI, ip: str, stack: AsyncExitStack) -> httpx.AsyncClient:
+    transport = httpx.ASGITransport(app=app, client=(ip, 50000))
+    return await stack.enter_async_context(
+        httpx.AsyncClient(transport=transport, base_url=BASE_URL)
+    )
+
+
+def _unique_ip() -> str:
+    return f"203.0.{uuid.uuid4().int % 256}.{uuid.uuid4().int % 254 + 1}"
+
+
+async def test_reset_emails_to_one_address_are_limited_per_hour(
+    app: FastAPI, owner: SignedUpMember, outbox: OutboxMailer, clock: ControllableClock
+) -> None:
+    async with AsyncExitStack() as stack:
+        answers = []
+        for _ in range(RESETS_PER_EMAIL + 1):
+            # From a new address each time, so only the per-email limit applies.
+            client = await _client_from(app, _unique_ip(), stack)
+            answers.append(await request_reset(client, owner.email))
+            clock.advance(60)
+
+        assert [(a.status_code, a.json()) for a in answers] == [(202, RESET_ACCEPTED)] * (
+            RESETS_PER_EMAIL + 1
+        )
+        assert [m.to for m in outbox.sent] == [owner.email] * RESETS_PER_EMAIL
+
+        clock.advance(timedelta(hours=1))
+        client = await _client_from(app, _unique_ip(), stack)
+        assert (await request_reset(client, owner.email)).status_code == 202
+        assert len(outbox.sent) == RESETS_PER_EMAIL + 1
+
+
+async def test_reset_requests_from_one_ip_are_limited_across_emails(
+    app: FastAPI, owner: SignedUpMember, outbox: OutboxMailer, clock: ControllableClock
+) -> None:
+    async with AsyncExitStack() as stack:
+        attacker = await _client_from(app, _unique_ip(), stack)
+        for i in range(RESETS_PER_IP):
+            assert (await request_reset(attacker, f"nobody-{i}-{owner.email}")).status_code == 202
+
+        throttled = await request_reset(attacker, owner.email)
+
+        assert throttled.status_code == 202
+        assert throttled.json() == RESET_ACCEPTED
+        assert outbox.sent == []
+        elsewhere = await _client_from(app, _unique_ip(), stack)
+        assert (await request_reset(elsewhere, owner.email)).status_code == 202
+        assert [m.to for m in outbox.sent] == [owner.email]
+
+
+async def test_a_new_reset_link_supersedes_the_earlier_ones(
+    owner: SignedUpMember, client: httpx.AsyncClient, outbox: OutboxMailer
+) -> None:
+    await request_reset(client, owner.email)
+    earlier = reset_token(outbox, owner.email)
+    await request_reset(client, owner.email)
+    latest = reset_token(outbox, owner.email)
+
+    superseded = await complete_reset(client, earlier)
+
+    assert superseded.status_code == 400
+    assert superseded.json() == INVALID_LINK
+    assert (await complete_reset(client, latest)).status_code == 204

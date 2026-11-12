@@ -22,6 +22,8 @@ from app.auth.api import (
     session_response,
     start_session,
 )
+from app.auth.throttle import PasswordResetLimit
+from app.core.client_ip import request_ip
 from app.core.clock import Clock, get_clock
 from app.core.settings import Settings
 from app.mail.port import Mailer
@@ -89,8 +91,15 @@ async def _send_reset_link(
 async def request_password_reset(
     body: PasswordResetRequest, request: Request, background: BackgroundTasks, clock: ClockDep
 ) -> PasswordResetAccepted:
-    """Emails a reset link if the email is registered. The answer is the same either way."""
+    """Emails a reset link if the email is registered. The answer is the same either way.
+
+    Requests are limited per email and per IP address; over a limit nothing is sent, and the
+    answer is still the same."""
     state = request.app.state
+    email = service.normalise_email(body.email)
+    if not await PasswordResetLimit(state.redis, clock).allow(email, request_ip(request)):
+        logger.info("Password reset request throttled")
+        return PasswordResetAccepted(detail=RESET_ACCEPTED)
     background.add_task(
         _send_reset_link, state.sessionmaker, state.mailer, clock, state.settings, body.email
     )

@@ -3,8 +3,10 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, StringConstraints
 
+from app.auth import service
 from app.auth.api import (
     CurrentMember,
     Db,
@@ -13,6 +15,7 @@ from app.auth.api import (
     SessionResponse,
     Sessions,
     SessionToken,
+    ThrottledResponse,
     finish_mfa_sign_in,
 )
 from app.auth.mfa import (
@@ -24,6 +27,8 @@ from app.auth.mfa import (
     NoPendingEnrolmentError,
 )
 from app.auth.mfa_pending import MFA_PENDING_COOKIE
+from app.auth.throttle import MfaThrottle, Refusal
+from app.core.client_ip import request_ip
 from app.core.clock import Clock, get_clock
 from app.tenancy.models import Member
 
@@ -34,6 +39,7 @@ SIGN_IN_AGAIN = "Sign in again"
 ALREADY_ENABLED = "MFA is already enabled"
 NOT_ENABLED = "MFA is not enabled"
 PASSWORD_OR_CODE_INCORRECT = "Password or code is incorrect"  # noqa: S105 (a message)
+CODES_THROTTLED = "Too many incorrect codes. Try again later."
 
 # A six-digit authenticator code or a recovery code (dashes and spaces are ignored).
 Code = Annotated[str, StringConstraints(min_length=1, max_length=64)]
@@ -43,7 +49,13 @@ def get_mfa(request: Request, db: Db, clock: Annotated[Clock, Depends(get_clock)
     return Mfa(db, request.app.state.envelope, clock)
 
 
+def get_mfa_throttle(request: Request) -> MfaThrottle:
+    state = request.app.state
+    return MfaThrottle(state.redis, state.clock, state.settings)
+
+
 MfaService = Annotated[Mfa, Depends(get_mfa)]
+MfaThrottleDep = Annotated[MfaThrottle, Depends(get_mfa_throttle)]
 PendingToken = Annotated[str | None, Cookie(alias=MFA_PENDING_COOKIE, include_in_schema=False)]
 
 
@@ -131,7 +143,10 @@ async def confirm_enrolment(
 @router.post(
     "/verify",
     operation_id="verifyMfa",
-    responses=_error(400, CODE_INCORRECT) | _error(401, SIGN_IN_AGAIN),
+    response_model=SessionResponse,
+    responses=_error(400, CODE_INCORRECT)
+    | _error(401, SIGN_IN_AGAIN)
+    | {429: {"model": ThrottledResponse, "description": CODES_THROTTLED}},
 )
 async def verify(
     body: CodeRequest,
@@ -141,13 +156,31 @@ async def verify(
     sessions: Sessions,
     pending: PendingStore,
     mfa: MfaService,
+    throttle: MfaThrottleDep,
     pending_token: PendingToken = None,
     session_token: SessionToken = None,
-) -> SessionResponse:
-    """Finishes an MFA-pending sign-in with an authenticator or recovery code."""
+) -> SessionResponse | JSONResponse:
+    """Finishes an MFA-pending sign-in with an authenticator or recovery code.
+
+    Wrong codes count per Member across pending sign-ins: after a few, each try waits
+    progressively longer, then codes are locked out for a while. A refused try isn't checked.
+    Each try is counted as wrong before its code is checked (AUTH-F1), so parallel tries
+    can't all slip past the counter; a correct code then clears it."""
     member_id = None if pending_token is None else await pending.member_id(pending_token)
     if pending_token is None or member_id is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, SIGN_IN_AGAIN)
+    attempt = await throttle.attempt(member_id)
+    if isinstance(attempt, Refusal):
+        content = ThrottledResponse(
+            detail=CODES_THROTTLED,
+            locked=attempt.locked,
+            retry_after_seconds=attempt.retry_after_seconds,
+        )
+        return JSONResponse(
+            content.model_dump(),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(attempt.retry_after_seconds)},
+        )
     try:
         accepted = await mfa.verify(member_id, body.code)
     except MfaNotEnabledError:
@@ -156,7 +189,13 @@ async def verify(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, SIGN_IN_AGAIN) from None
     if not accepted:
         await pending.record_failure(pending_token)
+        if attempt.lockout_if_wrong is not None:
+            clock: Clock = request.app.state.clock
+            await service.record_mfa_lockout(
+                db, member_id, request_ip(request), attempt.lockout_if_wrong, clock.now()
+            )
         raise HTTPException(status.HTTP_400_BAD_REQUEST, CODE_INCORRECT)
+    await throttle.record_success(member_id)
     await pending.delete(pending_token)
     member = await db.get_one(Member, member_id)
     return await finish_mfa_sign_in(response, request, db, sessions, member, session_token)

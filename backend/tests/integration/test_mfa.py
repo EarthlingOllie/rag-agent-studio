@@ -645,3 +645,129 @@ async def test_a_pending_sign_in_expires(
 
     assert response.status_code == 401
     assert response.json() == SIGN_IN_AGAIN
+
+
+# AUTH-F1: wrong codes are counted per Member, across pending sign-ins, so a known password
+# can't buy a fresh five guesses with every sign-in.
+MFA_LOCKOUT_AFTER = 10
+LOCKOUT_SECONDS = 15 * 60  # the default SIGN_IN_LOCKOUT_SECONDS
+
+
+async def _wrong_code_in_a_fresh_sign_in(
+    new_client: ClientFactory, member: SignedUpMember, clock: ControllableClock
+) -> httpx.Response:
+    """Passes the password step afresh, sends one wrong code, then waits out any delay."""
+    client, password_step = await _password_step(new_client, member)
+    assert password_step.status_code == 202, password_step.text
+    wrong = await client.post("/api/auth/mfa/verify", json={"code": "000000"})
+    clock.advance(60)  # longer than the longest delay between attempts
+    return wrong
+
+
+async def test_wrong_codes_across_fresh_sign_ins_lock_mfa_for_the_member(
+    owner: SignedUpMember, clock: ControllableClock, new_client: ClientFactory
+) -> None:
+    secret, _ = await _enrol(owner, clock)
+    for _ in range(MFA_LOCKOUT_AFTER):
+        assert (await _wrong_code_in_a_fresh_sign_in(new_client, owner, clock)).status_code == 400
+
+    client, _ = await _password_step(new_client, owner)
+    locked = await client.post("/api/auth/mfa/verify", json={"code": totp(secret, clock.now())})
+
+    assert locked.status_code == 429
+    assert locked.json()["locked"] is True
+    assert locked.json()["detail"] == "Too many incorrect codes. Try again later."
+    assert locked.headers["retry-after"] == str(locked.json()["retry_after_seconds"])
+    assert "studio_session" not in locked.cookies
+    clock.advance(LOCKOUT_SECONDS)
+    # The refused attempt didn't use up the pending sign-in: the same one now succeeds.
+    right = await client.post("/api/auth/mfa/verify", json={"code": totp(secret, clock.now())})
+    assert right.status_code == 200
+
+
+async def test_wrong_codes_beyond_the_free_ones_wait_progressively_longer(
+    owner: SignedUpMember, clock: ControllableClock, new_client: ClientFactory
+) -> None:
+    secret, _ = await _enrol(owner, clock)
+    client, _ = await _password_step(new_client, owner)
+    for _ in range(4):
+        assert (
+            await client.post("/api/auth/mfa/verify", json={"code": "000000"})
+        ).status_code == 400
+    client, _ = await _password_step(new_client, owner)
+    assert (await client.post("/api/auth/mfa/verify", json={"code": "000000"})).status_code == 400
+
+    delayed = await client.post("/api/auth/mfa/verify", json={"code": totp(secret, clock.now())})
+
+    assert delayed.status_code == 429
+    assert delayed.json()["locked"] is False
+    assert delayed.json()["retry_after_seconds"] == 1
+    clock.advance(1)
+    assert (await client.post("/api/auth/mfa/verify", json={"code": "000000"})).status_code == 400
+    assert (await client.post("/api/auth/mfa/verify", json={"code": "000000"})).json()[
+        "retry_after_seconds"
+    ] == 2
+
+
+async def test_a_right_code_clears_the_members_wrong_code_count(
+    owner: SignedUpMember, clock: ControllableClock, new_client: ClientFactory
+) -> None:
+    secret, _ = await _enrol(owner, clock)
+    for _ in range(MFA_LOCKOUT_AFTER - 1):
+        await _wrong_code_in_a_fresh_sign_in(new_client, owner, clock)
+    client, _ = await _password_step(new_client, owner)
+    assert (
+        await client.post("/api/auth/mfa/verify", json={"code": totp(secret, clock.now())})
+    ).status_code == 200
+    clock.advance(30)
+
+    for _ in range(MFA_LOCKOUT_AFTER - 1):
+        assert (await _wrong_code_in_a_fresh_sign_in(new_client, owner, clock)).status_code == 400
+    client, _ = await _password_step(new_client, owner)
+    right = await client.post("/api/auth/mfa/verify", json={"code": totp(secret, clock.now())})
+
+    assert right.status_code == 200
+
+
+async def test_an_mfa_lockout_is_recorded_as_an_audit_event(
+    owner: SignedUpMember, clock: ControllableClock, new_client: ClientFactory
+) -> None:
+    await _enrol(owner, clock)
+    for _ in range(MFA_LOCKOUT_AFTER):
+        await _wrong_code_in_a_fresh_sign_in(new_client, owner, clock)
+
+    response = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/audit-events",
+        params={"action": "member.locked_out"},
+    )
+
+    assert response.status_code == 200, response.text
+    (event,) = response.json()["items"]
+    assert event["actor"] is None
+    assert event["target"] == {"type": "member", "id": owner.member_id}
+    assert event["after"]["scope"] == "mfa"
+    assert event["after"]["failures"] == MFA_LOCKOUT_AFTER
+
+
+async def test_wrong_codes_sent_at_once_are_counted_before_any_is_checked(
+    owner: SignedUpMember, clock: ControllableClock, new_client: ClientFactory
+) -> None:
+    # A burst of parallel guesses must not all pass the throttle before any of them is counted.
+    await _enrol(owner, clock)
+    clients = []
+    for _ in range(MFA_LOCKOUT_AFTER):
+        client, password_step = await _password_step(new_client, owner)
+        assert password_step.status_code == 202, password_step.text
+        clients.append(client)
+
+    responses = await asyncio.gather(
+        *(
+            client.post("/api/auth/mfa/verify", json={"code": f"{guess:06d}"})
+            for client in clients
+            for guess in range(4)
+        )
+    )
+
+    statuses = [response.status_code for response in responses]
+    assert statuses.count(400) <= MFA_LOCKOUT_AFTER
+    assert statuses.count(429) == len(statuses) - statuses.count(400)
