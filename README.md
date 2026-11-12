@@ -5,64 +5,81 @@
 [![e2e](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/e2e.yml/badge.svg?branch=main)](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/e2e.yml)
 [![infra](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/infra.yml/badge.svg?branch=main)](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/infra.yml)
 [![security](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/security.yml)
-[![links](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/links.yml/badge.svg?branch=main)](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/links.yml)
 [![coverage: 100% line and branch, gated](https://img.shields.io/badge/coverage-100%25%20line%20%2B%20branch%20(gated)-brightgreen)](https://github.com/EarthlingOllie/rag-agent-studio/actions/workflows/backend.yml)
 
-**A multi-tenant studio where an Organisation builds AI Agents grounded in its own documents, versions and publishes them like code, and embeds them on its websites behind layered prompt-injection defences.** Every answer cites its sources, every change is an immutable Version you can diff and revert, and every Conversation feeds analytics that compare Versions honestly, with confidence intervals.
+**A multi-tenant platform for building retrieval-augmented AI Agents grounded in an organisation's own documents, shipping them like code, and embedding them safely on any website.**
 
-![The Product FAQ Agent embedded as a chat bubble on the demo shop page](docs/screenshots/37-widget-on-host.png)
+Teams upload their documents, configure an Agent, test it in a Playground with full traces, publish immutable Versions, and embed it as a chat widget. Every answer cites its sources, every change can be diffed and reverted, every Visitor message passes layered prompt-injection defences, and analytics compare Versions with confidence intervals rather than guesswork.
 
-Contents: [Demo videos](docs/demo.md) · [Five-minute demo](#five-minute-demo) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Stack](#stack) · [Testing](#testing) · [Security](#security) · [Deploy and destroy](#deploy-and-destroy-aws-demo) · [Documentation](#documentation)
+[![Video: publishing an Agent and embedding it on a website](docs/demo/04-publish-and-embed.jpg)](docs/demo/04-publish-and-embed.mp4)
 
-## What it does
+**[▶ Watch the demo videos: nine core user journeys in under six minutes](docs/demo.md)**
 
-- **Organisations and Members.** Hand-rolled Studio auth: sign-up, sign-in, password reset by email, TOTP MFA (optionally required by the Organisation), invites, Owner and Editor roles, an Organisation switcher and an Audit log of every change.
-- **Provider Credentials and models.** API keys (Anthropic, OpenAI) or an AWS Bedrock role, stored with KMS envelope encryption; a Default Model per Organisation, per-Agent overrides, a price table with overrides so every reply has a cost.
-- **Projects and the Knowledge Base.** Upload PDF, DOCX, PPTX, HTML and Markdown; Docling converts and chunks them, a local embedding model (or a provider one) embeds them, and an ingestion scan flags Chunks that look like instructions to an AI. Tags, editions, dedupe, OCR and a Document viewer that shows every Chunk.
-- **Agents and the Playground.** A Markdown system prompt, Tag scoping, hybrid retrieval (pgvector plus full-text, fused) with an optional reranker, citations, and a Trace of every answer: model, tokens, cost, latency and the Chunks retrieved.
-- **Versioning.** Immutable Agent Versions with a movable Live pointer, Project Instructions that Versions pin, diffs, Live History, revert, bulk publish and an Instructions rollout that shows which Agents are behind.
-- **Embedding.** A 1 KB loader script injects an iframe widget, refused by the browser on any origin outside the Agent's Allowed Origins. Theme and per-Agent branding, WCAG 2.2 AA, resumable Conversations, rate limits and a daily Token Budget.
-- **Feedback and analytics.** Thumbs and Conversation Ratings from Visitors, a Conversations viewer with Traces, daily rollups, an Organisation cost page by Project and Agent, per-Version KPI cards with Wilson intervals and low-confidence marking, time series, retention and tombstones.
-- **Guardrails.** An input Guardrail (a local ONNX classifier, or an LLM classifier) in block, warn or log mode, a Canary token that stops prompt leaks, Guardrail analytics and alerts, and an Attack evaluation suite run in CI.
+Contents: [Highlights](#highlights) · [Demo](#demo) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Stack](#stack) · [Engineering practices](#engineering-practices) · [Testing](#testing) · [Security](#security) · [Deploy and destroy](#deploy-and-destroy-aws-demo) · [Documentation](#documentation)
 
-## Five-minute demo
+## Highlights
 
-**Prefer to watch?** [docs/demo.md](docs/demo.md) has a short screen recording of each core user story: signing up, building a Knowledge Base, creating, publishing and embedding an Agent, Versions and revert, Conversations and analytics, Agentic retrieval, the Guardrails, and team, cost and audit.
+- **Retrieval that is explainable.** Hybrid search (pgvector embeddings plus Postgres full-text, fused with reciprocal rank fusion) with an optional reranker and Tag scoping. Each answer opens a **Trace**: model, tokens, cost, latency and every Chunk retrieved, with the cited ones marked.
+- **Two retrieval modes.** *Automatic* runs one search on the user's words before the model is called: cheap and predictable. *Agentic* gives the model a search tool, so it decides whether, how often and with what query to search. Both are traced, costed and evaluated.
+- **A real ingestion pipeline.** PDF, DOCX, PPTX, HTML and Markdown are converted and chunked by Docling on a Celery worker, embedded locally (fastembed) or by a provider, deduplicated, versioned as editions and scanned for planted instructions before they can reach a prompt.
+- **Agents shipped like software.** Immutable Agent Versions behind a movable Live pointer, diffs, Live History, one-click revert, bulk publish and Project-wide Instructions that Versions pin, with a rollout view showing which Agents are behind.
+- **Defence in depth against prompt injection.** An ingestion scan for indirect injection, an input Guardrail (local ONNX classifier or LLM classifier) in block/warn/log mode, a Canary token that cuts off leaked prompts, and an Attack evaluation suite run in CI and nightly against a live model.
+- **Honest analytics.** Thumbs and ratings from Visitors roll up daily into per-Version KPIs with Wilson score intervals, low-confidence marking below 30 Conversations, and cost per Project and per Agent.
+- **Production concerns built in.** Multi-tenant isolation tested on every route, hand-rolled auth with TOTP MFA, KMS envelope encryption for provider API keys, origin-locked iframe embeds, rate limits, daily Token Budgets, retention, an Audit log, WCAG 2.2 AA, and Terraform for AWS.
+- **Model-agnostic.** A gateway built on Pydantic AI talks to Anthropic, OpenAI and AWS Bedrock, with per-Organisation defaults, per-Agent overrides and a price table so every reply carries a cost. A labelled demo model lets the whole product run with no API key.
 
-Run the [Quickstart](#quickstart) first (`make dev`, then `make seed`), or use a seeded [AWS demo](#deploy-and-destroy-aws-demo) at its CloudFront URL. Sign in at <http://localhost:5173> as the demo **Owner** `owner@northwind.example` / `northwind-owner-demo` (or the **Editor** `editor@northwind.example` / `northwind-editor-demo`); `make seed` prints these too. Everything below is seeded, synthetic and answered by the labelled demo model, so no API key is needed.
+## Demo
 
-1. **The Studio** (30 s). The Northwind Traders Organisation, its Theme and Members. Open **Projects → Northwind Handbook**: four Documents (a staff handbook, a returns policy, a product FAQ in DOCX and a slide deck in PPTX), split by the HR and Products Tags.
-2. **The Knowledge Base viewer** (30 s). Open `northwind-staff-handbook.md`: the header says a Chunk was flagged as possible instructions to an AI, and the planted "A note for AI assistants" Chunk carries a Guardrail flag with the classifier's score. That is the indirect-injection defence at ingestion.
-3. **The Agent editor and two Playground Traces** (75 s). **Agents → HR helper**: the Markdown prompt, Tag scoping to HR, retrieval settings, and its Retrieval Mode, **Automatic**. Ask the Playground "How many days of annual leave do I get?" and open the answer's **Trace**: the model, tokens, cost, latency and the one search made up front, its Chunks in a single **Retrieved Chunks** table, the cited one first. Then **Agents → Product FAQ**, which is **Agentic**: ask "Can I return a jar of honey?". The Playground shows **Searching: Can I return a jar of honey?** before the answer, because the model chose to search the Knowledge Base itself, and the Trace lists **Search 1** with the query the model wrote and the Chunks it found. That is the trade-off: an Agentic Agent decides whether, how often and with what words to search (two model calls here, so more tokens and cost); an Automatic one always runs one search on the Visitor's exact words, cheaper and predictable.
-4. **Publish and revert** (30 s). The HR helper's **Live History**: v1 published, v2 ("Shorter answers, without citations") published, then **reverted to v1**, then v3 published. Diff any two Versions; the Instructions tab shows the Product FAQ **behind** on Instructions v1.
-5. **The embed on the shop page** (30 s). Open <http://localhost:5175/demo/>, a fictional shop on another origin. Open the chat bubble and ask the Product FAQ "Can I return a jar of honey?": being Agentic, it shows Visitors "Searching the knowledge base…" (never the model's query) before it answers; `inline.html` shows the same Agent inline.
-6. **The disallowed origin** (15 s). Open <http://localhost:5176/>: the same snippet on an origin the Agent doesn't allow. The browser refuses to show the frame (`frame-ancestors`).
-7. **The attack panel** (60 s). Open <http://localhost:5175/demo/attacks.html> and click each button. Instruction override, prompt extraction and the role-play jailbreak are **blocked by the input Guardrail**; the base64 encoded attack slips past it, the naive demo model starts to leak its prompt and the **Canary token replaces the reply**; the benign control is answered. The table shows which layer acted.
-8. **The Token Budget** (15 s). On <http://localhost:5175/demo/budget.html>, **Use up today's Token Budget**: the widget shows the Agent's unavailable text, and the Studio's Agents list shows **Budget exhausted**.
-9. **Analytics comparison** (45 s). **Analytics → HR helper**: switch the Version between v1, v2 and v3. Four weeks of seeded Conversations show v2's thumbs-up rate clearly below v1's, with non-overlapping 95% intervals, and v3 better again but marked **Low confidence** (fewer than 30 Conversations).
-10. **Organisation cost** (15 s). **Cost** in the Organisation navigation: what each Project spent over the period, Visitors and the Playground in separate columns; **Break down by → Agent** splits it per Agent.
-11. **The Audit tab** (15 s). **Organisation settings → Audit**: every publish, revert, bulk publish and Instructions change from the seeded history, with actor and before/after.
+Short screen recordings, each one user journey run end to end against the seeded stack:
 
-The whole script is automated as one Playwright test, [`frontend/e2e/tests/five-minute-demo.spec.ts`](frontend/e2e/tests/five-minute-demo.spec.ts), which `make e2e` runs after `make seed`.
+1. [Sign up and create a Project](docs/demo.md#1-sign-up-and-create-a-project)
+2. [Build a Knowledge Base](docs/demo.md#2-build-a-knowledge-base)
+3. [Create an Agent and test it in the Playground](docs/demo.md#3-create-an-agent-and-test-it-in-the-playground)
+4. [Publish an Agent and embed it on a website](docs/demo.md#4-publish-an-agent-and-embed-it-on-a-website)
+5. [Iterate safely with Versions, Diffs and revert](docs/demo.md#5-iterate-safely-with-versions-diffs-and-revert)
+6. [Review Conversations and compare Versions](docs/demo.md#6-review-conversations-and-compare-versions)
+7. [Choose Automatic or Agentic retrieval](docs/demo.md#7-choose-automatic-or-agentic-retrieval)
+8. [See the Guardrails stop prompt injection](docs/demo.md#8-see-the-guardrails-stop-prompt-injection)
+9. [Manage the team, spending and audit trail](docs/demo.md#9-manage-the-team-spending-and-audit-trail)
+
+To try it yourself, follow the [five-minute walkthrough](docs/demo.md#five-minute-walkthrough) after the [Quickstart](#quickstart); it is also automated as one Playwright test.
 
 ## Quickstart
 
-Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/), and Node 22 with pnpm (`corepack enable`).
+Run the whole product locally with two commands. No API key is needed: the seeded demo answers with a clearly labelled demo model.
+
+**Prerequisites:** Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/), and Node 22 with pnpm (`corepack enable`).
 
 ```sh
-make dev     # builds and starts the stack: Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio, widget, demo pages
-make seed    # in another terminal: creates the demo Organisation and prints its sign-in details (idempotent)
+git clone https://github.com/EarthlingOllie/rag-agent-studio.git
+cd rag-agent-studio
+cp .env.example .env   # optional: the defaults work locally
+
+make dev     # builds and starts Postgres+pgvector, Redis, RustFS (S3), Mailpit, the API, worker, Beat, Studio, widget and demo pages
+make seed    # in a second terminal: creates the demo Organisation and prints its sign-in details (idempotent)
 ```
 
-| Where | What |
+Then open the Studio at <http://localhost:5173> and sign in:
+
+| Role | Email | Password |
+|---|---|---|
+| Owner | `owner@northwind.example` | `northwind-owner-demo` |
+| Editor | `editor@northwind.example` | `northwind-editor-demo` |
+
+| URL | What's there |
 |---|---|
-| <http://localhost:5173> | The Studio (sign up to create your own Organisation, or sign in as the demo Owner) |
+| <http://localhost:5173> | The Studio: sign in as the demo Owner, or sign up to create your own Organisation |
 | <http://localhost:8000/docs> | The API's OpenAPI docs |
-| <http://localhost:5175/demo/> | Demo host pages: shop (bubble), `inline.html`, `budget.html`, `attacks.html` |
-| <http://localhost:5176/> | The disallowed-origin page |
+| <http://localhost:5175/demo/> | Demo host pages: a shop with the chat bubble, `inline.html`, `budget.html` and the `attacks.html` panel |
+| <http://localhost:5176/> | The same embed on a disallowed origin, which the browser refuses |
 | <http://localhost:8025> | Mailpit: every email the stack sends (invites, password resets) |
 
-`make seed-reset` erases the demo Organisation (only that one) and seeds it again. To answer with a real model instead of the demo one, set `SEED_CREDENTIAL_PROVIDER` (`anthropic` or `openai`) and `SEED_CREDENTIAL_API_KEY` before `make seed`; the seeded history is always generated by the demo model. `make help` lists every target; [docs/development.md](docs/development.md) covers settings, ports and each subsystem.
+**Useful extras**
+
+- **Use a real model:** set `SEED_CREDENTIAL_PROVIDER` (`anthropic` or `openai`) and `SEED_CREDENTIAL_API_KEY` before `make seed`. You can also add credentials in the Studio under **Organisation settings → Credentials**.
+- **Start again:** `make seed-reset` erases and rebuilds only the demo Organisation.
+- **Run the checks:** `make services` then `make test`; `make lint`; `make e2e` for the full browser suite.
+- `make help` lists every target, and [docs/development.md](docs/development.md) covers settings, ports and each subsystem in depth.
 
 ## Architecture
 
@@ -89,7 +106,11 @@ flowchart LR
   API --> KMS["KMS / local key wrapper: envelope encryption"]
 ```
 
-A Visitor's message goes widget → API → admission control (Allowed Origin, rate limits, Token Budget) → input Guardrail → hybrid retrieval scoped by Tags → the Live Version's prompt and pinned Instructions → the model through the gateway, streamed back through the Canary filter with citations, and saved with its Trace. Ingestion runs on the worker: upload to object storage, Docling conversion, chunking, the ingestion scan, embedding into pgvector. [docs/plan.md](docs/plan.md#2-architecture) has the full pipelines; [ADR-0010](docs/adr/0010-aws-runtime-shape.md) and [ADR-0011](docs/adr/0011-single-cloudfront-origin.md) the AWS shape.
+**Answering a question:** widget → API → admission control (Allowed Origin, rate limits, Token Budget) → input Guardrail → hybrid retrieval scoped by Tags (up front in Automatic mode, as a tool call in Agentic mode) → the Live Version's prompt and pinned Instructions → the model through the gateway → streamed back through the Canary filter with citations, and saved with its Trace.
+
+**Ingesting a document:** upload to object storage → Docling conversion on the worker → chunking → ingestion scan → embedding into pgvector.
+
+[docs/plan.md](docs/plan.md#2-architecture) has the full pipelines; [ADR-0010](docs/adr/0010-aws-runtime-shape.md) and [ADR-0011](docs/adr/0011-single-cloudfront-origin.md) describe the AWS shape.
 
 ## Stack
 
@@ -102,13 +123,18 @@ A Visitor's message goes widget → API → admission control (Allowed Origin, r
 | Infrastructure | Terraform: ECS Fargate (ARM64), RDS, ElastiCache, S3, CloudFront, KMS, ECR, fck-nat; GitHub Actions with OIDC |
 | Quality and security | ruff, `mypy --strict`, eslint, `tsc`, TFLint, Checkov, gitleaks, pip-audit, pnpm audit, Trivy |
 
+## Engineering practices
+
+The project was built the way a team would build it, and the paper trail is in the repository:
+
+- **Spec-driven delivery.** Work was planned in [a build plan](docs/plan.md), broken into [specs](docs/specs/README.md), one per vertical slice, and then into [tickets](docs/tickets/README.md) with acceptance criteria and an evidence folder each (test logs, screenshots, e2e runs).
+- **Decisions are written down.** Twelve [Architecture Decision Records](docs/adr) explain the trade-offs: why pgvector over a dedicated vector database, why local embeddings by default, why immutable Versions, why a hand-rolled auth layer.
+- **A shared domain language.** [GLOSSARY.md](GLOSSARY.md) defines every term (Organisation, Agent, Version, Live Version, Guardrail, Canary token, …), and the code, UI and docs use them consistently.
+- **CI gates on every push:** tests with 100% coverage, strict typing and linting, end-to-end tests with accessibility scans, the Attack evaluation suite, infrastructure tests, secret and dependency scanning, and a check that every link in the docs resolves.
+
 ## Testing
 
-- **100% line and branch coverage, enforced** for the backend and frontend ([ADR-0008](docs/adr/0008-full-line-and-branch-coverage.md)); a build below it fails. Live-model tests are marked `live` and sit outside the gate.
-- **Tests at seams, not internals.** Behaviour is tested at the highest seam: the HTTP API in process against real Postgres and Redis, components through the DOM with MSW, the whole stack through Playwright. Model providers, classifiers and clocks are swapped for test doubles at their ports. See the [shared test seams](docs/specs/README.md#shared-test-seams).
-- **End to end.** `make e2e` starts the compose stack, seeds it and runs every Playwright spec with axe accessibility scans (WCAG 2.2 AA), including the automated [five-minute demo](#five-minute-demo).
-- **Guardrail evaluation.** `make eval` runs the Attack evaluation suite (`backend/evals/attack_suite.json`) through the real Guardrail pipeline in both Retrieval Modes on every push; `make eval-live` runs it nightly against a real model with a minimum pass rate.
-- **Infrastructure and links.** `make infra-check` runs `terraform test` with mocked providers, TFLint and Checkov; `make link-check` checks every relative link and anchor in the Markdown.
+Backend and frontend are held at **100% line and branch coverage**, enforced in CI ([ADR-0008](docs/adr/0008-full-line-and-branch-coverage.md)). Behaviour is tested at the highest useful seam: the HTTP API against real Postgres and Redis, components through the DOM with MSW, and the whole stack through Playwright with axe accessibility scans; model providers, classifiers and clocks are swapped for test doubles at their ports ([shared test seams](docs/specs/README.md#shared-test-seams)). The Attack evaluation suite runs through the real Guardrail pipeline on every push (`make eval`) and nightly against a live model (`make eval-live`).
 
 | Command | What it runs |
 |---|---|
@@ -122,26 +148,27 @@ A Visitor's message goes widget → API → admission control (Allowed Origin, r
 
 ## Security
 
+- **Layered prompt-injection defence** ([ADR-0007](docs/adr/0007-layered-prompt-injection-defence.md)): an ingestion scan flags planted instructions in Documents (mark or exclude from retrieval); an input Guardrail classifies every Visitor message (block, warn or log); a Canary token in the prompt cuts off any reply that leaks it; Agents have no side-effecting tools, so a successful injection can only ever produce text.
 - **Envelope encryption for Provider Credentials.** Each credential is encrypted with its own data key, wrapped by KMS in AWS (a local key wrapper in development); plaintext keys never leave the API process or reach logs ([ADR-0006](docs/adr/0006-provider-credentials-envelope-encryption.md)).
-- **Studio authentication.** Argon2 password hashes, httpOnly cookie sessions, sign-in rate limiting and lockout, TOTP MFA with an Organisation policy to require it, and an Audit Event for every change ([ADR-0005](docs/adr/0005-hand-rolled-studio-auth.md)). Every query is scoped to the Organisation; a tenant-isolation test walks every route.
-- **Layered prompt-injection defence** ([ADR-0007](docs/adr/0007-layered-prompt-injection-defence.md)): an ingestion scan flags planted instructions in Documents (mark or exclude from retrieval); an input Guardrail classifies every Visitor message (block, warn or log); a Canary token in the prompt cuts off any reply that leaks it; Agents have no side-effecting tools, so a successful injection can only produce text.
+- **Studio authentication.** Argon2 password hashes, httpOnly cookie sessions, sign-in rate limiting and lockout, TOTP MFA with an Organisation policy to require it, and an Audit Event for every change ([ADR-0005](docs/adr/0005-hand-rolled-studio-auth.md)). Every query is scoped to the Organisation, and a tenant-isolation test walks every route.
 - **Embed protections** ([ADR-0004](docs/adr/0004-iframe-embed-with-origin-allowlist.md)): the widget is an iframe whose shell sends `Content-Security-Policy: frame-ancestors` with the Agent's Allowed Origins, short-lived signed Conversation tokens, per-Conversation and per-IP rate limits, and a daily Token Budget that caps spend.
 - **Telemetry with scrubbing**, retention with tombstones for old Conversations, and security gates in CI: gitleaks, pip-audit, pnpm audit and Trivy.
 
 ## Deploy and destroy (AWS demo)
 
-The AWS demo is applied on demand and destroyed after use; nothing is always on. Full details: [docs/deploy-demo.md](docs/deploy-demo.md) and, once per account, [docs/infra-bootstrap.md](docs/infra-bootstrap.md).
+The AWS demo is applied on demand from GitHub Actions and destroyed after use; nothing is always on. Full details are in [docs/deploy-demo.md](docs/deploy-demo.md) and, once per account, [docs/infra-bootstrap.md](docs/infra-bootstrap.md).
 
 1. **Bootstrap (once):** apply `infra/bootstrap` (the Terraform state bucket and the GitHub OIDC deploy role), then set the `AWS_DEPLOY_ROLE_ARN` secret and the `TF_STATE_BUCKET` variable.
-2. **Deploy:** Actions → **deploy** → Run workflow. It builds and pushes ARM64 images, applies `infra/envs/demo`, runs the migration task, rolls the API, worker and Beat services, uploads the Studio, widget and demo pages, and smoke-checks the CloudFront URL it prints. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`.
-3. **Seed:** Actions → **seed** → Run workflow. It runs the same seed as `make seed` as a one-off ECS task and prints its output: the URL and the demo Owner's and Editor's sign-in details. Running it again is idempotent; tick `reset` to erase and rebuild the Demo Organisation, like `make seed-reset`. The AWS seed always answers with the demo model. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/seed.sh [--reset]`. The demo pages are then at `<cloudfront_url>/demo/`, so every step of the [five-minute demo](#five-minute-demo) except step 6 works in AWS too.
-4. **Destroy:** Actions → **destroy** → Run workflow, typing `destroy demo` to confirm. Everything goes, Documents and database included; the state bucket and deploy role stay. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
+2. **Deploy:** Actions → **deploy**. It builds and pushes ARM64 images, applies `infra/envs/demo`, runs migrations, rolls the API, worker and Beat services, uploads the static apps and smoke-checks the CloudFront URL it prints. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`.
+3. **Seed:** Actions → **seed**. Runs the same seed as `make seed` as a one-off ECS task and prints the URL and sign-in details; tick `reset` to rebuild the demo Organisation. From a laptop: `scripts/deploy/seed.sh [--reset]`.
+4. **Destroy:** Actions → **destroy**, typing `destroy demo` to confirm. Everything goes except the state bucket and deploy role. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
 
-**Expected cost** (on-demand, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.33 USD an hour**, so about **8 USD for a day** of demo (each seed adds about 0.01 USD), or about 240 USD a month if left on. After destroy, only the bootstrap's state bucket and key remain, about 1 USD a month. The disallowed-origin page (step 6 of the demo) is local-only.
+**Expected cost** (on-demand, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.33 USD an hour**, or about **8 USD for a day** of demo. After destroy, about 1 USD a month remains.
 
 ## Documentation
 
-- [GLOSSARY.md](GLOSSARY.md): the domain language (Organisation, Agent, Version, Live Version, Guardrail, Canary token, …) used in code, UI and docs.
+- [docs/demo.md](docs/demo.md): the demo videos, the five-minute walkthrough and how to regenerate the recordings.
+- [GLOSSARY.md](GLOSSARY.md): the domain language used in code, UI and docs.
 - [docs/adr](docs/adr): the architecture decisions:
   [0001 pgvector hybrid search](docs/adr/0001-pgvector-hybrid-search.md) ·
   [0002 local embeddings by default](docs/adr/0002-local-embeddings-by-default.md) ·
@@ -155,10 +182,9 @@ The AWS demo is applied on demand and destroyed after use; nothing is always on.
   [0010 AWS runtime shape](docs/adr/0010-aws-runtime-shape.md) ·
   [0011 single CloudFront origin](docs/adr/0011-single-cloudfront-origin.md) ·
   [0012 demo seed through the API](docs/adr/0012-demo-seed-through-the-api.md)
-- [docs/demo.md](docs/demo.md): a screen recording of each core user story, and how to regenerate them.
 - [docs/plan.md](docs/plan.md): the build plan, architecture and delivery slices.
-- [docs/specs](docs/specs/README.md): the ten specs, one per slice, with the shared test seams.
-- [docs/tickets](docs/tickets/README.md): every ticket, its acceptance criteria and its evidence folder.
+- [docs/specs](docs/specs/README.md): one spec per slice, with the shared test seams.
+- [docs/tickets](docs/tickets/README.md): every ticket, its acceptance criteria and its evidence.
 - [docs/development.md](docs/development.md): local development in depth; [seed/README.md](seed/README.md): the synthetic demo content and its [licence](seed/LICENCE.md).
 
 ## Licence
