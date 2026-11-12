@@ -103,6 +103,16 @@ test("a Version with no Visitor use yet says so on every card", async () => {
   expect(card("p95 latency")).toBe("p95 latencyNo replies yetn = 0 replies");
 });
 
+test("an Editor, who isn't shown the cost, gets every other card without a Cost card", async () => {
+  setUp({ versions: { [hrHelper.id]: [{ ...smallSample, cost: null }] } });
+  renderStudio(analyticsTab);
+
+  expect(await screen.findByRole("list", { name: "Key numbers for v2" })).toBeInTheDocument();
+  expect(screen.queryByRole("listitem", { name: "Cost per Conversation" })).not.toBeInTheDocument();
+  expect(card("Volume")).toBe("VolumeLow sample3 Conversations4 replies");
+  expect(card("Tokens per reply")).toBe("Tokens per reply120 meanp95 300n = 3 replies that asked a model");
+});
+
 test("one of each is counted in the singular", async () => {
   const one = versionKpis(3, {
     conversations: 1,

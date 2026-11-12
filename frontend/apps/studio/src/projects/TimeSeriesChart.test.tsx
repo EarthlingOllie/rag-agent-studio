@@ -14,8 +14,8 @@ const editorSession: Session = {
   organisations: adaSession.organisations.map((organisation) => ({ ...organisation, role: "editor" as const })),
 };
 
-function setUp(options: Parameters<typeof fakeTimeSeriesApi>[0] = {}) {
-  fakeAuthApi({ signedInAs: editorSession });
+function setUp(options: Parameters<typeof fakeTimeSeriesApi>[0] = {}, session: Session = editorSession) {
+  fakeAuthApi({ signedInAs: session });
   fakeProjectsApi();
   fakeAgentsApi({ agents: [hrHelper] });
   fakeMetricsApi({ versions: { [hrHelper.id]: [largeSample, smallSample] } });
@@ -73,7 +73,24 @@ test("the time series shows the metric per day with markers where the Live Versi
   expect(queries.map(({ agentId, query }) => [agentId, query.toString()])).toEqual([[hrHelper.id, "metric=conversations&granularity=day"]]);
 });
 
-test("each metric reads in its own units, with what its sample size counts", async () => {
+test("an Editor isn't offered the cost series, which is for Owners only", async () => {
+  setUp({ respond: () => threeDays });
+  renderStudio(analyticsTab);
+
+  const section = await screen.findByRole("region", { name: "Over time" });
+  const options = within(within(section).getByLabelText("Metric")).getAllByRole("option");
+  expect(options.map((o) => o.textContent)).toEqual([
+    "Conversations",
+    "Replies",
+    "Mean tokens per reply",
+    "Thumbs-up rate",
+    "Mean rating",
+    "Fallback rate",
+    "p95 latency",
+  ]);
+});
+
+test("each metric reads in its own units, with what its sample size counts (an Owner sees the cost too)", async () => {
   const values: Record<string, [number, string, string]> = {
     conversations: [12, "12", "n (Conversations)"],
     replies: [30, "30", "n (replies)"],
@@ -84,11 +101,14 @@ test("each metric reads in its own units, with what its sample size counts", asy
     fallback_rate: [0.25, "25%", "n (replies)"],
     p95_latency_ms: [1480, "1.5 s", "n (replies)"],
   };
-  setUp({
-    respond: (query) => ({
-      points: seriesPoints(["2026-11-05", "2026-11-05", values[query.get("metric") ?? ""]?.[0] ?? null, 3], ["2026-11-06", "2026-11-06", 320, 3]),
-    }),
-  });
+  setUp(
+    {
+      respond: (query) => ({
+        points: seriesPoints(["2026-11-05", "2026-11-05", values[query.get("metric") ?? ""]?.[0] ?? null, 3], ["2026-11-06", "2026-11-06", 320, 3]),
+      }),
+    },
+    adaSession,
+  );
   renderStudio(analyticsTab);
   const section = await screen.findByRole("region", { name: "Over time" });
   await showTable(section);

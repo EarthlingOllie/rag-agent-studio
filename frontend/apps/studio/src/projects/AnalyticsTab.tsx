@@ -76,11 +76,14 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
           </>
         }
       />
-      <KpiCard
-        title="Cost per Conversation"
-        value={cost.per_conversation_usd === null ? "No Conversations yet" : dollars(cost.per_conversation_usd)}
-        details={<p>{`${dollars(cost.total_usd)} in total, at the prices of the time`}</p>}
-      />
+      {/* Cost is for Owners only: the API leaves it out for Editors. */}
+      {cost !== null && (
+        <KpiCard
+          title="Cost per Conversation"
+          value={cost.per_conversation_usd === null ? "No Conversations yet" : dollars(cost.per_conversation_usd)}
+          details={<p>{`${dollars(cost.total_usd)} in total, at the prices of the time`}</p>}
+        />
+      )}
       <KpiCard
         title="Thumbs-up rate"
         value={thumbs.rate === null ? "No votes yet" : percent(thumbs.rate)}

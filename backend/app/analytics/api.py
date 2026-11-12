@@ -3,8 +3,10 @@ Version comparison (two Versions side by side, also as CSV) and the time series 
 the Agent per day, week or month, with Live History markers and a confounder note's Document
 changes). Editors and Owners may read them. Playground Conversations never count. Org cost (what
 the Organisation spent over a range of UTC days, by Project or by Agent, with Playground usage in
-a separate column) is for Owners only."""
+a separate column) is for Owners only, and so is cost everywhere else here: Editors get the KPIs
+and the comparison without it, and are refused the cost time series."""
 
+import dataclasses
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -14,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 from app.agents import versions
-from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
+from app.agents.api import NOT_FOUND_RESPONSE, OWNERS_ONLY_RESPONSE, ClockDep, not_found
 from app.agents.config import RetrievalMode
 from app.agents.models import AgentVersion
 from app.agents.service import AgentNotFoundError
@@ -24,7 +26,9 @@ from app.auth.api import Db
 from app.playground.api import Dollars
 from app.projects.service import ProjectNotFoundError
 from app.tenancy.api import ORGANISATION_PREFIX
-from app.tenancy.policy import OwnerScope, Scope
+from app.tenancy.models import Role
+from app.tenancy.policy import OWNERS_ONLY, OwnerScope, Scope
+from app.tenancy.repository import OrganisationScope
 
 router = APIRouter(
     prefix=ORGANISATION_PREFIX + "/projects/{project_id}/agents/{agent_id}", tags=["analytics"]
@@ -112,7 +116,8 @@ class VersionKpisOut(BaseModel):
     # Fewer than 30 Conversations.
     low_confidence: bool
     tokens: TokensOut
-    cost: CostOut
+    # Owners only: null for Editors, as the Organisation's cost is.
+    cost: CostOut | None
     thumbs_up: ThumbsUpOut
     rating: RatingOut
     fallback: FallbackOut
@@ -129,7 +134,12 @@ class VersionMetricsOut(BaseModel):
     versions: list[VersionKpisOut]
 
 
-def _out(kpis: service.VersionKpis) -> VersionKpisOut:
+def _sees_cost(scope: OrganisationScope) -> bool:
+    """Cost is for Owners only, here as on the Organisation cost page."""
+    return scope.role is Role.OWNER
+
+
+def _out(kpis: service.VersionKpis, *, with_cost: bool) -> VersionKpisOut:
     usage = kpis.usage
     interval = kpis.thumbs_up_interval
     return VersionKpisOut(
@@ -145,7 +155,9 @@ def _out(kpis: service.VersionKpis) -> VersionKpisOut:
             mean=kpis.mean_tokens,
             p95=usage.tokens_histogram.percentile(0.95),
         ),
-        cost=CostOut(total_usd=kpis.cost_total, per_conversation_usd=kpis.cost_per_conversation),
+        cost=CostOut(total_usd=kpis.cost_total, per_conversation_usd=kpis.cost_per_conversation)
+        if with_cost
+        else None,
         thumbs_up=ThumbsUpOut(
             up=usage.thumbs_up,
             down=usage.thumbs_down,
@@ -220,7 +232,10 @@ async def get_version_metrics(
     except (ProjectNotFoundError, AgentNotFoundError, service.VersionNotFoundError):
         raise not_found() from None
     return VersionMetricsOut(
-        agent_id=agent_id, start=first, end=last, versions=[_out(k) for k in kpis]
+        agent_id=agent_id,
+        start=first,
+        end=last,
+        versions=[_out(k, with_cost=_sees_cost(scope)) for k in kpis],
     )
 
 
@@ -349,7 +364,11 @@ def _point_start(points: list[service.Point], day: date) -> date:
     return max(point.start for point in points if point.start <= day)
 
 
-@router.get("/time-series", operation_id="getTimeSeries", responses=NOT_FOUND_RESPONSE)
+@router.get(
+    "/time-series",
+    operation_id="getTimeSeries",
+    responses={**NOT_FOUND_RESPONSE, **OWNERS_ONLY_RESPONSE},
+)
 async def get_time_series(
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
@@ -366,7 +385,9 @@ async def get_time_series(
     """One metric of the Agent (every Version together) per period of the UTC days `start` to
     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
     Live Version changed and the Project's Document changes during the range. Only Visitor
-    Conversations count."""
+    Conversations count. The cost series is for Owners only."""
+    if metric is service.TimeSeriesMetric.COST_USD and not _sees_cost(scope):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, OWNERS_ONLY)
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     try:
@@ -462,7 +483,9 @@ async def _compared(
     b: Annotated[uuid.UUID, Query(description="Another of the Agent's Versions: the second side")],
     start: StartQuery = None,
     end: EndQuery = None,
-) -> tuple[date, date, comparison.Comparison, versions.ConfigDiff]:
+) -> tuple[date, date, comparison.Comparison, versions.ConfigDiff, bool]:
+    """The two Versions compared, and whether the Member sees the cost: for Editors the
+    comparison leaves out its cost rows."""
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     if a == b:
@@ -475,11 +498,17 @@ async def _compared(
     except (ProjectNotFoundError, AgentNotFoundError, service.VersionNotFoundError):
         raise not_found() from None
     by_id = {kpis.version.id: kpis for kpis in found}
-    return first, last, comparison.compare(by_id[a], by_id[b]), diff
+    compared = comparison.compare(by_id[a], by_id[b])
+    with_cost = _sees_cost(scope)
+    if not with_cost:
+        compared = dataclasses.replace(
+            compared, metrics=[row for row in compared.metrics if row.unit != "usd"]
+        )
+    return first, last, compared, diff, with_cost
 
 
 Compared = Annotated[
-    tuple[date, date, comparison.Comparison, versions.ConfigDiff], Depends(_compared)
+    tuple[date, date, comparison.Comparison, versions.ConfigDiff, bool], Depends(_compared)
 ]
 
 
@@ -488,14 +517,14 @@ async def compare_versions(agent_id: uuid.UUID, compared: Compared) -> VersionCo
     """Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
     the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
-    Conversations count."""
-    first, last, found, diff = compared
+    Conversations count. The cost is for Owners only."""
+    first, last, found, diff, with_cost = compared
     return VersionComparisonOut(
         agent_id=agent_id,
         start=first,
         end=last,
-        a=_out(found.a),
-        b=_out(found.b),
+        a=_out(found.a, with_cost=with_cost),
+        b=_out(found.b, with_cost=with_cost),
         metrics=[_row_out(row) for row in found.metrics],
         config_diff=diff_out(diff),
     )
@@ -512,8 +541,9 @@ async def compare_versions(agent_id: uuid.UUID, compared: Compared) -> VersionCo
 )
 async def export_version_comparison(compared: Compared) -> Response:
     """The comparison of Versions `a` and `b` as a CSV download: a row per metric with both
-    Versions' values, the difference and the Version it favours."""
-    first, last, found, _ = compared
+    Versions' values, the difference and the Version it favours. The cost rows are for Owners
+    only."""
+    first, last, found, _, _ = compared
     name = f"comparison-v{found.a.version.number}-v{found.b.version.number}-{first}-to-{last}.csv"
     return Response(
         comparison.to_csv(found),

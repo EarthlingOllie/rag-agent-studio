@@ -22,9 +22,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.settings import Settings
 
-# Fields that carry Message text: a key named like these, at any depth, has its value redacted.
-# ``input`` is where validation errors echo a rejected request value back.
-_MESSAGE_FIELD_NAMES = r"(?:content|messages?|prompt|input)"
+# Fields that carry Message text or other free text a Visitor typed: a key named like these, at
+# any depth, has its value redacted. ``input`` is where validation errors echo a rejected request
+# value back; ``comment`` is a Visitor's Message Feedback comment, which must not outlive the
+# Conversation in exported spans.
+_MESSAGE_FIELD_NAMES = r"(?:content|messages?|prompt|input|comments?)"
 MESSAGE_FIELD_PATTERN = rf"(?:^|[._ -]){_MESSAGE_FIELD_NAMES}\Z"
 # The same names as keys inside a JSON-encoded attribute, so the scrubber parses and walks it.
 _MESSAGE_FIELD_IN_JSON = rf'"{_MESSAGE_FIELD_NAMES}"\s*:'

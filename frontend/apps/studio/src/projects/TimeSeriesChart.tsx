@@ -5,6 +5,7 @@ import { Icon, Notice, Segmented, Skeleton, field, notice, surface, table, text 
 
 import { type MetricsRange, type TimeSeries, type TimeSeriesGranularity, type TimeSeriesMetric, useTimeSeries } from "./analytics";
 import { ProjectRequestError } from "./projects";
+import { useOrganisationRole } from "./ProjectsPage";
 
 type Point = TimeSeries["points"][number];
 type Marker = TimeSeries["markers"][number];
@@ -275,6 +276,7 @@ export function TimeSeriesChart({
   agentId: string;
   range: MetricsRange;
 }) {
+  const { isOwner } = useOrganisationRole();
   const [metric, setMetric] = useState<TimeSeriesMetric>("conversations");
   const [granularity, setGranularity] = useState<TimeSeriesGranularity>("day");
   const series = useTimeSeries(organisationId, projectId, agentId, metric, granularity, range);
@@ -304,11 +306,14 @@ export function TimeSeriesChart({
               setMetric(event.currentTarget.value as TimeSeriesMetric);
             }}
           >
-            {Object.entries(METRICS).map(([value, { label }]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
+            {Object.entries(METRICS)
+              // The cost series is for Owners only, like the Organisation cost page.
+              .filter(([value]) => isOwner || value !== "cost_usd")
+              .map(([value, { label }]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
           </select>
         </label>
         <label className={field.filter}>
