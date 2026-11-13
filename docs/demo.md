@@ -4,6 +4,14 @@ Each video below is a screen recording of one core user story, run end to end ag
 
 Select a poster to play its video. The [five-minute walkthrough](#five-minute-walkthrough) at the end covers the same ground at your own pace.
 
+## All nine in one video
+
+[![All nine user stories in one video, with a title card before each](demo/all-stories.jpg)](demo/all-stories.mp4)
+
+[**▶ Watch all nine stories in one video**](demo/all-stories.mp4) (6:24). Before each story, a title card shows the user story it demonstrates. The recordings are the same as the separate ones below.
+
+## The stories one by one
+
 | # | Story | Who | Length |
 | --- | --- | --- | --- |
 | 1 | [Sign up and create a Project](#1-sign-up-and-create-a-project) | New Owner | 0:29 |
@@ -136,13 +144,14 @@ This walkthrough is automated as one Playwright test, [`five-minute-demo.spec.ts
 
 ## Regenerating the videos
 
-The recordings come from [`scripts/demo-videos/record.cjs`](../scripts/demo-videos/record.cjs), which drives the Studio with Playwright using the same accessible names as the e2e suite, and [`scripts/demo-videos/encode.sh`](../scripts/demo-videos/encode.sh), which turns them into these MP4s and posters. They need `ffmpeg`.
+The recordings come from [`scripts/demo-videos/record.cjs`](../scripts/demo-videos/record.cjs), which drives the Studio with Playwright using the same accessible names as the e2e suite, and [`scripts/demo-videos/encode.sh`](../scripts/demo-videos/encode.sh), which turns them into these MP4s and posters. [`scripts/demo-videos/combine.py`](../scripts/demo-videos/combine.py) then joins them into the single video, drawing each title card from this page's story headings and quotes. They need `ffmpeg`, and `combine.py` needs Pillow.
 
 ```sh
 make dev                                  # in another terminal
 make seed-reset                           # the stories change the demo data, so start fresh
 node scripts/demo-videos/record.cjs scripts/demo-videos/out
 scripts/demo-videos/encode.sh scripts/demo-videos/out
+python3 scripts/demo-videos/combine.py    # docs/demo/all-stories.mp4
 ```
 
 Stories 1 and 2 share the Organisation that story 1 signs up, and story 4 publishes the Agent story 3 creates, so run them together. Pass slugs after the output folder to record only some, for example `node scripts/demo-videos/record.cjs out 07-agentic-retrieval`.
