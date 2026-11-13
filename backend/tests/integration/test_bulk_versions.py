@@ -458,6 +458,8 @@ async def test_the_bulk_operation_id_is_recorded_on_the_live_history_and_audit_e
                     "note": "Bulk published with Instructions v2",
                     "instructions_version": v2,
                 },
+                # The config that went Live, snapshotted: the Draft, unchanged since v1.
+                "config": first[agent_id]["config"],
                 "bulk_operation_id": publish_id,
             },
         )

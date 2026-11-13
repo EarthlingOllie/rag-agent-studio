@@ -28,6 +28,7 @@ from app.credentials.registry import Provider
 from app.gateway.fakes import FakeModelAdapters
 from app.gateway.gateway import UnsupportedCredentialError
 from app.gateway.ports import Reranker
+from app.runtime.prompt import visitor_block
 from tests.agents import (
     StreamFunction,
     answer_text,
@@ -182,7 +183,8 @@ async def test_a_question_the_provider_failed_on_is_not_remembered(
 
     response = await ask(member, project_id, agent_id, conversation["id"], "Three?")
 
-    assert json.loads(answer_text(response))["remembered"] == ["One?"]
+    # Remembered questions reach the model spotlighted as Visitor input.
+    assert json.loads(answer_text(response))["remembered"] == [visitor_block("One?")]
 
 
 async def test_a_chat_model_the_gateway_cant_build_is_unavailable(
@@ -249,7 +251,10 @@ async def test_a_reset_playground_starts_a_new_conversation_that_remembers_nothi
         "Two?",
     ]
     again = await ask(member, project_id, agent_id, first["id"], "Three?")
-    assert json.loads(answer_text(again))["remembered"] == ["One?", "Two?"]
+    assert json.loads(answer_text(again))["remembered"] == [
+        visitor_block("One?"),
+        visitor_block("Two?"),
+    ]
 
 
 # Truncation to the remembered turns.
@@ -269,12 +274,15 @@ async def test_the_remembered_turns_are_the_most_recent_ones_as_the_conversation
         seen.append(json.loads(answer_text(response))["remembered"])
 
     assert seen == [
-        [],
-        ["Q1"],
-        ["Q1", "Q2"],
-        ["Q1", "Q2", "Q3"],
-        ["Q2", "Q3", "Q4"],
-        ["Q3", "Q4", "Q5"],
+        [visitor_block(q) for q in questions]
+        for questions in [
+            [],
+            ["Q1"],
+            ["Q1", "Q2"],
+            ["Q1", "Q2", "Q3"],
+            ["Q2", "Q3", "Q4"],
+            ["Q3", "Q4", "Q5"],
+        ]
     ]
 
 
@@ -282,10 +290,16 @@ async def test_the_remembered_turns_reach_the_model_as_whole_question_and_answer
     app: FastAPI, owner: SignedUpMember
 ) -> None:
     async def history_kinds(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
-        """Answers with the kind of each message before the question, and its text."""
+        """Answers with the kind of each message before the question, and its text (a
+        question's whole, an answer's start)."""
         yield json.dumps(
             [
-                [part.part_kind, str(getattr(part, "content", ""))[:12]]
+                [
+                    part.part_kind,
+                    str(getattr(part, "content", ""))[
+                        : None if part.part_kind == "user-prompt" else 12
+                    ],
+                ]
                 for message in messages[:-1]
                 for part in message.parts
                 if part.part_kind in {"user-prompt", "text"}
@@ -303,7 +317,7 @@ async def test_the_remembered_turns_reach_the_model_as_whole_question_and_answer
 
     # Only the last turn: its question, then the answer the model gave to it.
     assert json.loads(answer_text(response)) == [
-        ["user-prompt", "Second?"],
+        ["user-prompt", visitor_block("Second?")],
         ["text", answer_text(second)[:12]],
     ]
 

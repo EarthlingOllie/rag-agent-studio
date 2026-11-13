@@ -7,6 +7,7 @@ import asyncio
 import re
 import threading
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,8 @@ from fastapi import FastAPI
 from app.documents import limits, tasks
 from app.documents.converter import FakeConverter
 from app.embeddings.fake import HashEmbedder
+from app.guardrails.classifier import InjectionFlag
+from app.guardrails.fake import RuleDrivenClassifier
 from tests.conftest import SignedUpMember
 from tests.documents import (
     confirm,
@@ -168,6 +171,38 @@ async def test_a_document_deleted_while_it_is_embedded_stops_after_the_current_b
     await running
 
     assert embedder.batches == 1
+    assert await documents(owner, project_id) == []
+    assert app.state.ingestion.object_store.objects == {}
+
+
+class GatedClassifier(RuleDrivenClassifier):
+    """The fake classifier, held at the start of the scan until the test releases it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def classify(self, texts: Sequence[str]) -> list[InjectionFlag | None]:
+        self.started.set()
+        assert self.release.wait(timeout=10)
+        return super().classify(texts)
+
+
+async def test_a_document_deleted_during_the_scan_stores_no_chunks_and_leaves_no_objects(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # The scan is the last stage: a deletion during it is found when the Chunks would be saved.
+    project_id = await create_project(owner)
+    classifier = GatedClassifier()
+    app.state.ingestion.classifier = classifier
+    running = await _confirm_in_background(app, owner, project_id, HANDBOOK)
+    assert await asyncio.to_thread(classifier.started.wait, 10)
+
+    await _delete_only_document(owner, project_id)
+    classifier.release.set()
+    await running
+
     assert await documents(owner, project_id) == []
     assert app.state.ingestion.object_store.objects == {}
 

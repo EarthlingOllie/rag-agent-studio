@@ -18,7 +18,7 @@ from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
 from sqlalchemy import text
 
-from app.runtime.prompt import preamble
+from app.runtime.prompt import preamble, visitor_block
 from tests.agents import (
     AUTOMATIC,
     agents_path,
@@ -373,8 +373,8 @@ async def test_each_answer_is_attributed_to_the_version_live_when_it_was_generat
     assert await attribution(app, after[1]["message_id"]) == second["id"]
     parts = json.loads(streamed(events))
     assert "Two." in [part[2] for part in parts]
-    # The history of the Conversation reaches the model too.
-    assert "One" in [part[2] for part in parts]
+    # The history of the Conversation reaches the model too, spotlighted as Visitor input.
+    assert visitor_block("One") in [part[2] for part in parts]
 
 
 async def cites(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
