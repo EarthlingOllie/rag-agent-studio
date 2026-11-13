@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.evals import schema
-from app.evals.suite import CASE_FILE, SCHEMA_FILE, Category, json_schema, load_suite
+from app.evals.suite import CASE_FILE, SCHEMA_FILE, Case, Category, Suite, json_schema, load_suite
 
 TINY = Path(__file__).parent.parent / "fixtures" / "evals" / "tiny_suite.json"
 
@@ -28,8 +28,15 @@ def test_the_committed_suite_covers_every_category_with_benign_controls() -> Non
     assert len(benign) >= 8
     assert any(len(case.turns) > 1 for case in suite.cases if not case.benign)
     assert any(case.document is not None for case in suite.cases)
-    # An attack only an Agent with Knowledge Search can make: it expects otherwise there.
-    assert any(case.expected_agentic is not None for case in suite.cases)
+    # A flagged Document is quarantined in both Retrieval Modes, so the one attack only an Agent
+    # with Knowledge Search could make (``indirect-search-for-canary``) now expects the same in
+    # both; the tiny suite keeps a case whose Document the scan passes for ``expected_agentic``.
+    assert by_id(suite, "indirect-search-for-canary").expected.ingestion == "excluded"
+
+
+def by_id(suite: Suite, case_id: str) -> Case:
+    (case,) = [case for case in suite.cases if case.id == case_id]
+    return case
 
 
 def tiny_with(tmp_path: Path, **changes: object) -> Path:

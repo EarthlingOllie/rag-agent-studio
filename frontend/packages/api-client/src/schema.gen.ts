@@ -177,6 +177,11 @@ export interface paths {
         /**
          * Verify
          * @description Finishes an MFA-pending sign-in with an authenticator or recovery code.
+         *
+         *     Wrong codes count per Member across pending sign-ins: after a few, each try waits
+         *     progressively longer, then codes are locked out for a while. A refused try isn't checked.
+         *     Each try is counted as wrong before its code is checked (AUTH-F1), so parallel tries
+         *     can't all slip past the counter; a correct code then clears it.
          */
         post: operations["verifyMfa"];
         delete?: never;
@@ -197,6 +202,9 @@ export interface paths {
         /**
          * Request Password Reset
          * @description Emails a reset link if the email is registered. The answer is the same either way.
+         *
+         *     Requests are limited per email and per IP address; over a limit nothing is sent, and the
+         *     answer is still the same.
          */
         post: operations["requestPasswordReset"];
         delete?: never;
@@ -311,7 +319,7 @@ export interface paths {
         };
         /**
          * Get Worker Health
-         * @description Enqueue the worker health task and wait for the worker's reply.
+         * @description The worker's reply to a health task: a fresh round trip, or one at most a few seconds old.
          */
         get: operations["getWorkerHealth"];
         put?: never;
@@ -882,9 +890,9 @@ export interface paths {
         head?: never;
         /**
          * Update Project
-         * @description Renames the Project, edits its description, turns OCR on or off or sets whether Chunks
-         *     the ingestion Guardrail scan flags are marked or excluded from retrieval. An archived
-         *     Project is refused.
+         * @description Renames the Project, edits its description or turns OCR on or off. An archived Project
+         *     is refused. (Chunks the ingestion Guardrail scan flags are always quarantined: no Project
+         *     setting lets them into retrieval.)
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -1017,7 +1025,7 @@ export interface paths {
          * @description Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
          *     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
          *     the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
-         *     Conversations count.
+         *     Conversations count. The cost is for Owners only.
          */
         get: operations["compareVersions"];
         put?: never;
@@ -1038,7 +1046,8 @@ export interface paths {
         /**
          * Export Version Comparison
          * @description The comparison of Versions `a` and `b` as a CSV download: a row per metric with both
-         *     Versions' values, the difference and the Version it favours.
+         *     Versions' values, the difference and the Version it favours. The cost rows are for Owners
+         *     only.
          */
         get: operations["exportVersionComparison"];
         put?: never;
@@ -1260,7 +1269,9 @@ export interface paths {
          * Send Message
          * @description Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions
          *     Version; the answer streams back as Server-Sent Events. An archived Agent answers no more
-         *     questions; its Conversations can still be read.
+         *     questions; its Conversations can still be read. Questions are limited per Member and per
+         *     Organisation each minute, and the answers' tokens count against the Organisation's daily
+         *     Playground Token Budget (not any Agent's Visitor budget); a refused question gets 429.
          */
         post: operations["sendPlaygroundMessage"];
         delete?: never;
@@ -1419,7 +1430,7 @@ export interface paths {
          * @description One metric of the Agent (every Version together) per period of the UTC days `start` to
          *     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
          *     Live Version changed and the Project's Document changes during the range. Only Visitor
-         *     Conversations count.
+         *     Conversations count. The cost series is for Owners only.
          */
         get: operations["getTimeSeries"];
         put?: never;
@@ -1707,7 +1718,8 @@ export interface paths {
         };
         /**
          * List Chunks
-         * @description A page of the Document's Chunks in order, with heading path and pages.
+         * @description A page of the Document's Chunks in order, with heading path, pages and any Guardrail
+         *     flag (with who allowed it, when an Editor did).
          */
         get: operations["listChunks"];
         put?: never;
@@ -1718,7 +1730,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag": {
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/allow": {
         parameters: {
             query?: never;
             header?: never;
@@ -1727,14 +1739,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
         /**
-         * Clear Chunk Flag
-         * @description Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,
-         *     for a false positive: the Chunk is retrieved again at once, even in a Project that excludes
-         *     flagged Chunks. Records ``chunk.flag_cleared`` with the flag it had.
+         * Allow Chunk
+         * @description Allows a quarantined Chunk of the Document's current edition into the corpus, for a
+         *     false positive the Editor reviewed: that Chunk is retrieved again at once. Its flag is
+         *     kept, with who allowed it and when. Records ``chunk.allowed``.
          */
-        delete: operations["clearChunkFlag"];
+        post: operations["allowChunk"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2721,6 +2733,18 @@ export interface components {
          * @enum {string}
          */
         CheckFailure: "invalid_key" | "missing_model_access" | "quota_exceeded" | "provider_unreachable" | "role_not_assumable" | "wrong_region";
+        /**
+         * ChunkAllowanceOut
+         * @description An Editor reviewed the flagged Chunk and allowed it into the corpus as a false positive.
+         */
+        ChunkAllowanceOut: {
+            /**
+             * Allowed At
+             * Format: date-time
+             */
+            allowed_at: string;
+            allowed_by: components["schemas"]["MemberRef"] | null;
+        };
         /** ChunkOut */
         ChunkOut: {
             /** Embedding Model Id */
@@ -3298,6 +3322,8 @@ export interface components {
             mime_type: string;
             /** Name */
             name: string;
+            /** Quarantined Chunk Count */
+            quarantined_chunk_count: number;
             replacement: components["schemas"]["ReplacementOut"] | null;
             /** Size Bytes */
             size_bytes: number;
@@ -3339,6 +3365,8 @@ export interface components {
             mime_type: string;
             /** Name */
             name: string;
+            /** Quarantined Chunk Count */
+            quarantined_chunk_count: number;
             replacement: components["schemas"]["ReplacementOut"] | null;
             /** Size Bytes */
             size_bytes: number;
@@ -3372,6 +3400,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Quarantined Chunk Count */
+            quarantined_chunk_count: number;
             replacement: components["schemas"]["ReplacementOut"] | null;
             status: components["schemas"]["DocumentStatus"];
         };
@@ -3526,12 +3556,6 @@ export interface components {
             removed: components["schemas"]["JsonValue"][] | null;
         };
         /**
-         * FlaggedChunkMode
-         * @description What retrieval does with the Chunks the ingestion Guardrail scan flags.
-         * @enum {string}
-         */
-        FlaggedChunkMode: "mark" | "exclude";
-        /**
          * Font
          * @enum {string}
          */
@@ -3563,9 +3587,12 @@ export interface components {
         GuardrailFilter: "blocked" | "flagged" | "logged" | "replaced" | "allowed" | "any" | "none";
         /**
          * GuardrailFlagOut
-         * @description Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.
+         * @description Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI. A
+         *     flagged Chunk is quarantined (never retrieved) unless ``allowed`` says an Editor allowed
+         *     it.
          */
         GuardrailFlagOut: {
+            allowed: components["schemas"]["ChunkAllowanceOut"] | null;
             /** Label */
             label: string;
             /** Reason */
@@ -3600,14 +3627,13 @@ export interface components {
         };
         /**
          * Guardrails
-         * @description Stored and versioned with the Agent; enforced from spec 08.
+         * @description Stored and versioned with the Agent; enforced from spec 08. A message the input
+         *     Guardrail flags is always refused: there is no setting for what it does.
          */
         "Guardrails-Input": {
             classifier?: components["schemas"]["ModelChoice"] | null;
             /** @default closed */
             fail_mode: components["schemas"]["FailMode"];
-            /** @default block */
-            input_mode: components["schemas"]["InputMode"];
             /**
              * Refusal Text
              * @default Sorry, I can't help with that request.
@@ -3616,14 +3642,13 @@ export interface components {
         };
         /**
          * Guardrails
-         * @description Stored and versioned with the Agent; enforced from spec 08.
+         * @description Stored and versioned with the Agent; enforced from spec 08. A message the input
+         *     Guardrail flags is always refused: there is no setting for what it does.
          */
         "Guardrails-Output": {
             classifier: components["schemas"]["ModelChoice"] | null;
             /** @default closed */
             fail_mode: components["schemas"]["FailMode"];
-            /** @default block */
-            input_mode: components["schemas"]["InputMode"];
             /**
              * Refusal Text
              * @default Sorry, I can't help with that request.
@@ -3657,12 +3682,6 @@ export interface components {
              */
             status: "ok" | "error";
         };
-        /**
-         * InputMode
-         * @description What the input Guardrail does when it flags a Visitor message (enforced in spec 08).
-         * @enum {string}
-         */
-        InputMode: "block" | "warn" | "log";
         /** InstructionsChangeOut */
         InstructionsChangeOut: {
             after: components["schemas"]["VersionNumberOut"] | null;
@@ -3933,6 +3952,16 @@ export interface components {
              * @description Whether the Member has turned MFA on
              */
             mfa_enabled: boolean;
+            /** Name */
+            name: string;
+        };
+        /** MemberRef */
+        MemberRef: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Name */
             name: string;
         };
@@ -4343,7 +4372,6 @@ export interface components {
             embedding_credential_id: string | null;
             /** Embedding Model Id */
             embedding_model_id: string;
-            flagged_chunk_mode: components["schemas"]["FlaggedChunkMode"];
             /**
              * Id
              * Format: uuid
@@ -5104,7 +5132,6 @@ export interface components {
         UpdateProjectRequest: {
             /** Description */
             description?: string | null;
-            flagged_chunk_mode?: components["schemas"]["FlaggedChunkMode"] | null;
             /** Name */
             name?: string | null;
             /** Ocr Enabled */
@@ -5180,7 +5207,7 @@ export interface components {
         VersionKpisOut: {
             /** Conversations */
             conversations: number;
-            cost: components["schemas"]["CostOut"];
+            cost: components["schemas"]["CostOut"] | null;
             fallback: components["schemas"]["FallbackOut"];
             guardrail_blocks: components["schemas"]["GuardrailBlocksOut"];
             /** Is Live */
@@ -5741,6 +5768,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many incorrect codes. Try again later. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThrottledResponse"];
                 };
             };
         };
@@ -8821,6 +8857,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description The Playground's limits refused the question, which isn't saved: the Member or the Organisation sent too many in the last minute, or the Organisation's daily Playground Token Budget is spent (or held by answers still being written). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getPlaygroundTrace: {
@@ -9336,6 +9381,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TimeSeriesOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not found */
@@ -10129,6 +10183,8 @@ export interface operations {
             query?: {
                 offset?: number;
                 limit?: number;
+                /** @description Only the Chunks the ingestion Guardrail scan flagged, for review. */
+                flagged?: boolean;
             };
             header?: never;
             path: {
@@ -10169,7 +10225,7 @@ export interface operations {
             };
         };
     };
-    clearChunkFlag: {
+    allowChunk: {
         parameters: {
             query?: never;
             header?: never;
@@ -10184,11 +10240,13 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChunkOut"];
+                };
             };
             /** @description Not found */
             404: {
@@ -10199,7 +10257,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. Or the Chunk isn't flagged: This Chunk isn't flagged. */
+            /** @description This Project is archived. An Owner can restore it. Or the Chunk isn't quarantined: This Chunk isn't flagged. / This Chunk is already allowed. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -11761,6 +11819,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description This assistant can't be used from this site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description This assistant is no longer available. */
             404: {
                 headers: {
@@ -11804,6 +11871,15 @@ export interface operations {
             };
             /** @description This chat has expired. Reload the page to start a new one. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant can't be used from this site. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11952,6 +12028,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description This assistant can't be used from this site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description This assistant is no longer available. */
             404: {
                 headers: {
@@ -12001,6 +12086,15 @@ export interface operations {
             };
             /** @description This chat has expired. Reload the page to start a new one. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant can't be used from this site. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

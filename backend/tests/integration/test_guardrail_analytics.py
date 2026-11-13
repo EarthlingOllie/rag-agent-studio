@@ -16,8 +16,10 @@ from typing import Any
 import httpx
 import pytest
 from fastapi import FastAPI
+from sqlalchemy import select
 
 import app.analytics.tasks as analytics_tasks
+from app.conversations.models import Message, MessageRole
 from app.mail.outbox import OutboxMailer
 from tests.agents import save_draft
 from tests.conftest import STUDIO_URL, ClientFactory, MemberFactory, SignedUpMember
@@ -65,6 +67,23 @@ async def ask_all(
         response = await send(visitor, agent["public_id"], token, question)
         assert response.status_code == 200, response.text
     return token
+
+
+async def answered_under_warn_mode(app: FastAPI, *conversation_ids: str) -> None:
+    """Rewrites the replies of these Conversations as the removed warn mode saved them: the
+    input Guardrail's verdict ``flagged`` instead of ``blocked`` (data from before C3)."""
+    async with app.state.sessionmaker() as session:
+        replies = await session.scalars(
+            select(Message).where(
+                Message.conversation_id.in_(conversation_ids),
+                Message.role == MessageRole.ASSISTANT,
+            )
+        )
+        for reply in replies:
+            reply.guardrail_outcomes = [
+                {**outcome, "action": "flagged"} for outcome in reply.guardrail_outcomes
+            ]
+        await session.commit()
 
 
 async def get_agent(owner: SignedUpMember, agent: dict[str, Any]) -> dict[str, Any]:
@@ -150,7 +169,7 @@ async def test_a_version_without_replies_has_no_block_rate(
     assert kpis["guardrail_blocks"] == {"count": 0, "rate": None}
 
 
-async def test_warned_and_logged_messages_are_answered_so_they_are_not_blocks(
+async def test_an_old_warn_or_log_setting_is_ignored_so_attacks_are_still_blocks(
     app: FastAPI,
     owner: SignedUpMember,
     visitor: httpx.AsyncClient,
@@ -168,7 +187,7 @@ async def test_warned_and_logged_messages_are_answered_so_they_are_not_blocks(
         kpis = await version_kpis(owner, agent, version, start="2026-11-05", end="2026-11-05")
 
         assert kpis["messages"] == 2
-        assert kpis["guardrail_blocks"] == {"count": 0, "rate": 0.0}
+        assert kpis["guardrail_blocks"] == {"count": 1, "rate": 0.5}
 
 
 # Filtering Conversations by Guardrail outcome
@@ -185,14 +204,8 @@ async def test_conversations_are_filtered_by_guardrail_outcome(
     agent = await guarded_agent(app, owner)
     await ask_all(visitor, clock, agent, BENIGN, ATTACK, ATTACK)  # blocked twice
     await ask_all(visitor, clock, agent, BENIGN)  # no Guardrail outcome
-    saved = await save_draft(
-        owner, agent["project_id"], agent["id"], {"guardrails": {"input_mode": "warn"}}
-    )
-    assert saved.status_code == 200, saved.text
-    await published(owner, agent["project_id"], agent["id"])
-    await ask_all(visitor, clock, agent, ATTACK)  # flagged
+    await ask_all(visitor, clock, agent, ATTACK)  # flagged, under the old warn mode (below)
     clock.advance(timedelta(minutes=1))
-    # The Playground answers with the Draft (warn mode): its attack is flagged too.
     playground = await playground_chat(owner, agent["project_id"], agent["id"], ATTACK)
 
     everything = await listed(editor, agent["project_id"])
@@ -200,6 +213,9 @@ async def test_conversations_are_filtered_by_guardrail_outcome(
     assert len(rows) == 4
     playground_row, flagged_row, clean_row, blocked_row = rows
     assert playground_row["id"] == playground
+    # Conversations from before the warn mode was removed keep their ``flagged`` outcome, and
+    # the filter still finds them.
+    await answered_under_warn_mode(app, playground_row["id"], flagged_row["id"])
 
     async def ids(outcome: str) -> list[str]:
         page = await listed(editor, agent["project_id"], guardrail=outcome)

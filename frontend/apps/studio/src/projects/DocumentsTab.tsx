@@ -498,7 +498,7 @@ function DocumentRows({
               Chunks
             </th>
             <th scope="col" className={table.thNumeric}>
-              Flagged
+              Quarantined
             </th>
             <th scope="col" className={table.thNumeric}>
               Size
@@ -550,8 +550,9 @@ function DocumentRows({
               </td>
               <td className={table.tdNumeric}>{document.chunk_count}</td>
               <td className={table.tdNumeric}>
-                {/* Chunks the ingestion Guardrail scan flagged: in the flag colour, so risky Documents stand out. */}
-                <FlagCount count={document.flagged_chunk_count} label="flagged chunks" />
+                {/* Chunks the ingestion Guardrail scan flagged and nobody has allowed yet: in the flag colour, so
+                    Documents waiting for review stand out. */}
+                <FlagCount count={document.quarantined_chunk_count} label="quarantined chunks" />
               </td>
               <td className={table.tdNumeric}>{formatSize(document.size_bytes)}</td>
               <td className={table.td}>
@@ -643,10 +644,10 @@ function Toolbar({
   );
 }
 
-/** The Knowledge Base at a glance: Documents against the quota, Chunks, flagged chunks and the Embedding Model. */
+/** The Knowledge Base at a glance: Documents against the quota, Chunks, quarantined chunks and the Embedding Model. */
 function Stats({ project, documents, limits }: { project: Project; documents: ProjectDocument[] | undefined; limits: UploadLimits | undefined }) {
   const chunks = documents?.reduce((sum, document) => sum + document.chunk_count, 0);
-  const flagged = documents?.reduce((sum, document) => sum + document.flagged_chunk_count, 0);
+  const quarantined = documents?.reduce((sum, document) => sum + document.quarantined_chunk_count, 0);
   const dash = (value: number | undefined) => (value === undefined ? "—" : value.toLocaleString("en-GB"));
   return (
     <section aria-label="Knowledge Base" className={layout.stats}>
@@ -656,7 +657,7 @@ function Stats({ project, documents, limits }: { project: Project; documents: Pr
         <StatCard label="Documents" value="—" />
       )}
       <StatCard label="Chunks" value={dash(chunks)} />
-      <StatCard label="Flagged chunks" value={dash(flagged)} tone={flagged !== undefined && flagged > 0 ? "flag" : "default"} />
+      <StatCard label="Quarantined chunks" value={dash(quarantined)} tone={quarantined !== undefined && quarantined > 0 ? "flag" : "default"} />
       <StatCard label="Embedding Model" value={<span className="text-base">{project.embedding_model_id}</span>} />
     </section>
   );

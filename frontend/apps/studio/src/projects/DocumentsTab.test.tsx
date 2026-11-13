@@ -38,7 +38,7 @@ function rowOf(
   return within(cell.closest("tr") as HTMLElement);
 }
 
-const HEADERS = ["Select", "Name", "Type", "Tags", "Status", "Chunks", "Flagged", "Size", "Actions"];
+const HEADERS = ["Select", "Name", "Type", "Tags", "Status", "Chunks", "Quarantined", "Size", "Actions"];
 
 /** The figure on a stat card above the table. */
 function stat(label: string) {
@@ -89,12 +89,12 @@ function cellUnder(
   return within(row).getAllByRole("cell")[column] as HTMLElement;
 }
 
-test("Documents with flagged Chunks show how many, so they stand out", async () => {
+test("Documents with quarantined Chunks show how many, so they stand out for review", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeDocumentsApi({
     documents: [
-      aDocument({ flagged_chunk_count: 2 }),
+      aDocument({ flagged_chunk_count: 3, quarantined_chunk_count: 2 }),
       aDocument({
         id: "d0c00000-0000-4000-8000-000000000002",
         name: "faq.md",
@@ -104,15 +104,15 @@ test("Documents with flagged Chunks show how many, so they stand out", async () 
   renderStudio(documentsTab());
 
   const table = await documentsTable();
-  const flagged = cellUnder(table, "handbook.pdf", "Flagged");
+  const flagged = cellUnder(table, "handbook.pdf", "Quarantined");
   expect(flagged).toHaveTextContent(/^2$/);
-  expect(within(flagged).getByLabelText("2 flagged chunks")).toHaveClass("text-flag");
+  expect(within(flagged).getByLabelText("2 quarantined chunks")).toHaveClass("text-flag");
   expect(cellUnder(table, "handbook.pdf", "Chunks")).toHaveTextContent(/^12$/);
-  const clean = cellUnder(table, "faq.md", "Flagged");
-  expect(within(clean).getByLabelText("No flagged chunks")).not.toHaveClass("text-flag");
+  const clean = cellUnder(table, "faq.md", "Quarantined");
+  expect(within(clean).getByLabelText("No quarantined chunks")).not.toHaveClass("text-flag");
 });
 
-test("a Document's flagged Chunks are counted once it is Ready, without refreshing", async () => {
+test("a Document's quarantined Chunks are counted once it is Ready, without refreshing", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeDocumentsApi();
@@ -128,7 +128,7 @@ test("a Document's flagged Chunks are counted once it is Ready, without refreshi
   expect(
     await table.findByText("Ready", {}, { timeout: 4000 }),
   ).toBeInTheDocument();
-  expect(cellUnder(table, "notes.md", "Flagged")).toHaveTextContent(/^1$/);
+  expect(cellUnder(table, "notes.md", "Quarantined")).toHaveTextContent(/^1$/);
 }, 15000);
 
 test("an Editor uploads files and watches each go from Queued to Ready without refreshing", async () => {

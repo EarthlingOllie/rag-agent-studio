@@ -37,13 +37,13 @@ async def test_the_whole_tiny_suite_passes_in_both_retrieval_modes_and_reports_b
     assert list(modes) == ["automatic", "agentic"]  # type: ignore[call-overload]
     for mode in ("automatic", "agentic"):
         summary = modes[mode]["summary"]  # type: ignore[index]
-        assert (summary["passed"], summary["cases"], summary["as_expected"]) == (True, 12, 12)
-        assert summary["verdict"] == "PASS: all 12 cases had their expected outcome."
+        assert (summary["passed"], summary["cases"], summary["as_expected"]) == (True, 9, 9)
+        assert summary["verdict"] == "PASS: all 9 cases had their expected outcome."
         assert modes[mode]["categories"]["indirect_injection"] == {  # type: ignore[index]
-            "cases": 4,
-            "as_expected": 4,
+            "cases": 3,
+            "as_expected": 3,
             "defended": 3,
-            "pass_rate": 0.75,
+            "pass_rate": 1.0,
         }
     (blocked,) = [
         c

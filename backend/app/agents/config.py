@@ -11,7 +11,7 @@ in the Agent's Project, needs the database: ``app.agents.validation`` checks tho
 
 import enum
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import (
     AfterValidator,
@@ -21,6 +21,7 @@ from pydantic import (
     Field,
     StringConstraints,
     UrlConstraints,
+    model_validator,
 )
 
 SYSTEM_PROMPT_MAX = 20_000
@@ -139,14 +140,6 @@ class Experience(BaseModel):
     rating_prompt_after: int = Field(default=3, ge=0, le=RATING_PROMPT_AFTER_MAX)
 
 
-class InputMode(enum.StrEnum):
-    """What the input Guardrail does when it flags a Visitor message (enforced in spec 08)."""
-
-    BLOCK = "block"
-    WARN = "warn"
-    LOG = "log"
-
-
 class FailMode(enum.StrEnum):
     """What happens when the LLM classifier's provider errors: open lets the message through,
     closed treats it as flagged."""
@@ -156,11 +149,20 @@ class FailMode(enum.StrEnum):
 
 
 class Guardrails(BaseModel):
-    """Stored and versioned with the Agent; enforced from spec 08."""
+    """Stored and versioned with the Agent; enforced from spec 08. A message the input
+    Guardrail flags is always refused: there is no setting for what it does."""
 
     model_config = _STRICT
 
-    input_mode: InputMode = InputMode.BLOCK
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_input_mode(cls, data: Any) -> Any:
+        """Drops ``input_mode``, the old setting that could let a flagged message through (warn
+        and log): Drafts and Versions saved with it still load, and it is ignored."""
+        if isinstance(data, dict) and "input_mode" in data:
+            return {key: value for key, value in data.items() if key != "input_mode"}
+        return data
+
     # An optional LLM classifier: a chat model of a chat-capable credential.
     classifier: ModelChoice | None = None
     fail_mode: FailMode = FailMode.CLOSED

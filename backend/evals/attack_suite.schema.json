@@ -57,14 +57,6 @@
           "default": null,
           "title": "Document"
         },
-        "input_mode": {
-          "$ref": "#/$defs/InputMode",
-          "default": "block"
-        },
-        "flagged_chunk_mode": {
-          "$ref": "#/$defs/FlaggedChunkMode",
-          "default": "mark"
-        },
         "markers": {
           "items": {
             "minLength": 1,
@@ -159,41 +151,19 @@
       "title": "Expected",
       "type": "object"
     },
-    "FlaggedChunkMode": {
-      "description": "What retrieval does with the Chunks the ingestion Guardrail scan flags.",
-      "enum": [
-        "mark",
-        "exclude"
-      ],
-      "title": "FlaggedChunkMode",
-      "type": "string"
-    },
     "IngestionOutcome": {
       "description": "What the ingestion scan did with the case's Document.",
       "enum": [
-        "flagged",
         "excluded",
         "passed"
       ],
       "title": "IngestionOutcome",
       "type": "string"
     },
-    "InputMode": {
-      "description": "What the input Guardrail does when it flags a Visitor message (enforced in spec 08).",
-      "enum": [
-        "block",
-        "warn",
-        "log"
-      ],
-      "title": "InputMode",
-      "type": "string"
-    },
     "InputOutcome": {
       "description": "What the input Guardrail did, at its strongest over the case's turns.",
       "enum": [
         "blocked",
-        "flagged",
-        "logged",
         "passed"
       ],
       "title": "InputOutcome",

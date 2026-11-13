@@ -1,7 +1,8 @@
 """Ingestion: one Document from Queued to Ready.
 
 1. Set Processing, if the Project's Document quota still has room for it.
-2. Fetch the original, check its content matches its type, and convert it through the
+2. Fetch the original, check it is still the file that was confirmed (its SHA-256 content
+   hash and size), check its content matches its type, and convert it through the
    document-converter port, with OCR only if the Project's flag is on.
 3. Store the converted markdown.
 4. Chunk it with ``HybridChunker``, counting tokens with the Embedding Model's tokenizer.
@@ -28,6 +29,7 @@ task to run again after a backoff, until the last attempt.
 """
 
 import asyncio
+import hashlib
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
@@ -94,6 +96,9 @@ class _Job:
     name: str
     mime_type: str
     object_key: str
+    # What the confirmed upload's bytes were: the stored original must still be them.
+    content_hash: str
+    size_bytes: int
     staged: bool
     # The Project's settings, read when the edition is claimed.
     embedding_model_id: str
@@ -159,6 +164,8 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
         name=claimed.name,
         mime_type=claimed.mime_type,
         object_key=claimed.object_key,
+        content_hash=claimed.content_hash,
+        size_bytes=claimed.size_bytes,
         staged=claimed is not document,
         embedding_model_id=project.embedding_model_id,
         ocr=project.ocr_enabled,
@@ -170,23 +177,57 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
     return job
 
 
-async def _embed(embedder: Embedder, drafts: list[ChunkDraft]) -> list[list[float]]:
+class _DocumentDeletedError(Exception):
+    """The Document was deleted while it was processed: the run stops where it is."""
+
+
+StillWanted = Callable[[], Awaitable[None]]
+"""Raises ``_DocumentDeletedError`` once the Document being processed has been deleted."""
+
+
+def _still_wanted(
+    sessionmaker: async_sessionmaker[AsyncSession], document_id: uuid.UUID
+) -> StillWanted:
+    async def check() -> None:
+        async with sessionmaker() as session:
+            found = await session.scalar(select(Document.id).where(Document.id == document_id))
+        if found is None:
+            raise _DocumentDeletedError
+
+    return check
+
+
+async def _embed(
+    embedder: Embedder, drafts: list[ChunkDraft], still_wanted: StillWanted
+) -> list[list[float]]:
+    """Embeds the Chunks a batch at a time, stopping before the next batch if the Document
+    has been deleted meanwhile."""
     vectors: list[list[float]] = []
     for start in range(0, len(drafts), EMBED_BATCH_SIZE):
+        await still_wanted()
         batch = drafts[start : start + EMBED_BATCH_SIZE]
         vectors.extend(await embedder.embed_passages([draft.embedding_text for draft in batch]))
     return vectors
 
 
 async def _process(
-    ports: IngestionPorts, gateway: ModelGateway, job: _Job, *, chunk_max_tokens: int
+    ports: IngestionPorts,
+    gateway: ModelGateway,
+    job: _Job,
+    *,
+    chunk_max_tokens: int,
+    still_wanted: StillWanted,
 ) -> tuple[list[ChunkDraft], dict[str, list[list[float]]], list[InjectionFlag | None]]:
     """Steps 2 to 6. Raises ``IngestionFailedError`` for a failure that isn't transient. The
-    vectors are by Embedding Model: the active one's, and the pending one's when made."""
+    vectors are by Embedding Model: the active one's, and the pending one's when made. Between
+    the costly stages (conversion, each embedding batch, the scan) it checks the Document still
+    exists, and stops with ``_DocumentDeletedError`` once it doesn't."""
     try:
         original = await ports.object_store.get(job.object_key)
     except ObjectNotFoundError:
         raise IngestionFailedError(FailureCategory.CONVERSION, limits.ORIGINAL_MISSING) from None
+    if len(original) != job.size_bytes or hashlib.sha256(original).hexdigest() != job.content_hash:
+        raise IngestionFailedError(FailureCategory.CONVERSION, limits.ORIGINAL_CHANGED)
     if not limits.content_matches_type(original, job.mime_type):
         raise IngestionFailedError(
             FailureCategory.UNSUPPORTED_CONTENT, limits.wrong_type_message(job.mime_type)
@@ -202,10 +243,12 @@ async def _process(
     except Exception:
         logger.exception("Conversion failed", extra={"document_id": str(job.document_id)})
         raise IngestionFailedError(FailureCategory.CONVERSION, limits.CONVERSION_FAILED) from None
+    await still_wanted()
+    markdown = converted.export_to_markdown()
+    if len(markdown) > limits.MAX_CONVERTED_CHARS:
+        raise IngestionFailedError(FailureCategory.UNSUPPORTED_CONTENT, limits.TOO_MUCH_TEXT)
     await ports.object_store.put(
-        markdown_key(job.object_key),
-        converted.export_to_markdown().encode(),
-        content_type="text/markdown; charset=utf-8",
+        markdown_key(job.object_key), markdown.encode(), content_type="text/markdown; charset=utf-8"
     )
     try:
         embedder = resolve_embedder(
@@ -220,15 +263,18 @@ async def _process(
     if not drafts:
         raise IngestionFailedError(FailureCategory.UNSUPPORTED_CONTENT, limits.NO_TEXT)
     try:
-        vectors = await _embed(embedder, drafts)
+        vectors = await _embed(embedder, drafts, still_wanted)
     except EmbeddingSizeError as error:
         raise IngestionFailedError(
             FailureCategory.PROVIDER, limits.provider_setup_message(str(error))
         ) from None
+    await still_wanted()
     flags = await asyncio.to_thread(ports.classifier.classify, [draft.text for draft in drafts])
     by_model = {job.embedding_model_id: vectors}
     if job.pending_model_id is not None:
-        pending = await _embed_pending(ports, gateway, job, job.pending_model_id, drafts)
+        pending = await _embed_pending(
+            ports, gateway, job, job.pending_model_id, drafts, still_wanted
+        )
         if pending is not None:
             by_model[job.pending_model_id] = pending
     return drafts, by_model, flags
@@ -240,6 +286,7 @@ async def _embed_pending(
     job: _Job,
     model_id: str,
     drafts: list[ChunkDraft],
+    still_wanted: StillWanted,
 ) -> list[list[float]] | None:
     """The Chunks' vectors of the pending model while a re-embed runs. ``None`` if they can't be
     made: the Document is Ready with its active vectors either way, and the re-embed job embeds
@@ -248,7 +295,7 @@ async def _embed_pending(
         embedder = resolve_embedder(
             embedding_model(model_id), job.pending_credential, ports.embedders, gateway
         )
-        return await _embed(embedder, drafts)
+        return await _embed(embedder, drafts, still_wanted)
     except Exception:
         logger.warning(
             "Embedding with the pending model failed; the re-embed job will retry it",
@@ -267,17 +314,32 @@ async def ingest(
     chunk_max_tokens: int,
     delete_objects: DeleteObjects,
     attempt: Attempt,
+    max_seconds: float,
 ) -> float | None:
     """Processes the Document's Queued edition. Returns the seconds to wait before running
-    again when a transient failure should be retried, and ``None`` otherwise."""
+    again when a transient failure should be retried, and ``None`` otherwise. Steps 2 to 6 may
+    take ``max_seconds`` at most; a run that takes longer fails. (Work already handed to a
+    thread, such as a conversion, can't be interrupted: the worker's hard time limit ends it.)"""
     async with sessionmaker() as session:
         job = await _start(session, document_id)
     if job is None:
         return None
     try:
-        drafts, by_model, flags = await _process(
-            ports, gateway, job, chunk_max_tokens=chunk_max_tokens
-        )
+        async with asyncio.timeout(max_seconds):
+            drafts, by_model, flags = await _process(
+                ports,
+                gateway,
+                job,
+                chunk_max_tokens=chunk_max_tokens,
+                still_wanted=_still_wanted(sessionmaker, job.document_id),
+            )
+    except _DocumentDeletedError:
+        # Nothing refers to what this run stored.
+        await delete_objects(stored_keys(job.object_key))
+        return None
+    except TimeoutError:
+        await _fail(sessionmaker, job, delete_objects, FailureCategory.CONVERSION, limits.TIMED_OUT)
+        return None
     except IngestionFailedError as failure:
         await _fail(sessionmaker, job, delete_objects, failure.category, failure.message)
         return None

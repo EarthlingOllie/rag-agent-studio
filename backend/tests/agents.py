@@ -49,7 +49,6 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
         "rating_prompt_after": 3,
     },
     "guardrails": {
-        "input_mode": "block",
         "classifier": None,
         "fail_mode": "closed",
         "refusal_text": "Sorry, I can't help with that request.",

@@ -1,6 +1,7 @@
 import type { Schemas } from "@studio/api-client";
 import { http, HttpResponse } from "msw";
 
+import { adaSession } from "./auth";
 import { server } from "./server";
 
 export type ProjectDocument = Schemas["DocumentOut"];
@@ -32,6 +33,7 @@ export function aDocument(overrides: Partial<ProjectDocument> = {}): ProjectDocu
     edition: 1,
     chunk_count: 12,
     flagged_chunk_count: 0,
+    quarantined_chunk_count: 0,
     tags: [],
     created_at: "2026-11-05T09:00:00Z",
     updated_at: "2026-11-05T09:01:00Z",
@@ -55,7 +57,9 @@ function advance(document: ProjectDocument, content: string, failing: string[]):
   const status = NEXT[document.status];
   if (status) {
     const ready = status === "ready";
-    return { ...document, status, chunk_count: ready ? 4 : 0, flagged_chunk_count: ready && content.includes(PLANTED_INJECTION) ? 1 : 0 };
+    // A flagged Chunk is quarantined until an Editor allows it.
+    const flagged = ready && content.includes(PLANTED_INJECTION) ? 1 : 0;
+    return { ...document, status, chunk_count: ready ? 4 : 0, flagged_chunk_count: flagged, quarantined_chunk_count: flagged };
   }
   const { replacement } = document;
   const next = replacement && NEXT[replacement.status];
@@ -119,7 +123,7 @@ export function fakeDocumentsApi(
       documents = documents.map((document) => advance(document, contentOf.get(document.id) ?? "", options.failing ?? []));
       requests.push({ route: "statuses" });
       return HttpResponse.json(
-        documents.map(({ id, status, error_message, error_category, attempt_count, chunk_count, flagged_chunk_count, replacement }) => ({
+        documents.map(({ id, status, error_message, error_category, attempt_count, chunk_count, flagged_chunk_count, quarantined_chunk_count, replacement }) => ({
           id,
           status,
           error_message,
@@ -127,6 +131,7 @@ export function fakeDocumentsApi(
           attempt_count,
           chunk_count,
           flagged_chunk_count,
+          quarantined_chunk_count,
           replacement,
         })),
       );
@@ -323,9 +328,10 @@ function listed(document: DocumentDetail): ProjectDocument {
  * Document with its markdown, and its Chunks a page at a time, as the API pages them.
  */
 export function fakeDocumentViewerApi({ document, chunks }: { document: DocumentDetail; chunks: Chunk[] }) {
-  const requests: { offset: number; limit: number }[] = [];
-  // Clearing a flag (DELETE …/chunks/{id}/flag) takes it off the Chunk and the Document's count.
-  const cleared: string[] = [];
+  const requests: { offset: number; limit: number; flagged: boolean }[] = [];
+  // Allowing a Chunk (POST …/chunks/{id}/allow) records who allowed it and takes it off the
+  // Document's quarantined count; the flag stays.
+  const allowed: string[] = [];
   let current = document;
   let items = chunks;
   server.use(
@@ -333,20 +339,23 @@ export function fakeDocumentViewerApi({ document, chunks }: { document: Document
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId", ({ params }) =>
       params.documentId === document.id ? HttpResponse.json(current) : HttpResponse.json({ detail: "Not found" }, { status: 404 }),
     ),
-    http.delete("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks/:chunkId/flag", ({ params }) => {
+    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks/:chunkId/allow", ({ params }) => {
       const chunkId = params.chunkId as string;
-      cleared.push(chunkId);
-      items = items.map((chunk) => (chunk.id === chunkId ? { ...chunk, flag: null } : chunk));
-      current = { ...current, flagged_chunk_count: current.flagged_chunk_count - 1 };
-      return new HttpResponse(null, { status: 204 });
+      allowed.push(chunkId);
+      const allowance = { allowed_at: "2026-11-12T10:30:00Z", allowed_by: { id: adaSession.member.id, name: adaSession.member.name } };
+      items = items.map((chunk) => (chunk.id === chunkId && chunk.flag ? { ...chunk, flag: { ...chunk.flag, allowed: allowance } } : chunk));
+      current = { ...current, quarantined_chunk_count: current.quarantined_chunk_count - 1 };
+      return HttpResponse.json(items.find((chunk) => chunk.id === chunkId));
     }),
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks", ({ request }) => {
       const query = new URL(request.url).searchParams;
       const offset = Number(query.get("offset") ?? 0);
       const limit = Number(query.get("limit") ?? 50);
-      requests.push({ offset, limit });
-      return HttpResponse.json({ items: items.slice(offset, offset + limit), total: items.length, offset, limit });
+      const flagged = query.get("flagged") === "true";
+      requests.push({ offset, limit, flagged });
+      const shown = flagged ? items.filter((chunk) => chunk.flag !== null) : items;
+      return HttpResponse.json({ items: shown.slice(offset, offset + limit), total: shown.length, offset, limit });
     }),
   );
-  return { requests, cleared };
+  return { requests, allowed };
 }

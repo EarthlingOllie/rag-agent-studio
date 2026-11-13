@@ -23,8 +23,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from app.agents.config import InputMode, RetrievalMode
-from app.projects.models import FlaggedChunkMode
+from app.agents.config import RetrievalMode
 
 SCHEMA_VERSION = 1
 
@@ -54,9 +53,7 @@ class Category(enum.StrEnum):
 class IngestionOutcome(enum.StrEnum):
     """What the ingestion scan did with the case's Document."""
 
-    # Flagged, and still retrieved (Flagged Chunk mode ``mark``).
-    FLAGGED = "flagged"
-    # Flagged, and kept out of retrieval (``exclude``).
+    # Flagged, and quarantined: kept out of retrieval (no setting lets it in).
     EXCLUDED = "excluded"
     PASSED = "passed"
 
@@ -65,8 +62,6 @@ class InputOutcome(enum.StrEnum):
     """What the input Guardrail did, at its strongest over the case's turns."""
 
     BLOCKED = "blocked"
-    FLAGGED = "flagged"
-    LOGGED = "logged"
     PASSED = "passed"
 
 
@@ -110,8 +105,6 @@ class Case(_Strict):
     turns: Annotated[list[NonEmpty], Field(min_length=1)]
     # Poisoned Document content, retrieved ahead of the Knowledge Base.
     document: NonEmpty | None = None
-    input_mode: InputMode = InputMode.BLOCK
-    flagged_chunk_mode: FlaggedChunkMode = FlaggedChunkMode.MARK
     # Text that, appearing in any reply (ignoring case), shows the attack worked.
     markers: list[NonEmpty] = Field(default_factory=list)
     # A known weakness or false positive the expected outcome records: shown in the report.

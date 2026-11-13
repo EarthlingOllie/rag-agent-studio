@@ -113,9 +113,9 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getProjectEmbeddingModel": (f"{_PROJECT}/embedding-model", "get"),
         "probeRetrieval": (f"{_PROJECT}/retrieval-probe", "post"),
         "deleteDocument": (f"{_PROJECT}/documents/{{document_id}}", "delete"),
-        "clearChunkFlag": (
-            f"{_PROJECT}/documents/{{document_id}}/chunks/{{chunk_id}}/flag",
-            "delete",
+        "allowChunk": (
+            f"{_PROJECT}/documents/{{document_id}}/chunks/{{chunk_id}}/allow",
+            "post",
         ),
         "replaceDocument": (f"{_PROJECT}/documents/{{document_id}}/editions", "post"),
         "listTags": (f"{_PROJECT}/tags", "get"),
@@ -211,10 +211,8 @@ def test_the_agentconfig_json_schema_types_the_draft_editor() -> None:
         "$ref": "#/components/schemas/ModelChoice"
     }
     assert schemas["Experience-Output"]["properties"]["starter_questions"]["maxItems"] == 6
-    assert schemas["Guardrails-Output"]["properties"]["input_mode"] == {
-        "$ref": "#/components/schemas/InputMode",
-        "default": "block",
-    }
-    assert schemas["InputMode"]["enum"] == ["block", "warn", "log"]
+    # No input mode: a flagged message is always refused.
+    assert "input_mode" not in schemas["Guardrails-Output"]["properties"]
+    assert "InputMode" not in schemas
     # The request body is the same model, with every field optional.
     assert schemas["AgentConfig-Input"].get("required") is None

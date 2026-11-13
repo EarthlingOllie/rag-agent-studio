@@ -17,7 +17,7 @@ const documentsTab = (projectId = hrProject.id) => `/organisations/${organisatio
 
 const hr = aTag({ id: "7a900000-0000-4000-8000-000000000001", name: "HR" });
 const policy = aTag({ id: "7a900000-0000-4000-8000-000000000002", name: "Policy" });
-const handbook = aDocument({ chunk_count: 12, flagged_chunk_count: 2, tags: [{ id: hr.id, name: "HR" }] });
+const handbook = aDocument({ chunk_count: 12, flagged_chunk_count: 2, quarantined_chunk_count: 2, tags: [{ id: hr.id, name: "HR" }] });
 const faq = aDocument({
   id: "d0c00000-0000-4000-8000-000000000002",
   name: "faq.md",
@@ -58,7 +58,7 @@ async function rowMenu(name: string) {
   return within(screen.getByRole("menu", { name: `Actions for ${name}` }));
 }
 
-test("stat cards show Documents against the quota, Chunks, flagged chunks in the flag colour, and the Embedding Model", async () => {
+test("stat cards show Documents against the quota, Chunks, quarantined chunks in the flag colour, and the Embedding Model", async () => {
   start({ limits: { document_quota: 500 } });
   await documentsTable();
 
@@ -66,8 +66,8 @@ test("stat cards show Documents against the quota, Chunks, flagged chunks in the
     expect(statCard("Documents")).toHaveTextContent("2 / 500");
   });
   expect(statCard("Chunks")).toHaveTextContent(/^15$/);
-  expect(statCard("Flagged chunks")).toHaveTextContent(/^2$/);
-  expect(statCard("Flagged chunks")).toHaveClass("text-flag");
+  expect(statCard("Quarantined chunks")).toHaveTextContent(/^2$/);
+  expect(statCard("Quarantined chunks")).toHaveClass("text-flag");
   expect(statCard("Embedding Model")).toHaveTextContent("multilingual-e5-small");
 
   // A filter narrows the table, not the Project's figures.
@@ -78,18 +78,18 @@ test("stat cards show Documents against the quota, Chunks, flagged chunks in the
   expect(statCard("Chunks")).toHaveTextContent(/^15$/);
 });
 
-test("no flagged chunks keeps the stat card's quiet colour", async () => {
+test("no quarantined chunks keeps the stat card's quiet colour", async () => {
   start({ documents: [faq] });
   await documentsTable();
-  expect(statCard("Flagged chunks")).toHaveTextContent(/^0$/);
-  expect(statCard("Flagged chunks")).not.toHaveClass("text-flag");
+  expect(statCard("Quarantined chunks")).toHaveTextContent(/^0$/);
+  expect(statCard("Quarantined chunks")).not.toHaveClass("text-flag");
 });
 
-test("rows show the file type, Tag pills, a status dot and the flagged count", async () => {
+test("rows show the file type, Tag pills, a status dot and the quarantined count", async () => {
   start({ documents: [handbook, faq, slides] });
   const table = await documentsTable();
   const headers = table.getAllByRole("columnheader").map((header) => header.textContent);
-  expect(headers).toEqual(["Select", "Name", "Type", "Tags", "Status", "Chunks", "Flagged", "Size", "Actions"]);
+  expect(headers).toEqual(["Select", "Name", "Type", "Tags", "Status", "Chunks", "Quarantined", "Size", "Actions"]);
 
   const row = (name: string) => within(table.getByRole("link", { name }).closest("tr") as HTMLElement);
   expect(row("handbook.pdf").getByText("PDF")).toBeInTheDocument();
@@ -98,8 +98,8 @@ test("rows show the file type, Tag pills, a status dot and the flagged count", a
   expect(within(row("handbook.pdf").getByRole("list", { name: "Tags" })).getByText("HR")).toHaveClass("bg-sand");
   expect(row("handbook.pdf").getByText("Ready")).toBeInTheDocument();
   expect(row("launch.pptx").getByText("Processing")).toBeInTheDocument();
-  expect(row("handbook.pdf").getByLabelText("2 flagged chunks")).toHaveTextContent("2");
-  expect(row("faq.md").getByLabelText("No flagged chunks")).toBeInTheDocument();
+  expect(row("handbook.pdf").getByLabelText("2 quarantined chunks")).toHaveTextContent("2");
+  expect(row("faq.md").getByLabelText("No quarantined chunks")).toBeInTheDocument();
 });
 
 test("Retry, New edition, Edit Tags and Delete are in each row's ⋯ menu, as far as the Document allows", async () => {

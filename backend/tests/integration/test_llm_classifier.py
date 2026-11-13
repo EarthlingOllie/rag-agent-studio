@@ -300,21 +300,21 @@ async def test_an_agent_without_an_llm_classifier_never_calls_one(
 
 
 @pytest.mark.parametrize("input_mode", ["warn", "log"])
-async def test_an_agent_not_in_block_mode_never_pays_for_the_llm_classifier(
+async def test_an_old_warn_or_log_setting_still_has_the_llm_classifier_refuse_a_flag(
     app: FastAPI, owner: SignedUpMember, input_mode: str
 ) -> None:
-    # Only block mode acts on a flag today (warn and log are 08-02's), so a judgement
-    # nothing uses would be a paid call for nothing.
-    judge, _, built = models(app)
+    # The old warn and log modes are ignored: a message the LLM classifier flags is refused.
+    judge, answerer, _ = models(app)
     project_id, agent_id, conversation_id = await playground_agent(
         app, owner, input_mode=input_mode
     )
 
     response = await ask(owner, project_id, agent_id, conversation_id, JAILBREAK)
 
-    assert answer_text(parse_sse(response.text)) == ANSWER
-    assert judge.calls == []
-    assert built == [f"openai:{CHAT_MODEL}"]
+    events = parse_sse(response.text)
+    assert [event for event, _ in events] == ["refusal", "done"]
+    assert len(judge.calls) == 1
+    assert answerer.calls == []
 
 
 PROVIDER_FAILURES = [

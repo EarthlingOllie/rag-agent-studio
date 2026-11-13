@@ -3,13 +3,14 @@ Documents and their statuses (polled by the Studio), read one Document's Chunks,
 Document, replace its edition, and retry a Failed Document. Any Member may use them, except
 setting the Document quota (Owners)."""
 
+import re
 import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints
 from redis.asyncio import Redis
 
 from app.auth.api import Db, ErrorResponse
@@ -107,9 +108,28 @@ def _duplicate(error: service.DuplicateDocumentError) -> JSONResponse:
     return JSONResponse(content.model_dump(mode="json"), status_code=status.HTTP_409_CONFLICT)
 
 
+# What a file name may not hold. The name is given to the model with the file's excerpts, so
+# control characters (line breaks included), bidirectional overrides and isolates, and the
+# prompt's data-block delimiters (``<<<`` and ``>>>``) could forge prompt structure or make the
+# name read differently from what it is.
+_FORGING_IN_NAME = re.compile(r"[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]|<<<|>>>")
+BAD_FILE_NAME = (
+    "The file name can't contain control characters, line breaks, text-direction overrides, "
+    "or <<< and >>>. Rename the file and upload it again."
+)
+
+
+def _safe_file_name(name: str) -> str:
+    if _FORGING_IN_NAME.search(name):
+        raise ValueError(BAD_FILE_NAME)
+    return name
+
+
 class StartUploadRequest(BaseModel):
     filename: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX)
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=NAME_MAX),
+        AfterValidator(_safe_file_name),
     ]
     size_bytes: int = Field(ge=0)
     # The Document this file will be a newer edition of, if it is one. A new edition doesn't add
@@ -178,6 +198,8 @@ class DocumentOut(BaseModel):
     chunk_count: int
     # How many of its Chunks the ingestion Guardrail scan flagged as instructions aimed at an AI.
     flagged_chunk_count: int
+    # How many of those are quarantined: kept out of retrieval until an Editor allows them.
+    quarantined_chunk_count: int
     # The Document's Tags, by name.
     tags: list[TagRef]
     created_at: datetime
@@ -198,11 +220,27 @@ class DocumentStatusOut(BaseModel):
     attempt_count: int
     chunk_count: int
     flagged_chunk_count: int
+    quarantined_chunk_count: int
     replacement: ReplacementOut | None
 
 
+class MemberRef(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class ChunkAllowanceOut(BaseModel):
+    """An Editor reviewed the flagged Chunk and allowed it into the corpus as a false positive."""
+
+    allowed_at: datetime
+    # Who allowed it; null once that Member's account is gone (the Audit Event keeps it).
+    allowed_by: MemberRef | None
+
+
 class GuardrailFlagOut(BaseModel):
-    """Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI."""
+    """Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI. A
+    flagged Chunk is quarantined (never retrieved) unless ``allowed`` says an Editor allowed
+    it."""
 
     # What the injection classifier thinks the Chunk is, such as ``prompt_injection``.
     label: str
@@ -210,6 +248,8 @@ class GuardrailFlagOut(BaseModel):
     score: float
     # What in the Chunk looks like instructions to an AI.
     reason: str
+    # Null while the Chunk is quarantined.
+    allowed: ChunkAllowanceOut | None
 
 
 class ChunkOut(BaseModel):
@@ -272,6 +312,7 @@ def _document_out(
         edition=document.edition,
         chunk_count=chunks.total,
         flagged_chunk_count=chunks.flagged,
+        quarantined_chunk_count=chunks.quarantined,
         tags=[tag_ref(tag) for tag in tags],
         created_at=document.created_at,
         updated_at=document.updated_at,
@@ -279,7 +320,7 @@ def _document_out(
     )
 
 
-def _chunk_out(chunk: Chunk) -> ChunkOut:
+def _chunk_out(chunk: Chunk, allowers: dict[uuid.UUID, str]) -> ChunkOut:
     return ChunkOut(
         id=chunk.id,
         ordinal=chunk.ordinal,
@@ -288,16 +329,23 @@ def _chunk_out(chunk: Chunk) -> ChunkOut:
         page_start=chunk.page_start,
         page_end=chunk.page_end,
         embedding_model_id=chunk.embedding_model_id,
-        flag=_flag_out(chunk),
+        flag=_flag_out(chunk, allowers),
     )
 
 
-def _flag_out(chunk: Chunk) -> GuardrailFlagOut | None:
+def _flag_out(chunk: Chunk, allowers: dict[uuid.UUID, str]) -> GuardrailFlagOut | None:
     # The three are set together or not at all (``ck_chunks_guardrail_flag_complete``).
     label, score, reason = chunk.guardrail_label, chunk.guardrail_score, chunk.guardrail_reason
     if label is None or score is None or reason is None:
         return None
-    return GuardrailFlagOut(label=label, score=score, reason=reason)
+    allowed = None
+    if chunk.guardrail_allowed_at is not None:
+        by = chunk.guardrail_allowed_by_id
+        allowed = ChunkAllowanceOut(
+            allowed_at=chunk.guardrail_allowed_at,
+            allowed_by=MemberRef(id=by, name=allowers[by]) if by in allowers else None,
+        )
+    return GuardrailFlagOut(label=label, score=score, reason=reason, allowed=allowed)
 
 
 def _too_large(settings: Settings) -> HTTPException:
@@ -528,6 +576,7 @@ async def list_document_statuses(
             attempt_count=s.document.attempt_count,
             chunk_count=s.chunks.total,
             flagged_chunk_count=s.chunks.flagged,
+            quarantined_chunk_count=s.chunks.quarantined,
             replacement=_replacement_out(s.replacement),
         )
         for s in summaries
@@ -596,16 +645,21 @@ async def list_chunks(
     db: Db,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=CHUNK_PAGE_MAX)] = CHUNK_PAGE_DEFAULT,
+    flagged: Annotated[
+        bool,
+        Query(description="Only the Chunks the ingestion Guardrail scan flagged, for review."),
+    ] = False,
 ) -> ChunkPageOut:
-    """A page of the Document's Chunks in order, with heading path and pages."""
+    """A page of the Document's Chunks in order, with heading path, pages and any Guardrail
+    flag (with who allowed it, when an Editor did)."""
     try:
         page = await service.list_chunks(
-            db, scope, project_id, document_id, offset=offset, limit=limit
+            db, scope, project_id, document_id, offset=offset, limit=limit, flagged=flagged
         )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     return ChunkPageOut(
-        items=[_chunk_out(chunk) for chunk in page.chunks],
+        items=[_chunk_out(chunk, page.allowers) for chunk in page.chunks],
         total=page.total,
         offset=offset,
         limit=limit,
@@ -613,29 +667,34 @@ async def list_chunks(
 
 
 CHUNK_NOT_FLAGGED = "This Chunk isn't flagged."
+CHUNK_ALREADY_ALLOWED = "This Chunk is already allowed."
 
 
-@router.delete(
-    "/documents/{document_id}/chunks/{chunk_id}/flag",
-    status_code=status.HTTP_204_NO_CONTENT,
-    operation_id="clearChunkFlag",
+@router.post(
+    "/documents/{document_id}/chunks/{chunk_id}/allow",
+    operation_id="allowChunk",
     responses=_errors(
-        _NOT_FOUND, (409, f"{PROJECT_ARCHIVED} Or the Chunk isn't flagged: {CHUNK_NOT_FLAGGED}")
+        _NOT_FOUND,
+        (
+            409,
+            f"{PROJECT_ARCHIVED} Or the Chunk isn't quarantined: {CHUNK_NOT_FLAGGED} / "
+            f"{CHUNK_ALREADY_ALLOWED}",
+        ),
     ),
 )
-async def clear_chunk_flag(
+async def allow_chunk(
     project_id: uuid.UUID,
     document_id: uuid.UUID,
     chunk_id: uuid.UUID,
     scope: Scope,
     db: Db,
     clock: ClockDep,
-) -> None:
-    """Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,
-    for a false positive: the Chunk is retrieved again at once, even in a Project that excludes
-    flagged Chunks. Records ``chunk.flag_cleared`` with the flag it had."""
+) -> ChunkOut:
+    """Allows a quarantined Chunk of the Document's current edition into the corpus, for a
+    false positive the Editor reviewed: that Chunk is retrieved again at once. Its flag is
+    kept, with who allowed it and when. Records ``chunk.allowed``."""
     try:
-        await service.clear_chunk_flag(
+        allowed = await service.allow_chunk(
             db, scope, project_id, document_id, chunk_id, now=clock.now()
         )
     except (ProjectNotFoundError, service.DocumentNotFoundError, service.ChunkNotFoundError):
@@ -644,6 +703,10 @@ async def clear_chunk_flag(
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
     except service.ChunkNotFlaggedError:
         raise HTTPException(status.HTTP_409_CONFLICT, CHUNK_NOT_FLAGGED) from None
+    except service.ChunkAlreadyAllowedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, CHUNK_ALREADY_ALLOWED) from None
+    (chunk,) = allowed.chunks
+    return _chunk_out(chunk, allowed.allowers)
 
 
 @router.delete(

@@ -65,7 +65,7 @@ from app.documents.models import Chunk, Document, DocumentStatus
 from app.embeddings.port import Embedder
 from app.embeddings.registry import EMBEDDING_MODELS
 from app.gateway.ports import Reranker
-from app.projects.models import FlaggedChunkMode, Project
+from app.projects.models import Project
 from app.tags.models import DocumentTag
 
 # How many Chunks each search contributes to the fusion.
@@ -309,7 +309,7 @@ async def retrieve(
 ) -> RetrievalResult:
     """The Project's Chunks most relevant to ``query``, best first, at most ``top_k``, and the
     Chunks found but left out. With Tag scoping, only Documents with one of the Tags are
-    searched for candidates. Flagged Chunks are left out when the Project excludes them. With
+    searched for candidates. Quarantined Chunks (flagged, and not allowed) are left out. With
     a ``reranker``, every candidate Chunk found is reranked before
     the minimum score and ``top_k`` are applied."""
     embedder = embedders.get(project.embedding_model_id)
@@ -320,13 +320,12 @@ async def retrieve(
     scope = _tag_scope(tag_ids, inside=True) if tag_ids else None
     ranked = await searches.ranked(query, scope)
     excluded: list[Excluded] = []
-    if project.flagged_chunk_mode == FlaggedChunkMode.EXCLUDE:
-        excluded.extend(
-            _excluded(entry, "guardrail_flagged")
-            for entry in ranked
-            if entry.chunk.guardrail_label is not None
-        )
-        ranked = [entry for entry in ranked if entry.chunk.guardrail_label is None]
+    # Quarantine: a Chunk the ingestion Guardrail scan flagged is never a candidate, unless an
+    # Editor allowed that Chunk as a false positive. No setting changes this.
+    excluded.extend(
+        _excluded(entry, "guardrail_flagged") for entry in ranked if entry.chunk.quarantined
+    )
+    ranked = [entry for entry in ranked if not entry.chunk.quarantined]
 
     if reranker is not None and ranked:
         ranked = await _rerank(reranker, query, ranked)

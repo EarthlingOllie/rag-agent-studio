@@ -469,18 +469,27 @@ export function useDocument(organisationId: string, projectId: string, documentI
   });
 }
 
-/** One page of the Document's Chunks, ``page`` counting from 0. */
-export function useChunkPage(organisationId: string, projectId: string, documentId: string, page: number) {
+/**
+ * One page of the Document's Chunks, ``page`` counting from 0; with ``flaggedOnly``, only the Chunks
+ * the ingestion Guardrail scan flagged, for review.
+ */
+export function useChunkPage(
+  organisationId: string,
+  projectId: string,
+  documentId: string,
+  page: number,
+  flaggedOnly = false,
+) {
   const offset = page * CHUNK_PAGE_SIZE;
   return useQuery({
-    queryKey: [...documentsKey(organisationId, projectId), documentId, "chunks", offset],
+    queryKey: [...documentsKey(organisationId, projectId), documentId, "chunks", offset, flaggedOnly],
     queryFn: async (): Promise<ChunkPage> => {
       const { data, error, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks",
         {
           params: {
             path: { organisation_id: organisationId, project_id: projectId, document_id: documentId },
-            query: { offset, limit: CHUNK_PAGE_SIZE },
+            query: { offset, limit: CHUNK_PAGE_SIZE, flagged: flaggedOnly },
           },
         },
       );
@@ -498,15 +507,16 @@ export function downloadPath(organisationId: string, projectId: string, document
 }
 
 /**
- * Clears the ingestion Guardrail scan's flag on a Chunk an Editor judges a false positive (the
- * API audits it). The Document and its Chunks are read again, so the count and the note go.
+ * Allows a quarantined Chunk into the knowledge base: an Editor reviewed it and judges the ingestion
+ * Guardrail scan's flag a false positive. The flag is kept, with who allowed the Chunk and when (the
+ * API audits it). The Document and its Chunks are read again, so the counts and the note update.
  */
-export function useClearChunkFlag(organisationId: string, projectId: string, documentId: string) {
+export function useAllowChunk(organisationId: string, projectId: string, documentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (chunkId: string) => {
-      const { error, response } = await api.DELETE(
-        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag",
+      const { error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/allow",
         {
           params: {
             path: { organisation_id: organisationId, project_id: projectId, document_id: documentId, chunk_id: chunkId },
@@ -519,10 +529,10 @@ export function useClearChunkFlag(organisationId: string, projectId: string, doc
   });
 }
 
-export const CLEAR_FLAG_FAILED = "The flag could not be cleared. Try again shortly.";
+export const ALLOW_FAILED = "The Chunk could not be allowed. Try again shortly.";
 
-/** What to tell the Editor about a failed clear: the API's reason, or a retry hint. */
-export function clearFlagFailure(error: Error): string {
-  // Every failed clear is a ProjectRequestError (see `failed`).
-  return (error as ProjectRequestError).detail ?? CLEAR_FLAG_FAILED;
+/** What to tell the Editor about a failed allow: the API's reason, or a retry hint. */
+export function allowFailure(error: Error): string {
+  // Every failed allow is a ProjectRequestError (see `failed`).
+  return (error as ProjectRequestError).detail ?? ALLOW_FAILED;
 }

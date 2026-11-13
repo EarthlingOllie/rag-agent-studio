@@ -33,7 +33,7 @@ from app.embeddings.registry import EMBEDDING_MODELS, EmbeddingModel
 
 # Referenced as objects, so the worker (which loads no routers) has these tables registered too.
 from app.projects.models import Project
-from app.tenancy.models import Organisation
+from app.tenancy.models import Member, Organisation
 
 NAME_MAX = 255
 MIME_MAX = 255
@@ -134,6 +134,11 @@ class Chunk(IdMixin, Base):
             " AND (guardrail_label IS NULL) = (guardrail_reason IS NULL)",
             name="guardrail_flag_complete",
         ),
+        # Only a flagged Chunk can be allowed out of quarantine.
+        CheckConstraint(
+            "guardrail_allowed_at IS NULL OR guardrail_label IS NOT NULL",
+            name="guardrail_allowed_flagged",
+        ),
     )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
@@ -166,6 +171,23 @@ class Chunk(IdMixin, Base):
     guardrail_label: Mapped[str | None] = mapped_column(String(GUARDRAIL_LABEL_MAX))
     guardrail_score: Mapped[float | None] = mapped_column(Float)
     guardrail_reason: Mapped[str | None] = mapped_column(Text)
+    # A flagged Chunk is quarantined: never retrieved. An Editor who judges the flag a false
+    # positive allows that one Chunk into the corpus: when, and who (null once that Member's
+    # account is gone; the Audit Event keeps the record). The flag itself is kept.
+    guardrail_allowed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    guardrail_allowed_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Member.id, ondelete="SET NULL")
+    )
+
+    @property
+    def quarantined(self) -> bool:
+        """Flagged by the ingestion scan and not allowed: kept out of retrieval."""
+        return self.guardrail_label is not None and self.guardrail_allowed_at is None
+
+
+def quarantined_sql() -> ColumnElement[bool]:
+    """SQL for ``Chunk.quarantined``."""
+    return Chunk.guardrail_label.is_not(None) & Chunk.guardrail_allowed_at.is_(None)
 
 
 # pgvector's HNSW indexes ``vector`` up to this many dimensions; larger models index halfvec.

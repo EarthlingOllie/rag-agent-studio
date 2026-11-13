@@ -56,10 +56,11 @@ test("every configuration group is shown with the Draft's settings", async () =>
   expect(within(experience).getByLabelText("Display name")).toHaveValue("");
   expect(within(experience).getByLabelText(/Rating prompt after/)).toHaveValue(3);
   const guardrails = group("Guardrails");
-  expect(within(guardrails).getByLabelText("Input Guardrail mode")).toHaveValue("block");
+  // A flagged message is always refused: there is no mode that lets it through.
+  expect(within(guardrails).queryByLabelText("Input Guardrail mode")).not.toBeInTheDocument();
   expect(
     within(guardrails).getByText(
-      "Every message is checked by the built-in classifier. Block refuses a flagged message, warn answers it with a caution to the model and flags it, and log only records the verdict. The LLM classifier is enforced in block mode.",
+      "Every message is checked by the built-in classifier, and by the LLM classifier if you choose one. A message either flags is always refused with the refusal text.",
     ),
   ).toBeInTheDocument();
   expect(screen.getByRole("status", { name: "Draft status" })).toHaveTextContent("All changes saved");
@@ -119,7 +120,6 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
   await userEvent.clear(within(experience).getByLabelText(/Rating prompt after/));
   await userEvent.type(within(experience).getByLabelText(/Rating prompt after/), "5");
   const guardrails = group("Guardrails");
-  await userEvent.selectOptions(within(guardrails).getByLabelText("Input Guardrail mode"), "warn");
   await userEvent.selectOptions(within(guardrails).getByLabelText(/When the classifier errors/), "open");
   await userEvent.clear(within(guardrails).getByLabelText("Refusal text"));
   await userEvent.type(within(guardrails).getByLabelText("Refusal text"), "No.");
@@ -141,7 +141,7 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
       },
       rating_prompt_after: 5,
     },
-    guardrails: { ...defaultDraft.guardrails, input_mode: "warn", fail_mode: "open", refusal_text: "No." },
+    guardrails: { ...defaultDraft.guardrails, fail_mode: "open", refusal_text: "No." },
   });
 
   // Emptied overrides go back to the built-in text.

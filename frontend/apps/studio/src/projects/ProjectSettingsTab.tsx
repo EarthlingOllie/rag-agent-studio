@@ -68,105 +68,31 @@ function OcrSetting({
   );
 }
 
-type FlaggedChunkMode = Project["flagged_chunk_mode"];
-
-const FLAGGED_CHUNK_OPTIONS: { mode: FlaggedChunkMode; label: string; description: string }[] = [
-  {
-    mode: "mark",
-    label: "Mark them, and keep retrieving them",
-    description: "Agents can still be given them. The Document viewer marks them for review.",
-  },
-  {
-    mode: "exclude",
-    label: "Exclude them from retrieval",
-    description: "Agents are never given them. The Trace lists them as excluded.",
-  },
-];
-
 /**
- * The Flagged Chunk mode: whether Chunks the ingestion Guardrail scan flags as instructions to an
- * AI are only marked or kept away from Agents. Retrieval follows a change at once.
+ * What happens to Chunks the ingestion Guardrail scan flags as instructions to an AI. There is no
+ * choice: they are always quarantined, and only an Editor's review of one Chunk lets it in.
  */
-function FlaggedChunkSetting({
-  project,
-  organisationId,
-}: {
-  project: Project;
-  organisationId: string;
-}) {
-  const update = useUpdateProject(organisationId, project.id);
-  const archived = project.archived_at !== null;
-  // The choice asked for while it saves, shown at once (as the OCR box does).
-  const [requested, setRequested] = useState<FlaggedChunkMode | null>(null);
-  const shown = requested ?? project.flagged_chunk_mode;
+function FlaggedChunksCard() {
   return (
     <section aria-labelledby="flagged-heading" className={CARD}>
       <h3 id="flagged-heading" className={text.subheading}>
         Flagged Chunks
       </h3>
-      <p id="flagged-help" className={text.muted}>
-        The ingestion scan flags Chunks that look like instructions to an AI, such as text hidden
-        in a Document telling the Agent to ignore its rules. Clear a false positive in the
-        Document viewer.
+      <p className={text.muted}>
+        The ingestion scan flags Chunks that look like instructions to an AI, such as text hidden in a Document telling
+        the Agent to ignore its rules.
       </p>
-      <fieldset
-        role="radiogroup"
-        aria-labelledby="flagged-heading"
-        aria-describedby="flagged-help"
-        className="flex flex-col gap-3"
-      >
-        <FormError message={projectFailure(update.error)} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {FLAGGED_CHUNK_OPTIONS.map(({ mode, label, description }) => (
-            <label
-              key={mode}
-              className="flex cursor-pointer items-start gap-3 rounded-xl border border-line px-3.5 py-3 has-checked:border-accent has-checked:bg-accent-soft has-disabled:cursor-not-allowed has-disabled:opacity-60"
-            >
-              <input
-                type="radio"
-                name="flagged-chunk-mode"
-                value={mode}
-                aria-labelledby={`flagged-${mode}-label`}
-                aria-describedby={`flagged-${mode}-description`}
-                checked={shown === mode}
-                disabled={archived || requested !== null}
-                onChange={() => {
-                  setRequested(mode);
-                  update.mutate(
-                    { flagged_chunk_mode: mode },
-                    {
-                      onSettled: () => {
-                        setRequested(null);
-                      },
-                    },
-                  );
-                }}
-                className={`${field.checkbox} mt-0.5 shrink-0`}
-              />
-              <span className="flex flex-col gap-0.5">
-                <span id={`flagged-${mode}-label`} className="text-sm font-medium text-ink">
-                  {label}
-                </span>
-                <span id={`flagged-${mode}-description`} className={text.small}>
-                  {description}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <p role="status" className={text.small}>
-          {project.flagged_chunk_mode === "exclude"
-            ? "Flagged Chunks are never given to an Agent. The Trace lists them as excluded by the ingestion scan."
-            : "Flagged Chunks are retrieved like any other, and marked in the Document viewer."}
-        </p>
-      </fieldset>
+      <p className={text.small}>
+        Flagged Chunks are always quarantined: Agents are never given them, and the Trace lists them as excluded by the
+        ingestion scan. Review a flagged Chunk in the Document viewer, and allow it there if it is a false positive.
+      </p>
     </section>
   );
 }
 
 /**
  * The Project's settings, a card each: its Embedding Model (not while archived, when nothing can be
- * re-embedded), whether ingestion runs OCR, and what happens to flagged Chunks. On an archived
+ * re-embedded), whether ingestion runs OCR, and what happens to flagged Chunks (always quarantined). On an archived
  * Project they are shown disabled.
  */
 export function ProjectSettingsTab() {
@@ -191,7 +117,7 @@ export function ProjectSettingsTab() {
         <div className="grid max-w-2xl gap-6">
           {!archived && <EmbeddingModelSetting project={project.data} organisationId={organisationId} />}
           <OcrSetting project={project.data} organisationId={organisationId} />
-          <FlaggedChunkSetting project={project.data} organisationId={organisationId} />
+          <FlaggedChunksCard />
         </div>
       )}
     </section>

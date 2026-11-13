@@ -229,12 +229,12 @@ test("the configuration is four sections: Behaviour open, the rest folded with a
   expect(within(panel).getByRole("textbox", { name: "System prompt" })).toBeVisible();
   expect(within(panel).getByLabelText("Chunks per answer (top-k)")).not.toBeVisible();
   expect(within(panel).getByText("Automatic · top-5 · hybrid 0.5")).toBeVisible();
-  expect(within(panel).getByText("block · fail closed")).toBeVisible();
+  expect(within(panel).getByText("always block · fail closed")).toBeVisible();
 
   await userEvent.click(within(panel).getByText("Retrieval"));
   expect(within(panel).getByLabelText("Chunks per answer (top-k)")).toBeVisible();
   await userEvent.click(within(panel).getByText("Guardrails"));
-  expect(within(panel).getByLabelText("Input Guardrail mode")).toBeVisible();
+  expect(within(panel).getByLabelText(/When the classifier errors/)).toBeVisible();
 });
 
 test("a section opens to show a setting the API refused", async () => {

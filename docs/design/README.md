@@ -185,7 +185,7 @@ where the Member is: from the Organisation's page they are under down to the pag
   `PageHeader`, optional `StatCard` row, a toolbar, then a `table.wrap` card. Row actions in a ⋯
   `Menu` (`button.iconBare`), destructive items marked `danger`.
   - **Documents** (as built in 11-06): inside a Project the `PageHeader` is the Project's, so the
-    section starts at the Knowledge Base figures (Documents / quota, Chunks, Flagged chunks,
+    section starts at the Knowledge Base figures (Documents / quota, Chunks, Quarantined chunks,
     Embedding Model). The toolbar is search, Tag chips (a `Segmented` "Filter by Tag", All first),
     Manage tags (opens the Tags `Dialog`), then Clear filters, the status filter and Upload, the one
     primary. A quiet drop zone sits under it. Rows show Name, Type, Tag pills, a status dot, Chunks,

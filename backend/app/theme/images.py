@@ -6,7 +6,9 @@
 3. ``confirm_upload`` claims the pending upload (only one confirmation can), reads the stored
    bytes and checks them again, because a presigned PUT accepts whatever is sent: the size,
    and that the bytes really are the declared type. A file that fails is deleted. Otherwise
-   the image becomes the Theme's, and the one it replaces is deleted from the store.
+   the checked bytes are copied to a key no presigned URL covers (the upload's URL stays
+   writable until it expires) and the upload is deleted; the copy becomes the Theme's image,
+   and the one it replaces is deleted from the store.
 
 Only PNG, JPEG and WebP are accepted. SVG is not: it can carry script.
 """
@@ -172,7 +174,8 @@ async def claim_upload(
     redis: Redis, store: ObjectStore, key: str, *, max_bytes: int, now: datetime
 ) -> StoredImage:
     """Claims the pending upload under ``key`` and checks the stored file is an image of its
-    declared type within ``max_bytes``; a file that fails is deleted."""
+    declared type within ``max_bytes``; a file that fails is deleted. One that passes is kept
+    under a new key, which the returned image names, and the upload is deleted."""
     # Claim the upload: read and remove it in one step, so two confirmations of it at once
     # can't both use it (the second would take the first's image as the one it replaces, and
     # delete the file both point to).
@@ -204,8 +207,13 @@ async def claim_upload(
         if len(data) > max_bytes:
             raise ImageTooLargeError
         raise NotDeclaredTypeError(content_type)
+    # The presigned URL stays writable until it expires, so the checked bytes are kept under a
+    # new key no URL was given for, and the upload is deleted: what is served is what was checked.
+    kept_key = f"{object_key.rsplit('/', 1)[0]}/{uuid.uuid4()}"
+    await store.put(kept_key, data, content_type=content_type)
+    await store.delete(object_key)
     return StoredImage(
-        object_key=object_key,
+        object_key=kept_key,
         content_type=content_type,
         size_bytes=len(data),
         content_hash=hashlib.sha256(data).hexdigest(),

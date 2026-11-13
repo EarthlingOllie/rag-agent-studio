@@ -550,8 +550,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", PROJECTS + "/{project_id}/retrieval-probe", EDITOR, _a_probe),
     ScopedRoute("DELETE", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
     ScopedRoute(
-        "DELETE",
-        PROJECTS + "/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag",
+        "POST",
+        PROJECTS + "/{project_id}/documents/{document_id}/chunks/{chunk_id}/allow",
         EDITOR,
         _a_flagged_chunk,
     ),

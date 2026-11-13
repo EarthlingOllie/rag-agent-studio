@@ -115,6 +115,8 @@ _COPIED = [
     "guardrail_label",
     "guardrail_score",
     "guardrail_reason",
+    "guardrail_allowed_at",
+    "guardrail_allowed_by_id",
 ]
 
 
@@ -139,6 +141,8 @@ async def _write(session: AsyncSession, job: _Job, embedded: Embedded) -> None:
             Chunk.guardrail_label,
             Chunk.guardrail_score,
             Chunk.guardrail_reason,
+            Chunk.guardrail_allowed_at,
+            Chunk.guardrail_allowed_by_id,
         ).where(Chunk.id == chunk_id)
         await session.execute(
             insert(Chunk)

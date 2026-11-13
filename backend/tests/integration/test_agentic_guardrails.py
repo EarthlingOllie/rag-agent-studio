@@ -38,7 +38,7 @@ from tests.integration.test_agentic_retrieval import (
     searching,
 )
 from tests.integration.test_canary import canary_of
-from tests.integration.test_flagged_chunks import flagged_project, set_mode
+from tests.integration.test_flagged_chunks import allow_path, flagged_project, product_chunk
 from tests.integration.test_playground import LEAVE
 from tests.knowledge_base import PRODUCT, PRODUCT_QUESTION
 
@@ -183,25 +183,11 @@ async def product_search(
     return _search_results(calls[-1]), search
 
 
-async def test_a_marked_flagged_chunk_is_still_found_by_knowledge_search(
+async def test_a_quarantined_chunk_is_never_given_by_knowledge_search_and_the_trace_says_why(
     app: FastAPI, owner: SignedUpMember
 ) -> None:
     await use_default_model(owner)
     project_id = await flagged_project(app, owner)
-
-    (result,), search = await product_search(app, owner, project_id)
-
-    assert PRODUCT in result
-    given = [c["text"] for c in search["chunks"] if c["excluded_reason"] is None]
-    assert given[0] == PRODUCT
-
-
-async def test_an_excluded_flagged_chunk_is_never_given_by_knowledge_search_and_the_trace_says_why(
-    app: FastAPI, owner: SignedUpMember
-) -> None:
-    await use_default_model(owner)
-    project_id = await flagged_project(app, owner)
-    await set_mode(owner, project_id, "exclude")
 
     (result,), search = await product_search(app, owner, project_id)
 
@@ -211,6 +197,22 @@ async def test_an_excluded_flagged_chunk_is_never_given_by_knowledge_search_and_
     assert len(given) == 3
     (excluded,) = [c for c in search["chunks"] if c["excluded_reason"] == "guardrail_flagged"]
     assert (excluded["text"], excluded["rank"], excluded["cited"]) == (PRODUCT, None, False)
+
+
+async def test_a_chunk_an_editor_allowed_is_found_by_knowledge_search_again(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    await use_default_model(owner)
+    project_id = await flagged_project(app, owner)
+    document_id, chunk = await product_chunk(owner, project_id)
+    allowed = await owner.client.post(allow_path(owner, project_id, document_id, chunk["id"]))
+    assert allowed.status_code == 200, allowed.text
+
+    (result,), search = await product_search(app, owner, project_id)
+
+    assert PRODUCT in result
+    given = [c["text"] for c in search["chunks"] if c["excluded_reason"] is None]
+    assert given[0] == PRODUCT
 
 
 async def test_a_chunk_that_forges_the_delimiters_stays_inside_its_data_block(

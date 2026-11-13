@@ -280,7 +280,11 @@ async def make_live(
         target=audit.AuditTarget("agent", agent.id),
         before={"live_version": _summary(previous)},
         after=move.audited(
-            {"live_version": {**(_summary(version) or {}), "note": note, **_pinned(view)}}
+            {
+                "live_version": {**(_summary(version) or {}), "note": note, **_pinned(view)},
+                # What went Live, as it was: a later edit of the Draft doesn't change it.
+                "config": config,
+            }
         ),
         occurred_at=now,
     )

@@ -36,3 +36,12 @@ def blocked(outcomes: Sequence[Mapping[str, object]]) -> bool:
     """Whether a saved answer's Guardrail outcomes say the input Guardrail blocked its
     question."""
     return any((o["layer"], o["action"]) == ("input", "blocked") for o in outcomes)
+
+
+def judged_injection(outcomes: Sequence[Mapping[str, object]]) -> bool:
+    """Whether a saved answer's Guardrail outcomes say the input Guardrail judged its question
+    an injection, or refused it unchecked: blocked, or answered under the old warn or log
+    modes (``flagged``, ``logged``). Such a question is never replayed to the model."""
+    return blocked(outcomes) or any(
+        (o["layer"], o["verdict"]) == ("input", "injection") for o in outcomes
+    )

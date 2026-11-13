@@ -47,9 +47,6 @@ checked again for an encoded canary, which is logged and flagged but can't be un
 Agentic mode each search query is checked for the canary (in any form) before it runs: a query
 carrying it is never run or recorded, and the reply ends as a canary leak, with the fallback
 text and a ``replaced`` Guardrail outcome.
-
-With ``cautioned`` (the input Guardrail's warn mode flagged the message), the prompt carries a
-caution block after the system prompt (``app.runtime.prompt.CAUTION``).
 """
 
 import asyncio
@@ -414,7 +411,6 @@ async def run_turn(
     *,
     model: Model,
     retrieve: Retrieve,
-    cautioned: bool = False,
 ) -> AsyncIterator[TurnEvent]:
     try:
         async with aclosing(
@@ -425,7 +421,6 @@ async def run_turn(
                 visitor_input,
                 model=model,
                 retrieve=retrieve,
-                cautioned=cautioned,
             )
         ) as events:
             async for event in events:
@@ -443,7 +438,6 @@ async def _turn(
     *,
     model: Model,
     retrieve: Retrieve,
-    cautioned: bool,
 ) -> AsyncGenerator[TurnEvent]:
     behaviour = config.behaviour
     agentic = config.retrieval.mode is RetrievalMode.AGENTIC
@@ -483,7 +477,6 @@ async def _turn(
         behaviour.system_prompt,
         remembered,
         canary=canary,
-        cautioned=cautioned,
         agentic=agentic,
     )
     settings = ModelSettings(

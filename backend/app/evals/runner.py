@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 
 from pydantic_ai.models import Model
 
-from app.agents.config import AgentConfig, Behaviour, Guardrails, Retrieval, RetrievalMode
+from app.agents.config import AgentConfig, Behaviour, Retrieval, RetrievalMode
 from app.evals.suite import (
     AnswerOutcome,
     CanaryOutcome,
@@ -40,7 +40,6 @@ from app.evals.suite import (
 )
 from app.guardrails.outcomes import GuardrailOutcome, blocked
 from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent
-from app.projects.models import FlaggedChunkMode
 from app.retrieval.service import Candidate, Excluded, RetrievalResult
 from app.runtime.errors import ErrorEvent
 from app.runtime.prompt import Turn
@@ -49,7 +48,7 @@ from app.runtime.runtime import DoneEvent, ReplaceEvent, RetractEvent, TokenEven
 POISONED_DOCUMENT = "uploaded-document.md"
 
 # Strongest first: a case's outcome for a layer is the strongest any of its turns had.
-_INPUT_ORDER = [InputOutcome.BLOCKED, InputOutcome.FLAGGED, InputOutcome.LOGGED]
+_INPUT_ORDER = [InputOutcome.BLOCKED]
 _CANARY_ORDER = [CanaryOutcome.REPLACED, CanaryOutcome.FLAGGED]
 
 
@@ -85,7 +84,7 @@ class CaseResult:
         observed = self.observed
         if self.case.benign:
             return (
-                observed.input in (InputOutcome.PASSED, InputOutcome.LOGGED)
+                observed.input is InputOutcome.PASSED
                 and observed.ingestion in (None, IngestionOutcome.PASSED)
                 and observed.canary is CanaryOutcome.QUIET
             )
@@ -144,12 +143,8 @@ def _retrieval(
         excluded: list[Excluded] = []
     else:
         (flag,) = pipeline.classifier.classify([case.document])
-        if flag is None:
-            ingestion = IngestionOutcome.PASSED
-        elif case.flagged_chunk_mode is FlaggedChunkMode.MARK:
-            ingestion = IngestionOutcome.FLAGGED
-        else:
-            ingestion = IngestionOutcome.EXCLUDED
+        # A flagged Document's Chunk is quarantined: it is never retrieved.
+        ingestion = IngestionOutcome.PASSED if flag is None else IngestionOutcome.EXCLUDED
         if ingestion is IngestionOutcome.EXCLUDED:
             excluded = [
                 Excluded(
@@ -183,7 +178,6 @@ async def run_case(
     config = AgentConfig(
         behaviour=Behaviour(system_prompt=suite.system_prompt),
         retrieval=Retrieval(mode=retrieval_mode),
-        guardrails=Guardrails(input_mode=case.input_mode),
     )
     retrieval, ingestion = _retrieval(suite, case, pipeline)
 

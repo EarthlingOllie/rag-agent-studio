@@ -612,7 +612,10 @@ async def test_remembered_turns_replay_only_the_visitors_and_the_agents_text(
     texts = [
         (type(part), part.content) for part in parts if isinstance(part, UserPromptPart | TextPart)
     ]
-    assert texts == [(UserPromptPart, "How much leave?"), (TextPart, "25 days [C1].")]
+    assert texts == [
+        (UserPromptPart, "<<<VISITOR_INPUT>>>\nHow much leave?\n<<<END_VISITOR_INPUT>>>"),
+        (TextPart, "25 days [C1]."),
+    ]
     assert [type(message) for message in remembered][-1] is ModelResponse
     assert isinstance(latest, ModelRequest)
     (part,) = latest.parts

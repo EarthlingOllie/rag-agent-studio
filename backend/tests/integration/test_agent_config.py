@@ -55,7 +55,6 @@ def full_draft(openai: str, voyage: str, anthropic: str, tag_id: str) -> dict[st
             "rating_prompt_after": 5,
         },
         "guardrails": {
-            "input_mode": "warn",
             "classifier": {"credential_id": openai, "model": "gpt-4.1-mini"},
             "fail_mode": "open",
             "refusal_text": "I can only help with HR questions.",
@@ -160,7 +159,6 @@ def _set(draft: dict[str, Any], path: str, value: Any) -> dict[str, Any]:
         ("experience.ui_text", {"close_button": "Bye"}),
         ("experience.rating_prompt_after", -1),
         ("experience.rating_prompt_after", 51),
-        ("guardrails.input_mode", "shout"),
         ("guardrails.fail_mode", "sideways"),
         ("guardrails.refusal_text", ""),
         ("behaviour.model", {"credential_id": str(uuid.uuid4())}),

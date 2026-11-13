@@ -44,7 +44,6 @@ export const defaultDraft: Draft = {
     rating_prompt_after: 3,
   },
   guardrails: {
-    input_mode: "block",
     classifier: null,
     fail_mode: "closed",
     refusal_text: "Sorry, I can't help with that request.",

@@ -121,7 +121,7 @@ def test_plain_text_fields_get_no_line_diff() -> None:
 def test_changes_follow_the_config_order_across_every_group() -> None:
     before = AgentConfig()
     after = config(
-        guardrails={"input_mode": "warn"},
+        guardrails={"fail_mode": "open"},
         behaviour={"max_output_tokens": 100},
         experience={"greeting": "Hi"},
         retrieval={"top_k": 3},
@@ -131,7 +131,7 @@ def test_changes_follow_the_config_order_across_every_group() -> None:
         "behaviour.max_output_tokens",
         "retrieval.top_k",
         "experience.greeting",
-        "guardrails.input_mode",
+        "guardrails.fail_mode",
     ]
 
 

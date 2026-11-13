@@ -882,6 +882,32 @@
         "title": "CheckFailure",
         "type": "string"
       },
+      "ChunkAllowanceOut": {
+        "description": "An Editor reviewed the flagged Chunk and allowed it into the corpus as a false positive.",
+        "properties": {
+          "allowed_at": {
+            "format": "date-time",
+            "title": "Allowed At",
+            "type": "string"
+          },
+          "allowed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemberRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "allowed_at",
+          "allowed_by"
+        ],
+        "title": "ChunkAllowanceOut",
+        "type": "object"
+      },
       "ChunkOut": {
         "properties": {
           "embedding_model_id": {
@@ -2449,6 +2475,10 @@
             "title": "Name",
             "type": "string"
           },
+          "quarantined_chunk_count": {
+            "title": "Quarantined Chunk Count",
+            "type": "integer"
+          },
           "replacement": {
             "anyOf": [
               {
@@ -2492,6 +2522,7 @@
           "edition",
           "chunk_count",
           "flagged_chunk_count",
+          "quarantined_chunk_count",
           "tags",
           "created_at",
           "updated_at",
@@ -2562,6 +2593,10 @@
             "title": "Name",
             "type": "string"
           },
+          "quarantined_chunk_count": {
+            "title": "Quarantined Chunk Count",
+            "type": "integer"
+          },
           "replacement": {
             "anyOf": [
               {
@@ -2605,6 +2640,7 @@
           "edition",
           "chunk_count",
           "flagged_chunk_count",
+          "quarantined_chunk_count",
           "tags",
           "created_at",
           "updated_at",
@@ -2663,6 +2699,10 @@
             "title": "Id",
             "type": "string"
           },
+          "quarantined_chunk_count": {
+            "title": "Quarantined Chunk Count",
+            "type": "integer"
+          },
           "replacement": {
             "anyOf": [
               {
@@ -2685,6 +2725,7 @@
           "attempt_count",
           "chunk_count",
           "flagged_chunk_count",
+          "quarantined_chunk_count",
           "replacement"
         ],
         "title": "DocumentStatusOut",
@@ -3130,15 +3171,6 @@
         "title": "FieldChangeOut",
         "type": "object"
       },
-      "FlaggedChunkMode": {
-        "description": "What retrieval does with the Chunks the ingestion Guardrail scan flags.",
-        "enum": [
-          "mark",
-          "exclude"
-        ],
-        "title": "FlaggedChunkMode",
-        "type": "string"
-      },
       "Font": {
         "enum": [
           "Inter",
@@ -3222,8 +3254,18 @@
         "type": "string"
       },
       "GuardrailFlagOut": {
-        "description": "Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI.",
+        "description": "Why the ingestion Guardrail scan flagged a Chunk as instructions aimed at an AI. A\nflagged Chunk is quarantined (never retrieved) unless ``allowed`` says an Editor allowed\nit.",
         "properties": {
+          "allowed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChunkAllowanceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "label": {
             "title": "Label",
             "type": "string"
@@ -3240,7 +3282,8 @@
         "required": [
           "label",
           "score",
-          "reason"
+          "reason",
+          "allowed"
         ],
         "title": "GuardrailFlagOut",
         "type": "object"
@@ -3303,7 +3346,7 @@
       },
       "Guardrails-Input": {
         "additionalProperties": false,
-        "description": "Stored and versioned with the Agent; enforced from spec 08.",
+        "description": "Stored and versioned with the Agent; enforced from spec 08. A message the input\nGuardrail flags is always refused: there is no setting for what it does.",
         "properties": {
           "classifier": {
             "anyOf": [
@@ -3318,10 +3361,6 @@
           "fail_mode": {
             "$ref": "#/components/schemas/FailMode",
             "default": "closed"
-          },
-          "input_mode": {
-            "$ref": "#/components/schemas/InputMode",
-            "default": "block"
           },
           "refusal_text": {
             "default": "Sorry, I can't help with that request.",
@@ -3336,7 +3375,7 @@
       },
       "Guardrails-Output": {
         "additionalProperties": false,
-        "description": "Stored and versioned with the Agent; enforced from spec 08.",
+        "description": "Stored and versioned with the Agent; enforced from spec 08. A message the input\nGuardrail flags is always refused: there is no setting for what it does.",
         "properties": {
           "classifier": {
             "anyOf": [
@@ -3352,10 +3391,6 @@
             "$ref": "#/components/schemas/FailMode",
             "default": "closed"
           },
-          "input_mode": {
-            "$ref": "#/components/schemas/InputMode",
-            "default": "block"
-          },
           "refusal_text": {
             "default": "Sorry, I can't help with that request.",
             "maxLength": 2000,
@@ -3365,7 +3400,6 @@
           }
         },
         "required": [
-          "input_mode",
           "classifier",
           "fail_mode",
           "refusal_text"
@@ -3432,16 +3466,6 @@
         ],
         "title": "HealthResponse",
         "type": "object"
-      },
-      "InputMode": {
-        "description": "What the input Guardrail does when it flags a Visitor message (enforced in spec 08).",
-        "enum": [
-          "block",
-          "warn",
-          "log"
-        ],
-        "title": "InputMode",
-        "type": "string"
       },
       "InstructionsChangeOut": {
         "properties": {
@@ -4156,6 +4180,25 @@
           "mfa_enabled"
         ],
         "title": "MemberOut",
+        "type": "object"
+      },
+      "MemberRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "MemberRef",
         "type": "object"
       },
       "MembershipOut": {
@@ -5321,9 +5364,6 @@
             "title": "Embedding Model Id",
             "type": "string"
           },
-          "flagged_chunk_mode": {
-            "$ref": "#/components/schemas/FlaggedChunkMode"
-          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -5348,8 +5388,7 @@
           "agent_count",
           "embedding_model_id",
           "ocr_enabled",
-          "embedding_credential_id",
-          "flagged_chunk_mode"
+          "embedding_credential_id"
         ],
         "title": "ProjectOut",
         "type": "object"
@@ -7397,16 +7436,6 @@
             ],
             "title": "Description"
           },
-          "flagged_chunk_mode": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FlaggedChunkMode"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "name": {
             "anyOf": [
               {
@@ -7614,7 +7643,14 @@
             "type": "integer"
           },
           "cost": {
-            "$ref": "#/components/schemas/CostOut"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "fallback": {
             "$ref": "#/components/schemas/FallbackOut"
@@ -8385,7 +8421,7 @@
     },
     "/api/auth/mfa/verify": {
       "post": {
-        "description": "Finishes an MFA-pending sign-in with an authenticator or recovery code.",
+        "description": "Finishes an MFA-pending sign-in with an authenticator or recovery code.\n\nWrong codes count per Member across pending sign-ins: after a few, each try waits\nprogressively longer, then codes are locked out for a while. A refused try isn't checked.\nEach try is counted as wrong before its code is checked (AUTH-F1), so parallel tries\ncan't all slip past the counter; a correct code then clears it.",
         "operationId": "verifyMfa",
         "requestBody": {
           "content": {
@@ -8437,6 +8473,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThrottledResponse"
+                }
+              }
+            },
+            "description": "Too many incorrect codes. Try again later."
           }
         },
         "summary": "Verify",
@@ -8447,7 +8493,7 @@
     },
     "/api/auth/password-reset": {
       "post": {
-        "description": "Emails a reset link if the email is registered. The answer is the same either way.",
+        "description": "Emails a reset link if the email is registered. The answer is the same either way.\n\nRequests are limited per email and per IP address; over a limit nothing is sent, and the\nanswer is still the same.",
         "operationId": "requestPasswordReset",
         "requestBody": {
           "content": {
@@ -8714,7 +8760,7 @@
     },
     "/api/health/worker": {
       "get": {
-        "description": "Enqueue the worker health task and wait for the worker's reply.",
+        "description": "The worker's reply to a health task: a fresh round trip, or one at most a few seconds old.",
         "operationId": "getWorkerHealth",
         "responses": {
           "200": {
@@ -11313,7 +11359,7 @@
         ]
       },
       "patch": {
-        "description": "Renames the Project, edits its description, turns OCR on or off or sets whether Chunks\nthe ingestion Guardrail scan flags are marked or excluded from retrieval. An archived\nProject is refused.",
+        "description": "Renames the Project, edits its description or turns OCR on or off. An archived Project\nis refused. (Chunks the ingestion Guardrail scan flags are always quarantined: no Project\nsetting lets them into retrieval.)",
         "operationId": "updateProject",
         "parameters": [
           {
@@ -11990,7 +12036,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
       "get": {
-        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, and the configuration diff from `a` to `b`. Only Visitor\nConversations count.",
+        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, and the configuration diff from `a` to `b`. Only Visitor\nConversations count. The cost is for Owners only.",
         "operationId": "compareVersions",
         "parameters": [
           {
@@ -12126,7 +12172,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison.csv": {
       "get": {
-        "description": "The comparison of Versions `a` and `b` as a CSV download: a row per metric with both\nVersions' values, the difference and the Version it favours.",
+        "description": "The comparison of Versions `a` and `b` as a CSV download: a row per metric with both\nVersions' values, the difference and the Version it favours. The cost rows are for Owners\nonly.",
         "operationId": "exportVersionComparison",
         "parameters": [
           {
@@ -13254,7 +13300,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/messages": {
       "post": {
-        "description": "Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions\nVersion; the answer streams back as Server-Sent Events. An archived Agent answers no more\nquestions; its Conversations can still be read.",
+        "description": "Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions\nVersion; the answer streams back as Server-Sent Events. An archived Agent answers no more\nquestions; its Conversations can still be read. Questions are limited per Member and per\nOrganisation each minute, and the answers' tokens count against the Organisation's daily\nPlayground Token Budget (not any Agent's Visitor budget); a refused question gets 429.",
         "operationId": "sendPlaygroundMessage",
         "parameters": [
           {
@@ -13341,6 +13387,16 @@
           },
           "422": {
             "description": "The question is empty or too long, or the Instructions Version isn't one of the Project's."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Playground's limits refused the question, which isn't saved: the Member or the Organisation sent too many in the last minute, or the Organisation's daily Playground Token Budget is spent (or held by answers still being written)."
           }
         },
         "summary": "Send Message",
@@ -14159,7 +14215,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
       "get": {
-        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed and the Project's Document changes during the range. Only Visitor\nConversations count.",
+        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed and the Project's Document changes during the range. Only Visitor\nConversations count. The cost series is for Owners only.",
         "operationId": "getTimeSeries",
         "parameters": [
           {
@@ -14262,6 +14318,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
           },
           "404": {
             "content": {
@@ -15748,7 +15814,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks": {
       "get": {
-        "description": "A page of the Document's Chunks in order, with heading path and pages.",
+        "description": "A page of the Document's Chunks in order, with heading path, pages and any Guardrail\nflag (with who allowed it, when an Editor did).",
         "operationId": "listChunks",
         "parameters": [
           {
@@ -15803,6 +15869,18 @@
               "title": "Limit",
               "type": "integer"
             }
+          },
+          {
+            "description": "Only the Chunks the ingestion Guardrail scan flagged, for review.",
+            "in": "query",
+            "name": "flagged",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only the Chunks the ingestion Guardrail scan flagged, for review.",
+              "title": "Flagged",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -15843,10 +15921,10 @@
         ]
       }
     },
-    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/flag": {
-      "delete": {
-        "description": "Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition,\nfor a false positive: the Chunk is retrieved again at once, even in a Project that excludes\nflagged Chunks. Records ``chunk.flag_cleared`` with the flag it had.",
-        "operationId": "clearChunkFlag",
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/chunks/{chunk_id}/allow": {
+      "post": {
+        "description": "Allows a quarantined Chunk of the Document's current edition into the corpus, for a\nfalse positive the Editor reviewed: that Chunk is retrieved again at once. Its flag is\nkept, with who allowed it and when. Records ``chunk.allowed``.",
+        "operationId": "allowChunk",
         "parameters": [
           {
             "in": "path",
@@ -15890,7 +15968,14 @@
           }
         ],
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkOut"
+                }
+              }
+            },
             "description": "Successful Response"
           },
           "404": {
@@ -15911,7 +15996,7 @@
                 }
               }
             },
-            "description": "This Project is archived. An Owner can restore it. Or the Chunk isn't flagged: This Chunk isn't flagged."
+            "description": "This Project is archived. An Owner can restore it. Or the Chunk isn't quarantined: This Chunk isn't flagged. / This Chunk is already allowed."
           },
           "422": {
             "content": {
@@ -15924,7 +16009,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Clear Chunk Flag",
+        "summary": "Allow Chunk",
         "tags": [
           "documents"
         ]
@@ -18297,6 +18382,16 @@
             },
             "description": "This chat has expired. Reload the page to start a new one."
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant can't be used from this site."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -18359,6 +18454,16 @@
               }
             },
             "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant can't be used from this site."
           },
           "404": {
             "content": {
@@ -18576,6 +18681,16 @@
             },
             "description": "This chat has expired. Reload the page to start a new one."
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant can't be used from this site."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -18660,6 +18775,16 @@
               }
             },
             "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant can't be used from this site."
           },
           "404": {
             "content": {

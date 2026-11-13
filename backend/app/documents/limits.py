@@ -92,7 +92,21 @@ UNREADABLE_CONTENT = (
 )
 CONVERSION_FAILED = "This file couldn't be converted. Retry it, or upload a fixed copy."
 ORIGINAL_MISSING = "The uploaded file is missing from storage. Upload it again."
+ORIGINAL_CHANGED = "The stored file no longer matches the one that was uploaded. Upload it again."
 PROCESSING_FAILED = "This Document couldn't be processed. Retry it, or upload it again."
+TIMED_OUT = (
+    "Processing this file took too long, so it was stopped. Split it into smaller files, "
+    "then upload them."
+)
+TOO_MUCH_TEXT = (
+    "This file has more text than one Document can hold. Split it into smaller files, "
+    "then upload them."
+)
+
+# The most converted text (markdown characters) one Document may have: about 2.5 million
+# tokens, far more than any handbook, but it stops a small file that expands enormously from
+# being chunked, embedded and scanned at length.
+MAX_CONVERTED_CHARS = 10_000_000
 
 
 def provider_failed_message(attempts: int) -> str:

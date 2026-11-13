@@ -20,7 +20,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app import audit
 from app.agents.models import Agent
 from app.documents.models import Document
-from app.projects.models import FlaggedChunkMode, Project
+from app.projects.models import Project
 from app.tenancy.repository import OrganisationScope
 
 
@@ -162,10 +162,9 @@ async def update_project(
     name: str | None,
     description: str | None,
     ocr_enabled: bool | None = None,
-    flagged_chunk_mode: FlaggedChunkMode | None = None,
 ) -> Project:
-    """Renames the Project, replaces its description, turns OCR on or off and/or sets its
-    Flagged Chunk mode. Archived Projects are refused."""
+    """Renames the Project, replaces its description and/or turns OCR on or off. Archived
+    Projects are refused."""
     project = await active_project(session, scope, project_id, lock=True)
     if name is not None:
         project.name = name
@@ -173,8 +172,6 @@ async def update_project(
         project.description = description
     if ocr_enabled is not None:
         project.ocr_enabled = ocr_enabled
-    if flagged_chunk_mode is not None:
-        project.flagged_chunk_mode = flagged_chunk_mode
     await session.commit()
     return project
 

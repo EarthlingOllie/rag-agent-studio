@@ -176,8 +176,10 @@ async def test_the_model_receives_the_draft_the_chunks_and_the_history_in_order(
     ]
     assert parts[0][2] == preamble("{canary}")
     assert parts[1][2] == "Be brief."
-    assert parts[2][2] == "How much leave?"
-    assert parts[3][2] == first_answer
+    # A remembered question is spotlighted as Visitor input, like the latest one.
+    assert parts[2][2] == "<<<VISITOR_INPUT>>>\nHow much leave?\n<<<END_VISITOR_INPUT>>>"
+    # The remembered answer (here an echo of the first prompt) has its delimiters escaped.
+    assert parts[3][2] == first_answer.replace("<<<", "<\u200b<<")
     assert parts[4][2] == (
         "<<<RETRIEVED_CHUNKS>>>\n[C1] leave.txt\n" + LEAVE + "\n<<<END_RETRIEVED_CHUNKS>>>\n\n"
         "<<<VISITOR_INPUT>>>\n" + LEAVE + "\n<<<END_VISITOR_INPUT>>>"
@@ -231,8 +233,8 @@ async def test_an_unanswered_question_is_not_remembered(
     response = await ask(member, project_id, agent_id, conversation["id"], "Second")
 
     parts = json.loads(answer_text(response))
-    assert "Lost question" not in [part[2] for part in parts]
-    assert "First" in [part[2] for part in parts]
+    assert not any("Lost question" in part[2] for part in parts)
+    assert "<<<VISITOR_INPUT>>>\nFirst\n<<<END_VISITOR_INPUT>>>" in [part[2] for part in parts]
 
 
 async def test_the_question_needs_a_default_model(app: FastAPI, owner: SignedUpMember) -> None:
@@ -514,7 +516,10 @@ async def test_only_the_remembered_turns_reach_the_model(
 
     response = await ask(member, project_id, agent_id, conversation["id"], "Four?")
 
-    assert json.loads(answer_text(response))["remembered"] == ["Two?", "Three?"]
+    assert json.loads(answer_text(response))["remembered"] == [
+        "<<<VISITOR_INPUT>>>\nTwo?\n<<<END_VISITOR_INPUT>>>",
+        "<<<VISITOR_INPUT>>>\nThree?\n<<<END_VISITOR_INPUT>>>",
+    ]
     await save_draft(member, project_id, agent_id, {"behaviour": {"remembered_turns": 0}})
     forgetful = await ask(member, project_id, agent_id, conversation["id"], "Five?")
     assert json.loads(answer_text(forgetful))["remembered"] == []

@@ -6,13 +6,17 @@
 2. The browser PUTs the file straight to the object store.
 3. ``confirm_upload`` checks the quota again, reads the stored file, checks its real size,
    computes its SHA-256 content hash (checking it against the one the browser sent, if any),
-   creates the Document as Queued, and enqueues ingestion.
+   copies the checked bytes to a key no presigned URL covers (the upload's URL stays writable
+   until it expires) and deletes the upload, creates the Document as Queued (recording
+   ``document.created`` with the file's name and hash), and enqueues ingestion. Ingestion
+   checks the copy's hash and size again before using it. ``replace_document`` does the same
+   for a newer edition, recording ``document.replaced``.
 
 ``retry_document`` sends a Ready or Failed Document through ingestion again, with the
 Project's current settings (its OCR flag, for one).
 
-``clear_chunk_flag`` clears the ingestion Guardrail scan's flag on a Chunk an Editor judges a
-false positive, and audits it.
+``allow_chunk`` lets one quarantined Chunk (flagged by the ingestion Guardrail scan) into the
+corpus when an Editor judges the flag a false positive, and audits it.
 
 Every function takes the Organisation scope and finds the Project only inside it; uploads go
 through ``active_project``, so an archived Project takes none. A Failed Document (or a Failed
@@ -41,12 +45,14 @@ from app.documents.models import (
     Document,
     DocumentStatus,
     StagedEdition,
+    quarantined_sql,
 )
 from app.documents.pipeline import stored_keys
 from app.projects import service as projects
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
 from app.tags.models import DocumentTag
+from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
 
 _PENDING = "document-upload:{}"
@@ -77,7 +83,11 @@ class ChunkNotFoundError(Exception):
 
 
 class ChunkNotFlaggedError(Exception):
-    """The Chunk has no Guardrail flag to clear."""
+    """The Chunk has no Guardrail flag, so it isn't quarantined."""
+
+
+class ChunkAlreadyAllowedError(Exception):
+    """The flagged Chunk was already allowed out of quarantine."""
 
 
 class QuotaReachedError(Exception):
@@ -155,6 +165,8 @@ class _Received:
     content_hash: str
     # The pending upload's Redis key, deleted once the Document is committed.
     pending_key: str
+    # Where the browser uploaded the file; deleted once the Document is committed.
+    upload_key: str
 
 
 async def _receive(
@@ -194,14 +206,30 @@ async def _receive(
         await redis.delete(key)
         await store.delete(pending["object_key"])
         raise DuplicateDocumentError(duplicate)
+    # The presigned URL stays writable until it expires, so the checked bytes are kept under a
+    # new key no URL was given for; ingestion (and every retry) reads only that copy.
+    object_key = _final_key(pending["object_key"])
+    await store.put(object_key, data, content_type=pending["mime_type"])
     return _Received(
         name=pending["name"],
         mime_type=pending["mime_type"],
-        object_key=pending["object_key"],
+        object_key=object_key,
         size_bytes=len(data),
         content_hash=digest,
         pending_key=key,
+        upload_key=pending["object_key"],
     )
+
+
+def _final_key(upload_key: str) -> str:
+    """A fresh key, next to the upload's (so under the Project's storage prefix)."""
+    return f"{upload_key.rsplit('/', 1)[0]}/{uuid.uuid4()}"
+
+
+async def _discard_upload(redis: Redis, store: ObjectStore, received: _Received) -> None:
+    """Once the Document refers to the kept copy: the pending upload and its file go."""
+    await redis.delete(received.pending_key)
+    await store.delete(received.upload_key)
 
 
 async def _document_with_hash(
@@ -269,10 +297,31 @@ async def confirm_upload(
         edition=1,
     )
     session.add(document)
+    await session.flush()
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action="document.created",
+        target=audit.AuditTarget("document", document.id),
+        after=_audited_file(project, received),
+    )
     await session.commit()
-    await redis.delete(received.pending_key)
+    await _discard_upload(redis, store, received)
     await session.refresh(document)
     return document
+
+
+def _audited_file(project: Project, received: _Received) -> dict[str, object]:
+    """What an Audit Event records about a confirmed upload: the file's name, type, size and
+    content hash, in which Project."""
+    return {
+        "project_id": str(project.id),
+        "name": received.name,
+        "mime_type": received.mime_type,
+        "size_bytes": received.size_bytes,
+        "content_hash": received.content_hash,
+    }
 
 
 async def _check_quota(session: AsyncSession, project: Project) -> None:
@@ -351,11 +400,12 @@ async def retry_document(
 
 @dataclass(frozen=True)
 class ChunkCounts:
-    """How many Chunks a Document's current edition has, and how many of them the ingestion
-    Guardrail scan flagged."""
+    """How many Chunks a Document's current edition has, how many of them the ingestion
+    Guardrail scan flagged, and how many of those are still quarantined (not allowed)."""
 
     total: int = 0
     flagged: int = 0
+    quarantined: int = 0
 
 
 def _active_model(project_id: Any) -> ScalarSelect[str]:
@@ -368,10 +418,10 @@ def _active_model(project_id: Any) -> ScalarSelect[str]:
     )
 
 
-def _chunk_counts() -> tuple[ScalarSelect[int], ScalarSelect[int]]:
-    """Correlated subqueries counting the current edition's Chunks, and its flagged ones, for
-    a query over ``Document``. Only the Project's active Embedding Model's rows count: a
-    re-embed writes a second row per Chunk for the pending model."""
+def _chunk_counts() -> tuple[ScalarSelect[int], ScalarSelect[int], ScalarSelect[int]]:
+    """Correlated subqueries counting the current edition's Chunks, its flagged ones and its
+    quarantined ones, for a query over ``Document``. Only the Project's active Embedding
+    Model's rows count: a re-embed writes a second row per Chunk for the pending model."""
     current = (
         Chunk.document_id == Document.id,
         Chunk.edition == Document.edition,
@@ -381,7 +431,8 @@ def _chunk_counts() -> tuple[ScalarSelect[int], ScalarSelect[int]]:
     flagged = (
         select(func.count()).where(*current, Chunk.guardrail_label.is_not(None)).scalar_subquery()
     )
-    return total, flagged
+    held = select(func.count()).where(*current, quarantined_sql()).scalar_subquery()
+    return total, flagged, held
 
 
 @dataclass(frozen=True)
@@ -419,9 +470,9 @@ async def list_documents(
 ) -> list[DocumentSummary]:
     """The Project's Documents, newest first, with their Chunk counts and replacements."""
     project = await projects.get_project(session, scope, project_id)
-    total, flagged = _chunk_counts()
+    total, flagged, held = _chunk_counts()
     query = (
-        select(Document, total, flagged, StagedEdition)
+        select(Document, total, flagged, held, StagedEdition)
         .outerjoin(StagedEdition, StagedEdition.document_id == Document.id)
         .where(Document.project_id == project.id)
     )
@@ -437,8 +488,8 @@ async def list_documents(
         )
     rows = await session.execute(query.order_by(Document.created_at.desc(), Document.name))
     return [
-        DocumentSummary(document, ChunkCounts(count, flagged_count), staged)
-        for document, count, flagged_count, staged in rows
+        DocumentSummary(document, ChunkCounts(count, flagged_count, held_count), staged)
+        for document, count, flagged_count, held_count, staged in rows
     ]
 
 
@@ -484,8 +535,10 @@ async def open_document(
 @dataclass(frozen=True)
 class ChunkPage:
     chunks: list[Chunk]
-    # How many Chunks the current edition has in all.
+    # How many Chunks the current edition has in all (only flagged ones, when so filtered).
     total: int
+    # The names of the Members who allowed the page's allowed Chunks, by Member ID.
+    allowers: dict[uuid.UUID, str]
 
 
 async def list_chunks(
@@ -496,22 +549,36 @@ async def list_chunks(
     *,
     offset: int,
     limit: int,
+    flagged: bool = False,
 ) -> ChunkPage:
-    """A page of the current edition's Chunks, in Document order."""
+    """A page of the current edition's Chunks, in Document order; with ``flagged``, only the
+    Chunks the ingestion Guardrail scan flagged (quarantined or allowed), for review."""
     document = await get_document(session, scope, project_id, document_id)
-    current = (
+    current = [
         Chunk.document_id == document.id,
         Chunk.edition == document.edition,
         Chunk.embedding_model_id == _active_model(document.project_id),
-    )
+    ]
+    if flagged:
+        current.append(Chunk.guardrail_label.is_not(None))
     total = await session.scalar(select(func.count()).where(*current))
-    chunks = await session.scalars(
-        select(Chunk).where(*current).order_by(Chunk.ordinal).offset(offset).limit(limit)
+    chunks = list(
+        await session.scalars(
+            select(Chunk).where(*current).order_by(Chunk.ordinal).offset(offset).limit(limit)
+        )
     )
-    return ChunkPage(list(chunks), total or 0)
+    return ChunkPage(chunks, total or 0, await _allowers(session, chunks))
 
 
-async def clear_chunk_flag(
+async def _allowers(session: AsyncSession, chunks: Sequence[Chunk]) -> dict[uuid.UUID, str]:
+    ids = {c.guardrail_allowed_by_id for c in chunks if c.guardrail_allowed_by_id is not None}
+    if not ids:
+        return {}
+    rows = await session.execute(select(Member.id, Member.name).where(Member.id.in_(ids)))
+    return {member_id: name for member_id, name in rows}
+
+
+async def allow_chunk(
     session: AsyncSession,
     scope: OrganisationScope,
     project_id: uuid.UUID,
@@ -519,12 +586,14 @@ async def clear_chunk_flag(
     chunk_id: uuid.UUID,
     *,
     now: datetime,
-) -> None:
-    """Clears the ingestion Guardrail scan's flag on a Chunk of the Document's current edition
-    (an Editor judging it a false positive), so it is retrieved again even where the Project
-    excludes flagged Chunks, and records ``chunk.flag_cleared`` with the flag it had. The flag
-    goes from every Embedding Model's copy of the Chunk (a re-embed in progress keeps one per
-    model). Archived Projects are refused."""
+) -> ChunkPage:
+    """Allows a quarantined Chunk of the Document's current edition into the corpus: an Editor
+    reviewed it and judges the ingestion Guardrail scan's flag a false positive. The flag is
+    kept; the Chunk records who allowed it and when, and is retrieved again at once. Every
+    Embedding Model's copy of the Chunk is allowed (a re-embed in progress keeps one per model).
+    Only that Chunk is allowed: a new edition of the Document is scanned and quarantined anew.
+    Records ``chunk.allowed`` with the flag and the text allowed. Archived Projects are refused.
+    Returns the allowed Chunk, as a one-Chunk page."""
     project = await projects.active_project(session, scope, project_id)
     document = await session.scalar(
         select(Document).where(Document.id == document_id, Document.project_id == project.id)
@@ -544,11 +613,13 @@ async def clear_chunk_flag(
         raise ChunkNotFoundError
     if chunk.guardrail_label is None:
         raise ChunkNotFlaggedError
+    if chunk.guardrail_allowed_at is not None:
+        raise ChunkAlreadyAllowedError
     await audit.record(
         session,
         organisation_id=scope.organisation_id,
         actor_id=scope.member_id,
-        action="chunk.flag_cleared",
+        action="chunk.allowed",
         target=audit.AuditTarget("chunk", chunk.id),
         before={
             "project_id": str(project.id),
@@ -557,8 +628,10 @@ async def clear_chunk_flag(
             "label": chunk.guardrail_label,
             "score": chunk.guardrail_score,
             "reason": chunk.guardrail_reason,
+            "text": chunk.text,
+            "quarantined": True,
         },
-        after={"flag": None},
+        after={"quarantined": False},
         occurred_at=now,
     )
     await session.execute(
@@ -568,9 +641,11 @@ async def clear_chunk_flag(
             Chunk.edition == chunk.edition,
             Chunk.ordinal == chunk.ordinal,
         )
-        .values(guardrail_label=None, guardrail_score=None, guardrail_reason=None)
+        .values(guardrail_allowed_at=now, guardrail_allowed_by_id=scope.member_id)
     )
     await session.commit()
+    await session.refresh(chunk)
+    return ChunkPage([chunk], 1, await _allowers(session, [chunk]))
 
 
 async def delete_document(
@@ -667,6 +742,19 @@ async def replace_document(
         content_hash=content_hash,
         max_bytes=max_bytes,
     )
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action="document.replaced",
+        target=audit.AuditTarget("document", document.id),
+        before={
+            "name": document.name,
+            "content_hash": document.content_hash,
+            "edition": document.edition,
+        },
+        after={**_audited_file(project, received), "edition": document.edition + 1},
+    )
     discarded: list[str] = []
     if staged is None:
         staged = StagedEdition(
@@ -687,13 +775,16 @@ async def replace_document(
     staged.attempt_count = 0
     staged.updated_at = func.now()
     await session.commit()
-    await redis.delete(received.pending_key)
+    await _discard_upload(redis, store, received)
     await session.refresh(staged)
     return Replacement(document, staged, discarded)
 
 
 async def chunk_counts(session: AsyncSession, document: Document) -> ChunkCounts:
-    """How many Chunks the Document's current edition has, and how many are flagged."""
-    total, flagged = _chunk_counts()
-    row = (await session.execute(select(total, flagged).where(Document.id == document.id))).one()
-    return ChunkCounts(row[0], row[1])
+    """How many Chunks the Document's current edition has, how many are flagged, and how many
+    are quarantined."""
+    total, flagged, held = _chunk_counts()
+    row = (
+        await session.execute(select(total, flagged, held).where(Document.id == document.id))
+    ).one()
+    return ChunkCounts(row[0], row[1], row[2])

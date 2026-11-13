@@ -3,15 +3,16 @@ import { type ComponentProps, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { Badge, button, EmptyState, FlagCount, Notice, Pagination, Skeleton, Status, surface, text } from "../design";
+import { Badge, button, ConfirmDialog, EmptyState, field, FlagCount, Notice, Pagination, Skeleton, Status, surface, text } from "../design";
+import { formatTime } from "../settings/AuditPage";
 import {
   type ChunkPage,
   type DocumentDetail,
+  allowFailure,
   CHUNK_PAGE_SIZE,
-  clearFlagFailure,
   downloadPath,
+  useAllowChunk,
   useChunkPage,
-  useClearChunkFlag,
   useDocument,
 } from "./documents";
 import { fileType, formatSize, STATUS_LABELS, STATUS_TONES } from "./DocumentsTab";
@@ -56,29 +57,68 @@ interface DocumentRef {
   documentId: string;
 }
 
+type Flag = NonNullable<Chunk["flag"]>;
+
+/** "Prompt injection, score 0.96. <reason>": what the ingestion Guardrail scan said about the Chunk. */
+function verdict(flag: Flag): string {
+  return `${FLAG_LABELS[flag.label] ?? flag.label}, score ${flag.score.toFixed(2)}. ${flag.reason}`;
+}
+
 /**
- * Why the ingestion Guardrail scan flagged the Chunk as instructions aimed at an AI, and a button
- * to clear the flag when it is a false positive (audited; the Chunk is then retrieved again).
+ * Why the ingestion Guardrail scan flagged the Chunk as instructions aimed at an AI. A flagged Chunk
+ * is quarantined: Agents never use it. An Editor who judges the flag a false positive allows that one
+ * Chunk, after confirming with its text in front of them (audited; the flag is kept, with who
+ * allowed it and when).
  */
-function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk: Chunk; at: DocumentRef }) {
-  const clear = useClearChunkFlag(at.organisationId, at.projectId, at.documentId);
+function FlagNote({ flag, chunk, at }: { flag: Flag; chunk: Chunk; at: DocumentRef }) {
+  const allow = useAllowChunk(at.organisationId, at.projectId, at.documentId);
+  const [confirming, setConfirming] = useState(false);
+  const number = String(chunk.ordinal + 1);
+  if (flag.allowed) {
+    const by = flag.allowed.allowed_by?.name ?? "a former Member";
+    return (
+      <p role="note" aria-label="Guardrail flag" className="rounded-xl bg-sunken px-3.5 py-2.5 text-sm text-ink-2">
+        <strong className="font-medium">
+          Allowed by {by} on {formatTime(flag.allowed.allowed_at)}:
+        </strong>{" "}
+        {verdict(flag)}
+      </p>
+    );
+  }
   return (
     <div className="flex flex-col items-start gap-2 rounded-xl bg-flag-soft px-3.5 py-2.5 text-sm text-flag">
       <p role="note" aria-label="Guardrail flag">
-        <strong className="font-medium">Flagged:</strong> {FLAG_LABELS[flag.label] ?? flag.label}, score {flag.score.toFixed(2)}. {flag.reason}
+        <strong className="font-medium">Quarantined:</strong> {verdict(flag)}
       </p>
-      {clear.error && <Notice tone="error">{clearFlagFailure(clear.error)}</Notice>}
+      {allow.error && <Notice tone="error">{allowFailure(allow.error)}</Notice>}
       <button
         type="button"
         className={button.secondary}
-        aria-label={`Clear flag on Chunk ${String(chunk.ordinal + 1)}`}
-        disabled={clear.isPending}
+        aria-label={`Allow Chunk ${number}`}
+        disabled={allow.isPending}
         onClick={() => {
-          clear.mutate(chunk.id);
+          setConfirming(true);
         }}
       >
-        Clear flag
+        Allow…
       </button>
+      <ConfirmDialog
+        open={confirming}
+        title={`Allow Chunk ${number} into the knowledge base?`}
+        confirmLabel="Allow Chunk"
+        busy={allow.isPending}
+        body={<p className={`${surface.panel} max-h-48 overflow-auto whitespace-pre-wrap text-sm text-ink-2`}>{chunk.text}</p>}
+        onConfirm={() => {
+          setConfirming(false);
+          allow.mutate(chunk.id);
+        }}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+      >
+        The ingestion Guardrail flagged it: {verdict(flag)} Agents will use this Chunk in their answers once you allow it.
+        Allow it only if you have read it and it holds no instructions to an AI. Your name is recorded with the allow.
+      </ConfirmDialog>
     </div>
   );
 }
@@ -103,7 +143,8 @@ function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
 
 function ChunkList({ organisationId, projectId, documentId }: { organisationId: string; projectId: string; documentId: string }) {
   const [page, setPage] = useState(0);
-  const chunks = useChunkPage(organisationId, projectId, documentId, page);
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const chunks = useChunkPage(organisationId, projectId, documentId, page, flaggedOnly);
 
   let body;
   if (chunks.isError) {
@@ -139,9 +180,23 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
 
   return (
     <section aria-labelledby="chunks-heading" className="flex min-w-0 flex-col gap-3">
-      <h3 id="chunks-heading" className={text.heading}>
-        Chunks
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 id="chunks-heading" className={text.heading}>
+          Chunks
+        </h3>
+        <label className="flex items-center gap-2 text-sm text-ink-2">
+          <input
+            type="checkbox"
+            className={field.checkbox}
+            checked={flaggedOnly}
+            onChange={(event) => {
+              setFlaggedOnly(event.target.checked);
+              setPage(0);
+            }}
+          />
+          Only flagged Chunks
+        </label>
+      </div>
       {body}
     </section>
   );
@@ -149,6 +204,7 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
 
 function DocumentHeader({ document, download }: { document: DocumentDetail; download: string }) {
   const chunks = document.chunk_count;
+  const quarantined = document.quarantined_chunk_count;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -164,9 +220,9 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
             <li className="font-mono text-xs">{fileType(document.name)}</li>
             <li className="font-mono text-xs">{formatSize(document.size_bytes)}</li>
             <li className="font-mono text-xs">{`${String(chunks)} ${chunks === 1 ? "chunk" : "chunks"}`}</li>
-            {document.flagged_chunk_count > 0 && (
+            {document.quarantined_chunk_count > 0 && (
               <li>
-                <FlagCount count={document.flagged_chunk_count} label="flagged chunks" />
+                <FlagCount count={document.quarantined_chunk_count} label="quarantined chunks" />
               </li>
             )}
           </ul>
@@ -175,10 +231,11 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
           Download original
         </a>
       </div>
-      {document.flagged_chunk_count > 0 && (
+      {quarantined > 0 && (
         <Notice tone="warning">
-          {document.flagged_chunk_count} {document.flagged_chunk_count === 1 ? "Chunk" : "Chunks"} flagged as possible
-          instructions to an AI.
+          {quarantined === 1
+            ? "1 Chunk quarantined as possible instructions to an AI: Agents never use it until an Editor reviews and allows it."
+            : `${String(quarantined)} Chunks quarantined as possible instructions to an AI: Agents never use them until an Editor reviews and allows them.`}
         </Notice>
       )}
     </div>
@@ -188,7 +245,8 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
 /**
  * The Document viewer: Docling's converted markdown beside the Document's Chunks, each on a card
  * with its heading path and pages, so an Editor sees exactly what an Agent can retrieve. Chunks the
- * ingestion Guardrail scan flagged are badged and say why.
+ * ingestion Guardrail scan flagged are badged, quarantined and say why; an Editor reviews them here and
+ * may allow one as a false positive.
  */
 export function DocumentViewer() {
   const { organisationId, projectId, documentId } = useParams({

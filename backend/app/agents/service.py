@@ -36,6 +36,17 @@ RETRIEVAL_MODE_CHANGED = "agent.retrieval_mode_changed"
 
 # The Retrieval settings a Draft change is audited for, with the names the Audit Event gives them.
 _AUDITED_RETRIEVAL = (("mode", "retrieval_mode"), ("search_limit", "search_limit"))
+DRAFT_SETTINGS_CHANGED = "agent.draft_settings_changed"
+# The Draft settings that decide which provider, through which Provider Credential, sees the
+# conversation, how injections are judged, and what image Visitors load; by group and key, with
+# the name the Audit Event gives each.
+_AUDITED_SETTINGS = (
+    ("behaviour", "model", "model"),
+    ("retrieval", "reranker", "reranker"),
+    ("guardrails", "classifier", "guardrail_classifier"),
+    ("guardrails", "fail_mode", "guardrail_fail_mode"),
+    ("experience", "avatar_url", "avatar_url"),
+)
 
 
 class AgentNotFoundError(Exception):
@@ -284,6 +295,37 @@ async def delete_agent(
     await session.commit()
 
 
+async def _audit_settings(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    agent: Agent,
+    before: AgentConfig,
+    after: AgentConfig,
+    now: datetime,
+) -> None:
+    """Records ``agent.draft_settings_changed`` when a Draft change moves the model, the
+    reranker, the Guardrail classifier or fail mode, or the avatar URL, with the before and
+    after values of just the settings that changed (Provider Credentials by ID)."""
+    old, new = before.model_dump(mode="json"), after.model_dump(mode="json")
+    changed = [
+        (group, key, name)
+        for group, key, name in _AUDITED_SETTINGS
+        if old[group][key] != new[group][key]
+    ]
+    if not changed:
+        return
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=DRAFT_SETTINGS_CHANGED,
+        target=audit.AuditTarget("agent", agent.id),
+        before={name: old[group][key] for group, key, name in changed},
+        after={name: new[group][key] for group, key, name in changed},
+        occurred_at=now,
+    )
+
+
 async def _audit_retrieval_mode(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -328,9 +370,9 @@ async def replace_draft(
     if base_revision is not None and base_revision != draft.revision:
         raise StaleDraftError(await with_draft(session, agent))
     await check_draft(session, scope, project, config)
-    await _audit_retrieval_mode(
-        session, scope, agent, AgentConfig.model_validate(draft.config), config, now
-    )
+    previous = AgentConfig.model_validate(draft.config)
+    await _audit_retrieval_mode(session, scope, agent, previous, config, now)
+    await _audit_settings(session, scope, agent, previous, config, now)
     draft.config = config.model_dump(mode="json")
     draft.updated_at = now
     draft.revision += 1

@@ -71,7 +71,7 @@ test.describe("Full AgentConfig editor", () => {
     await experience.getByLabel("Greeting").fill("Hi! Ask me about leave.");
     await save;
     save = nextSave(page);
-    await page.getByRole("group", { name: "Guardrails" }).getByLabel("Input Guardrail mode").selectOption("warn");
+    await page.getByRole("group", { name: "Guardrails" }).getByLabel(/When the classifier errors/).selectOption("open");
     await save;
     await expect(status).toHaveText("All changes saved");
 
@@ -141,7 +141,7 @@ test.describe("Full AgentConfig editor", () => {
     await openSettings(page, "Experience");
     await openSettings(page, "Guardrails");
     await expect(page.getByRole("group", { name: "Experience" }).getByLabel("Greeting")).toHaveValue("Hi! Ask me about leave.");
-    await expect(page.getByLabel("Input Guardrail mode")).toHaveValue("warn");
+    await expect(page.getByLabel(/When the classifier errors/)).toHaveValue("open");
     await openSettings(page, "Retrieval");
     await expect(page.getByRole("radio", { name: "Agentic" })).toBeChecked();
     await expect(page.getByRole("group", { name: "Retrieval" }).getByLabel("Search limit")).toHaveValue("2");

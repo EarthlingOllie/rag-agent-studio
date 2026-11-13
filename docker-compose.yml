@@ -129,6 +129,9 @@ services:
   worker:
     <<: *backend
     command: ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
+    # Ingestion (Docling's models, PDFs that expand on conversion) is bounded in time by the
+    # task's limits; this bounds its memory, so one bad file can't take the host down with it.
+    mem_limit: 6g
 
   beat:
     <<: *backend

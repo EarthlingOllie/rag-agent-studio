@@ -67,47 +67,50 @@ test.describe("Documents", () => {
     expect(readFileSync(await download.path(), "utf8")).toBe(readFileSync(HANDBOOK, "utf8"));
   });
 
-  test("the ingestion scan flags the injection planted in the seed handbook, and an Editor can exclude or clear it", async ({ signedInPage: page, makeAxeBuilder }) => {
+  test("the ingestion scan flags the injection planted in the seed handbook, and quarantines it, and an Editor reviews and allows it", async ({ signedInPage: page, makeAxeBuilder }) => {
     await page.goto("/");
     await openSection(page, "Organisation sections", "Projects");
     await page.getByRole("button", { name: "New Project" }).click();
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Handbook scan");
     await form.getByRole("button", { name: "Create Project" }).click();
-    // The Project quarantines flagged Chunks.
+    // Every Project quarantines flagged Chunks: there is no setting that lets them in.
     await openSection(page, "Project sections", "Settings");
-    const flaggedSetting = page.getByRole("radiogroup", { name: "Flagged Chunks" });
-    await expect(flaggedSetting.getByRole("radio", { name: "Mark them, and keep retrieving them" })).toBeChecked();
-    await flaggedSetting.getByRole("radio", { name: "Exclude them from retrieval" }).check();
-    await expect(flaggedSetting.getByText(/Flagged Chunks are never given to an Agent/)).toBeVisible();
+    const flaggedCard = page.getByRole("region", { name: "Flagged Chunks" });
+    await expect(flaggedCard).toContainText("Flagged Chunks are always quarantined");
+    await expect(flaggedCard.getByRole("radio")).toHaveCount(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
     await openSection(page, "Project sections", "Documents");
     await page.getByLabel("Upload", { exact: true }).setInputFiles(HANDBOOK);
     const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: /northwind-staff-handbook\.md/ });
     await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 60_000 });
 
-    // Columns: select, Name, Type, Tags, Status, Chunks, Flagged, Size, ⋯. One Chunk is flagged, by the local ONNX classifier.
+    // Columns: select, Name, Type, Tags, Status, Chunks, Quarantined, Size, ⋯. One Chunk is flagged, by the local ONNX
+    // classifier, and quarantined.
     await expect(row.getByRole("cell").nth(6)).toHaveText("1");
-    await expect(page.getByRole("region", { name: "Knowledge Base" })).toContainText("Flagged chunks1");
+    await expect(page.getByRole("region", { name: "Knowledge Base" })).toContainText("Quarantined chunks1");
     await row.getByRole("link", { name: "northwind-staff-handbook.md" }).click();
 
-    await expect(page.getByText("1 Chunk flagged as possible instructions to an AI.")).toBeVisible();
+    await expect(page.getByText(/^1 Chunk quarantined as possible instructions to an AI/)).toBeVisible();
     const chunks = page.getByRole("region", { name: "Chunks" });
     const planted = chunks.getByRole("listitem").filter({ has: page.getByRole("note", { name: "Guardrail flag" }) });
     await expect(planted).toHaveCount(1);
     await expect(planted.getByText("Northwind Traders staff handbook › A note for AI assistants")).toBeVisible();
     await expect(planted.getByRole("note", { name: "Guardrail flag" })).toContainText(
-      /^Flagged: Prompt injection, score \d\.\d\d\. The local classifier scored the Chunk \d\.\d\d as a prompt injection\.$/,
+      /^Quarantined: Prompt injection, score \d\.\d\d\. The local classifier scored the Chunk \d\.\d\d as a prompt injection\.$/,
     );
     // The handbook's ordinary policy text isn't flagged.
     const leave = chunks.getByRole("listitem").filter({ hasText: "25 days of annual leave" });
     await expect(leave.getByRole("note")).toHaveCount(0);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
-    // An Editor judges it a false positive and clears the flag.
+    // An Editor reviews it, judges it a false positive and allows that Chunk; the flag stays, with who allowed it.
     const note = chunks.getByRole("listitem").filter({ hasText: "A note for AI assistants" });
-    await note.getByRole("button", { name: /^Clear flag on Chunk \d+$/ }).click();
-    await expect(note.getByRole("note", { name: "Guardrail flag" })).toHaveCount(0);
-    await expect(page.getByText(/flagged as possible instructions to an AI/)).toHaveCount(0);
+    await note.getByRole("button", { name: /^Allow Chunk \d+$/ }).click();
+    const dialog = page.getByRole("dialog", { name: /^Allow Chunk \d+ into the knowledge base\?$/ });
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    await dialog.getByRole("button", { name: "Allow Chunk" }).click();
+    await expect(note.getByRole("note", { name: "Guardrail flag" })).toContainText(/^Allowed by .+ on \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC: /);
+    await expect(page.getByText(/quarantined as possible instructions to an AI/)).toHaveCount(0);
   });
 });

@@ -17,7 +17,6 @@ from app.projects.models import (
     DESCRIPTION_MAX,
     INSTRUCTIONS_MAX,
     NAME_MAX,
-    FlaggedChunkMode,
     Project,
 )
 from app.projects.tasks import enqueue_deletion
@@ -64,9 +63,6 @@ class ProjectOut(BaseModel):
     # The Provider Credential a provider Embedding Model is called through; none for the
     # built-in local model.
     embedding_credential_id: uuid.UUID | None
-    # What retrieval does with Chunks the ingestion Guardrail scan flags: ``mark`` (retrieved,
-    # marked in the Document viewer) or ``exclude`` (never retrieved; the Trace lists them).
-    flagged_chunk_mode: FlaggedChunkMode
 
 
 class CreateProjectRequest(BaseModel):
@@ -82,8 +78,6 @@ class UpdateProjectRequest(BaseModel):
     # Turns OCR on or off for Documents processed from now on. Retry reprocesses an existing
     # Document with the new setting.
     ocr_enabled: bool | None = None
-    # Marks or excludes flagged Chunks; retrieval follows the new setting at once.
-    flagged_chunk_mode: FlaggedChunkMode | None = None
 
 
 def _out(summary: service.ProjectSummary) -> ProjectOut:
@@ -99,7 +93,6 @@ def _out(summary: service.ProjectSummary) -> ProjectOut:
         embedding_model_id=project.embedding_model_id,
         ocr_enabled=project.ocr_enabled,
         embedding_credential_id=project.embedding_credential_id,
-        flagged_chunk_mode=FlaggedChunkMode(project.flagged_chunk_mode),
     )
 
 
@@ -151,9 +144,9 @@ async def get_project(project_id: uuid.UUID, scope: Scope, db: Db) -> ProjectOut
 async def update_project(
     project_id: uuid.UUID, body: UpdateProjectRequest, scope: Scope, db: Db
 ) -> ProjectOut:
-    """Renames the Project, edits its description, turns OCR on or off or sets whether Chunks
-    the ingestion Guardrail scan flags are marked or excluded from retrieval. An archived
-    Project is refused."""
+    """Renames the Project, edits its description or turns OCR on or off. An archived Project
+    is refused. (Chunks the ingestion Guardrail scan flags are always quarantined: no Project
+    setting lets them into retrieval.)"""
     try:
         project = await service.update_project(
             db,
@@ -162,7 +155,6 @@ async def update_project(
             name=body.name,
             description=body.description,
             ocr_enabled=body.ocr_enabled,
-            flagged_chunk_mode=body.flagged_chunk_mode,
         )
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None

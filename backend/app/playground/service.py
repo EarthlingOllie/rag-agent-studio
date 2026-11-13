@@ -50,7 +50,7 @@ from app.default_model.service import read_default
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
-from app.guardrails.outcomes import blocked
+from app.guardrails.outcomes import judged_injection
 from app.guardrails.pipeline import GuardrailPipeline, RefusalEvent
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
@@ -165,13 +165,14 @@ async def get_conversation(
 
 def _turns(messages: list[Message]) -> list[Turn]:
     """Each question with the answer that followed it. A question left unanswered is skipped,
-    and so is one the input Guardrail blocked: an attack isn't replayed to the model later. So
-    is a turn whose text was purged (``app.retention``): it has no text left to send."""
+    and so is one the input Guardrail judged an injection (blocked, or answered under the old
+    warn or log modes): an attack isn't replayed to the model later. So is a turn whose text
+    was purged (``app.retention``): it has no text left to send."""
     return [
         Turn(question.content, answer.content)
         for question, answer in itertools.pairwise(messages)
         if (question.role, answer.role) == (MessageRole.USER, MessageRole.ASSISTANT)
-        and not blocked(answer.guardrail_outcomes)
+        and not judged_injection(answer.guardrail_outcomes)
         and question.purged_at is None
         and answer.purged_at is None
     ]

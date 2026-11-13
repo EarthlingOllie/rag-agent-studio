@@ -891,25 +891,11 @@ export function DraftEditor({
         />
       </Group>
 
-      <Group legend="Guardrails" summary={`${guardrails.input_mode} · fail ${guardrails.fail_mode}`} refused={refused("guardrails")} disabled={readOnly}>
+      <Group legend="Guardrails" summary={`always block · fail ${guardrails.fail_mode}`} refused={refused("guardrails")} disabled={readOnly}>
         <p className={fields.hint}>
-          Every message is checked by the built-in classifier. Block refuses a flagged message,
-          warn answers it with a caution to the model and flags it, and log only records the
-          verdict. The LLM classifier is enforced in block mode.
+          Every message is checked by the built-in classifier, and by the LLM classifier if you choose one. A message
+          either flags is always refused with the refusal text.
         </p>
-        <ChoiceField
-          label="Input Guardrail mode"
-          errors={at("guardrails.input_mode")}
-          value={guardrails.input_mode}
-          options={[
-            ["block", "Block: refuse the message"],
-            ["warn", "Warn: answer with a caution"],
-            ["log", "Log: only record the verdict"],
-          ]}
-          onChange={(input_mode) => {
-            setGuardrails({ input_mode });
-          }}
-        />
         <ModelChoiceField
           legend="LLM classifier"
           noneLabel="None"

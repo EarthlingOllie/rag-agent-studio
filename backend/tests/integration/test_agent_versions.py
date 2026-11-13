@@ -289,7 +289,17 @@ async def test_publishing_is_recorded_as_an_audit_event(
 
     events = await audit_events(owner, "agent.published")
 
-    assert [(e["actor"]["id"], e["target"], e["before"], e["after"]) for e in events] == [
+    # Each event also snapshots the published config (checked in test_security_audit_events).
+    assert all("config" in e["after"] for e in events)
+    assert [
+        (
+            e["actor"]["id"],
+            e["target"],
+            e["before"],
+            {k: v for k, v in e["after"].items() if k != "config"},
+        )
+        for e in events
+    ] == [
         (
             editor.member_id,
             {"type": "agent", "id": agent_id},

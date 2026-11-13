@@ -45,7 +45,6 @@ export const hrProject: Project = {
   embedding_model_id: "multilingual-e5-small",
   ocr_enabled: false,
   embedding_credential_id: null,
-  flagged_chunk_mode: "mark",
 };
 
 export const salesProject: Project = {
@@ -59,7 +58,6 @@ export const salesProject: Project = {
   embedding_model_id: "multilingual-e5-small",
   ocr_enabled: false,
   embedding_credential_id: null,
-  flagged_chunk_mode: "mark",
 };
 
 export const oldProject: Project = {
@@ -73,7 +71,6 @@ export const oldProject: Project = {
   embedding_model_id: "multilingual-e5-small",
   ocr_enabled: false,
   embedding_credential_id: null,
-  flagged_chunk_mode: "mark",
 };
 
 const ARCHIVED_AT = "2026-11-05T09:00:00Z";
@@ -134,7 +131,6 @@ export function fakeProjectsApi(
         embedding_model_id: "multilingual-e5-small",
         ocr_enabled: false,
         embedding_credential_id: null,
-        flagged_chunk_mode: "mark",
       };
       projects.push(created);
       return HttpResponse.json(created, { status: 201 });
@@ -166,7 +162,6 @@ export function fakeProjectsApi(
         name: body.name ?? project.name,
         description: body.description ?? project.description,
         ocr_enabled: body.ocr_enabled ?? project.ocr_enabled,
-        flagged_chunk_mode: body.flagged_chunk_mode ?? project.flagged_chunk_mode,
       });
     }),
     http.post("*/api/organisations/:organisationId/projects/:projectId/archive", ({ params }) => {

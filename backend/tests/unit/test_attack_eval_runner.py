@@ -68,15 +68,14 @@ async def test_an_attack_nothing_catches_is_reported_compromised() -> None:
     assert not case.defended
 
 
-async def test_a_poisoned_document_follows_the_flagged_chunk_mode() -> None:
-    suite = load_suite(TINY).only("indirect-mark", "indirect-exclude", "indirect-unflagged")
+async def test_a_flagged_poisoned_document_is_quarantined() -> None:
+    suite = load_suite(TINY).only("indirect-flagged", "indirect-unflagged")
 
     report = await run_suite(suite, pipeline(IGNORE), naive_model())
 
-    marked, excluded, unflagged = report.cases
-    assert (marked.observed.ingestion, marked.observed.answer) == ("flagged", "compromised")
-    assert (excluded.observed.ingestion, excluded.observed.answer) == ("excluded", "harmless")
-    assert excluded.replies == [
+    flagged, unflagged = report.cases
+    assert (flagged.observed.ingestion, flagged.observed.answer) == ("excluded", "harmless")
+    assert flagged.replies == [
         "From leave-policy.md [C1]: Full-time staff get 25 days of annual leave a year."
     ]
     assert unflagged.observed.ingestion == "passed"
@@ -96,17 +95,6 @@ async def test_a_blocked_turn_is_not_replayed_to_later_turns() -> None:
     ]
     assert case.observed.input == "blocked"
     assert case.as_expected
-
-
-async def test_warn_and_log_modes_answer_and_the_canary_still_catches_the_leak() -> None:
-    suite = load_suite(TINY).only("warn-extraction", "log-extraction")
-
-    report = await run_suite(suite, pipeline(IGNORE), naive_model())
-
-    warned, logged = report.cases
-    assert (warned.observed.input, warned.observed.canary) == ("flagged", "replaced")
-    assert (logged.observed.input, logged.observed.canary) == ("logged", "replaced")
-    assert [o.layer for o in warned.outcomes[0]] == ["input", "canary"]
 
 
 async def test_a_canary_sent_encoded_is_flagged_and_counts_as_not_defended() -> None:
@@ -170,7 +158,7 @@ async def test_a_provider_failure_ends_the_case_with_an_error() -> None:
 
 
 async def test_each_case_runs_once_in_each_retrieval_mode() -> None:
-    suite = load_suite(TINY).only("extraction-canary", "indirect-mark", "benign-leave")
+    suite = load_suite(TINY).only("extraction-canary", "indirect-flagged", "benign-leave")
 
     automatic, agentic = await run_modes(suite, pipeline(IGNORE), naive_model())
 
@@ -186,15 +174,14 @@ async def test_each_case_runs_once_in_each_retrieval_mode() -> None:
     assert all(case.as_expected for run in (automatic, agentic) for case in run.cases)
 
 
-async def test_a_flagged_chunk_knowledge_search_finds_follows_the_flagged_chunk_mode() -> None:
-    suite = load_suite(TINY).only("indirect-mark", "indirect-exclude")
+async def test_knowledge_search_never_finds_a_quarantined_chunk() -> None:
+    suite = load_suite(TINY).only("indirect-flagged")
 
     run = await run_suite(suite, pipeline(IGNORE), naive_model(), RetrievalMode.AGENTIC)
 
-    marked, excluded = run.cases
-    assert (marked.observed.ingestion, marked.observed.answer) == ("flagged", "compromised")
-    assert (excluded.observed.ingestion, excluded.observed.answer) == ("excluded", "harmless")
-    assert excluded.replies == [
+    (flagged,) = run.cases
+    assert (flagged.observed.ingestion, flagged.observed.answer) == ("excluded", "harmless")
+    assert flagged.replies == [
         "From leave-policy.md [C1]: Full-time staff get 25 days of annual leave a year."
     ]
 

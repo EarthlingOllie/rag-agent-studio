@@ -3,19 +3,18 @@
 ``GuardrailPipeline.run_turn`` takes exactly what ``app.runtime.runtime.run_turn`` takes and
 streams the same events, so callers swap one for the other. Before the runtime sees the
 Visitor's message, the input classifier (the injection-classifier port: the local ONNX model in
-production, the rule-driven fake in tests) judges it. When it flags the message and the Agent's
-input mode is block, the turn short-circuits: no retrieval, no model call, a ``RefusalEvent``
-carrying the Agent's refusal text, then a ``DoneEvent`` whose answer is that text and whose
-Guardrail outcome says why. In warn mode a flagged message is answered, but the runtime adds a
-caution block to the prompt and the answer's ``DoneEvent`` carries an ``input / injection /
-flagged`` outcome, so the Message is flagged. In log mode it is answered exactly as an unflagged
-one would be, and the outcome (``logged``) only records the verdict. An unflagged message is
-answered as usual and leaves no outcome (the canary filter still wraps every model stream).
+production, the rule-driven fake in tests) judges it, alone and read together with the
+Conversation's last remembered questions, so an attack split across turns is judged whole.
+When it flags the message, the turn short-circuits: no retrieval, no model call, a
+``RefusalEvent`` carrying the Agent's refusal text, then a ``DoneEvent`` whose answer is that
+text and whose Guardrail outcome says why. A detected injection is always refused: no setting
+lets it into the model's context (the old warn and log input modes are gone, and an
+``input_mode`` stored with an Agent is ignored). An unflagged message is answered as usual and
+leaves no outcome (the canary filter still wraps every model stream).
 
-When the Agent names an LLM classifier and its input mode is block, a message the local
-classifier passed is judged by it too; when it can't judge (its provider failed), the Agent's
-fail mode decides: closed treats the message as flagged, open answers it and records that it
-went unchecked. In warn and log mode the LLM classifier isn't called yet (see ADR-0007).
+When the Agent names an LLM classifier, a message the local classifier passed is judged by it
+too; when it can't judge (its provider failed), the Agent's fail mode decides: closed treats
+the message as flagged, open answers it and records that it went unchecked.
 """
 
 import asyncio
@@ -25,10 +24,10 @@ from dataclasses import dataclass
 
 from pydantic_ai.models import Model
 
-from app.agents.config import AgentConfig, FailMode, InputMode
+from app.agents.config import AgentConfig, FailMode
 from app.core.settings import Settings
 from app.guardrails import onnx_model
-from app.guardrails.classifier import InjectionClassifier
+from app.guardrails.classifier import InjectionClassifier, InjectionFlag
 from app.guardrails.fake import RuleDrivenClassifier
 from app.guardrails.heuristic import HeuristicClassifier
 from app.guardrails.llm import LlmClassifier, LlmClassifierError
@@ -98,16 +97,13 @@ class GuardrailPipeline:
         llm_classifier: LlmClassifier | None = None,
     ) -> AsyncIterator[GuardedEvent]:
         guardrails = config.guardrails
-        # Classification is CPU-bound (ONNX inference), so it runs off the event loop.
-        (flag,) = await asyncio.to_thread(self.classifier.classify, [visitor_input])
+        flag = await self._judge(turns, visitor_input)
         outcome: GuardrailOutcome | None = None
         # The LLM classifier's failure, when the Agent fails open: recorded on the answer.
         unchecked: GuardrailOutcome | None = None
-        # The paid LLM classifier is asked only in block mode for now; warn and log mode act on
-        # the local classifier's flag alone (see ADR-0007).
-        if flag is None and llm_classifier is not None and guardrails.input_mode is InputMode.BLOCK:
+        if flag is None and llm_classifier is not None:
             try:
-                flag = await llm_classifier.classify(visitor_input)
+                flag = await llm_classifier.classify(_window(turns, visitor_input))
             except LlmClassifierError as error:
                 if guardrails.fail_mode is FailMode.CLOSED:
                     outcome = GuardrailOutcome(
@@ -122,7 +118,8 @@ class GuardrailPipeline:
                     )
         if flag is not None:
             outcome = GuardrailOutcome("input", "injection", "blocked", flag.reason, flag.score)
-        if outcome is not None and guardrails.input_mode is InputMode.BLOCK:
+        # A detected injection is always refused: no setting lets it into the model's context.
+        if outcome is not None:
             yield RefusalEvent(guardrails.refusal_text)
             yield DoneEvent(
                 answer=guardrails.refusal_text,
@@ -134,34 +131,39 @@ class GuardrailPipeline:
                 guardrail_outcomes=[outcome],
             )
             return
-        warned = flag is not None and guardrails.input_mode is InputMode.WARN
         async for event in run_turn(
-            turns,
-            config,
-            instructions,
-            visitor_input,
-            model=model,
-            retrieve=retrieve,
-            cautioned=warned,
+            turns, config, instructions, visitor_input, model=model, retrieve=retrieve
         ):
-            if isinstance(event, DoneEvent):
+            if isinstance(event, DoneEvent) and unchecked is not None:
                 # Record the input verdict first, before what later layers decided.
-                if unchecked is not None:
-                    event = dataclasses.replace(
-                        event, guardrail_outcomes=[unchecked, *event.guardrail_outcomes]
-                    )
-                elif flag is not None:
-                    verdict = GuardrailOutcome(
-                        "input",
-                        "injection",
-                        "flagged" if warned else "logged",
-                        flag.reason,
-                        flag.score,
-                    )
-                    event = dataclasses.replace(
-                        event, guardrail_outcomes=[verdict, *event.guardrail_outcomes]
-                    )
+                event = dataclasses.replace(
+                    event, guardrail_outcomes=[unchecked, *event.guardrail_outcomes]
+                )
             yield event
+
+    async def _judge(self, turns: Sequence[Turn], visitor_input: str) -> InjectionFlag | None:
+        """The local classifier's verdict on the message. It judges the message alone and,
+        when there are remembered questions, the message read together with the last of them,
+        so an attack split across turns is caught as a whole. Either flag counts against the
+        message."""
+        texts = [visitor_input]
+        if turns:
+            texts.append(_window(turns, visitor_input))
+        # Classification is CPU-bound (ONNX inference), so it runs off the event loop.
+        flags = await asyncio.to_thread(self.classifier.classify, texts)
+        return next((flag for flag in flags if flag is not None), None)
+
+
+# How many remembered questions are judged with the Visitor's message.
+WINDOW_TURNS = 3
+
+
+def _window(turns: Sequence[Turn], visitor_input: str) -> str:
+    """The Visitor's message after the last ``WINDOW_TURNS`` remembered questions, in order and
+    run together as one text, as the model reads the Conversation: what the input classifiers
+    judge. With no remembered questions, the message alone."""
+    recent = [turn.question for turn in list(turns)[-WINDOW_TURNS:]]
+    return " ".join([*recent, visitor_input])
 
 
 def build_pipeline(settings: Settings) -> GuardrailPipeline:

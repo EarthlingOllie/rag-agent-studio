@@ -74,8 +74,6 @@ test("an archived Project's Settings say why they can't be changed, show every s
   const header = await screen.findByRole("heading", { level: 2, name: "Settings" });
   expect(header.parentElement).toHaveTextContent("This Project is archived, so its settings can't be changed.");
   expect(screen.getByRole("checkbox", { name: OCR })).toBeDisabled();
-  for (const radio of within(screen.getByRole("radiogroup", { name: "Flagged Chunks" })).getAllByRole("radio"))
-    expect(radio).toBeDisabled();
   expect(screen.queryByRole("region", { name: "Embedding Model" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Change/ })).not.toBeInTheDocument();
 });
@@ -150,64 +148,18 @@ test("an archived Project's OCR setting can't be changed", async () => {
   expect(screen.getByRole("checkbox", { name: OCR })).toBeDisabled();
 });
 
-const MARK = "Mark them, and keep retrieving them";
-const EXCLUDE = "Exclude them from retrieval";
-
-test("flagged Chunks are only marked by default, and an Editor chooses to exclude them, then to mark them again", async () => {
+test("flagged Chunks are always quarantined: the Flagged Chunks card explains it and offers no setting", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   const { requests } = fakeProjectsApi();
   renderStudio(settingsPage(hrProject.id));
 
-  const group = await screen.findByRole("radiogroup", { name: "Flagged Chunks" });
-  expect(within(group).getByRole("radio", { name: MARK })).toBeChecked();
-  expect(within(group).getByRole("radio", { name: MARK })).toHaveAccessibleDescription(
-    "Agents can still be given them. The Document viewer marks them for review.",
+  const card = await screen.findByRole("region", { name: "Flagged Chunks" });
+  expect(card).toHaveTextContent(
+    "Flagged Chunks are always quarantined: Agents are never given them, and the Trace lists them as excluded by the ingestion scan.",
   );
-  expect(within(group).getByRole("radio", { name: EXCLUDE })).toHaveAccessibleDescription(
-    "Agents are never given them. The Trace lists them as excluded.",
-  );
-  expect(within(group).getByText(/Flagged Chunks are retrieved like any other/)).toBeInTheDocument();
-
-  await userEvent.click(within(group).getByRole("radio", { name: EXCLUDE }));
-
-  expect(await within(group).findByText(/Flagged Chunks are never given to an Agent/)).toBeInTheDocument();
-  expect(within(group).getByRole("radio", { name: EXCLUDE })).toBeChecked();
-  await userEvent.click(within(group).getByRole("radio", { name: MARK }));
-  await within(group).findByText(/Flagged Chunks are retrieved like any other/);
-  expect(requests).toEqual([
-    { route: "update", projectId: hrProject.id, body: { flagged_chunk_mode: "exclude" } },
-    { route: "update", projectId: hrProject.id, body: { flagged_chunk_mode: "mark" } },
-  ]);
-});
-
-test("the flagged Chunk setting shows the choice while it saves, and a refused change says why and keeps the setting", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi();
-  server.use(
-    http.patch("*/api/organisations/:organisationId/projects/:projectId", async () => {
-      await delay(200);
-      return HttpResponse.json({ detail: PROJECT_ARCHIVED }, { status: 409 });
-    }),
-  );
-  renderStudio(settingsPage(hrProject.id));
-  const group = await screen.findByRole("radiogroup", { name: "Flagged Chunks" });
-
-  fireEvent.click(within(group).getByRole("radio", { name: EXCLUDE }));
-
-  expect(within(group).getByRole("radio", { name: EXCLUDE })).toBeChecked();
-  expect(within(group).getByRole("radio", { name: MARK })).toBeDisabled();
-  expect(await within(group).findByRole("alert")).toHaveTextContent(PROJECT_ARCHIVED);
-  expect(within(group).getByRole("radio", { name: MARK })).toBeChecked();
-  expect(within(group).getByRole("radio", { name: EXCLUDE })).toBeEnabled();
-});
-
-test("an archived Project's flagged Chunk setting can't be changed", async () => {
-  fakeAuthApi({ signedInAs: adaSession });
-  fakeProjectsApi({ projects: [{ ...oldProject, flagged_chunk_mode: "exclude" }] });
-  renderStudio(settingsPage(oldProject.id));
-
-  const group = await screen.findByRole("radiogroup", { name: "Flagged Chunks" });
-  expect(within(group).getByRole("radio", { name: EXCLUDE })).toBeChecked();
-  expect(within(group).getByRole("radio", { name: EXCLUDE })).toBeDisabled();
-  expect(within(group).getByRole("radio", { name: MARK })).toBeDisabled();
+  expect(card).toHaveTextContent("Review a flagged Chunk in the Document viewer, and allow it there if it is a false positive.");
+  // No setting lets a detected prompt injection reach an Agent.
+  expect(within(card).queryByRole("radiogroup")).not.toBeInTheDocument();
+  expect(within(card).queryByRole("radio")).not.toBeInTheDocument();
+  expect(requests).toEqual([]);
 });

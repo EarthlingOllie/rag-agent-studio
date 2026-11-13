@@ -13,6 +13,11 @@ from app.documents.ports import current_ports
 from app.worker.celery_app import celery_app
 
 INGEST_TASK = "documents.ingest"
+# How long one ingestion run may convert, chunk, embed and scan before its Document fails.
+INGEST_MAX_SECONDS = 20 * 60
+# The worker kills a task still running a minute after that: work in a thread (a conversion
+# stuck in Docling, say) can't be interrupted otherwise.
+INGEST_TIME_LIMIT_SECONDS = INGEST_MAX_SECONDS + 60
 DELETE_OBJECTS_TASK = "documents.delete_objects"
 
 
@@ -35,12 +40,13 @@ async def _ingest(document_id: uuid.UUID, attempt_number: int) -> float | None:
                     retry_base_seconds=settings.ingestion_retry_base_seconds,
                     retry_max_seconds=settings.ingestion_retry_max_seconds,
                 ),
+                max_seconds=INGEST_MAX_SECONDS,
             )
     finally:
         await engine.dispose()
 
 
-@celery_app.task(name=INGEST_TASK)
+@celery_app.task(name=INGEST_TASK, time_limit=INGEST_TIME_LIMIT_SECONDS)
 def ingest_document(document_id: str, attempt: int = 1) -> None:
     """Runs ingestion for one Document (Queued to Ready or Failed). After a transient failure,
     the task sends itself again with the next attempt number, delayed by the backoff the
