@@ -7,7 +7,11 @@
 - The widget API under ``/api/widget/agents/{public_id}``: exchange the bootstrap token for a
   Conversation token, then send messages with it (``Authorization: Bearer …``); each answer
   streams as Server-Sent Events from the Live Version. Visitors are anonymous: these routes take
-  no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS.
+  no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS. A
+  browser request whose ``Origin`` (or, without one, ``Referer``) is neither the widget's own
+  origin (the Studio's) nor one of the Agent's Allowed Origins is refused with 403, so other
+  sites can't drive the API from their pages. Clients that send neither header are not browsers
+  on another site; the rate limits and the Token Budget bound them.
 - The Studio's Operational Settings routes (Allowed Origins, the unavailable text, the rate
   limits and the Token Budget), for Editors and Owners. Changes apply on the next request and are
   audited. Beside them, today's usage against the Token Budget, for the Studio's meter.
@@ -19,6 +23,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import date, datetime
 from typing import Annotated, Any, Literal, cast
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
@@ -39,7 +44,7 @@ from app.core.client_ip import request_ip
 from app.core.settings import Settings
 from app.documents.ports import IngestionPorts
 from app.embed import service
-from app.embed.admission import Admission, Refusal
+from app.embed.admission import Admission, HeldStream, Refusal
 from app.embed.tokens import TokenSigner
 from app.guardrails.pipeline import RefusalEvent
 from app.mail.port import Mailer
@@ -186,7 +191,42 @@ async def widget_image(public_id: str, kind: str, db: Db, request: Request) -> R
 # The widget API
 
 
-widget_router = APIRouter(prefix="/api/widget/agents/{public_id}", tags=["widget"])
+FOREIGN_ORIGIN = "This assistant can't be used from this site."
+
+
+def _request_origin(request: Request) -> str | None:
+    """The origin of the page that sent the request: its ``Origin`` header, else its
+    ``Referer``'s origin; None when the request carries neither."""
+    origin = request.headers.get("origin")
+    if origin is not None:
+        return origin
+    referer = request.headers.get("referer")
+    if referer is None:
+        return None
+    parts = urlsplit(referer)
+    return f"{parts.scheme}://{parts.netloc}"
+
+
+async def same_site(request: Request, public_id: str, db: Db) -> None:
+    """Refuses a browser request from a page that is neither the widget's nor on the Agent's
+    Allowed Origins."""
+    origin = _request_origin(request)
+    if origin is None:
+        return
+    settings: Settings = request.app.state.settings
+    widget = str(settings.studio_url).rstrip("/").lower()
+    if origin.lower() == widget:
+        return
+    if not service.origin_allowed(origin, await service.allowed_origins(db, public_id)):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, FOREIGN_ORIGIN)
+
+
+widget_router = APIRouter(
+    prefix="/api/widget/agents/{public_id}",
+    tags=["widget"],
+    dependencies=[Depends(same_site)],
+    responses={403: {"model": ErrorResponse, "description": FOREIGN_ORIGIN}},
+)
 
 
 def _errors(*codes: tuple[int, str]) -> dict[int | str, dict[str, Any]]:
@@ -331,10 +371,10 @@ async def send_message(
     prepared = admitted.turn
 
     async def spent(event: Answered) -> None:
-        # The reply's actual usage counts against today's Token Budget; the reply that spends
-        # it raises the alert.
+        # The reply's actual usage counts against today's Token Budget, settling its
+        # reservation; the reply that spends it raises the alert.
         used = event.event.input_tokens + event.event.output_tokens
-        total = await admission.record_usage(admitted.limits.public_id, used)
+        total = await admission.record_usage(admitted.limits.public_id, used, admitted.reservation)
         if total >= admitted.limits.daily_token_budget:
             async with request.app.state.sessionmaker() as session:
                 await service.budget_exhausted(
@@ -386,7 +426,9 @@ async def send_message(
                 await spent(event)
                 yield _sse("done", {"message_id": str(event.message_id)})
 
-    return _event_stream(events())
+    # The reply's reservation is given back however the response ends without settling it (the
+    # provider failed, or the Visitor went away, even before the stream started).
+    return HeldStream(events(), admission, admitted.reservation)
 
 
 async def _one(event: str) -> AsyncIterator[str]:

@@ -24,7 +24,7 @@ from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
 from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
-from app.embed.admission import Admission, Limits, Refusal, utc_date
+from app.embed.admission import Admission, Limits, Refusal, Reservation, utc_date
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.feedback.models import MessageFeedback
@@ -88,6 +88,44 @@ def normalise_origins(origins: list[str]) -> list[str]:
         if origin not in found:
             found.append(origin)
     return found
+
+
+# An origin as a browser sends it in ``Origin``: scheme, host and optional port.
+_REQUEST_ORIGIN = re.compile(
+    r"(?P<scheme>https?)://(?P<host>\[[0-9a-f:.]+\]|[^:/\[\]]+)(?::(?P<port>[0-9]{1,5}))?"
+)
+
+
+def _parts(origin: str) -> tuple[str, str, str | None] | None:
+    found = _REQUEST_ORIGIN.fullmatch(origin.strip().lower().removesuffix("/"))
+    return None if found is None else (found["scheme"], found["host"], found["port"])
+
+
+def origin_allowed(origin: str, allowed: list[str]) -> bool:
+    """Whether a browser's origin is one of the Allowed Origins (``normalise_origins``' forms:
+    an exact origin, a subdomain wildcard, or a loopback host with any port)."""
+    request = _parts(origin)
+    if request is None:
+        return False
+    scheme, host, port = request
+    for rule in allowed:
+        # Allowed Origins are stored normalised, so each one matches ``_ORIGIN``.
+        if not rule.startswith(f"{scheme}://") or (found := _ORIGIN.fullmatch(rule)) is None:
+            continue
+        rule_host, rule_port = found["host"], found["port"]
+        if rule_host.startswith("*."):
+            host_matches = host.endswith(rule_host[1:])
+        else:
+            host_matches = host == rule_host
+        if host_matches and rule_port in ("*", port):
+            return True
+    return False
+
+
+async def allowed_origins(session: AsyncSession, public_id: str) -> list[str]:
+    """The Agent's Allowed Origins; none for an Agent that doesn't exist."""
+    found = await session.scalar(select(Agent.allowed_origins).where(Agent.public_id == public_id))
+    return [] if found is None else list(found)
 
 
 def frame_ancestors(origins: list[str]) -> str:
@@ -276,6 +314,9 @@ class AdmittedTurn:
     agent_id: uuid.UUID
     # The limits it was admitted under; the reply's usage counts against the Token Budget.
     limits: Limits
+    # The cost the reply holds against the budget until its usage is recorded (which settles
+    # it) or it is released.
+    reservation: Reservation
 
 
 async def prepare_turn(
@@ -292,7 +333,8 @@ async def prepare_turn(
     """Saves the Visitor's question in the token's Conversation, to be answered by the Agent's
     Live Version at this moment. A valid token's message first goes through admission control
     with the Agent's current Token Budget and rate limits; a refused one raises
-    ``NotAdmittedError`` and nothing is saved."""
+    ``NotAdmittedError`` and nothing is saved. An admitted one reserves an estimate of its
+    reply's cost, given back here if the turn can't be prepared."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
     agent = await session.get_one(Agent, conversation.agent_id)
     limits = Limits(
@@ -301,11 +343,15 @@ async def prepare_turn(
         ip_messages_per_minute=agent.ip_messages_per_minute,
         daily_token_budget=agent.daily_token_budget,
     )
-    refusal = await admission.admit(limits, token, ip)
-    if refusal is not None:
-        raise NotAdmittedError(refusal, agent.id)
-    turn = await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
-    return AdmittedTurn(turn, agent.id, limits)
+    admitted = await admission.admit(limits, token, ip)
+    if isinstance(admitted, Refusal):
+        raise NotAdmittedError(admitted, agent.id)
+    try:
+        turn = await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
+    except BaseException:
+        await admission.release(admitted)
+        raise
+    return AdmittedTurn(turn, agent.id, limits, admitted)
 
 
 # The Token Budget

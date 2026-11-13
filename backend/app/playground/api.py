@@ -46,6 +46,7 @@ from app.conversations.models import Conversation, Message, Search
 from app.conversations.service import MessageNotFoundError, TracedChunk
 from app.core.clock import Clock, get_clock
 from app.documents.ports import IngestionPorts
+from app.embed.admission import Admission, HeldStream, PlaygroundLimits, Refusal
 from app.guardrails.outcomes import Action, Layer, Verdict
 from app.guardrails.pipeline import RefusalEvent
 from app.playground import service
@@ -75,6 +76,28 @@ NO_DEFAULT_MODEL = (
 QUESTION_MAX = 4000
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
+
+
+def playground_limits() -> PlaygroundLimits:
+    """The Playground's rate limits and daily Token Budget."""
+    return PlaygroundLimits()
+
+
+def get_admission(request: Request) -> Admission:
+    return Admission(request.app.state.redis, request.app.state.clock)
+
+
+PlaygroundLimitsDep = Annotated[PlaygroundLimits, Depends(playground_limits)]
+AdmissionDep = Annotated[Admission, Depends(get_admission)]
+
+TOO_FAST = "You're sending Playground questions too fast. Wait a minute, then try again."
+BUDGET_SPENT = (
+    "Your Organisation has used today's Playground Token Budget. It starts again at midnight UTC."
+)
+BUDGET_IN_USE = (
+    "Your Organisation's answers still being written hold the Playground for now (its Token "
+    "Budget or how many may be written at once). Try again when they finish."
+)
 Question = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=QUESTION_MAX)
 ]
@@ -412,6 +435,14 @@ _STREAM: dict[int | str, dict[str, Any]] = {
             "Project's."
         ),
     },
+    429: {
+        "model": ErrorResponse,
+        "description": (
+            "The Playground's limits refused the question, which isn't saved: the Member or the "
+            "Organisation sent too many in the last minute, or the Organisation's daily "
+            "Playground Token Budget is spent (or held by answers still being written)."
+        ),
+    },
 }
 
 
@@ -430,21 +461,34 @@ async def send_message(
     scope: Scope,
     db: Db,
     clock: ClockDep,
+    admission: AdmissionDep,
+    limits: PlaygroundLimitsDep,
 ) -> StreamingResponse:
     """Asks the Agent's Draft a question, with the Instructions Draft or the chosen Instructions
     Version; the answer streams back as Server-Sent Events. An archived Agent answers no more
-    questions; its Conversations can still be read."""
+    questions; its Conversations can still be read. Questions are limited per Member and per
+    Organisation each minute, and the answers' tokens count against the Organisation's daily
+    Playground Token Budget (not any Agent's Visitor budget); a refused question gets 429."""
+    admitted = await admission.admit_playground(limits, scope.organisation_id, scope.member_id)
+    if isinstance(admitted, Refusal):
+        detail = {Refusal.TOKEN_BUDGET: BUDGET_SPENT, Refusal.BUDGET_IN_USE: BUDGET_IN_USE}
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail.get(admitted, TOO_FAST))
     try:
-        prepared = await service.prepare_turn(
-            db,
-            scope,
-            project_id,
-            agent_id,
-            conversation_id,
-            body.content,
-            instructions_version_id=body.instructions_version_id,
-            now=clock.now(),
-        )
+        try:
+            prepared = await service.prepare_turn(
+                db,
+                scope,
+                project_id,
+                agent_id,
+                conversation_id,
+                body.content,
+                instructions_version_id=body.instructions_version_id,
+                now=clock.now(),
+            )
+        except BaseException:
+            # Nothing will be answered: the reservation goes back to the budget.
+            await admission.release(admitted)
+            raise
     except (ProjectNotFoundError, AgentNotFoundError, service.ConversationNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
@@ -491,6 +535,13 @@ async def send_message(
                     },
                 )
             else:
+                # The answer's actual usage counts against today's Playground budget,
+                # settling its reservation.
+                await admission.record_playground_usage(
+                    scope.organisation_id,
+                    event.event.input_tokens + event.event.output_tokens,
+                    admitted,
+                )
                 yield _sse(
                     "done",
                     {
@@ -529,8 +580,6 @@ async def send_message(
                     },
                 )
 
-    return StreamingResponse(
-        events(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    # The reservation is given back however the response ends without settling it (the
+    # provider failed, or the Studio went away, even before the stream started).
+    return HeldStream(events(), admission, admitted)
