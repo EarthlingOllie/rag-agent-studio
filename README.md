@@ -13,7 +13,7 @@ Teams upload their documents, configure an Agent, test it in a Playground with f
 
 [![Video: publishing an Agent and embedding it on a website](docs/demo/04-publish-and-embed.jpg)](docs/demo/04-publish-and-embed.mp4)
 
-**[▶ Watch the demo videos: nine core user journeys in under six minutes](docs/demo.md)**
+**[▶ Watch the whole demo in one video (6:24)](docs/demo/all-stories.mp4)**, or [each of the nine core user journeys on its own](docs/demo.md).
 
 Contents: [Highlights](#highlights) · [Demo](#demo) · [Quickstart](#quickstart) · [Architecture](#architecture) · [Stack](#stack) · [Engineering practices](#engineering-practices) · [Testing](#testing) · [Security](#security) · [Deploy and destroy](#deploy-and-destroy-aws-demo) · [Documentation](#documentation)
 
@@ -30,7 +30,7 @@ Contents: [Highlights](#highlights) · [Demo](#demo) · [Quickstart](#quickstart
 
 ## Demo
 
-Short screen recordings, each one user journey run end to end against the seeded stack:
+Short screen recordings, each one user journey run end to end against the seeded stack. [All nine are also in one video](docs/demo/all-stories.mp4) (6:24), with a title card before each.
 
 1. [Sign up and create a Project](docs/demo.md#1-sign-up-and-create-a-project)
 2. [Build a Knowledge Base](docs/demo.md#2-build-a-knowledge-base)
