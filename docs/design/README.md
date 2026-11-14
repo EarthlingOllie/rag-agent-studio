@@ -267,7 +267,11 @@ where the Member is: from the Organisation's page they are under down to the pag
     a `Status` dot, the chosen one on `accent-soft`) and the chosen Run: a progress `Meter` while it
     runs, then each case on a `surface.panel` with its answer on `sunken`, its Verdicts with the
     judge's reasons and the `TraceFold`. An archived Agent's set is read only, said in an info
-    `Notice`.
+    `Notice`. From 14-03 each case's row shows its latest result (`evaluationPass` or
+    `evaluationFail` with its count in mono, `unsteady` beside it when its repeats disagreed,
+    `evaluationError`, or "Not run yet" in `muted`); a Run's header names its repeats, a finished
+    Run gives each side's Evaluation score (Errors left out, said beside it), and each case shows
+    its result group above its repeats ("Repeat 2: Fail").
   - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
     (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
   - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with
@@ -285,6 +289,12 @@ where the Member is: from the Organisation's page they are under down to the pag
     inline. On success the dialog closes, a toast confirms, and the copy-link panel
     (`surface.panel`, "New invite") shows above Pending invites; New link on a pending invite
     shows the same panel. Cancel or Escape returns focus to Invite someone.
+  - **Models** (Evaluation section in 14-03): between Default Model and the price table, a
+    `surface.panel` "Evaluation" with the current Evaluation Model ("the Default Model" while none
+    is chosen) and repeats as text. Owners get the form "Choose the Evaluation Model" (Judge with:
+    "Use the Default Model" or a chat-capable credential, then its Model; Save Evaluation Model)
+    and the `Segmented` "Evaluation repeats" (1, 3, 5, 7, 9), which saves on choosing; both
+    confirm with a toast. Editors read a line saying only Owners can change them.
 - **Project Settings** (built in 12-06): `PageHeader level={2}` ("Settings", one line on what they
   control), then a `surface.panel` card per setting with an h3 title and its explanation:
   - **Embedding Model**: the active model in mono on a `sunken` row with **Change** (named "Change
@@ -332,7 +342,7 @@ where the Member is: from the Organisation's page they are under down to the pag
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
 | `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
-| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, Version chip |
+| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, Pass, Fail, Unsteady, Error, Version chip |
 | `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
 | `EmptyState`, `Skeleton` | Empty, error and loading states |
 | `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
@@ -394,6 +404,10 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `flagged` | Flagged (a Chunk the ingestion scan flagged) | `flag-soft`, `flag` |
 | `checkPassed` | Working (a Provider Credential's last check passed) | `accent-soft` with an accent dot |
 | `checkFailed` | Check failed (the reason goes beside it) | `danger-soft`, `danger` |
+| `evaluationPass` | Pass (an Evaluation Case passed by majority of its repeats) | `accent-soft` |
+| `evaluationFail` | Fail (an Evaluation Case failed by majority of its repeats) | `danger-soft`, `danger` |
+| `unsteady` | Unsteady (an Evaluation Case's repeats disagreed; its count beside it) | `flag-soft`, `flag` |
+| `evaluationError` | Error (every repeat errored; left out of the Evaluation score) | `sunken`, `muted` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
 
 `title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;

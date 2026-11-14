@@ -6,9 +6,13 @@ A case needs at least one expectation; for now that is a Reference answer. An ar
 set and Runs can be read, but its cases can't be changed and it starts no Run.
 
 Starting a Run answers the set with the Draft alone, with the Project's Current Instructions
-Version, in a background task: the Run is returned ``queued`` (or, when tasks run eagerly, already
-finished) and the Studio polls it until it is ``completed`` or ``failed``. Its results hold each
-case as the Run copied it, with the answer, its Verdicts with the judge's reasons, and its Trace.
+Version, as many times as the Organisation's Evaluation repeats, in a background task: the Run is
+returned ``queued`` (or, when tasks run eagerly, already finished) and the Studio polls it until
+it is ``completed`` or ``failed`` (every case errored). Its results hold each case as the Run
+copied it, with each repeat's answer, its Verdicts with the judge's reasons, and its Trace, and
+the case's result on each side: pass or fail by majority of its answered repeats with the count,
+Unsteady when they disagree, or Error when every repeat errored. Each side has an Evaluation
+score, which leaves Error cases out; each case in the set shows its latest result.
 """
 
 import uuid
@@ -30,13 +34,12 @@ from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.evaluation import service
+from app.evaluation.combining import Repeat, SideResult
 from app.evaluation.models import (
     QUESTION_MAX,
     REFERENCE_ANSWER_MAX,
     EvaluationCase,
     EvaluationRun,
-    EvaluationVerdict,
-    VerdictOutcome,
 )
 from app.evaluation.tasks import enqueue_run
 from app.playground.api import CREDENTIAL_GONE, NO_DEFAULT_MODEL, TraceOut
@@ -81,6 +84,26 @@ class CaseIn(BaseModel):
     reference_answer: ReferenceAnswer | None = None
 
 
+class CaseSideResultOut(BaseModel):
+    """A case's result on one side of a Run, from its repeats."""
+
+    # ``pass`` or ``fail`` by majority of its answered repeats; ``error`` when every repeat
+    # errored (then the case is left out of the side's Evaluation score).
+    outcome: str
+    # Answered repeats that passed, out of those answered (for example 2/3), and how many
+    # repeats there were.
+    passed: int
+    answered: int
+    repeats: int
+
+
+class LatestResultOut(CaseSideResultOut):
+    # The latest finished Run that answered the case.
+    run_id: uuid.UUID
+    # Whether its repeats disagreed.
+    unsteady: bool
+
+
 class CaseOut(BaseModel):
     id: uuid.UUID
     question: str
@@ -89,6 +112,8 @@ class CaseOut(BaseModel):
     source: str
     created_at: datetime
     updated_at: datetime
+    # Its result in the latest finished Run that answered it; null until one has.
+    latest_result: LatestResultOut | None
 
 
 class ProgressOut(BaseModel):
@@ -109,6 +134,12 @@ class RunSideOut(BaseModel):
     # The effective chat model it answered with.
     model_provider: str
     model_name: str
+    # Its cases that passed, failed and were Errors, from those answered so far, and its
+    # Evaluation score: the share of the cases that weren't Errors that passed (null with none).
+    cases_passed: int
+    cases_failed: int
+    cases_errored: int
+    score: float | None
 
 
 class RunOut(BaseModel):
@@ -118,9 +149,11 @@ class RunOut(BaseModel):
     created_at: datetime
     finished_at: datetime | None
     progress: ProgressOut
-    # The model that judged its answers.
+    # The model that judged its answers (the Evaluation Model, or else the Default Model) and
+    # the Evaluation repeats, as they were when it started.
     judge_provider: str
     judge_model: str
+    repeats: int
     error_message: str | None
     sides: list[RunSideOut]
 
@@ -141,12 +174,16 @@ class CaseResultOut(BaseModel):
     status: str
     error_reason: str | None
     answer: str | None
-    # True when every Verdict passed; null for an error.
+    # True when no Verdict failed; null for an error.
     passed: bool | None
     verdicts: list[VerdictOut]
     # The answer's Trace (its ``message_id`` is this result's ID); null for an error before
     # an answer.
     trace: TraceOut | None
+
+
+class CaseSideOut(CaseSideResultOut):
+    position: str
 
 
 class RunCaseOut(BaseModel):
@@ -155,6 +192,11 @@ class RunCaseOut(BaseModel):
     # The question and Reference answer as the Run copied them when it started.
     question: str
     reference_answer: str | None
+    # Its result on each side that has answered it.
+    sides: list[CaseSideOut]
+    # Whether its repeats disagreed on either side.
+    unsteady: bool
+    # Every repeat's answer, on every side.
     results: list[CaseResultOut]
 
 
@@ -163,7 +205,18 @@ class RunResultsOut(BaseModel):
     cases: list[RunCaseOut]
 
 
-def _case_out(case: EvaluationCase) -> CaseOut:
+def _side_fields(result: SideResult) -> dict[str, Any]:
+    return {
+        "outcome": result.outcome,
+        "passed": result.passed,
+        "answered": result.answered,
+        "repeats": result.repeats,
+    }
+
+
+def _case_out(found: service.CaseWithResult) -> CaseOut:
+    case: EvaluationCase = found.case
+    latest = found.latest
     return CaseOut(
         id=case.id,
         question=case.question,
@@ -171,6 +224,11 @@ def _case_out(case: EvaluationCase) -> CaseOut:
         source=case.source,
         created_at=case.created_at,
         updated_at=case.updated_at,
+        latest_result=None
+        if latest is None
+        else LatestResultOut(
+            run_id=latest.run_id, unsteady=latest.result.unsteady, **_side_fields(latest.result)
+        ),
     )
 
 
@@ -184,6 +242,7 @@ def _run_out(detail: service.RunDetail) -> RunOut:
         progress=ProgressOut(done=run.answers_done, total=run.answers_total),
         judge_provider=run.judge_provider,
         judge_model=run.judge_model,
+        repeats=run.repeats,
         error_message=run.error_message,
         sides=[
             RunSideOut(
@@ -197,16 +256,19 @@ def _run_out(detail: service.RunDetail) -> RunOut:
                 ),
                 model_provider=side.chat_provider,
                 model_name=side.chat_model,
+                cases_passed=detail.scores[side.id].passed,
+                cases_failed=detail.scores[side.id].failed,
+                cases_errored=detail.scores[side.id].errored,
+                score=detail.scores[side.id].score,
             )
             for side in detail.sides
         ],
     )
 
 
-def _passed(status_: str, verdicts: list[EvaluationVerdict]) -> bool | None:
-    if status_ != "answered":
-        return None
-    return all(v.outcome == VerdictOutcome.PASS for v in verdicts)
+def _passed(judged: service.JudgedResult) -> bool | None:
+    repeat = Repeat(judged.result, judged.verdicts)
+    return repeat.passed if repeat.answered else None
 
 
 def _fields(body: CaseIn) -> service.CaseFields:
@@ -393,6 +455,11 @@ async def get_run_results(
                 case_id=case.case.case_id,
                 question=case.case.question,
                 reference_answer=case.case.reference_answer,
+                sides=[
+                    CaseSideOut(position=positions[side_id], **_side_fields(result))
+                    for side_id, result in case.sides.items()
+                ],
+                unsteady=case.unsteady,
                 results=[
                     CaseResultOut(
                         position=positions[judged.result.side_id],
@@ -400,7 +467,7 @@ async def get_run_results(
                         status=judged.result.status,
                         error_reason=judged.result.error_reason,
                         answer=judged.result.answer,
-                        passed=_passed(judged.result.status, judged.verdicts),
+                        passed=_passed(judged),
                         verdicts=[
                             VerdictOut(kind=v.kind, outcome=v.outcome, reason=v.reason)
                             for v in judged.verdicts

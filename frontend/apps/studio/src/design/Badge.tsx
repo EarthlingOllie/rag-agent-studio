@@ -16,6 +16,14 @@ const BADGES = {
   checkPassed: { label: "Working", className: "bg-accent-soft text-accent-ink", dot: "bg-accent" },
   /** A Provider Credential whose last check failed; the reason goes beside it. */
   checkFailed: { label: "Check failed", className: "bg-danger-soft text-danger" },
+  /** An Evaluation Case that passed by majority of its repeats. */
+  evaluationPass: { label: "Pass", className: "bg-accent-soft text-accent-ink" },
+  /** An Evaluation Case that failed by majority of its repeats. */
+  evaluationFail: { label: "Fail", className: "bg-danger-soft text-danger" },
+  /** An Evaluation Case whose repeats disagreed; its count goes beside it. */
+  unsteady: { label: "Unsteady", className: "bg-flag-soft text-flag" },
+  /** An Evaluation Case every repeat of which errored: left out of the Evaluation score. */
+  evaluationError: { label: "Error", className: "bg-sunken text-muted" },
 } as const satisfies Record<string, { label: string; className: string; dot?: string }>;
 
 export type BadgeKind = keyof typeof BADGES;
@@ -29,7 +37,8 @@ const PILL = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px
 
 /**
  * A small pill. `kind` picks the words and colour (Live, Draft, Not live, Archived, Instructions
- * behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed);
+ * behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, and an
+ * Evaluation Case's Pass, Fail, Unsteady or Error);
  * `kind="version"` is a Version chip.
  * The words always carry the meaning; colour only repeats it.
  */

@@ -2,6 +2,7 @@ import { type SubmitEvent, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import {
+  Badge,
   ConfirmDialog,
   Dialog,
   EmptyState,
@@ -23,6 +24,7 @@ import type { Agent } from "./agents";
 import {
   type EvaluationCase,
   type EvaluationCaseResult,
+  type EvaluationCaseSide,
   type EvaluationRun,
   evaluationFailure,
   inProgress,
@@ -122,7 +124,34 @@ function CaseEditor({ path, editing, onClose }: { path: AgentPath; editing: Eval
   );
 }
 
-/** The Evaluation Set as a table: each case's question and Reference answer, Edit and Delete in its ⋯ menu. */
+const OUTCOME_BADGES = { pass: "evaluationPass", fail: "evaluationFail", error: "evaluationError" } as const;
+
+/** A case's result on a side, or its latest result: Pass or Fail with its count (Unsteady when its repeats disagreed), or Error. */
+function ResultBadges({
+  result,
+  unsteady,
+  count,
+}: {
+  result: Pick<EvaluationCaseSide, "outcome">;
+  unsteady: boolean;
+  count: string;
+}) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <Badge kind={OUTCOME_BADGES[result.outcome as keyof typeof OUTCOME_BADGES]} />
+      {unsteady && <Badge kind="unsteady" />}
+      {result.outcome !== "error" && <span className="font-mono text-xs text-muted">{count}</span>}
+    </span>
+  );
+}
+
+function LatestResult({ evaluationCase }: { evaluationCase: EvaluationCase }) {
+  const latest = evaluationCase.latest_result;
+  if (latest === null) return <span className="text-muted">Not run yet</span>;
+  return <ResultBadges result={latest} unsteady={latest.unsteady} count={`${String(latest.passed)}/${String(latest.answered)}`} />;
+}
+
+/** The Evaluation Set as a table: each case's question, Reference answer and latest result, Edit and Delete in its ⋯ menu. */
 function CaseTable({
   cases,
   readOnly,
@@ -146,6 +175,9 @@ function CaseTable({
             <th scope="col" className={table.th}>
               Reference answer
             </th>
+            <th scope="col" className={table.th}>
+              Latest result
+            </th>
             {!readOnly && (
               <th scope="col" className={table.th}>
                 <span className="sr-only">Actions</span>
@@ -158,6 +190,9 @@ function CaseTable({
             <tr key={evaluationCase.id} className={`${table.row} align-top`}>
               <td className={`${table.td} whitespace-pre-wrap`}>{evaluationCase.question}</td>
               <td className={`${table.tdMuted} whitespace-pre-wrap`}>{evaluationCase.reference_answer}</td>
+              <td className={`${table.td} whitespace-nowrap`}>
+                <LatestResult evaluationCase={evaluationCase} />
+              </td>
               {!readOnly && (
                 <td className={`${table.td} w-12 text-right`}>
                   <Menu
@@ -212,12 +247,51 @@ function outcomeWord(result: EvaluationCaseResult): string {
   return result.passed ? "Pass" : "Fail";
 }
 
-/** One answer of a case: its outcome, Verdicts with the judge's reasons, and its Trace. */
+const repeatsWord = (repeats: number) => (repeats === 1 ? "1 repeat" : `${String(repeats)} repeats`);
+
+/** A side's Evaluation score, and the cases behind it, Errors left out. */
+function Score({ side }: { side: EvaluationRun["sides"][number] }) {
+  const counted = `${String(side.cases_passed)} passed, ${String(side.cases_failed)} failed`;
+  const errors = side.cases_errored === 0 ? "" : `, ${String(side.cases_errored)} Error${side.cases_errored === 1 ? "" : "s"} left out of the score`;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <p className="font-medium text-ink">
+        {side.score === null ? "Evaluation score: none, every case was an Error" : `Evaluation score: ${String(Math.round(side.score * 100))}%`}
+      </p>
+      <p className={text.muted}>{counted + errors}</p>
+    </div>
+  );
+}
+
+/** A case's result on each side: the majority of its answered repeats with the count, Unsteady, or Error. */
+function CaseResultLine({ evaluationCase }: { evaluationCase: { sides: EvaluationCaseSide[]; unsteady: boolean } }) {
+  return (
+    <div role="group" aria-label="Result" className="flex flex-wrap items-center gap-3 text-sm">
+      {evaluationCase.sides.map((side) =>
+        side.outcome === "error" ? (
+          <span key={side.position} className="inline-flex items-center gap-1.5">
+            <Badge kind="evaluationError" />
+            <span className={text.muted}>Every repeat errored; left out of the score.</span>
+          </span>
+        ) : (
+          <ResultBadges
+            key={side.position}
+            result={side}
+            unsteady={evaluationCase.unsteady}
+            count={`${String(side.passed)}/${String(side.answered)} repeats passed`}
+          />
+        ),
+      )}
+    </div>
+  );
+}
+
+/** One answer of a case: its repeat's outcome, Verdicts with the judge's reasons, and its Trace. */
 function CaseAnswer({ result }: { result: EvaluationCaseResult }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm">
-        <span className="font-medium">Outcome: </span>
+        <span className="font-medium">{`Repeat ${String(result.repeat)}: `}</span>
         <span className={result.status === "error" || result.passed === false ? "text-danger" : "text-accent"}>{outcomeWord(result)}</span>
       </p>
       {result.answer !== null && (
@@ -261,9 +335,11 @@ function RunDetail({ path, runId }: { path: AgentPath; runId: string }) {
           Run of {formatTime(run.created_at)}
         </h3>
         <p className={text.muted}>
-          <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model}
+          <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model} · {repeatsWord(run.repeats)}
         </p>
       </div>
+      {!inProgress(run) &&
+        run.sides.map((side) => <Score key={side.position} side={side} />)}
       {inProgress(run) && <Meter label="Answers given" value={run.progress.done} max={Math.max(run.progress.total, 1)} unit="answers" progress />}
       {run.error_message !== null && <Notice tone="error">{run.error_message}</Notice>}
       {!inProgress(run) && (
@@ -275,6 +351,7 @@ function RunDetail({ path, runId }: { path: AgentPath; runId: string }) {
                 <span className="font-medium">Reference answer: </span>
                 {evaluationCase.reference_answer}
               </p>
+              <CaseResultLine evaluationCase={evaluationCase} />
               {evaluationCase.results.map((result) => (
                 <CaseAnswer key={`${result.position}-${String(result.repeat)}`} result={result} />
               ))}

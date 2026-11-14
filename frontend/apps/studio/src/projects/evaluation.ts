@@ -9,6 +9,7 @@ export type EvaluationCaseFields = Schemas["CaseIn"];
 export type EvaluationRun = Schemas["RunOut"];
 export type EvaluationRunResults = Schemas["RunResultsOut"];
 export type EvaluationCaseResult = Schemas["CaseResultOut"];
+export type EvaluationCaseSide = Schemas["CaseSideOut"];
 
 /** How often the Studio reads a Run again while it is queued or running. */
 export const RUN_POLL_MS = 1500;

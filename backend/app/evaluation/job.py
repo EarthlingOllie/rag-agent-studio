@@ -1,5 +1,5 @@
-"""The Evaluation Run job: answers every case the Run copied, on each side, then judges each
-answer.
+"""The Evaluation Run job: answers every case the Run copied, on each side, as many times as
+the Run's repeats, and judges each answer once.
 
 Each answer is a turn of the Guardrail pipeline's ``run_turn`` with no history, the side's
 effective AgentConfig and Instructions, the models they resolve to and the real retrieval
@@ -7,15 +7,18 @@ scoped to the Agent's Project, exactly as a Visitor reply runs. It creates no Co
 Message, so Version KPIs, Usage rollups, the Token Budget, Admission control and Rate limits
 never see a Run. The answer, its Trace and its Cost go on the case result.
 
-The judge (the Run's judge model) then gives a ``reference_answer`` Verdict when the case has a
-Reference answer, and a ``grounding`` Verdict unless the answer is the Fallback Text. A provider
-error answering, or the judge failing, makes the case result an error with its reason.
+Each repeat is a fresh answer. The judge (the Run's judge model) then gives a
+``reference_answer`` Verdict when the case has a Reference answer, and a ``grounding`` Verdict
+unless the answer is the Fallback Text. A provider error answering, or the judge failing, makes
+the case result an error with its reason; a Guardrail block is an answer, and is judged like one.
 
-Each answer commits with the Run's progress, so the Studio can poll it.
+Each answer commits with the Run's progress, so the Studio can poll it. A Run where every answer
+errored (so every case is an Error) ends ``failed``, with the most common error as its message.
 """
 
 import functools
 import uuid
+from collections import Counter
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -189,15 +192,17 @@ async def _answer_and_judge(
     project: Project,
     instructions_number: int | None,
     case: EvaluationRunCase,
+    repeat: int,
     clock: Clock,
-) -> None:
+) -> EvaluationCaseResult:
+    """Answers the case once more and judges the answer; the case result, answered or error."""
     result = EvaluationCaseResult(
         id=uuid.uuid4(),
         organisation_id=run.organisation_id,
         run_id=run.id,
         side_id=side.id,
         run_case_id=case.id,
-        repeat=1,
+        repeat=repeat,
         status=ResultStatus.ANSWERED,
         created_at=clock.now(),
     )
@@ -209,7 +214,7 @@ async def _answer_and_judge(
     if isinstance(answered, ErrorEvent):
         result.status = ResultStatus.ERROR
         result.error_reason = answered.message
-        return
+        return result
     latency_ms = round((clock.now() - started).total_seconds() * 1000)
     now = clock.now()
     pricing = await credential_pricing(session, resolved.chat.credential)
@@ -240,11 +245,12 @@ async def _answer_and_judge(
     except JudgeError as error:
         result.status = ResultStatus.ERROR
         result.error_reason = error.message
-        return
+        return result
     await session.flush()
     session.add_all(
         _verdict(result, kind, verdict.passed, verdict.reason) for kind, verdict in verdicts.items()
     )
+    return result
 
 
 async def run_evaluation(
@@ -277,6 +283,8 @@ async def run_evaluation(
         )
         agent = await session.get_one(Agent, run.agent_id)
         project = await session.get_one(Project, agent.project_id)
+        # Each error reason, by how many answers it stopped.
+        errors: Counter[str | None] = Counter()
         for side in sides:
             config = AgentConfig.model_validate(side.config)
             resolved = await resolve_models(session, run.organisation_id, config)
@@ -288,20 +296,27 @@ async def run_evaluation(
                 ).number
             )
             for case in cases:
-                await _answer_and_judge(
-                    session,
-                    ports,
-                    gateway,
-                    run,
-                    side,
-                    resolved,
-                    project,
-                    instructions_number,
-                    case,
-                    clock,
-                )
-                run.answers_done += 1
-                await session.commit()
-        run.status = RunStatus.COMPLETED
+                for repeat in range(1, run.repeats + 1):
+                    result = await _answer_and_judge(
+                        session,
+                        ports,
+                        gateway,
+                        run,
+                        side,
+                        resolved,
+                        project,
+                        instructions_number,
+                        case,
+                        repeat,
+                        clock,
+                    )
+                    errors[result.error_reason] += result.status == ResultStatus.ERROR
+                    run.answers_done += 1
+                    await session.commit()
+        if errors.total() == run.answers_done:
+            run.status = RunStatus.FAILED
+            run.error_message = errors.most_common(1)[0][0]
+        else:
+            run.status = RunStatus.COMPLETED
         run.finished_at = clock.now()
         await session.commit()

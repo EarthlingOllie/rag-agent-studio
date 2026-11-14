@@ -4,12 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { fakeAgentsApi, hrHelper, hrTrace, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import {
+  caseSide,
   erroredResult,
   failedResult,
   fakeEvaluationApi,
   leaveCase,
   parkingCase,
   passed,
+  repeat,
   results,
   run,
 } from "../test/evaluation";
@@ -196,12 +198,12 @@ test("Evaluate starts a Run, the Studio polls its progress, then shows each answ
 
   const [leave, parking] = within(detail).getAllByRole("listitem").filter((item) => item.parentElement === detail);
   expect(leave).toHaveTextContent(leaveCase.question);
-  expect(leave).toHaveTextContent("Outcome: Pass");
+  expect(leave).toHaveTextContent("Repeat 1: Pass");
   expect(leave).toHaveTextContent(passed.answer ?? "");
   expect(within(leave as HTMLElement).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
     "Reference answer: Pass. The answer gives the 25 days the reference names.",
   );
-  expect(parking).toHaveTextContent("Outcome: Error");
+  expect(parking).toHaveTextContent("Repeat 1: Error");
   expect(within(parking as HTMLElement).getByRole("alert")).toHaveTextContent(erroredResult.error_reason ?? "");
   expect(within(parking as HTMLElement).queryByRole("group", { name: "Trace" })).not.toBeInTheDocument();
 }, 20_000);
@@ -221,7 +223,7 @@ test("Run detail shows the sides, failing Verdicts with reasons, and each answer
   );
   const cases = within(detail).getByRole("list", { name: "Cases" });
   const parking = within(cases).getAllByRole("listitem").filter((item) => item.parentElement === cases)[1] as HTMLElement;
-  expect(parking).toHaveTextContent("Outcome: Fail");
+  expect(parking).toHaveTextContent("Repeat 1: Fail");
   expect(parking).toHaveTextContent("Reference answer: In the north car park.");
   expect(within(parking).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
     "Reference answer: Fail. The answer doesn't name the north car park.Grounding: Fail. Nothing cited supports it.",
@@ -236,7 +238,14 @@ test("Run detail shows the sides, failing Verdicts with reasons, and each answer
 test("a Run that failed says why; a Run without Project Instructions says so", async () => {
   const failedRun = run("r3000000-0000-4000-8000-000000000003", "failed", 1, 1, {
     error_message: "Every case errored.",
-    sides: run("x", "failed", 0, 0).sides.map((side) => ({ ...side, instructions_version_number: null })),
+    sides: run("x", "failed", 0, 0).sides.map((side) => ({
+      ...side,
+      instructions_version_number: null,
+      cases_passed: 0,
+      cases_failed: 0,
+      cases_errored: 2,
+      score: null,
+    })),
   });
   const withoutInstructions = {
     ...passed,
@@ -250,6 +259,8 @@ test("a Run that failed says why; a Run without Project Instructions says so", a
 
   const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
   expect(detail).toHaveTextContent("Failed · Draft revision 3 · no Project Instructions");
+  expect(detail).toHaveTextContent("Evaluation score: none, every case was an Error");
+  expect(detail).toHaveTextContent("0 passed, 0 failed, 2 Errors left out of the score");
   expect(within(detail).getAllByRole("alert")[0]).toHaveTextContent("Every case errored.");
   const trace = within(detail).getByRole("group", { name: "Trace" });
   await userEvent.click(within(trace).getByText("Trace"));
@@ -268,7 +279,7 @@ test("an older Run is chosen from the list", async () => {
   await user.click(await screen.findByRole("button", { name: "Run of 2026-11-01 08:00 UTC" }, { timeout: 5000 }));
 
   const detail = await screen.findByRole("region", { name: "Run of 2026-11-01 08:00 UTC" });
-  expect(detail).toHaveTextContent("Outcome: Fail");
+  expect(detail).toHaveTextContent("Repeat 1: Fail");
 });
 
 test("a refused Evaluate says why", async () => {
@@ -330,4 +341,69 @@ test("a refused edit keeps the editor open with the reason", async () => {
   await user.click(within(editor).getByRole("button", { name: "Save case" }));
 
   expect(await within(editor).findByRole("alert")).toHaveTextContent("This Agent is archived.");
+});
+
+test("the set shows each case's latest result: pass, fail, Unsteady or Error", async () => {
+  const latest = (outcome: "pass" | "fail" | "error", passed: number, answered: number, unsteady = false) => ({
+    run_id: "r1000000-0000-4000-8000-000000000001",
+    outcome,
+    passed,
+    answered,
+    repeats: 3,
+    unsteady,
+  });
+  setUp({
+    cases: [
+      { ...leaveCase, latest_result: latest("pass", 3, 3) },
+      { ...parkingCase, latest_result: latest("pass", 2, 3, true) },
+      { ...parkingCase, id: "e1000000-0000-4000-8000-000000000003", question: "Failing?", latest_result: latest("fail", 0, 3) },
+      { ...parkingCase, id: "e1000000-0000-4000-8000-000000000004", question: "Errored?", latest_result: latest("error", 0, 0) },
+      { ...parkingCase, id: "e1000000-0000-4000-8000-000000000005", question: "New?" },
+    ],
+  });
+  renderStudio(agentPage(hrHelper.id));
+
+  const table = await screen.findByRole("table", { name: "Evaluation Cases" }, { timeout: 5000 });
+  const latestResults = within(table)
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => within(row).getAllByRole("cell")[2]?.textContent);
+  expect(within(table).getByRole("columnheader", { name: "Latest result" })).toBeInTheDocument();
+  expect(latestResults).toEqual(["Pass3/3", "PassUnsteady2/3", "Fail0/3", "Error", "Not run yet"]);
+});
+
+test("Run detail combines each case's repeats: the majority with its count, Unsteady, Error, and the score", async () => {
+  const runId = "r5000000-0000-4000-8000-000000000005";
+  const combined = results(
+    run(runId, "completed", 9, 9, {
+      repeats: 3,
+      sides: run("x", "completed", 0, 0).sides.map((side) => ({ ...side, cases_passed: 1, cases_failed: 1, cases_errored: 1, score: 0.5 })),
+    }),
+    [
+      [leaveCase, [repeat(passed, 1), repeat(failedResult, 2), repeat(passed, 3)], caseSide("pass", 2, 3, 3), true],
+      [parkingCase, [repeat(failedResult, 1), repeat(failedResult, 2), repeat(erroredResult, 3)], caseSide("fail", 0, 2, 3)],
+      [
+        { ...parkingCase, question: "Errored?" },
+        [repeat(erroredResult, 1), repeat(erroredResult, 2), repeat(erroredResult, 3)],
+        caseSide("error", 0, 0, 3),
+      ],
+    ],
+  );
+  setUp({ cases: [leaveCase, parkingCase], runs: [combined] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
+  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini · 3 repeats");
+  expect(within(detail).getByText("Evaluation score: 50%")).toBeInTheDocument();
+  expect(detail).toHaveTextContent("1 passed, 1 failed, 1 Error left out of the score");
+  const cases = within(detail).getByRole("list", { name: "Cases" });
+  const [leave, parking, errored] = within(cases)
+    .getAllByRole("listitem")
+    .filter((item) => item.parentElement === cases);
+  expect(within(leave as HTMLElement).getByLabelText("Result")).toHaveTextContent("PassUnsteady2/3 repeats passed");
+  expect(leave).toHaveTextContent("Repeat 1: Pass");
+  expect(leave).toHaveTextContent("Repeat 2: Fail");
+  expect(within(parking as HTMLElement).getByLabelText("Result")).toHaveTextContent("Fail0/2 repeats passed");
+  expect(parking).toHaveTextContent("Repeat 3: Error");
+  expect(within(errored as HTMLElement).getByLabelText("Result")).toHaveTextContent("ErrorEvery repeat errored; left out of the score.");
 });

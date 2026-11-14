@@ -687,6 +687,10 @@ async def _a_retention_window(owner: SignedUpMember, add_member: MemberFactory) 
     return {}, {"retention_days": 30}
 
 
+async def _evaluation_repeats(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"repeats": 5}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS, EDITOR),
     ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
@@ -736,6 +740,13 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}/default-model", EDITOR),
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/default-model", OWNER, _a_chat_model_choice
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/evaluation-settings", EDITOR),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/evaluation-model", OWNER, _a_chat_model_choice
+    ),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/evaluation-repeats", OWNER, _evaluation_repeats
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),

@@ -13,7 +13,17 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, false
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    false,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -62,6 +72,25 @@ class VerdictKind(enum.StrEnum):
 class VerdictOutcome(enum.StrEnum):
     PASS = "pass"  # noqa: S105 (a Verdict outcome, not a password)
     FAIL = "fail"
+    # A Stale expectation, skipped: neither pass nor fail.
+    STALE = "stale"
+
+
+class EvaluationModel(IdMixin, Base):
+    """The Organisation's Evaluation Model: a chat-capable credential and one of its chat models,
+    the shape of the Default Model's row. No row: the Default Model judges.
+
+    The credential is registered as a reference (``app.evaluation.settings``), so it can't be
+    deleted while it is chosen; the foreign key backs that up."""
+
+    __tablename__ = "evaluation_models"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), unique=True
+    )
+    credential_id: Mapped[uuid.UUID] = mapped_column(ForeignKey(ProviderCredential.id), index=True)
+    model: Mapped[str] = mapped_column(String(200))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class EvaluationCase(IdMixin, Base):
@@ -96,12 +125,15 @@ class EvaluationRun(IdMixin, Base):
     )
     status: Mapped[str] = mapped_column(String(20), default=RunStatus.QUEUED)
     started_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
-    # The model that judges the Run's answers when it started: the Default Model, for now.
+    # The model that judged the Run's answers and the Evaluation repeats, as they were in force
+    # when it started (the Evaluation Model, or else the Default Model), so later changes to
+    # the Organisation's settings don't rewrite it.
     judge_credential_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(ProviderCredential.id, ondelete="SET NULL"), index=True
     )
     judge_provider: Mapped[str] = mapped_column(String(50))
     judge_model: Mapped[str] = mapped_column(String(200))
+    repeats: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     # Answers done (answered or errored) out of every answer the Run gives.
     answers_done: Mapped[int] = mapped_column(Integer, default=0)
     answers_total: Mapped[int] = mapped_column(Integer, default=0)

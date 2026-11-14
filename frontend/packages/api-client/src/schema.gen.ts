@@ -683,6 +683,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/evaluation-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Evaluation Model
+         * @description Sets the Evaluation Model to one of a chat-capable credential's chat models, or with both
+         *     fields null goes back to the Default Model (Owners only). Recorded as
+         *     ``organisation.evaluation_model_changed``.
+         */
+        put: operations["setEvaluationModel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/evaluation-repeats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Evaluation Repeats
+         * @description Sets the Evaluation repeats to 1, 3, 5, 7 or 9 (Owners only). Recorded as
+         *     ``organisation.evaluation_repeats_changed``.
+         */
+        put: operations["setEvaluationRepeats"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/evaluation-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evaluation Settings
+         * @description The Evaluation Model (null while the Default Model judges) and the Evaluation repeats.
+         *     Open to every Member.
+         */
+        get: operations["getEvaluationSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/invites": {
         parameters: {
             query?: never;
@@ -2831,6 +2895,7 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            latest_result: components["schemas"]["LatestResultOut"] | null;
             /** Question */
             question: string;
             /** Reference Answer */
@@ -2860,6 +2925,19 @@ export interface components {
             trace: components["schemas"]["TraceOut"] | null;
             /** Verdicts */
             verdicts: components["schemas"]["VerdictOut"][];
+        };
+        /** CaseSideOut */
+        CaseSideOut: {
+            /** Answered */
+            answered: number;
+            /** Outcome */
+            outcome: string;
+            /** Passed */
+            passed: number;
+            /** Position */
+            position: string;
+            /** Repeats */
+            repeats: number;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -3602,6 +3680,27 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** EvaluationModelOut */
+        EvaluationModelOut: {
+            /**
+             * Credential Id
+             * Format: uuid
+             */
+            credential_id: string;
+            /** Credential Name */
+            credential_name: string;
+            /** Model */
+            model: string;
+            /** Model Name */
+            model_name: string;
+            provider: components["schemas"]["Provider"];
+        };
+        /** EvaluationSettingsOut */
+        EvaluationSettingsOut: {
+            evaluation_model: components["schemas"]["EvaluationModelOut"] | null;
+            /** Repeats */
+            repeats: number;
+        };
         /** Experience */
         "Experience-Input": {
             /** Avatar Url */
@@ -4011,6 +4110,24 @@ export interface components {
             n: number;
             /** Total P95 Ms */
             total_p95_ms: number | null;
+        };
+        /** LatestResultOut */
+        LatestResultOut: {
+            /** Answered */
+            answered: number;
+            /** Outcome */
+            outcome: string;
+            /** Passed */
+            passed: number;
+            /** Repeats */
+            repeats: number;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Unsteady */
+            unsteady: boolean;
         };
         /**
          * LauncherPosition
@@ -4767,6 +4884,10 @@ export interface components {
             reference_answer: string | null;
             /** Results */
             results: components["schemas"]["CaseResultOut"][];
+            /** Sides */
+            sides: components["schemas"]["CaseSideOut"][];
+            /** Unsteady */
+            unsteady: boolean;
         };
         /** RunOut */
         RunOut: {
@@ -4789,6 +4910,8 @@ export interface components {
             /** Judge Provider */
             judge_provider: string;
             progress: components["schemas"]["ProgressOut"];
+            /** Repeats */
+            repeats: number;
             /** Sides */
             sides: components["schemas"]["RunSideOut"][];
             /** Status */
@@ -4802,6 +4925,12 @@ export interface components {
         };
         /** RunSideOut */
         RunSideOut: {
+            /** Cases Errored */
+            cases_errored: number;
+            /** Cases Failed */
+            cases_failed: number;
+            /** Cases Passed */
+            cases_passed: number;
             /** Draft Revision */
             draft_revision: number | null;
             /** Instructions Version Number */
@@ -4814,6 +4943,8 @@ export interface components {
             model_provider: string;
             /** Position */
             position: string;
+            /** Score */
+            score: number | null;
         };
         /**
          * ScopedAgentOut
@@ -4892,6 +5023,25 @@ export interface components {
             credential_id?: string | null;
             /** Model Id */
             model_id: string;
+        };
+        /**
+         * SetEvaluationModelRequest
+         * @description A chat-capable credential and one of its chat models, or both null to judge with the
+         *     Default Model.
+         */
+        SetEvaluationModelRequest: {
+            /** Credential Id */
+            credential_id: string | null;
+            /** Model */
+            model: string | null;
+        };
+        /** SetEvaluationRepeatsRequest */
+        SetEvaluationRepeatsRequest: {
+            /**
+             * Repeats
+             * @enum {integer}
+             */
+            repeats: 1 | 3 | 5 | 7 | 9;
         };
         /** SignInRequest */
         SignInRequest: {
@@ -7279,6 +7429,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmbeddingModelChoiceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setEvaluationModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEvaluationModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSettingsOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a chat model of this Organisation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setEvaluationRepeats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEvaluationRepeatsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSettingsOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not 1, 3, 5, 7 or 9 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEvaluationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSettingsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */

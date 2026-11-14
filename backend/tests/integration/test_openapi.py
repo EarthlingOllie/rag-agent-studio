@@ -73,6 +73,12 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listProviders": ("/api/providers", "get"),
         "getDefaultModel": ("/api/organisations/{organisation_id}/default-model", "get"),
         "setDefaultModel": ("/api/organisations/{organisation_id}/default-model", "put"),
+        "getEvaluationSettings": (
+            "/api/organisations/{organisation_id}/evaluation-settings",
+            "get",
+        ),
+        "setEvaluationModel": ("/api/organisations/{organisation_id}/evaluation-model", "put"),
+        "setEvaluationRepeats": ("/api/organisations/{organisation_id}/evaluation-repeats", "put"),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),

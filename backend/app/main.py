@@ -38,7 +38,9 @@ from app.embed import api as embed_api
 from app.embed import branding_api
 from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
+from app.evaluation import settings_api as evaluation_settings_api
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
+from app.evaluation.settings import evaluation_model_references
 from app.feedback import api as feedback_api
 from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
@@ -73,6 +75,7 @@ ROUTERS: Sequence[APIRouter] = (
     credentials_api.router,
     credentials_api.providers_router,
     default_model_api.router,
+    evaluation_settings_api.router,
     pricing_api.router,
     theme_api.router,
     theme_api.fonts_router,
@@ -172,6 +175,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(default_model_references)
     app.state.credential_references.register(agent_references)
     app.state.credential_references.register(project_embedding_references)
+    app.state.credential_references.register(evaluation_model_references)
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.

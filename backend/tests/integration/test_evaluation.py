@@ -38,6 +38,9 @@ from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path, upload
 from tests.integration.test_agent_archive import archive, delete_permanently
 from tests.integration.test_agent_versions import published
+from tests.integration.test_evaluation_settings import set_evaluation_model, set_repeats
+from tests.integration.test_input_guardrail import ATTACK, REFUSAL
+from tests.integration.test_input_guardrail import RULE as GUARDRAIL_RULE
 from tests.integration.test_playground import (
     ANSWER,
     LEAVE,
@@ -109,10 +112,17 @@ async def evaluated(member: SignedUpMember, project_id: str, agent_id: str) -> d
     return body
 
 
+def alike(result: dict[str, Any]) -> tuple[Any, ...]:
+    return (result["status"], result["error_reason"], result["answer"], result["verdicts"])
+
+
 def only_result(results: dict[str, Any]) -> dict[str, Any]:
+    """The one case's first answer, once every repeat has been checked to answer alike."""
     (case,) = results["cases"]
-    (result,) = case["results"]
-    found: dict[str, Any] = result
+    first, *others = case["results"]
+    assert [r["repeat"] for r in case["results"]] == list(range(1, results["run"]["repeats"] + 1))
+    assert [alike(other) for other in others] == [alike(first)] * len(others)
+    found: dict[str, Any] = first
     return found
 
 
@@ -221,7 +231,8 @@ async def test_an_archived_agents_set_is_readable_but_unchangeable_and_starts_no
         await start(owner, project_id, agent_id),
     ):
         assert (response.status_code, response.json()) == archived
-    assert (await owner.client.get(path)).json() == [case]
+    (listed,) = (await owner.client.get(path)).json()
+    assert (listed["id"], listed["question"]) == (case["id"], case["question"])
     runs = await owner.client.get(evaluation_path(owner, project_id, agent_id, "runs"))
     assert [run["id"] for run in runs.json()] == [results["run"]["id"]]
 
@@ -260,8 +271,11 @@ async def test_an_editor_evaluates_the_draft_and_reads_the_judged_answer(
     run = started.json()
     # The task ran eagerly: the Run is already finished, and its progress counts the answer.
     assert run["status"] == "completed"
-    assert run["progress"] == {"done": 1, "total": 1}
+    # Each case is answered as many times as the Organisation's Evaluation repeats (3).
+    assert run["repeats"] == 3
+    assert run["progress"] == {"done": 3, "total": 3}
     assert run["finished_at"] is not None
+    # No Evaluation Model is chosen, so the Default Model judged.
     assert (run["judge_provider"], run["judge_model"]) == ("openai", "gpt-4.1-mini")
     agent = (await editor.client.get(agents_path(editor, project_id, agent_id))).json()
     assert run["sides"] == [
@@ -272,6 +286,10 @@ async def test_an_editor_evaluates_the_draft_and_reads_the_judged_answer(
             "instructions_version_number": None,
             "model_provider": "openai",
             "model_name": "gpt-4.1-mini",
+            "cases_passed": 1,
+            "cases_failed": 0,
+            "cases_errored": 0,
+            "score": 1.0,
         }
     ]
     polled = await editor.client.get(
@@ -293,6 +311,10 @@ async def test_an_editor_evaluates_the_draft_and_reads_the_judged_answer(
         case["question"],
         REFERENCE,
     )
+    assert copied["unsteady"] is False
+    assert copied["sides"] == [
+        {"position": "first", "outcome": "pass", "passed": 3, "answered": 3, "repeats": 3}
+    ]
     result = only_result(results)
     assert (result["position"], result["repeat"], result["status"]) == ("first", 1, "answered")
     assert result["answer"] == ANSWER
@@ -477,7 +499,8 @@ async def test_a_provider_error_makes_the_case_result_an_error(
 
     results = await evaluated(owner, project_id, agent_id)
 
-    assert results["run"]["status"] == "completed"
+    # Its only case errored, so the Run failed.
+    assert results["run"]["status"] == "failed"
     result = only_result(results)
     assert result["status"] == "error"
     assert result["error_reason"].startswith("The provider says this key is over its rate limit")
@@ -639,5 +662,275 @@ async def test_permanent_deletion_removes_the_set_and_runs(
     deleted = await delete_permanently(owner, project_id, agent_id, "HR helper")
 
     assert deleted.status_code == 204, deleted.text
-    assert before == {"cases": 1, "runs": 1, "results": 1}
+    assert before == {"cases": 1, "runs": 1, "results": 3}
     assert await evaluation_rows(app, agent_id) == dict.fromkeys(before, 0)
+
+
+# The Evaluation Model and Evaluation repeats
+
+
+def judging_models(app: FastAPI, stream: StreamFunction) -> list[tuple[Provider, str]]:
+    """Like ``judge_with``, and records every chat model built, by provider and model."""
+    built: list[tuple[Provider, str]] = []
+
+    def chat(provider: Provider, secret: str, model: str) -> FunctionModel:
+        built.append((provider, model))
+        fake = fake_chat(provider, secret, model)
+        assert isinstance(fake, FunctionModel)
+        assert fake.function is not None
+        return FunctionModel(
+            fake.function,
+            stream_function=stream,
+            model_name=model,
+            profile={"supports_json_schema_output": False},
+        )
+
+    app.state.model_gateway.adapters = FakeModelAdapters(chat=chat)
+    return built
+
+
+async def test_a_run_copies_the_evaluation_model_and_repeats_in_force_when_it_starts(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    built = judging_models(app, three_tokens)
+    _, project_id, agent_id = await ready_agent(app, owner)
+    await add_case(owner, project_id, agent_id)
+    claude = await added(owner, provider="anthropic", api_key=ANTHROPIC_KEY, name="Claude")
+    await set_evaluation_model(owner, claude["id"], "claude-haiku-4-5")
+    await set_repeats(owner, 5)
+
+    results = await evaluated(owner, project_id, agent_id)
+
+    run = results["run"]
+    assert (run["judge_provider"], run["judge_model"], run["repeats"]) == (
+        "anthropic",
+        "claude-haiku-4-5",
+        5,
+    )
+    assert run["progress"] == {"done": 5, "total": 5}
+    # The Draft answered with the Default Model; the Evaluation Model judged each answer once.
+    assert built.count((Provider.ANTHROPIC, "claude-haiku-4-5")) == 5
+    assert len(only_result(results)["verdicts"]) == 2
+
+    await set_evaluation_model(owner, None, None)
+    await set_repeats(owner, 1)
+    again = await owner.client.get(
+        evaluation_path(owner, project_id, agent_id, "runs", run["id"], "results")
+    )
+    assert again.json() == results
+
+
+async def test_the_evaluation_model_judges_without_a_default_model(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(app, three_tokens)
+    project_id = await create_project(owner)
+    await upload(app, owner, project_id, "leave.txt", LEAVE.encode())
+    agent = await create_automatic_agent(owner, project_id)
+    claude = await added(owner, provider="anthropic", api_key=ANTHROPIC_KEY, name="Claude")
+    override = {"credential_id": claude["id"], "model": "claude-haiku-4-5"}
+    saved = await save_draft(
+        owner, project_id, agent["id"], {"behaviour": {"model": override}, "retrieval": AUTOMATIC}
+    )
+    assert saved.status_code == 200, saved.text
+    await add_case(owner, project_id, agent["id"])
+    await set_evaluation_model(owner, claude["id"], "claude-sonnet-4-5")
+    await set_repeats(owner, 1)
+
+    results = await evaluated(owner, project_id, agent["id"])
+
+    assert results["run"]["judge_model"] == "claude-sonnet-4-5"
+    assert only_result(results)["passed"] is True
+
+
+# Combining repeats
+
+
+PASSING = "Everyone gets twenty-five days of annual leave a year, see [C1]."
+FAILING = "Everyone gets ten days of leave."
+RATE_LIMITED = 429
+UNAVAILABLE = 503
+
+
+def scripted(*answers: str | int) -> StreamFunction:
+    """Answers each question in turn with the next of ``answers``: text, or an HTTP status the
+    provider fails with."""
+    remaining = list(answers)
+
+    async def stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+        answer = remaining.pop(0)
+        if isinstance(answer, int):
+            raise ModelHTTPError(status_code=answer, model_name="gpt-4.1-mini")
+        yield answer
+
+    return stream
+
+
+def by_case(results: dict[str, Any]) -> list[tuple[bool, list[dict[str, Any]]]]:
+    return [(case["unsteady"], case["sides"]) for case in results["cases"]]
+
+
+def side(outcome: str, passed: int, answered: int, repeats: int = 3) -> dict[str, Any]:
+    return {
+        "position": "first",
+        "outcome": outcome,
+        "passed": passed,
+        "answered": answered,
+        "repeats": repeats,
+    }
+
+
+async def test_a_case_passes_by_majority_and_disagreeing_repeats_are_unsteady(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(
+        app,
+        scripted(PASSING, PASSING, PASSING, PASSING, FAILING, PASSING, FAILING, PASSING, FAILING),
+    )
+    _, project_id, agent_id = await ready_agent(app, owner)
+    for question in ("Steady?", "Mostly passing?", "Mostly failing?"):
+        await add_case(owner, project_id, agent_id, question)
+
+    results = await evaluated(owner, project_id, agent_id)
+
+    assert by_case(results) == [
+        (False, [side("pass", 3, 3)]),
+        (True, [side("pass", 2, 3)]),
+        (True, [side("fail", 1, 3)]),
+    ]
+    # Each repeat is a fresh answer, judged once.
+    mostly_passing = results["cases"][1]["results"]
+    assert [(r["repeat"], r["answer"], r["passed"]) for r in mostly_passing] == [
+        (1, PASSING, True),
+        (2, FAILING, False),
+        (3, PASSING, True),
+    ]
+    (first,) = results["run"]["sides"]
+    assert (first["cases_passed"], first["cases_failed"], first["cases_errored"]) == (2, 1, 0)
+    assert first["score"] == 2 / 3
+
+
+async def test_errored_repeats_are_left_out_and_a_case_that_always_errored_is_an_error(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(
+        app,
+        scripted(
+            *(RATE_LIMITED, PASSING, PASSING),
+            *(UNAVAILABLE, PASSING, FAILING),
+            *(RATE_LIMITED, UNAVAILABLE, RATE_LIMITED),
+        ),
+    )
+    _, project_id, agent_id = await ready_agent(app, owner)
+    for question in ("Once errored?", "Split?", "Always errored?"):
+        await add_case(owner, project_id, agent_id, question)
+
+    results = await evaluated(owner, project_id, agent_id)
+
+    assert results["run"]["status"] == "completed"
+    assert by_case(results) == [
+        (False, [side("pass", 2, 2)]),
+        # A tie among the answered repeats is no majority.
+        (True, [side("fail", 1, 2)]),
+        (False, [side("error", 0, 0)]),
+    ]
+    errored = results["cases"][2]["results"]
+    assert [r["status"] for r in errored] == ["error"] * 3
+    assert errored[0]["error_reason"].startswith("The provider says this key is over its rate")
+    # The Error case is left out of the Evaluation score.
+    (first,) = results["run"]["sides"]
+    assert (first["cases_passed"], first["cases_failed"], first["cases_errored"]) == (1, 1, 1)
+    assert first["score"] == 0.5
+
+
+async def test_a_run_where_every_case_errored_fails_with_the_most_common_error(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(app, scripted(UNAVAILABLE, RATE_LIMITED, RATE_LIMITED))
+    _, project_id, agent_id = await ready_agent(app, owner)
+    await set_repeats(owner, 1)
+    for question in ("First?", "Second?", "Third?"):
+        await add_case(owner, project_id, agent_id, question)
+
+    results = await evaluated(owner, project_id, agent_id)
+
+    run = results["run"]
+    assert run["status"] == "failed"
+    assert run["finished_at"] is not None
+    assert run["progress"] == {"done": 3, "total": 3}
+    assert run["error_message"].startswith("The provider says this key is over its rate limit")
+    (first,) = run["sides"]
+    assert (first["cases_errored"], first["score"]) == (3, None)
+
+
+async def test_a_guardrail_block_is_an_answer_and_is_judged(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(app, three_tokens)
+    app.state.guardrails.classifier.rules = [GUARDRAIL_RULE]
+    _, project_id, agent_id = await ready_agent(app, owner)
+    saved = await save_draft(
+        owner,
+        project_id,
+        agent_id,
+        {"retrieval": AUTOMATIC, "guardrails": {"input_mode": "block", "refusal_text": REFUSAL}},
+    )
+    assert saved.status_code == 200, saved.text
+    await add_case(owner, project_id, agent_id, ATTACK)
+
+    results = await evaluated(owner, project_id, agent_id)
+
+    result = only_result(results)
+    assert (result["status"], result["answer"], result["passed"]) == ("answered", REFUSAL, False)
+    assert outcomes(result) == [("reference_answer", "fail"), ("grounding", "fail")]
+    (outcome,) = result["trace"]["guardrail_outcomes"]
+    assert outcome["action"] == "blocked"
+    assert by_case(results) == [(False, [side("fail", 0, 3)])]
+
+
+# The Evaluation Set's latest results
+
+
+async def test_the_set_shows_each_cases_latest_result(app: FastAPI, owner: SignedUpMember) -> None:
+    judge_with(
+        app,
+        scripted(
+            *(FAILING, FAILING, FAILING),
+            *(PASSING, PASSING, PASSING),
+            *(FAILING, PASSING, PASSING),
+            *(RATE_LIMITED, RATE_LIMITED, RATE_LIMITED),
+        ),
+    )
+    _, project_id, agent_id = await ready_agent(app, owner)
+    steady = await add_case(owner, project_id, agent_id, "Steady?")
+    await evaluated(owner, project_id, agent_id)
+    unsteady = await add_case(owner, project_id, agent_id, "Unsteady?")
+    errored = await add_case(owner, project_id, agent_id, "Errored?")
+    # The first Run answered only the first case, and failed it; the latest one passes it.
+    latest = await evaluated(owner, project_id, agent_id)
+    fresh = await add_case(owner, project_id, agent_id, "Not run yet?")
+    run_id = latest["run"]["id"]
+
+    listed = (await owner.client.get(evaluation_path(owner, project_id, agent_id, "cases"))).json()
+
+    def result(outcome: str, unsteady: bool, passed: int, answered: int) -> dict[str, Any]:
+        return {
+            "run_id": run_id,
+            "outcome": outcome,
+            "unsteady": unsteady,
+            "passed": passed,
+            "answered": answered,
+            "repeats": 3,
+        }
+
+    assert [(c["id"], c["latest_result"]) for c in listed] == [
+        (steady["id"], result("pass", False, 3, 3)),
+        (unsteady["id"], result("pass", True, 2, 3)),
+        (errored["id"], result("error", False, 0, 0)),
+        (fresh["id"], None),
+    ]
+    assert fresh["latest_result"] is None
+    read = await owner.client.get(
+        evaluation_path(owner, project_id, agent_id, "cases", steady["id"])
+    )
+    assert read.json()["latest_result"] == result("pass", False, 3, 3)

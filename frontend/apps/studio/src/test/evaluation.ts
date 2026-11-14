@@ -16,6 +16,7 @@ export const leaveCase: Case = {
   source: "written",
   created_at: "2026-11-10T09:00:00Z",
   updated_at: "2026-11-10T09:00:00Z",
+  latest_result: null,
 };
 
 export const parkingCase: Case = {
@@ -25,6 +26,7 @@ export const parkingCase: Case = {
   source: "written",
   created_at: "2026-11-10T09:05:00Z",
   updated_at: "2026-11-10T09:05:00Z",
+  latest_result: null,
 };
 
 /** A Run of the Draft alone, at a status and progress. */
@@ -37,6 +39,7 @@ export function run(id: string, status: Run["status"], done: number, total: numb
     progress: { done, total },
     judge_provider: "openai",
     judge_model: "gpt-4.1-mini",
+    repeats: 1,
     error_message: null,
     sides: [
       {
@@ -46,6 +49,10 @@ export function run(id: string, status: Run["status"], done: number, total: numb
         instructions_version_number: 2,
         model_provider: "openai",
         model_name: "gpt-4.1-mini",
+        cases_passed: 1,
+        cases_failed: 1,
+        cases_errored: 0,
+        score: 0.5,
       },
     ],
     ...overrides,
@@ -86,16 +93,38 @@ export const erroredResult: CaseResult = {
   trace: null,
 };
 
-/** A Run's results: each case as copied, with one answer each. */
-export function results(of: Run, answers: [Case, CaseResult][]): RunResults {
+/** A case's result on the first side: its outcome and how many of its answered repeats passed. */
+export function caseSide(outcome: "pass" | "fail" | "error", passed: number, answered: number, repeats = 1) {
+  return { position: "first", outcome, passed, answered, repeats };
+}
+
+/** A case's answer at a repeat. */
+export const repeat = (result: CaseResult, number: number): CaseResult => ({ ...result, repeat: number });
+
+/**
+ * A Run's results: each case as copied, with its answers (one, or one per repeat) and, unless
+ * given, its result on the first side as one answer gives it.
+ */
+export function results(
+  of: Run,
+  answers: [Case, CaseResult | CaseResult[], ReturnType<typeof caseSide>?, boolean?][],
+): RunResults {
   return {
     run: of,
-    cases: answers.map(([evaluationCase, result]) => ({
-      case_id: evaluationCase.id,
-      question: evaluationCase.question,
-      reference_answer: evaluationCase.reference_answer,
-      results: [result],
-    })),
+    cases: answers.map(([evaluationCase, answered, side, unsteady]) => {
+      const each = Array.isArray(answered) ? answered : [answered];
+      const [only] = each;
+      const single =
+        only?.status === "error" ? caseSide("error", 0, 0) : only?.passed ? caseSide("pass", 1, 1) : caseSide("fail", 0, 1);
+      return {
+        case_id: evaluationCase.id,
+        question: evaluationCase.question,
+        reference_answer: evaluationCase.reference_answer,
+        sides: [side ?? single],
+        unsteady: unsteady ?? false,
+        results: each,
+      };
+    }),
   };
 }
 
@@ -150,6 +179,7 @@ export function fakeEvaluationApi(
         source: "written",
         created_at: "2026-11-12T09:00:00Z",
         updated_at: "2026-11-12T09:00:00Z",
+        latest_result: null,
       };
       cases = [...cases, created];
       return HttpResponse.json(created, { status: 201 });
