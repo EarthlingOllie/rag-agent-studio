@@ -802,23 +802,31 @@ An Evaluation Case's expectation that the Agent says it doesn't know, for a ques
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:
-One run of an Agent's Evaluation Set that answers every Evaluation Case with the Draft and, at the same moment against the same Knowledge Base, with the Live Version (the Draft alone while the Agent has none), through the real Guardrails, then judges each answer with the Evaluation Model. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; it is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. A Regression, or a lower Evaluation score than the Live Version's, is a warning when Publishing; it never blocks.
+One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions with the Project Instructions it answers with (by default the Live Version against the Draft, or the Draft alone while the Agent has none). Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts: a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
 _Avoid_: Eval, test run, benchmark run
 
 **Verdict**:
-An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A case passes when every verdict that isn't Stale passes. A case the provider or the Evaluation Model couldn't answer or judge has an Error instead, and is left out of the Evaluation score; a Guardrail block is an answer, and is judged like one.
+An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A repeat passes when every verdict that isn't Stale passes, and a case passes on a side when most of its repeats there do. A case the provider or the Evaluation Model couldn't answer or judge has an Error instead, and is left out of the Evaluation score; a Guardrail block is an answer, and is judged like one.
 _Avoid_: Score, grade, judgement
 
 **Stale expectation**:
 An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
 _Avoid_: Broken case, invalid source
 
+**Evaluation repeats**:
+How many times each side of an Evaluation Run answers every Evaluation Case, each answer judged once: 1, 3, 5, 7 or 9, 3 by default, set by Owners in Organisation settings. Odd, so a majority always decides; each repeat multiplies a Run's Cost.
+_Avoid_: Samples, trials, runs per case
+
+**Unsteady**:
+An Evaluation Case whose repeats disagreed on either side of an Evaluation Run, shown with its count (for example 2/3), usually pointing to a vague Reference answer or a borderline question.
+_Avoid_: Flaky, non-deterministic
+
 **Evaluation score**:
 In an Evaluation Run, the share of Evaluation Cases that passed, given for the Draft and for the Live Version.
 _Avoid_: Pass rate (the Attack evaluation suite's), accuracy
 
 **Regression**:
-An Evaluation Case that passed with the Live Version and fails with the Draft in the same Evaluation Run. The Publish dialog lists them with their Verdicts' reasons.
+An Evaluation Case that passes by majority of its repeats on an Evaluation Run's first side (the Live Version, when Publishing) and fails by majority on its second (the Draft). The Publish dialog lists them with their Verdicts' reasons.
 _Avoid_: Breakage, failure
 
 **Expected source warning**:
