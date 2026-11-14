@@ -7,11 +7,11 @@ Draft marker and which Instructions it ran with. ``save_question`` and ``answer`
 serving the Live Version (``app.agents.serving``), whose answers record the Agent Version instead
 (its pinned Instructions are derivable from it).
 
-A question is answered by the configuration's Model override, or else the Organisation's
-Default Model, through the model gateway, from Chunks the retrieval module finds in the Agent's
-Project (reranked by the configuration's Reranker, when it has one, also built through the
-gateway). The question is saved before the answer streams; the answer, with its tokens, latency
-and cost, once the stream ends.
+A question is answered by the models its configuration resolves to (``app.agents.resolution``:
+the Model override, or else the Organisation's Default Model, and the Reranker when it has one),
+built through the model gateway, from Chunks the retrieval module finds in the Agent's Project.
+The question is saved before the answer streams; the answer, with its tokens, latency and cost,
+once the stream ends.
 """
 
 import functools
@@ -26,7 +26,8 @@ from typing import Literal, overload
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.config import AgentConfig, ModelChoice, Retrieval, RetrievalMode
+from app.agents.config import AgentConfig, Retrieval
+from app.agents.resolution import ChosenModel, resolve_models
 from app.agents.service import active_agent, get_agent
 from app.conversations.models import (
     DRAFT,
@@ -44,9 +45,6 @@ from app.conversations.service import (
     traced_chunks,
 )
 from app.core.clock import Clock
-from app.credentials.models import ProviderCredential
-from app.credentials.registry import Provider, supports_tools
-from app.default_model.service import read_default
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.gateway.ports import Reranker
@@ -75,45 +73,6 @@ from app.tenancy.repository import OrganisationScope
 
 class ConversationNotFoundError(Exception):
     """No Playground Conversation with that ID for the Agent."""
-
-
-class NoDefaultModelError(Exception):
-    """The Draft has no Model override and the Organisation has no Default Model."""
-
-
-@dataclass(frozen=True)
-class ChosenModel:
-    """A credential and one of its models: the chat model that answers, or the Reranker."""
-
-    credential: ProviderCredential
-    model: str
-
-
-async def _chosen(
-    session: AsyncSession, organisation_id: uuid.UUID, choice: ModelChoice
-) -> ChosenModel:
-    """The credential a Draft setting names, with its model. Saving the Draft checked the
-    credential offers the model and made it a Credential reference, so it can't have been
-    deleted since."""
-    found = await session.scalars(
-        select(ProviderCredential).where(
-            ProviderCredential.id == choice.credential_id,
-            ProviderCredential.organisation_id == organisation_id,
-        )
-    )
-    return ChosenModel(found.one(), choice.model)
-
-
-async def _chat_model(
-    session: AsyncSession, organisation_id: uuid.UUID, config: AgentConfig
-) -> ChosenModel:
-    override = config.behaviour.model
-    if override is not None:
-        return await _chosen(session, organisation_id, override)
-    default = await read_default(session, organisation_id)
-    if default is None:
-        raise NoDefaultModelError
-    return ChosenModel(default.credential, default.model)
 
 
 async def start_conversation(
@@ -260,7 +219,8 @@ async def save_question(
     instructions_version: InstructionsVersion | None = None,
     now: datetime,
 ) -> PreparedTurn:
-    """Checks ``config`` has a chat model, then saves the question in the Conversation. A
+    """Resolves ``config``'s models (``NoDefaultModelError`` or ``ProviderCredentialGoneError``
+    when it can't be), then saves the question in the Conversation. A
     Conversation deleted on request (``app.retention``) takes no more questions:
     ``ConversationNotFoundError``."""
     # Locked, so a deletion either comes first (and is seen here) or purges this question too.
@@ -268,27 +228,7 @@ async def save_question(
     if conversation.deleted_at is not None:
         raise ConversationNotFoundError
     organisation_id = conversation.organisation_id
-    chat = await _chat_model(session, organisation_id, config)
-    # Saving the Draft checked its model supports tools, but the Default Model may have changed
-    # since: such an Agentic Agent answers as Automatic rather than not at all.
-    automatic_fallback = config.retrieval.mode is RetrievalMode.AGENTIC and not supports_tools(
-        Provider(chat.credential.provider), chat.model
-    )
-    if automatic_fallback:
-        retrieval = config.retrieval.model_copy(update={"mode": RetrievalMode.AUTOMATIC})
-        config = config.model_copy(update={"retrieval": retrieval})
-    reranker_choice = config.retrieval.reranker
-    reranker = (
-        None
-        if reranker_choice is None
-        else await _chosen(session, organisation_id, reranker_choice)
-    )
-    classifier_choice = config.guardrails.classifier
-    classifier = (
-        None
-        if classifier_choice is None
-        else await _chosen(session, organisation_id, classifier_choice)
-    )
+    resolved = await resolve_models(session, organisation_id, config)
     session.add(
         Message(
             organisation_id=organisation_id,
@@ -305,19 +245,19 @@ async def save_question(
         organisation_id=organisation_id,
         conversation_id=conversation.id,
         project=project,
-        config=config,
+        config=resolved.config,
         instructions=instructions,
         turns=_turns(messages),
         question=question,
-        chat=chat,
+        chat=resolved.chat,
         instructions_version_id=None if instructions_version is None else instructions_version.id,
         instructions_version_number=(
             None if instructions_version is None else instructions_version.number
         ),
-        reranker=reranker,
-        classifier=classifier,
+        reranker=resolved.reranker,
+        classifier=resolved.classifier,
         agent_version_id=agent_version_id,
-        automatic_fallback=automatic_fallback,
+        automatic_fallback=resolved.automatic_fallback,
     )
 
 

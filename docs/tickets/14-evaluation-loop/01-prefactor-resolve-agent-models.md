@@ -7,11 +7,11 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The chat model (Model override, else the Default Model), the Reranker and the LLM classifier are resolved from an AgentConfig by one public function in one module, returning typed choices or a typed error (no Default Model, Provider Credential gone)
-- [ ] The Playground and widget serving both use it; the private helpers it replaces are removed
-- [ ] Automatic fallback for a model without Tool support still happens where it did
-- [ ] Every existing Playground, serving and Guardrail test passes unchanged; the function's refusals are covered at the API seam through the existing Playground and widget routes
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The chat model (Model override, else the Default Model), the Reranker and the LLM classifier are resolved from an AgentConfig by one public function in one module, returning typed choices or a typed error (no Default Model, Provider Credential gone)
+- [x] The Playground and widget serving both use it; the private helpers it replaces are removed
+- [x] Automatic fallback for a model without Tool support still happens where it did
+- [x] Every existing Playground, serving and Guardrail test passes unchanged; the function's refusals are covered at the API seam through the existing Playground and widget routes
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

@@ -14,6 +14,7 @@ import pytest
 from fastapi import FastAPI
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
+from sqlalchemy import text
 
 from app.agents.config import DEFAULT_FALLBACK_TEXT
 from app.conversations.models import Message
@@ -500,6 +501,43 @@ async def test_a_model_override_needs_no_default_model(app: FastAPI, owner: Sign
 
     assert response.status_code == 200, response.text
     assert built == ["anthropic:claude-sonnet-4-5"]
+
+
+async def delete_credential_row(app: FastAPI, credential_id: str) -> None:
+    """Removes a Provider Credential behind the API's back: deleting one through the API is
+    refused while a Draft or Live Version names it, so this is how a configuration ends up
+    naming a credential that is gone."""
+    async with app.state.sessionmaker() as session:
+        await session.execute(
+            text("DELETE FROM provider_credentials WHERE id = :id"), {"id": credential_id}
+        )
+        await session.commit()
+
+
+async def test_a_draft_whose_provider_credential_is_gone_is_refused(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    answer_with(app, never_called)
+    await use_default_model(owner)
+    claude = await added(owner, provider="anthropic", api_key=ANTHROPIC_KEY)
+    project_id = await create_project(owner)
+    agent = await create_agent(owner, project_id)
+    model = {"credential_id": claude["id"], "model": "claude-sonnet-4-5"}
+    await save_draft(owner, project_id, agent["id"], {"behaviour": {"model": model}})
+    conversation = await start_conversation(owner, project_id, agent["id"])
+    await delete_credential_row(app, claude["id"])
+
+    response = await ask(owner, project_id, agent["id"], conversation["id"], "Hello?")
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "This Agent uses a Provider Credential that no longer exists. "
+        "Choose another model in its settings."
+    }
+    saved = await owner.client.get(
+        playground_path(owner, project_id, agent["id"], conversation["id"])
+    )
+    assert saved.json()["messages"] == []
 
 
 async def test_only_the_remembered_turns_reach_the_model(

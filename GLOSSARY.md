@@ -409,6 +409,10 @@ How many of the best-scoring Chunks an Agent is given with each question.
 An Agent's own chat model: a chat-capable Provider Credential and one of its chat models, set in the Draft's Behaviour. Without one the Agent uses the Default Model. It is a Credential reference, as are an Agent's Reranker and Guardrail LLM classifier.
 _Avoid_: Agent model, custom model
 
+**Effective model**:
+The chat model an AgentConfig actually answers with: its Model override, or else the Default Model. It is resolved, with the configuration's Reranker and Guardrail LLM classifier, in one place and the same way for the Playground, a Visitor reply and an Evaluation Run. A configuration with no effective model, or naming a Provider Credential that no longer exists, is refused before any question is saved.
+_Avoid_: Resolved model, active model
+
 **Remembered turns**:
 How many earlier question-and-answer pairs of a Conversation the model is given with each new question.
 _Avoid_: History length, memory, context window

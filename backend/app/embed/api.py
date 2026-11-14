@@ -32,6 +32,7 @@ from app.agents.models import (
     TOKEN_BUDGET_MAX,
     UNAVAILABLE_TEXT_MAX,
 )
+from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
 from app.agents.service import AgentNotFoundError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db, ErrorResponse
@@ -44,7 +45,7 @@ from app.embed.tokens import TokenSigner
 from app.guardrails.pipeline import RefusalEvent
 from app.mail.port import Mailer
 from app.playground.api import QUESTION_MAX
-from app.playground.service import Answered, NoDefaultModelError, answer
+from app.playground.service import Answered, answer
 from app.projects.service import ProjectNotFoundError
 from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import (
@@ -325,7 +326,7 @@ async def send_message(
         raise _invalid() from None
     except (AgentNotServedError, AgentNotLiveError):
         raise _gone() from None
-    except NoDefaultModelError:
+    except (NoDefaultModelError, ProviderCredentialGoneError):
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, unavailable) from None
     ingestion: IngestionPorts = request.app.state.ingestion
     prepared = admitted.turn
