@@ -1267,8 +1267,9 @@ export interface paths {
         put?: never;
         /**
          * Start Run
-         * @description Starts a Run of the Agent's Evaluation Set: the Draft alone, with the Current
-         *     Instructions Version. Poll it until it is ``completed`` or ``failed``.
+         * @description Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
+         *     (the Draft alone while the Agent has never been Published). Poll it until it is
+         *     ``completed``, ``failed`` or ``cancelled``.
          */
         post: operations["startEvaluationRun"];
         delete?: never;
@@ -1291,6 +1292,27 @@ export interface paths {
         get: operations["getEvaluationRun"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description Cancels a queued or running Run: it stops before its next answer and keeps what it
+         *     answered and spent.
+         */
+        post: operations["cancelEvaluationRun"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4878,6 +4900,8 @@ export interface components {
         RunCaseOut: {
             /** Case Id */
             case_id: string | null;
+            /** Change */
+            change: string | null;
             /** Question */
             question: string;
             /** Reference Answer */
@@ -4888,6 +4912,18 @@ export interface components {
             sides: components["schemas"]["CaseSideOut"][];
             /** Unsteady */
             unsteady: boolean;
+        };
+        /** RunIn */
+        RunIn: {
+            /**
+             * Instructions Draft
+             * @default false
+             */
+            instructions_draft: boolean;
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
+            /** Sides */
+            sides?: components["schemas"]["SideIn"][] | null;
         };
         /** RunOut */
         RunOut: {
@@ -4914,6 +4950,8 @@ export interface components {
             repeats: number;
             /** Sides */
             sides: components["schemas"]["RunSideOut"][];
+            /** Stale */
+            stale: boolean;
             /** Status */
             status: string;
         };
@@ -4925,6 +4963,8 @@ export interface components {
         };
         /** RunSideOut */
         RunSideOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
             /** Cases Errored */
             cases_errored: number;
             /** Cases Failed */
@@ -4933,6 +4973,8 @@ export interface components {
             cases_passed: number;
             /** Draft Revision */
             draft_revision: number | null;
+            /** Instructions Draft */
+            instructions_draft: boolean;
             /** Instructions Version Number */
             instructions_version_number: number | null;
             /** Kind */
@@ -4945,6 +4987,8 @@ export interface components {
             position: string;
             /** Score */
             score: number | null;
+            /** Version Number */
+            version_number: number | null;
         };
         /**
          * ScopedAgentOut
@@ -5042,6 +5086,16 @@ export interface components {
              * @enum {integer}
              */
             repeats: 1 | 3 | 5 | 7 | 9;
+        };
+        /** SideIn */
+        SideIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft" | "version";
+            /** Version Id */
+            version_id?: string | null;
         };
         /** SignInRequest */
         SignInRequest: {
@@ -9322,7 +9376,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             202: {
@@ -9342,7 +9400,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The Project or Agent is archived, the Evaluation Set is empty, there is no Default Model, or the Draft names a Provider Credential that no longer exists. */
+            /** @description The Project or Agent is archived, it already has a Run in progress, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9351,13 +9409,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's. */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -9387,6 +9445,58 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancelEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                run_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Run has already finished. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

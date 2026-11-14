@@ -41,12 +41,16 @@ export function run(id: string, status: Run["status"], done: number, total: numb
     judge_model: "gpt-4.1-mini",
     repeats: 1,
     error_message: null,
+    stale: false,
     sides: [
       {
         position: "first",
         kind: "draft",
+        agent_version_id: null,
+        version_number: null,
         draft_revision: 3,
         instructions_version_number: 2,
+        instructions_draft: false,
         model_provider: "openai",
         model_name: "gpt-4.1-mini",
         cases_passed: 1,
@@ -122,11 +126,46 @@ export function results(
         reference_answer: evaluationCase.reference_answer,
         sides: [side ?? single],
         unsteady: unsteady ?? false,
+        change: null,
         results: each,
       };
     }),
   };
 }
+
+/** A Run's side that is Version 1 of `hrHelper`, as its first side. */
+export const liveSide: Run["sides"][number] = {
+  position: "first",
+  kind: "version",
+  agent_version_id: "a1e00000-0000-4000-8000-000000000001",
+  version_number: 1,
+  draft_revision: null,
+  instructions_version_number: 1,
+  instructions_draft: false,
+  model_provider: "openai",
+  model_name: "gpt-4.1-mini",
+  cases_passed: 2,
+  cases_failed: 1,
+  cases_errored: 0,
+  score: 2 / 3,
+};
+
+/** A Run's Draft side, as its second side. */
+export const draftSide: Run["sides"][number] = {
+  position: "second",
+  kind: "draft",
+  agent_version_id: null,
+  version_number: null,
+  draft_revision: 4,
+  instructions_version_number: null,
+  instructions_draft: true,
+  model_provider: "openai",
+  model_name: "gpt-4.1-mini",
+  cases_passed: 1,
+  cases_failed: 2,
+  cases_errored: 0,
+  score: 1 / 3,
+};
 
 export type EvaluationRequest = { route: string; body?: unknown };
 
@@ -143,6 +182,9 @@ export function fakeEvaluationApi(
     started?: RunResults[];
     startStatus?: number;
     startDetail?: string;
+    /** Refuses cancelling with this status and detail. */
+    cancelStatus?: number;
+    cancelDetail?: string;
     /** Refuses saving a case with this status (and detail, when given). */
     saveStatus?: number;
     saveDetail?: string;
@@ -208,14 +250,26 @@ export function fakeEvaluationApi(
         ? HttpResponse.json({ detail: "Down" }, { status: 500 })
         : HttpResponse.json(runs.map((entry) => current(entry).run)),
     ),
-    http.post(`${base}/runs`, () => {
-      requests.push({ route: "start" });
+    http.post(`${base}/runs`, async ({ request }) => {
+      requests.push({ route: "start", body: await request.json() });
       if (options.startStatus) {
         return HttpResponse.json({ detail: options.startDetail }, { status: options.startStatus });
       }
       const entry = { states: options.started ?? [], read: 0 };
       runs.unshift(entry);
       return HttpResponse.json(current(entry).run, { status: 202 });
+    }),
+    http.post(`${base}/runs/:runId/cancel`, ({ params }) => {
+      requests.push({ route: "cancel", body: { runId: params.runId } });
+      if (options.cancelStatus) {
+        return HttpResponse.json({ detail: options.cancelDetail }, { status: options.cancelStatus });
+      }
+      const entry = runs.find((candidate) => current(candidate).run.id === params.runId) as (typeof runs)[number];
+      const state = current(entry);
+      const cancelled = { ...state, run: { ...state.run, status: "cancelled", finished_at: "2026-11-12T10:00:30Z" } };
+      entry.states = [cancelled];
+      entry.read = 0;
+      return HttpResponse.json(cancelled.run);
     }),
     http.get(`${base}/runs/:runId/results`, ({ params }) => {
       if (options.failResults) return HttpResponse.json({ detail: "Down" }, { status: 500 });

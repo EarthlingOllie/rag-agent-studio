@@ -117,10 +117,17 @@ def alike(result: dict[str, Any]) -> tuple[Any, ...]:
 
 
 def only_result(results: dict[str, Any]) -> dict[str, Any]:
-    """The one case's first answer, once every repeat has been checked to answer alike."""
+    """The one case's first answer, once every repeat on every side has been checked to answer
+    alike."""
     (case,) = results["cases"]
     first, *others = case["results"]
-    assert [r["repeat"] for r in case["results"]] == list(range(1, results["run"]["repeats"] + 1))
+    positions = [side["position"] for side in results["run"]["sides"]]
+    # The sides take turns, repeat by repeat.
+    assert [(r["repeat"], r["position"]) for r in case["results"]] == [
+        (repeat, position)
+        for repeat in range(1, results["run"]["repeats"] + 1)
+        for position in positions
+    ]
     assert [alike(other) for other in others] == [alike(first)] * len(others)
     found: dict[str, Any] = first
     return found
@@ -282,8 +289,11 @@ async def test_an_editor_evaluates_the_draft_and_reads_the_judged_answer(
         {
             "position": "first",
             "kind": "draft",
+            "agent_version_id": None,
+            "version_number": None,
             "draft_revision": agent["draft_revision"],
             "instructions_version_number": None,
+            "instructions_draft": False,
             "model_provider": "openai",
             "model_name": "gpt-4.1-mini",
             "cases_passed": 1,
@@ -312,6 +322,8 @@ async def test_an_editor_evaluates_the_draft_and_reads_the_judged_answer(
         REFERENCE,
     )
     assert copied["unsteady"] is False
+    assert copied["change"] is None
+    assert run["stale"] is False
     assert copied["sides"] == [
         {"position": "first", "outcome": "pass", "passed": 3, "answered": 3, "repeats": 3}
     ]

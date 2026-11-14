@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -51,6 +52,12 @@ class RunStatus(enum.StrEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    # Stopped by an Editor; what it answered and spent so far is kept.
+    CANCELLED = "cancelled"
+
+
+# Queued or running: an Agent has at most one such Run.
+IN_PROGRESS = (RunStatus.QUEUED, RunStatus.RUNNING)
 
 
 class SideKind(enum.StrEnum):
@@ -113,9 +120,20 @@ class EvaluationCase(IdMixin, Base):
 
 
 class EvaluationRun(IdMixin, Base):
-    """One run of an Agent's Evaluation Set. The Studio polls its status and progress."""
+    """One run of an Agent's Evaluation Set. The Studio polls its status and progress.
+
+    An Agent has at most one queued or running Run: starting one locks the Agent's row and
+    checks, and a partial unique index backs that up."""
 
     __tablename__ = "evaluation_runs"
+    __table_args__ = (
+        Index(
+            "uq_evaluation_runs_in_progress_agent",
+            "agent_id",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'running')"),
+        ),
+    )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Organisation.id, ondelete="CASCADE"), index=True

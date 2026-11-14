@@ -10,6 +10,8 @@ export type EvaluationRun = Schemas["RunOut"];
 export type EvaluationRunResults = Schemas["RunResultsOut"];
 export type EvaluationCaseResult = Schemas["CaseResultOut"];
 export type EvaluationCaseSide = Schemas["CaseSideOut"];
+export type EvaluationRunSide = Schemas["RunSideOut"];
+export type EvaluationRunChoice = Schemas["RunIn"];
 
 /** How often the Studio reads a Run again while it is queued or running. */
 export const RUN_POLL_MS = 1500;
@@ -105,14 +107,30 @@ export function useEvaluationRuns(path: AgentPath) {
   });
 }
 
-/** Starts a Run of the set: the Draft alone, with the Current Instructions Version. */
+/** Starts a Run of the set with the chosen sides and the Draft's Instructions. */
 export function useStartEvaluationRun(path: AgentPath) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (): Promise<EvaluationRun> => {
+    mutationFn: async (choice: EvaluationRunChoice): Promise<EvaluationRun> => {
       const { data, error, response } = await api.POST(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs",
-        { params: { path } },
+        { params: { path }, body: choice },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: runsKey(path) }),
+  });
+}
+
+/** Cancels a queued or running Run; it stops before its next answer and keeps what it spent. */
+export function useCancelEvaluationRun(path: AgentPath) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (runId: string): Promise<EvaluationRun> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/cancel",
+        { params: { path: { ...path, run_id: runId } } },
       );
       if (!data) throw failed(response, error);
       return data;

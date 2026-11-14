@@ -20,14 +20,17 @@ import {
   text,
 } from "../design";
 import { formatTime } from "../settings/AuditPage";
-import type { Agent } from "./agents";
+import { type Agent, useAgentVersions } from "./agents";
 import {
   type EvaluationCase,
   type EvaluationCaseResult,
   type EvaluationCaseSide,
   type EvaluationRun,
+  type EvaluationRunChoice,
+  type EvaluationRunSide,
   evaluationFailure,
   inProgress,
+  useCancelEvaluationRun,
   useDeleteEvaluationCase,
   useEvaluationCases,
   useEvaluationRunResults,
@@ -35,6 +38,7 @@ import {
   useSaveEvaluationCase,
   useStartEvaluationRun,
 } from "./evaluation";
+import { useInstructionsVersions } from "./instructions";
 import { TraceBody, TraceFold } from "./Trace";
 
 type AgentPath = { organisation_id: string; project_id: string; agent_id: string };
@@ -221,6 +225,7 @@ const STATUS = {
   running: { tone: "working", label: "Running" },
   completed: { tone: "ready", label: "Completed" },
   failed: { tone: "failed", label: "Failed" },
+  cancelled: { tone: "flagged", label: "Cancelled" },
 } as const;
 
 function RunStatus({ run }: { run: EvaluationRun }) {
@@ -228,17 +233,24 @@ function RunStatus({ run }: { run: EvaluationRun }) {
   return <Status tone={status.tone}>{status.label}</Status>;
 }
 
-/** What the Run answered with: "Draft revision 3 · Instructions v1 · openai gpt-4.1-mini". */
+/** A side's name: "Version 2", or "Draft revision 3". */
+function sideName(side: EvaluationRunSide): string {
+  return side.kind === "version" ? `Version ${String(side.version_number)}` : `Draft revision ${String(side.draft_revision)}`;
+}
+
+function instructionsName(side: EvaluationRunSide): string {
+  if (side.instructions_draft) return "Instructions Draft";
+  return side.instructions_version_number === null ? "no Project Instructions" : `Instructions v${String(side.instructions_version_number)}`;
+}
+
+/** What the Run answered with: "Version 1 · Instructions v1 · openai gpt-4.1-mini against Draft revision 3 · …". */
 function sideSummary(run: EvaluationRun): string {
   return run.sides
-    .map((side) => {
-      const answering = `Draft revision ${String(side.draft_revision)}`;
-      const instructions =
-        side.instructions_version_number === null ? "no Project Instructions" : `Instructions v${String(side.instructions_version_number)}`;
-      return `${answering} · ${instructions} · ${side.model_provider} ${side.model_name}`;
-    })
-    .join("; ");
+    .map((side) => `${sideName(side)} · ${instructionsName(side)} · ${side.model_provider} ${side.model_name}`)
+    .join(" against ");
 }
+
+const percent = (score: number | null) => (score === null ? "no score" : `${String(Math.round(score * 100))}%`);
 
 const VERDICTS = { reference_answer: "Reference answer", grounding: "Grounding" } as const;
 
@@ -250,11 +262,12 @@ function outcomeWord(result: EvaluationCaseResult): string {
 const repeatsWord = (repeats: number) => (repeats === 1 ? "1 repeat" : `${String(repeats)} repeats`);
 
 /** A side's Evaluation score, and the cases behind it, Errors left out. */
-function Score({ side }: { side: EvaluationRun["sides"][number] }) {
+function Score({ side, named }: { side: EvaluationRunSide; named: boolean }) {
   const counted = `${String(side.cases_passed)} passed, ${String(side.cases_failed)} failed`;
   const errors = side.cases_errored === 0 ? "" : `, ${String(side.cases_errored)} Error${side.cases_errored === 1 ? "" : "s"} left out of the score`;
   return (
-    <div className="flex flex-col gap-0.5">
+    <div role="group" aria-label={sideName(side)} className="flex flex-col gap-0.5">
+      {named && <p className={field.label}>{`${side.position === "first" ? "First" : "Second"} side: ${sideName(side)}`}</p>}
       <p className="font-medium text-ink">
         {side.score === null ? "Evaluation score: none, every case was an Error" : `Evaluation score: ${String(Math.round(side.score * 100))}%`}
       </p>
@@ -264,26 +277,41 @@ function Score({ side }: { side: EvaluationRun["sides"][number] }) {
 }
 
 /** A case's result on each side: the majority of its answered repeats with the count, Unsteady, or Error. */
-function CaseResultLine({ evaluationCase }: { evaluationCase: { sides: EvaluationCaseSide[]; unsteady: boolean } }) {
+function CaseResultLine({
+  evaluationCase,
+  names,
+}: {
+  evaluationCase: { sides: EvaluationCaseSide[]; unsteady: boolean; change: string | null };
+  names: Record<string, string> | null;
+}) {
   return (
     <div role="group" aria-label="Result" className="flex flex-wrap items-center gap-3 text-sm">
+      {evaluationCase.change === "regression" && <Badge kind="regression" />}
+      {evaluationCase.change === "improvement" && <Badge kind="improvement" />}
       {evaluationCase.sides.map((side) =>
-        side.outcome === "error" ? (
-          <span key={side.position} className="inline-flex items-center gap-1.5">
-            <Badge kind="evaluationError" />
-            <span className={text.muted}>Every repeat errored; left out of the score.</span>
-          </span>
+        names === null ? (
+          <SideOutcome key={side.position} side={side} unsteady={evaluationCase.unsteady} />
         ) : (
-          <ResultBadges
-            key={side.position}
-            result={side}
-            unsteady={evaluationCase.unsteady}
-            count={`${String(side.passed)}/${String(side.answered)} repeats passed`}
-          />
+          <span key={side.position} className="inline-flex items-center gap-1.5">
+            <span className="font-medium">{names[side.position]}:</span>
+            <SideOutcome side={side} unsteady={evaluationCase.unsteady} />
+          </span>
         ),
       )}
     </div>
   );
+}
+
+/** A case's outcome on one side: Pass or Fail with its count (Unsteady when its repeats disagreed), or Error. */
+function SideOutcome({ side, unsteady }: { side: EvaluationCaseSide; unsteady: boolean }) {
+  if (side.outcome === "error")
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <Badge kind="evaluationError" />
+        <span className={text.muted}>Every repeat errored; left out of the score.</span>
+      </span>
+    );
+  return <ResultBadges result={side} unsteady={unsteady} count={`${String(side.passed)}/${String(side.answered)} repeats passed`} />;
 }
 
 /** One answer of a case: its repeat's outcome, Verdicts with the judge's reasons, and its Trace. */
@@ -321,27 +349,67 @@ function CaseAnswer({ result }: { result: EvaluationCaseResult }) {
   );
 }
 
-/** A Run: its status and progress while it runs, then each case with its answers. */
-function RunDetail({ path, runId }: { path: AgentPath; runId: string }) {
+/** How many Regressions and improvements a Run found, in words. */
+function changesSummary(cases: { change: string | null }[]): string {
+  const regressions = cases.filter((evaluationCase) => evaluationCase.change === "regression").length;
+  const improvements = cases.filter((evaluationCase) => evaluationCase.change === "improvement").length;
+  const regressionWords = regressions === 1 ? "1 Regression" : `${String(regressions)} Regressions`;
+  const improvementWords = improvements === 1 ? "1 improvement" : `${String(improvements)} improvements`;
+  return `${regressionWords} and ${improvementWords}: the cases that pass on the first side and fail on the second come first.`;
+}
+
+/**
+ * A Run: its status and progress while it runs (with Cancel), then each side's Evaluation score and
+ * each case, Regressions first, then improvements, then the rest, with every side's answers.
+ */
+function RunDetail({ path, runId, readOnly }: { path: AgentPath; runId: string; readOnly: boolean }) {
   const headingId = useId();
   const results = useEvaluationRunResults(path, runId);
+  const cancel = useCancelEvaluationRun(path);
   if (results.isError) return <Notice tone="error">The Run could not be loaded. Try again shortly.</Notice>;
   if (results.data === undefined) return <Skeleton label="Loading the Run" />;
   const { run, cases } = results.data;
+  const twoSided = run.sides.length > 1;
+  const names = twoSided ? Object.fromEntries(run.sides.map((side) => [side.position, sideName(side)])) : null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h3 id={headingId} className={text.subheading}>
-          Run of {formatTime(run.created_at)}
-        </h3>
-        <p className={text.muted}>
-          <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model} · {repeatsWord(run.repeats)}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h3 id={headingId} className={text.subheading}>
+            Run of {formatTime(run.created_at)}
+          </h3>
+          <p className={text.muted}>
+            <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model} · {repeatsWord(run.repeats)}
+          </p>
+        </div>
+        {inProgress(run) && !readOnly && (
+          <button
+            type="button"
+            className={button.secondary}
+            disabled={cancel.isPending}
+            onClick={() => {
+              cancel.mutate(run.id);
+            }}
+          >
+            Cancel Run
+          </button>
+        )}
       </div>
-      {!inProgress(run) &&
-        run.sides.map((side) => <Score key={side.position} side={side} />)}
+      <FormError message={evaluationFailure(cancel.error)} />
+      {run.stale && (
+        <Notice tone="warning">The Draft has changed since this Run: its results describe an earlier Draft revision.</Notice>
+      )}
+      {run.status === "cancelled" && <Notice tone="info">This Run was cancelled. The answers it gave before stopping are kept.</Notice>}
+      {!inProgress(run) && (
+        <div className="flex flex-wrap gap-x-8 gap-y-3">
+          {run.sides.map((side) => (
+            <Score key={side.position} side={side} named={twoSided} />
+          ))}
+        </div>
+      )}
       {inProgress(run) && <Meter label="Answers given" value={run.progress.done} max={Math.max(run.progress.total, 1)} unit="answers" progress />}
       {run.error_message !== null && <Notice tone="error">{run.error_message}</Notice>}
+      {!inProgress(run) && twoSided && <p className={text.muted}>{changesSummary(cases)}</p>}
       {!inProgress(run) && (
         <ol aria-label="Cases" className="flex flex-col gap-4">
           {cases.map((evaluationCase, index) => (
@@ -351,10 +419,19 @@ function RunDetail({ path, runId }: { path: AgentPath; runId: string }) {
                 <span className="font-medium">Reference answer: </span>
                 {evaluationCase.reference_answer}
               </p>
-              <CaseResultLine evaluationCase={evaluationCase} />
-              {evaluationCase.results.map((result) => (
-                <CaseAnswer key={`${result.position}-${String(result.repeat)}`} result={result} />
-              ))}
+              <CaseResultLine evaluationCase={evaluationCase} names={names} />
+              {names === null
+                ? evaluationCase.results.map((result) => <CaseAnswer key={`${result.position}-${String(result.repeat)}`} result={result} />)
+                : run.sides.map((side) => (
+                    <div key={side.position} role="group" aria-label={`Answers of ${sideName(side)}`} className="flex flex-col gap-3">
+                      <p className={field.label}>{sideName(side)}</p>
+                      {evaluationCase.results
+                        .filter((result) => result.position === side.position)
+                        .map((result) => (
+                          <CaseAnswer key={String(result.repeat)} result={result} />
+                        ))}
+                    </div>
+                  ))}
             </li>
           ))}
         </ol>
@@ -363,7 +440,7 @@ function RunDetail({ path, runId }: { path: AgentPath; runId: string }) {
   );
 }
 
-/** The Agent's Runs, newest first; choosing one shows it below. */
+/** The Agent's Runs, newest first, with their status, sides and scores; choosing one shows it below. */
 function RunList({ runs, chosen, onChoose }: { runs: EvaluationRun[]; chosen: string | null; onChoose: (runId: string) => void }) {
   return (
     <ul aria-label="Evaluation Runs" className={`${surface.card} divide-y divide-line-soft`}>
@@ -373,12 +450,165 @@ function RunList({ runs, chosen, onChoose }: { runs: EvaluationRun[]; chosen: st
             Run of {formatTime(run.created_at)}
           </button>
           <RunStatus run={run} />
+          {run.stale && <Badge kind="runStale" />}
+          <span className="text-ink-2">
+            {run.sides.map((side) => `${sideName(side)}: ${inProgress(run) ? "running" : percent(side.score)}`).join(" · ")}
+          </span>
           <span className="font-mono text-xs text-muted">
             {run.progress.done} / {run.progress.total} answers
           </span>
         </li>
       ))}
     </ul>
+  );
+}
+
+const DRAFT_SIDE = "draft";
+const NO_SECOND_SIDE = "";
+const CURRENT_INSTRUCTIONS = "current";
+const INSTRUCTIONS_DRAFT = "instructions-draft";
+
+/**
+ * The Evaluate dialog: the two sides (the Live Version against the Draft by default, or the Draft
+ * alone for an Agent never Published) and the Instructions the Draft answers with.
+ */
+function EvaluateDialog({
+  agent,
+  organisationId,
+  onStarted,
+  onClose,
+}: {
+  agent: Agent;
+  organisationId: string;
+  onStarted: (runId: string) => void;
+  onClose: () => void;
+}) {
+  const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
+  const formId = useId();
+  const sameId = useId();
+  const versions = useAgentVersions(organisationId, agent.project_id, agent.id);
+  const instructions = useInstructionsVersions(organisationId, agent.project_id);
+  const start = useStartEvaluationRun(path);
+  const live = agent.live_version;
+  const [first, setFirst] = useState(live === null ? DRAFT_SIDE : live.id);
+  const [second, setSecond] = useState(live === null ? NO_SECOND_SIDE : DRAFT_SIDE);
+  const [draftInstructions, setDraftInstructions] = useState(CURRENT_INSTRUCTIONS);
+  const same = first === second;
+  const versionOptions = versions.data?.versions ?? (live === null ? [] : [{ id: live.id, number: live.number }]);
+  const sideOptions = [
+    { value: DRAFT_SIDE, label: "Draft" },
+    ...versionOptions.map((version) => ({
+      value: version.id,
+      label: `Version ${String(version.number)}${version.id === live?.id ? " (Live)" : ""}`,
+    })),
+  ];
+  const history = instructions.data;
+  const current = history?.versions.find((version) => version.id === history.current_version_id);
+
+  function submit(event: SubmitEvent) {
+    event.preventDefault();
+    const side = (value: string): NonNullable<EvaluationRunChoice["sides"]>[number] =>
+      value === DRAFT_SIDE ? { kind: "draft" } : { kind: "version", version_id: value };
+    const chosenVersion = draftInstructions === CURRENT_INSTRUCTIONS || draftInstructions === INSTRUCTIONS_DRAFT ? null : draftInstructions;
+    start.mutate(
+      {
+        sides: second === NO_SECOND_SIDE ? [side(first)] : [side(first), side(second)],
+        instructions_draft: draftInstructions === INSTRUCTIONS_DRAFT,
+        instructions_version_id: chosenVersion,
+      },
+      { onSuccess: (run) => { onStarted(run.id); } },
+    );
+  }
+
+  return (
+    <Dialog
+      open
+      title="Evaluate"
+      description="Both sides answer every case at the same moment, against the same Knowledge Base. A case that passes on the first side and fails on the second is a Regression."
+      onClose={onClose}
+      closeButton={false}
+      footer={
+        <>
+          <button type="button" className={button.secondary} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" form={formId} className={button.primary} disabled={same || start.isPending}>
+            Start Run
+          </button>
+        </>
+      }
+    >
+      <form id={formId} aria-label="Evaluate" className="flex flex-col gap-4" onSubmit={submit}>
+        <FormError message={evaluationFailure(start.error)} />
+        <label className={field.label}>
+          First side
+          <select
+            className={field.select}
+            value={first}
+            aria-invalid={same}
+            aria-describedby={same ? sameId : undefined}
+            onChange={(event) => {
+              setFirst(event.target.value);
+            }}
+          >
+            {sideOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={field.label}>
+          Second side
+          <select
+            className={field.select}
+            value={second}
+            aria-invalid={same}
+            aria-describedby={same ? sameId : undefined}
+            onChange={(event) => {
+              setSecond(event.target.value);
+            }}
+          >
+            <option value={NO_SECOND_SIDE}>None: the first side runs alone</option>
+            {sideOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {same && (
+          <p id={sameId} className={field.error}>
+            Choose two different sides.
+          </p>
+        )}
+        {(first === DRAFT_SIDE || second === DRAFT_SIDE) && (
+          <div>
+            <label className={field.label}>
+              Draft&apos;s Instructions
+              <select
+                className={field.select}
+                value={draftInstructions}
+                onChange={(event) => {
+                  setDraftInstructions(event.target.value);
+                }}
+              >
+                <option value={CURRENT_INSTRUCTIONS}>
+                  {current === undefined ? "Current Instructions Version (none yet)" : `Current Instructions Version (v${String(current.number)})`}
+                </option>
+                <option value={INSTRUCTIONS_DRAFT}>Instructions Draft</option>
+                {(instructions.data?.versions ?? []).map((version) => (
+                  <option key={version.id} value={version.id}>
+                    Instructions v{version.number}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className={field.hint}>A Version always answers with the Instructions it pins.</p>
+          </div>
+        )}
+      </form>
+    </Dialog>
   );
 }
 
@@ -393,8 +623,8 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
   const archived = agent.archived_at !== null;
   const cases = useEvaluationCases(path);
   const runs = useEvaluationRuns(path);
-  const start = useStartEvaluationRun(path);
   const remove = useDeleteEvaluationCase(path);
+  const [evaluating, setEvaluating] = useState(false);
   const [editing, setEditing] = useState<EvaluationCase | "new" | null>(null);
   const [deleting, setDeleting] = useState<EvaluationCase | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -416,7 +646,7 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
           level={2}
           headingId={setHeadingId}
           title="Evaluation Set"
-          description="Questions this Agent is measured against, each with what a good answer says. Evaluate answers them with the Draft."
+          description="Questions this Agent is measured against, each with what a good answer says. Evaluate answers them with two sides, the Live Version and the Draft by default."
           actions={
             !archived && (
               <>
@@ -424,9 +654,9 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
                 <button
                   type="button"
                   className={button.primary}
-                  disabled={noCases || running || start.isPending}
+                  disabled={noCases || running}
                   onClick={() => {
-                    start.mutate(undefined, { onSuccess: (run) => { setChosen(run.id); } });
+                    setEvaluating(true);
                   }}
                 >
                   {running ? "Evaluating…" : "Evaluate"}
@@ -435,7 +665,7 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
             )
           }
         />
-        <FormError message={evaluationFailure(start.error ?? remove.error)} />
+        <FormError message={evaluationFailure(remove.error)} />
         {cases.isPending && <Skeleton label="Loading the Evaluation Set" />}
         {cases.isError && <EmptyState tone="error" icon="agents" title="The Evaluation Set could not be loaded" description="Try again shortly." />}
         {cases.data && cases.data.length === 0 && (
@@ -458,8 +688,21 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
         {runs.isError && <Notice tone="error">The Runs could not be loaded. Try again shortly.</Notice>}
         {runs.data && runs.data.length === 0 && <p className={text.muted}>No Runs yet. Evaluate to answer the set with the Draft.</p>}
         {runs.data && runs.data.length > 0 && <RunList runs={runs.data} chosen={shownRun} onChoose={setChosen} />}
-        {shownRun !== null && <RunDetail key={shownRun} path={path} runId={shownRun} />}
+        {shownRun !== null && <RunDetail key={shownRun} path={path} runId={shownRun} readOnly={archived} />}
       </section>
+      {evaluating && (
+        <EvaluateDialog
+          agent={agent}
+          organisationId={organisationId}
+          onStarted={(runId) => {
+            setEvaluating(false);
+            setChosen(runId);
+          }}
+          onClose={() => {
+            setEvaluating(false);
+          }}
+        />
+      )}
       {editing !== null && (
         <CaseEditor
           path={path}

@@ -20,6 +20,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -27,6 +28,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.core.db import Base
+from app.evaluation import api as evaluation_api
 from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
@@ -522,6 +524,17 @@ async def _an_evaluation_run(owner: SignedUpMember, add_member: MemberFactory) -
     return params | {"run_id": started.json()["id"]}, None
 
 
+async def _a_queued_evaluation_run(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    # Its task isn't sent, so it stays queued and can be cancelled.
+    with patch.object(evaluation_api, "enqueue_run", AsyncMock()):
+        started = await owner.client.post(
+            _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/runs"
+        )
+    assert started.json()["status"] == "queued", started.text
+    return params | {"run_id": started.json()["id"]}, None
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
 _EVALUATION = _AGENT + "/evaluation"
@@ -652,6 +665,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _EVALUATION + "/runs", EDITOR, _an_evaluation_run),
     ScopedRoute("GET", _EVALUATION + "/runs/{run_id}", EDITOR, _an_evaluation_run),
     ScopedRoute("GET", _EVALUATION + "/runs/{run_id}/results", EDITOR, _an_evaluation_run),
+    ScopedRoute("POST", _EVALUATION + "/runs/{run_id}/cancel", EDITOR, _a_queued_evaluation_run),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(

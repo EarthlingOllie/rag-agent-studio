@@ -19,6 +19,9 @@ it.each([
   ["evaluationFail", "Fail"],
   ["unsteady", "Unsteady"],
   ["evaluationError", "Error"],
+  ["regression", "Regression"],
+  ["improvement", "Improvement"],
+  ["runStale", "Stale"],
 ] satisfies [BadgeKind, string][])("labels the %s badge %s", (kind, label) => {
   render(<Badge kind={kind} />);
   expect(screen.getByText(label)).toBeInTheDocument();

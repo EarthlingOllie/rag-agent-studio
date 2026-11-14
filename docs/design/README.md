@@ -271,7 +271,14 @@ where the Member is: from the Organisation's page they are under down to the pag
     `evaluationFail` with its count in mono, `unsteady` beside it when its repeats disagreed,
     `evaluationError`, or "Not run yet" in `muted`); a Run's header names its repeats, a finished
     Run gives each side's Evaluation score (Errors left out, said beside it), and each case shows
-    its result group above its repeats ("Repeat 2: Fail").
+    its result group above its repeats ("Repeat 2: Fail"). From 14-04 Evaluate opens a `Dialog`
+    (no corner ✕): First side and Second side selects (the Draft or a Version, Live marked; the
+    second may be none), the same side twice shown as a field error with Start Run disabled, and
+    the Draft's Instructions select while a side is the Draft. Each Run in the list names its
+    sides with their scores and a `runStale` badge; a running Run has a secondary Cancel Run; Run
+    detail shows a warning `Notice` when stale, each side's score as a named group, a muted line
+    counting Regressions and improvements, then the cases in that order, each with a `regression`
+    or `improvement` badge and its answers grouped under each side's name.
   - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
     (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
   - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with
@@ -408,6 +415,9 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `evaluationFail` | Fail (an Evaluation Case failed by majority of its repeats) | `danger-soft`, `danger` |
 | `unsteady` | Unsteady (an Evaluation Case's repeats disagreed; its count beside it) | `flag-soft`, `flag` |
 | `evaluationError` | Error (every repeat errored; left out of the Evaluation score) | `sunken`, `muted` |
+| `regression` | Regression (passes on a Run's first side, fails on its second) | `danger-soft`, `danger` |
+| `improvement` | Improvement (fails on a Run's first side, passes on its second) | `accent-soft`, `accent-ink` |
+| `runStale` | Stale (a Run with a Draft side whose Draft has moved on) | `flag-soft`, `flag` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
 
 `title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;

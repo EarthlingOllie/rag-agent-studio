@@ -5,22 +5,31 @@ Owners may use them; another Organisation's Agents are not found.
 A case needs at least one expectation; for now that is a Reference answer. An archived Agent's
 set and Runs can be read, but its cases can't be changed and it starts no Run.
 
-Starting a Run answers the set with the Draft alone, with the Project's Current Instructions
-Version, as many times as the Organisation's Evaluation repeats, in a background task: the Run is
+Starting a Run answers the set with two sides, the first and the second, each the Draft or one
+of the Agent's Versions (by default the Live Version against the Draft, or the Draft alone while
+the Agent has never been Published), as many times as the Organisation's Evaluation repeats, in a
+background task. A Version answers with the Instructions it pins, the Draft with the Instructions
+Version or Instructions Draft chosen (the Current Instructions Version by default). The Run is
 returned ``queued`` (or, when tasks run eagerly, already finished) and the Studio polls it until
-it is ``completed`` or ``failed`` (every case errored). Its results hold each case as the Run
-copied it, with each repeat's answer, its Verdicts with the judge's reasons, and its Trace, and
-the case's result on each side: pass or fail by majority of its answered repeats with the count,
-Unsteady when they disagree, or Error when every repeat errored. Each side has an Evaluation
-score, which leaves Error cases out; each case in the set shows its latest result.
+it is ``completed``, ``failed`` (every case errored) or ``cancelled``. An Agent has at most one
+queued or running Run: a second start is refused with a conflict, and a Run in progress can be
+cancelled, keeping what it spent. A Run with a Draft side is ``stale`` once the Draft has a newer
+Draft revision.
+
+Its results hold each case as the Run copied it, Regressions (pass on the first side, fail on the
+second) first, then improvements, then the rest, with each repeat's answer on each side, its
+Verdicts with the judge's reasons, and its Trace, and the case's result on each side: pass or
+fail by majority of its answered repeats with the count, Unsteady when they disagree, or Error
+when every repeat errored. Each side has an Evaluation score, which leaves Error cases out; each
+case in the set shows its latest result.
 """
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.agents.api import (
     AGENT_ARCHIVED_RESPONSE,
@@ -40,9 +49,11 @@ from app.evaluation.models import (
     REFERENCE_ANSWER_MAX,
     EvaluationCase,
     EvaluationRun,
+    SideKind,
 )
 from app.evaluation.tasks import enqueue_run
 from app.playground.api import CREDENTIAL_GONE, NO_DEFAULT_MODEL, TraceOut
+from app.projects.instructions import InstructionsVersionNotFoundError
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
@@ -54,6 +65,21 @@ router = APIRouter(
 
 NO_EXPECTATION = "An Evaluation Case needs at least one expectation: write a Reference answer."
 EMPTY_SET = "Add an Evaluation Case before evaluating."
+VERSION_NOT_FOUND = "Choose the Draft or one of this Agent's Versions for each side."
+SAME_SIDES = "Choose two different sides."
+INSTRUCTIONS_NOT_FOUND = "Choose one of this Project's Instructions Versions."
+RUN_IN_PROGRESS = (
+    "This Agent already has an Evaluation Run in progress. Wait for it to finish, or cancel it."
+)
+RUN_FINISHED = "This Run has already finished."
+
+
+def version_credential_gone(number: int) -> str:
+    return (
+        f"Version {number} uses a Provider Credential that no longer exists, so it can't be "
+        "evaluated. Choose another side."
+    )
+
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
 Question = Annotated[
@@ -71,10 +97,22 @@ _START_RESPONSES: dict[int | str, dict[str, Any]] = {
     409: {
         "model": ErrorResponse,
         "description": (
-            "The Project or Agent is archived, the Evaluation Set is empty, there is no Default "
-            "Model, or the Draft names a Provider Credential that no longer exists."
+            "The Project or Agent is archived, it already has a Run in progress, the Evaluation "
+            "Set is empty, there is no Default Model, or a side names a Provider Credential that "
+            "no longer exists."
         ),
     },
+    422: {
+        "model": ErrorResponse,
+        "description": (
+            "A side isn't the Draft or one of the Agent's Versions, the two sides are the same, "
+            "or the chosen Instructions Version isn't the Project's."
+        ),
+    },
+}
+_CANCEL_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {"model": ErrorResponse, "description": "The Run has already finished."},
 }
 
 
@@ -82,6 +120,23 @@ class CaseIn(BaseModel):
     question: Question
     # What a good answer says; null or blank for none (then the case has no expectation).
     reference_answer: ReferenceAnswer | None = None
+
+
+class SideIn(BaseModel):
+    # ``draft``, or ``version`` with the Agent Version's ``version_id``.
+    kind: Literal["draft", "version"]
+    version_id: uuid.UUID | None = None
+
+
+class RunIn(BaseModel):
+    # The first side, then the second; one side runs alone. Left out: the Live Version against
+    # the Draft, or the Draft alone while the Agent has never been Published.
+    sides: list[SideIn] | None = Field(default=None, min_length=1, max_length=2)
+    # The Instructions the Draft side answers with: this Instructions Version of the Project,
+    # else the Instructions Draft when ``instructions_draft``, else the Current Instructions
+    # Version. A Version side always answers with the Instructions it pins.
+    instructions_version_id: uuid.UUID | None = None
+    instructions_draft: bool = False
 
 
 class CaseSideResultOut(BaseModel):
@@ -127,10 +182,16 @@ class RunSideOut(BaseModel):
     position: str
     # ``draft`` or ``version``.
     kind: str
+    # The Agent Version, for a ``version`` side.
+    agent_version_id: uuid.UUID | None
+    version_number: int | None
+    # The Draft revision it ran, for a ``draft`` side.
     draft_revision: int | None
-    # The Project Instructions it answered with: an Instructions Version's number, or null for
-    # none (the Project had no Instructions Version).
+    # The Project Instructions it answered with: an Instructions Version's number, or the
+    # Instructions Draft (``instructions_draft``), or neither for none (the Project had no
+    # Instructions Version).
     instructions_version_number: int | None
+    instructions_draft: bool
     # The effective chat model it answered with.
     model_provider: str
     model_name: str
@@ -144,7 +205,7 @@ class RunSideOut(BaseModel):
 
 class RunOut(BaseModel):
     id: uuid.UUID
-    # ``queued``, ``running``, ``completed`` or ``failed``.
+    # ``queued``, ``running``, ``completed``, ``failed`` or ``cancelled``.
     status: str
     created_at: datetime
     finished_at: datetime | None
@@ -155,6 +216,8 @@ class RunOut(BaseModel):
     judge_model: str
     repeats: int
     error_message: str | None
+    # Whether it has a Draft side and the Draft has a newer Draft revision since.
+    stale: bool
     sides: list[RunSideOut]
 
 
@@ -196,12 +259,16 @@ class RunCaseOut(BaseModel):
     sides: list[CaseSideOut]
     # Whether its repeats disagreed on either side.
     unsteady: bool
+    # ``regression`` (passes on the first side, fails on the second), ``improvement`` (the
+    # reverse), or null.
+    change: str | None
     # Every repeat's answer, on every side.
     results: list[CaseResultOut]
 
 
 class RunResultsOut(BaseModel):
     run: RunOut
+    # Regressions first, then improvements, then the rest, each in set order.
     cases: list[RunCaseOut]
 
 
@@ -244,11 +311,19 @@ def _run_out(detail: service.RunDetail) -> RunOut:
         judge_model=run.judge_model,
         repeats=run.repeats,
         error_message=run.error_message,
+        stale=detail.stale,
         sides=[
             RunSideOut(
                 position=side.position,
                 kind=side.kind,
+                agent_version_id=side.agent_version_id,
+                version_number=(
+                    None
+                    if side.agent_version_id is None
+                    else detail.version_numbers[side.agent_version_id]
+                ),
                 draft_revision=side.draft_revision,
+                instructions_draft=side.instructions_draft,
                 instructions_version_number=(
                     None
                     if side.instructions_version_id is None
@@ -385,28 +460,82 @@ async def delete_case(
     responses=_START_RESPONSES,
 )
 async def start_run(
-    project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    body: RunIn | None = None,
 ) -> RunOut:
-    """Starts a Run of the Agent's Evaluation Set: the Draft alone, with the Current
-    Instructions Version. Poll it until it is ``completed`` or ``failed``."""
+    """Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
+    (the Draft alone while the Agent has never been Published). Poll it until it is
+    ``completed``, ``failed`` or ``cancelled``."""
+    choice = body or RunIn()
     try:
-        run = await service.start_run(db, scope, project_id, agent_id, now=clock.now())
+        run = await service.start_run(
+            db,
+            scope,
+            project_id,
+            agent_id,
+            sides=None
+            if choice.sides is None
+            else [
+                service.SideChoice(SideKind(side.kind), side.version_id) for side in choice.sides
+            ],
+            instructions_version_id=choice.instructions_version_id,
+            instructions_draft=choice.instructions_draft,
+            now=clock.now(),
+        )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
         raise archived() from None
     except AgentArchivedError:
         raise agent_archived() from None
+    except service.RunInProgressError:
+        raise HTTPException(status.HTTP_409_CONFLICT, RUN_IN_PROGRESS) from None
     except service.EmptySetError:
         raise HTTPException(status.HTTP_409_CONFLICT, EMPTY_SET) from None
+    except service.VersionNotFoundError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, VERSION_NOT_FOUND) from None
+    except service.SameSidesError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, SAME_SIDES) from None
+    except InstructionsVersionNotFoundError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, INSTRUCTIONS_NOT_FOUND) from None
     except NoDefaultModelError:
         raise HTTPException(status.HTTP_409_CONFLICT, NO_DEFAULT_MODEL) from None
+    except service.VersionCredentialGoneError as error:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, version_credential_gone(error.number)
+        ) from None
     except ProviderCredentialGoneError:
         raise HTTPException(status.HTTP_409_CONFLICT, CREDENTIAL_GONE) from None
     run_id = run.id
     await enqueue_run(run_id)
     # When tasks run eagerly the Run has moved on in another session: read it afresh.
     db.expire_all()
+    return _run_out(await service.get_run(db, scope, project_id, agent_id, run_id))
+
+
+@router.post(
+    "/runs/{run_id}/cancel", operation_id="cancelEvaluationRun", responses=_CANCEL_RESPONSES
+)
+async def cancel_run(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> RunOut:
+    """Cancels a queued or running Run: it stops before its next answer and keeps what it
+    answered and spent."""
+    try:
+        await service.cancel_run(db, scope, project_id, agent_id, run_id, now=clock.now())
+    except _NOT_FOUND:
+        raise not_found() from None
+    except service.RunFinishedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, RUN_FINISHED) from None
     return _run_out(await service.get_run(db, scope, project_id, agent_id, run_id))
 
 
@@ -460,6 +589,7 @@ async def get_run_results(
                     for side_id, result in case.sides.items()
                 ],
                 unsteady=case.unsteady,
+                change=case.change,
                 results=[
                     CaseResultOut(
                         position=positions[judged.result.side_id],

@@ -1,14 +1,16 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { fakeAgentsApi, hrHelper, hrTrace, oldHelper } from "../test/agents";
+import { agentVersion, fakeAgentsApi, hrHelper, hrTrace, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import {
   caseSide,
+  draftSide,
   erroredResult,
   failedResult,
   fakeEvaluationApi,
   leaveCase,
+  liveSide,
   parkingCase,
   passed,
   repeat,
@@ -16,7 +18,7 @@ import {
   run,
 } from "../test/evaluation";
 import { openSection } from "../test/navigation";
-import { fakeProjectsApi, hrProject } from "../test/projects";
+import { fakeProjectsApi, hrProject, instructionsVersion } from "../test/projects";
 import { renderStudio } from "../test/render";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -187,6 +189,11 @@ test("Evaluate starts a Run, the Studio polls its progress, then shows each answ
   await caseRows();
 
   await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  // Never Published: the Draft runs alone, with the Current Instructions Version.
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  expect(within(dialog).getByLabelText("First side")).toHaveDisplayValue("Draft");
+  expect(within(dialog).getByLabelText("Second side")).toHaveDisplayValue("None: the first side runs alone");
+  await user.click(within(dialog).getByRole("button", { name: "Start Run" }));
 
   // While it runs, Evaluate waits and the progress shows.
   expect(await screen.findByRole("button", { name: "Evaluating…" })).toBeDisabled();
@@ -194,7 +201,9 @@ test("Evaluate starts a Run, the Studio polls its progress, then shows each answ
   const detail = await screen.findByRole("list", { name: "Cases" }, { timeout: 8000 });
   expect(screen.queryByRole("meter")).not.toBeInTheDocument();
   expect(await screen.findByRole("button", { name: "Evaluate" })).toBeEnabled();
-  expect(requests.filter((request) => request.route === "start")).toHaveLength(1);
+  expect(requests.filter((request) => request.route === "start")).toEqual([
+    { route: "start", body: { sides: [{ kind: "draft" }], instructions_draft: false, instructions_version_id: null } },
+  ]);
 
   const [leave, parking] = within(detail).getAllByRole("listitem").filter((item) => item.parentElement === detail);
   expect(leave).toHaveTextContent(leaveCase.question);
@@ -289,8 +298,12 @@ test("a refused Evaluate says why", async () => {
   await caseRows();
 
   await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  await user.click(within(dialog).getByRole("button", { name: "Start Run" }));
 
-  expect(await within(await setRegion()).findByRole("alert")).toHaveTextContent("This Organisation has no Default Model.");
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("This Organisation has no Default Model.");
+  await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
 test("an archived Agent's set and Runs are read only", async () => {
@@ -406,4 +419,203 @@ test("Run detail combines each case's repeats: the majority with its count, Unst
   expect(within(parking as HTMLElement).getByLabelText("Result")).toHaveTextContent("Fail0/2 repeats passed");
   expect(parking).toHaveTextContent("Repeat 3: Error");
   expect(within(errored as HTMLElement).getByLabelText("Result")).toHaveTextContent("ErrorEvery repeat errored; left out of the score.");
+});
+
+// Two-sided Runs
+
+const publishedHelper = { ...hrHelper, live_version: { id: agentVersion(2).id, number: 2 } };
+
+function setUpPublished(options: Parameters<typeof fakeEvaluationApi>[0] = {}) {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi({
+    versions: {
+      [hrProject.id]: { current_version_id: instructionsVersion(2).id, versions: [instructionsVersion(2), instructionsVersion(1)] },
+    },
+  });
+  fakeAgentsApi({ agents: [publishedHelper], versions: { [hrHelper.id]: [agentVersion(2), agentVersion(1)] } });
+  return fakeEvaluationApi(options);
+}
+
+const twoSided = (id: string, overrides: Partial<ReturnType<typeof run>> = {}) =>
+  run(id, "completed", 6, 6, { sides: [liveSide, draftSide], ...overrides });
+
+const onSide = (result: typeof passed, position: string) => ({ ...result, position });
+
+test("Evaluate compares the Live Version with the Draft by default; any two sides and the Draft's Instructions can be chosen", async () => {
+  const user = userEvent.setup();
+  const runId = "r6000000-0000-4000-8000-000000000006";
+  const { requests } = setUpPublished({ cases: [leaveCase], started: [results(twoSided(runId), [])] });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  const first = within(dialog).getByLabelText("First side");
+  const second = within(dialog).getByLabelText("Second side");
+  await waitFor(() => {
+    expect(first).toHaveDisplayValue("Version 2 (Live)");
+  });
+  expect(second).toHaveDisplayValue("Draft");
+  const instructions = await within(dialog).findByLabelText("Draft's Instructions");
+  await waitFor(() => {
+    expect(instructions).toHaveDisplayValue("Current Instructions Version (v2)");
+  });
+
+  // The same side twice is refused before anything is sent.
+  await user.selectOptions(second, "Version 2 (Live)");
+  expect(within(dialog).getByText("Choose two different sides.")).toBeInTheDocument();
+  expect(first).toHaveAccessibleDescription("Choose two different sides.");
+  expect(within(dialog).getByRole("button", { name: "Start Run" })).toBeDisabled();
+  // Two Versions: the Draft's Instructions don't apply.
+  await user.selectOptions(second, "Version 1");
+  expect(within(dialog).queryByLabelText("Draft's Instructions")).not.toBeInTheDocument();
+  await user.selectOptions(first, "Draft");
+  await user.selectOptions(within(dialog).getByLabelText("Draft's Instructions"), "Instructions Draft");
+  await user.click(within(dialog).getByRole("button", { name: "Start Run" }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  expect(requests.filter((request) => request.route === "start")).toEqual([
+    {
+      route: "start",
+      body: {
+        sides: [{ kind: "draft" }, { kind: "version", version_id: agentVersion(1).id }],
+        instructions_draft: true,
+        instructions_version_id: null,
+      },
+    },
+  ]);
+});
+
+test("the Draft can answer with any Instructions Version chosen", async () => {
+  const user = userEvent.setup();
+  const runId = "r7000000-0000-4000-8000-000000000007";
+  const { requests } = setUpPublished({ cases: [leaveCase], started: [results(twoSided(runId), [])] });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  const instructions = within(dialog).getByLabelText("Draft's Instructions");
+  await within(dialog).findByRole("option", { name: "Instructions v1" });
+  await user.selectOptions(instructions, "Instructions v1");
+  await user.click(within(dialog).getByRole("button", { name: "Start Run" }));
+
+  await waitFor(() => {
+    expect(requests.filter((request) => request.route === "start")).toEqual([
+      {
+        route: "start",
+        body: {
+          sides: [{ kind: "version", version_id: agentVersion(2).id }, { kind: "draft" }],
+          instructions_draft: false,
+          instructions_version_id: instructionsVersion(1).id,
+        },
+      },
+    ]);
+  });
+});
+
+test("a two-sided Run shows each side's score, then Regressions, then improvements, then the rest, with both sides' answers", async () => {
+  const runId = "r8000000-0000-4000-8000-000000000008";
+  const fixed = { ...parkingCase, question: "Fixed?" };
+  const same = { ...parkingCase, question: "Same?" };
+  const compared = results(twoSided(runId, { stale: true }), [
+    [leaveCase, [onSide(passed, "first"), onSide(failedResult, "second")]],
+    [fixed, [onSide(failedResult, "first"), onSide(passed, "second")]],
+    [same, [onSide(passed, "first"), onSide(passed, "second")]],
+  ]);
+  const [broken, improved, rest] = compared.cases as [(typeof compared.cases)[number], (typeof compared.cases)[number], (typeof compared.cases)[number]];
+  compared.cases = [
+    { ...broken, change: "regression", sides: [caseSide("pass", 1, 1), { ...caseSide("fail", 0, 1), position: "second" }] },
+    { ...improved, change: "improvement", sides: [caseSide("fail", 0, 1), { ...caseSide("pass", 1, 1), position: "second" }] },
+    { ...rest, sides: [caseSide("pass", 1, 1), { ...caseSide("pass", 1, 1), position: "second" }] },
+  ];
+  setUpPublished({ cases: [leaveCase, fixed, same], runs: [compared] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const runs = await screen.findByRole("list", { name: "Evaluation Runs" }, { timeout: 5000 });
+  expect(runs).toHaveTextContent("Completed");
+  expect(runs).toHaveTextContent("Stale");
+  expect(runs).toHaveTextContent("Version 1: 67% · Draft revision 4: 33%");
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+  expect(detail).toHaveTextContent(
+    "Version 1 · Instructions v1 · openai gpt-4.1-mini against Draft revision 4 · Instructions Draft · openai gpt-4.1-mini",
+  );
+  expect(within(detail).getByRole("status")).toHaveTextContent("The Draft has changed since this Run");
+  expect(within(detail).getByRole("group", { name: "Version 1" })).toHaveTextContent("First side: Version 1Evaluation score: 67%");
+  expect(within(detail).getByRole("group", { name: "Draft revision 4" })).toHaveTextContent("Second side: Draft revision 4Evaluation score: 33%");
+  expect(detail).toHaveTextContent("1 Regression and 1 improvement");
+
+  const cases = within(detail).getByRole("list", { name: "Cases" });
+  const items = within(cases).getAllByRole("listitem").filter((item) => item.parentElement === cases);
+  expect(items.map((item) => within(item).getByLabelText("Result").textContent)).toEqual([
+    "RegressionVersion 1:Pass1/1 repeats passedDraft revision 4:Fail0/1 repeats passed",
+    "ImprovementVersion 1:Fail0/1 repeats passedDraft revision 4:Pass1/1 repeats passed",
+    "Version 1:Pass1/1 repeats passedDraft revision 4:Pass1/1 repeats passed",
+  ]);
+  const regression = items[0] as HTMLElement;
+  expect(within(regression).getByRole("group", { name: "Answers of Version 1" })).toHaveTextContent("Repeat 1: Pass");
+  expect(within(regression).getByRole("group", { name: "Answers of Draft revision 4" })).toHaveTextContent(
+    `Repeat 1: FailAnswer${failedResult.answer ?? ""}`,
+  );
+});
+
+test("a two-sided Run with a side that has no score and several of each change says so", async () => {
+  const runId = "r9000000-0000-4000-8000-000000000009";
+  const compared = results(twoSided(runId, { sides: [{ ...liveSide, score: null }, draftSide] }), []);
+  setUpPublished({ cases: [leaveCase], runs: [compared] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const runs = await screen.findByRole("list", { name: "Evaluation Runs" }, { timeout: 5000 });
+  expect(runs).toHaveTextContent("Version 1: no score");
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+  expect(detail).toHaveTextContent("0 Regressions and 0 improvements");
+});
+
+test("a running Run can be cancelled; it keeps what it answered", async () => {
+  const user = userEvent.setup();
+  const runId = "ra000000-0000-4000-8000-00000000000a";
+  const { requests } = setUpPublished({
+    cases: [leaveCase],
+    runs: [results(run(runId, "running", 1, 2, { sides: [liveSide, draftSide] }), [[leaveCase, [onSide(passed, "first")]]])],
+  });
+  renderStudio(agentPage(hrHelper.id));
+
+  const runs = await screen.findByRole("list", { name: "Evaluation Runs" }, { timeout: 5000 });
+  expect(runs).toHaveTextContent("Version 1: running · Draft revision 4: running");
+  expect(screen.getByRole("button", { name: "Evaluating…" })).toBeDisabled();
+  await user.click(await screen.findByRole("button", { name: "Cancel Run" }));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+  expect(await within(detail).findByText("This Run was cancelled. The answers it gave before stopping are kept.")).toBeInTheDocument();
+  expect(detail).toHaveTextContent("Cancelled");
+  expect(within(detail).queryByRole("button", { name: "Cancel Run" })).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "cancel")).toEqual([{ route: "cancel", body: { runId } }]);
+  expect(await screen.findByRole("button", { name: "Evaluate" })).toBeEnabled();
+});
+
+test("a refused cancel says why", async () => {
+  const user = userEvent.setup();
+  const runId = "rb000000-0000-4000-8000-00000000000b";
+  setUpPublished({
+    cases: [leaveCase],
+    runs: [results(run(runId, "running", 0, 2), [])],
+    cancelStatus: 409,
+    cancelDetail: "This Run has already finished.",
+  });
+  renderStudio(agentPage(hrHelper.id));
+
+  await user.click(await screen.findByRole("button", { name: "Cancel Run" }, { timeout: 5000 }));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+  expect(await within(detail).findByRole("alert")).toHaveTextContent("This Run has already finished.");
+});
+
+test("an archived Agent's running Run can't be cancelled from the Studio", async () => {
+  setUp({ cases: [leaveCase], runs: [results(run("rc000000-0000-4000-8000-00000000000c", "running", 0, 1), [])] }, [oldHelper]);
+  renderStudio(agentPage(oldHelper.id));
+
+  expect(await screen.findByRole("meter", { name: "Answers given" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Cancel Run" })).not.toBeInTheDocument();
 });

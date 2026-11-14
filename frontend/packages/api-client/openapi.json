@@ -6253,6 +6253,17 @@
             ],
             "title": "Case Id"
           },
+          "change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
           "question": {
             "title": "Question",
             "type": "string"
@@ -6293,9 +6304,49 @@
           "reference_answer",
           "sides",
           "unsteady",
+          "change",
           "results"
         ],
         "title": "RunCaseOut",
+        "type": "object"
+      },
+      "RunIn": {
+        "properties": {
+          "instructions_draft": {
+            "default": false,
+            "title": "Instructions Draft",
+            "type": "boolean"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "sides": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SideIn"
+                },
+                "maxItems": 2,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sides"
+          }
+        },
+        "title": "RunIn",
         "type": "object"
       },
       "RunOut": {
@@ -6355,6 +6406,10 @@
             "title": "Sides",
             "type": "array"
           },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -6370,6 +6425,7 @@
           "judge_model",
           "repeats",
           "error_message",
+          "stale",
           "sides"
         ],
         "title": "RunOut",
@@ -6397,6 +6453,18 @@
       },
       "RunSideOut": {
         "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
           "cases_errored": {
             "title": "Cases Errored",
             "type": "integer"
@@ -6419,6 +6487,10 @@
               }
             ],
             "title": "Draft Revision"
+          },
+          "instructions_draft": {
+            "title": "Instructions Draft",
+            "type": "boolean"
           },
           "instructions_version_number": {
             "anyOf": [
@@ -6457,13 +6529,27 @@
               }
             ],
             "title": "Score"
+          },
+          "version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Number"
           }
         },
         "required": [
           "position",
           "kind",
+          "agent_version_id",
+          "version_number",
           "draft_revision",
           "instructions_version_number",
+          "instructions_draft",
           "model_provider",
           "model_name",
           "cases_passed",
@@ -6732,6 +6818,35 @@
           "repeats"
         ],
         "title": "SetEvaluationRepeatsRequest",
+        "type": "object"
+      },
+      "SideIn": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "draft",
+              "version"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Id"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SideIn",
         "type": "object"
       },
       "SignInRequest": {
@@ -14047,7 +14162,7 @@
         ]
       },
       "post": {
-        "description": "Starts a Run of the Agent's Evaluation Set: the Draft alone, with the Current\nInstructions Version. Poll it until it is ``completed`` or ``failed``.",
+        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published). Poll it until it is\n``completed``, ``failed`` or ``cancelled``.",
         "operationId": "startEvaluationRun",
         "parameters": [
           {
@@ -14081,6 +14196,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "202": {
             "content": {
@@ -14110,17 +14242,17 @@
                 }
               }
             },
-            "description": "The Project or Agent is archived, the Evaluation Set is empty, there is no Default Model, or the Draft names a Provider Credential that no longer exists."
+            "description": "The Project or Agent is archived, it already has a Run in progress, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists."
           },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's."
           }
         },
         "summary": "Start Run",
@@ -14208,6 +14340,100 @@
           }
         },
         "summary": "Get Run",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/cancel": {
+      "post": {
+        "description": "Cancels a queued or running Run: it stops before its next answer and keeps what it\nanswered and spent.",
+        "operationId": "cancelEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Run has already finished."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run",
         "tags": [
           "evaluation"
         ]

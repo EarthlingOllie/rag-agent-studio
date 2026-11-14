@@ -1,5 +1,6 @@
 """The Evaluation Run job: answers every case the Run copied, on each side, as many times as
-the Run's repeats, and judges each answer once.
+the Run's repeats, and judges each answer once. The sides take turns case by case, so both
+answer each case at the same moment, against the same Knowledge Base.
 
 Each answer is a turn of the Guardrail pipeline's ``run_turn`` with no history, the side's
 effective AgentConfig and Instructions, the models they resolve to and the real retrieval
@@ -12,20 +13,22 @@ Each repeat is a fresh answer. The judge (the Run's judge model) then gives a
 unless the answer is the Fallback Text. A provider error answering, or the judge failing, makes
 the case result an error with its reason; a Guardrail block is an answer, and is judged like one.
 
-Each answer commits with the Run's progress, so the Studio can poll it. A Run where every answer
+Each answer commits with the Run's progress, so the Studio can poll it. A Run cancelled meanwhile
+stops before its next answer and keeps what it answered and spent. A Run where every answer
 errored (so every case is an Error) ends ``failed``, with the most common error as its message.
 """
 
 import functools
 import uuid
 from collections import Counter
+from dataclasses import dataclass
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, Retrieval
-from app.agents.models import Agent
+from app.agents.models import Agent, AgentVersion
 from app.agents.resolution import ResolvedModels, resolve_models
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
@@ -66,25 +69,41 @@ def _chunk(found: Candidate | Excluded, cited: set[uuid.UUID]) -> TracedChunkOut
     )
 
 
+@dataclass(frozen=True)
+class _Side:
+    """A side as the job answers with it."""
+
+    side: EvaluationRunSide
+    resolved: ResolvedModels
+    instructions_number: int | None
+    version_number: int | None
+
+
+def _instructions_source(side: EvaluationRunSide) -> str | None:
+    if side.instructions_draft:
+        return "draft"
+    return None if side.instructions_version_id is None else "version"
+
+
 def _trace(
     result_id: uuid.UUID,
-    side: EvaluationRunSide,
-    instructions_number: int | None,
+    answering: _Side,
     done: DoneEvent,
     cost_usd: Decimal | None,
     latency_ms: int,
 ) -> TraceOut:
     """The answer's Trace, in the shape the Studio reads a Playground answer's in."""
+    side = answering.side
     cited = {chunk.chunk_id for chunk in done.cited}
     # A fallback reply or a refusal asked no model, so it names none.
     asked_none = done.refused or (done.fallback and not done.searches)
     return TraceOut(
         message_id=result_id,
         config_source=side.kind,
-        agent_version_number=None,
-        instructions_source=None if side.instructions_version_id is None else "version",
+        agent_version_number=answering.version_number,
+        instructions_source=_instructions_source(side),
         instructions_version_id=side.instructions_version_id,
-        instructions_version_number=instructions_number,
+        instructions_version_number=answering.instructions_number,
         agent_version_id=side.agent_version_id,
         model_provider=None if asked_none else side.chat_provider,
         model_name=None if asked_none else side.chat_model,
@@ -187,15 +206,14 @@ async def _answer_and_judge(
     ports: EvaluationPorts,
     gateway: ModelGateway,
     run: EvaluationRun,
-    side: EvaluationRunSide,
-    resolved: ResolvedModels,
+    answering: _Side,
     project: Project,
-    instructions_number: int | None,
     case: EvaluationRunCase,
     repeat: int,
     clock: Clock,
 ) -> EvaluationCaseResult:
     """Answers the case once more and judges the answer; the case result, answered or error."""
+    side, resolved = answering.side, answering.resolved
     result = EvaluationCaseResult(
         id=uuid.uuid4(),
         organisation_id=run.organisation_id,
@@ -221,9 +239,9 @@ async def _answer_and_judge(
     usage = TokenUsage(answered.input_tokens, answered.output_tokens)
     result.cost_usd = cost(pricing, resolved.chat.model, usage, now, await price_table(session))
     result.answer = answered.answer
-    result.trace = _trace(
-        result.id, side, instructions_number, answered, result.cost_usd, latency_ms
-    ).model_dump(mode="json")
+    result.trace = _trace(result.id, answering, answered, result.cost_usd, latency_ms).model_dump(
+        mode="json"
+    )
     request = JudgeRequest(
         question=case.question,
         answer=answered.answer,
@@ -253,6 +271,36 @@ async def _answer_and_judge(
     return result
 
 
+async def _sides(session: AsyncSession, run: EvaluationRun) -> list[_Side]:
+    sides = await session.scalars(
+        select(EvaluationRunSide)
+        .where(EvaluationRunSide.run_id == run.id)
+        .order_by(EvaluationRunSide.position)
+    )
+    found: list[_Side] = []
+    for side in sides:
+        config = AgentConfig.model_validate(side.config)
+        instructions = (
+            None
+            if side.instructions_version_id is None
+            else await session.get_one(InstructionsVersion, side.instructions_version_id)
+        )
+        version = (
+            None
+            if side.agent_version_id is None
+            else await session.get_one(AgentVersion, side.agent_version_id)
+        )
+        found.append(
+            _Side(
+                side,
+                await resolve_models(session, run.organisation_id, config),
+                None if instructions is None else instructions.number,
+                None if version is None else version.number,
+            )
+        )
+    return found
+
+
 async def run_evaluation(
     sessionmaker: async_sessionmaker[AsyncSession],
     ports: EvaluationPorts,
@@ -260,20 +308,15 @@ async def run_evaluation(
     run_id: uuid.UUID,
     clock: Clock,
 ) -> None:
-    """Runs a queued Run to its end. A Run that isn't queued (already picked up) is left."""
+    """Runs a queued Run to its end, or until it is cancelled. A Run that isn't queued (already
+    picked up, or cancelled before it was) is left."""
     async with sessionmaker() as session:
         run = await session.get_one(EvaluationRun, run_id, with_for_update=True)
         if run.status != RunStatus.QUEUED:
             return
         run.status = RunStatus.RUNNING
         await session.commit()
-        sides = list(
-            await session.scalars(
-                select(EvaluationRunSide)
-                .where(EvaluationRunSide.run_id == run.id)
-                .order_by(EvaluationRunSide.position)
-            )
-        )
+        sides = await _sides(session, run)
         cases = list(
             await session.scalars(
                 select(EvaluationRunCase)
@@ -285,34 +328,23 @@ async def run_evaluation(
         project = await session.get_one(Project, agent.project_id)
         # Each error reason, by how many answers it stopped.
         errors: Counter[str | None] = Counter()
-        for side in sides:
-            config = AgentConfig.model_validate(side.config)
-            resolved = await resolve_models(session, run.organisation_id, config)
-            instructions_number = (
-                None
-                if side.instructions_version_id is None
-                else (
-                    await session.get_one(InstructionsVersion, side.instructions_version_id)
-                ).number
-            )
-            for case in cases:
-                for repeat in range(1, run.repeats + 1):
+        for case in cases:
+            for repeat in range(1, run.repeats + 1):
+                for side in sides:
+                    # Cancelled meanwhile: stop before the next answer.
+                    await session.refresh(run, ["status"])
+                    if run.status == RunStatus.CANCELLED:
+                        return
                     result = await _answer_and_judge(
-                        session,
-                        ports,
-                        gateway,
-                        run,
-                        side,
-                        resolved,
-                        project,
-                        instructions_number,
-                        case,
-                        repeat,
-                        clock,
+                        session, ports, gateway, run, side, project, case, repeat, clock
                     )
                     errors[result.error_reason] += result.status == ResultStatus.ERROR
                     run.answers_done += 1
                     await session.commit()
+        # Cancelled during the last answer: it stays cancelled.
+        await session.refresh(run, ["status"], with_for_update=True)
+        if run.status == RunStatus.CANCELLED:
+            return
         if errors.total() == run.answers_done:
             run.status = RunStatus.FAILED
             run.error_message = errors.most_common(1)[0][0]

@@ -182,6 +182,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listEvaluationRuns": (f"{_EVALUATION}/runs", "get"),
         "getEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}", "get"),
         "getEvaluationRunResults": (f"{_EVALUATION}/runs/{{run_id}}/results", "get"),
+        "cancelEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}/cancel", "post"),
         "listConversations": (f"{_PROJECT}/conversations", "get"),
         "getConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "get"),
         "deleteConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "delete"),

@@ -4,29 +4,51 @@ Every function takes an ``OrganisationScope`` and the Project and Agent IDs, so 
 is only found inside its own Agent of the Organisation the Member works in. An archived Agent's
 set and Runs stay readable; its cases can't be changed and it starts no Run.
 
-Starting a Run (for now: the Draft alone, with the Current Instructions Version) resolves the
-Draft's models as a Visitor reply would (``app.agents.resolution``), copies the judge (the
-Evaluation Model, or else the Default Model) and the Evaluation repeats in force, snapshots the
+Starting a Run compares two sides, the first and the second, each the Draft or one of the
+Agent's Versions: by default the Live Version against the Draft, or the Draft alone while the
+Agent has never been Published. A Version answers with the Instructions it pins; the Draft with
+the Instructions Version or Instructions Draft chosen, the Current Instructions Version by
+default. Each side's models are resolved as a Visitor reply's would be
+(``app.agents.resolution``), and a side that can't be is refused. Starting copies the judge (the
+Evaluation Model, or else the Default Model) and the Evaluation repeats in force, snapshots each
 side and every case, and leaves the Run ``queued`` for its task (``app.evaluation.job``). The
-caller enqueues the task once the Run is committed.
+caller enqueues the task once the Run is committed. An Agent has at most one queued or running
+Run; one can be cancelled, and its task stops between answers.
 
 Reading a Run combines each case's repeats into its result on each side, and those into each
-side's Evaluation score (``app.evaluation.combining``). Each case in the set shows its result in
-the latest finished Run that answered it.
+side's Evaluation score (``app.evaluation.combining``); a case that passes on the first side and
+fails on the second is a Regression, the reverse an improvement. A Run with a Draft side is stale
+once the Draft has a newer Draft revision. Each case in the set shows its result in the latest
+finished Run that answered it.
 """
 
 import uuid
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.resolution import NoDefaultModelError, resolve_models
+from app.agents.config import AgentConfig
+from app.agents.models import AgentVersion
+from app.agents.resolution import (
+    NoDefaultModelError,
+    ProviderCredentialGoneError,
+    ResolvedModels,
+    resolve_models,
+)
 from app.agents.service import AgentWithDraft, active_agent, get_agent
-from app.evaluation.combining import Repeat, Score, SideResult, score, side_result
+from app.evaluation.combining import (
+    CaseOutcome,
+    Repeat,
+    Score,
+    SideResult,
+    score,
+    side_result,
+)
 from app.evaluation.models import (
+    IN_PROGRESS,
     CaseSource,
     EvaluationCase,
     EvaluationCaseResult,
@@ -38,12 +60,16 @@ from app.evaluation.models import (
     SideKind,
 )
 from app.evaluation.settings import judge_model
-from app.projects.models import InstructionsVersion
+from app.projects.instructions import project_version
+from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
 from app.tenancy.models import Organisation
 from app.tenancy.repository import OrganisationScope
 
 FIRST = "first"
+SECOND = "second"
+REGRESSION = "regression"
+IMPROVEMENT = "improvement"
 
 
 class CaseNotFoundError(Exception):
@@ -60,6 +86,38 @@ class NoExpectationError(Exception):
 
 class EmptySetError(Exception):
     """A Run needs at least one Evaluation Case."""
+
+
+class VersionNotFoundError(Exception):
+    """A side names no Version of the Agent."""
+
+
+class SameSidesError(Exception):
+    """A Run's two sides are the same."""
+
+
+class RunInProgressError(Exception):
+    """The Agent already has a queued or running Run."""
+
+
+class RunFinishedError(Exception):
+    """Only a queued or running Run can be cancelled."""
+
+
+class VersionCredentialGoneError(ProviderCredentialGoneError):
+    """A Version side names a Provider Credential that no longer exists."""
+
+    def __init__(self, number: int) -> None:
+        super().__init__(number)
+        self.number = number
+
+
+@dataclass(frozen=True)
+class SideChoice:
+    """A side to run: the Draft, or the Agent Version ``version_id``."""
+
+    kind: SideKind
+    version_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -249,34 +307,128 @@ async def delete_case(
     await session.commit()
 
 
+@dataclass(frozen=True)
+class _Side:
+    """A side resolved to what it runs: its configuration, models and Instructions."""
+
+    choice: SideChoice
+    version: AgentVersion | None
+    resolved: ResolvedModels
+    instructions: InstructionsVersion | None
+    instructions_draft: bool
+    instructions_text: str
+
+
+async def _version_side(
+    session: AsyncSession, scope: OrganisationScope, agent_id: uuid.UUID, choice: SideChoice
+) -> _Side:
+    version = (
+        None
+        if choice.version_id is None
+        else await session.scalar(
+            select(AgentVersion).where(
+                AgentVersion.id == choice.version_id, AgentVersion.agent_id == agent_id
+            )
+        )
+    )
+    if version is None:
+        raise VersionNotFoundError
+    try:
+        resolved = await resolve_models(
+            session, scope.organisation_id, AgentConfig.model_validate(version.config)
+        )
+    except ProviderCredentialGoneError:
+        raise VersionCredentialGoneError(version.number) from None
+    pinned = (
+        None
+        if version.instructions_version_id is None
+        else await session.get_one(InstructionsVersion, version.instructions_version_id)
+    )
+    return _Side(
+        choice, version, resolved, pinned, False, "" if pinned is None else pinned.markdown
+    )
+
+
+async def _draft_instructions(
+    session: AsyncSession,
+    project: Project,
+    instructions_version_id: uuid.UUID | None,
+    instructions_draft: bool,
+) -> tuple[InstructionsVersion | None, bool, str]:
+    """The Instructions the Draft answers with: the chosen Instructions Version (refused with
+    ``InstructionsVersionNotFoundError`` if it isn't the Project's), else the Instructions Draft
+    when chosen, else the Current Instructions Version (none while the Project has none)."""
+    if instructions_version_id is not None:
+        chosen = await project_version(session, project, instructions_version_id)
+        return chosen, False, chosen.markdown
+    if instructions_draft:
+        return None, True, project.instructions
+    if project.current_instructions_version_id is None:
+        return None, False, ""
+    current = await session.get_one(InstructionsVersion, project.current_instructions_version_id)
+    return current, False, current.markdown
+
+
+async def _in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
+    found = await session.scalar(
+        select(EvaluationRun.id).where(
+            EvaluationRun.agent_id == agent_id, EvaluationRun.status.in_(IN_PROGRESS)
+        )
+    )
+    return found is not None
+
+
 async def start_run(
     session: AsyncSession,
     scope: OrganisationScope,
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
     *,
+    sides: Sequence[SideChoice] | None = None,
+    instructions_version_id: uuid.UUID | None = None,
+    instructions_draft: bool = False,
     now: datetime,
 ) -> EvaluationRun:
-    """A queued Run of the Draft alone, with the Project's Current Instructions Version (no
-    Project Instructions while it has none), answering each case as many times as the
-    Evaluation repeats. Refused for an archived Agent, an empty set (``EmptySetError``), a
-    Draft that can't be resolved (``NoDefaultModelError``, ``ProviderCredentialGoneError``) and
-    an Organisation with neither an Evaluation Model nor a Default Model to judge."""
+    """A queued Run of ``sides`` (one or two; by default the Live Version against the Draft, or
+    the Draft alone while the Agent isn't live), the Draft answering with the chosen
+    Instructions, each side answering each case as many times as the Evaluation repeats.
+
+    Refused for an archived Agent, while it has a Run in progress (``RunInProgressError``), for
+    an empty set (``EmptySetError``), for a side that isn't the Agent's
+    (``VersionNotFoundError``) or two sides that are the same (``SameSidesError``), for chosen
+    Instructions that aren't the Project's (``InstructionsVersionNotFoundError``), for a side
+    that can't be resolved (``NoDefaultModelError``, ``ProviderCredentialGoneError``, or
+    ``VersionCredentialGoneError`` naming the Version), and for an Organisation with neither an
+    Evaluation Model nor a Default Model to judge."""
     project = await active_project(session, scope, project_id)
     found = await active_agent(session, scope, project_id, agent_id, lock=True)
+    if await _in_progress(session, found.agent.id):
+        raise RunInProgressError
     cases = await _cases(session, found.agent.id)
     if not cases:
         raise EmptySetError
-    resolved = await resolve_models(session, scope.organisation_id, found.draft)
+    if sides is None:
+        live = found.agent.live_version_id
+        sides = [SideChoice(SideKind.DRAFT)]
+        if live is not None:
+            sides = [SideChoice(SideKind.VERSION, live), *sides]
+    keys = [(c.kind, c.version_id if c.kind == SideKind.VERSION else None) for c in sides]
+    if len(set(keys)) < len(keys):
+        raise SameSidesError
+    draft_instructions = await _draft_instructions(
+        session, project, instructions_version_id, instructions_draft
+    )
+    resolved_sides: list[_Side] = []
+    for choice in sides:
+        if choice.kind == SideKind.VERSION:
+            resolved_sides.append(await _version_side(session, scope, found.agent.id, choice))
+            continue
+        resolved = await resolve_models(session, scope.organisation_id, found.draft)
+        resolved_sides.append(_Side(choice, None, resolved, *draft_instructions))
     judge = await judge_model(session, scope.organisation_id)
     if judge is None:
         raise NoDefaultModelError
     repeats = (await session.get_one(Organisation, scope.organisation_id)).evaluation_repeats
-    instructions = (
-        None
-        if project.current_instructions_version_id is None
-        else await session.get_one(InstructionsVersion, project.current_instructions_version_id)
-    )
     run = EvaluationRun(
         organisation_id=scope.organisation_id,
         agent_id=found.agent.id,
@@ -287,26 +439,28 @@ async def start_run(
         judge_model=judge.model,
         repeats=repeats,
         answers_done=0,
-        answers_total=len(cases) * repeats,
+        answers_total=len(cases) * repeats * len(resolved_sides),
         created_at=now,
     )
     session.add(run)
     await session.flush()
-    session.add(
+    session.add_all(
         EvaluationRunSide(
             organisation_id=scope.organisation_id,
             run_id=run.id,
-            position=FIRST,
-            kind=SideKind.DRAFT,
-            draft_revision=found.draft_revision,
-            instructions_version_id=None if instructions is None else instructions.id,
-            instructions_draft=False,
-            instructions="" if instructions is None else instructions.markdown,
-            config=resolved.config.model_dump(mode="json"),
-            chat_provider=resolved.chat.credential.provider,
-            chat_model=resolved.chat.model,
-            automatic_fallback=resolved.automatic_fallback,
+            position=position,
+            kind=side.choice.kind,
+            agent_version_id=None if side.version is None else side.version.id,
+            draft_revision=None if side.version is not None else found.draft_revision,
+            instructions_version_id=None if side.instructions is None else side.instructions.id,
+            instructions_draft=side.instructions_draft,
+            instructions=side.instructions_text,
+            config=side.resolved.config.model_dump(mode="json"),
+            chat_provider=side.resolved.chat.credential.provider,
+            chat_model=side.resolved.chat.model,
+            automatic_fallback=side.resolved.automatic_fallback,
         )
+        for position, side in zip((FIRST, SECOND), resolved_sides, strict=False)
     )
     session.add_all(
         EvaluationRunCase(
@@ -321,6 +475,32 @@ async def start_run(
     )
     await session.commit()
     return run
+
+
+async def cancel_run(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> None:
+    """Cancels a queued or running Run (``RunFinishedError`` otherwise). Its task stops before
+    its next answer; what it answered and spent so far is kept."""
+    found = await _agent(session, scope, project_id, agent_id, change=False)
+    run = await session.scalar(
+        select(EvaluationRun)
+        .where(EvaluationRun.id == run_id, EvaluationRun.agent_id == found.agent.id)
+        .with_for_update()
+    )
+    if run is None:
+        raise RunNotFoundError
+    if run.status not in IN_PROGRESS:
+        raise RunFinishedError
+    run.status = RunStatus.CANCELLED
+    run.finished_at = now
+    await session.commit()
 
 
 async def list_runs(
@@ -377,10 +557,13 @@ def _by_case_and_side(
 class RunDetail:
     run: EvaluationRun
     sides: list[EvaluationRunSide]
-    # The Instructions Versions' numbers, by ID.
+    # The Instructions Versions' and the Agent Versions' numbers, by ID.
     instructions_numbers: dict[uuid.UUID, int]
+    version_numbers: dict[uuid.UUID, int]
     # Each side's Evaluation score, by side ID, from the cases answered so far.
     scores: dict[uuid.UUID, Score]
+    # Whether it has a Draft side and the Draft has a newer Draft revision since.
+    stale: bool
 
 
 async def _run(
@@ -389,7 +572,8 @@ async def _run(
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
     run_id: uuid.UUID,
-) -> tuple[EvaluationRun, list[EvaluationRunSide], dict[uuid.UUID, int]]:
+) -> RunDetail:
+    """The Run, with no scores yet."""
     found = await _agent(session, scope, project_id, agent_id, change=False)
     run = await session.scalar(
         select(EvaluationRun).where(
@@ -405,25 +589,41 @@ async def _run(
             .order_by(EvaluationRunSide.position)
         )
     )
-    versions = {s.instructions_version_id for s in sides if s.instructions_version_id}
+    instructions = {s.instructions_version_id for s in sides if s.instructions_version_id}
     numbers = await session.execute(
         select(InstructionsVersion.id, InstructionsVersion.number).where(
-            InstructionsVersion.id.in_(versions)
+            InstructionsVersion.id.in_(instructions)
         )
     )
-    return run, sides, {row.id: row.number for row in numbers}
+    versions = await session.execute(
+        select(AgentVersion.id, AgentVersion.number).where(
+            AgentVersion.id.in_({s.agent_version_id for s in sides if s.agent_version_id})
+        )
+    )
+    stale = any(
+        side.kind == SideKind.DRAFT and side.draft_revision != found.draft_revision
+        for side in sides
+    )
+    return RunDetail(
+        run,
+        sides,
+        {row.id: row.number for row in numbers},
+        {row.id: row.number for row in versions},
+        {},
+        stale,
+    )
 
 
-def _scores(
-    sides: Sequence[EvaluationRunSide],
-    repeats: dict[tuple[uuid.UUID, uuid.UUID], list[Repeat]],
-) -> dict[uuid.UUID, Score]:
-    return {
+def _scored(
+    detail: RunDetail, repeats: dict[tuple[uuid.UUID, uuid.UUID], list[Repeat]]
+) -> RunDetail:
+    scores = {
         side.id: score(
             side_result(found) for (_, side_id), found in repeats.items() if side_id == side.id
         )
-        for side in sides
+        for side in detail.sides
     }
+    return replace(detail, scores=scores)
 
 
 async def get_run(
@@ -433,9 +633,8 @@ async def get_run(
     agent_id: uuid.UUID,
     run_id: uuid.UUID,
 ) -> RunDetail:
-    run, sides, numbers = await _run(session, scope, project_id, agent_id, run_id)
-    repeats = _by_case_and_side(await _judged(session, [run.id]))
-    return RunDetail(run, sides, numbers, _scores(sides, repeats))
+    detail = await _run(session, scope, project_id, agent_id, run_id)
+    return _scored(detail, _by_case_and_side(await _judged(session, [run_id])))
 
 
 @dataclass(frozen=True)
@@ -446,11 +645,29 @@ class CaseResults:
     results: list[JudgedResult]
     # By side ID; a side that hasn't answered the case yet has none.
     sides: dict[uuid.UUID, SideResult]
+    # ``regression`` when it passes on the first side and fails on the second,
+    # ``improvement`` for the reverse; None otherwise.
+    change: str | None
 
     @property
     def unsteady(self) -> bool:
         """Whether its repeats disagreed on either side."""
         return any(result.unsteady for result in self.sides.values())
+
+
+def _change(first: SideResult | None, second: SideResult | None) -> str | None:
+    outcomes = (
+        None if first is None else first.outcome,
+        None if second is None else second.outcome,
+    )
+    if outcomes == (CaseOutcome.PASS, CaseOutcome.FAIL):
+        return REGRESSION
+    if outcomes == (CaseOutcome.FAIL, CaseOutcome.PASS):
+        return IMPROVEMENT
+    return None
+
+
+_ORDER = {REGRESSION: 0, IMPROVEMENT: 1, None: 2}
 
 
 async def run_results(
@@ -460,26 +677,33 @@ async def run_results(
     agent_id: uuid.UUID,
     run_id: uuid.UUID,
 ) -> tuple[RunDetail, list[CaseResults]]:
-    """The Run's cases in set order, each with its answers, their Verdicts, and its result on
-    each side."""
-    run, sides, numbers = await _run(session, scope, project_id, agent_id, run_id)
+    """The Run's cases, Regressions first, then improvements, then the rest, each in set order,
+    with its answers, their Verdicts, and its result on each side."""
+    detail = await _run(session, scope, project_id, agent_id, run_id)
     cases = await session.scalars(
         select(EvaluationRunCase)
         .where(EvaluationRunCase.run_id == run_id)
         .order_by(EvaluationRunCase.position)
     )
-    judged = await _judged(session, [run.id])
+    judged = await _judged(session, [run_id])
     repeats = _by_case_and_side(judged)
-    detail = RunDetail(run, sides, numbers, _scores(sides, repeats))
-    return detail, [
-        CaseResults(
-            case,
-            [found for found in judged if found.result.run_case_id == case.id],
-            {
-                side.id: side_result(repeats[(case.id, side.id)])
-                for side in sides
-                if (case.id, side.id) in repeats
-            },
+    found: list[CaseResults] = []
+    for case in cases:
+        results = {
+            side.position: side_result(repeats[(case.id, side.id)])
+            for side in detail.sides
+            if (case.id, side.id) in repeats
+        }
+        found.append(
+            CaseResults(
+                case,
+                [each for each in judged if each.result.run_case_id == case.id],
+                {
+                    side.id: results[side.position]
+                    for side in detail.sides
+                    if side.position in results
+                },
+                _change(results.get(FIRST), results.get(SECOND)),
+            )
         )
-        for case in cases
-    ]
+    return _scored(detail, repeats), sorted(found, key=lambda each: _ORDER[each.change])
