@@ -1,7 +1,7 @@
 import { Link, Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createContext, type ReactNode, useContext, useId, useState } from "react";
 
-import { Badge, ConfirmDialog, EmptyState, Notice, Pagination, Segmented, Skeleton, button, field, surface, text } from "../design";
+import { Badge, ConfirmDialog, EmptyState, Icon, Menu, Notice, Pagination, Segmented, Skeleton, button, field, surface, text } from "../design";
 import { formatTime } from "../settings/AuditPage";
 import { useAgents, useAgentVersions } from "./agents";
 import {
@@ -18,6 +18,7 @@ import {
   useConversationTrace,
   useDeleteConversation,
 } from "./conversations";
+import { AddToEvaluationSet } from "./EvaluationCaseEditor";
 import { useOrganisationRole } from "./ProjectsPage";
 import { TraceContent, TraceFold } from "./Trace";
 
@@ -588,12 +589,15 @@ function MessageItem({
   agentName,
   deletedAt,
   path,
+  onAdd,
 }: {
   message: ConversationMessage;
   asker: string;
   agentName: string;
   deletedAt: string | null;
   path: ConversationPath;
+  /** Opens the case editor with this reply's question and cited passages. */
+  onAdd: (messageId: string) => void;
 }) {
   if (message.role === "user") {
     return (
@@ -623,6 +627,18 @@ function MessageItem({
           )}
           {message.fallback && <span>Fallback reply</span>}
           {blocked(message) && <Badge kind="blocked" title="The input Guardrail blocked the question: the model wasn't asked." />}
+          {message.purged_at === null && (
+            <span className="ml-auto">
+              <Menu
+                label={<Icon name="more" />}
+                triggerLabel="More actions for this reply"
+                menuLabel="Actions for this reply"
+                align="end"
+                triggerClassName={button.iconBare}
+                items={[{ label: "Add to Evaluation Set", onSelect: () => { onAdd(message.id); } }]}
+              />
+            </span>
+          )}
         </p>
         <MessageText message={message} deletedAt={deletedAt} />
         <FeedbackNote message={message} visitor={asker === "Visitor"} />
@@ -692,6 +708,8 @@ export function ConversationPage() {
   const path = { organisation_id: organisationId, project_id: projectId, conversation_id: conversationId };
   const conversation = useConversation(path);
   const Heading = level === 2 ? "h3" : "h4";
+  // The reply being added to the Evaluation Set.
+  const [adding, setAdding] = useState<string | null>(null);
 
   let body;
   if (conversation.isError) {
@@ -724,10 +742,20 @@ export function ConversationPage() {
               agentName={data.agent_name}
               deletedAt={data.deleted_at}
               path={path}
+              onAdd={setAdding}
             />
           ))}
         </ol>
         {!data.is_playground && <RatingNote rating={data.rating} />}
+        {adding !== null && (
+          <AddToEvaluationSet
+            path={{ organisation_id: organisationId, project_id: projectId, agent_id: data.agent_id }}
+            messageId={adding}
+            onClose={() => {
+              setAdding(null);
+            }}
+          />
+        )}
       </>
     );
   }

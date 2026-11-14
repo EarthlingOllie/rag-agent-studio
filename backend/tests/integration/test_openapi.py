@@ -178,6 +178,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "get"),
         "updateEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "put"),
         "deleteEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "delete"),
+        "copyEvaluationCases": (f"{_EVALUATION}/cases/copy", "post"),
+        "prefillEvaluationCase": (f"{_EVALUATION}/messages/{{message_id}}/prefill", "get"),
         "startEvaluationRun": (f"{_EVALUATION}/runs", "post"),
         "listEvaluationRuns": (f"{_EVALUATION}/runs", "get"),
         "getEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}", "get"),

@@ -16,6 +16,7 @@ import {
   visitorDetail,
   visitorTrace,
 } from "../test/conversations";
+import { fakeEvaluationApi } from "../test/evaluation";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
@@ -628,4 +629,104 @@ test.each([
   await screen.findByRole("group", { name: "Filter Conversations" });
   expect(within(filters()).getByLabelText("Guardrail")).toHaveValue(kept);
   expect(queries.at(-1)?.get("guardrail") ?? "").toBe(kept);
+});
+
+// Add to Evaluation Set
+
+const leaveDocumentId = "d0000000-0000-4000-8000-000000000001";
+const offeredPrefill = {
+  question: "How much leave do I get?",
+  expected_sources: [
+    { document_id: leaveDocumentId, document_name: "leave.txt", passage: "Everyone gets 25 days of annual leave a year." },
+    { document_id: "d0000000-0000-4000-8000-000000000002", document_name: "parking.txt", passage: "Park in the north car park." },
+  ],
+};
+
+async function openVisitorReply() {
+  renderStudio(`${conversationsTab}?agent=${hrHelper.id}`);
+  await userEvent.click(await screen.findByRole("link", { name: "How much leave do I get?" }));
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  return items[1] as HTMLElement;
+}
+
+test("Add to Evaluation Set on a reply opens the case editor with its question and its cited passages unticked", async () => {
+  const user = userEvent.setup();
+  setUp();
+  const { requests } = fakeEvaluationApi({ prefill: offeredPrefill, documentNames: { [leaveDocumentId]: "leave.txt" } });
+  const reply = await openVisitorReply();
+
+  await user.click(within(reply).getByRole("button", { name: "More actions for this reply" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Add to Evaluation Set" }));
+
+  const editor = await screen.findByRole("dialog", { name: "Add to Evaluation Set" });
+  expect(requests).toEqual([{ route: "prefill", body: { messageId: VISITOR_REPLY_ID, agentId: hrHelper.id } }]);
+  expect(within(editor).getByText(/No link to the Conversation is kept/)).toBeInTheDocument();
+  const question = await within(editor).findByLabelText("Question");
+  expect(question).toHaveValue("How much leave do I get?");
+  const cited = within(editor).getByRole("group", { name: "Cited passages" });
+  const ticks = within(cited).getAllByRole("checkbox");
+  expect(ticks.map((tick) => (tick as HTMLInputElement).checked)).toEqual([false, false]);
+  expect(cited).toHaveTextContent("leave.txt“Everyone gets 25 days of annual leave a year.”");
+
+  // The question is the Editor's to edit; one passage is ticked, then another ticked and unticked.
+  await user.type(question, " A year?");
+  await user.click(ticks[0] as HTMLElement);
+  await user.click(ticks[1] as HTMLElement);
+  await user.click(ticks[1] as HTMLElement);
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+
+  expect(await screen.findByText("Added to the Evaluation Set.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "create")).toEqual([
+    {
+      route: "create",
+      body: {
+        question: "How much leave do I get? A year?",
+        reference_answer: "",
+        expected_sources: [{ document_id: leaveDocumentId, passage: "Everyone gets 25 days of annual leave a year." }],
+        expect_fallback: false,
+        source: "from_message",
+      },
+    },
+  ]);
+});
+
+test("a case from a reply still needs an expectation, and cancelling saves nothing", async () => {
+  const user = userEvent.setup();
+  setUp();
+  const { requests } = fakeEvaluationApi({ prefill: { question: "How much leave do I get?", expected_sources: [] } });
+  const reply = await openVisitorReply();
+
+  await user.click(within(reply).getByRole("button", { name: "More actions for this reply" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Add to Evaluation Set" }));
+  const editor = await screen.findByRole("dialog", { name: "Add to Evaluation Set" });
+  // Nothing was cited, so no passage is offered.
+  await within(editor).findByLabelText("Question");
+  expect(within(editor).queryByRole("group", { name: "Cited passages" })).not.toBeInTheDocument();
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+  expect(within(editor).getByLabelText("Reference answer")).toHaveAccessibleDescription(/a case needs at least one expectation/);
+  await user.click(within(editor).getByRole("button", { name: "Cancel" }));
+
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "create")).toEqual([]);
+});
+
+test("a reply that can't be added says why; a purged reply offers no Add to Evaluation Set", async () => {
+  const user = userEvent.setup();
+  const purged = visitorDetail.messages.map((m, index) => (index < 2 ? { ...m, content: "", purged_at: "2026-11-07T00:35:00Z" } : m));
+  setUp({ details: [{ ...visitorDetail, messages: purged }] });
+  const refusal = "This Message's text has been purged, so it can't be added to the Evaluation Set.";
+  fakeEvaluationApi({ prefill: { status: 409, detail: refusal } });
+  renderStudio(`${conversationsTab}?agent=${hrHelper.id}`);
+  await userEvent.click(await screen.findByRole("link", { name: "How much leave do I get?" }));
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+
+  expect(within(items[1] as HTMLElement).queryByRole("button", { name: "More actions for this reply" })).not.toBeInTheDocument();
+  await user.click(within(items[3] as HTMLElement).getByRole("button", { name: "More actions for this reply" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Add to Evaluation Set" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Add to Evaluation Set" });
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(refusal);
+  await user.click(within(dialog).getByRole("button", { name: "Close" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

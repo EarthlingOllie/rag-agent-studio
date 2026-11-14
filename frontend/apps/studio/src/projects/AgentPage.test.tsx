@@ -13,6 +13,7 @@ import {
   streamedAnswer,
 } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
+import { fakeEvaluationApi } from "../test/evaluation";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 
@@ -638,4 +639,21 @@ test("the Playground can't be reset while an answer streams in", async () => {
   release();
   await screen.findByText(/output tokens/);
   expect(screen.getByRole("button", { name: "Reset conversation" })).toBeEnabled();
+});
+
+test("an answer in the Playground is added to the Evaluation Set from its ⋯ menu, with its question and cited passage", async () => {
+  const user = userEvent.setup();
+  const offered = { document_id: leaveCitation.document_id, document_name: leaveCitation.document_name, passage: "Everyone gets 25 days." };
+  const { requests: evaluation } = fakeEvaluationApi({ prefill: { question: "How much leave?", expected_sources: [offered] } });
+  const { answer } = await askLeave();
+
+  await user.click(within(answer).getByRole("button", { name: "More actions for this answer" }));
+  await user.click(await screen.findByRole("menuitem", { name: "Add to Evaluation Set" }));
+
+  const editor = await screen.findByRole("dialog", { name: "Add to Evaluation Set" });
+  expect(await within(editor).findByLabelText("Question")).toHaveValue("How much leave?");
+  expect(within(editor).getByRole("checkbox", { name: /Everyone gets 25 days/ })).not.toBeChecked();
+  expect(evaluation).toEqual([{ route: "prefill", body: { messageId: "e0000000-0000-4000-8000-000000000001", agentId: hrHelper.id } }]);
+  await user.click(within(editor).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

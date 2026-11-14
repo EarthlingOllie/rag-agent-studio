@@ -1,6 +1,12 @@
-"""Evaluation routes, under an Agent: its Evaluation Set (cases: list, create, read, update and
-delete), and its Evaluation Runs (start, list, read with progress, and read results). Editors and
-Owners may use them; another Organisation's Agents are not found.
+"""Evaluation routes, under an Agent: its Evaluation Set (cases: list with search and filters,
+create, read, update, delete, copy from another Agent of the Project, and prefill a new case from
+one of the Agent's Messages), and its Evaluation Runs (start, list, read with progress, and read
+results). Editors and Owners may use them; another Organisation's Agents are not found.
+
+A set holds at most 200 cases, enforced under a lock on the Agent. A case added from a Message
+copies the question it answered (the Editor edits it before saving) and keeps no link to the
+Conversation; it outlives the Retention Window (ADR-0016). Adding a case from a Message and
+deleting a case are Audit Events; writing and editing cases are not.
 
 A case needs at least one expectation: Expected sources (each a passage of up to 1,000 characters
 of one of the Project's Documents), a Reference answer, or Expect Fallback Text, which can't be
@@ -32,7 +38,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.agents.api import (
@@ -46,12 +52,13 @@ from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneErr
 from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
-from app.evaluation import service
+from app.evaluation import from_message, service
 from app.evaluation.combining import Repeat, SideResult
 from app.evaluation.models import (
     PASSAGE_MAX,
     QUESTION_MAX,
     REFERENCE_ANSWER_MAX,
+    CaseSource,
     EvaluationCase,
     EvaluationRun,
     SideKind,
@@ -81,6 +88,8 @@ FALLBACK_WITH_SOURCE = (
     "or untick Expect Fallback Text."
 )
 SOURCE_DOCUMENT_NOT_FOUND = "Choose a Document of this Project for each Expected source."
+SOURCE_AGENT_NOT_FOUND = "Choose another Agent of this Project to copy cases from."
+SOURCE_CASE_NOT_FOUND = "Choose cases of the Agent you are copying from."
 EMPTY_SET = "Add an Evaluation Case before evaluating."
 VERSION_NOT_FOUND = "Choose the Draft or one of this Agent's Versions for each side."
 SAME_SIDES = "Choose two different sides."
@@ -89,6 +98,7 @@ RUN_IN_PROGRESS = (
     "This Agent already has an Evaluation Run in progress. Wait for it to finish, or cancel it."
 )
 RUN_FINISHED = "This Run has already finished."
+MESSAGE_PURGED = "This Message's text has been purged, so it can't be added to the Evaluation Set."
 
 
 def version_credential_gone(number: int) -> str:
@@ -118,6 +128,22 @@ _CHANGE_RESPONSES: dict[int | str, dict[str, Any]] = {
             "Text is combined with another expectation, or an Expected source's passage is "
             "empty or too long or its Document isn't the Project's."
         )
+    },
+}
+_CREATE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **_CHANGE_RESPONSES,
+    409: {
+        "model": ErrorResponse,
+        "description": "The Project or Agent is archived, or the Evaluation Set holds 200 cases.",
+    },
+}
+_COPY_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **_CREATE_RESPONSES,
+    422: {
+        "model": ErrorResponse,
+        "description": (
+            "The Agent copied from is this one or not of the Project, or a case isn't in its set."
+        ),
     },
 }
 _START_RESPONSES: dict[int | str, dict[str, Any]] = {
@@ -164,6 +190,19 @@ class CaseIn(BaseModel):
     expect_fallback: bool = False
 
 
+class NewCaseIn(CaseIn):
+    # ``written`` in the case editor, or ``from_message`` when prefilled from an Agent Message
+    # (an Audit Event).
+    source: Literal["written", "from_message"] = "written"
+
+
+class CopyIn(BaseModel):
+    # Another Agent of the same Project.
+    agent_id: uuid.UUID
+    # Cases of its Evaluation Set to copy.
+    case_ids: list[uuid.UUID] = Field(min_length=1, max_length=service.CASES_MAX)
+
+
 class ExpectedSourceOut(BaseModel):
     id: uuid.UUID
     # Null once the Document is deleted; its name stays.
@@ -173,6 +212,20 @@ class ExpectedSourceOut(BaseModel):
     # Whether it is a Stale expectation, and why: ``document_deleted`` or ``passage_missing``.
     stale: bool
     stale_reason: str | None
+
+
+class OfferedSourceOut(BaseModel):
+    document_id: uuid.UUID
+    document_name: str
+    # The cited Chunk's text, up to a passage's length.
+    passage: str
+
+
+class PrefillOut(BaseModel):
+    # The question the Message answered, to edit before saving.
+    question: str
+    # The passages the Message cited, offered as Expected sources.
+    expected_sources: list[OfferedSourceOut]
 
 
 class SideIn(BaseModel):
@@ -434,15 +487,26 @@ def _fields(body: CaseIn) -> service.CaseFields:
     )
 
 
-_INVALID = {
+_INVALID: dict[type[Exception], str] = {
     service.NoExpectationError: NO_EXPECTATION,
     service.FallbackWithReferenceError: FALLBACK_WITH_REFERENCE,
     service.FallbackWithSourceError: FALLBACK_WITH_SOURCE,
     service.SourceDocumentNotFoundError: SOURCE_DOCUMENT_NOT_FOUND,
+    service.SourceAgentNotFoundError: SOURCE_AGENT_NOT_FOUND,
+    service.SourceCaseNotFoundError: SOURCE_CASE_NOT_FOUND,
 }
 
 
+def case_limit(held: int) -> str:
+    return (
+        f"An Evaluation Set holds at most {service.CASES_MAX} cases, and this one has "
+        f"{held}. Delete cases before adding more."
+    )
+
+
 def _change_refused(error: Exception) -> HTTPException:
+    if isinstance(error, service.CaseLimitError):
+        return HTTPException(status.HTTP_409_CONFLICT, case_limit(error.held))
     if isinstance(error, ProjectArchivedError):
         return archived()
     if isinstance(error, AgentArchivedError):
@@ -458,16 +522,34 @@ _NOT_FOUND = (
     service.CaseNotFoundError,
     service.RunNotFoundError,
 )
-_REFUSED = (*_NOT_FOUND, ProjectArchivedError, AgentArchivedError, *_INVALID)
+_REFUSED: tuple[type[Exception], ...] = (
+    *_NOT_FOUND,
+    ProjectArchivedError,
+    AgentArchivedError,
+    service.CaseLimitError,
+    *_INVALID,
+)
 
 
 @router.get("/cases", operation_id="listEvaluationCases", responses=NOT_FOUND_RESPONSE)
 async def list_cases(
-    project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    q: Annotated[str | None, Query(max_length=QUESTION_MAX)] = None,
+    kind: service.ExpectationKind | None = None,
+    stale: bool | None = None,
+    result: service.LatestKind | None = None,
 ) -> list[CaseOut]:
-    """The Agent's Evaluation Set, oldest case first."""
+    """The Agent's Evaluation Set, oldest case first: with ``q``, the cases whose question
+    holds it (letter case aside); with ``kind``, those with that kind of expectation; with
+    ``stale``, those with (or without) a Stale expectation; with ``result``, those whose latest
+    result is ``pass``, ``fail``, ``unsteady`` (its repeats disagreed), ``error``, or
+    ``not_run``."""
+    where = service.CaseFilter((q or "").strip() or None, kind, stale, result)
     try:
-        cases = await service.list_cases(db, scope, project_id, agent_id)
+        cases = await service.list_cases(db, scope, project_id, agent_id, where)
     except _NOT_FOUND:
         raise not_found() from None
     return [_case_out(case) for case in cases]
@@ -477,24 +559,56 @@ async def list_cases(
     "/cases",
     status_code=status.HTTP_201_CREATED,
     operation_id="createEvaluationCase",
-    responses=_CHANGE_RESPONSES,
+    responses=_CREATE_RESPONSES,
 )
 async def create_case(
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
-    body: CaseIn,
+    body: NewCaseIn,
     scope: Scope,
     db: Db,
     clock: ClockDep,
 ) -> CaseOut:
-    """Adds a case to the Agent's Evaluation Set."""
+    """Adds a case to the Agent's Evaluation Set, of at most 200. A case added from a Message
+    is an Audit Event."""
     try:
         case = await service.create_case(
-            db, scope, project_id, agent_id, _fields(body), now=clock.now()
+            db,
+            scope,
+            project_id,
+            agent_id,
+            _fields(body),
+            source=CaseSource(body.source),
+            now=clock.now(),
         )
     except _REFUSED as error:
         raise _change_refused(error) from None
     return _case_out(case)
+
+
+@router.post(
+    "/cases/copy",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="copyEvaluationCases",
+    responses=_COPY_RESPONSES,
+)
+async def copy_cases(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    body: CopyIn,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> list[CaseOut]:
+    """Copies cases of another Agent of the Project into this Agent's Evaluation Set, as
+    independent copies, in their set's order; the copies are returned."""
+    try:
+        copies = await service.copy_cases(
+            db, scope, project_id, agent_id, body.agent_id, body.case_ids, now=clock.now()
+        )
+    except _REFUSED as error:
+        raise _change_refused(error) from None
+    return [_case_out(case) for case in copies]
 
 
 @router.get("/cases/{case_id}", operation_id="getEvaluationCase", responses=NOT_FOUND_RESPONSE)
@@ -535,14 +649,50 @@ async def update_case(
     responses={**NOT_FOUND_RESPONSE, **AGENT_ARCHIVED_RESPONSE},
 )
 async def delete_case(
-    project_id: uuid.UUID, agent_id: uuid.UUID, case_id: uuid.UUID, scope: Scope, db: Db
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    case_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
 ) -> Response:
-    """Deletes the case; past Runs keep their copies."""
+    """Deletes the case, an Audit Event; past Runs keep their copies."""
     try:
-        await service.delete_case(db, scope, project_id, agent_id, case_id)
+        await service.delete_case(db, scope, project_id, agent_id, case_id, now=clock.now())
     except _REFUSED as error:
         raise _change_refused(error) from None
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/messages/{message_id}/prefill",
+    operation_id="prefillEvaluationCase",
+    responses={
+        **NOT_FOUND_RESPONSE,
+        409: {"model": ErrorResponse, "description": "The Message's text has been purged."},
+    },
+)
+async def prefill_case(
+    project_id: uuid.UUID, agent_id: uuid.UUID, message_id: uuid.UUID, scope: Scope, db: Db
+) -> PrefillOut:
+    """A new case from one of the Agent's replies, in the Conversations viewer or the
+    Playground: the question it answered and the passages it cited. Nothing is saved, and a case
+    keeps no link to the Conversation. Refused once the text has been purged."""
+    try:
+        found = await from_message.prefill(db, scope, project_id, agent_id, message_id)
+    except (ProjectNotFoundError, AgentNotFoundError, from_message.MessageNotFoundError):
+        raise not_found() from None
+    except from_message.MessagePurgedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, MESSAGE_PURGED) from None
+    return PrefillOut(
+        question=found.question,
+        expected_sources=[
+            OfferedSourceOut(
+                document_id=each.document_id, document_name=each.document_name, passage=each.passage
+            )
+            for each in found.expected_sources
+        ],
+    )
 
 
 @router.post(

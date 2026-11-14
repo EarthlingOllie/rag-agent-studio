@@ -287,7 +287,19 @@ where the Member is: from the Organisation's page they are under down to the pag
     a refused combination is a field error on the field it names. The set's Expectations column
     and Run detail list each case's Expected sources, Reference answer and "Expects the Fallback
     Text."; Run detail flags a case that skipped a Stale expectation with the badge and a line,
-    and shows a stale Verdict as "Stale, skipped" in `flag`.
+    and shows a stale Verdict as "Stale, skipped" in `flag`. From 14-06 the header adds a
+    secondary Copy from another Agent beside New case; a `Meter` "Cases in the set" counts against
+    200, and at 200 both are disabled under a warning `Notice`. Above the table a `layout.toolbar`
+    holds a search box, a `Segmented` "Filter by latest result" (Any result, Pass, Fail, Unsteady,
+    Error, Not run), pill selects for the expectation and the Stale flag, and a ghost Clear
+    filters; nothing matching is an `EmptyState` "No cases match". Copy from another Agent is a
+    `Dialog`: an Agent select (the Project's other Agents), then its cases as tick boxes under
+    "Select all (n)", and Copy n cases; a toast counts the copies. Each Agent Message in the
+    Conversations viewer (unless its text is purged) and in the Playground has a ⋯ menu with Add
+    to Evaluation Set: a loading `Dialog` while it reads the Message, then the case editor titled
+    "Add to Evaluation Set" with an info `Notice` that no link to the Conversation is kept, the
+    question prefilled, and the cited passages as unticked tick boxes ("Cited passages") above
+    Other Expected sources; saving confirms with a toast, a refusal is an error `Notice`.
   - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
     (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
   - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with

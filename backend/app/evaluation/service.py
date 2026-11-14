@@ -20,6 +20,12 @@ Reference answer and Expect Fallback Text, which stands alone. Saving a case che
 source against the Knowledge Base as it is, and flags it stale when its passage can't be found
 (``app.evaluation.expectations``); the case shows as having a Stale expectation.
 
+A set holds at most ``CASES_MAX`` cases, counted under the Agent's row lock so concurrent
+creates and copies can't pass it. Cases can be copied from another Agent of the Project as
+independent copies. Adding a case from a Message records an Audit Event naming the case and the
+Agent (never the question), and so does deleting a case; writing and editing cases are not
+audited.
+
 Reading a Run combines each case's repeats into its result on each side, and those into each
 side's Evaluation score (``app.evaluation.combining``); a case that passes on the first side and
 fails on the second is a Regression, the reverse an improvement. A Run with a Draft side is stale
@@ -27,14 +33,16 @@ once the Draft has a newer Draft revision. Each case in the set shows its result
 finished Run that answered it.
 """
 
+import enum
 import uuid
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import audit
 from app.agents.config import AgentConfig
 from app.agents.models import AgentVersion
 from app.agents.resolution import (
@@ -43,7 +51,7 @@ from app.agents.resolution import (
     ResolvedModels,
     resolve_models,
 )
-from app.agents.service import AgentWithDraft, active_agent, get_agent
+from app.agents.service import AgentNotFoundError, AgentWithDraft, active_agent, get_agent
 from app.documents.service import DocumentNotFoundError, get_document
 from app.evaluation.combining import (
     CaseOutcome,
@@ -75,6 +83,11 @@ from app.projects.service import active_project
 from app.tenancy.models import Organisation
 from app.tenancy.repository import OrganisationScope
 
+# An Evaluation Set's size, so a Run stays bounded in time and Cost.
+CASES_MAX = 200
+ADDED_FROM_MESSAGE = "agent.evaluation_case_added_from_message"
+CASE_DELETED = "agent.evaluation_case_deleted"
+
 FIRST = "first"
 SECOND = "second"
 REGRESSION = "regression"
@@ -87,6 +100,22 @@ class CaseNotFoundError(Exception):
 
 class RunNotFoundError(Exception):
     """No Evaluation Run with that ID for the Agent."""
+
+
+class CaseLimitError(Exception):
+    """The Evaluation Set would hold more than ``CASES_MAX`` cases."""
+
+    def __init__(self, held: int) -> None:
+        super().__init__(held)
+        self.held = held
+
+
+class SourceAgentNotFoundError(Exception):
+    """Cases are copied from another Agent of the same Project."""
+
+
+class SourceCaseNotFoundError(Exception):
+    """A case to copy isn't in the set of the Agent copied from."""
 
 
 class NoExpectationError(Exception):
@@ -307,12 +336,74 @@ async def _with_latest(
     return found
 
 
+class ExpectationKind(enum.StrEnum):
+    EXPECTED_SOURCE = "expected_source"
+    REFERENCE_ANSWER = "reference_answer"
+    FALLBACK = "fallback"
+
+
+class LatestKind(enum.StrEnum):
+    """A case's latest result as the set shows it: Unsteady over its majority outcome."""
+
+    PASS = "pass"  # noqa: S105 (a result, not a password)
+    FAIL = "fail"
+    UNSTEADY = "unsteady"
+    ERROR = "error"
+    NOT_RUN = "not_run"
+
+
+@dataclass(frozen=True)
+class CaseFilter:
+    # Text the question holds, letter case aside.
+    search: str | None = None
+    # Cases with this kind of expectation.
+    kind: ExpectationKind | None = None
+    # Cases with (or without) a Stale expectation.
+    stale: bool | None = None
+    latest: LatestKind | None = None
+
+
+def _latest_kind(found: CaseWithResult) -> LatestKind:
+    if found.latest is None:
+        return LatestKind.NOT_RUN
+    if found.latest.result.unsteady:
+        return LatestKind.UNSTEADY
+    return LatestKind(found.latest.result.outcome)
+
+
+def _kinds(found: CaseWithResult) -> set[ExpectationKind]:
+    kinds = set()
+    if found.sources:
+        kinds.add(ExpectationKind.EXPECTED_SOURCE)
+    if found.case.reference_answer is not None:
+        kinds.add(ExpectationKind.REFERENCE_ANSWER)
+    if found.case.expect_fallback:
+        kinds.add(ExpectationKind.FALLBACK)
+    return kinds
+
+
+def _matches(found: CaseWithResult, where: CaseFilter) -> bool:
+    return (
+        (where.search is None or where.search.casefold() in found.case.question.casefold())
+        and (where.kind is None or where.kind in _kinds(found))
+        and (where.stale is None or where.stale == found.stale)
+        and (where.latest is None or where.latest == _latest_kind(found))
+    )
+
+
 async def list_cases(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    where: CaseFilter | None = None,
 ) -> list[CaseWithResult]:
-    """The Agent's Evaluation Set, oldest case first, each with its latest result."""
+    """The Agent's Evaluation Set, oldest case first, each with its latest result; with
+    ``where``, only the cases matching every filter given."""
     found = await _agent(session, scope, project_id, agent_id, change=False)
-    return await _with_latest(session, await _cases(session, found.agent.id))
+    cases = await _with_latest(session, await _cases(session, found.agent.id))
+    chosen = where or CaseFilter()
+    return [case for case in cases if _matches(case, chosen)]
 
 
 async def _case(session: AsyncSession, agent_id: uuid.UUID, case_id: uuid.UUID) -> EvaluationCase:
@@ -338,6 +429,16 @@ async def get_case(
     return case
 
 
+async def _make_room(session: AsyncSession, agent_id: uuid.UUID, adding: int) -> None:
+    """Refuses with ``CaseLimitError`` when adding ``adding`` cases would take the set past
+    ``CASES_MAX``. The caller holds the Agent's row lock, so concurrent adds queue behind it."""
+    held = await session.scalar(
+        select(func.count()).select_from(EvaluationCase).where(EvaluationCase.agent_id == agent_id)
+    )
+    if (held or 0) + adding > CASES_MAX:
+        raise CaseLimitError(held or 0)
+
+
 async def create_case(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -345,11 +446,15 @@ async def create_case(
     agent_id: uuid.UUID,
     fields: CaseFields,
     *,
+    source: CaseSource = CaseSource.WRITTEN,
     now: datetime,
 ) -> CaseWithResult:
-    """Adds a written case; refused as ``_checked`` and ``_replace_sources`` say."""
+    """Adds a case, written or added from a Message (an Audit Event naming the case and the
+    Agent, never the question); refused as ``_checked``, ``_make_room`` and
+    ``_replace_sources`` say."""
     checked = _checked(fields)
     found = await _agent(session, scope, project_id, agent_id, change=True)
+    await _make_room(session, found.agent.id, 1)
     case = EvaluationCase(
         id=uuid.uuid4(),
         organisation_id=scope.organisation_id,
@@ -357,7 +462,7 @@ async def create_case(
         question=checked.question,
         reference_answer=checked.reference_answer,
         expect_fallback=checked.expect_fallback,
-        source=CaseSource.WRITTEN,
+        source=source,
         created_by=scope.member_id,
         created_at=now,
         updated_at=now,
@@ -365,9 +470,84 @@ async def create_case(
     session.add(case)
     await session.flush()
     await _replace_sources(session, scope, project_id, case, checked.expected_sources)
+    if source == CaseSource.FROM_MESSAGE:
+        await audit.record(
+            session,
+            organisation_id=scope.organisation_id,
+            actor_id=scope.member_id,
+            action=ADDED_FROM_MESSAGE,
+            target=audit.AuditTarget("agent", found.agent.id),
+            after={"case_id": str(case.id)},
+            occurred_at=now,
+        )
     await session.commit()
     (created,) = await _with_latest(session, [case])
     return created
+
+
+async def copy_cases(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    from_agent_id: uuid.UUID,
+    case_ids: Collection[uuid.UUID],
+    *,
+    now: datetime,
+) -> list[CaseWithResult]:
+    """Copies these cases of another Agent of the Project into the Agent's set, in their set's
+    order: independent copies with their own IDs, expectations and Stale flags, and no result
+    yet. Refused with ``SourceAgentNotFoundError`` for the Agent itself or one outside the
+    Project, ``SourceCaseNotFoundError`` for a case not in that Agent's set, and as
+    ``_make_room`` says."""
+    found = await _agent(session, scope, project_id, agent_id, change=True)
+    if from_agent_id == found.agent.id:
+        raise SourceAgentNotFoundError
+    try:
+        source = await get_agent(session, scope, project_id, from_agent_id)
+    except AgentNotFoundError:
+        raise SourceAgentNotFoundError from None
+    wanted = set(case_ids)
+    originals = [case for case in await _cases(session, source.agent.id) if case.id in wanted]
+    if len(originals) != len(wanted):
+        raise SourceCaseNotFoundError
+    await _make_room(session, found.agent.id, len(originals))
+    expected = await _sources(session, originals)
+    copies: list[EvaluationCase] = []
+    added: list[EvaluationExpectedSource] = []
+    for offset, original in enumerate(originals):
+        # A microsecond apart, so the set lists them in the order they had.
+        at = now + timedelta(microseconds=offset)
+        copy = EvaluationCase(
+            id=uuid.uuid4(),
+            organisation_id=scope.organisation_id,
+            agent_id=found.agent.id,
+            question=original.question,
+            reference_answer=original.reference_answer,
+            expect_fallback=original.expect_fallback,
+            source=original.source,
+            created_by=scope.member_id,
+            created_at=at,
+            updated_at=at,
+        )
+        copies.append(copy)
+        added.extend(
+            EvaluationExpectedSource(
+                organisation_id=scope.organisation_id,
+                case_id=copy.id,
+                position=each.position,
+                document_id=each.document_id,
+                document_name=each.document_name,
+                passage=each.passage,
+            )
+            for each in expected.get(original.id, [])
+        )
+    session.add_all(copies)
+    await session.flush()
+    await refresh_stale(session, added)
+    session.add_all(added)
+    await session.commit()
+    return await _with_latest(session, copies)
 
 
 async def update_case(
@@ -401,10 +581,21 @@ async def delete_case(
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
     case_id: uuid.UUID,
+    *,
+    now: datetime,
 ) -> None:
-    """Deletes the case. Past Runs keep their copies of it."""
+    """Deletes the case, an Audit Event. Past Runs keep their copies of it."""
     found = await _agent(session, scope, project_id, agent_id, change=True)
     case = await _case(session, found.agent.id, case_id)
+    await audit.record(
+        session,
+        organisation_id=scope.organisation_id,
+        actor_id=scope.member_id,
+        action=CASE_DELETED,
+        target=audit.AuditTarget("agent", found.agent.id),
+        before={"case_id": str(case.id), "source": case.source},
+        occurred_at=now,
+    )
     await session.delete(case)
     await session.commit()
 

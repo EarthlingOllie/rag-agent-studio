@@ -1212,15 +1212,41 @@ export interface paths {
         };
         /**
          * List Cases
-         * @description The Agent's Evaluation Set, oldest case first.
+         * @description The Agent's Evaluation Set, oldest case first: with ``q``, the cases whose question
+         *     holds it (letter case aside); with ``kind``, those with that kind of expectation; with
+         *     ``stale``, those with (or without) a Stale expectation; with ``result``, those whose latest
+         *     result is ``pass``, ``fail``, ``unsteady`` (its repeats disagreed), ``error``, or
+         *     ``not_run``.
          */
         get: operations["listEvaluationCases"];
         put?: never;
         /**
          * Create Case
-         * @description Adds a case to the Agent's Evaluation Set.
+         * @description Adds a case to the Agent's Evaluation Set, of at most 200. A case added from a Message
+         *     is an Audit Event.
          */
         post: operations["createEvaluationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy Cases
+         * @description Copies cases of another Agent of the Project into this Agent's Evaluation Set, as
+         *     independent copies, in their set's order; the copies are returned.
+         */
+        post: operations["copyEvaluationCases"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1244,9 +1270,31 @@ export interface paths {
         post?: never;
         /**
          * Delete Case
-         * @description Deletes the case; past Runs keep their copies.
+         * @description Deletes the case, an Audit Event; past Runs keep their copies.
          */
         delete: operations["deleteEvaluationCase"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/messages/{message_id}/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prefill Case
+         * @description A new case from one of the Agent's replies, in the Conversations viewer or the
+         *     Playground: the question it answered and the passages it cited. Nothing is saved, and a case
+         *     keeps no link to the Conversation. Refused once the text has been purged.
+         */
+        get: operations["prefillEvaluationCase"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3276,6 +3324,16 @@ export interface components {
             /** Conversation Token */
             conversation_token: string;
         };
+        /** CopyIn */
+        CopyIn: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Case Ids */
+            case_ids: string[];
+        };
         /** CostAmountsOut */
         CostAmountsOut: {
             /** Playground Usd */
@@ -3736,6 +3794,11 @@ export interface components {
             /** Repeats */
             repeats: number;
         };
+        /**
+         * ExpectationKind
+         * @enum {string}
+         */
+        ExpectationKind: "expected_source" | "reference_answer" | "fallback";
         /** ExpectedSourceIn */
         ExpectedSourceIn: {
             /**
@@ -4174,6 +4237,12 @@ export interface components {
             /** Total P95 Ms */
             total_p95_ms: number | null;
         };
+        /**
+         * LatestKind
+         * @description A case's latest result as the set shows it: Unsteady over its majority outcome.
+         * @enum {string}
+         */
+        LatestKind: "pass" | "fail" | "unsteady" | "error" | "not_run";
         /** LatestResultOut */
         LatestResultOut: {
             /** Answered */
@@ -4452,6 +4521,38 @@ export interface components {
             override: components["schemas"]["OptionalPricesOut"] | null;
             platform: components["schemas"]["PricesOut"] | null;
         };
+        /** NewCaseIn */
+        NewCaseIn: {
+            /**
+             * Expect Fallback
+             * @default false
+             */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources?: components["schemas"]["ExpectedSourceIn"][];
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer?: string | null;
+            /**
+             * Source
+             * @default written
+             * @enum {string}
+             */
+            source: "written" | "from_message";
+        };
+        /** OfferedSourceOut */
+        OfferedSourceOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Name */
+            document_name: string;
+            /** Passage */
+            passage: string;
+        };
         /**
          * OperationalSettingsChange
          * @description The settings to change; one left out stays as it is.
@@ -4596,6 +4697,13 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** PrefillOut */
+        PrefillOut: {
+            /** Expected Sources */
+            expected_sources: components["schemas"]["OfferedSourceOut"][];
+            /** Question */
+            question: string;
         };
         /** PricesOut */
         PricesOut: {
@@ -9137,7 +9245,12 @@ export interface operations {
     };
     listEvaluationCases: {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string | null;
+                kind?: components["schemas"]["ExpectationKind"] | null;
+                stale?: boolean | null;
+                result?: components["schemas"]["LatestKind"] | null;
+            };
             header?: never;
             path: {
                 project_id: string;
@@ -9190,7 +9303,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CaseIn"];
+                "application/json": components["schemas"]["NewCaseIn"];
             };
         };
         responses: {
@@ -9212,7 +9325,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            /** @description The Project or Agent is archived, or the Evaluation Set holds 200 cases. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9227,6 +9340,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    copyEvaluationCases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, or the Evaluation Set holds 200 cases. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Agent copied from is this one or not of the Project, or a case isn't in its set. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -9358,6 +9526,58 @@ export interface operations {
                 };
             };
             /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prefillEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                message_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefillOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Message's text has been purged. */
             409: {
                 headers: {
                     [name: string]: unknown;

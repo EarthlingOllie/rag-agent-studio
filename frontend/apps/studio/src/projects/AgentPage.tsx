@@ -41,6 +41,7 @@ import { LiveHistory } from "./AgentLiveHistory";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
 import { AgentVersions } from "./AgentVersions";
 import { DraftEditor } from "./DraftEditor";
+import { AddToEvaluationSet } from "./EvaluationCaseEditor";
 import { useInstructionsVersions } from "./instructions";
 import { useOrganisationRole } from "./ProjectsPage";
 import { PlaygroundTrace, TraceFold } from "./Trace";
@@ -181,6 +182,8 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
   const [instructionsVersionId, setInstructionsVersionId] = useState("");
   // Set when a reset has started a new Conversation, until the next question.
   const [wasReset, setWasReset] = useState(false);
+  // The answer being added to the Evaluation Set.
+  const [adding, setAdding] = useState<string | null>(null);
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
 
   function appendToAnswer(update: (answer: ChatMessage) => ChatMessage) {
@@ -312,7 +315,19 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 {message.searches && <Searches queries={message.searches} />}
-                <p className="text-base whitespace-pre-wrap text-ink">{message.content}</p>
+                <div className="flex items-start gap-2">
+                  <p className="min-w-0 flex-1 text-base whitespace-pre-wrap text-ink">{message.content}</p>
+                  {message.messageId && (
+                    <Menu
+                      label={<Icon name="more" />}
+                      triggerLabel="More actions for this answer"
+                      menuLabel="Actions for this answer"
+                      align="end"
+                      triggerClassName={button.iconBare}
+                      items={[{ label: "Add to Evaluation Set", onSelect: () => { setAdding(message.messageId as string); } }]}
+                    />
+                  )}
+                </div>
                 {message.refused && <p className="text-xs font-medium text-flag">Blocked by the input Guardrail: the model wasn&apos;t asked.</p>}
                 {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}
                 {message.instructions && <p className={text.small}>{message.instructions}</p>}
@@ -326,6 +341,15 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
           ),
         )}
       </ol>
+      {adding !== null && (
+        <AddToEvaluationSet
+          path={path}
+          messageId={adding}
+          onClose={() => {
+            setAdding(null);
+          }}
+        />
+      )}
       <FormError message={agentFailure(error)} />
       <form
         aria-label="Ask the Draft"

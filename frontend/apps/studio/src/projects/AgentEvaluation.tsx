@@ -4,6 +4,8 @@ import { FormError } from "../auth/AuthLayout";
 import {
   Badge,
   ConfirmDialog,
+  Segmented,
+  layout,
   Dialog,
   EmptyState,
   Icon,
@@ -14,15 +16,18 @@ import {
   Skeleton,
   Status,
   button,
+  useToast,
   field,
   surface,
   table,
   text,
 } from "../design";
 import { formatTime } from "../settings/AuditPage";
-import { type Agent, useAgentVersions } from "./agents";
+import { type Agent, useAgents, useAgentVersions } from "./agents";
 import {
+  CASES_MAX,
   type EvaluationCase,
+  type EvaluationCaseFilters,
   type EvaluationCaseResult,
   type EvaluationCaseSide,
   type EvaluationRun,
@@ -30,197 +35,19 @@ import {
   type EvaluationRunSide,
   evaluationFailure,
   inProgress,
+  NO_CASE_FILTERS,
   useCancelEvaluationRun,
+  useCopyEvaluationCases,
   useDeleteEvaluationCase,
   useEvaluationCases,
   useEvaluationRunResults,
   useEvaluationRuns,
-  useSaveEvaluationCase,
   useStartEvaluationRun,
 } from "./evaluation";
 import { useInstructionsVersions } from "./instructions";
-import {
-  type ChosenSource,
-  ExpectationSummary,
-  ExpectedSourceList,
-  ExpectedSourcePicker,
-  StaleBadge,
-} from "./EvaluationExpectations";
+import { type AgentPath, CaseEditor } from "./EvaluationCaseEditor";
+import { ExpectationSummary, StaleBadge } from "./EvaluationExpectations";
 import { TraceBody, TraceFold } from "./Trace";
-
-type AgentPath = { organisation_id: string; project_id: string; agent_id: string };
-
-const NEEDS_EXPECTATION =
-  "Add an Expected source, write a Reference answer or tick Expect Fallback Text: a case needs at least one expectation.";
-const FALLBACK_WITH_REFERENCE = "Expect Fallback Text can't be combined with a Reference answer: clear the Reference answer or untick Expect Fallback Text.";
-const FALLBACK_WITH_SOURCE = "Expect Fallback Text can't be combined with an Expected source: remove the Expected sources or untick Expect Fallback Text.";
-const DELETED_SOURCE = "Remove the Expected sources whose Document has been deleted, then save.";
-
-/** What's wrong with the case's expectations, by the field it names, or null when they can be saved. */
-function expectationProblem(
-  reference: string,
-  sources: ChosenSource[],
-  expectFallback: boolean,
-): { field: "reference" | "fallback" | "sources"; message: string } | null {
-  const hasReference = reference.trim() !== "";
-  if (expectFallback && hasReference) return { field: "fallback", message: FALLBACK_WITH_REFERENCE };
-  if (expectFallback && sources.length > 0) return { field: "fallback", message: FALLBACK_WITH_SOURCE };
-  if (!hasReference && sources.length === 0 && !expectFallback) return { field: "reference", message: NEEDS_EXPECTATION };
-  if (sources.some((source) => source.document_id === null)) return { field: "sources", message: DELETED_SOURCE };
-  return null;
-}
-
-/** The case editor, in a dialog: a question and its expectations (Expected sources, a Reference answer, or Expect Fallback Text). */
-function CaseEditor({ path, editing, onClose }: { path: AgentPath; editing: EvaluationCase | null; onClose: () => void }) {
-  const formId = useId();
-  const hintId = useId();
-  const errorId = useId();
-  const sourcesId = useId();
-  const fallbackHintId = useId();
-  const [question, setQuestion] = useState(editing?.question ?? "");
-  const [reference, setReference] = useState(editing?.reference_answer ?? "");
-  const [sources, setSources] = useState<ChosenSource[]>(editing?.expected_sources ?? []);
-  const [expectFallback, setExpectFallback] = useState(editing?.expect_fallback ?? false);
-  const [picking, setPicking] = useState(false);
-  const [problem, setProblem] = useState<ReturnType<typeof expectationProblem>>(null);
-  const save = useSaveEvaluationCase(path, editing?.id ?? null);
-  const title = editing === null ? "New Evaluation Case" : "Edit Evaluation Case";
-
-  function submit(event: SubmitEvent) {
-    event.preventDefault();
-    const found = expectationProblem(reference, sources, expectFallback);
-    setProblem(found);
-    if (found !== null) return;
-    save.mutate(
-      {
-        question,
-        reference_answer: reference,
-        expected_sources: sources.map((source) => ({ document_id: source.document_id as string, passage: source.passage })),
-        expect_fallback: expectFallback,
-      },
-      { onSuccess: onClose },
-    );
-  }
-
-  const describedBy = (fieldName: string, hint: string) => (problem?.field === fieldName ? `${hint} ${errorId}` : hint);
-  const error = (fieldName: string) =>
-    problem?.field === fieldName && (
-      <p id={errorId} className={field.error}>
-        {problem.message}
-      </p>
-    );
-
-  return (
-    <Dialog
-      open
-      title={title}
-      description="One standalone question, and what a good answer to it does."
-      onClose={onClose}
-      closeButton={false}
-      footer={
-        <>
-          <button type="button" className={button.secondary} onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" form={formId} className={button.primary} disabled={save.isPending}>
-            Save case
-          </button>
-        </>
-      }
-    >
-      <form id={formId} aria-label={title} className="flex flex-col gap-4" onSubmit={submit}>
-        <FormError message={evaluationFailure(save.error)} />
-        <label className={field.label}>
-          Question
-          <textarea
-            className={field.textarea}
-            rows={3}
-            required
-            maxLength={4000}
-            value={question}
-            onChange={(event) => {
-              setQuestion(event.target.value);
-            }}
-          />
-        </label>
-        <div role="group" aria-labelledby={sourcesId} aria-describedby={problem?.field === "sources" ? errorId : undefined} className="flex flex-col gap-2">
-          <p id={sourcesId} className={field.label}>
-            Expected sources
-          </p>
-          <ExpectedSourceList
-            sources={sources}
-            onRemove={(index) => {
-              setSources(sources.filter((_, at) => at !== index));
-            }}
-          />
-          {error("sources")}
-          {picking ? (
-            <ExpectedSourcePicker
-              organisationId={path.organisation_id}
-              projectId={path.project_id}
-              onAdd={(source) => {
-                setSources([...sources, source]);
-                setPicking(false);
-              }}
-              onCancel={() => {
-                setPicking(false);
-              }}
-            />
-          ) : (
-            <button
-              type="button"
-              className={`${button.secondary} self-start`}
-              onClick={() => {
-                setPicking(true);
-              }}
-            >
-              Add Expected source
-            </button>
-          )}
-        </div>
-        <div>
-          <label className={field.label}>
-            Reference answer
-            <textarea
-              className={field.textarea}
-              rows={4}
-              maxLength={4000}
-              aria-invalid={problem?.field === "reference"}
-              aria-describedby={describedBy("reference", hintId)}
-              value={reference}
-              onChange={(event) => {
-                setReference(event.target.value);
-              }}
-            />
-          </label>
-          <p id={hintId} className={field.hint}>
-            What a good answer says, in your own words. The judge checks its meaning, not its wording.
-          </p>
-          {error("reference")}
-        </div>
-        <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-ink">
-            <input
-              type="checkbox"
-              className={field.checkbox}
-              checked={expectFallback}
-              aria-invalid={problem?.field === "fallback"}
-              aria-describedby={describedBy("fallback", fallbackHintId)}
-              onChange={(event) => {
-                setExpectFallback(event.target.checked);
-              }}
-            />
-            Expect Fallback Text
-          </label>
-          <p id={fallbackHintId} className={field.hint}>
-            A good answer says it doesn&apos;t know: the Fallback Text, or the Refusal text. It stands alone, without Expected sources or a Reference answer.
-          </p>
-          {error("fallback")}
-        </div>
-      </form>
-    </Dialog>
-  );
-}
 
 const OUTCOME_BADGES = { pass: "evaluationPass", fail: "evaluationFail", error: "evaluationError" } as const;
 
@@ -741,6 +568,211 @@ function EvaluateDialog({
   );
 }
 
+const KIND_LABELS = { expected_source: "Expected source", reference_answer: "Reference answer", fallback: "Expect Fallback Text" } as const;
+const RESULT_OPTIONS = [
+  { value: "", label: "Any result" },
+  { value: "pass", label: "Pass" },
+  { value: "fail", label: "Fail" },
+  { value: "unsteady", label: "Unsteady" },
+  { value: "error", label: "Error" },
+  { value: "not_run", label: "Not run" },
+] as const;
+
+/** The set's toolbar: search the questions, and filter by expectation kind, the Stale flag and the latest result. */
+function CaseFilters({ filters, onChange }: { filters: EvaluationCaseFilters; onChange: (filters: EvaluationCaseFilters) => void }) {
+  const filtered = filters.q !== "" || filters.kind !== "" || filters.stale !== "" || filters.result !== "";
+  return (
+    <div role="search" className={layout.toolbar}>
+      <label className={`${field.search} w-full sm:w-64`}>
+        <Icon name="search" size={14} />
+        <input
+          type="search"
+          aria-label="Search the questions"
+          placeholder="Search cases"
+          value={filters.q}
+          onChange={(event) => {
+            onChange({ ...filters, q: event.target.value });
+          }}
+          className="min-w-0 flex-1 bg-transparent text-ink placeholder:text-muted focus:outline-none"
+        />
+      </label>
+      <Segmented
+        label="Filter by latest result"
+        options={RESULT_OPTIONS}
+        value={filters.result}
+        onChange={(value) => {
+          onChange({ ...filters, result: value });
+        }}
+      />
+      <span className="ml-auto flex flex-wrap items-center gap-3">
+        {filtered && (
+          <button
+            type="button"
+            className={button.ghost}
+            onClick={() => {
+              onChange(NO_CASE_FILTERS);
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+        <select
+          aria-label="Expectation"
+          value={filters.kind}
+          onChange={(event) => {
+            onChange({ ...filters, kind: event.target.value as EvaluationCaseFilters["kind"] });
+          }}
+          className={field.pill}
+        >
+          <option value="">Any expectation</option>
+          {Object.entries(KIND_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Stale expectation"
+          value={filters.stale}
+          onChange={(event) => {
+            onChange({ ...filters, stale: event.target.value as EvaluationCaseFilters["stale"] });
+          }}
+          className={field.pill}
+        >
+          <option value="">Stale or not</option>
+          <option value="true">Stale expectation</option>
+          <option value="false">No Stale expectation</option>
+        </select>
+      </span>
+    </div>
+  );
+}
+
+/** One Agent's cases to copy, each with a tick box; "Select all" ticks every one. */
+function CopyChoices({
+  path,
+  chosen,
+  onChange,
+}: {
+  path: AgentPath;
+  chosen: Set<string>;
+  onChange: (chosen: Set<string>) => void;
+}) {
+  const cases = useEvaluationCases(path);
+  if (cases.isError) return <Notice tone="error">That Agent&apos;s Evaluation Set could not be loaded. Try again shortly.</Notice>;
+  if (cases.data === undefined) return <Skeleton label="Loading the cases" />;
+  if (cases.data.length === 0) return <p className={text.muted}>That Agent&apos;s Evaluation Set is empty.</p>;
+  const all = cases.data.map((evaluationCase) => evaluationCase.id);
+  const everyOne = all.every((id) => chosen.has(id));
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className={field.label}>Cases to copy</legend>
+      <label className="flex items-center gap-2 text-sm font-medium text-ink">
+        <input
+          type="checkbox"
+          className={field.checkbox}
+          checked={everyOne}
+          onChange={() => {
+            onChange(everyOne ? new Set() : new Set(all));
+          }}
+        />
+        Select all ({cases.data.length})
+      </label>
+      <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
+        {cases.data.map((evaluationCase) => (
+          <li key={evaluationCase.id}>
+            <label className="flex items-start gap-2 rounded-xl bg-sunken px-3.5 py-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                className={`${field.checkbox} mt-0.5`}
+                checked={chosen.has(evaluationCase.id)}
+                onChange={() => {
+                  const next = new Set(chosen);
+                  if (!next.delete(evaluationCase.id)) next.add(evaluationCase.id);
+                  onChange(next);
+                }}
+              />
+              <span className="whitespace-pre-wrap">{evaluationCase.question}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </fieldset>
+  );
+}
+
+/** Copy from another Agent: choose an Agent of the Project, then its cases; they arrive as independent copies. */
+function CopyDialog({ agent, organisationId, onClose }: { agent: Agent; organisationId: string; onClose: () => void }) {
+  const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
+  const formId = useId();
+  const toast = useToast();
+  const agents = useAgents(organisationId, agent.project_id);
+  const others = (agents.data ?? []).filter((other) => other.id !== agent.id);
+  const copy = useCopyEvaluationCases(path);
+  const [from, setFrom] = useState("");
+  const [chosen, setChosen] = useState<Set<string>>(() => new Set());
+
+  function submit(event: SubmitEvent) {
+    event.preventDefault();
+    copy.mutate(
+      { agent_id: from, case_ids: [...chosen] },
+      {
+        onSuccess: (copies) => {
+          toast.show(copies.length === 1 ? "Copied 1 case." : `Copied ${String(copies.length)} cases.`);
+          onClose();
+        },
+      },
+    );
+  }
+
+  return (
+    <Dialog
+      open
+      title="Copy from another Agent"
+      description="The cases arrive as independent copies: changing one set later leaves the other as it is."
+      onClose={onClose}
+      closeButton={false}
+      footer={
+        <>
+          <button type="button" className={button.secondary} onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" form={formId} className={button.primary} disabled={chosen.size === 0 || copy.isPending}>
+            {chosen.size === 1 ? "Copy 1 case" : `Copy ${String(chosen.size)} cases`}
+          </button>
+        </>
+      }
+    >
+      <form id={formId} aria-label="Copy from another Agent" className="flex flex-col gap-4" onSubmit={submit}>
+        <FormError message={evaluationFailure(copy.error)} />
+        {agents.isError && <Notice tone="error">The Agents could not be loaded. Try again shortly.</Notice>}
+        {agents.data !== undefined && others.length === 0 && <p className={text.muted}>This Project has no other Agent to copy from.</p>}
+        {others.length > 0 && (
+          <label className={field.label}>
+            Agent
+            <select
+              className={field.select}
+              value={from}
+              onChange={(event) => {
+                setFrom(event.target.value);
+                setChosen(new Set());
+              }}
+            >
+              <option value="">Choose an Agent</option>
+              {others.map((other) => (
+                <option key={other.id} value={other.id}>
+                  {other.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {from !== "" && <CopyChoices key={from} path={{ ...path, agent_id: from }} chosen={chosen} onChange={setChosen} />}
+      </form>
+    </Dialog>
+  );
+}
+
 /**
  * The Evaluation view: the Agent's Evaluation Set with its case editor and Evaluate, then its Runs
  * and the chosen Run's answers with their Verdicts and Traces. An archived Agent's set is read only.
@@ -750,20 +782,30 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
   const setHeadingId = useId();
   const runsHeadingId = useId();
   const archived = agent.archived_at !== null;
-  const cases = useEvaluationCases(path);
+  const [filters, setFilters] = useState<EvaluationCaseFilters>(NO_CASE_FILTERS);
+  const allCases = useEvaluationCases(path);
+  const cases = useEvaluationCases(path, filters);
   const runs = useEvaluationRuns(path);
   const remove = useDeleteEvaluationCase(path);
   const [evaluating, setEvaluating] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [editing, setEditing] = useState<EvaluationCase | "new" | null>(null);
   const [deleting, setDeleting] = useState<EvaluationCase | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const shownRun = chosen ?? runs.data?.[0]?.id ?? null;
   const running = (runs.data ?? []).some(inProgress);
-  const noCases = (cases.data ?? []).length === 0;
+  const held = allCases.data?.length;
+  const noCases = (held ?? 0) === 0;
+  const full = held !== undefined && held >= CASES_MAX;
 
   const newCase = (
-    <button type="button" className={button.secondary} onClick={() => { setEditing("new"); }}>
+    <button type="button" className={button.secondary} disabled={full} onClick={() => { setEditing("new"); }}>
       New case
+    </button>
+  );
+  const copyCases = (
+    <button type="button" className={button.secondary} disabled={full} onClick={() => { setCopying(true); }}>
+      Copy from another Agent
     </button>
   );
 
@@ -780,6 +822,7 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
             !archived && (
               <>
                 {newCase}
+                {copyCases}
                 <button
                   type="button"
                   className={button.primary}
@@ -794,20 +837,42 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
             )
           }
         />
+        {held !== undefined && held > 0 && (
+          <Meter label="Cases in the set" value={held} max={CASES_MAX} unit="cases" />
+        )}
+        {full && !archived && (
+          <Notice tone="warning">
+            This Evaluation Set holds the most it can, {CASES_MAX} cases, so a Run stays bounded in time and Cost. Delete cases before adding more.
+          </Notice>
+        )}
         <FormError message={evaluationFailure(remove.error)} />
-        {cases.isPending && <Skeleton label="Loading the Evaluation Set" />}
-        {cases.isError && <EmptyState tone="error" icon="agents" title="The Evaluation Set could not be loaded" description="Try again shortly." />}
-        {cases.data && cases.data.length === 0 && (
+        {allCases.isPending && <Skeleton label="Loading the Evaluation Set" />}
+        {allCases.isError && <EmptyState tone="error" icon="agents" title="The Evaluation Set could not be loaded" description="Try again shortly." />}
+        {allCases.data && allCases.data.length === 0 && (
           <EmptyState
             icon="agents"
             level={3}
             title="No Evaluation Cases yet"
-            description={archived ? "This Agent's Evaluation Set is empty." : "Write a question and what a good answer says, then evaluate the Draft against it."}
+            description={
+              archived
+                ? "This Agent's Evaluation Set is empty."
+                : "Write a question and what a good answer says, add one from an Agent Message in the Conversations viewer or the Playground, or copy cases from another Agent."
+            }
             action={archived ? undefined : newCase}
           />
         )}
-        {cases.data && cases.data.length > 0 && (
-          <CaseTable cases={cases.data} readOnly={archived} onEdit={setEditing} onDelete={setDeleting} />
+        {allCases.data && allCases.data.length > 0 && (
+          <>
+            <CaseFilters filters={filters} onChange={setFilters} />
+            {cases.isPending && <Skeleton label="Filtering the Evaluation Set" />}
+            {cases.isError && <Notice tone="error">The Evaluation Set could not be filtered. Try again shortly.</Notice>}
+            {cases.data && cases.data.length === 0 && (
+              <EmptyState icon="search" level={3} title="No cases match" description="Change the search or the filters to see more of the set." />
+            )}
+            {cases.data && cases.data.length > 0 && (
+              <CaseTable cases={cases.data} readOnly={archived} onEdit={setEditing} onDelete={setDeleting} />
+            )}
+          </>
         )}
       </section>
       <section aria-labelledby={runsHeadingId} className="flex flex-col gap-4">
@@ -829,6 +894,15 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
           }}
           onClose={() => {
             setEvaluating(false);
+          }}
+        />
+      )}
+      {copying && (
+        <CopyDialog
+          agent={agent}
+          organisationId={organisationId}
+          onClose={() => {
+            setCopying(false);
           }}
         />
       )}

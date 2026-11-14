@@ -504,6 +504,19 @@ async def _an_evaluation_case(owner: SignedUpMember, add_member: MemberFactory) 
     return params | {"case_id": created.json()["id"]}, _EVALUATION_CASE
 
 
+async def _evaluation_cases_to_copy(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_evaluation_case(owner, add_member)
+    sibling = await owner.client.post(
+        PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}/agents",
+        json={"name": "Isolation sibling"},
+    )
+    assert sibling.status_code == 201, sibling.text
+    return params | {"agent_id": sibling.json()["id"]}, {
+        "agent_id": params["agent_id"],
+        "case_ids": [params["case_id"]],
+    }
+
+
 async def _an_evaluation_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     # A Run needs a Default Model, which the gateway's fake chat model answers and judges as.
     _, choice = await _a_chat_model_choice(owner, add_member)
@@ -659,6 +672,10 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _EVALUATION + "/cases", EDITOR, _an_agent),
     ScopedRoute("POST", _EVALUATION + "/cases", EDITOR, _an_evaluation_case),
     ScopedRoute("GET", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("POST", _EVALUATION + "/cases/copy", EDITOR, _evaluation_cases_to_copy),
+    ScopedRoute(
+        "GET", _EVALUATION + "/messages/{message_id}/prefill", EDITOR, _a_playground_answer
+    ),
     ScopedRoute("PUT", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
     ScopedRoute("DELETE", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
     ScopedRoute("POST", _EVALUATION + "/runs", EDITOR, _an_evaluation_to_start),

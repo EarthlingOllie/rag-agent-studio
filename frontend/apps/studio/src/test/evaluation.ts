@@ -178,6 +178,31 @@ export const draftSide: Run["sides"][number] = {
 
 export type EvaluationRequest = { route: string; body?: unknown };
 
+/** The latest result a case's filter reads: Unsteady over its majority outcome, or "not_run". */
+function latestKind(c: Case): string {
+  if (c.latest_result === null) return "not_run";
+  return c.latest_result.unsteady ? "unsteady" : c.latest_result.outcome;
+}
+
+/** Whether a case matches the set's filters, as the API applies them. */
+function matches(c: Case, query: URLSearchParams): boolean {
+  const q = query.get("q");
+  const kind = query.get("kind");
+  const stale = query.get("stale");
+  const result = query.get("result");
+  const kinds = [
+    ...(c.expected_sources.length > 0 ? ["expected_source"] : []),
+    ...(c.reference_answer !== null ? ["reference_answer"] : []),
+    ...(c.expect_fallback ? ["fallback"] : []),
+  ];
+  return (
+    (q === null || c.question.toLowerCase().includes(q.toLowerCase())) &&
+    (kind === null || kinds.includes(kind)) &&
+    (stale === null || String(c.stale) === stale) &&
+    (result === null || latestKind(c) === result)
+  );
+}
+
 /**
  * The Agent's evaluation routes, in memory. Cases are listed, added, replaced and deleted; Runs are
  * listed newest first, each read as its next state on every read of its results, so a Run started
@@ -204,6 +229,13 @@ export function fakeEvaluationApi(
     failResults?: boolean;
     /** Each Document's name by ID, for the Expected sources of a saved case. */
     documentNames?: Record<string, string>;
+    /** Other Agents' Evaluation Sets, by Agent ID, to copy from. */
+    otherCases?: Record<string, Case[]>;
+    /** Refuses copying with this status and detail. */
+    copyStatus?: number;
+    copyDetail?: string;
+    /** What "Add to Evaluation Set" reads for a Message, or the status and detail it is refused with. */
+    prefill?: Schemas["PrefillOut"] | { status: number; detail: string };
   } = {},
 ) {
   const requests: EvaluationRequest[] = [];
@@ -224,11 +256,31 @@ export function fakeEvaluationApi(
     }));
 
   server.use(
-    http.get(`${base}/cases`, () =>
-      options.failCases ? HttpResponse.json({ detail: "Down" }, { status: 500 }) : HttpResponse.json(cases),
-    ),
+    http.get(`${base}/cases`, ({ request, params }) => {
+      if (options.failCases) return HttpResponse.json({ detail: "Down" }, { status: 500 });
+      const other = options.otherCases?.[params.agentId as string];
+      if (other) return HttpResponse.json(other);
+      return HttpResponse.json(cases.filter((c) => matches(c, new URL(request.url).searchParams)));
+    }),
+    http.post(`${base}/cases/copy`, async ({ request }) => {
+      const body = (await request.json()) as Schemas["CopyIn"];
+      requests.push({ route: "copy", body });
+      if (options.copyStatus) return HttpResponse.json({ detail: options.copyDetail }, { status: options.copyStatus });
+      const chosen = (options.otherCases?.[body.agent_id] ?? []).filter((c) => body.case_ids.includes(c.id));
+      const copies = chosen.map((c, index) => ({ ...c, id: `e4000000-0000-4000-8000-00000000000${String(index)}`, latest_result: null }));
+      cases = [...cases, ...copies];
+      return HttpResponse.json(copies, { status: 201 });
+    }),
+    http.get(`${base}/messages/:messageId/prefill`, ({ params }) => {
+      requests.push({ route: "prefill", body: { messageId: params.messageId, agentId: params.agentId } });
+      const prefill = options.prefill;
+      if (prefill === undefined || "status" in prefill) {
+        return HttpResponse.json({ detail: prefill?.detail ?? "Not Found" }, { status: prefill?.status ?? 404 });
+      }
+      return HttpResponse.json(prefill);
+    }),
     http.post(`${base}/cases`, async ({ request }) => {
-      const body = (await request.json()) as Schemas["CaseIn"];
+      const body = (await request.json()) as Schemas["NewCaseIn"];
       requests.push({ route: "create", body });
       if (options.saveStatus) {
         return HttpResponse.json(options.saveDetail ? { detail: options.saveDetail } : {}, { status: options.saveStatus });
@@ -241,7 +293,7 @@ export function fakeEvaluationApi(
         expected_sources: expectedSources(body),
         expect_fallback: body.expect_fallback,
         stale: false,
-        source: "written",
+        source: body.source,
         created_at: "2026-11-12T09:00:00Z",
         updated_at: "2026-11-12T09:00:00Z",
         latest_result: null,

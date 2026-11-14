@@ -5,7 +5,19 @@ import { api } from "../api";
 import { ProjectRequestError } from "./projects";
 
 export type EvaluationCase = Schemas["CaseOut"];
-export type EvaluationCaseFields = Schemas["CaseIn"];
+export type EvaluationCaseFields = Schemas["NewCaseIn"];
+export type EvaluationPrefill = Schemas["PrefillOut"];
+/** The set's filters: search text, an expectation kind, the Stale flag and the latest result; "" for any. */
+export type EvaluationCaseFilters = {
+  q: string;
+  kind: "" | "expected_source" | "reference_answer" | "fallback";
+  stale: "" | "true" | "false";
+  result: "" | "pass" | "fail" | "unsteady" | "error" | "not_run";
+};
+export const NO_CASE_FILTERS: EvaluationCaseFilters = { q: "", kind: "", stale: "", result: "" };
+
+/** The most cases an Evaluation Set holds. */
+export const CASES_MAX = 200;
 export type EvaluationExpectedSource = Schemas["ExpectedSourceOut"];
 export type EvaluationRun = Schemas["RunOut"];
 export type EvaluationRunResults = Schemas["RunResultsOut"];
@@ -40,14 +52,20 @@ const evaluationKey = (path: AgentPath) => ["evaluation", path.organisation_id, 
 const casesKey = (path: AgentPath) => [...evaluationKey(path), "cases"] as const;
 const runsKey = (path: AgentPath) => [...evaluationKey(path), "runs"] as const;
 
-/** The Agent's Evaluation Set, oldest case first. */
-export function useEvaluationCases(path: AgentPath) {
+/** The Agent's Evaluation Set, oldest case first; with `filters`, only the cases matching them. */
+export function useEvaluationCases(path: AgentPath, filters: EvaluationCaseFilters = NO_CASE_FILTERS) {
+  const query = {
+    ...(filters.q.trim() !== "" && { q: filters.q.trim() }),
+    ...(filters.kind !== "" && { kind: filters.kind }),
+    ...(filters.stale !== "" && { stale: filters.stale === "true" }),
+    ...(filters.result !== "" && { result: filters.result }),
+  };
   return useQuery({
-    queryKey: casesKey(path),
+    queryKey: [...casesKey(path), query],
     queryFn: async (): Promise<EvaluationCase[]> => {
       const { data, error, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases",
-        { params: { path } },
+        { params: { path, query } },
       );
       if (!data) throw failed(response, error);
       return data;
@@ -55,7 +73,39 @@ export function useEvaluationCases(path: AgentPath) {
   });
 }
 
-/** Adds a case, or with `caseId` replaces that case's question and expectations. */
+/** A new case prefilled from one of the Agent's replies: the question it answered and the passages it cited. */
+export function useEvaluationPrefill(path: AgentPath, messageId: string) {
+  return useQuery({
+    queryKey: [...evaluationKey(path), "prefill", messageId],
+    queryFn: async (): Promise<EvaluationPrefill> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/messages/{message_id}/prefill",
+        { params: { path: { ...path, message_id: messageId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    retry: false,
+  });
+}
+
+/** Copies cases of another Agent of the Project into this Agent's set, as independent copies. */
+export function useCopyEvaluationCases(path: AgentPath) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (choice: { agent_id: string; case_ids: string[] }): Promise<EvaluationCase[]> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/copy",
+        { params: { path }, body: choice },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: casesKey(path) }),
+  });
+}
+
+/** Adds a case, or with `caseId` replaces that case's question and expectations (where it came from stays). */
 export function useSaveEvaluationCase(path: AgentPath, caseId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -87,7 +87,13 @@ test("an Editor writes a case with a Reference answer; one without is refused be
   expect(requests).toEqual([
     {
       route: "create",
-      body: { question: "How much leave do I get?", reference_answer: "Everyone gets 25 days.", expected_sources: [], expect_fallback: false },
+      body: {
+        question: "How much leave do I get?",
+        reference_answer: "Everyone gets 25 days.",
+        expected_sources: [],
+        expect_fallback: false,
+        source: "written",
+      },
     },
   ]);
   expect(await caseRows()).toEqual([["How much leave do I get?", "Everyone gets 25 days."]]);
@@ -205,7 +211,7 @@ test("Evaluate starts a Run, the Studio polls its progress, then shows each answ
   expect(await screen.findByRole("button", { name: "Evaluating…" })).toBeDisabled();
   expect(await screen.findByRole("meter", { name: "Answers given" }, { timeout: 5000 })).toBeInTheDocument();
   const detail = await screen.findByRole("list", { name: "Cases" }, { timeout: 8000 });
-  expect(screen.queryByRole("meter")).not.toBeInTheDocument();
+  expect(screen.queryByRole("meter", { name: "Answers given" })).not.toBeInTheDocument();
   expect(await screen.findByRole("button", { name: "Evaluate" })).toBeEnabled();
   expect(requests.filter((request) => request.route === "start")).toEqual([
     { route: "start", body: { sides: [{ kind: "draft" }], instructions_draft: false, instructions_version_id: null } },
@@ -680,6 +686,7 @@ test("an Editor picks a passage from a Document's Chunks as an Expected source",
         reference_answer: "",
         expected_sources: [{ document_id: leaveDocument.id, passage: "25 days of annual leave" }],
         expect_fallback: false,
+        source: "written",
       },
     },
   ]);
@@ -778,7 +785,7 @@ test("Expect Fallback Text stands alone: combined with a Reference answer or an 
   expect(requests).toEqual([
     {
       route: "create",
-      body: { question: "What is on the canteen menu?", reference_answer: "", expected_sources: [], expect_fallback: true },
+      body: { question: "What is on the canteen menu?", reference_answer: "", expected_sources: [], expect_fallback: true, source: "written" },
     },
   ]);
   const rows = await caseRows();
@@ -901,4 +908,205 @@ test("Run detail shows Expected source and fallback Verdicts, Stale ones skipped
   expect(within(fallback).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
     "Expect Fallback Text: Fail. The answer wasn't the Fallback Text or the Refusal text.",
   );
+});
+
+// Building the set
+
+const unsteadyLatest = {
+  run_id: "r1000000-0000-4000-8000-000000000001",
+  outcome: "pass",
+  passed: 2,
+  answered: 3,
+  repeats: 3,
+  unsteady: true,
+};
+
+test("the set is searched and filtered by expectation kind, Stale flag and latest result", async () => {
+  const user = userEvent.setup();
+  setUp({
+    cases: [
+      leaveCase,
+      { ...parkingCase, latest_result: unsteadyLatest },
+      staleCase,
+      { ...parkingCase, id: "e1000000-0000-4000-8000-000000000006", question: "Canteen menu?", reference_answer: null, expect_fallback: true },
+    ],
+  });
+  renderStudio(agentPage(hrHelper.id));
+  const questions = async () => (await caseRows()).map(([question]) => question);
+  expect(await questions()).toEqual([leaveCase.question, parkingCase.question, staleCase.question, "Canteen menu?"]);
+  const search = screen.getByRole("search");
+
+  await user.type(within(search).getByRole("searchbox", { name: "Search the questions" }), "LEAVE");
+  await waitFor(async () => {
+    expect(await questions()).toEqual([leaveCase.question, staleCase.question]);
+  });
+  await user.selectOptions(within(search).getByLabelText("Stale expectation"), "Stale expectation");
+  await waitFor(async () => {
+    expect(await questions()).toEqual([staleCase.question]);
+  });
+  await user.click(within(search).getByRole("button", { name: "Clear filters" }));
+  await user.selectOptions(within(search).getByLabelText("Expectation"), "Expect Fallback Text");
+  await waitFor(async () => {
+    expect(await questions()).toEqual(["Canteen menu?"]);
+  });
+  await user.selectOptions(within(search).getByLabelText("Expectation"), "Any expectation");
+  await user.selectOptions(within(search).getByLabelText("Stale expectation"), "No Stale expectation");
+  await user.click(within(search).getByRole("radio", { name: "Unsteady" }));
+  await waitFor(async () => {
+    expect(await questions()).toEqual([parkingCase.question]);
+  });
+
+  // Nothing matches: the set says so, and Evaluate still answers the whole set.
+  await user.click(within(search).getByRole("radio", { name: "Error" }));
+  expect(await screen.findByRole("heading", { name: "No cases match" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Evaluate" })).toBeEnabled();
+  await user.click(within(search).getByRole("button", { name: "Clear filters" }));
+  expect(await questions()).toHaveLength(4);
+  expect(within(search).queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+});
+
+test("a set that can't be filtered says so", async () => {
+  const user = userEvent.setup();
+  setUp({ cases: [leaveCase] });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/evaluation/cases", ({ request }) =>
+      new URL(request.url).searchParams.has("q") ? HttpResponse.json({ detail: "Down" }, { status: 500 }) : undefined,
+    ),
+  );
+
+  await user.type(screen.getByRole("searchbox", { name: "Search the questions" }), "x");
+
+  expect(await screen.findByText("The Evaluation Set could not be filtered. Try again shortly.")).toBeInTheDocument();
+});
+
+const expensesHelper = { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Expenses helper" };
+const expensesCases = [
+  { ...leaveCase, id: "e5000000-0000-4000-8000-000000000001", question: "Can I claim a taxi?" },
+  { ...parkingCase, id: "e5000000-0000-4000-8000-000000000002", question: "When are claims paid?" },
+];
+
+test("cases are copied from another Agent of the Project, as many as are ticked", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ cases: [leaveCase], otherCases: { [expensesHelper.id]: expensesCases } }, [hrHelper, expensesHelper]);
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Copy from another Agent" }));
+  const dialog = await screen.findByRole("dialog", { name: "Copy from another Agent" });
+  expect(within(dialog).getByRole("button", { name: "Copy 0 cases" })).toBeDisabled();
+  // The Agent itself isn't offered.
+  const agentChoice = within(dialog).getByLabelText("Agent");
+  expect(within(agentChoice).getAllByRole("option").map((option) => option.textContent)).toEqual(["Choose an Agent", "Expenses helper"]);
+  await user.selectOptions(agentChoice, "Expenses helper");
+  await user.click(await within(dialog).findByLabelText("Select all (2)"));
+  expect(within(dialog).getByRole("button", { name: "Copy 2 cases" })).toBeEnabled();
+  await user.click(within(dialog).getByLabelText("Select all (2)"));
+  // A case ticked by mistake is unticked again.
+  await user.click(within(dialog).getByLabelText("Can I claim a taxi?"));
+  await user.click(within(dialog).getByLabelText("Can I claim a taxi?"));
+  await user.click(within(dialog).getByLabelText("When are claims paid?"));
+  await user.click(within(dialog).getByRole("button", { name: "Copy 1 case" }));
+
+  expect(await screen.findByText("Copied 1 case.")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(requests.filter((request) => request.route === "copy")).toEqual([
+    { route: "copy", body: { agent_id: expensesHelper.id, case_ids: [expensesCases[1]?.id] } },
+  ]);
+  await waitFor(async () => {
+    expect((await caseRows()).map(([question]) => question)).toEqual([leaveCase.question, "When are claims paid?"]);
+  });
+});
+
+test("copying several cases says how many; a refused copy says why", async () => {
+  const user = userEvent.setup();
+  const refusal = "An Evaluation Set holds at most 200 cases, and this one has 199. Delete cases before adding more.";
+  setUp({ cases: [leaveCase], otherCases: { [expensesHelper.id]: expensesCases }, copyStatus: 409, copyDetail: refusal }, [hrHelper, expensesHelper]);
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Copy from another Agent" }));
+  const dialog = await screen.findByRole("dialog", { name: "Copy from another Agent" });
+  await user.selectOptions(within(dialog).getByLabelText("Agent"), "Expenses helper");
+  await user.click(await within(dialog).findByLabelText("Select all (2)"));
+  await user.click(within(dialog).getByRole("button", { name: "Copy 2 cases" }));
+
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent(refusal);
+});
+
+test("copied cases are counted in the toast", async () => {
+  const user = userEvent.setup();
+  setUp({ cases: [leaveCase], otherCases: { [expensesHelper.id]: expensesCases } }, [hrHelper, expensesHelper]);
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Copy from another Agent" }));
+  const dialog = await screen.findByRole("dialog", { name: "Copy from another Agent" });
+  await user.selectOptions(within(dialog).getByLabelText("Agent"), "Expenses helper");
+  await user.click(await within(dialog).findByLabelText("Select all (2)"));
+  await user.click(within(dialog).getByRole("button", { name: "Copy 2 cases" }));
+
+  expect(await screen.findByText("Copied 2 cases.")).toBeInTheDocument();
+});
+
+test("copying says when there's no other Agent, an empty set, or one that can't be loaded", async () => {
+  const user = userEvent.setup();
+  const emptyHelper = { ...expensesHelper, id: "a9e00000-0000-4000-8000-000000000004", name: "Empty helper" };
+  setUp({ cases: [leaveCase], otherCases: { [emptyHelper.id]: [] } }, [hrHelper]);
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Copy from another Agent" }));
+  const alone = await screen.findByRole("dialog", { name: "Copy from another Agent" });
+  expect(await within(alone).findByText("This Project has no other Agent to copy from.")).toBeInTheDocument();
+  await user.click(within(alone).getByRole("button", { name: "Cancel" }));
+
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/agents", () =>
+      HttpResponse.json([hrHelper, emptyHelper, expensesHelper]),
+    ),
+    http.get(`*/api/organisations/:organisationId/projects/:projectId/agents/${expensesHelper.id}/evaluation/cases`, () =>
+      HttpResponse.json({ detail: "Down" }, { status: 500 }),
+    ),
+  );
+  await user.click(screen.getByRole("button", { name: "Copy from another Agent" }));
+  const dialog = await screen.findByRole("dialog", { name: "Copy from another Agent" });
+  await user.selectOptions(await within(dialog).findByLabelText("Agent"), "Empty helper");
+  expect(await within(dialog).findByText("That Agent's Evaluation Set is empty.")).toBeInTheDocument();
+  await user.selectOptions(within(dialog).getByLabelText("Agent"), "Expenses helper");
+  expect(await within(dialog).findByText("That Agent's Evaluation Set could not be loaded. Try again shortly.")).toBeInTheDocument();
+});
+
+test("copying says when the Project's Agents can't be loaded", async () => {
+  const user = userEvent.setup();
+  setUp({ cases: [leaveCase] });
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/agents", () => HttpResponse.json({ detail: "Down" }, { status: 500 })),
+  );
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Copy from another Agent" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Copy from another Agent" });
+  expect(await within(dialog).findByText("The Agents could not be loaded. Try again shortly.")).toBeInTheDocument();
+  expect(within(dialog).queryByLabelText("Agent")).not.toBeInTheDocument();
+});
+
+test("a full set of 200 cases says so, and New case and Copy wait until cases are deleted", async () => {
+  const many = Array.from({ length: 200 }, (_, index) => ({
+    ...leaveCase,
+    id: `e6000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    question: `Question ${String(index + 1)}?`,
+  }));
+  setUp({ cases: many });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  expect(screen.getByRole("meter", { name: "Cases in the set" })).toHaveAttribute("aria-valuenow", "200");
+  expect(screen.getByText(/holds the most it can, 200 cases/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "New case" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Copy from another Agent" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Evaluate" })).toBeEnabled();
 });
