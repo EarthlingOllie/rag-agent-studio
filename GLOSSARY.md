@@ -49,7 +49,7 @@ One of the six areas of a Project in the Studio, in this order: Documents, Instr
 _Avoid_: Tab, page, area
 
 **Agent view**:
-One of the four pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the tab row under the Agent's header (the navigation named "Agent views", the current tab marked as the current page, Conversations staying current on a Conversation opened from it); the Breadcrumb ends at the Agent on all four. The Agent's name is the page's one heading (the Project's page header is left out on an Agent's pages), and the ▾ beside it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
+One of the five pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Evaluation (the Evaluation Set and the Evaluation Runs), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the tab row under the Agent's header (the navigation named "Agent views", the current tab marked as the current page, Conversations staying current on a Conversation opened from it); the Breadcrumb ends at the Agent on all five. The Agent's name is the page's one heading (the Project's page header is left out on an Agent's pages), and the ▾ beside it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
 _Avoid_: Agent tab, Agent section
 
 **Palette ratchet**:
@@ -802,11 +802,11 @@ An Evaluation Case's expectation that the Agent says it doesn't know, for a ques
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:
-One run of an Agent's Evaluation Set that answers every Evaluation Case with the Draft and, at the same moment against the same Knowledge Base, with the Live Version (the Draft alone while the Agent has none), through the real Guardrails, then judges each answer with the Evaluation Model. An Editor starts it; it is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. A Draft scoring worse than the Live Version is a warning when Publishing; it never blocks.
+One run of an Agent's Evaluation Set that answers every Evaluation Case with the Draft and, at the same moment against the same Knowledge Base, with the Live Version (the Draft alone while the Agent has none), through the real Guardrails, then judges each answer with the Evaluation Model. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; it is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. A Regression, or a lower Evaluation score than the Live Version's, is a warning when Publishing; it never blocks.
 _Avoid_: Eval, test run, benchmark run
 
 **Verdict**:
-An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A case passes when every verdict that isn't Stale passes.
+An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A case passes when every verdict that isn't Stale passes. A case the provider or the Evaluation Model couldn't answer or judge has an Error instead, and is left out of the Evaluation score; a Guardrail block is an answer, and is judged like one.
 _Avoid_: Score, grade, judgement
 
 **Stale expectation**:
@@ -816,3 +816,11 @@ _Avoid_: Broken case, invalid source
 **Evaluation score**:
 In an Evaluation Run, the share of Evaluation Cases that passed, given for the Draft and for the Live Version.
 _Avoid_: Pass rate (the Attack evaluation suite's), accuracy
+
+**Regression**:
+An Evaluation Case that passed with the Live Version and fails with the Draft in the same Evaluation Run. The Publish dialog lists them with their Verdicts' reasons.
+_Avoid_: Breakage, failure
+
+**Expected source warning**:
+The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.
+_Avoid_: Eval dependency warning
