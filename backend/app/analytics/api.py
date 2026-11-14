@@ -38,6 +38,8 @@ cost_router = APIRouter(prefix=ORGANISATION_PREFIX, tags=["analytics"])
 
 DEFAULT_DAYS = 30
 MAX_DAYS = 366
+# The earliest UTC day a range may touch; no Studio data predates it.
+EARLIEST_DAY = date(2000, 1, 1)
 
 
 class TokensOut(BaseModel):
@@ -195,7 +197,13 @@ EndQuery = Annotated[date | None, Query(description="The last UTC day; today if 
 
 def _range(start: date | None, end: date | None, today: date) -> tuple[date, date]:
     """The UTC days asked for, defaulting to the last 30 days to today; refuses a range that
-    runs backwards or is longer than ``MAX_DAYS``."""
+    runs backwards, is longer than ``MAX_DAYS``, or touches a day before ``EARLIEST_DAY`` or
+    more than ``MAX_DAYS`` after today (near the ends of the calendar, the day before or after
+    one does not exist)."""
+    latest = today + timedelta(days=MAX_DAYS)
+    for day in (start, end):
+        if day is not None and not EARLIEST_DAY <= day <= latest:
+            raise _bad_range(f"Days must be from {EARLIEST_DAY} to {latest}.")
     last = end or today
     first = start or last - timedelta(days=DEFAULT_DAYS - 1)
     if first > last:

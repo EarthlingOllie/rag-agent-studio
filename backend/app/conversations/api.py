@@ -33,6 +33,9 @@ router = APIRouter(
 )
 
 MAX_PAGE_SIZE = 100
+# The last page that can be asked for: keeps the SQL OFFSET, (page - 1) * page_size, far
+# inside a 64-bit integer, so a huge page is a 422 rather than a database error.
+MAX_PAGE = 1_000_000
 
 
 class ConversationSummaryOut(BaseModel):
@@ -114,7 +117,7 @@ async def list_conversations(
             )
         ),
     ] = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
     """The Project's Conversations, Visitors' and the Playground's, newest first."""

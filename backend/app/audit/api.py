@@ -16,6 +16,9 @@ from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope
 router = APIRouter(prefix=f"{ORGANISATION_PREFIX}/audit-events", tags=["audit"])
 
 MAX_PAGE_SIZE = 100
+# The last page that can be asked for: keeps the SQL OFFSET, (page - 1) * page_size, far
+# inside a 64-bit integer, so a huge page is a 422 rather than a database error.
+MAX_PAGE = 1_000_000
 
 
 class AuditActorOut(BaseModel):
@@ -66,7 +69,7 @@ async def list_audit_events(
         AwareDatetime | None, Query(description="Only events at or after this time")
     ] = None,
     end: Annotated[AwareDatetime | None, Query(description="Only events before this time")] = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> AuditEventPage:
     """The Organisation's Audit Events, newest first, filtered by actor, action and time."""

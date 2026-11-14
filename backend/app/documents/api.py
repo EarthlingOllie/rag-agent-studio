@@ -643,7 +643,8 @@ async def list_chunks(
     document_id: uuid.UUID,
     scope: Scope,
     db: Db,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    # Bounded so the SQL OFFSET stays inside a 64-bit integer (422, not a database error).
+    offset: Annotated[int, Query(ge=0, le=1_000_000_000)] = 0,
     limit: Annotated[int, Query(ge=1, le=CHUNK_PAGE_MAX)] = CHUNK_PAGE_DEFAULT,
     flagged: Annotated[
         bool,
