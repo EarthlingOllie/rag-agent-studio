@@ -774,3 +774,29 @@ _Avoid_: Disclaimer, KB warning
 **Organisation cost**:
 What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage in its own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
 _Avoid_: Billing, invoice, spend report
+
+## Evaluation
+
+**Evaluation Set**:
+The Evaluation Cases one Agent is measured against, kept by its Editors so that a change to the Agent can be checked before it is Published. Each Agent has its own; cases can be copied from another Agent in the same Project.
+_Avoid_: Golden set, eval suite, test set, benchmark
+
+**Evaluation Case**:
+One question in an Evaluation Set, with at least one expectation: an Expected source, a Reference answer, or Expect Fallback Text. Written by an Editor or added from an Agent Message, it is kept until an Editor deletes it, and the Purge never clears it.
+_Avoid_: Test case, golden question, eval
+
+**Expected source**:
+A passage of a Document that an Evaluation Case's answer should retrieve and cite.
+_Avoid_: Ground truth chunk, expected chunk
+
+**Reference answer**:
+What a good answer to an Evaluation Case says, in the Editor's words; answers are judged against its meaning, not its wording.
+_Avoid_: Gold answer, expected output
+
+**Expect Fallback Text**:
+An Evaluation Case's expectation that the Agent says it doesn't know, for a question its Knowledge Base can't answer.
+_Avoid_: Negative case, unanswerable test
+
+**Evaluation Run**:
+One run of an Agent's Evaluation Set against its Draft or one of its Versions, with a result for each Evaluation Case. A Draft scoring worse than the Live Version is shown as a warning when Publishing; it never blocks.
+_Avoid_: Eval, test run, benchmark run
