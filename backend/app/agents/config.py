@@ -42,7 +42,10 @@ DEFAULT_REFUSAL_TEXT = "Sorry, I can't help with that request."
 
 # Unknown settings are refused. In responses every field is present, so the generated client
 # types a saved AgentConfig as complete while requests may leave fields to their defaults.
-_STRICT = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
+# NaN and Infinity, which Python's JSON parser accepts, are refused as not finite (AGT-F6).
+_STRICT = ConfigDict(
+    extra="forbid", json_schema_serialization_defaults_required=True, allow_inf_nan=False
+)
 
 ShortText = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=SHORT_TEXT_MAX)

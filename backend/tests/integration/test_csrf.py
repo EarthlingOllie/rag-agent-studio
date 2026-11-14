@@ -43,6 +43,8 @@ async def test_a_forged_bodyless_post_does_not_sign_the_member_out(
         ("PUT", "/api/auth/me/active-organisation"),
         ("PATCH", "/api/auth/me"),
         ("DELETE", "/api/organisations/{organisation_id}/members/{member_id}"),
+        # AUTH-I1: a forged request must not start MFA enrolment.
+        ("POST", "/api/auth/mfa/enrolment"),
     ],
 )
 async def test_every_state_changing_method_is_checked(

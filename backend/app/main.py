@@ -8,6 +8,7 @@ import httpx
 import httpx2
 import logfire
 from fastapi import APIRouter, FastAPI
+from fastapi.exceptions import RequestValidationError
 from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
 
@@ -21,12 +22,14 @@ from app.audit import api as audit_api
 from app.auth import account_api, mfa_api
 from app.auth import api as auth_api
 from app.conversations import api as conversations_api
+from app.core.api_docs import ApiDocsMiddleware
 from app.core.clock import SystemClock
 from app.core.csrf import CsrfMiddleware
 from app.core.db import create_engine, create_sessionmaker
 from app.core.logs import configure_logging
 from app.core.settings import load_settings
 from app.core.telemetry import configure_telemetry, flush_telemetry, instrument_engine
+from app.core.validation_errors import request_validation_error
 from app.credentials import api as credentials_api
 from app.credentials.adapters import build_verifier
 from app.credentials.references import ReferenceRegistry
@@ -154,7 +157,11 @@ def _lifespan(
 def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAPI:
     """Build the API. ``extra_span_processors`` receive spans next to the configured exporter."""
     app = FastAPI(
-        title="RAG Agent Studio API", version="0.1.0", lifespan=_lifespan(extra_span_processors)
+        title="RAG Agent Studio API",
+        version="0.1.0",
+        lifespan=_lifespan(extra_span_processors),
+        # A 422 that can carry the NaN or Infinity a request sent (AGT-F6).
+        exception_handlers={RequestValidationError: request_validation_error},
     )
     # Consumers of Provider Credentials register their "who references me" sources here.
     app.state.credential_references = ReferenceRegistry()
@@ -164,6 +171,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     for router in ROUTERS:
         app.include_router(router)
     app.add_middleware(CsrfMiddleware)
+    # The docs and the OpenAPI document are served only in local development and the tests.
+    app.add_middleware(ApiDocsMiddleware)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app
