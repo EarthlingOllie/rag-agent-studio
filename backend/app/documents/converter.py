@@ -62,8 +62,16 @@ class DoclingConverter:
         }
 
     def convert(self, data: bytes, filename: str, *, ocr: bool) -> DoclingDocument:
-        stream = DocumentStream(name=filename, stream=BytesIO(data))
+        stream = DocumentStream(name=docling_name(filename), stream=BytesIO(data))
         return self._converters[ocr].convert(stream).document
+
+
+def docling_name(filename: str) -> str:
+    """The name Docling sees: ``document`` plus the file's extension. Docling guesses the
+    format from the name, and the uploader's name can look like a path (``../notes.txt``,
+    ``..\\notes.txt``), which it reads as having no extension. The extension is read the way
+    ``limits.mime_type_for`` read it when the file's type was checked and stored."""
+    return "document" + PurePath(filename).suffix.lower()
 
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
