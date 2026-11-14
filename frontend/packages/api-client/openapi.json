@@ -6115,6 +6115,77 @@
         "title": "PublishInstructionsRequest",
         "type": "object"
       },
+      "PublishSummaryOut": {
+        "description": "Whether the Draft has been evaluated against the current Live Version with the\nInstructions being published. Advisory: Publishing never depends on it.",
+        "properties": {
+          "evaluated_live_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated Live Version Number"
+          },
+          "lower_score": {
+            "title": "Lower Score",
+            "type": "boolean"
+          },
+          "publishing_instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishing Instructions Version Number"
+          },
+          "regressions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryRegressionOut"
+            },
+            "title": "Regressions",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "no_set",
+              "no_run",
+              "live_changed",
+              "stale",
+              "instructions_differ",
+              "regressions",
+              "clear"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "run",
+          "regressions",
+          "lower_score",
+          "evaluated_live_version_number",
+          "publishing_instructions_version_number"
+        ],
+        "title": "PublishSummaryOut",
+        "type": "object"
+      },
       "RatingChangeRead": {
         "properties": {
           "agent_version_number": {
@@ -6309,6 +6380,31 @@
           "recovery_codes"
         ],
         "title": "RecoveryCodesResponse",
+        "type": "object"
+      },
+      "RegressionReasonOut": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "RegressionReasonOut",
         "type": "object"
       },
       "RenewInviteRequest": {
@@ -7494,6 +7590,40 @@
           "expires_at"
         ],
         "title": "StartUploadResponse",
+        "type": "object"
+      },
+      "SummaryRegressionOut": {
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/RegressionReasonOut"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case_id",
+          "question",
+          "reasons"
+        ],
+        "title": "SummaryRegressionOut",
         "type": "object"
       },
       "SwitchOrganisationRequest": {
@@ -14876,6 +15006,97 @@
           }
         },
         "summary": "Prefill Case",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/publish-summary": {
+      "get": {
+        "description": "The Evaluation summary the Publish dialog shows for publishing the Draft with\n``instructions_version_id`` (the Current Instructions Version when left out). Only Runs of\nthe Draft against the current Live Version qualify. The Publish endpoint is unchanged:\nits warnings never block Publishing.",
+        "operationId": "getEvaluationPublishSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "instructions_version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Instructions Version Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The chosen Instructions Version isn't the Project's."
+          }
+        },
+        "summary": "Get Publish Summary",
         "tags": [
           "evaluation"
         ]

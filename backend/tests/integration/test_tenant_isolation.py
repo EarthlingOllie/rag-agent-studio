@@ -690,6 +690,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _EVALUATION + "/runs/{run_id}", EDITOR, _an_evaluation_run),
     ScopedRoute("GET", _EVALUATION + "/runs/{run_id}/results", EDITOR, _an_evaluation_run),
     ScopedRoute("POST", _EVALUATION + "/runs/{run_id}/cancel", EDITOR, _a_queued_evaluation_run),
+    ScopedRoute("GET", _EVALUATION + "/publish-summary", EDITOR, _an_evaluation_run),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(

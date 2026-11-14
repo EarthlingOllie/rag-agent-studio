@@ -32,6 +32,10 @@ Verdicts with the judge's reasons, and its Trace, and the case's result on each 
 fail by majority of its answered repeats with the count, Unsteady when they disagree, or Error
 when every repeat errored. Each side has an Evaluation score, which leaves Error cases out; each
 case in the set shows its latest result.
+
+The Evaluation summary for Publish says, for the Instructions Version the Publish dialog has
+chosen, whether the Draft has been evaluated against the current Live Version with those
+Instructions, and what that Run found. It is advisory: the Publish endpoint is unchanged.
 """
 
 import uuid
@@ -55,7 +59,7 @@ from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.documents.service import DocumentNotFoundError
-from app.evaluation import from_message, service
+from app.evaluation import from_message, service, summary
 from app.evaluation.combining import Repeat, SideResult
 from app.evaluation.models import (
     PASSAGE_MAX,
@@ -65,6 +69,7 @@ from app.evaluation.models import (
     EvaluationCase,
     EvaluationRun,
     SideKind,
+    VerdictOutcome,
 )
 from app.evaluation.tasks import enqueue_run
 from app.playground.api import CREDENTIAL_GONE, NO_DEFAULT_MODEL, Dollars, TraceOut
@@ -936,6 +941,105 @@ async def get_run_results(
             )
             for case in cases
         ],
+    )
+
+
+class RegressionReasonOut(BaseModel):
+    # The Verdict's kind and the judge's (or the check's) reason it failed.
+    kind: str
+    reason: str | None
+
+
+class SummaryRegressionOut(BaseModel):
+    # The case it was copied from; null once that case is deleted.
+    case_id: uuid.UUID | None
+    question: str
+    # Why the Draft failed it: its failing Verdicts' reasons, each once.
+    reasons: list[RegressionReasonOut]
+
+
+class PublishSummaryOut(BaseModel):
+    """Whether the Draft has been evaluated against the current Live Version with the
+    Instructions being published. Advisory: Publishing never depends on it."""
+
+    # ``no_set``, ``no_run``, ``live_changed``, ``stale``, ``instructions_differ``,
+    # ``regressions`` or ``clear``.
+    state: Literal[
+        "no_set", "no_run", "live_changed", "stale", "instructions_differ", "regressions", "clear"
+    ]
+    # The latest completed Run of the Draft against the current Live Version (the Draft alone
+    # while the Agent has never been Published), with its scores; null without one.
+    run: RunOut | None
+    # That Run's Regressions, in set order.
+    regressions: list[SummaryRegressionOut]
+    # Whether the Draft's Evaluation score is lower than the Live Version's in that Run.
+    lower_score: bool
+    # For ``live_changed``: the Version the Draft's latest Run was compared with.
+    evaluated_live_version_number: int | None
+    # The Instructions Version being published: the one chosen, else the Current one; null
+    # when the Project has none.
+    publishing_instructions_version_number: int | None
+
+
+def _reasons(case: service.CaseResults, second: uuid.UUID) -> list[RegressionReasonOut]:
+    seen: list[tuple[str, str | None]] = []
+    for judged in case.results:
+        if judged.result.side_id != second:
+            continue
+        for verdict in judged.verdicts:
+            failing = (verdict.kind, verdict.reason)
+            if verdict.outcome == VerdictOutcome.FAIL and failing not in seen:
+                seen.append(failing)
+    return [RegressionReasonOut(kind=kind, reason=reason) for kind, reason in seen]
+
+
+@router.get(
+    "/publish-summary",
+    operation_id="getEvaluationPublishSummary",
+    responses={
+        **NOT_FOUND_RESPONSE,
+        422: {
+            "model": ErrorResponse,
+            "description": "The chosen Instructions Version isn't the Project's.",
+        },
+    },
+)
+async def get_publish_summary(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    instructions_version_id: uuid.UUID | None = None,
+) -> PublishSummaryOut:
+    """The Evaluation summary the Publish dialog shows for publishing the Draft with
+    ``instructions_version_id`` (the Current Instructions Version when left out). Only Runs of
+    the Draft against the current Live Version qualify. The Publish endpoint is unchanged:
+    its warnings never block Publishing."""
+    try:
+        found = await summary.publish_summary(
+            db, scope, project_id, agent_id, instructions_version_id=instructions_version_id
+        )
+    except (ProjectNotFoundError, AgentNotFoundError):
+        raise not_found() from None
+    except InstructionsVersionNotFoundError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, INSTRUCTIONS_NOT_FOUND) from None
+    run = found.run
+    return PublishSummaryOut(
+        state=found.state,
+        run=None if run is None else _run_out(run),
+        regressions=[]
+        if run is None
+        else [
+            SummaryRegressionOut(
+                case_id=case.case.case_id,
+                question=case.case.question,
+                reasons=_reasons(case, run.sides[-1].id),
+            )
+            for case in found.regressions
+        ],
+        lower_score=found.lower_score,
+        evaluated_live_version_number=found.evaluated_live_version_number,
+        publishing_instructions_version_number=found.publishing_instructions_version_number,
     )
 
 

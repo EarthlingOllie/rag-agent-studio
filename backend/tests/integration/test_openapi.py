@@ -186,6 +186,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "estimateEvaluationRun": (f"{_EVALUATION}/estimate", "post"),
         "getEvaluationRunResults": (f"{_EVALUATION}/runs/{{run_id}}/results", "get"),
         "cancelEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}/cancel", "post"),
+        "getEvaluationPublishSummary": (f"{_EVALUATION}/publish-summary", "get"),
         "getExpectedSourceDependents": (
             f"{_PROJECT}/documents/{{document_id}}/expected-sources",
             "get",

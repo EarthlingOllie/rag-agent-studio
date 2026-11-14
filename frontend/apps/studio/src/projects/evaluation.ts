@@ -14,7 +14,12 @@ export type EvaluationCaseFilters = {
   stale: "" | "true" | "false";
   result: "" | "pass" | "fail" | "unsteady" | "error" | "not_run";
 };
-export const NO_CASE_FILTERS: EvaluationCaseFilters = { q: "", kind: "", stale: "", result: "" };
+export const NO_CASE_FILTERS: EvaluationCaseFilters = {
+  q: "",
+  kind: "",
+  stale: "",
+  result: "",
+};
 
 /** The most cases an Evaluation Set holds. */
 export const CASES_MAX = 200;
@@ -26,6 +31,8 @@ export type EvaluationCaseSide = Schemas["CaseSideOut"];
 export type EvaluationRunSide = Schemas["RunSideOut"];
 export type EvaluationRunChoice = Schemas["RunIn"];
 export type EvaluationEstimate = Schemas["EstimateOut"];
+export type EvaluationPublishSummary = Schemas["PublishSummaryOut"];
+export type EvaluationRegression = Schemas["SummaryRegressionOut"];
 
 /** How often the Studio reads a Run again while it is queued or running. */
 export const RUN_POLL_MS = 1500;
@@ -37,7 +44,10 @@ export function inProgress(run: { status: string }): boolean {
 
 function failed(response: Response, error: unknown): ProjectRequestError {
   const detail = (error as { detail?: unknown }).detail;
-  return new ProjectRequestError(response.status, typeof detail === "string" ? detail : undefined);
+  return new ProjectRequestError(
+    response.status,
+    typeof detail === "string" ? detail : undefined,
+  );
 }
 
 /** What to tell the Editor about a refused evaluation request: the API's reason, when it gives one. */
@@ -47,14 +57,25 @@ export function evaluationFailure(error: Error | null): string | undefined {
   return "Something went wrong. Try again.";
 }
 
-type AgentPath = { organisation_id: string; project_id: string; agent_id: string };
+type AgentPath = {
+  organisation_id: string;
+  project_id: string;
+  agent_id: string;
+};
 
-const evaluationKey = (path: AgentPath) => ["evaluation", path.organisation_id, path.project_id, path.agent_id] as const;
-const casesKey = (path: AgentPath) => [...evaluationKey(path), "cases"] as const;
+const evaluationKey = (path: AgentPath) =>
+  ["evaluation", path.organisation_id, path.project_id, path.agent_id] as const;
+const casesKey = (path: AgentPath) =>
+  [...evaluationKey(path), "cases"] as const;
 const runsKey = (path: AgentPath) => [...evaluationKey(path), "runs"] as const;
+const summaryKey = (path: AgentPath) =>
+  [...evaluationKey(path), "publish-summary"] as const;
 
 /** The Agent's Evaluation Set, oldest case first; with `filters`, only the cases matching them. */
-export function useEvaluationCases(path: AgentPath, filters: EvaluationCaseFilters = NO_CASE_FILTERS) {
+export function useEvaluationCases(
+  path: AgentPath,
+  filters: EvaluationCaseFilters = NO_CASE_FILTERS,
+) {
   const query = {
     ...(filters.q.trim() !== "" && { q: filters.q.trim() }),
     ...(filters.kind !== "" && { kind: filters.kind }),
@@ -94,7 +115,10 @@ export function useEvaluationPrefill(path: AgentPath, messageId: string) {
 export function useCopyEvaluationCases(path: AgentPath) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (choice: { agent_id: string; case_ids: string[] }): Promise<EvaluationCase[]> => {
+    mutationFn: async (choice: {
+      agent_id: string;
+      case_ids: string[];
+    }): Promise<EvaluationCase[]> => {
       const { data, error, response } = await api.POST(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/copy",
         { params: { path }, body: choice },
@@ -102,7 +126,8 @@ export function useCopyEvaluationCases(path: AgentPath) {
       if (!data) throw failed(response, error);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: casesKey(path) }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: casesKey(path) }),
   });
 }
 
@@ -110,7 +135,9 @@ export function useCopyEvaluationCases(path: AgentPath) {
 export function useSaveEvaluationCase(path: AgentPath, caseId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (fields: EvaluationCaseFields): Promise<EvaluationCase> => {
+    mutationFn: async (
+      fields: EvaluationCaseFields,
+    ): Promise<EvaluationCase> => {
       const saving =
         caseId === null
           ? api.POST(
@@ -125,7 +152,8 @@ export function useSaveEvaluationCase(path: AgentPath, caseId: string | null) {
       if (!data) throw failed(response, error);
       return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: casesKey(path) }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: casesKey(path) }),
   });
 }
 
@@ -139,7 +167,8 @@ export function useDeleteEvaluationCase(path: AgentPath) {
       );
       if (!response.ok) throw failed(response, error);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: casesKey(path) }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: casesKey(path) }),
   });
 }
 
@@ -155,12 +184,16 @@ export function useEvaluationRuns(path: AgentPath) {
       if (!data) throw failed(response, error);
       return data;
     },
-    refetchInterval: (query) => ((query.state.data ?? []).some(inProgress) ? RUN_POLL_MS : false),
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some(inProgress) ? RUN_POLL_MS : false,
   });
 }
 
 /** The estimated Cost of a Run with these choices, shown before it starts; `null` asks nothing. */
-export function useEvaluationEstimate(path: AgentPath, choice: EvaluationRunChoice | null) {
+export function useEvaluationEstimate(
+  path: AgentPath,
+  choice: EvaluationRunChoice | null,
+) {
   return useQuery({
     queryKey: [...evaluationKey(path), "estimate", choice],
     queryFn: async (): Promise<EvaluationEstimate> => {
@@ -220,6 +253,61 @@ export function useEvaluationRunResults(path: AgentPath, runId: string) {
       if (!data) throw failed(response, error);
       return data;
     },
-    refetchInterval: (query) => (query.state.data && inProgress(query.state.data.run) ? RUN_POLL_MS : false),
+    refetchInterval: (query) =>
+      query.state.data && inProgress(query.state.data.run)
+        ? RUN_POLL_MS
+        : false,
+  });
+}
+
+/**
+ * The Evaluation summary for publishing the Draft with `instructionsVersionId` (the Current
+ * Instructions Version when `null`). `freshness` (the Live Version and the Draft revision) reads it
+ * again whenever either moves on.
+ */
+export function usePublishSummary(
+  path: AgentPath,
+  instructionsVersionId: string | null,
+  freshness: readonly unknown[],
+) {
+  return useQuery({
+    queryKey: [...summaryKey(path), instructionsVersionId, ...freshness],
+    queryFn: async (): Promise<EvaluationPublishSummary> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/publish-summary",
+        {
+          params: {
+            path,
+            query:
+              instructionsVersionId === null
+                ? {}
+                : { instructions_version_id: instructionsVersionId },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** One Run, read again while it is in progress; once it has finished, the Publish summary is read again. */
+export function useEvaluationRun(path: AgentPath, runId: string | null) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [...runsKey(path), runId],
+    queryFn: async (): Promise<EvaluationRun> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}",
+        { params: { path: { ...path, run_id: runId as string } } },
+      );
+      if (!data) throw failed(response, error);
+      if (!inProgress(data))
+        await queryClient.invalidateQueries({ queryKey: summaryKey(path) });
+      return data;
+    },
+    enabled: runId !== null,
+    refetchInterval: (query) =>
+      query.state.data && inProgress(query.state.data) ? RUN_POLL_MS : false,
   });
 }

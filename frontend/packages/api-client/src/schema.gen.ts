@@ -1321,6 +1321,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/publish-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Publish Summary
+         * @description The Evaluation summary the Publish dialog shows for publishing the Draft with
+         *     ``instructions_version_id`` (the Current Instructions Version when left out). Only Runs of
+         *     the Draft against the current Live Version qualify. The Publish endpoint is unchanged:
+         *     its warnings never block Publishing.
+         */
+        get: operations["getEvaluationPublishSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs": {
         parameters: {
             query?: never;
@@ -4926,6 +4949,27 @@ export interface components {
             /** Note */
             note: string;
         };
+        /**
+         * PublishSummaryOut
+         * @description Whether the Draft has been evaluated against the current Live Version with the
+         *     Instructions being published. Advisory: Publishing never depends on it.
+         */
+        PublishSummaryOut: {
+            /** Evaluated Live Version Number */
+            evaluated_live_version_number: number | null;
+            /** Lower Score */
+            lower_score: boolean;
+            /** Publishing Instructions Version Number */
+            publishing_instructions_version_number: number | null;
+            /** Regressions */
+            regressions: components["schemas"]["SummaryRegressionOut"][];
+            run: components["schemas"]["RunOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "no_set" | "no_run" | "live_changed" | "stale" | "instructions_differ" | "regressions" | "clear";
+        };
         /** RatingChangeRead */
         RatingChangeRead: {
             /** Agent Version Number */
@@ -4996,6 +5040,13 @@ export interface components {
         RecoveryCodesResponse: {
             /** Recovery Codes */
             recovery_codes: string[];
+        };
+        /** RegressionReasonOut */
+        RegressionReasonOut: {
+            /** Kind */
+            kind: string;
+            /** Reason */
+            reason: string | null;
         };
         /** RenewInviteRequest */
         RenewInviteRequest: {
@@ -5448,6 +5499,15 @@ export interface components {
             upload_id: string;
             /** Url */
             url: string;
+        };
+        /** SummaryRegressionOut */
+        SummaryRegressionOut: {
+            /** Case Id */
+            case_id: string | null;
+            /** Question */
+            question: string;
+            /** Reasons */
+            reasons: components["schemas"]["RegressionReasonOut"][];
         };
         /** SwitchOrganisationRequest */
         SwitchOrganisationRequest: {
@@ -9747,6 +9807,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getEvaluationPublishSummary: {
+        parameters: {
+            query?: {
+                instructions_version_id?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishSummaryOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The chosen Instructions Version isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

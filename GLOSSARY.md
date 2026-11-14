@@ -841,6 +841,10 @@ _Avoid_: Pass rate (the Attack evaluation suite's), accuracy
 An Evaluation Case that passes by majority of its repeats on an Evaluation Run's first side (the Live Version, when Publishing) and fails by majority on its second (the Draft). The Publish dialog lists them with their Verdicts' reasons.
 _Avoid_: Breakage, failure
 
+**Evaluation summary**:
+What the Publish dialog's Evaluation section reads for the Instructions Version chosen in it: one state, from the latest completed Evaluation Run of the Draft against the current Live Version (the Draft alone while the Agent has never been Published). It is no set (the Agent has no Evaluation Set: a one-line hint), no Run, Live changed (the Draft was only compared with a Version that is no longer Live), stale (the Draft has a newer Draft revision), Instructions differ ("evaluated with Instructions v3, publishing with v2"), Regressions (or a lower Evaluation score than the Live Version's: a warning listing each Regression with its Verdicts' reasons), or clear. The section offers Evaluate, which starts a Run of the Live Version against the Draft with the chosen Instructions and shows its progress. Every state is advisory: the Publish button stays enabled and Publishing always succeeds.
+_Avoid_: Publish gate, evaluation check
+
 **Expected source warning**:
 The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.
 _Avoid_: Eval dependency warning
