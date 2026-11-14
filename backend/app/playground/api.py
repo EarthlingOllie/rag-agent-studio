@@ -22,6 +22,7 @@ No answer is saved, and anything streamed before it is not part of one.
 """
 
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
@@ -64,6 +65,8 @@ from app.runtime.runtime import (
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(
     prefix=ORGANISATION_PREFIX + "/projects/{project_id}/agents/{agent_id}/playground",
     tags=["playground"],
@@ -90,6 +93,7 @@ def get_admission(request: Request) -> Admission:
 PlaygroundLimitsDep = Annotated[PlaygroundLimits, Depends(playground_limits)]
 AdmissionDep = Annotated[Admission, Depends(get_admission)]
 
+INTERNAL_ERROR = "Something went wrong while answering. Try again."
 TOO_FAST = "You're sending Playground questions too fast. Wait a minute, then try again."
 BUDGET_SPENT = (
     "Your Organisation has used today's Playground Token Budget. It starts again at midnight UTC."
@@ -422,7 +426,9 @@ _STREAM: dict[int | str, dict[str, Any]] = {
             "or, when the input Guardrail blocks the question, a `refusal` event (`text`, the "
             "Agent's refusal text) then `done`, and no model is asked; "
             "or, when the model provider fails, one `error` event (`code`: `invalid_key`, "
-            "`rate_limited`, `model_unavailable` or `provider_error`; `message`)."
+            "`rate_limited`, `model_unavailable` or `provider_error`; `message`); "
+            "or, when answering fails for any other reason, one `error` event with `code` "
+            "`internal`."
         ),
     },
     409: {
@@ -502,6 +508,17 @@ async def send_message(
     ingestion: IngestionPorts = request.app.state.ingestion
 
     async def events() -> AsyncIterator[str]:
+        try:
+            async for frame in _frames():
+                yield frame
+        except Exception:
+            # A failure nobody mapped to a provider error (the database, a bug): the Studio still
+            # learns the answer failed rather than seeing the stream cut short. The question was
+            # saved; the reservation is given back by ``HeldStream``.
+            logger.exception("Playground answer failed")
+            yield _sse("error", {"code": "internal", "message": INTERNAL_ERROR})
+
+    async def _frames() -> AsyncIterator[str]:
         async for event in service.answer(
             prepared,
             sessionmaker=request.app.state.sessionmaker,

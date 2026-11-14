@@ -524,6 +524,13 @@ async def answer(
             # An Agentic fallback asked the model, which searched and found nothing.
             asked_none = event.refused or (event.fallback and not event.searches)
             pricing = await credential_pricing(session, chosen.credential)
+            # Locked, so a deletion either comes first (and is seen here) or purges this answer;
+            # and locked before the answer's rows reference it (which takes a key-share lock on
+            # it), in the same order as ``save_question``, so two answers written at once in one
+            # Conversation wait for each other rather than deadlock.
+            conversation = await session.get_one(
+                Conversation, prepared.conversation_id, with_for_update=True
+            )
             message = Message(
                 organisation_id=prepared.organisation_id,
                 conversation_id=prepared.conversation_id,
@@ -559,10 +566,6 @@ async def answer(
             # The Searches are written before the Chunk retrievals that reference them.
             await session.flush()
             session.add_all(retrievals)
-            # Locked, so a deletion either comes first (and is seen here) or purges this answer.
-            conversation = await session.get_one(
-                Conversation, prepared.conversation_id, with_for_update=True
-            )
             conversation.last_activity_at = now
             if conversation.deleted_at is not None:
                 # Deleted on request while the answer streamed: its text isn't kept either.
