@@ -49,7 +49,7 @@ One of the six areas of a Project in the Studio, in this order: Documents, Instr
 _Avoid_: Tab, page, area
 
 **Agent view**:
-One of the four pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the tab row under the Agent's header (the navigation named "Agent views", the current tab marked as the current page, Conversations staying current on a Conversation opened from it); the Breadcrumb ends at the Agent on all four. The Agent's name is the page's one heading (the Project's page header is left out on an Agent's pages), and the ▾ beside it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
+One of the five pages of an Agent in the Studio, in this order: Playground (the Playground in the main column, the Draft's configuration beside it in collapsible sections), Versions (the Live History timeline, the Versions and their comparison), Evaluation (the Evaluation Set and the Evaluation Runs), Embed & limits (the Embed Snippet and the Operational Settings, as cards) and Conversations (the Conversations viewer fixed to that Agent: its list, without an Agent filter, beside the open Conversation). The Member moves between them with the tab row under the Agent's header (the navigation named "Agent views", the current tab marked as the current page, Conversations staying current on a Conversation opened from it); the Breadcrumb ends at the Agent on all five. The Agent's name is the page's one heading (the Project's page header is left out on an Agent's pages), and the ▾ beside it is the Agent switcher, the Project's open Agents. The Draft's save state, History and Publish sit in the top bar; rare actions on the Agent itself (Discard Draft, Archive, permanent deletion) are in the ⋯ menu beside its name, and "Analytics for this Agent" beside it opens the Analytics section filtered to the Agent.
 _Avoid_: Agent tab, Agent section
 
 **Palette ratchet**:
@@ -145,7 +145,7 @@ The Organisation `make seed` builds for showing the product: Northwind Traders, 
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
-The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
+The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. The HR helper also has an Evaluation Set, some of its cases added from seeded thumbs-down Messages, and two finished Evaluation Runs judged by the fake Evaluation Model: v2 against v1, whose Regressions explain the revert, and the Draft against v3. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
 _Avoid_: Fake data, sample history, fixtures
 
 **Demo pages**:
@@ -221,6 +221,10 @@ _Avoid_: Dependency, usage, link
 **Default Model**:
 The chat model an Organisation's Agents use unless an Agent overrides it: one chat-capable Provider Credential and one of its chat models, chosen by an Owner. It is a Credential reference, so its credential can't be deleted while it is chosen.
 _Avoid_: Global model, org model
+
+**Evaluation Model**:
+The chat model that judges every Evaluation Run in an Organisation: one chat-capable Provider Credential and one of its chat models, chosen by an Owner, or the Default Model while none is chosen. It is a Credential reference. One per Organisation, so scores stay comparable across Agents and over time; changing it is an Audit Event.
+_Avoid_: Judge, grader model, eval model
 
 **Demo model**:
 The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
@@ -529,7 +533,7 @@ To move the Live Version (Agents) or the Current Version (Project Instructions) 
 _Avoid_: Rollback, undo
 
 **Bulk publish**:
-To publish a new Version of several Agents at once, each built from that Agent's **Live** configuration plus a chosen Project Instructions Version, never from its Draft (ADR-0003). Agents that have never been published are skipped (their first Version must be reviewed on their own page), and so are Agents already Live with that Instructions Version. Publishing Project Instructions opens the **rollout dialog**, which offers the new Version to the Project's Agents with every Agent that can take it pre-selected and Agents with unpublished Draft changes badged, since those edits aren't included.
+To publish a new Version of several Agents at once, each built from that Agent's **Live** configuration plus a chosen Project Instructions Version, never from its Draft (ADR-0003). Agents that have never been published are skipped (their first Version must be reviewed on their own page), and so are Agents already Live with that Instructions Version. Publishing Project Instructions opens the **rollout dialog**, which offers the new Version to the Project's Agents with every Agent that can take it pre-selected and Agents with unpublished Draft changes badged, since those edits aren't included, and can start a Rollout evaluation first.
 _Avoid_: Mass deploy, publish all
 
 **Bulk revert**:
@@ -772,5 +776,63 @@ The warning under the Time series when the Project's Knowledge Base changed duri
 _Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
-What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage in its own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
+What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage and Evaluation Run cost each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
 _Avoid_: Billing, invoice, spend report
+
+## Evaluation
+
+**Evaluation Set**:
+The Evaluation Cases one Agent is measured against, kept by its Editors so that a change to the Agent can be checked before it is Published. Each Agent has its own, of at most 200 cases; cases can be copied from another Agent in the same Project.
+_Avoid_: Golden set, eval suite, test set, benchmark
+
+**Evaluation Case**:
+One standalone question in an Evaluation Set (no earlier turns), with at least one expectation: an Expected source, a Reference answer, or Expect Fallback Text. Written by an Editor or added from an Agent Message, it is kept until an Editor deletes it, and the Purge never clears it.
+_Avoid_: Test case, golden question, eval
+
+**Expected source**:
+A passage of a Document that an Evaluation Case's answer should retrieve and cite. It is matched against the Document's current Edition each Run; when the Document is gone or the passage no longer appears, the expectation is Stale.
+_Avoid_: Ground truth chunk, expected chunk
+
+**Reference answer**:
+What a good answer to an Evaluation Case says, in the Editor's words; answers are judged against its meaning, not its wording.
+_Avoid_: Gold answer, expected output
+
+**Expect Fallback Text**:
+An Evaluation Case's expectation that the Agent says it doesn't know, for a question its Knowledge Base can't answer.
+_Avoid_: Negative case, unanswerable test
+
+**Evaluation Run**:
+One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions, with the Project Instructions it answers with: a Version its pinned ones, the Draft the Instructions Version or Instructions Draft chosen when the Run starts (the Current Instructions Version by default). By default the Live Version is compared with the Draft, or the Draft runs alone while the Agent has none; a Rollout evaluation's second side is the only Version that answers with Instructions other than its pin. Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts, and only if the Draft is published with the Instructions it ran with (otherwise a notice says so): a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
+_Avoid_: Eval, test run, benchmark run
+
+**Verdict**:
+An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A repeat passes when every verdict that isn't Stale passes, and a case passes on a side when most of its repeats there do. A case the provider or the Evaluation Model couldn't answer or judge has an Error instead, and is left out of the Evaluation score; a Guardrail block is an answer, and is judged like one.
+_Avoid_: Score, grade, judgement
+
+**Stale expectation**:
+An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
+_Avoid_: Broken case, invalid source
+
+**Rollout evaluation**:
+The Evaluation Runs Bulk publish's rollout dialog can start, one per selected Agent with an Evaluation Set: the Live Version as it is against its configuration answering with the new Instructions Version. The dialog lists each Agent's Regressions as warnings and marks Agents without an Evaluation Set "not evaluated"; it never blocks.
+_Avoid_: Bulk evaluation, rollout test
+
+**Evaluation repeats**:
+How many times each side of an Evaluation Run answers every Evaluation Case, each answer judged once: 1, 3, 5, 7 or 9, 3 by default, set by Owners in Organisation settings. Odd, so a majority always decides; each repeat multiplies a Run's Cost.
+_Avoid_: Samples, trials, runs per case
+
+**Unsteady**:
+An Evaluation Case whose repeats disagreed on either side of an Evaluation Run, shown with its count (for example 2/3), usually pointing to a vague Reference answer or a borderline question.
+_Avoid_: Flaky, non-deterministic
+
+**Evaluation score**:
+In an Evaluation Run, the share of Evaluation Cases that passed, given for the Draft and for the Live Version.
+_Avoid_: Pass rate (the Attack evaluation suite's), accuracy
+
+**Regression**:
+An Evaluation Case that passes by majority of its repeats on an Evaluation Run's first side (the Live Version, when Publishing) and fails by majority on its second (the Draft). The Publish dialog lists them with their Verdicts' reasons.
+_Avoid_: Breakage, failure
+
+**Expected source warning**:
+The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.
+_Avoid_: Eval dependency warning

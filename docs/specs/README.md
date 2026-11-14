@@ -17,6 +17,7 @@ One spec per delivery slice in [`docs/plan.md`](../plan.md), split into tickets 
 | 11 | [Studio design system and reskin](./11-studio-design-spec.md) |
 | 12 | [Reskin fixes and sidebar navigation](./12-reskin-fixes-sidebar-navigation-spec.md) |
 | 13 | [Agentic retrieval](./13-agentic-retrieval-spec.md) |
+| 14 | [Evaluation loop](./14-evaluation-loop-spec.md) |
 
 ## Shared test seams
 
