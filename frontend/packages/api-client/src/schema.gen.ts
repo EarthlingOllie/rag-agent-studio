@@ -8700,6 +8700,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8823,7 +8832,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) as each Knowledge Search starts, preceded by a `retract` event (no data) when text the model streamed before the Search must be cleared from the answer; `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`). */
+            /** @description Server-Sent Events: in Agentic Retrieval Mode a `search` event (`query`, `order`) as each Knowledge Search starts, preceded by a `retract` event (no data) when text the model streamed before the Search must be cleared from the answer; `token` events, then `citation` events and one `done` event; or, when the answer leaks the Canary token, a `replace` event then `done`; or, when the input Guardrail blocks the question, a `refusal` event (`text`, the Agent's refusal text) then `done`, and no model is asked; or, when the model provider fails, one `error` event (`code`: `invalid_key`, `rate_limited`, `model_unavailable` or `provider_error`; `message`); or, when answering fails for any other reason, one `error` event with `code` `internal`. */
             200: {
                 headers: {
                     [name: string]: unknown;

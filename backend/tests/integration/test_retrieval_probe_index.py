@@ -4,22 +4,76 @@ There is no API surface for which plan Postgres picks, so this calls the probe m
 sequential scans and sorts discouraged (as a large table would make the planner choose) and
 reads the Chunks table directly, which the shared test seams allow for behaviour with no API
 surface.
+
+These tests run on a database of their own, created for the module and dropped after it. The
+HNSW graph is built from every Chunk of the model, and the shared test database keeps them from
+run to run: each run here adds two clusters of 201 near-identical vectors, and in a graph full of
+earlier runs' clusters the index can no longer reach a Project's Chunks, so the outcome would
+depend on how often the suite had run before.
 """
 
+import asyncio
 import uuid
+from collections.abc import Iterator
 
+import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import make_url, text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.embeddings.registry import LOCAL_MODEL
 from app.projects.models import Project
 from app.retrieval.probe import probe, probe_statement
-from tests.conftest import SignedUpMember
+from tests.conftest import (
+    BACKEND_ROOT,
+    TEST_DATABASE_URL,
+    SignedUpMember,
+    _set_test_environment,
+)
 from tests.documents import chunks, create_project, upload
+from tests.worker_resources import ADMIN_DATABASE, ensure_database
 
 # Many more Chunks than HNSW's candidate list (hnsw.ef_search, 40 by default).
 OTHER_PROJECT_CHUNKS = 200
+
+
+async def _drop_database(database_url: str) -> None:
+    url = make_url(database_url)
+    admin_url = url.set(database=ADMIN_DATABASE).render_as_string(hide_password=False)
+    engine = create_async_engine(admin_url, isolation_level="AUTOCOMMIT")
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text(f'DROP DATABASE "{url.database}" WITH (FORCE)'))
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture(scope="module")
+def own_database() -> Iterator[str]:
+    """A new database, migrated to head, for this module alone."""
+    url = make_url(TEST_DATABASE_URL)
+    name = f"{url.database}_probe_index_{uuid.uuid4().hex[:8]}"
+    database_url = url.set(database=name).render_as_string(hide_password=False)
+    ensure_database(database_url)
+    try:
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            _set_test_environment(monkeypatch)
+            monkeypatch.setenv("DATABASE_URL", database_url)
+            config = Config(str(BACKEND_ROOT / "alembic.ini"))
+            config.attributes["configure_logger"] = False
+            command.upgrade(config, "head")
+        yield database_url
+    finally:
+        asyncio.run(_drop_database(database_url))
+
+
+@pytest.fixture
+def settings_env(settings_env: pytest.MonkeyPatch, own_database: str) -> pytest.MonkeyPatch:
+    """The shared test environment, on this module's own database."""
+    settings_env.setenv("DATABASE_URL", own_database)
+    return settings_env
 
 
 async def _copy_chunk(session: AsyncSession, chunk_id: str, copies: int) -> None:
