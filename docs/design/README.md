@@ -192,9 +192,17 @@ where the Member is: from the Organisation's page they are under down to the pag
     `FlagCount` and Size; Retry, New edition, Edit Tags and Delete are in the ⋯ menu. A selection
     shows `BulkBar` with Add Tag and Remove Tag menus. Changes are confirmed with a toast, Delete
     asks in a `ConfirmDialog`, and refusals, a full quota and failed Documents are `Notice`s.
+    From 14-07 the Expected source warning is a warning `Notice` naming each Agent and its case
+    count ("Expected sources in this Document are used by Concierge (1 case) and HR helper (3
+    cases).") and what the change does: in the delete confirmation's body, and, for a new edition
+    of a Document that holds any, in a plain `ConfirmDialog` ("Upload a new edition of …?", Upload
+    new edition / Cancel) shown after the file is picked. It never blocks; a Document no case
+    uses uploads straight away.
   - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
     and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
-    edged in `flag` and badged Flagged, paged with `Pagination`.
+    edged in `flag` and badged Flagged, paged with `Pagination`. A Chunk holding a passage used as
+    an Expected source has the `expectedSource` badge and the passage in a `mark` (`accent-soft`,
+    `accent-ink`, titled "Used as an Expected source"), matched ignoring case and whitespace.
 - **Projects list** (built in 12-03): the Organisation's page, laid out like the Agents list.
   `PageHeader` "Projects" (the page's one h1, "Each Project holds the Documents its Agents answer
   from.") with New Project, the one primary, on the right; it is hidden while Archived is shown.
@@ -440,6 +448,7 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `improvement` | Improvement (fails on a Run's first side, passes on its second) | `accent-soft`, `accent-ink` |
 | `runStale` | Stale (a Run with a Draft side whose Draft has moved on) | `flag-soft`, `flag` |
 | `staleExpectation` | Stale expectation (an Expected source whose Document or passage is gone; its reason as the `title`) | `flag-soft`, `flag` |
+| `expectedSource` | Expected source (a Chunk holding a passage an Evaluation Case expects) | `accent-soft`, `accent-ink` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
 
 `title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;

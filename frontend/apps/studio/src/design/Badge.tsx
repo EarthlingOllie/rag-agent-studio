@@ -32,6 +32,8 @@ const BADGES = {
   runStale: { label: "Stale", className: "bg-flag-soft text-flag" },
   /** An Evaluation Case with an Expected source whose Document or passage is gone: skipped by Runs until fixed. */
   staleExpectation: { label: "Stale expectation", className: "bg-flag-soft text-flag" },
+  /** A Chunk holding a passage that an Evaluation Case uses as an Expected source. */
+  expectedSource: { label: "Expected source", className: "bg-accent-soft text-accent-ink" },
 } as const satisfies Record<string, { label: string; className: string; dot?: string }>;
 
 export type BadgeKind = keyof typeof BADGES;

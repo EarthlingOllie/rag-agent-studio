@@ -430,3 +430,28 @@ test("the viewer shows a skeleton while the Document loads", async () => {
   expect(await screen.findByRole("heading", { level: 2, name: "Staff handbook.pdf" }, LOAD)).toBeInTheDocument();
   expect(within(screen.getByRole("list", { name: "Document details" })).getByText("1 chunk")).toBeInTheDocument();
 });
+
+test("passages used as Expected sources are marked on the Chunks that hold them", async () => {
+  signedIn();
+  fakeDocumentViewerApi({
+    document: { ...handbook, markdown: MARKDOWN },
+    chunks: [
+      aChunk({ ordinal: 0, heading_path: [], page_start: null, page_end: null, text: "Everyone gets 25 days.\nClaim within 30 days of travel." }),
+      aChunk({ ordinal: 1, heading_path: [], page_start: null, page_end: null, text: "Footnotes." }),
+    ],
+    // Matched as the Runs match them: letter case and whitespace aside, longest first.
+    passages: ["everyone   GETS 25", "everyone gets 25 days", "within 30 days", "(not) [here]*"],
+  });
+  renderStudio(viewer);
+  const list = within(await screen.findByRole("region", { name: "Chunks" }, LOAD));
+  const [holding, plain] = await list.findAllByRole("listitem", {}, LOAD);
+
+  const chunk = within(holding as HTMLElement);
+  expect(chunk.getByText("Expected source")).toBeInTheDocument();
+  const marked = (holding as HTMLElement).querySelectorAll("mark");
+  expect([...marked].map((mark) => mark.textContent)).toEqual(["Everyone gets 25 days", "within 30 days"]);
+  expect(marked[0]).toHaveAttribute("title", "Used as an Expected source");
+  expect(holding).toHaveTextContent("Everyone gets 25 days. Claim within 30 days of travel.", { normalizeWhitespace: true });
+  expect(within(plain as HTMLElement).queryByText("Expected source")).not.toBeInTheDocument();
+  expect((plain as HTMLElement).querySelector("mark")).toBeNull();
+});

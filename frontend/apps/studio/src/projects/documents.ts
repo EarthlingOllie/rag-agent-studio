@@ -1,6 +1,7 @@
 import type { Schemas } from "@studio/api-client";
 import {
   keepPreviousData,
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
@@ -15,6 +16,7 @@ export type DocumentStatus = Schemas["DocumentStatus"];
 export type FailureCategory = Schemas["FailureCategory"];
 export type UploadLimits = Schemas["UploadLimitsOut"];
 export type Replacement = Schemas["ReplacementOut"];
+export type ExpectedSourceDependents = Schemas["ExpectedSourceDependentsOut"];
 
 /** How often the Document list asks for statuses while a Document is still being processed. */
 export const STATUS_POLL_MS = 2000;
@@ -525,4 +527,27 @@ export const CLEAR_FLAG_FAILED = "The flag could not be cleared. Try again short
 export function clearFlagFailure(error: Error): string {
   // Every failed clear is a ProjectRequestError (see `failed`).
   return (error as ProjectRequestError).detail ?? CLEAR_FLAG_FAILED;
+}
+
+/**
+ * Which Agents, and how many of their cases, hold an Expected source in the Document, and the
+ * passages used: for the Expected source warning before a delete or a new edition, and for the
+ * Document viewer to mark them. Kept under the Documents' key, so it is read again with them.
+ */
+export function expectedSourcesQuery(organisationId: string, projectId: string, documentId: string) {
+  return queryOptions({
+    queryKey: [...documentsKey(organisationId, projectId), documentId, "expected-sources"],
+    queryFn: async (): Promise<ExpectedSourceDependents> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/expected-sources",
+        { params: { path: { organisation_id: organisationId, project_id: projectId, document_id: documentId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+export function useExpectedSources(organisationId: string, projectId: string, documentId: string) {
+  return useQuery(expectedSourcesQuery(organisationId, projectId, documentId));
 }

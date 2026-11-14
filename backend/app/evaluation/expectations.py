@@ -11,14 +11,17 @@ Expect Fallback Text passes when the answer was the Fallback Text (its ``fallbac
 or its text is the Agent's Fallback Text) or the Refusal text, and fails otherwise.
 
 ``refresh_stale`` sets each Expected source's Stale flag and reason from the Knowledge Base as it
-is now, for the case editor and the Runs to keep the Evaluation Set's flags current.
+is now, for the case editor and the Runs to keep the Evaluation Set's flags current;
+``recheck_document`` does it for every Expected source on a Document once a new Edition of it is
+swapped in, so cases whose passage has gone are flagged at once.
 """
 
 import uuid
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig
 from app.documents.service import CurrentChunks, current_chunks
@@ -113,3 +116,18 @@ async def refresh_stale(session: AsyncSession, sources: Sequence[EvaluationExpec
         reason = staleness(expected.passage, found)
         expected.stale = reason is not None
         expected.stale_reason = reason
+
+
+async def recheck_document(
+    sessionmaker: async_sessionmaker[AsyncSession], document_id: uuid.UUID
+) -> None:
+    """Matches every Expected source on the Document against its current Edition again, after a
+    new one is swapped in: surviving passages stay valid, missing ones become Stale expectations
+    and earlier Stale ones whose passage is back are cleared."""
+    async with sessionmaker() as session, session.begin():
+        sources = await session.scalars(
+            select(EvaluationExpectedSource)
+            .where(EvaluationExpectedSource.document_id == document_id)
+            .with_for_update()
+        )
+        await refresh_stale(session, list(sources))

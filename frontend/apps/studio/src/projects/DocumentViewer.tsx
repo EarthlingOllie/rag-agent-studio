@@ -1,5 +1,5 @@
 import { useParams } from "@tanstack/react-router";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps, Fragment, useState } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -13,6 +13,7 @@ import {
   useChunkPage,
   useClearChunkFlag,
   useDocument,
+  useExpectedSources,
 } from "./documents";
 import { fileType, formatSize, STATUS_LABELS, STATUS_TONES } from "./DocumentsTab";
 
@@ -83,8 +84,35 @@ function FlagNote({ flag, chunk, at }: { flag: NonNullable<Chunk["flag"]>; chunk
   );
 }
 
-function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
+/**
+ * Finds the passages used as Expected sources the way Runs match them, letter case and whitespace
+ * aside, longest first; null when there are none.
+ */
+function passagePattern(passages: string[]): RegExp | null {
+  const words = passages
+    .map((passage) => passage.trim().split(/\s+/).map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+    .sort((a, b) => b.join(" ").length - a.join(" ").length);
+  if (words.length === 0) return null;
+  return new RegExp(`(${words.map((parts) => parts.join("\\s+")).join("|")})`, "giu");
+}
+
+/** The Chunk's text with each passage used as an Expected source marked. */
+function MarkedText({ text, pattern }: { text: string; pattern: RegExp }) {
+  // Splitting on a capturing pattern puts the matches at the odd indexes.
+  return text.split(pattern).map((part, index) =>
+    index % 2 === 1 ? (
+      <mark key={index} title="Used as an Expected source" className="rounded bg-accent-soft px-0.5 text-accent-ink">
+        {part}
+      </mark>
+    ) : (
+      <Fragment key={index}>{part}</Fragment>
+    ),
+  );
+}
+
+function ChunkItem({ chunk, at, passages }: { chunk: Chunk; at: DocumentRef; passages: RegExp | null }) {
   const pages = pageLabel(chunk);
+  const holdsPassage = passages !== null && chunk.text.search(passages) !== -1;
   // A flagged Chunk's card is edged in the flag colour and badged, so it stands out while scrolling.
   const border = chunk.flag ? "border-flag" : "border-line";
   return (
@@ -92,11 +120,14 @@ function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
       <p className="flex items-center gap-2 font-mono text-xs text-muted">
         Chunk {chunk.ordinal + 1}
         {chunk.flag && <Badge kind="flagged" />}
+        {holdsPassage && <Badge kind="expectedSource" />}
       </p>
       {chunk.heading_path.length > 0 && <p className="font-medium text-ink">{chunk.heading_path.join(" › ")}</p>}
       {pages && <p className="text-xs text-muted">{pages}</p>}
       {chunk.flag && <FlagNote flag={chunk.flag} chunk={chunk} at={at} />}
-      <p className="whitespace-pre-wrap text-ink-2">{chunk.text}</p>
+      <p className="whitespace-pre-wrap text-ink-2">
+        {holdsPassage ? <MarkedText text={chunk.text} pattern={passages} /> : chunk.text}
+      </p>
     </li>
   );
 }
@@ -104,6 +135,8 @@ function ChunkItem({ chunk, at }: { chunk: Chunk; at: DocumentRef }) {
 function ChunkList({ organisationId, projectId, documentId }: { organisationId: string; projectId: string; documentId: string }) {
   const [page, setPage] = useState(0);
   const chunks = useChunkPage(organisationId, projectId, documentId, page);
+  const expected = useExpectedSources(organisationId, projectId, documentId);
+  const passages = passagePattern(expected.data?.passages ?? []);
 
   let body;
   if (chunks.isError) {
@@ -122,7 +155,7 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
         </p>
         <ol aria-label="Chunks on this page" className="flex flex-col gap-3">
           {items.map((chunk) => (
-            <ChunkItem key={chunk.id} chunk={chunk} at={{ organisationId, projectId, documentId }} />
+            <ChunkItem key={chunk.id} chunk={chunk} at={{ organisationId, projectId, documentId }} passages={passages} />
           ))}
         </ol>
         <Pagination
@@ -188,7 +221,8 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
 /**
  * The Document viewer: Docling's converted markdown beside the Document's Chunks, each on a card
  * with its heading path and pages, so an Editor sees exactly what an Agent can retrieve. Chunks the
- * ingestion Guardrail scan flagged are badged and say why.
+ * ingestion Guardrail scan flagged are badged and say why; Chunks holding a passage used as an
+ * Expected source are badged and the passage marked.
  */
 export function DocumentViewer() {
   const { organisationId, projectId, documentId } = useParams({

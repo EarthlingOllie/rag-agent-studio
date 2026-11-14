@@ -44,7 +44,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
 from app.agents.config import AgentConfig
-from app.agents.models import AgentVersion
+from app.agents.models import Agent, AgentVersion
 from app.agents.resolution import (
     NoDefaultModelError,
     ProviderCredentialGoneError,
@@ -598,6 +598,46 @@ async def delete_case(
     )
     await session.delete(case)
     await session.commit()
+
+
+@dataclass(frozen=True)
+class DependentAgent:
+    agent_id: uuid.UUID
+    name: str
+    # How many of its cases hold an Expected source in the Document.
+    case_count: int
+
+
+@dataclass(frozen=True)
+class Dependents:
+    """Who holds an Expected source in a Document: the Expected source warning's facts."""
+
+    # By Agent name.
+    agents: list[DependentAgent]
+    # Every distinct passage of the Document used as an Expected source, in code-point order.
+    passages: list[str]
+
+
+async def expected_source_dependents(
+    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+) -> Dependents:
+    """The Agents and case counts holding an Expected source in the Document, and its passages,
+    for the Studio to warn before the Document is deleted or a new Edition uploaded."""
+    document = await get_document(session, scope, project_id, document_id)
+    held = EvaluationExpectedSource.document_id == document.id
+    rows = await session.execute(
+        select(Agent.id, Agent.name, func.count(func.distinct(EvaluationCase.id)))
+        .join(EvaluationCase, EvaluationCase.agent_id == Agent.id)
+        .join(EvaluationExpectedSource, EvaluationExpectedSource.case_id == EvaluationCase.id)
+        .where(held)
+        .group_by(Agent.id, Agent.name)
+        .order_by(Agent.name, Agent.id)
+    )
+    passages = await session.scalars(select(EvaluationExpectedSource.passage).where(held))
+    return Dependents(
+        [DependentAgent(agent_id, name, count) for agent_id, name, count in rows],
+        sorted(set(passages)),
+    )
 
 
 @dataclass(frozen=True)

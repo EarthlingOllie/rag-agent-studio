@@ -588,6 +588,12 @@ PROJECT_SCOPED_ROUTES = [
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/download", EDITOR, _a_document
     ),
     ScopedRoute(
+        "GET",
+        PROJECTS + "/{project_id}/documents/{document_id}/expected-sources",
+        EDITOR,
+        _a_document,
+    ),
+    ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
     ),
     ScopedRoute("GET", PROJECTS + "/{project_id}/uploads/limits", EDITOR, _a_project),

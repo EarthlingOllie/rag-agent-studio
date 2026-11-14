@@ -794,7 +794,7 @@ One standalone question in an Evaluation Set (no earlier turns), with at least o
 _Avoid_: Test case, golden question, eval
 
 **Expected source**:
-A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, and each Run): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
+A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, each Run, and as soon as a new Edition of the Document is swapped in): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
 _Avoid_: Ground truth chunk, expected chunk
 
 **Reference answer**:
@@ -818,7 +818,7 @@ An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the 
 _Avoid_: Score, grade, judgement
 
 **Stale expectation**:
-An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
+An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. It is flagged as soon as the Document is deleted or the new Edition is swapped in, and cleared if a later Edition holds the passage again. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
 _Avoid_: Broken case, invalid source
 
 **Rollout evaluation**:

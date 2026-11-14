@@ -43,6 +43,7 @@ from app.documents.models import (
     StagedEdition,
 )
 from app.documents.pipeline import stored_keys
+from app.evaluation.models import EvaluationExpectedSource, StaleReason
 from app.projects import service as projects
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
@@ -616,7 +617,8 @@ async def delete_document(
     now: datetime,
 ) -> list[str]:
     """Deletes the Document and its Chunks in one transaction, so retrieval stops at once, and
-    records ``document.deleted``. Returns its stored objects (originals and converted markdown,
+    records ``document.deleted``. Its Expected sources become Stale expectations
+    (``document_deleted``). Returns its stored objects (originals and converted markdown,
     of the current and any staged edition) for the caller to schedule deletion of."""
     project = await projects.active_project(session, scope, project_id)
     document = await session.scalar(
@@ -636,6 +638,12 @@ async def delete_document(
         update(MessageRetrieval)
         .where(MessageRetrieval.document_id == document.id)
         .values(document_id=None, chunk_id=None)
+    )
+    # Its Expected sources become Stale expectations at once, keeping its name for display.
+    await session.execute(
+        update(EvaluationExpectedSource)
+        .where(EvaluationExpectedSource.document_id == document.id)
+        .values(document_id=None, stale=True, stale_reason=StaleReason.DOCUMENT_DELETED)
     )
     await audit.record(
         session,

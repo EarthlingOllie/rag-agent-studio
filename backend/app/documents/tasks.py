@@ -3,6 +3,7 @@ Document is retried; the task re-enqueues itself, after a backoff, for transient
 
 import asyncio
 import uuid
+from functools import partial
 
 import httpx2
 
@@ -10,6 +11,7 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
 from app.documents import pipeline
 from app.documents.ports import current_ports
+from app.evaluation.expectations import recheck_document
 from app.worker.celery_app import celery_app
 
 INGEST_TASK = "documents.ingest"
@@ -20,15 +22,17 @@ async def _ingest(document_id: uuid.UUID, attempt_number: int) -> float | None:
     settings = load_settings()
     engine = create_engine(settings)
     ports = current_ports()
+    sessionmaker = create_sessionmaker(engine)
     try:
         async with httpx2.AsyncClient(timeout=settings.model_timeout_seconds) as client:
             return await pipeline.ingest(
-                create_sessionmaker(engine),
+                sessionmaker,
                 ports,
                 ports.open_gateway(client),
                 document_id,
                 chunk_max_tokens=settings.chunk_max_tokens,
                 delete_objects=enqueue_object_deletion,
+                on_new_edition=partial(recheck_document, sessionmaker),
                 attempt=pipeline.Attempt(
                     number=attempt_number,
                     max_attempts=settings.ingestion_max_attempts,

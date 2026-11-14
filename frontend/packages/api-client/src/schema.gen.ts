@@ -2031,6 +2031,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/expected-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expected Source Dependents
+         * @description The Agents, by name, and how many of their cases hold an Expected source in the Document
+         *     (the Expected source warning before it is deleted or a new Edition uploaded), and the
+         *     distinct passages used, for the Document viewer to mark.
+         */
+        get: operations["getExpectedSourceDependents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
         parameters: {
             query?: never;
@@ -3568,6 +3590,18 @@ export interface components {
             /** Confirm Name */
             confirm_name: string;
         };
+        /** DependentAgentOut */
+        DependentAgentOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Case Count */
+            case_count: number;
+            /** Name */
+            name: string;
+        };
         /** DiffLineOut */
         DiffLineOut: {
             /**
@@ -3799,6 +3833,13 @@ export interface components {
          * @enum {string}
          */
         ExpectationKind: "expected_source" | "reference_answer" | "fallback";
+        /** ExpectedSourceDependentsOut */
+        ExpectedSourceDependentsOut: {
+            /** Agents */
+            agents: components["schemas"]["DependentAgentOut"][];
+            /** Passages */
+            passages: string[];
+        };
         /** ExpectedSourceIn */
         ExpectedSourceIn: {
             /**
@@ -11655,6 +11696,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getExpectedSourceDependents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpectedSourceDependentsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

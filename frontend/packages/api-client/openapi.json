@@ -2540,6 +2540,30 @@
         "title": "DeleteProjectRequest",
         "type": "object"
       },
+      "DependentAgentOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "case_count": {
+            "title": "Case Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "case_count"
+        ],
+        "title": "DependentAgentOut",
+        "type": "object"
+      },
       "DiffLineOut": {
         "properties": {
           "op": {
@@ -3212,6 +3236,30 @@
         ],
         "title": "ExpectationKind",
         "type": "string"
+      },
+      "ExpectedSourceDependentsOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/DependentAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "passages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agents",
+          "passages"
+        ],
+        "title": "ExpectedSourceDependentsOut",
+        "type": "object"
       },
       "ExpectedSourceIn": {
         "properties": {
@@ -18444,6 +18492,80 @@
         "summary": "Replace Document",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/expected-sources": {
+      "get": {
+        "description": "The Agents, by name, and how many of their cases hold an Expected source in the Document\n(the Expected source warning before it is deleted or a new Edition uploaded), and the\ndistinct passages used, for the Document viewer to mark.",
+        "operationId": "getExpectedSourceDependents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedSourceDependentsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Expected Source Dependents",
+        "tags": [
+          "evaluation"
         ]
       }
     },

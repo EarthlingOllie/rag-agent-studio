@@ -52,6 +52,7 @@ from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneErr
 from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
+from app.documents.service import DocumentNotFoundError
 from app.evaluation import from_message, service
 from app.evaluation.combining import Repeat, SideResult
 from app.evaluation.models import (
@@ -861,4 +862,45 @@ async def get_run_results(
             )
             for case in cases
         ],
+    )
+
+
+documents_router = APIRouter(
+    prefix=ORGANISATION_PREFIX + "/projects/{project_id}/documents/{document_id}",
+    tags=["evaluation"],
+)
+
+
+class DependentAgentOut(BaseModel):
+    agent_id: uuid.UUID
+    name: str
+    case_count: int
+
+
+class ExpectedSourceDependentsOut(BaseModel):
+    agents: list[DependentAgentOut]
+    passages: list[str]
+
+
+@documents_router.get(
+    "/expected-sources",
+    operation_id="getExpectedSourceDependents",
+    responses=NOT_FOUND_RESPONSE,
+)
+async def get_expected_source_dependents(
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
+) -> ExpectedSourceDependentsOut:
+    """The Agents, by name, and how many of their cases hold an Expected source in the Document
+    (the Expected source warning before it is deleted or a new Edition uploaded), and the
+    distinct passages used, for the Document viewer to mark."""
+    try:
+        found = await service.expected_source_dependents(db, scope, project_id, document_id)
+    except (ProjectNotFoundError, DocumentNotFoundError):
+        raise not_found() from None
+    return ExpectedSourceDependentsOut(
+        agents=[
+            DependentAgentOut(agent_id=a.agent_id, name=a.name, case_count=a.case_count)
+            for a in found.agents
+        ],
+        passages=found.passages,
     )
