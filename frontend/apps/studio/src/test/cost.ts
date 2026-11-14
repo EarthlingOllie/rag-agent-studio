@@ -8,20 +8,20 @@ type CostRow = Schemas["CostRowOut"];
 const handbook = { project_id: "c0570000-0000-4000-8000-000000000001", project_name: "Handbook" };
 const payroll = { project_id: "c0570000-0000-4000-8000-000000000002", project_name: "Payroll" };
 
-/** By Project: the Handbook was used by Visitors and in the Playground; Payroll only by Visitors. */
+/** By Project: the Handbook was used by Visitors, in the Playground and evaluated; Payroll only by Visitors. */
 export const byProject: CostRow[] = [
-  { ...handbook, agent_id: null, agent_name: null, visitor_usd: "12.500000000", playground_usd: "0.004200000", total_usd: "12.504200000" },
-  { ...payroll, agent_id: null, agent_name: null, visitor_usd: "0.003000000", playground_usd: "0.000000000", total_usd: "0.003000000" },
+  { ...handbook, agent_id: null, agent_name: null, visitor_usd: "12.500000000", playground_usd: "0.004200000", evaluation_usd: "0.036000000", total_usd: "12.540200000" },
+  { ...payroll, agent_id: null, agent_name: null, visitor_usd: "0.003000000", playground_usd: "0.000000000", evaluation_usd: "0.000000000", total_usd: "0.003000000" },
 ];
 
-/** By Agent: two of the Handbook's Agents (one tried only in the Playground) and Payroll's. */
+/** By Agent: two of the Handbook's Agents (the evaluated one, and one tried only in the Playground) and Payroll's. */
 export const byAgent: CostRow[] = [
-  { ...handbook, agent_id: "a9e00000-0000-4000-8000-000000000001", agent_name: "HR helper", visitor_usd: "12.500000000", playground_usd: "0.000000000", total_usd: "12.500000000" },
-  { ...handbook, agent_id: "a9e00000-0000-4000-8000-000000000002", agent_name: "Tried once", visitor_usd: "0.000000000", playground_usd: "0.004200000", total_usd: "0.004200000" },
-  { ...payroll, agent_id: "a9e00000-0000-4000-8000-000000000003", agent_name: "Payroll helper", visitor_usd: "0.003000000", playground_usd: "0.000000000", total_usd: "0.003000000" },
+  { ...handbook, agent_id: "a9e00000-0000-4000-8000-000000000001", agent_name: "HR helper", visitor_usd: "12.500000000", playground_usd: "0.000000000", evaluation_usd: "0.036000000", total_usd: "12.536000000" },
+  { ...handbook, agent_id: "a9e00000-0000-4000-8000-000000000002", agent_name: "Tried once", visitor_usd: "0.000000000", playground_usd: "0.004200000", evaluation_usd: "0.000000000", total_usd: "0.004200000" },
+  { ...payroll, agent_id: "a9e00000-0000-4000-8000-000000000003", agent_name: "Payroll helper", visitor_usd: "0.003000000", playground_usd: "0.000000000", evaluation_usd: "0.000000000", total_usd: "0.003000000" },
 ];
 
-function total(rows: CostRow[], key: "visitor_usd" | "playground_usd" | "total_usd"): string {
+function total(rows: CostRow[], key: "visitor_usd" | "playground_usd" | "evaluation_usd" | "total_usd"): string {
   return rows.reduce((sum, row) => sum + Number(row[key]), 0).toFixed(9);
 }
 
@@ -44,7 +44,12 @@ export function fakeCostApi(options: { rows?: { project: CostRow[]; agent: CostR
         end,
         group_by: groupBy,
         rows: shown,
-        total: { visitor_usd: total(shown, "visitor_usd"), playground_usd: total(shown, "playground_usd"), total_usd: total(shown, "total_usd") },
+        total: {
+          visitor_usd: total(shown, "visitor_usd"),
+          playground_usd: total(shown, "playground_usd"),
+          evaluation_usd: total(shown, "evaluation_usd"),
+          total_usd: total(shown, "total_usd"),
+        },
       });
     }),
   );

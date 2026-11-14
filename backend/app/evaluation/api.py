@@ -35,6 +35,8 @@ case in the set shows its latest result.
 """
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
@@ -65,7 +67,7 @@ from app.evaluation.models import (
     SideKind,
 )
 from app.evaluation.tasks import enqueue_run
-from app.playground.api import CREDENTIAL_GONE, NO_DEFAULT_MODEL, TraceOut
+from app.playground.api import CREDENTIAL_GONE, NO_DEFAULT_MODEL, Dollars, TraceOut
 from app.projects.instructions import InstructionsVersionNotFoundError
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.tenancy.api import ORGANISATION_PREFIX
@@ -164,6 +166,17 @@ _START_RESPONSES: dict[int | str, dict[str, Any]] = {
             "or the chosen Instructions Version isn't the Project's."
         ),
     },
+}
+_ESTIMATE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {
+        "model": ErrorResponse,
+        "description": (
+            "The Project or Agent is archived, the Evaluation Set is empty, there is no Default "
+            "Model, or a side names a Provider Credential that no longer exists."
+        ),
+    },
+    422: _START_RESPONSES[422],
 }
 _CANCEL_RESPONSES: dict[int | str, dict[str, Any]] = {
     **NOT_FOUND_RESPONSE,
@@ -314,6 +327,30 @@ class RunSideOut(BaseModel):
     score: float | None
 
 
+class EstimateOut(BaseModel):
+    """What a Run is expected to cost: the cases, times the sides, times the repeats, times each
+    side's mean Cost per reply over the last 30 days (its model's prices and a fixed token
+    allowance with no history), plus judging every answer at the judge's prices and the same
+    allowance."""
+
+    cases: int
+    sides: int
+    repeats: int
+    # In US dollars; null when a price it needs is unknown.
+    answers_usd: Dollars | None
+    judging_usd: Dollars | None
+    total_usd: Dollars | None
+
+
+class RunCostOut(BaseModel):
+    # The estimate shown before it started; null when a price it needed was unknown.
+    estimated_usd: Dollars | None
+    # What it actually cost so far, at the prices frozen as each answer and judgement ran.
+    answers_usd: Dollars
+    judging_usd: Dollars
+    total_usd: Dollars
+
+
 class RunOut(BaseModel):
     id: uuid.UUID
     # ``queued``, ``running``, ``completed``, ``failed`` or ``cancelled``.
@@ -330,6 +367,7 @@ class RunOut(BaseModel):
     # Whether it has a Draft side and the Draft has a newer Draft revision since.
     stale: bool
     sides: list[RunSideOut]
+    cost: RunCostOut
 
 
 class VerdictOut(BaseModel):
@@ -445,6 +483,12 @@ def _run_out(detail: service.RunDetail) -> RunOut:
         repeats=run.repeats,
         error_message=run.error_message,
         stale=detail.stale,
+        cost=RunCostOut(
+            estimated_usd=run.estimated_cost_usd,
+            answers_usd=detail.answers_cost_usd,
+            judging_usd=detail.judging_cost_usd,
+            total_usd=detail.answers_cost_usd + detail.judging_cost_usd,
+        ),
         sides=[
             RunSideOut(
                 position=side.position,
@@ -696,39 +740,21 @@ async def prefill_case(
     )
 
 
-@router.post(
-    "/runs",
-    status_code=status.HTTP_202_ACCEPTED,
-    operation_id="startEvaluationRun",
-    responses=_START_RESPONSES,
-)
-async def start_run(
-    project_id: uuid.UUID,
-    agent_id: uuid.UUID,
-    scope: Scope,
-    db: Db,
-    clock: ClockDep,
-    body: RunIn | None = None,
-) -> RunOut:
-    """Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
-    (the Draft alone while the Agent has never been Published). Poll it until it is
-    ``completed``, ``failed`` or ``cancelled``."""
-    choice = body or RunIn()
+def _choices(choice: RunIn) -> dict[str, Any]:
+    return {
+        "sides": None
+        if choice.sides is None
+        else [service.SideChoice(SideKind(side.kind), side.version_id) for side in choice.sides],
+        "instructions_version_id": choice.instructions_version_id,
+        "instructions_draft": choice.instructions_draft,
+    }
+
+
+@contextmanager
+def _start_refused() -> Iterator[None]:
+    """Turns what refuses starting (or estimating) a Run into its HTTP error."""
     try:
-        run = await service.start_run(
-            db,
-            scope,
-            project_id,
-            agent_id,
-            sides=None
-            if choice.sides is None
-            else [
-                service.SideChoice(SideKind(side.kind), side.version_id) for side in choice.sides
-            ],
-            instructions_version_id=choice.instructions_version_id,
-            instructions_draft=choice.instructions_draft,
-            now=clock.now(),
-        )
+        yield
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
@@ -753,6 +779,54 @@ async def start_run(
         ) from None
     except ProviderCredentialGoneError:
         raise HTTPException(status.HTTP_409_CONFLICT, CREDENTIAL_GONE) from None
+
+
+@router.post("/estimate", operation_id="estimateEvaluationRun", responses=_ESTIMATE_RESPONSES)
+async def estimate_run(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    body: RunIn | None = None,
+) -> EstimateOut:
+    """The estimated Cost of starting a Run with these choices now, shown before starting it.
+    Nothing is started; refused as starting would be, except while a Run is in progress."""
+    with _start_refused():
+        found = await service.estimate_run(
+            db, scope, project_id, agent_id, **_choices(body or RunIn()), now=clock.now()
+        )
+    return EstimateOut(
+        cases=found.cases,
+        sides=found.sides,
+        repeats=found.repeats,
+        answers_usd=found.answers_usd,
+        judging_usd=found.judging_usd,
+        total_usd=found.total_usd,
+    )
+
+
+@router.post(
+    "/runs",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="startEvaluationRun",
+    responses=_START_RESPONSES,
+)
+async def start_run(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    body: RunIn | None = None,
+) -> RunOut:
+    """Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
+    (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
+    it until it is ``completed``, ``failed`` or ``cancelled``."""
+    with _start_refused():
+        run = await service.start_run(
+            db, scope, project_id, agent_id, **_choices(body or RunIn()), now=clock.now()
+        )
     run_id = run.id
     await enqueue_run(run_id)
     # When tasks run eagerly the Run has moved on in another session: read it afresh.

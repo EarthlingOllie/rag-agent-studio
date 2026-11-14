@@ -25,6 +25,7 @@ export type EvaluationCaseResult = Schemas["CaseResultOut"];
 export type EvaluationCaseSide = Schemas["CaseSideOut"];
 export type EvaluationRunSide = Schemas["RunSideOut"];
 export type EvaluationRunChoice = Schemas["RunIn"];
+export type EvaluationEstimate = Schemas["EstimateOut"];
 
 /** How often the Studio reads a Run again while it is queued or running. */
 export const RUN_POLL_MS = 1500;
@@ -155,6 +156,23 @@ export function useEvaluationRuns(path: AgentPath) {
       return data;
     },
     refetchInterval: (query) => ((query.state.data ?? []).some(inProgress) ? RUN_POLL_MS : false),
+  });
+}
+
+/** The estimated Cost of a Run with these choices, shown before it starts; `null` asks nothing. */
+export function useEvaluationEstimate(path: AgentPath, choice: EvaluationRunChoice | null) {
+  return useQuery({
+    queryKey: [...evaluationKey(path), "estimate", choice],
+    queryFn: async (): Promise<EvaluationEstimate> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/estimate",
+        { params: { path }, body: choice },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    enabled: choice !== null,
+    retry: false,
   });
 }
 

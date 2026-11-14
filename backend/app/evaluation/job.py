@@ -6,7 +6,9 @@ Each answer is a turn of the Guardrail pipeline's ``run_turn`` with no history, 
 effective AgentConfig and Instructions, the models they resolve to and the real retrieval
 scoped to the Agent's Project, exactly as a Visitor reply runs. It creates no Conversation and no
 Message, so Version KPIs, Usage rollups, the Token Budget, Admission control and Rate limits
-never see a Run. The answer, its Trace and its Cost go on the case result.
+never see a Run. The answer, its Trace and its Cost go on the case result, and so does the Cost of
+judging it; both are worked out with the cost function and price table as they are when it runs,
+so a later price change doesn't move a finished Run's Cost.
 
 Each repeat is a fresh answer. Each Expected source gets an ``expected_source`` Verdict and Expect
 Fallback Text a ``fallback`` one, checked without a model (``app.evaluation.expectations``); a
@@ -288,9 +290,10 @@ async def _answer_and_judge(
         return result
     latency_ms = round((clock.now() - started).total_seconds() * 1000)
     now = clock.now()
+    table = await price_table(session)
     pricing = await credential_pricing(session, resolved.chat.credential)
     usage = TokenUsage(answered.input_tokens, answered.output_tokens)
-    result.cost_usd = cost(pricing, resolved.chat.model, usage, now, await price_table(session))
+    result.cost_usd = cost(pricing, resolved.chat.model, usage, now, table)
     result.answer = answered.answer
     result.trace = _trace(result.id, answering, answered, result.cost_usd, latency_ms).model_dump(
         mode="json"
@@ -310,7 +313,7 @@ async def _answer_and_judge(
     if request.asked:
         credential = await session.get_one(ProviderCredential, run.judge_credential_id)
         try:
-            verdicts = await judge(
+            judging = await judge(
                 functools.partial(gateway.chat_model, credential, run.judge_model),
                 run.judge_model,
                 request,
@@ -320,6 +323,11 @@ async def _answer_and_judge(
             result.status = ResultStatus.ERROR
             result.error_reason = error.message
             return result
+        verdicts = judging.verdicts
+        judge_pricing = await credential_pricing(session, credential)
+        result.judge_cost_usd = cost(
+            judge_pricing, run.judge_model, judging.usage, clock.now(), table
+        )
     await session.flush()
     judged = [
         (kind, VerdictOutcome.PASS if verdict.passed else VerdictOutcome.FAIL, verdict.reason)

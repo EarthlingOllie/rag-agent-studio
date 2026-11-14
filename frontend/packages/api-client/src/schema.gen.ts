@@ -473,8 +473,8 @@ export interface paths {
         /**
          * Get Organisation Cost
          * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-         *     366 days), including today's so far, by Project or by Agent. Playground usage is in its own
-         *     column. Owners only.
+         *     366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation
+         *     Runs are each in their own column. Owners only.
          */
         get: operations["getOrganisationCost"];
         put?: never;
@@ -1278,6 +1278,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Estimate Run
+         * @description The estimated Cost of starting a Run with these choices now, shown before starting it.
+         *     Nothing is started; refused as starting would be, except while a Run is in progress.
+         */
+        post: operations["estimateEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/messages/{message_id}/prefill": {
         parameters: {
             query?: never;
@@ -1316,8 +1337,8 @@ export interface paths {
         /**
          * Start Run
          * @description Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
-         *     (the Draft alone while the Agent has never been Published). Poll it until it is
-         *     ``completed``, ``failed`` or ``cancelled``.
+         *     (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
+         *     it until it is ``completed``, ``failed`` or ``cancelled``.
          */
         post: operations["startEvaluationRun"];
         delete?: never;
@@ -3358,6 +3379,8 @@ export interface components {
         };
         /** CostAmountsOut */
         CostAmountsOut: {
+            /** Evaluation Usd */
+            evaluation_usd: string;
             /** Playground Usd */
             playground_usd: string;
             /** Total Usd */
@@ -3384,6 +3407,8 @@ export interface components {
             agent_id: string | null;
             /** Agent Name */
             agent_name: string | null;
+            /** Evaluation Usd */
+            evaluation_usd: string;
             /** Playground Usd */
             playground_usd: string;
             /**
@@ -3806,6 +3831,27 @@ export interface components {
         ErrorResponse: {
             /** Detail */
             detail: string;
+        };
+        /**
+         * EstimateOut
+         * @description What a Run is expected to cost: the cases, times the sides, times the repeats, times each
+         *     side's mean Cost per reply over the last 30 days (its model's prices and a fixed token
+         *     allowance with no history), plus judging every answer at the judge's prices and the same
+         *     allowance.
+         */
+        EstimateOut: {
+            /** Answers Usd */
+            answers_usd: string | null;
+            /** Cases */
+            cases: number;
+            /** Judging Usd */
+            judging_usd: string | null;
+            /** Repeats */
+            repeats: number;
+            /** Sides */
+            sides: number;
+            /** Total Usd */
+            total_usd: string | null;
         };
         /** EvaluationModelOut */
         EvaluationModelOut: {
@@ -5109,6 +5155,17 @@ export interface components {
             /** Unsteady */
             unsteady: boolean;
         };
+        /** RunCostOut */
+        RunCostOut: {
+            /** Answers Usd */
+            answers_usd: string;
+            /** Estimated Usd */
+            estimated_usd: string | null;
+            /** Judging Usd */
+            judging_usd: string;
+            /** Total Usd */
+            total_usd: string;
+        };
         /** RunExpectedSourceOut */
         RunExpectedSourceOut: {
             /** Document Name */
@@ -5130,6 +5187,7 @@ export interface components {
         };
         /** RunOut */
         RunOut: {
+            cost: components["schemas"]["RunCostOut"];
             /**
              * Created At
              * Format: date-time
@@ -9582,6 +9640,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estimateEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstimateOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

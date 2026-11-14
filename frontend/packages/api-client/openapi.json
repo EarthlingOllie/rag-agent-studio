@@ -1962,6 +1962,10 @@
       },
       "CostAmountsOut": {
         "properties": {
+          "evaluation_usd": {
+            "title": "Evaluation Usd",
+            "type": "string"
+          },
           "playground_usd": {
             "title": "Playground Usd",
             "type": "string"
@@ -1978,6 +1982,7 @@
         "required": [
           "visitor_usd",
           "playground_usd",
+          "evaluation_usd",
           "total_usd"
         ],
         "title": "CostAmountsOut",
@@ -2042,6 +2047,10 @@
             ],
             "title": "Agent Name"
           },
+          "evaluation_usd": {
+            "title": "Evaluation Usd",
+            "type": "string"
+          },
           "playground_usd": {
             "title": "Playground Usd",
             "type": "string"
@@ -2067,6 +2076,7 @@
         "required": [
           "visitor_usd",
           "playground_usd",
+          "evaluation_usd",
           "total_usd",
           "project_id",
           "project_name",
@@ -3169,6 +3179,66 @@
           "detail"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EstimateOut": {
+        "description": "What a Run is expected to cost: the cases, times the sides, times the repeats, times each\nside's mean Cost per reply over the last 30 days (its model's prices and a fixed token\nallowance with no history), plus judging every answer at the judge's prices and the same\nallowance.",
+        "properties": {
+          "answers_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers Usd"
+          },
+          "cases": {
+            "title": "Cases",
+            "type": "integer"
+          },
+          "judging_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judging Usd"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          },
+          "sides": {
+            "title": "Sides",
+            "type": "integer"
+          },
+          "total_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Usd"
+          }
+        },
+        "required": [
+          "cases",
+          "sides",
+          "repeats",
+          "answers_usd",
+          "judging_usd",
+          "total_usd"
+        ],
+        "title": "EstimateOut",
         "type": "object"
       },
       "EvaluationModelOut": {
@@ -6622,6 +6692,41 @@
         "title": "RunCaseOut",
         "type": "object"
       },
+      "RunCostOut": {
+        "properties": {
+          "answers_usd": {
+            "title": "Answers Usd",
+            "type": "string"
+          },
+          "estimated_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Usd"
+          },
+          "judging_usd": {
+            "title": "Judging Usd",
+            "type": "string"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "estimated_usd",
+          "answers_usd",
+          "judging_usd",
+          "total_usd"
+        ],
+        "title": "RunCostOut",
+        "type": "object"
+      },
       "RunExpectedSourceOut": {
         "properties": {
           "document_name": {
@@ -6681,6 +6786,9 @@
       },
       "RunOut": {
         "properties": {
+          "cost": {
+            "$ref": "#/components/schemas/RunCostOut"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -6756,7 +6864,8 @@
           "repeats",
           "error_message",
           "stale",
-          "sides"
+          "sides",
+          "cost"
         ],
         "title": "RunOut",
         "type": "object"
@@ -10360,7 +10469,7 @@
     },
     "/api/organisations/{organisation_id}/cost": {
       "get": {
-        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage is in its own\ncolumn. Owners only.",
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation\nRuns are each in their own column. Owners only.",
         "operationId": "getOrganisationCost",
         "parameters": [
           {
@@ -14577,6 +14686,107 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/estimate": {
+      "post": {
+        "description": "The estimated Cost of starting a Run with these choices now, shown before starting it.\nNothing is started; refused as starting would be, except while a Run is in progress.",
+        "operationId": "estimateEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's."
+          }
+        },
+        "summary": "Estimate Run",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/messages/{message_id}/prefill": {
       "get": {
         "description": "A new case from one of the Agent's replies, in the Conversations viewer or the\nPlayground: the question it answered and the passages it cited. Nothing is saved, and a case\nkeeps no link to the Conversation. Refused once the text has been purged.",
@@ -14749,7 +14959,7 @@
         ]
       },
       "post": {
-        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published). Poll it until it is\n``completed``, ``failed`` or ``cancelled``.",
+        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll\nit until it is ``completed``, ``failed`` or ``cancelled``.",
         "operationId": "startEvaluationRun",
         "parameters": [
           {

@@ -50,7 +50,7 @@ def model(function: Any) -> Model:
 
 
 async def test_the_judge_is_given_spotlighted_data_at_temperature_zero() -> None:
-    verdicts = await judge(lambda: model(recording), "judge", REQUEST, timeout_s=5)
+    verdicts = (await judge(lambda: model(recording), "judge", REQUEST, timeout_s=5)).verdicts
 
     assert set(verdicts) == {"reference_answer", "grounding"}
     assert SEEN["settings"]["temperature"] == 0
@@ -73,7 +73,7 @@ async def test_without_a_reference_answer_only_grounding_is_judged() -> None:
     request = JudgeRequest("Q?", "It is so [C1].", [CitedExcerpt("C1", "a.txt", "So.")], None, True)
     fake = fake_chat(Provider.OPENAI, "sk-test", "gpt-4.1-mini")
 
-    verdicts = await judge(lambda: fake, "gpt-4.1-mini", request, timeout_s=5)
+    verdicts = (await judge(lambda: fake, "gpt-4.1-mini", request, timeout_s=5)).verdicts
 
     assert list(verdicts) == ["grounding"]
     assert verdicts["grounding"].passed is True
@@ -110,7 +110,7 @@ def test_a_task_before_the_ports_are_installed_is_refused(monkeypatch: pytest.Mo
 async def test_the_demo_model_judges_by_rule_too() -> None:
     request = JudgeRequest("Q?", "Leave is 25 days.", [], 'It says "25 days".', True)
 
-    verdicts = await judge(lambda: demo_chat_model("demo"), "demo", request, timeout_s=5)
+    verdicts = (await judge(lambda: demo_chat_model("demo"), "demo", request, timeout_s=5)).verdicts
 
     assert verdicts["reference_answer"].passed is True
     # Nothing cited: grounding fails, so the demo judge can fail.

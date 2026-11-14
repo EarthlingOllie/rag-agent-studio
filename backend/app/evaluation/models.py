@@ -197,6 +197,9 @@ class EvaluationRun(IdMixin, Base):
     answers_done: Mapped[int] = mapped_column(Integer, default=0)
     answers_total: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # The estimated Cost shown before it started (``app.evaluation.estimate``), in US dollars;
+    # None when a price it needed is unknown. Its actual Cost is its case results'.
+    estimated_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -283,7 +286,10 @@ class EvaluationCaseResult(IdMixin, Base):
     # The answer's Trace as the Studio reads it (``app.playground.api.TraceOut``), Chunk text
     # included as it was when the Run answered.
     trace: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # What the answer and judging it cost, each frozen with the prices in force when it ran;
+    # None when nothing was spent on it or a price was unknown.
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    judge_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
 
 
 class EvaluationVerdict(IdMixin, Base):

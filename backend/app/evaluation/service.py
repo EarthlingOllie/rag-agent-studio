@@ -38,6 +38,7 @@ import uuid
 from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,7 @@ from app.agents.resolution import (
     resolve_models,
 )
 from app.agents.service import AgentNotFoundError, AgentWithDraft, active_agent, get_agent
+from app.default_model.service import CurrentDefault
 from app.documents.service import DocumentNotFoundError, get_document
 from app.evaluation.combining import (
     CaseOutcome,
@@ -61,6 +63,7 @@ from app.evaluation.combining import (
     score,
     side_result,
 )
+from app.evaluation.estimate import Estimate, EstimateSide, estimate
 from app.evaluation.expectations import refresh_stale
 from app.evaluation.models import (
     IN_PROGRESS,
@@ -711,31 +714,35 @@ async def _in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
     return found is not None
 
 
-async def start_run(
+@dataclass(frozen=True)
+class _Plan:
+    """What a Run of the Agent's set would answer and judge with, and what it would cost."""
+
+    agent: AgentWithDraft
+    cases: list[EvaluationCase]
+    sides: list[_Side]
+    judge: CurrentDefault
+    repeats: int
+    estimate: Estimate
+
+
+async def _plan(
     session: AsyncSession,
     scope: OrganisationScope,
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
     *,
-    sides: Sequence[SideChoice] | None = None,
-    instructions_version_id: uuid.UUID | None = None,
-    instructions_draft: bool = False,
+    sides: Sequence[SideChoice] | None,
+    instructions_version_id: uuid.UUID | None,
+    instructions_draft: bool,
+    starting: bool,
     now: datetime,
-) -> EvaluationRun:
-    """A queued Run of ``sides`` (one or two; by default the Live Version against the Draft, or
-    the Draft alone while the Agent isn't live), the Draft answering with the chosen
-    Instructions, each side answering each case as many times as the Evaluation repeats.
-
-    Refused for an archived Agent, while it has a Run in progress (``RunInProgressError``), for
-    an empty set (``EmptySetError``), for a side that isn't the Agent's
-    (``VersionNotFoundError``) or two sides that are the same (``SameSidesError``), for chosen
-    Instructions that aren't the Project's (``InstructionsVersionNotFoundError``), for a side
-    that can't be resolved (``NoDefaultModelError``, ``ProviderCredentialGoneError``, or
-    ``VersionCredentialGoneError`` naming the Version), and for an Organisation with neither an
-    Evaluation Model nor a Default Model to judge."""
+) -> _Plan:
+    """Resolves a Run's sides, judge and repeats, refusing as ``start_run`` says. When
+    ``starting``, the Agent's row is locked and a Run in progress is refused."""
     project = await active_project(session, scope, project_id)
-    found = await active_agent(session, scope, project_id, agent_id, lock=True)
-    if await _in_progress(session, found.agent.id):
+    found = await active_agent(session, scope, project_id, agent_id, lock=starting)
+    if starting and await _in_progress(session, found.agent.id):
         raise RunInProgressError
     cases = await _cases(session, found.agent.id)
     if not cases:
@@ -762,6 +769,94 @@ async def start_run(
     if judge is None:
         raise NoDefaultModelError
     repeats = (await session.get_one(Organisation, scope.organisation_id)).evaluation_repeats
+    estimated = await estimate(
+        session,
+        [
+            EstimateSide(
+                found.agent.id,
+                None if side.version is None else side.version.id,
+                side.resolved.chat.credential,
+                side.resolved.chat.model,
+            )
+            for side in resolved_sides
+        ],
+        judge.credential,
+        judge.model,
+        cases=len(cases),
+        repeats=repeats,
+        now=now,
+    )
+    return _Plan(found, cases, resolved_sides, judge, repeats, estimated)
+
+
+async def estimate_run(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    sides: Sequence[SideChoice] | None = None,
+    instructions_version_id: uuid.UUID | None = None,
+    instructions_draft: bool = False,
+    now: datetime,
+) -> Estimate:
+    """The estimated Cost of starting a Run with these choices now, refused as ``start_run``
+    would be (except while a Run is in progress)."""
+    plan = await _plan(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        sides=sides,
+        instructions_version_id=instructions_version_id,
+        instructions_draft=instructions_draft,
+        starting=False,
+        now=now,
+    )
+    return plan.estimate
+
+
+async def start_run(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    sides: Sequence[SideChoice] | None = None,
+    instructions_version_id: uuid.UUID | None = None,
+    instructions_draft: bool = False,
+    now: datetime,
+) -> EvaluationRun:
+    """A queued Run of ``sides`` (one or two; by default the Live Version against the Draft, or
+    the Draft alone while the Agent isn't live), the Draft answering with the chosen
+    Instructions, each side answering each case as many times as the Evaluation repeats. Its
+    estimated Cost is stored on it.
+
+    Refused for an archived Agent, while it has a Run in progress (``RunInProgressError``), for
+    an empty set (``EmptySetError``), for a side that isn't the Agent's
+    (``VersionNotFoundError``) or two sides that are the same (``SameSidesError``), for chosen
+    Instructions that aren't the Project's (``InstructionsVersionNotFoundError``), for a side
+    that can't be resolved (``NoDefaultModelError``, ``ProviderCredentialGoneError``, or
+    ``VersionCredentialGoneError`` naming the Version), and for an Organisation with neither an
+    Evaluation Model nor a Default Model to judge."""
+    plan = await _plan(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        sides=sides,
+        instructions_version_id=instructions_version_id,
+        instructions_draft=instructions_draft,
+        starting=True,
+        now=now,
+    )
+    found, cases, resolved_sides, judge, repeats = (
+        plan.agent,
+        plan.cases,
+        plan.sides,
+        plan.judge,
+        plan.repeats,
+    )
     sources = await _sources(session, cases)
     run = EvaluationRun(
         organisation_id=scope.organisation_id,
@@ -774,6 +869,7 @@ async def start_run(
         repeats=repeats,
         answers_done=0,
         answers_total=len(cases) * repeats * len(resolved_sides),
+        estimated_cost_usd=plan.estimate.total_usd,
         created_at=now,
     )
     session.add(run)
@@ -849,6 +945,28 @@ async def cancel_run(
     await session.commit()
 
 
+async def evaluation_cost(
+    session: AsyncSession, organisation_id: uuid.UUID, start: datetime, before: datetime
+) -> dict[uuid.UUID, Decimal]:
+    """What each Agent's Evaluation Runs cost (answers and judging) from ``start`` until
+    ``before``, by when each answer was given, at the prices frozen as each ran. Organisation
+    cost reads it; it never counts in Version KPIs or the Token Budget."""
+    spent = func.coalesce(EvaluationCaseResult.cost_usd, 0) + func.coalesce(
+        EvaluationCaseResult.judge_cost_usd, 0
+    )
+    rows = await session.execute(
+        select(EvaluationRun.agent_id, func.sum(spent))
+        .join(EvaluationRun, EvaluationRun.id == EvaluationCaseResult.run_id)
+        .where(
+            EvaluationCaseResult.organisation_id == organisation_id,
+            EvaluationCaseResult.created_at >= start,
+            EvaluationCaseResult.created_at < before,
+        )
+        .group_by(EvaluationRun.agent_id)
+    )
+    return {agent_id: Decimal(total) for agent_id, total in rows}
+
+
 async def list_runs(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
 ) -> list[EvaluationRun]:
@@ -910,6 +1028,10 @@ class RunDetail:
     scores: dict[uuid.UUID, Score]
     # Whether it has a Draft side and the Draft has a newer Draft revision since.
     stale: bool
+    # Its actual Cost so far, in US dollars, at the prices frozen as each answer and judgement
+    # ran: answering and judging (a call with no known price adds nothing).
+    answers_cost_usd: Decimal
+    judging_cost_usd: Decimal
 
 
 async def _run(
@@ -950,6 +1072,14 @@ async def _run(
         side.kind == SideKind.DRAFT and side.draft_revision != found.draft_revision
         for side in sides
     )
+    answers, judging = (
+        await session.execute(
+            select(
+                func.sum(EvaluationCaseResult.cost_usd),
+                func.sum(EvaluationCaseResult.judge_cost_usd),
+            ).where(EvaluationCaseResult.run_id == run.id)
+        )
+    ).one()
     return RunDetail(
         run,
         sides,
@@ -957,6 +1087,8 @@ async def _run(
         {row.id: row.number for row in versions},
         {},
         stale,
+        answers or Decimal(0),
+        judging or Decimal(0),
     )
 
 

@@ -4,7 +4,8 @@ History markers and the Project's Document changes (a confounder). Days before t
 from the ``usage_daily`` rollups; today, the live partial day, is worked out from the raw
 tables. Playground Conversations never count in either. ``org_cost`` is what the Organisation
 spent over a range of UTC days, by Project or by Agent, with Playground replies' cost in a
-separate column, read from the raw Messages: the rollups never hold Playground usage.
+separate column, read from the raw Messages (the rollups never hold Playground usage), and
+Evaluation Runs' cost in another, read from their case results.
 
 Percentiles come from the merged histograms; Wilson intervals are worked out here, from the
 counts. A KPI whose sample is smaller than ``LOW_CONFIDENCE_BELOW`` is flagged low confidence."""
@@ -30,6 +31,7 @@ from app.analytics.usage import DOLLARS, Only, Usage, day_bounds, usage_on
 from app.audit.models import AuditEvent
 from app.conversations.models import Conversation, Message, MessageRole
 from app.documents.models import Document
+from app.evaluation.service import evaluation_cost
 from app.projects.models import Project
 from app.tenancy.repository import OrganisationScope
 
@@ -160,7 +162,8 @@ class CostGroup(enum.StrEnum):
 @dataclass(frozen=True)
 class CostLine:
     """What one Project (or one Agent, with its Project) cost over the period: its Visitor
-    replies and, separately, its Playground replies, at the prices frozen when each was made."""
+    replies and, separately, its Playground replies and its Evaluation Runs (answers and
+    judging), at the prices frozen when each was made."""
 
     project_id: uuid.UUID
     project_name: str
@@ -168,10 +171,11 @@ class CostLine:
     agent_name: str | None
     visitor_usd: Decimal
     playground_usd: Decimal
+    evaluation_usd: Decimal
 
     @property
     def total_usd(self) -> Decimal:
-        return self.visitor_usd + self.playground_usd
+        return self.visitor_usd + self.playground_usd + self.evaluation_usd
 
 
 async def _visitor_cost(
@@ -229,21 +233,26 @@ async def org_cost(
 ) -> list[CostLine]:
     """What the Organisation spent over the UTC days ``start`` to ``end`` inclusive (``today``
     is the current UTC day), one line per Project or per Agent that replied in the period,
-    most expensive first. Archived Projects and Agents are included: they spent it."""
+    most expensive first. Archived Projects and Agents are included: they spent it. An Agent
+    that only ran Evaluation Runs in the period has a line too."""
     visitor = await _visitor_cost(session, scope.organisation_id, start, end, today)
     playground = await _playground_cost(session, scope.organisation_id, start, end)
+    first, _ = day_bounds(start)
+    _, after = day_bounds(end)
+    evaluation = await evaluation_cost(session, scope.organisation_id, first, after)
     agents = await session.execute(
         select(Agent.id, Agent.name, Project.id, Project.name)
         .join(Project, Project.id == Agent.project_id)
         .where(
             Agent.organisation_id == scope.organisation_id,
-            Agent.id.in_(visitor.keys() | playground.keys()),
+            Agent.id.in_(visitor.keys() | playground.keys() | evaluation.keys()),
         )
     )
     by_agent = group_by is CostGroup.AGENT
     names: dict[uuid.UUID, tuple[uuid.UUID, str, uuid.UUID | None, str | None]] = {}
     visitor_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
     playground_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
+    evaluation_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
     for agent_id, agent_name, project_id, project_name in agents:
         key = agent_id if by_agent else project_id
         names[key] = (
@@ -253,9 +262,13 @@ async def org_cost(
         )
         visitor_usd[key] += visitor.get(agent_id, Decimal(0))
         playground_usd[key] += playground.get(agent_id, Decimal(0))
+        evaluation_usd[key] += evaluation.get(agent_id, Decimal(0))
     lines = [
         CostLine(
-            *names[key], visitor_usd[key].quantize(DOLLARS), playground_usd[key].quantize(DOLLARS)
+            *names[key],
+            visitor_usd[key].quantize(DOLLARS),
+            playground_usd[key].quantize(DOLLARS),
+            evaluation_usd[key].quantize(DOLLARS),
         )
         for key in names
     ]

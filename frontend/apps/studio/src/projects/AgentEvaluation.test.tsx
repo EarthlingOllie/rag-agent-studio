@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { agentVersion, fakeAgentsApi, hrHelper, hrTrace, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import {
+  anEstimate,
   caseSide,
   draftSide,
   erroredResult,
@@ -229,6 +230,71 @@ test("Evaluate starts a Run, the Studio polls its progress, then shows each answ
   expect(within(parking as HTMLElement).queryByRole("group", { name: "Trace" })).not.toBeInTheDocument();
 }, 20_000);
 
+test("the Evaluate dialog shows the estimated Cost before starting, asked again as the sides change", async () => {
+  const user = userEvent.setup();
+  const { estimates } = setUpPublished({ cases: [leaveCase] });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  const estimate = within(dialog).getByRole("status", { name: "Estimated Cost" });
+
+  await waitFor(() => {
+    expect(estimate).toHaveTextContent("About $0.006: answers $0.004, judging $0.002");
+  });
+  expect(dialog).toHaveTextContent(
+    "2 cases × 1 side × 1 repeat, at each side's mean Cost per reply over the last 30 days, plus judging every answer. The Run records what it actually costs.",
+  );
+  // The same side twice asks nothing.
+  await user.selectOptions(within(dialog).getByLabelText("Second side"), "Version 2 (Live)");
+  expect(estimate).toHaveTextContent("Choose two different sides to see the estimated Cost.");
+  await user.selectOptions(within(dialog).getByLabelText("Second side"), "None: the first side runs alone");
+  await waitFor(() => {
+    expect(estimates.at(-1)).toEqual({
+      sides: [{ kind: "version", version_id: agentVersion(2).id }],
+      instructions_draft: false,
+      instructions_version_id: null,
+    });
+  });
+});
+
+test("an estimate of one case on two sides counts them", async () => {
+  const user = userEvent.setup();
+  setUpPublished({ cases: [leaveCase], estimate: { ...anEstimate, cases: 1, sides: 2, repeats: 3 } });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  await waitFor(() => {
+    expect(dialog).toHaveTextContent("1 case × 2 sides × 3 repeats");
+  });
+});
+
+test("an estimate that can't be priced says so", async () => {
+  const user = userEvent.setup();
+  setUp({ cases: [leaveCase], estimate: { ...anEstimate, answers_usd: null, total_usd: null } });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const priced = await screen.findByRole("status", { name: "Estimated Cost" });
+  await waitFor(() => {
+    expect(priced).toHaveTextContent("The Cost can't be estimated: a model this Run uses has no price set.");
+  });
+});
+
+test("a refused estimate says why", async () => {
+  const user = userEvent.setup();
+  setUp({ cases: [leaveCase], estimate: { status: 409, detail: "Add an Evaluation Case before evaluating." } });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  const refused = await screen.findByRole("status", { name: "Estimated Cost" });
+  await waitFor(() => {
+    expect(refused).toHaveTextContent("The Cost could not be estimated. Add an Evaluation Case before evaluating.");
+  });
+});
+
 test("Run detail shows the sides, failing Verdicts with reasons, and each answer's Trace", async () => {
   const user = userEvent.setup();
   setUp({ cases: [leaveCase, parkingCase], runs: [finished] });
@@ -238,10 +304,14 @@ test("Run detail shows the sides, failing Verdicts with reasons, and each answer
   expect(within(runs).getByRole("button", { name: "Run of 2026-11-12 10:00 UTC" })).toHaveAttribute("aria-current", "true");
   expect(runs).toHaveTextContent("Completed");
   expect(runs).toHaveTextContent("2 / 2 answers");
+  // The history list shows each Run's Cost.
+  expect(runs).toHaveTextContent("Cost $0.006");
   const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
   expect(detail).toHaveTextContent(
     "Completed · Draft revision 3 · Instructions v2 · openai gpt-4.1-mini · judged by openai gpt-4.1-mini",
   );
+  // Its actual Cost, split into answers and judging, beside what it was estimated at.
+  expect(detail).toHaveTextContent("Cost $0.006: answers $0.0042, judging $0.0018 (estimated $0.006)");
   const cases = within(detail).getByRole("list", { name: "Cases" });
   const parking = within(cases).getAllByRole("listitem").filter((item) => item.parentElement === cases)[1] as HTMLElement;
   expect(parking).toHaveTextContent("Repeat 1: Fail");
@@ -259,6 +329,8 @@ test("Run detail shows the sides, failing Verdicts with reasons, and each answer
 test("a Run that failed says why; a Run without Project Instructions says so", async () => {
   const failedRun = run("r3000000-0000-4000-8000-000000000003", "failed", 1, 1, {
     error_message: "Every case errored.",
+    // Started when a model's price wasn't set: no estimate, and nothing priced was spent.
+    cost: { estimated_usd: null, answers_usd: "0", judging_usd: "0", total_usd: "0" },
     sides: run("x", "failed", 0, 0).sides.map((side) => ({
       ...side,
       instructions_version_number: null,
@@ -280,6 +352,7 @@ test("a Run that failed says why; a Run without Project Instructions says so", a
 
   const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
   expect(detail).toHaveTextContent("Failed · Draft revision 3 · no Project Instructions");
+  expect(detail).toHaveTextContent("Cost $0.00: answers $0.00, judging $0.00 (no estimate)");
   expect(detail).toHaveTextContent("Evaluation score: none, every case was an Error");
   expect(detail).toHaveTextContent("0 passed, 0 failed, 2 Errors left out of the score");
   expect(within(detail).getAllByRole("alert")[0]).toHaveTextContent("Every case errored.");

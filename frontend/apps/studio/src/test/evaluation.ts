@@ -48,6 +48,7 @@ export function run(id: string, status: Run["status"], done: number, total: numb
     repeats: 1,
     error_message: null,
     stale: false,
+    cost: { estimated_usd: "0.006000000", answers_usd: "0.004200000", judging_usd: "0.001800000", total_usd: "0.006000000" },
     sides: [
       {
         position: "first",
@@ -178,6 +179,16 @@ export const draftSide: Run["sides"][number] = {
 
 export type EvaluationRequest = { route: string; body?: unknown };
 
+/** The Evaluate dialog's default estimate: two cases on one side, once each. */
+export const anEstimate: Schemas["EstimateOut"] = {
+  cases: 2,
+  sides: 1,
+  repeats: 1,
+  answers_usd: "0.004000000",
+  judging_usd: "0.002000000",
+  total_usd: "0.006000000",
+};
+
 /** The latest result a case's filter reads: Unsteady over its majority outcome, or "not_run". */
 function latestKind(c: Case): string {
   if (c.latest_result === null) return "not_run";
@@ -236,9 +247,13 @@ export function fakeEvaluationApi(
     copyDetail?: string;
     /** What "Add to Evaluation Set" reads for a Message, or the status and detail it is refused with. */
     prefill?: Schemas["PrefillOut"] | { status: number; detail: string };
+    /** What the Evaluate dialog's estimate reads (`anEstimate` by default), or the status and detail it is refused with. */
+    estimate?: Schemas["EstimateOut"] | { status: number; detail: string };
   } = {},
 ) {
   const requests: EvaluationRequest[] = [];
+  /** Each choice the estimate was asked about. */
+  const estimates: unknown[] = [];
   let cases = [...(options.cases ?? [])];
   const runs: { states: RunResults[]; read: number }[] = (options.runs ?? []).map((state) => ({ states: [state], read: 0 }));
   const current = (entry: { states: RunResults[]; read: number }) =>
@@ -334,6 +349,12 @@ export function fakeEvaluationApi(
         ? HttpResponse.json({ detail: "Down" }, { status: 500 })
         : HttpResponse.json(runs.map((entry) => current(entry).run)),
     ),
+    http.post(`${base}/estimate`, async ({ request }) => {
+      estimates.push(await request.json());
+      const estimate = options.estimate ?? anEstimate;
+      if ("status" in estimate) return HttpResponse.json({ detail: estimate.detail }, { status: estimate.status });
+      return HttpResponse.json(estimate);
+    }),
     http.post(`${base}/runs`, async ({ request }) => {
       requests.push({ route: "start", body: await request.json() });
       if (options.startStatus) {
@@ -363,5 +384,5 @@ export function fakeEvaluationApi(
       return HttpResponse.json(state);
     }),
   );
-  return { requests };
+  return { requests, estimates };
 }

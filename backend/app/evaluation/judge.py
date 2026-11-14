@@ -8,7 +8,8 @@ prompt-injected answer can't close its block early and vote for itself.
 
 The model returns a pass or fail with a one-sentence reason for each Verdict asked for: the
 ``reference_answer`` (when the case has one) and ``grounding`` (unless the answer is the Fallback
-Text). ``JudgeError`` carries what went wrong when it can't judge.
+Text), and the call's token usage, for its judging Cost. ``JudgeError`` carries what went wrong
+when it can't judge.
 """
 
 import asyncio
@@ -21,6 +22,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
+from app.pricing.table import TokenUsage
 from app.runtime.errors import PROVIDER_ERRORS, provider_error
 
 QUESTION_OPEN = "<<<QUESTION>>>"
@@ -112,6 +114,14 @@ class JudgeRequest:
         return kinds
 
 
+@dataclass(frozen=True)
+class Judging:
+    """What the judge gave: each Verdict asked for, by kind, and the tokens it used."""
+
+    verdicts: dict[Judged, JudgedVerdict]
+    usage: TokenUsage
+
+
 class JudgeError(Exception):
     """The Evaluation Model couldn't judge the answer; ``message`` says why."""
 
@@ -150,8 +160,9 @@ def judge_message(request: JudgeRequest) -> str:
 
 async def judge(
     build: Callable[[], Model], model_name: str, request: JudgeRequest, *, timeout_s: float
-) -> dict[Judged, JudgedVerdict]:
-    """Each Verdict ``request`` asks for, by kind. Raises ``JudgeError``."""
+) -> Judging:
+    """Each Verdict ``request`` asks for, by kind, with the tokens judging used. Raises
+    ``JudgeError``."""
     try:
         agent = Agent(
             build(),
@@ -172,4 +183,5 @@ async def judge(
         if verdict is None:
             raise JudgeError(OFF_SCHEMA)
         verdicts[kind] = JudgedVerdict(passed=verdict.passed, reason=verdict.reason[:REASON_MAX])
-    return verdicts
+    used = result.usage
+    return Judging(verdicts, TokenUsage(used.input_tokens, used.output_tokens))

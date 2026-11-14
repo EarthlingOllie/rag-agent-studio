@@ -42,7 +42,7 @@ test.describe("Organisation cost", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
-    await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Total"]);
+    await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Evaluation", "Total"]);
     await expect(byProject.getByRole("row", { name: /^Cost HR/ })).toBeVisible();
     await expect(byProject.getByRole("row", { name: /^All Projects/ })).toBeVisible();
     await expect(page.getByRole("list", { name: "Spend for the period" }).getByRole("listitem")).toHaveCount(3);

@@ -684,6 +684,7 @@ PROJECT_SCOPED_ROUTES = [
     ),
     ScopedRoute("PUT", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
     ScopedRoute("DELETE", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("POST", _EVALUATION + "/estimate", EDITOR, _an_evaluation_to_start),
     ScopedRoute("POST", _EVALUATION + "/runs", EDITOR, _an_evaluation_to_start),
     ScopedRoute("GET", _EVALUATION + "/runs", EDITOR, _an_evaluation_run),
     ScopedRoute("GET", _EVALUATION + "/runs/{run_id}", EDITOR, _an_evaluation_run),

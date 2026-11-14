@@ -183,6 +183,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "startEvaluationRun": (f"{_EVALUATION}/runs", "post"),
         "listEvaluationRuns": (f"{_EVALUATION}/runs", "get"),
         "getEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}", "get"),
+        "estimateEvaluationRun": (f"{_EVALUATION}/estimate", "post"),
         "getEvaluationRunResults": (f"{_EVALUATION}/runs/{{run_id}}/results", "get"),
         "cancelEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}/cancel", "post"),
         "getExpectedSourceDependents": (

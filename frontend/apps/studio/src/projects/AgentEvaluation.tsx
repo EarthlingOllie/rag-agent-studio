@@ -33,6 +33,7 @@ import {
   type EvaluationRun,
   type EvaluationRunChoice,
   type EvaluationRunSide,
+  useEvaluationEstimate,
   evaluationFailure,
   inProgress,
   NO_CASE_FILTERS,
@@ -44,6 +45,7 @@ import {
   useEvaluationRuns,
   useStartEvaluationRun,
 } from "./evaluation";
+import { dollars } from "./format";
 import { useInstructionsVersions } from "./instructions";
 import { type AgentPath, CaseEditor } from "./EvaluationCaseEditor";
 import { ExpectationSummary, StaleBadge } from "./EvaluationExpectations";
@@ -198,6 +200,15 @@ function outcomeWord(result: EvaluationCaseResult): string {
 }
 
 const repeatsWord = (repeats: number) => (repeats === 1 ? "1 repeat" : `${String(repeats)} repeats`);
+const casesWord = (cases: number) => (cases === 1 ? "1 case" : `${String(cases)} cases`);
+const sidesWord = (sides: number) => (sides === 1 ? "1 side" : `${String(sides)} sides`);
+
+/** What a Run actually cost, split into answers and judging, and what it was estimated at. */
+function costSummary(run: EvaluationRun): string {
+  const { cost } = run;
+  const estimate = cost.estimated_usd === null ? "no estimate" : `estimated ${dollars(cost.estimated_usd)}`;
+  return `Cost ${dollars(cost.total_usd)}: answers ${dollars(cost.answers_usd)}, judging ${dollars(cost.judging_usd)} (${estimate})`;
+}
 
 /** A side's Evaluation score, and the cases behind it, Errors left out. */
 function Score({ side, named }: { side: EvaluationRunSide; named: boolean }) {
@@ -322,6 +333,7 @@ function RunDetail({ path, runId, readOnly }: { path: AgentPath; runId: string; 
           <p className={text.muted}>
             <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model} · {repeatsWord(run.repeats)}
           </p>
+          <p className={text.muted}>{costSummary(run)}</p>
         </div>
         {inProgress(run) && !readOnly && (
           <button
@@ -413,6 +425,7 @@ function RunList({ runs, chosen, onChoose }: { runs: EvaluationRun[]; chosen: st
           <span className="font-mono text-xs text-muted">
             {run.progress.done} / {run.progress.total} answers
           </span>
+          <span className="font-mono text-xs text-muted">Cost {dollars(run.cost.total_usd)}</span>
         </li>
       ))}
     </ul>
@@ -423,6 +436,35 @@ const DRAFT_SIDE = "draft";
 const NO_SECOND_SIDE = "";
 const CURRENT_INSTRUCTIONS = "current";
 const INSTRUCTIONS_DRAFT = "instructions-draft";
+
+/** The estimated Cost of the Run the Evaluate dialog would start, read again as the choices change. */
+function EstimatedCost({ path, choice }: { path: AgentPath; choice: EvaluationRunChoice | null }) {
+  const estimate = useEvaluationEstimate(path, choice);
+  let figure: string;
+  let hint: string | null = null;
+  if (choice === null) {
+    figure = "Choose two different sides to see the estimated Cost.";
+  } else if (estimate.isError) {
+    figure = `The Cost could not be estimated. ${evaluationFailure(estimate.error) as string}`;
+  } else if (estimate.data === undefined) {
+    figure = "Estimating the Cost…";
+  } else if (estimate.data.total_usd === null || estimate.data.answers_usd === null || estimate.data.judging_usd === null) {
+    figure = "The Cost can't be estimated: a model this Run uses has no price set.";
+  } else {
+    const { cases, sides, repeats } = estimate.data;
+    figure = `About ${dollars(estimate.data.total_usd)}: answers ${dollars(estimate.data.answers_usd)}, judging ${dollars(estimate.data.judging_usd)}`;
+    hint = `${casesWord(cases)} × ${sidesWord(sides)} × ${repeatsWord(repeats)}, at each side's mean Cost per reply over the last 30 days, plus judging every answer. The Run records what it actually costs.`;
+  }
+  return (
+    <div>
+      <p className={field.label}>Estimated Cost</p>
+      <p role="status" aria-label="Estimated Cost" className="mt-1 text-sm text-ink">
+        {figure}
+      </p>
+      {hint !== null && <p className={field.hint}>{hint}</p>}
+    </div>
+  );
+}
 
 /**
  * The Evaluate dialog: the two sides (the Live Version against the Draft by default, or the Draft
@@ -460,20 +502,18 @@ function EvaluateDialog({
   ];
   const history = instructions.data;
   const current = history?.versions.find((version) => version.id === history.current_version_id);
+  const side = (value: string): NonNullable<EvaluationRunChoice["sides"]>[number] =>
+    value === DRAFT_SIDE ? { kind: "draft" } : { kind: "version", version_id: value };
+  const choice: EvaluationRunChoice = {
+    sides: second === NO_SECOND_SIDE ? [side(first)] : [side(first), side(second)],
+    instructions_draft: draftInstructions === INSTRUCTIONS_DRAFT,
+    instructions_version_id:
+      draftInstructions === CURRENT_INSTRUCTIONS || draftInstructions === INSTRUCTIONS_DRAFT ? null : draftInstructions,
+  };
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
-    const side = (value: string): NonNullable<EvaluationRunChoice["sides"]>[number] =>
-      value === DRAFT_SIDE ? { kind: "draft" } : { kind: "version", version_id: value };
-    const chosenVersion = draftInstructions === CURRENT_INSTRUCTIONS || draftInstructions === INSTRUCTIONS_DRAFT ? null : draftInstructions;
-    start.mutate(
-      {
-        sides: second === NO_SECOND_SIDE ? [side(first)] : [side(first), side(second)],
-        instructions_draft: draftInstructions === INSTRUCTIONS_DRAFT,
-        instructions_version_id: chosenVersion,
-      },
-      { onSuccess: (run) => { onStarted(run.id); } },
-    );
+    start.mutate(choice, { onSuccess: (run) => { onStarted(run.id); } });
   }
 
   return (
@@ -563,6 +603,7 @@ function EvaluateDialog({
             <p className={field.hint}>A Version always answers with the Instructions it pins.</p>
           </div>
         )}
+        <EstimatedCost path={path} choice={same ? null : choice} />
       </form>
     </Dialog>
   );

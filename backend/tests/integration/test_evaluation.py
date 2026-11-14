@@ -484,20 +484,15 @@ async def test_answering_creates_no_conversation_and_leaves_kpis_and_budget_alon
     agent = {"project_id": project_id, "id": agent_id}
     metrics_path = f"{project_path(owner, project_id)}/agents/{agent_id}/metrics"
     conversations_path = f"{project_path(owner, project_id)}/conversations"
-    cost_path = f"/api/organisations/{owner.organisation_id}/cost"
-    before = [
-        (await owner.client.get(path)).json()
-        for path in (metrics_path, conversations_path, cost_path)
-    ]
+    before = [(await owner.client.get(path)).json() for path in (metrics_path, conversations_path)]
     budget_before = await usage(owner, agent)
 
     result = only_result(await evaluated(owner, project_id, agent_id))
 
     assert result["status"] == "answered"
-    after = [
-        (await owner.client.get(path)).json()
-        for path in (metrics_path, conversations_path, cost_path)
-    ]
+    # Its Cost counts only in Organisation cost's Evaluation column
+    # (``test_evaluation_cost``).
+    after = [(await owner.client.get(path)).json() for path in (metrics_path, conversations_path)]
     assert after == before
     assert before[1]["items"] == []
     assert await usage(owner, agent) == budget_before
