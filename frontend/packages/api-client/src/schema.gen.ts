@@ -2900,6 +2900,13 @@ export interface components {
         };
         /** CaseIn */
         CaseIn: {
+            /**
+             * Expect Fallback
+             * @default false
+             */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources?: components["schemas"]["ExpectedSourceIn"][];
             /** Question */
             question: string;
             /** Reference Answer */
@@ -2912,6 +2919,10 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Expect Fallback */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources: components["schemas"]["ExpectedSourceOut"][];
             /**
              * Id
              * Format: uuid
@@ -2924,6 +2935,8 @@ export interface components {
             reference_answer: string | null;
             /** Source */
             source: string;
+            /** Stale */
+            stale: boolean;
             /**
              * Updated At
              * Format: date-time
@@ -3722,6 +3735,34 @@ export interface components {
             evaluation_model: components["schemas"]["EvaluationModelOut"] | null;
             /** Repeats */
             repeats: number;
+        };
+        /** ExpectedSourceIn */
+        ExpectedSourceIn: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Passage */
+            passage: string;
+        };
+        /** ExpectedSourceOut */
+        ExpectedSourceOut: {
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Passage */
+            passage: string;
+            /** Stale */
+            stale: boolean;
+            /** Stale Reason */
+            stale_reason: string | null;
         };
         /** Experience */
         "Experience-Input": {
@@ -4902,6 +4943,10 @@ export interface components {
             case_id: string | null;
             /** Change */
             change: string | null;
+            /** Expect Fallback */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources: components["schemas"]["RunExpectedSourceOut"][];
             /** Question */
             question: string;
             /** Reference Answer */
@@ -4910,8 +4955,17 @@ export interface components {
             results: components["schemas"]["CaseResultOut"][];
             /** Sides */
             sides: components["schemas"]["CaseSideOut"][];
+            /** Stale Expectation */
+            stale_expectation: boolean;
             /** Unsteady */
             unsteady: boolean;
+        };
+        /** RunExpectedSourceOut */
+        RunExpectedSourceOut: {
+            /** Document Name */
+            document_name: string;
+            /** Passage */
+            passage: string;
         };
         /** RunIn */
         RunIn: {
@@ -9167,7 +9221,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The question is empty or too long, or the case has no expectation. */
+            /** @description The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's. */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9264,7 +9318,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The question is empty or too long, or the case has no expectation. */
+            /** @description The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's. */
             422: {
                 headers: {
                     [name: string]: unknown;

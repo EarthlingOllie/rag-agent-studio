@@ -821,6 +821,19 @@
       },
       "CaseIn": {
         "properties": {
+          "expect_fallback": {
+            "default": false,
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectedSourceIn"
+            },
+            "maxItems": 20,
+            "title": "Expected Sources",
+            "type": "array"
+          },
           "question": {
             "maxLength": 4000,
             "minLength": 1,
@@ -852,6 +865,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "expect_fallback": {
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectedSourceOut"
+            },
+            "title": "Expected Sources",
+            "type": "array"
           },
           "id": {
             "format": "uuid",
@@ -887,6 +911,10 @@
             "title": "Source",
             "type": "string"
           },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -897,6 +925,9 @@
           "id",
           "question",
           "reference_answer",
+          "expected_sources",
+          "expect_fallback",
+          "stale",
           "source",
           "created_at",
           "updated_at",
@@ -3146,6 +3177,81 @@
           "repeats"
         ],
         "title": "EvaluationSettingsOut",
+        "type": "object"
+      },
+      "ExpectedSourceIn": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "passage": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Passage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "passage"
+        ],
+        "title": "ExpectedSourceIn",
+        "type": "object"
+      },
+      "ExpectedSourceOut": {
+        "properties": {
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Reason"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "document_name",
+          "passage",
+          "stale",
+          "stale_reason"
+        ],
+        "title": "ExpectedSourceOut",
         "type": "object"
       },
       "Experience-Input": {
@@ -6264,6 +6370,17 @@
             ],
             "title": "Change"
           },
+          "expect_fallback": {
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/RunExpectedSourceOut"
+            },
+            "title": "Expected Sources",
+            "type": "array"
+          },
           "question": {
             "title": "Question",
             "type": "string"
@@ -6293,6 +6410,10 @@
             "title": "Sides",
             "type": "array"
           },
+          "stale_expectation": {
+            "title": "Stale Expectation",
+            "type": "boolean"
+          },
           "unsteady": {
             "title": "Unsteady",
             "type": "boolean"
@@ -6302,12 +6423,33 @@
           "case_id",
           "question",
           "reference_answer",
+          "expected_sources",
+          "expect_fallback",
+          "stale_expectation",
           "sides",
           "unsteady",
           "change",
           "results"
         ],
         "title": "RunCaseOut",
+        "type": "object"
+      },
+      "RunExpectedSourceOut": {
+        "properties": {
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_name",
+          "passage"
+        ],
+        "title": "RunExpectedSourceOut",
         "type": "object"
       },
       "RunIn": {
@@ -13812,7 +13954,7 @@
             "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
           },
           "422": {
-            "description": "The question is empty or too long, or the case has no expectation."
+            "description": "The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's."
           }
         },
         "summary": "Create Case",
@@ -14075,7 +14217,7 @@
             "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
           },
           "422": {
-            "description": "The question is empty or too long, or the case has no expectation."
+            "description": "The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's."
           }
         },
         "summary": "Update Case",

@@ -22,6 +22,7 @@ it.each([
   ["regression", "Regression"],
   ["improvement", "Improvement"],
   ["runStale", "Stale"],
+  ["staleExpectation", "Stale expectation"],
 ] satisfies [BadgeKind, string][])("labels the %s badge %s", (kind, label) => {
   render(<Badge kind={kind} />);
   expect(screen.getByText(label)).toBeInTheDocument();

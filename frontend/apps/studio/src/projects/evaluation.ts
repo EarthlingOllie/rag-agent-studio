@@ -6,6 +6,7 @@ import { ProjectRequestError } from "./projects";
 
 export type EvaluationCase = Schemas["CaseOut"];
 export type EvaluationCaseFields = Schemas["CaseIn"];
+export type EvaluationExpectedSource = Schemas["ExpectedSourceOut"];
 export type EvaluationRun = Schemas["RunOut"];
 export type EvaluationRunResults = Schemas["RunResultsOut"];
 export type EvaluationCaseResult = Schemas["CaseResultOut"];

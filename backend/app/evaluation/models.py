@@ -31,12 +31,14 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.agents.models import Agent, AgentVersion
 from app.core.db import Base, IdMixin
 from app.credentials.models import ProviderCredential
+from app.documents.models import NAME_MAX, Document
 from app.projects.models import InstructionsVersion
 from app.tenancy.models import Member, Organisation
 
 # As long as a Visitor message may be.
 QUESTION_MAX = 4000
 REFERENCE_ANSWER_MAX = 4000
+PASSAGE_MAX = 1000
 
 
 class CaseSource(enum.StrEnum):
@@ -72,8 +74,16 @@ class ResultStatus(enum.StrEnum):
 
 
 class VerdictKind(enum.StrEnum):
+    EXPECTED_SOURCE = "expected_source"
+    FALLBACK = "fallback"
     REFERENCE_ANSWER = "reference_answer"
     GROUNDING = "grounding"
+
+
+class StaleReason(enum.StrEnum):
+    DOCUMENT_DELETED = "document_deleted"
+    # No Chunk of the Document's current Edition holds the passage.
+    PASSAGE_MISSING = "passage_missing"
 
 
 class VerdictOutcome(enum.StrEnum):
@@ -114,9 +124,40 @@ class EvaluationCase(IdMixin, Base):
     question: Mapped[str] = mapped_column(Text)
     # What a good answer says, in the Editor's words; None when the case expects something else.
     reference_answer: Mapped[str | None] = mapped_column(Text)
+    # Whether a good answer is the Fallback Text (or the Refusal text). It stands alone: never
+    # with a Reference answer or an Expected source.
+    expect_fallback: Mapped[bool] = mapped_column(Boolean, server_default=false())
     source: Mapped[str] = mapped_column(String(20), default=CaseSource.WRITTEN)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class EvaluationExpectedSource(IdMixin, Base):
+    """A passage of a Document that a good answer to the case retrieves and cites.
+
+    It references the Document, not a Chunk, because Chunks are replaced with every Edition: the
+    passage is matched against the current Edition's Chunks whenever it is checked. Deleting the
+    Document leaves the row, its ``document_name`` kept as a tombstone, and the Expected source is
+    a Stale expectation."""
+
+    __tablename__ = "evaluation_expected_sources"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    case_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(EvaluationCase.id, ondelete="CASCADE"), index=True
+    )
+    # Its order in the case.
+    position: Mapped[int] = mapped_column(Integer)
+    document_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Document.id, ondelete="SET NULL"), index=True
+    )
+    document_name: Mapped[str] = mapped_column(String(NAME_MAX))
+    passage: Mapped[str] = mapped_column(Text)
+    # Whether it was a Stale expectation when last checked, and why (a ``StaleReason``).
+    stale: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    stale_reason: Mapped[str | None] = mapped_column(String(30))
 
 
 class EvaluationRun(IdMixin, Base):
@@ -210,6 +251,12 @@ class EvaluationRunCase(IdMixin, Base):
     position: Mapped[int] = mapped_column(Integer)
     question: Mapped[str] = mapped_column(Text)
     reference_answer: Mapped[str | None] = mapped_column(Text)
+    expect_fallback: Mapped[bool] = mapped_column(Boolean, server_default=false())
+    # Each Expected source as copied: ``source_id``, ``document_id``, ``document_name`` and
+    # ``passage``.
+    expected_sources: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, server_default=text("'[]'::jsonb")
+    )
 
 
 class EvaluationCaseResult(IdMixin, Base):
@@ -252,5 +299,8 @@ class EvaluationVerdict(IdMixin, Base):
         ForeignKey(EvaluationCaseResult.id, ondelete="CASCADE"), index=True
     )
     kind: Mapped[str] = mapped_column(String(30))
+    # Its order among the result's Verdicts: Expected sources (in the case's order), Expect
+    # Fallback Text, the Reference answer, then grounding.
+    position: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     outcome: Mapped[str] = mapped_column(String(10))
     reason: Mapped[str | None] = mapped_column(Text)

@@ -8,9 +8,12 @@ scoped to the Agent's Project, exactly as a Visitor reply runs. It creates no Co
 Message, so Version KPIs, Usage rollups, the Token Budget, Admission control and Rate limits
 never see a Run. The answer, its Trace and its Cost go on the case result.
 
-Each repeat is a fresh answer. The judge (the Run's judge model) then gives a
-``reference_answer`` Verdict when the case has a Reference answer, and a ``grounding`` Verdict
-unless the answer is the Fallback Text. A provider error answering, or the judge failing, makes
+Each repeat is a fresh answer. Each Expected source gets an ``expected_source`` Verdict and Expect
+Fallback Text a ``fallback`` one, checked without a model (``app.evaluation.expectations``); a
+Stale expectation's Verdict is ``stale``, and the Evaluation Set's Stale flags follow what the Run
+found. The judge (the Run's judge model) then gives a ``reference_answer`` Verdict when the case
+has a Reference answer, and a ``grounding`` Verdict unless the answer is the Fallback Text; with
+neither to give, it isn't asked. A provider error answering, or the judge failing, makes
 the case result an error with its reason; a Guardrail block is an answer, and is judged like one.
 
 Each answer commits with the Run's progress, so the Studio can poll it. A Run cancelled meanwhile
@@ -24,7 +27,7 @@ from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, Retrieval
@@ -32,15 +35,26 @@ from app.agents.models import Agent, AgentVersion
 from app.agents.resolution import ResolvedModels, resolve_models
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
-from app.evaluation.judge import CitedExcerpt, JudgeError, JudgeRequest, judge
+from app.documents.service import current_chunks
+from app.evaluation.expectations import Check, check_expected_source, check_fallback
+from app.evaluation.judge import (
+    CitedExcerpt,
+    Judged,
+    JudgedVerdict,
+    JudgeError,
+    JudgeRequest,
+    judge,
+)
 from app.evaluation.models import (
     EvaluationCaseResult,
+    EvaluationExpectedSource,
     EvaluationRun,
     EvaluationRunCase,
     EvaluationRunSide,
     EvaluationVerdict,
     ResultStatus,
     RunStatus,
+    VerdictKind,
     VerdictOutcome,
 )
 from app.evaluation.ports import EvaluationPorts
@@ -190,15 +204,54 @@ async def _answer(
 
 
 def _verdict(
-    result: EvaluationCaseResult, kind: str, passed: bool, reason: str
+    result: EvaluationCaseResult, position: int, kind: str, outcome: VerdictOutcome, reason: str
 ) -> EvaluationVerdict:
     return EvaluationVerdict(
         organisation_id=result.organisation_id,
         result_id=result.id,
         kind=kind,
-        outcome=VerdictOutcome.PASS if passed else VerdictOutcome.FAIL,
+        position=position,
+        outcome=outcome,
         reason=reason,
     )
+
+
+async def _checks(
+    session: AsyncSession,
+    case: EvaluationRunCase,
+    answered: DoneEvent,
+    config: AgentConfig,
+) -> list[tuple[VerdictKind, Check]]:
+    """The checks that need no model: each Expected source, in order, then Expect Fallback Text.
+    Each Expected source's Stale flag in the Evaluation Set is set to what was found."""
+    copied = case.expected_sources
+    current = await current_chunks(
+        session, [uuid.UUID(c["document_id"]) for c in copied if c["document_id"] is not None]
+    )
+    cited = {chunk.chunk_id for chunk in answered.cited}
+    retrieved = {chunk.chunk_id for chunk in answered.retrieved}
+    checks: list[tuple[VerdictKind, Check]] = []
+    for each in copied:
+        document_id = each["document_id"]
+        check = check_expected_source(
+            each["document_name"],
+            each["passage"],
+            None if document_id is None else current.get(uuid.UUID(document_id)),
+            cited=cited,
+            retrieved=retrieved,
+        )
+        await session.execute(
+            update(EvaluationExpectedSource)
+            .where(EvaluationExpectedSource.id == uuid.UUID(each["source_id"]))
+            .values(stale=check.stale_reason is not None, stale_reason=check.stale_reason)
+        )
+        checks.append((VerdictKind.EXPECTED_SOURCE, check))
+    if case.expect_fallback:
+        check = check_fallback(
+            answered.answer, fallback=answered.fallback, refused=answered.refused, config=config
+        )
+        checks.append((VerdictKind.FALLBACK, check))
+    return checks
 
 
 async def _answer_and_judge(
@@ -252,21 +305,31 @@ async def _answer_and_judge(
         reference_answer=case.reference_answer,
         grounding=not answered.fallback,
     )
-    credential = await session.get_one(ProviderCredential, run.judge_credential_id)
-    try:
-        verdicts = await judge(
-            functools.partial(gateway.chat_model, credential, run.judge_model),
-            run.judge_model,
-            request,
-            timeout_s=ports.judge_timeout_s,
-        )
-    except JudgeError as error:
-        result.status = ResultStatus.ERROR
-        result.error_reason = error.message
-        return result
+    checks = await _checks(session, case, answered, resolved.config)
+    verdicts: dict[Judged, JudgedVerdict] = {}
+    if request.asked:
+        credential = await session.get_one(ProviderCredential, run.judge_credential_id)
+        try:
+            verdicts = await judge(
+                functools.partial(gateway.chat_model, credential, run.judge_model),
+                run.judge_model,
+                request,
+                timeout_s=ports.judge_timeout_s,
+            )
+        except JudgeError as error:
+            result.status = ResultStatus.ERROR
+            result.error_reason = error.message
+            return result
     await session.flush()
+    judged = [
+        (kind, VerdictOutcome.PASS if verdict.passed else VerdictOutcome.FAIL, verdict.reason)
+        for kind, verdict in verdicts.items()
+    ]
     session.add_all(
-        _verdict(result, kind, verdict.passed, verdict.reason) for kind, verdict in verdicts.items()
+        _verdict(result, position, kind, outcome, reason)
+        for position, (kind, outcome, reason) in enumerate(
+            [*((kind, check.outcome, check.reason) for kind, check in checks), *judged]
+        )
     )
     return result
 

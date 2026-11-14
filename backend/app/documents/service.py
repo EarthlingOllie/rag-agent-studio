@@ -22,7 +22,7 @@ newer edition of one) can be retried, which queues it for ingestion again.
 import hashlib
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -509,6 +509,40 @@ async def list_chunks(
         select(Chunk).where(*current).order_by(Chunk.ordinal).offset(offset).limit(limit)
     )
     return ChunkPage(list(chunks), total or 0)
+
+
+@dataclass(frozen=True)
+class CurrentChunks:
+    """A Document's name and its current edition's Chunks (ID and text), in Document order."""
+
+    name: str
+    chunks: list[tuple[uuid.UUID, str]]
+
+
+async def current_chunks(
+    session: AsyncSession, document_ids: Iterable[uuid.UUID]
+) -> dict[uuid.UUID, CurrentChunks]:
+    """The current edition's Chunks of each of these Documents that still exists, by Document
+    ID, as retrieval reads them (the Project's active Embedding Model's rows). For other modules
+    that check text against a Knowledge Base, such as Expected sources."""
+    wanted = set(document_ids)
+    found = {
+        document.id: CurrentChunks(document.name, [])
+        for document in await session.scalars(select(Document).where(Document.id.in_(wanted)))
+    }
+    rows = await session.execute(
+        select(Chunk.document_id, Chunk.id, Chunk.text)
+        .join(Document, Document.id == Chunk.document_id)
+        .where(
+            Document.id.in_(wanted),
+            Chunk.edition == Document.edition,
+            Chunk.embedding_model_id == _active_model(Document.project_id),
+        )
+        .order_by(Chunk.ordinal)
+    )
+    for document_id, chunk_id, chunk_text in rows:
+        found[document_id].chunks.append((chunk_id, chunk_text))
+    return found
 
 
 async def clear_chunk_flag(

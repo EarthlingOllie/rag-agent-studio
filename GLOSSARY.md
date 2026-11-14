@@ -794,7 +794,7 @@ One standalone question in an Evaluation Set (no earlier turns), with at least o
 _Avoid_: Test case, golden question, eval
 
 **Expected source**:
-A passage of a Document that an Evaluation Case's answer should retrieve and cite. It is matched against the Document's current Edition each Run; when the Document is gone or the passage no longer appears, the expectation is Stale.
+A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, and each Run): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
 _Avoid_: Ground truth chunk, expected chunk
 
 **Reference answer**:
@@ -802,7 +802,7 @@ What a good answer to an Evaluation Case says, in the Editor's words; answers ar
 _Avoid_: Gold answer, expected output
 
 **Expect Fallback Text**:
-An Evaluation Case's expectation that the Agent says it doesn't know, for a question its Knowledge Base can't answer.
+An Evaluation Case's expectation that the Agent says it doesn't know, for a question its Knowledge Base can't answer: its Verdict passes when the answer is the Fallback Text or the Refusal text. It stands alone, never with an Expected source or a Reference answer, which contradict it.
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:

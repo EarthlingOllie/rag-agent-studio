@@ -55,7 +55,10 @@ from tests.integration.test_provider_credentials import ANTHROPIC_KEY, added
 from tests.integration.test_token_budget import usage
 
 REFERENCE = 'Everyone gets "twenty-five days" of annual leave.'
-NO_EXPECTATION = "An Evaluation Case needs at least one expectation: write a Reference answer."
+NO_EXPECTATION = (
+    "An Evaluation Case needs at least one expectation: an Expected source, a Reference answer "
+    "or Expect Fallback Text."
+)
 
 
 def evaluation_path(member: SignedUpMember, project_id: str, agent_id: str, *rest: str) -> str:

@@ -15,6 +15,11 @@ side and every case, and leaves the Run ``queued`` for its task (``app.evaluatio
 caller enqueues the task once the Run is committed. An Agent has at most one queued or running
 Run; one can be cancelled, and its task stops between answers.
 
+A case's expectations are its Expected sources (passages of the Project's Documents), its
+Reference answer and Expect Fallback Text, which stands alone. Saving a case checks each Expected
+source against the Knowledge Base as it is, and flags it stale when its passage can't be found
+(``app.evaluation.expectations``); the case shows as having a Stale expectation.
+
 Reading a Run combines each case's repeats into its result on each side, and those into each
 side's Evaluation score (``app.evaluation.combining``); a case that passes on the first side and
 fails on the second is a Regression, the reverse an improvement. A Run with a Draft side is stale
@@ -27,7 +32,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.config import AgentConfig
@@ -39,6 +44,7 @@ from app.agents.resolution import (
     resolve_models,
 )
 from app.agents.service import AgentWithDraft, active_agent, get_agent
+from app.documents.service import DocumentNotFoundError, get_document
 from app.evaluation.combining import (
     CaseOutcome,
     Repeat,
@@ -47,17 +53,20 @@ from app.evaluation.combining import (
     score,
     side_result,
 )
+from app.evaluation.expectations import refresh_stale
 from app.evaluation.models import (
     IN_PROGRESS,
     CaseSource,
     EvaluationCase,
     EvaluationCaseResult,
+    EvaluationExpectedSource,
     EvaluationRun,
     EvaluationRunCase,
     EvaluationRunSide,
     EvaluationVerdict,
     RunStatus,
     SideKind,
+    VerdictOutcome,
 )
 from app.evaluation.settings import judge_model
 from app.projects.instructions import project_version
@@ -82,6 +91,18 @@ class RunNotFoundError(Exception):
 
 class NoExpectationError(Exception):
     """An Evaluation Case needs at least one expectation."""
+
+
+class FallbackWithReferenceError(Exception):
+    """Expect Fallback Text can't be combined with a Reference answer."""
+
+
+class FallbackWithSourceError(Exception):
+    """Expect Fallback Text can't be combined with an Expected source."""
+
+
+class SourceDocumentNotFoundError(Exception):
+    """An Expected source names no Document of the Agent's Project."""
 
 
 class EmptySetError(Exception):
@@ -121,17 +142,69 @@ class SideChoice:
 
 
 @dataclass(frozen=True)
+class SourceFields:
+    document_id: uuid.UUID
+    passage: str
+
+
+@dataclass(frozen=True)
 class CaseFields:
     question: str
     # None or blank: no Reference answer.
     reference_answer: str | None
+    expect_fallback: bool = False
+    expected_sources: Sequence[SourceFields] = ()
 
 
 def _checked(fields: CaseFields) -> CaseFields:
+    """The fields with a blank Reference answer as none. Refused without an expectation
+    (``NoExpectationError``), and for Expect Fallback Text with a Reference answer
+    (``FallbackWithReferenceError``) or an Expected source (``FallbackWithSourceError``)."""
     reference = (fields.reference_answer or "").strip() or None
-    if reference is None:
+    sources = [SourceFields(s.document_id, s.passage.strip()) for s in fields.expected_sources]
+    if fields.expect_fallback and reference is not None:
+        raise FallbackWithReferenceError
+    if fields.expect_fallback and sources:
+        raise FallbackWithSourceError
+    if reference is None and not sources and not fields.expect_fallback:
         raise NoExpectationError
-    return CaseFields(fields.question, reference)
+    return CaseFields(fields.question, reference, fields.expect_fallback, sources)
+
+
+async def _replace_sources(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    case: EvaluationCase,
+    fields: Sequence[SourceFields],
+) -> None:
+    """Gives the case these Expected sources, in order, with their Stale flags as the Knowledge
+    Base is now. Refused with ``SourceDocumentNotFoundError`` for a Document not in the
+    Project."""
+    names: dict[uuid.UUID, str] = {}
+    for each in fields:
+        try:
+            names[each.document_id] = (
+                await get_document(session, scope, project_id, each.document_id)
+            ).name
+        except DocumentNotFoundError:
+            raise SourceDocumentNotFoundError from None
+    await session.execute(
+        delete(EvaluationExpectedSource).where(EvaluationExpectedSource.case_id == case.id)
+    )
+    sources = [
+        EvaluationExpectedSource(
+            organisation_id=case.organisation_id,
+            case_id=case.id,
+            position=position,
+            document_id=each.document_id,
+            document_name=names[each.document_id],
+            passage=each.passage,
+        )
+        for position, each in enumerate(fields)
+    ]
+    await refresh_stale(session, sources)
+    session.add_all(sources)
 
 
 async def _agent(
@@ -161,8 +234,15 @@ class LatestResult:
 @dataclass(frozen=True)
 class CaseWithResult:
     case: EvaluationCase
+    # Its Expected sources, in order.
+    sources: list[EvaluationExpectedSource]
     # None until a finished Run has answered the case.
     latest: LatestResult | None
+
+    @property
+    def stale(self) -> bool:
+        """Whether it has a Stale expectation."""
+        return any(source.stale for source in self.sources)
 
 
 async def _cases(session: AsyncSession, agent_id: uuid.UUID) -> list[EvaluationCase]:
@@ -172,6 +252,20 @@ async def _cases(session: AsyncSession, agent_id: uuid.UUID) -> list[EvaluationC
         .order_by(EvaluationCase.created_at, EvaluationCase.id)
     )
     return list(cases)
+
+
+async def _sources(
+    session: AsyncSession, cases: Sequence[EvaluationCase]
+) -> dict[uuid.UUID, list[EvaluationExpectedSource]]:
+    """Each case's Expected sources, in order, by case ID."""
+    sources: dict[uuid.UUID, list[EvaluationExpectedSource]] = {}
+    for expected in await session.scalars(
+        select(EvaluationExpectedSource)
+        .where(EvaluationExpectedSource.case_id.in_([case.id for case in cases]))
+        .order_by(EvaluationExpectedSource.position)
+    ):
+        sources.setdefault(expected.case_id, []).append(expected)
+    return sources
 
 
 async def _with_latest(
@@ -200,15 +294,16 @@ async def _with_latest(
         )
     }
     repeats = _by_case_and_side(await _judged(session, run_ids))
+    sources = await _sources(session, cases)
     found: list[CaseWithResult] = []
     for case in cases:
         copy = latest.get(case.id)
-        if copy is None:
-            found.append(CaseWithResult(case, None))
-            continue
-        run_case_id, run_id = copy
-        side = side_result(repeats.get((run_case_id, last_sides[run_id]), []))
-        found.append(CaseWithResult(case, LatestResult(run_id, side)))
+        result = None
+        if copy is not None:
+            run_case_id, run_id = copy
+            side = side_result(repeats.get((run_case_id, last_sides[run_id]), []))
+            result = LatestResult(run_id, side)
+        found.append(CaseWithResult(case, sources.get(case.id, []), result))
     return found
 
 
@@ -252,22 +347,27 @@ async def create_case(
     *,
     now: datetime,
 ) -> CaseWithResult:
-    """Adds a written case; refused with ``NoExpectationError`` without an expectation."""
+    """Adds a written case; refused as ``_checked`` and ``_replace_sources`` say."""
     checked = _checked(fields)
     found = await _agent(session, scope, project_id, agent_id, change=True)
     case = EvaluationCase(
+        id=uuid.uuid4(),
         organisation_id=scope.organisation_id,
         agent_id=found.agent.id,
         question=checked.question,
         reference_answer=checked.reference_answer,
+        expect_fallback=checked.expect_fallback,
         source=CaseSource.WRITTEN,
         created_by=scope.member_id,
         created_at=now,
         updated_at=now,
     )
     session.add(case)
+    await session.flush()
+    await _replace_sources(session, scope, project_id, case, checked.expected_sources)
     await session.commit()
-    return CaseWithResult(case, None)
+    (created,) = await _with_latest(session, [case])
+    return created
 
 
 async def update_case(
@@ -287,7 +387,9 @@ async def update_case(
     case = await _case(session, found.agent.id, case_id)
     case.question = checked.question
     case.reference_answer = checked.reference_answer
+    case.expect_fallback = checked.expect_fallback
     case.updated_at = now
+    await _replace_sources(session, scope, project_id, case, checked.expected_sources)
     await session.commit()
     (updated,) = await _with_latest(session, [case])
     return updated
@@ -429,6 +531,7 @@ async def start_run(
     if judge is None:
         raise NoDefaultModelError
     repeats = (await session.get_one(Organisation, scope.organisation_id)).evaluation_repeats
+    sources = await _sources(session, cases)
     run = EvaluationRun(
         organisation_id=scope.organisation_id,
         agent_id=found.agent.id,
@@ -470,6 +573,18 @@ async def start_run(
             position=position,
             question=case.question,
             reference_answer=case.reference_answer,
+            expect_fallback=case.expect_fallback,
+            expected_sources=[
+                {
+                    "source_id": str(expected.id),
+                    "document_id": None
+                    if expected.document_id is None
+                    else str(expected.document_id),
+                    "document_name": expected.document_name,
+                    "passage": expected.passage,
+                }
+                for expected in sources.get(case.id, [])
+            ],
         )
         for position, case in enumerate(cases)
     )
@@ -534,7 +649,7 @@ async def _judged(session: AsyncSession, run_ids: Iterable[uuid.UUID]) -> list[J
     verdicts = await session.scalars(
         select(EvaluationVerdict)
         .where(EvaluationVerdict.result_id.in_([r.id for r in results]))
-        .order_by(EvaluationVerdict.kind.desc())
+        .order_by(EvaluationVerdict.position, EvaluationVerdict.kind.desc())
     )
     by_result: dict[uuid.UUID, list[EvaluationVerdict]] = {}
     for verdict in verdicts:
@@ -653,6 +768,15 @@ class CaseResults:
     def unsteady(self) -> bool:
         """Whether its repeats disagreed on either side."""
         return any(result.unsteady for result in self.sides.values())
+
+    @property
+    def stale_expectation(self) -> bool:
+        """Whether an answer skipped a Stale expectation."""
+        return any(
+            verdict.outcome == VerdictOutcome.STALE
+            for judged in self.results
+            for verdict in judged.verdicts
+        )
 
 
 def _change(first: SideResult | None, second: SideResult | None) -> str | None:

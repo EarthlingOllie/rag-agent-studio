@@ -13,6 +13,9 @@ export const leaveCase: Case = {
   id: "e1000000-0000-4000-8000-000000000001",
   question: "How much leave do I get?",
   reference_answer: 'Everyone gets "25 days" of annual leave.',
+  expected_sources: [],
+  expect_fallback: false,
+  stale: false,
   source: "written",
   created_at: "2026-11-10T09:00:00Z",
   updated_at: "2026-11-10T09:00:00Z",
@@ -23,6 +26,9 @@ export const parkingCase: Case = {
   id: "e1000000-0000-4000-8000-000000000002",
   question: "Where do visitors park?",
   reference_answer: "In the north car park.",
+  expected_sources: [],
+  expect_fallback: false,
+  stale: false,
   source: "written",
   created_at: "2026-11-10T09:05:00Z",
   updated_at: "2026-11-10T09:05:00Z",
@@ -124,6 +130,9 @@ export function results(
         case_id: evaluationCase.id,
         question: evaluationCase.question,
         reference_answer: evaluationCase.reference_answer,
+        expected_sources: evaluationCase.expected_sources.map(({ document_name, passage }) => ({ document_name, passage })),
+        expect_fallback: evaluationCase.expect_fallback,
+        stale_expectation: evaluationCase.stale,
         sides: [side ?? single],
         unsteady: unsteady ?? false,
         change: null,
@@ -193,6 +202,8 @@ export function fakeEvaluationApi(
     failCases?: boolean;
     failRuns?: boolean;
     failResults?: boolean;
+    /** Each Document's name by ID, for the Expected sources of a saved case. */
+    documentNames?: Record<string, string>;
   } = {},
 ) {
   const requests: EvaluationRequest[] = [];
@@ -202,6 +213,15 @@ export function fakeEvaluationApi(
     entry.states[Math.min(entry.read, entry.states.length - 1)] as RunResults;
   const base = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/evaluation";
   let added = 0;
+  const expectedSources = (body: Schemas["CaseIn"]): Case["expected_sources"] =>
+    (body.expected_sources ?? []).map((source, index) => ({
+      id: `e3000000-0000-4000-8000-00000000000${String(index)}`,
+      document_id: source.document_id,
+      document_name: options.documentNames?.[source.document_id] ?? source.document_id,
+      passage: source.passage,
+      stale: false,
+      stale_reason: null,
+    }));
 
   server.use(
     http.get(`${base}/cases`, () =>
@@ -218,6 +238,9 @@ export function fakeEvaluationApi(
         id: `e2000000-0000-4000-8000-00000000000${String(added)}`,
         question: body.question.trim(),
         reference_answer: body.reference_answer ?? null,
+        expected_sources: expectedSources(body),
+        expect_fallback: body.expect_fallback,
+        stale: false,
         source: "written",
         created_at: "2026-11-12T09:00:00Z",
         updated_at: "2026-11-12T09:00:00Z",
@@ -233,7 +256,16 @@ export function fakeEvaluationApi(
         return HttpResponse.json({ detail: options.saveDetail }, { status: options.saveStatus });
       }
       cases = cases.map((c) =>
-        c.id === params.caseId ? { ...c, question: body.question, reference_answer: body.reference_answer ?? null } : c,
+        c.id === params.caseId
+          ? {
+              ...c,
+              question: body.question,
+              reference_answer: body.reference_answer ?? null,
+              expected_sources: expectedSources(body),
+              expect_fallback: body.expect_fallback,
+              stale: false,
+            }
+          : c,
       );
       return HttpResponse.json(cases.find((c) => c.id === params.caseId));
     }),

@@ -278,7 +278,16 @@ where the Member is: from the Organisation's page they are under down to the pag
     sides with their scores and a `runStale` badge; a running Run has a secondary Cancel Run; Run
     detail shows a warning `Notice` when stale, each side's score as a named group, a muted line
     counting Regressions and improvements, then the cases in that order, each with a `regression`
-    or `improvement` badge and its answers grouped under each side's name.
+    or `improvement` badge and its answers grouped under each side's name. From 14-05 the case
+    editor lists Expected sources (Document name, passage in quotes, Remove; a stale one with its
+    `staleExpectation` badge and reason) above Add Expected source, which opens an inline "Pick a
+    passage" group: a Document select (Ready Documents), its current Chunks in a scrolling list
+    with `Pagination`, each with Use this Chunk, a Passage textarea (up to 1,000 characters) and
+    Add passage / Cancel picking. Expect Fallback Text is a checkbox under the Reference answer;
+    a refused combination is a field error on the field it names. The set's Expectations column
+    and Run detail list each case's Expected sources, Reference answer and "Expects the Fallback
+    Text."; Run detail flags a case that skipped a Stale expectation with the badge and a line,
+    and shows a stale Verdict as "Stale, skipped" in `flag`.
   - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
     (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
   - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with
@@ -418,6 +427,7 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `regression` | Regression (passes on a Run's first side, fails on its second) | `danger-soft`, `danger` |
 | `improvement` | Improvement (fails on a Run's first side, passes on its second) | `accent-soft`, `accent-ink` |
 | `runStale` | Stale (a Run with a Draft side whose Draft has moved on) | `flag-soft`, `flag` |
+| `staleExpectation` | Stale expectation (an Expected source whose Document or passage is gone; its reason as the `title`) | `flag-soft`, `flag` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
 
 `title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;

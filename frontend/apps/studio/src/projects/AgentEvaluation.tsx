@@ -39,38 +39,82 @@ import {
   useStartEvaluationRun,
 } from "./evaluation";
 import { useInstructionsVersions } from "./instructions";
+import {
+  type ChosenSource,
+  ExpectationSummary,
+  ExpectedSourceList,
+  ExpectedSourcePicker,
+  StaleBadge,
+} from "./EvaluationExpectations";
 import { TraceBody, TraceFold } from "./Trace";
 
 type AgentPath = { organisation_id: string; project_id: string; agent_id: string };
 
-const NEEDS_REFERENCE = "Write a Reference answer: a case needs at least one expectation.";
+const NEEDS_EXPECTATION =
+  "Add an Expected source, write a Reference answer or tick Expect Fallback Text: a case needs at least one expectation.";
+const FALLBACK_WITH_REFERENCE = "Expect Fallback Text can't be combined with a Reference answer: clear the Reference answer or untick Expect Fallback Text.";
+const FALLBACK_WITH_SOURCE = "Expect Fallback Text can't be combined with an Expected source: remove the Expected sources or untick Expect Fallback Text.";
+const DELETED_SOURCE = "Remove the Expected sources whose Document has been deleted, then save.";
 
-/** The case editor: a question and its Reference answer, in a dialog. */
+/** What's wrong with the case's expectations, by the field it names, or null when they can be saved. */
+function expectationProblem(
+  reference: string,
+  sources: ChosenSource[],
+  expectFallback: boolean,
+): { field: "reference" | "fallback" | "sources"; message: string } | null {
+  const hasReference = reference.trim() !== "";
+  if (expectFallback && hasReference) return { field: "fallback", message: FALLBACK_WITH_REFERENCE };
+  if (expectFallback && sources.length > 0) return { field: "fallback", message: FALLBACK_WITH_SOURCE };
+  if (!hasReference && sources.length === 0 && !expectFallback) return { field: "reference", message: NEEDS_EXPECTATION };
+  if (sources.some((source) => source.document_id === null)) return { field: "sources", message: DELETED_SOURCE };
+  return null;
+}
+
+/** The case editor, in a dialog: a question and its expectations (Expected sources, a Reference answer, or Expect Fallback Text). */
 function CaseEditor({ path, editing, onClose }: { path: AgentPath; editing: EvaluationCase | null; onClose: () => void }) {
   const formId = useId();
   const hintId = useId();
   const errorId = useId();
+  const sourcesId = useId();
+  const fallbackHintId = useId();
   const [question, setQuestion] = useState(editing?.question ?? "");
   const [reference, setReference] = useState(editing?.reference_answer ?? "");
-  const [missing, setMissing] = useState(false);
+  const [sources, setSources] = useState<ChosenSource[]>(editing?.expected_sources ?? []);
+  const [expectFallback, setExpectFallback] = useState(editing?.expect_fallback ?? false);
+  const [picking, setPicking] = useState(false);
+  const [problem, setProblem] = useState<ReturnType<typeof expectationProblem>>(null);
   const save = useSaveEvaluationCase(path, editing?.id ?? null);
   const title = editing === null ? "New Evaluation Case" : "Edit Evaluation Case";
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
-    if (reference.trim() === "") {
-      setMissing(true);
-      return;
-    }
-    setMissing(false);
-    save.mutate({ question, reference_answer: reference }, { onSuccess: onClose });
+    const found = expectationProblem(reference, sources, expectFallback);
+    setProblem(found);
+    if (found !== null) return;
+    save.mutate(
+      {
+        question,
+        reference_answer: reference,
+        expected_sources: sources.map((source) => ({ document_id: source.document_id as string, passage: source.passage })),
+        expect_fallback: expectFallback,
+      },
+      { onSuccess: onClose },
+    );
   }
+
+  const describedBy = (fieldName: string, hint: string) => (problem?.field === fieldName ? `${hint} ${errorId}` : hint);
+  const error = (fieldName: string) =>
+    problem?.field === fieldName && (
+      <p id={errorId} className={field.error}>
+        {problem.message}
+      </p>
+    );
 
   return (
     <Dialog
       open
       title={title}
-      description="One standalone question, and what a good answer to it says."
+      description="One standalone question, and what a good answer to it does."
       onClose={onClose}
       closeButton={false}
       footer={
@@ -99,6 +143,41 @@ function CaseEditor({ path, editing, onClose }: { path: AgentPath; editing: Eval
             }}
           />
         </label>
+        <div role="group" aria-labelledby={sourcesId} aria-describedby={problem?.field === "sources" ? errorId : undefined} className="flex flex-col gap-2">
+          <p id={sourcesId} className={field.label}>
+            Expected sources
+          </p>
+          <ExpectedSourceList
+            sources={sources}
+            onRemove={(index) => {
+              setSources(sources.filter((_, at) => at !== index));
+            }}
+          />
+          {error("sources")}
+          {picking ? (
+            <ExpectedSourcePicker
+              organisationId={path.organisation_id}
+              projectId={path.project_id}
+              onAdd={(source) => {
+                setSources([...sources, source]);
+                setPicking(false);
+              }}
+              onCancel={() => {
+                setPicking(false);
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className={`${button.secondary} self-start`}
+              onClick={() => {
+                setPicking(true);
+              }}
+            >
+              Add Expected source
+            </button>
+          )}
+        </div>
         <div>
           <label className={field.label}>
             Reference answer
@@ -106,8 +185,8 @@ function CaseEditor({ path, editing, onClose }: { path: AgentPath; editing: Eval
               className={field.textarea}
               rows={4}
               maxLength={4000}
-              aria-invalid={missing}
-              aria-describedby={missing ? `${hintId} ${errorId}` : hintId}
+              aria-invalid={problem?.field === "reference"}
+              aria-describedby={describedBy("reference", hintId)}
               value={reference}
               onChange={(event) => {
                 setReference(event.target.value);
@@ -117,11 +196,26 @@ function CaseEditor({ path, editing, onClose }: { path: AgentPath; editing: Eval
           <p id={hintId} className={field.hint}>
             What a good answer says, in your own words. The judge checks its meaning, not its wording.
           </p>
-          {missing && (
-            <p id={errorId} className={field.error}>
-              {NEEDS_REFERENCE}
-            </p>
-          )}
+          {error("reference")}
+        </div>
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-ink">
+            <input
+              type="checkbox"
+              className={field.checkbox}
+              checked={expectFallback}
+              aria-invalid={problem?.field === "fallback"}
+              aria-describedby={describedBy("fallback", fallbackHintId)}
+              onChange={(event) => {
+                setExpectFallback(event.target.checked);
+              }}
+            />
+            Expect Fallback Text
+          </label>
+          <p id={fallbackHintId} className={field.hint}>
+            A good answer says it doesn&apos;t know: the Fallback Text, or the Refusal text. It stands alone, without Expected sources or a Reference answer.
+          </p>
+          {error("fallback")}
         </div>
       </form>
     </Dialog>
@@ -177,7 +271,7 @@ function CaseTable({
               Question
             </th>
             <th scope="col" className={table.th}>
-              Reference answer
+              Expectations
             </th>
             <th scope="col" className={table.th}>
               Latest result
@@ -193,7 +287,13 @@ function CaseTable({
           {cases.map((evaluationCase) => (
             <tr key={evaluationCase.id} className={`${table.row} align-top`}>
               <td className={`${table.td} whitespace-pre-wrap`}>{evaluationCase.question}</td>
-              <td className={`${table.tdMuted} whitespace-pre-wrap`}>{evaluationCase.reference_answer}</td>
+              <td className={`${table.tdMuted} whitespace-pre-wrap`}>
+                <ExpectationSummary
+                  sources={evaluationCase.expected_sources}
+                  referenceAnswer={evaluationCase.reference_answer}
+                  expectFallback={evaluationCase.expect_fallback}
+                />
+              </td>
               <td className={`${table.td} whitespace-nowrap`}>
                 <LatestResult evaluationCase={evaluationCase} />
               </td>
@@ -252,7 +352,18 @@ function sideSummary(run: EvaluationRun): string {
 
 const percent = (score: number | null) => (score === null ? "no score" : `${String(Math.round(score * 100))}%`);
 
-const VERDICTS = { reference_answer: "Reference answer", grounding: "Grounding" } as const;
+const VERDICTS = {
+  expected_source: "Expected source",
+  fallback: "Expect Fallback Text",
+  reference_answer: "Reference answer",
+  grounding: "Grounding",
+} as const;
+
+const VERDICT_OUTCOMES = {
+  pass: { word: "Pass", className: "text-accent" },
+  fail: { word: "Fail", className: "text-danger" },
+  stale: { word: "Stale, skipped", className: "text-flag" },
+} as const;
 
 function outcomeWord(result: EvaluationCaseResult): string {
   if (result.status === "error") return "Error";
@@ -331,13 +442,16 @@ function CaseAnswer({ result }: { result: EvaluationCaseResult }) {
       {result.error_reason !== null && <Notice tone="error">{result.error_reason}</Notice>}
       {result.verdicts.length > 0 && (
         <ul aria-label="Verdicts" className="flex flex-col gap-1 text-sm">
-          {result.verdicts.map((verdict) => (
-            <li key={verdict.kind}>
-              <span className="font-medium">{VERDICTS[verdict.kind as keyof typeof VERDICTS]}: </span>
-              <span className={verdict.outcome === "pass" ? "text-accent" : "text-danger"}>{verdict.outcome === "pass" ? "Pass" : "Fail"}</span>
-              <span className="text-ink-2">. {verdict.reason}</span>
-            </li>
-          ))}
+          {result.verdicts.map((verdict, index) => {
+            const outcome = VERDICT_OUTCOMES[verdict.outcome as keyof typeof VERDICT_OUTCOMES];
+            return (
+              <li key={index}>
+                <span className="font-medium">{VERDICTS[verdict.kind as keyof typeof VERDICTS]}: </span>
+                <span className={outcome.className}>{outcome.word}</span>
+                <span className="text-ink-2">. {verdict.reason}</span>
+              </li>
+            );
+          })}
         </ul>
       )}
       {result.trace !== null && (
@@ -415,10 +529,25 @@ function RunDetail({ path, runId, readOnly }: { path: AgentPath; runId: string; 
           {cases.map((evaluationCase, index) => (
             <li key={index} className={`${surface.panel} flex flex-col gap-3`}>
               <h4 className="font-medium text-ink">{evaluationCase.question}</h4>
-              <p className="text-sm text-ink-2">
-                <span className="font-medium">Reference answer: </span>
-                {evaluationCase.reference_answer}
-              </p>
+              {evaluationCase.stale_expectation && (
+                <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-ink-2">
+                  <StaleBadge title="An Expected source's Document or passage is gone" />
+                  An Expected source&apos;s Document or passage is gone, so it was skipped: neither pass nor fail. Fix the case in the Evaluation Set.
+                </p>
+              )}
+              {evaluationCase.reference_answer !== null && (
+                <p className="text-sm text-ink-2">
+                  <span className="font-medium">Reference answer: </span>
+                  {evaluationCase.reference_answer}
+                </p>
+              )}
+              {evaluationCase.expect_fallback && <p className="text-sm text-ink-2">Expects the Fallback Text.</p>}
+              {evaluationCase.expected_sources.length > 0 && (
+                <div className="text-sm text-ink-2">
+                  <p className="font-medium">Expected sources:</p>
+                  <ExpectationSummary sources={evaluationCase.expected_sources} referenceAnswer={null} expectFallback={false} />
+                </div>
+              )}
               <CaseResultLine evaluationCase={evaluationCase} names={names} />
               {names === null
                 ? evaluationCase.results.map((result) => <CaseAnswer key={`${result.position}-${String(result.repeat)}`} result={result} />)

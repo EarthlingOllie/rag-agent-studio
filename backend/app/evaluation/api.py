@@ -2,8 +2,12 @@
 delete), and its Evaluation Runs (start, list, read with progress, and read results). Editors and
 Owners may use them; another Organisation's Agents are not found.
 
-A case needs at least one expectation; for now that is a Reference answer. An archived Agent's
-set and Runs can be read, but its cases can't be changed and it starts no Run.
+A case needs at least one expectation: Expected sources (each a passage of up to 1,000 characters
+of one of the Project's Documents), a Reference answer, or Expect Fallback Text, which can't be
+combined with either of the others. An Expected source whose Document was deleted, or whose
+passage no Chunk of its current Edition holds, is a Stale expectation: the case is flagged, and
+Runs skip it, neither pass nor fail. An archived Agent's set and Runs can be read, but its cases
+can't be changed and it starts no Run.
 
 Starting a Run answers the set with two sides, the first and the second, each the Draft or one
 of the Agent's Versions (by default the Live Version against the Draft, or the Draft alone while
@@ -45,6 +49,7 @@ from app.core.clock import Clock, get_clock
 from app.evaluation import service
 from app.evaluation.combining import Repeat, SideResult
 from app.evaluation.models import (
+    PASSAGE_MAX,
     QUESTION_MAX,
     REFERENCE_ANSWER_MAX,
     EvaluationCase,
@@ -63,7 +68,19 @@ router = APIRouter(
     tags=["evaluation"],
 )
 
-NO_EXPECTATION = "An Evaluation Case needs at least one expectation: write a Reference answer."
+NO_EXPECTATION = (
+    "An Evaluation Case needs at least one expectation: an Expected source, a Reference answer "
+    "or Expect Fallback Text."
+)
+FALLBACK_WITH_REFERENCE = (
+    "Expect Fallback Text can't be combined with a Reference answer: clear the Reference answer "
+    "or untick Expect Fallback Text."
+)
+FALLBACK_WITH_SOURCE = (
+    "Expect Fallback Text can't be combined with an Expected source: remove the Expected sources "
+    "or untick Expect Fallback Text."
+)
+SOURCE_DOCUMENT_NOT_FOUND = "Choose a Document of this Project for each Expected source."
 EMPTY_SET = "Add an Evaluation Case before evaluating."
 VERSION_NOT_FOUND = "Choose the Draft or one of this Agent's Versions for each side."
 SAME_SIDES = "Choose two different sides."
@@ -86,11 +103,22 @@ Question = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=QUESTION_MAX)
 ]
 ReferenceAnswer = Annotated[str, StringConstraints(max_length=REFERENCE_ANSWER_MAX)]
+Passage = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=PASSAGE_MAX)
+]
+# More than enough for a question whose answer spans a few Documents.
+EXPECTED_SOURCES_MAX = 20
 
 _CHANGE_RESPONSES: dict[int | str, dict[str, Any]] = {
     **NOT_FOUND_RESPONSE,
     **AGENT_ARCHIVED_RESPONSE,
-    422: {"description": "The question is empty or too long, or the case has no expectation."},
+    422: {
+        "description": (
+            "The question is empty or too long, the case has no expectation, Expect Fallback "
+            "Text is combined with another expectation, or an Expected source's passage is "
+            "empty or too long or its Document isn't the Project's."
+        )
+    },
 }
 _START_RESPONSES: dict[int | str, dict[str, Any]] = {
     **NOT_FOUND_RESPONSE,
@@ -116,10 +144,35 @@ _CANCEL_RESPONSES: dict[int | str, dict[str, Any]] = {
 }
 
 
+class ExpectedSourceIn(BaseModel):
+    # One of the Project's Documents.
+    document_id: uuid.UUID
+    # A passage of it, as one of its current Chunks holds it (case and whitespace aside).
+    passage: Passage
+
+
 class CaseIn(BaseModel):
     question: Question
-    # What a good answer says; null or blank for none (then the case has no expectation).
+    # What a good answer says; null or blank for none.
     reference_answer: ReferenceAnswer | None = None
+    # Passages a good answer retrieves and cites.
+    expected_sources: list[ExpectedSourceIn] = Field(
+        default_factory=list, max_length=EXPECTED_SOURCES_MAX
+    )
+    # A good answer is the Fallback Text (or the Refusal text); never with a Reference answer
+    # or an Expected source.
+    expect_fallback: bool = False
+
+
+class ExpectedSourceOut(BaseModel):
+    id: uuid.UUID
+    # Null once the Document is deleted; its name stays.
+    document_id: uuid.UUID | None
+    document_name: str
+    passage: str
+    # Whether it is a Stale expectation, and why: ``document_deleted`` or ``passage_missing``.
+    stale: bool
+    stale_reason: str | None
 
 
 class SideIn(BaseModel):
@@ -163,6 +216,10 @@ class CaseOut(BaseModel):
     id: uuid.UUID
     question: str
     reference_answer: str | None
+    expected_sources: list[ExpectedSourceOut]
+    expect_fallback: bool
+    # Whether it has a Stale expectation.
+    stale: bool
     # ``written`` by an Editor, or ``from_message``.
     source: str
     created_at: datetime
@@ -222,11 +279,11 @@ class RunOut(BaseModel):
 
 
 class VerdictOut(BaseModel):
-    # ``reference_answer`` or ``grounding``.
+    # ``expected_source``, ``fallback``, ``reference_answer`` or ``grounding``.
     kind: str
-    # ``pass`` or ``fail``.
+    # ``pass`` or ``fail``, or ``stale`` for a Stale expectation (skipped: neither).
     outcome: str
-    # The judge's one-sentence reason.
+    # Why: the judge's one-sentence reason, or what the check found.
     reason: str | None
 
 
@@ -249,12 +306,21 @@ class CaseSideOut(CaseSideResultOut):
     position: str
 
 
+class RunExpectedSourceOut(BaseModel):
+    document_name: str
+    passage: str
+
+
 class RunCaseOut(BaseModel):
     # The case it was copied from; null once that case is deleted.
     case_id: uuid.UUID | None
-    # The question and Reference answer as the Run copied them when it started.
+    # The question and expectations as the Run copied them when it started.
     question: str
     reference_answer: str | None
+    expected_sources: list[RunExpectedSourceOut]
+    expect_fallback: bool
+    # Whether an answer skipped a Stale expectation.
+    stale_expectation: bool
     # Its result on each side that has answered it.
     sides: list[CaseSideOut]
     # Whether its repeats disagreed on either side.
@@ -288,6 +354,19 @@ def _case_out(found: service.CaseWithResult) -> CaseOut:
         id=case.id,
         question=case.question,
         reference_answer=case.reference_answer,
+        expected_sources=[
+            ExpectedSourceOut(
+                id=expected.id,
+                document_id=expected.document_id,
+                document_name=expected.document_name,
+                passage=expected.passage,
+                stale=expected.stale,
+                stale_reason=expected.stale_reason,
+            )
+            for expected in found.sources
+        ],
+        expect_fallback=case.expect_fallback,
+        stale=found.stale,
         source=case.source,
         created_at=case.created_at,
         updated_at=case.updated_at,
@@ -347,7 +426,20 @@ def _passed(judged: service.JudgedResult) -> bool | None:
 
 
 def _fields(body: CaseIn) -> service.CaseFields:
-    return service.CaseFields(body.question, body.reference_answer)
+    return service.CaseFields(
+        body.question,
+        body.reference_answer,
+        body.expect_fallback,
+        [service.SourceFields(s.document_id, s.passage) for s in body.expected_sources],
+    )
+
+
+_INVALID = {
+    service.NoExpectationError: NO_EXPECTATION,
+    service.FallbackWithReferenceError: FALLBACK_WITH_REFERENCE,
+    service.FallbackWithSourceError: FALLBACK_WITH_SOURCE,
+    service.SourceDocumentNotFoundError: SOURCE_DOCUMENT_NOT_FOUND,
+}
 
 
 def _change_refused(error: Exception) -> HTTPException:
@@ -355,8 +447,8 @@ def _change_refused(error: Exception) -> HTTPException:
         return archived()
     if isinstance(error, AgentArchivedError):
         return agent_archived()
-    if isinstance(error, service.NoExpectationError):
-        return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NO_EXPECTATION)
+    if type(error) in _INVALID:
+        return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, _INVALID[type(error)])
     return not_found()
 
 
@@ -366,7 +458,7 @@ _NOT_FOUND = (
     service.CaseNotFoundError,
     service.RunNotFoundError,
 )
-_REFUSED = (*_NOT_FOUND, ProjectArchivedError, AgentArchivedError, service.NoExpectationError)
+_REFUSED = (*_NOT_FOUND, ProjectArchivedError, AgentArchivedError, *_INVALID)
 
 
 @router.get("/cases", operation_id="listEvaluationCases", responses=NOT_FOUND_RESPONSE)
@@ -584,6 +676,14 @@ async def get_run_results(
                 case_id=case.case.case_id,
                 question=case.case.question,
                 reference_answer=case.case.reference_answer,
+                expected_sources=[
+                    RunExpectedSourceOut(
+                        document_name=each["document_name"], passage=each["passage"]
+                    )
+                    for each in case.case.expected_sources
+                ],
+                expect_fallback=case.case.expect_fallback,
+                stale_expectation=case.stale_expectation,
                 sides=[
                     CaseSideOut(position=positions[side_id], **_side_fields(result))
                     for side_id, result in case.sides.items()

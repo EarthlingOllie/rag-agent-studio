@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 
 import { agentVersion, fakeAgentsApi, hrHelper, hrTrace, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
@@ -17,9 +18,11 @@ import {
   results,
   run,
 } from "../test/evaluation";
+import { aChunk, aDocument, fakeDocumentViewerApi } from "../test/documents";
 import { openSection } from "../test/navigation";
 import { fakeProjectsApi, hrProject, instructionsVersion } from "../test/projects";
 import { renderStudio } from "../test/render";
+import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const agentPage = (agentId: string, view = "/evaluation") =>
@@ -82,7 +85,10 @@ test("an Editor writes a case with a Reference answer; one without is refused be
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
   expect(requests).toEqual([
-    { route: "create", body: { question: "How much leave do I get?", reference_answer: "Everyone gets 25 days." } },
+    {
+      route: "create",
+      body: { question: "How much leave do I get?", reference_answer: "Everyone gets 25 days.", expected_sources: [], expect_fallback: false },
+    },
   ]);
   expect(await caseRows()).toEqual([["How much leave do I get?", "Everyone gets 25 days."]]);
   expect(screen.getByRole("button", { name: "Evaluate" })).toBeEnabled();
@@ -618,4 +624,281 @@ test("an archived Agent's running Run can't be cancelled from the Studio", async
 
   expect(await screen.findByRole("meter", { name: "Answers given" }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Cancel Run" })).not.toBeInTheDocument();
+});
+
+// Expected sources and Expect Fallback Text
+
+const leaveDocument = aDocument({ id: "d0c00000-0000-4000-8000-000000000009", name: "leave.txt", chunk_count: 2 });
+const leaveChunks = [
+  aChunk({ ordinal: 0, text: "Everyone gets 25 days of annual leave a year." }),
+  aChunk({ ordinal: 1, text: "Leave carries over until March." }),
+];
+
+async function openNewCase(user: ReturnType<typeof userEvent.setup>) {
+  const set = await setRegion();
+  await user.click(within(set).getAllByRole("button", { name: "New case" })[0] as HTMLElement);
+  return screen.findByRole("dialog", { name: "New Evaluation Case" });
+}
+
+test("an Editor picks a passage from a Document's Chunks as an Expected source", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ documentNames: { [leaveDocument.id]: "leave.txt" } });
+  fakeDocumentViewerApi({ document: { ...leaveDocument, markdown: "" }, chunks: leaveChunks });
+  renderStudio(agentPage(hrHelper.id));
+  const editor = await openNewCase(user);
+  await user.type(within(editor).getByLabelText("Question"), "How much leave do I get?");
+  expect(within(editor).getByText("No Expected sources.")).toBeInTheDocument();
+
+  await user.click(within(editor).getByRole("button", { name: "Add Expected source" }));
+  const picker = within(editor).getByRole("group", { name: "Pick a passage" });
+  // Adding without a Document and passage says what's missing.
+  await user.click(within(picker).getByRole("button", { name: "Add passage" }));
+  expect(within(picker).getByLabelText("Passage")).toHaveAccessibleDescription(/Choose a Document and a passage of it./);
+  await user.selectOptions(await within(picker).findByLabelText("Document"), "leave.txt");
+  const chunks = await within(picker).findByRole("list", { name: "Chunks" });
+  expect(within(chunks).getAllByRole("listitem")).toHaveLength(2);
+  await user.click(within(chunks).getByRole("button", { name: "Use Chunk 1 as the passage" }));
+  const passage = within(picker).getByLabelText("Passage");
+  expect(passage).toHaveValue("Everyone gets 25 days of annual leave a year.");
+  // Trimmed to the words that matter.
+  await user.clear(passage);
+  await user.type(passage, "25 days of annual leave");
+  await user.click(within(picker).getByRole("button", { name: "Add passage" }));
+
+  const sources = within(editor).getByRole("list", { name: "Expected sources" });
+  expect(sources).toHaveTextContent("leave.txt“25 days of annual leave”");
+  // A case with an Expected source needs nothing else.
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  expect(requests).toEqual([
+    {
+      route: "create",
+      body: {
+        question: "How much leave do I get?",
+        reference_answer: "",
+        expected_sources: [{ document_id: leaveDocument.id, passage: "25 days of annual leave" }],
+        expect_fallback: false,
+      },
+    },
+  ]);
+  expect(await caseRows()).toEqual([["How much leave do I get?", "leave.txt: “25 days of annual leave”"]]);
+});
+
+test("the picker can be cancelled, and a Project without Ready Documents says so", async () => {
+  const user = userEvent.setup();
+  setUp();
+  fakeDocumentViewerApi({ document: { ...leaveDocument, status: "processing", markdown: null }, chunks: [] });
+  renderStudio(agentPage(hrHelper.id));
+  const editor = await openNewCase(user);
+
+  await user.click(within(editor).getByRole("button", { name: "Add Expected source" }));
+  expect(await within(editor).findByText("This Project has no Ready Documents yet. Upload one in Documents first.")).toBeInTheDocument();
+  await user.type(within(editor).getByLabelText("Passage"), "anything");
+  await user.click(within(editor).getByRole("button", { name: "Cancel picking" }));
+  expect(within(editor).queryByRole("group", { name: "Pick a passage" })).not.toBeInTheDocument();
+});
+
+test("a Document with no Chunks, or Chunks that can't be loaded, says so in the picker", async () => {
+  const user = userEvent.setup();
+  setUp();
+  fakeDocumentViewerApi({ document: { ...leaveDocument, markdown: "" }, chunks: [] });
+  renderStudio(agentPage(hrHelper.id));
+  const editor = await openNewCase(user);
+  await user.click(within(editor).getByRole("button", { name: "Add Expected source" }));
+  await user.selectOptions(await within(editor).findByLabelText("Document"), "leave.txt");
+  expect(await within(editor).findByText("This Document has no Chunks yet.")).toBeInTheDocument();
+
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks", () =>
+      HttpResponse.json({ detail: "Down" }, { status: 500 }),
+    ),
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () =>
+      HttpResponse.json({ detail: "Down" }, { status: 500 }),
+    ),
+  );
+  await user.click(within(editor).getByRole("button", { name: "Cancel picking" }));
+  await user.click(within(editor).getByRole("button", { name: "Cancel" }));
+  const again = await openNewCase(user);
+  await user.click(within(again).getByRole("button", { name: "Add Expected source" }));
+  await user.selectOptions(await within(again).findByLabelText("Document"), "leave.txt");
+  expect(await within(again).findByText("The Chunks could not be loaded. Try again shortly.")).toBeInTheDocument();
+});
+
+test("a long Document's Chunks are paged in the picker", async () => {
+  const user = userEvent.setup();
+  setUp();
+  const many = Array.from({ length: 51 }, (_, ordinal) => aChunk({ ordinal, text: `Chunk text ${String(ordinal + 1)}.` }));
+  fakeDocumentViewerApi({ document: { ...leaveDocument, chunk_count: 51, markdown: "" }, chunks: many });
+  renderStudio(agentPage(hrHelper.id));
+  const editor = await openNewCase(user);
+  await user.click(within(editor).getByRole("button", { name: "Add Expected source" }));
+  await user.selectOptions(await within(editor).findByLabelText("Document"), "leave.txt");
+  await within(editor).findByRole("list", { name: "Chunks" });
+
+  await user.click(within(editor).getByRole("button", { name: "Page 2" }));
+  await user.click(await within(editor).findByRole("button", { name: "Use Chunk 51 as the passage" }));
+  expect(within(editor).getByLabelText("Passage")).toHaveValue("Chunk text 51.");
+});
+
+test("Documents that can't be loaded say so in the picker", async () => {
+  const user = userEvent.setup();
+  setUp();
+  server.use(
+    http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () =>
+      HttpResponse.json({ detail: "Down" }, { status: 500 }),
+    ),
+  );
+  renderStudio(agentPage(hrHelper.id));
+  const editor = await openNewCase(user);
+  await user.click(within(editor).getByRole("button", { name: "Add Expected source" }));
+  expect(await within(editor).findByText("The Documents could not be loaded. Try again shortly.", undefined, { timeout: 5000 })).toBeInTheDocument();
+});
+
+test("Expect Fallback Text stands alone: combined with a Reference answer or an Expected source, the refusal names the field", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ cases: [staleCase] });
+  renderStudio(agentPage(hrHelper.id));
+  await caseRows();
+  const editor = await openNewCase(user);
+  await user.type(within(editor).getByLabelText("Question"), "What is on the canteen menu?");
+  const fallback = within(editor).getByLabelText("Expect Fallback Text");
+  await user.click(fallback);
+  await user.type(within(editor).getByLabelText("Reference answer"), "Soup.");
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+  expect(fallback).toHaveAttribute("aria-invalid", "true");
+  expect(fallback).toHaveAccessibleDescription(/can't be combined with a Reference answer/);
+
+  await user.clear(within(editor).getByLabelText("Reference answer"));
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  expect(requests).toEqual([
+    {
+      route: "create",
+      body: { question: "What is on the canteen menu?", reference_answer: "", expected_sources: [], expect_fallback: true },
+    },
+  ]);
+  const rows = await caseRows();
+  expect(rows[1]).toEqual(["What is on the canteen menu?", "Expects the Fallback Text."]);
+
+  // The stale case keeps its Expected sources: ticking Expect Fallback Text is refused, naming them.
+  await user.click(screen.getByRole("button", { name: `More actions for ${staleCase.question}` }));
+  await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+  const editing = await screen.findByRole("dialog", { name: "Edit Evaluation Case" });
+  await user.click(within(editing).getByLabelText("Expect Fallback Text"));
+  await user.click(within(editing).getByRole("button", { name: "Save case" }));
+  expect(within(editing).getByLabelText("Expect Fallback Text")).toHaveAccessibleDescription(
+    /can't be combined with an Expected source/,
+  );
+});
+
+const staleCase = {
+  ...leaveCase,
+  id: "e1000000-0000-4000-8000-000000000003",
+  question: "Who approves leave?",
+  reference_answer: null,
+  stale: true,
+  expected_sources: [
+    {
+      id: "e3000000-0000-4000-8000-000000000001",
+      document_id: leaveDocument.id,
+      document_name: "leave.txt",
+      passage: "25 days",
+      stale: false,
+      stale_reason: null,
+    },
+    {
+      id: "e3000000-0000-4000-8000-000000000002",
+      document_id: null,
+      document_name: "parking.txt",
+      passage: "north car park",
+      stale: true,
+      stale_reason: "document_deleted",
+    },
+  ],
+};
+
+test("a case with a Stale expectation is flagged in the set, and its deleted Document's source must be removed before saving", async () => {
+  const user = userEvent.setup();
+  const missing = { ...staleCase.expected_sources[0], stale: true, stale_reason: "passage_missing" } as (typeof staleCase.expected_sources)[number];
+  const { requests } = setUp({ cases: [staleCase, { ...parkingCase, stale: true, expected_sources: [missing] }] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const table = await screen.findByRole("table", { name: "Evaluation Cases" }, { timeout: 5000 });
+  const [first, second] = within(table).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement];
+  expect(within(first).getByText("Stale expectation")).toHaveAttribute("title", "Its Document has been deleted.");
+  expect(within(second).getByText("Stale expectation")).toHaveAttribute(
+    "title",
+    "No Chunk of its Document's current Edition holds this passage.",
+  );
+
+  await user.click(screen.getByRole("button", { name: `More actions for ${staleCase.question}` }));
+  await user.click(screen.getByRole("menuitem", { name: "Edit" }));
+  const editor = await screen.findByRole("dialog", { name: "Edit Evaluation Case" });
+  const sources = within(editor).getByRole("list", { name: "Expected sources" });
+  expect(sources).toHaveTextContent("Its Document has been deleted.");
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+  expect(within(editor).getByRole("group", { name: "Expected sources" })).toHaveAccessibleDescription(
+    "Remove the Expected sources whose Document has been deleted, then save.",
+  );
+  expect(requests).toEqual([]);
+
+  await user.click(within(sources).getByRole("button", { name: "Remove the passage of parking.txt" }));
+  await user.click(within(editor).getByRole("button", { name: "Save case" }));
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  expect(requests[0]?.body).toMatchObject({ expected_sources: [{ document_id: leaveDocument.id, passage: "25 days" }] });
+});
+
+test("Run detail shows Expected source and fallback Verdicts, Stale ones skipped, and flags the case", async () => {
+  const checked: typeof passed = {
+    ...passed,
+    verdicts: [
+      { kind: "expected_source", outcome: "pass", reason: "The answer cited the passage of leave.txt." },
+      { kind: "expected_source", outcome: "stale", reason: "parking.txt has been deleted, so this was skipped." },
+      { kind: "grounding", outcome: "pass", reason: "Every claim is in the cited excerpt." },
+    ],
+  };
+  const fallbackCase = { ...parkingCase, reference_answer: null, expect_fallback: true };
+  const fallbackResult: typeof passed = {
+    ...failedResult,
+    verdicts: [{ kind: "fallback", outcome: "fail", reason: "The answer wasn't the Fallback Text or the Refusal text." }],
+  };
+  setUp({
+    cases: [staleCase, fallbackCase],
+    runs: [
+      results(run("r3000000-0000-4000-8000-000000000003", "completed", 2, 2), [
+        [staleCase, checked],
+        [fallbackCase, fallbackResult],
+      ]),
+    ],
+  });
+  renderStudio(agentPage(hrHelper.id));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
+  const cases = within(detail).getByRole("list", { name: "Cases" });
+  const [stale, fallback] = within(cases).getAllByRole("listitem").filter((item) => item.parentElement === cases) as [
+    HTMLElement,
+    HTMLElement,
+  ];
+  expect(stale).toHaveTextContent("Stale expectation");
+  expect(stale).toHaveTextContent("An Expected source's Document or passage is gone, so it was skipped: neither pass nor fail.");
+  expect(stale).not.toHaveTextContent("Reference answer:");
+  expect(within(stale).getByRole("list", { name: "Expected sources" })).toHaveTextContent(
+    "leave.txt: “25 days”parking.txt: “north car park”",
+  );
+  expect(within(stale).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
+    "Expected source: Pass. The answer cited the passage of leave.txt." +
+      "Expected source: Stale, skipped. parking.txt has been deleted, so this was skipped." +
+      "Grounding: Pass. Every claim is in the cited excerpt.",
+  );
+  expect(fallback).toHaveTextContent("Expects the Fallback Text.");
+  expect(fallback).not.toHaveTextContent("Stale expectation");
+  expect(within(fallback).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
+    "Expect Fallback Text: Fail. The answer wasn't the Fallback Text or the Refusal text.",
+  );
 });

@@ -30,6 +30,8 @@ const BADGES = {
   improvement: { label: "Improvement", className: "bg-accent-soft text-accent-ink" },
   /** An Evaluation Run with a Draft side whose Draft has moved on since. */
   runStale: { label: "Stale", className: "bg-flag-soft text-flag" },
+  /** An Evaluation Case with an Expected source whose Document or passage is gone: skipped by Runs until fixed. */
+  staleExpectation: { label: "Stale expectation", className: "bg-flag-soft text-flag" },
 } as const satisfies Record<string, { label: string; className: string; dot?: string }>;
 
 export type BadgeKind = keyof typeof BADGES;
