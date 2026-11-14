@@ -145,7 +145,7 @@ The Organisation `make seed` builds for showing the product: Northwind Traders, 
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
-The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
+The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. The HR helper also has an Evaluation Set, some of its cases added from seeded thumbs-down Messages, and two finished Evaluation Runs judged by the fake Evaluation Model: v2 against v1, whose Regressions explain the revert, and the Draft against v3. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
 _Avoid_: Fake data, sample history, fixtures
 
 **Demo pages**:
@@ -533,7 +533,7 @@ To move the Live Version (Agents) or the Current Version (Project Instructions) 
 _Avoid_: Rollback, undo
 
 **Bulk publish**:
-To publish a new Version of several Agents at once, each built from that Agent's **Live** configuration plus a chosen Project Instructions Version, never from its Draft (ADR-0003). Agents that have never been published are skipped (their first Version must be reviewed on their own page), and so are Agents already Live with that Instructions Version. Publishing Project Instructions opens the **rollout dialog**, which offers the new Version to the Project's Agents with every Agent that can take it pre-selected and Agents with unpublished Draft changes badged, since those edits aren't included.
+To publish a new Version of several Agents at once, each built from that Agent's **Live** configuration plus a chosen Project Instructions Version, never from its Draft (ADR-0003). Agents that have never been published are skipped (their first Version must be reviewed on their own page), and so are Agents already Live with that Instructions Version. Publishing Project Instructions opens the **rollout dialog**, which offers the new Version to the Project's Agents with every Agent that can take it pre-selected and Agents with unpublished Draft changes badged, since those edits aren't included, and can start a Rollout evaluation first.
 _Avoid_: Mass deploy, publish all
 
 **Bulk revert**:
@@ -802,7 +802,7 @@ An Evaluation Case's expectation that the Agent says it doesn't know, for a ques
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:
-One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions with the Project Instructions it answers with (by default the Live Version against the Draft, or the Draft alone while the Agent has none). Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts: a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
+One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions, with the Project Instructions it answers with: a Version its pinned ones, the Draft the Instructions Version or Instructions Draft chosen when the Run starts (the Current Instructions Version by default). By default the Live Version is compared with the Draft, or the Draft runs alone while the Agent has none; a Rollout evaluation's second side is the only Version that answers with Instructions other than its pin. Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts, and only if the Draft is published with the Instructions it ran with (otherwise a notice says so): a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
 _Avoid_: Eval, test run, benchmark run
 
 **Verdict**:
@@ -812,6 +812,10 @@ _Avoid_: Score, grade, judgement
 **Stale expectation**:
 An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
 _Avoid_: Broken case, invalid source
+
+**Rollout evaluation**:
+The Evaluation Runs Bulk publish's rollout dialog can start, one per selected Agent with an Evaluation Set: the Live Version as it is against its configuration answering with the new Instructions Version. The dialog lists each Agent's Regressions as warnings and marks Agents without an Evaluation Set "not evaluated"; it never blocks.
+_Avoid_: Bulk evaluation, rollout test
 
 **Evaluation repeats**:
 How many times each side of an Evaluation Run answers every Evaluation Case, each answer judged once: 1, 3, 5, 7 or 9, 3 by default, set by Owners in Organisation settings. Odd, so a majority always decides; each repeat multiplies a Run's Cost.
