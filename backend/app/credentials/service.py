@@ -227,11 +227,8 @@ class Credentials:
         capabilities = await self._capabilities(scope, new.provider, new.name, new.capabilities)
         result = await self._verifier.check(new.provider, new.api_key)
         if result.failure is not None:
-            details = {
-                "name": new.name,
-                "provider": new.provider,
-                "masked_suffix": _suffix(new.api_key),
-            }
+            # Nothing of the rejected key is recorded, not even its last characters.
+            details = {"name": new.name, "provider": new.provider}
             raise await self._check_failed(scope, None, details, result.failure)
         credential = ProviderCredential(
             name=new.name,
@@ -416,7 +413,8 @@ class Credentials:
             raise NotRotatableError
         result = await self._verifier.check(Provider(credential.provider), api_key)
         if result.failure is not None:
-            details = _summary(credential) | {"attempted_suffix": _suffix(api_key)}
+            # The summary shows the old (accepted) key's suffix, never the rejected key's.
+            details = _summary(credential)
             raise await self._check_failed(scope, credential.id, details, result.failure)
         before = {"masked_suffix": credential.masked_suffix}
         credential.secret_sealed = seal_secret(

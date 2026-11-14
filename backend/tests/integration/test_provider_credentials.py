@@ -6,6 +6,7 @@ the key it saves. Everything is observed through the API, including Audit Events
 """
 
 import asyncio
+import json
 import uuid
 from datetime import timedelta
 from typing import Any
@@ -277,13 +278,10 @@ async def test_a_failed_check_gives_a_typed_reason_and_stores_nothing(
     assert await listed(owner) == []
     (event,) = await audit_events(owner, "credential.check_failed")
     assert event["target"] == {"type": "provider_credential", "id": None}
-    assert event["after"] == {
-        "name": "Broken",
-        "provider": "anthropic",
-        "masked_suffix": "k3y9",
-        "reason": reason,
-    }
+    assert event["after"] == {"name": "Broken", "provider": "anthropic", "reason": reason}
     assert event["actor"]["id"] == owner.member_id
+    # No characters of the rejected key reach the audit trail.
+    assert "k3y9" not in json.dumps(event)
 
 
 async def test_an_unknown_fake_failure_is_an_invalid_key(owner: SignedUpMember) -> None:
@@ -401,8 +399,10 @@ async def test_a_rotation_that_fails_its_check_keeps_the_old_key(
     assert verifier.checked[-1] == (Provider.ANTHROPIC, ANTHROPIC_KEY)
     assert await audit_events(owner, "credential.rotated") == []
     (event,) = await audit_events(owner, "credential.check_failed")
-    assert event["after"]["attempted_suffix"] == "zzzz"
     assert event["after"]["masked_suffix"] == "abcd"
+    assert "attempted_suffix" not in event["after"]
+    # No characters of the rejected key reach the audit trail.
+    assert "zzzz" not in json.dumps(event)
 
 
 async def test_a_malformed_rotation_key_is_refused(owner: SignedUpMember) -> None:
