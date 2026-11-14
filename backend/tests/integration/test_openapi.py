@@ -9,6 +9,7 @@ _PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
 _THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
 _AGENT = f"{_PROJECT}/agents/{{agent_id}}"
 _PLAYGROUND = f"{_AGENT}/playground/conversations"
+_EVALUATION = f"{_AGENT}/evaluation"
 _FEEDBACK = "/api/widget/agents/{public_id}/messages/{message_id}/feedback"
 _RATING = "/api/widget/agents/{public_id}/conversation/rating"
 
@@ -166,6 +167,15 @@ def test_openapi_document_describes_every_endpoint() -> None:
             f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
             "get",
         ),
+        "listEvaluationCases": (f"{_EVALUATION}/cases", "get"),
+        "createEvaluationCase": (f"{_EVALUATION}/cases", "post"),
+        "getEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "get"),
+        "updateEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "put"),
+        "deleteEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "delete"),
+        "startEvaluationRun": (f"{_EVALUATION}/runs", "post"),
+        "listEvaluationRuns": (f"{_EVALUATION}/runs", "get"),
+        "getEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}", "get"),
+        "getEvaluationRunResults": (f"{_EVALUATION}/runs/{{run_id}}/results", "get"),
         "listConversations": (f"{_PROJECT}/conversations", "get"),
         "getConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "get"),
         "deleteConversation": (f"{_PROJECT}/conversations/{{conversation_id}}", "delete"),

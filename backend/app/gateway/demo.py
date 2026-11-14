@@ -8,7 +8,9 @@ the fake adapters build it, so the demo looks the same in ``docker compose`` and
 
 In Agentic Retrieval Mode (offered Knowledge Search, spec 13) the demo model makes one Knowledge
 Search with the Visitor's question, then answers as above from the first Chunk the Search
-returned, so an Agentic Agent works without a real Provider Credential too.
+returned, so an Agentic Agent works without a real Provider Credential too. Asked to judge an
+Evaluation Run's answer, it judges by rule, as the fake chat model does
+(``app.evaluation.fake_judge``), so the seeded Runs are deterministic.
 
 The provider's second model, ``demo-naive``, is the Attack evaluation suite's Naive model behind
 its own label: it obeys whatever instructions it finds (decoding base64 and reciting its system
@@ -34,6 +36,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 
 from app.evals.naive_model import PIECE, naive_answer, naive_search
+from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.runtime.prompt import CHUNKS_CLOSE, CHUNKS_OPEN, INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
 
 DEMO_LABEL = "Demo model (canned answer, not AI)"
@@ -100,6 +103,8 @@ def demo_answer(messages: list[ModelMessage]) -> str:
 
 
 def _reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+    if is_judging(info):
+        return fake_judgement(messages, info)
     query = demo_search(messages, info)
     if query is not None:
         return ModelResponse(parts=[ToolCallPart(KNOWLEDGE_SEARCH, {"query": query})])

@@ -27,6 +27,7 @@ const FRAME = `<!doctype html><html lang="en"><title>Agent</title>
     <ul>
       <li><a href="#Playground" aria-current="page">Playground</a></li>
       <li><a href="#Versions">Versions</a></li>
+      <li><a href="#Evaluation">Evaluation</a></li>
       <li><a href="#Embed &amp; limits">Embed &amp; limits</a></li>
       <li><a href="#Conversations">Conversations</a></li>
     </ul>
@@ -57,7 +58,7 @@ test.describe("navigation helpers on an Agent", () => {
   });
 
   test("Agent views are read from the tab row", async ({ page }) => {
-    expect(await sectionNames(page, "Agent views")).toEqual(["Playground", "Versions", "Embed & limits", "Conversations"]);
+    expect(await sectionNames(page, "Agent views")).toEqual(["Playground", "Versions", "Evaluation", "Embed & limits", "Conversations"]);
     expect(await currentSection(page, "Agent views")).toBe("Playground");
 
     await openSection(page, "Agent views", "Versions");

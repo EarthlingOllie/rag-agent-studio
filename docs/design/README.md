@@ -248,7 +248,7 @@ where the Member is: from the Organisation's page they are under down to the pag
   the Version chip, or Not live; Draft while there are unpublished changes); on the right
   "Analytics for this Agent" (a ghost link to Analytics filtered to it) and a ⋯ menu (Discard
   Draft, Archive, or Delete permanently on an archived Agent). Under it a `TabRow` "Agent views"
-  of `tabLink`s (Playground, Versions, Embed & limits, Conversations; the current one has
+  of `tabLink`s (Playground, Versions, Evaluation, Embed & limits, Conversations; the current one has
   `aria-current="page"`, an `accent` underline and `ink` text, and Conversations stays current on
   a Conversation opened from it), then the view. An archived Project's notice stays above it.
   - **Playground**: the Playground is the main column (max 720px, centred); configuration is a
@@ -258,6 +258,16 @@ where the Member is: from the Organisation's page they are under down to the pag
     ones in `flag`).
   - **Versions**: the Live History as a timeline (Revert in the Live Version's ⋯ menu), the
     Versions (Start Draft from in each one's ⋯ menu), then Compare with From/To and `Diff`s.
+  - **Evaluation** (built in 14-02): `PageHeader level={2}` "Evaluation Set" with New case
+    (secondary) and Evaluate (the one primary, disabled with no cases or while a Run is in progress,
+    reading "Evaluating…"), then the cases as a `table.wrap` (Edit and Delete in each row's ⋯ menu;
+    Delete asks in a destructive `ConfirmDialog`). The case editor is a `Dialog` (no corner ✕):
+    Question and Reference answer (`field.textarea`, the missing Reference answer shown as a field
+    error before anything is sent). Under "Runs", the Runs newest first (a `surface.card` list with
+    a `Status` dot, the chosen one on `accent-soft`) and the chosen Run: a progress `Meter` while it
+    runs, then each case on a `surface.panel` with its answer on `sunken`, its Verdicts with the
+    judge's reasons and the `TraceFold`. An archived Agent's set is read only, said in an info
+    `Notice`.
   - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
     (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
   - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with

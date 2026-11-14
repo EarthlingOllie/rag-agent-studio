@@ -492,8 +492,40 @@ async def _a_playground_answer(owner: SignedUpMember, add_member: MemberFactory)
     return params | {"message_id": conversation.json()["messages"][-1]["id"]}, None
 
 
+async def _an_evaluation_case(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    created = await owner.client.post(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/cases",
+        json=_EVALUATION_CASE,
+    )
+    assert created.status_code == 201, created.text
+    return params | {"case_id": created.json()["id"]}, _EVALUATION_CASE
+
+
+async def _an_evaluation_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Run needs a Default Model, which the gateway's fake chat model answers and judges as.
+    _, choice = await _a_chat_model_choice(owner, add_member)
+    response = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/default-model", json=choice
+    )
+    assert response.status_code == 200, response.text
+    params, _ = await _an_evaluation_case(owner, add_member)
+    return params, None
+
+
+async def _an_evaluation_run(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    started = await owner.client.post(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/runs"
+    )
+    assert started.status_code == 202, started.text
+    return params | {"run_id": started.json()["id"]}, None
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
+_EVALUATION = _AGENT + "/evaluation"
+_EVALUATION_CASE = {"question": "How much leave?", "reference_answer": "25 days."}
 # The Conversations viewer: every Conversation of the Project, Visitors' and the Playground's.
 _CONVERSATIONS = PROJECTS + "/{project_id}/conversations"
 
@@ -611,6 +643,15 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
+    ScopedRoute("GET", _EVALUATION + "/cases", EDITOR, _an_agent),
+    ScopedRoute("POST", _EVALUATION + "/cases", EDITOR, _an_evaluation_case),
+    ScopedRoute("GET", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("PUT", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("DELETE", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("POST", _EVALUATION + "/runs", EDITOR, _an_evaluation_to_start),
+    ScopedRoute("GET", _EVALUATION + "/runs", EDITOR, _an_evaluation_run),
+    ScopedRoute("GET", _EVALUATION + "/runs/{run_id}", EDITOR, _an_evaluation_run),
+    ScopedRoute("GET", _EVALUATION + "/runs/{run_id}/results", EDITOR, _an_evaluation_run),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(

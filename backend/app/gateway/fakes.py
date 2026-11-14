@@ -33,6 +33,7 @@ from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls
 
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
+from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.gateway.demo import demo_chat_model
 from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
 from app.runtime.prompt import INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
@@ -153,7 +154,8 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
     """A Pydantic AI ``FunctionModel`` that says which provider and model it stands in for, and
     cites the first Chunk ([C1]) when it is given retrieved Chunks. In Agentic Retrieval Mode
     it first makes one Knowledge Search with the Visitor's question. It answers in plain text,
-    except as an LLM classifier (a structured-output call), when it returns a verdict.
+    except as an LLM classifier (a structured-output call), when it returns a verdict, and as an
+    Evaluation Run's judge, when it judges by rule (``app.evaluation.fake_judge``).
     Asked to ``FAKE_LEAK_PROMPT``, it streams its Canary token instead, in pieces; asked one of
     the ``FAKE_FAILURES``, it raises that provider error instead of answering."""
 
@@ -162,6 +164,8 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
         return f"Fake reply from {provider}:{model}.{cites}"
 
     def complete(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        if is_judging(info):
+            return fake_judgement(messages, info)
         if info.output_tools:
             return _classifier_verdict(messages, info, model)
         return ModelResponse(parts=[TextPart(reply(messages))])

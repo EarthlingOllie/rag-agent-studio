@@ -2,8 +2,8 @@ import type { Page } from "@playwright/test";
 
 import { openSection } from "./navigation";
 
-/** Opens an Agent view (Playground, Versions, Embed & limits, Conversations) from the tab row under the Agent's header. */
-export async function openAgentView(page: Page, view: "Playground" | "Versions" | "Embed & limits" | "Conversations") {
+/** Opens an Agent view (Playground, Versions, Evaluation, Embed & limits, Conversations) from the tab row under the Agent's header. */
+export async function openAgentView(page: Page, view: "Playground" | "Versions" | "Evaluation" | "Embed & limits" | "Conversations") {
   await openSection(page, "Agent views", view);
 }
 
