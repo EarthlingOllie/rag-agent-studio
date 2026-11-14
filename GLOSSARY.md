@@ -222,6 +222,10 @@ _Avoid_: Dependency, usage, link
 The chat model an Organisation's Agents use unless an Agent overrides it: one chat-capable Provider Credential and one of its chat models, chosen by an Owner. It is a Credential reference, so its credential can't be deleted while it is chosen.
 _Avoid_: Global model, org model
 
+**Evaluation Model**:
+The chat model that judges every Evaluation Run in an Organisation: one chat-capable Provider Credential and one of its chat models, chosen by an Owner, or the Default Model while none is chosen. It is a Credential reference. One per Organisation, so scores stay comparable across Agents and over time; changing it is an Audit Event.
+_Avoid_: Judge, grader model, eval model
+
 **Demo model**:
 The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
@@ -772,21 +776,21 @@ The warning under the Time series when the Project's Knowledge Base changed duri
 _Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
-What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage in its own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
+What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage and Evaluation Run cost each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
 _Avoid_: Billing, invoice, spend report
 
 ## Evaluation
 
 **Evaluation Set**:
-The Evaluation Cases one Agent is measured against, kept by its Editors so that a change to the Agent can be checked before it is Published. Each Agent has its own; cases can be copied from another Agent in the same Project.
+The Evaluation Cases one Agent is measured against, kept by its Editors so that a change to the Agent can be checked before it is Published. Each Agent has its own, of at most 200 cases; cases can be copied from another Agent in the same Project.
 _Avoid_: Golden set, eval suite, test set, benchmark
 
 **Evaluation Case**:
-One question in an Evaluation Set, with at least one expectation: an Expected source, a Reference answer, or Expect Fallback Text. Written by an Editor or added from an Agent Message, it is kept until an Editor deletes it, and the Purge never clears it.
+One standalone question in an Evaluation Set (no earlier turns), with at least one expectation: an Expected source, a Reference answer, or Expect Fallback Text. Written by an Editor or added from an Agent Message, it is kept until an Editor deletes it, and the Purge never clears it.
 _Avoid_: Test case, golden question, eval
 
 **Expected source**:
-A passage of a Document that an Evaluation Case's answer should retrieve and cite.
+A passage of a Document that an Evaluation Case's answer should retrieve and cite. It is matched against the Document's current Edition each Run; when the Document is gone or the passage no longer appears, the expectation is Stale.
 _Avoid_: Ground truth chunk, expected chunk
 
 **Reference answer**:
@@ -798,5 +802,17 @@ An Evaluation Case's expectation that the Agent says it doesn't know, for a ques
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:
-One run of an Agent's Evaluation Set against its Draft or one of its Versions, with a result for each Evaluation Case. A Draft scoring worse than the Live Version is shown as a warning when Publishing; it never blocks.
+One run of an Agent's Evaluation Set that answers every Evaluation Case with the Draft and, at the same moment against the same Knowledge Base, with the Live Version (the Draft alone while the Agent has none), through the real Guardrails, then judges each answer with the Evaluation Model. An Editor starts it; it is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. A Draft scoring worse than the Live Version is a warning when Publishing; it never blocks.
 _Avoid_: Eval, test run, benchmark run
+
+**Verdict**:
+An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A case passes when every verdict that isn't Stale passes.
+_Avoid_: Score, grade, judgement
+
+**Stale expectation**:
+An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
+_Avoid_: Broken case, invalid source
+
+**Evaluation score**:
+In an Evaluation Run, the share of Evaluation Cases that passed, given for the Draft and for the Live Version.
+_Avoid_: Pass rate (the Attack evaluation suite's), accuracy
