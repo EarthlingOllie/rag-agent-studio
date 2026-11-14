@@ -285,3 +285,8 @@ Each Agent gets an **Evaluation Set**: questions its Editors care about, each wi
 - **ADR-0016 is the one retention exception.** Cases and Runs never reference Conversations, and the question is copied with the Editor seeing and editing it. Don't add a link back "for convenience".
 - **The judge is a chat model behind the Model gateway.** That keeps fakes in one place and lets the seed and end-to-end runs be deterministic. Keep the fake judge strict enough that it can fail: a judge that always passes would make the suite meaningless, the same lesson as the Naive model.
 - **Prefactor first.** The model-resolution helpers are private to the Playground and serving modules today. Making them one public function is the first ticket, so evaluation doesn't copy them.
+- **Tickets:** [`docs/tickets/14-evaluation-loop/`](../tickets/README.md#14-evaluation-loop): eleven tickets, 14-01 to 14-11.
+  - 14-01 is a prefactor and 14-02 the tracer.
+  - 14-03 to 14-05 follow the tracer; 14-06 and 14-07 follow 14-05.
+  - 14-08 and 14-09 follow 14-03 and 14-04, and 14-10 follows 14-09.
+  - 14-11 closes with the demo seed, the end-to-end test and the live suite.

@@ -187,3 +187,21 @@ Retrieval Mode (Automatic or Agentic) and the read-only Knowledge Search tool ([
 | `13-08` | [Searches in metrics and retention](./13-agentic-retrieval/08-searches-metrics-retention.md) | 13-02 |
 | `13-09` | [Agentic by default, with the demo and seed](./13-agentic-retrieval/09-agentic-default-demo-seed.md) | 13-03, 13-04, 13-07 |
 | `13-10` | [Agentic answers stream word by word](./13-agentic-retrieval/10-stream-agentic-answers.md) | 13-04, 13-06, 13-07 |
+
+## 14: Evaluation loop
+
+Evaluation Sets per Agent, Evaluation Runs judged by the Organisation's Evaluation Model, and warnings when Publishing ([ADR-0016](../adr/0016-evaluation-cases-outlive-retention.md)). 14-01 is a prefactor and 14-02 the tracer; 14-03, 14-04 and 14-05 can start once the tracer lands.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `14-01` | [Prefactor: one public way to resolve an AgentConfig's models](./14-evaluation-loop/01-prefactor-resolve-agent-models.md) | none |
+| `14-02` | [Evaluation tracer: one case, the Draft alone, one judged answer](./14-evaluation-loop/02-evaluation-tracer.md) | 14-01 |
+| `14-03` | [Evaluation Model, Evaluation repeats and combining results](./14-evaluation-loop/03-evaluation-model-repeats.md) | 14-02 |
+| `14-04` | [Two-sided Runs](./14-evaluation-loop/04-two-sided-runs.md) | 14-02 |
+| `14-05` | [Expected sources and Expect Fallback Text](./14-evaluation-loop/05-expected-sources-fallback.md) | 14-02 |
+| `14-06` | [Building the set: add from a Message, copy, cap and filters](./14-evaluation-loop/06-build-set-from-messages.md) | 14-05 |
+| `14-07` | [Expected source warning and re-checking after a new Edition](./14-evaluation-loop/07-expected-source-warning.md) | 14-05 |
+| `14-08` | [Run Cost: estimate, actual, Organisation cost](./14-evaluation-loop/08-run-cost.md) | 14-03, 14-04 |
+| `14-09` | [Evaluation in the Publish dialog](./14-evaluation-loop/09-publish-dialog-evaluation.md) | 14-03, 14-04 |
+| `14-10` | [Rollout evaluation](./14-evaluation-loop/10-rollout-evaluation.md) | 14-09 |
+| `14-11` | [Demo seed, end-to-end and live suite](./14-evaluation-loop/11-demo-seed-e2e-live.md) | 14-06, 14-08, 14-09 |
