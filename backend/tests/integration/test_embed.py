@@ -93,7 +93,8 @@ async def test_the_shell_may_only_be_framed_by_the_allowed_origins(
     assert shell.headers["content-type"].startswith("text/html")
     assert (
         shell.headers["content-security-policy"]
-        == "frame-ancestors https://www.example.com http://localhost:8080"
+        == "frame-ancestors https://www.example.com http://localhost:8080; "
+        "img-src 'self' data: blob:"
     )
     assert shell.headers["cache-control"] == "no-store"
     assert '<script type="module" src="/widget/assets/widget.js"></script>' in shell.text
@@ -111,7 +112,9 @@ async def test_an_agent_without_allowed_origins_can_be_framed_by_no_site(
     shell = await visitor.get(f"/widget/a/{agent['public_id']}")
 
     assert shell.status_code == 200, shell.text
-    assert shell.headers["content-security-policy"] == "frame-ancestors 'none'"
+    assert shell.headers["content-security-policy"] == (
+        "frame-ancestors 'none'; img-src 'self' data: blob:"
+    )
 
 
 async def test_an_agent_that_is_not_live_gets_the_no_longer_available_shell(

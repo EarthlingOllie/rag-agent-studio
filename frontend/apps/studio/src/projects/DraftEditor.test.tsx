@@ -110,7 +110,6 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
   await userEvent.type(prompt, "# Role{enter}{enter}Be brief.");
   const experience = group("Experience");
   await userEvent.type(within(experience).getByLabelText("Display name"), "Hana");
-  await userEvent.type(within(experience).getByLabelText(/Avatar URL/), "https://cdn.example.com/hana.png");
   await userEvent.type(within(experience).getByLabelText("Greeting"), "Hi!");
   await userEvent.type(within(experience).getByLabelText(/Starter questions/), "How much leave?{enter}{enter}  When is payday?  ");
   await userEvent.type(within(experience).getByLabelText(/"Send" button/), "Ask");
@@ -130,7 +129,7 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
     retrieval: defaultDraft.retrieval,
     experience: {
       display_name: "Hana",
-      avatar_url: "https://cdn.example.com/hana.png",
+      avatar_url: null,
       greeting: "Hi!",
       starter_questions: ["How much leave?", "When is payday?"],
       ui_text: {
@@ -146,13 +145,23 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
 
   // Emptied overrides go back to the built-in text.
   await userEvent.clear(within(experience).getByLabelText(/"Send" button/));
-  await userEvent.clear(within(experience).getByLabelText(/Avatar URL/));
   await saved();
   const last = saves(requests).at(-1) as Draft;
   expect(last.experience.ui_text.send_button).toBeNull();
-  expect(last.experience.avatar_url).toBeNull();
   // The longest test here: it types into every field, so it gets room on a loaded machine.
 }, 30_000);
+
+test("the Experience offers no external avatar URL: the widget shows hosted avatars only", async () => {
+  setUp();
+  await openEditor();
+  const experience = group("Experience");
+
+  expect(within(experience).queryByLabelText(/Avatar URL/)).not.toBeInTheDocument();
+  expect(within(experience).queryByRole("textbox", { name: /avatar/i })).not.toBeInTheDocument();
+  expect(
+    within(experience).getByText("The widget shows the Agent's avatar from its Theme override, else the Theme's. Only Owners upload avatars."),
+  ).toBeInTheDocument();
+});
 
 test("an Editor sets the Retrieval settings and Tag scoping", async () => {
   const { requests } = setUp();

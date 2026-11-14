@@ -815,14 +815,9 @@ export function DraftEditor({
             setExperience({ display_name });
           }}
         />
-        <TextField
-          label="Avatar URL (https)"
-          errors={at("experience.avatar_url")}
-          value={experience.avatar_url ?? ""}
-          onChange={(avatar_url) => {
-            setExperience({ avatar_url: orNull(avatar_url) });
-          }}
-        />
+        {/* No external avatar URL: the widget shows hosted images only, so no Visitor's browser
+            fetches a URL an Editor typed. An older Draft's avatar_url is kept but never served. */}
+        <p className={fields.hint}>The widget shows the Agent&apos;s avatar from its Theme override, else the Theme&apos;s. Only Owners upload avatars.</p>
         <TextField
           label="Greeting"
           rows={2}

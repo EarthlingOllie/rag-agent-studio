@@ -29,7 +29,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
-from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
+from app.agents.api import (
+    AGENT_ARCHIVED_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    ClockDep,
+    agent_archived,
+    archived,
+    not_found,
+)
 from app.agents.models import (
     CONVERSATION_RATE_MAX,
     IP_RATE_MAX,
@@ -37,7 +44,7 @@ from app.agents.models import (
     TOKEN_BUDGET_MAX,
     UNAVAILABLE_TEXT_MAX,
 )
-from app.agents.service import AgentNotFoundError
+from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db, ErrorResponse
 from app.core.client_ip import request_ip
@@ -50,7 +57,7 @@ from app.guardrails.pipeline import RefusalEvent
 from app.mail.port import Mailer
 from app.playground.api import QUESTION_MAX
 from app.playground.service import Answered, NoDefaultModelError, answer
-from app.projects.service import ProjectNotFoundError
+from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import (
     CitationEvent,
@@ -162,7 +169,9 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
         ),
         headers={
             **_HEADERS,
-            "Content-Security-Policy": service.frame_ancestors(found.allowed_origins),
+            "Content-Security-Policy": (
+                f"{service.frame_ancestors(found.allowed_origins)}; {service.WIDGET_IMG_SRC}"
+            ),
         },
     )
 
@@ -626,7 +635,7 @@ async def get_operational_settings(
 @settings_router.patch(
     "/operational-settings",
     operation_id="changeOperationalSettings",
-    responses=NOT_FOUND_RESPONSE,
+    responses=NOT_FOUND_RESPONSE | AGENT_ARCHIVED_RESPONSE,
 )
 async def change_operational_settings(
     project_id: uuid.UUID,
@@ -654,6 +663,10 @@ async def change_operational_settings(
         )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
+    except ProjectArchivedError:
+        raise archived() from None
+    except AgentArchivedError:
+        raise agent_archived() from None
     except service.InvalidOriginError as error:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -663,7 +676,9 @@ async def change_operational_settings(
                     "msg": (
                         f"{error.origin!r} isn't a site address. Use a scheme, host and optional "
                         "port, such as https://www.example.com, https://*.example.com for its "
-                        "subdomains, or http://localhost:8080 (http://localhost:* for any port)."
+                        "subdomains, or http://localhost:8080 (http://localhost:* for any port). "
+                        "A wildcard covers one site's subdomains, never a public suffix such as "
+                        "*.co.uk or *.github.io."
                     ),
                     "type": "value_error",
                 }

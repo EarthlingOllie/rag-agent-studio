@@ -143,7 +143,7 @@ function Avatar({
         {image ? (
           <img src={image.url} alt="The Agent's avatar" className="h-12 w-12 rounded-full border border-line object-cover" />
         ) : (
-          <span className={text.muted}>No avatar of its own: the widget shows the Live Version&apos;s or the Theme&apos;s.</span>
+          <span className={text.muted}>No avatar of its own: the widget shows the Theme&apos;s.</span>
         )}
       </div>
       {isOwner && (

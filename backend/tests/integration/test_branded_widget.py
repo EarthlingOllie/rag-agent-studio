@@ -392,21 +392,22 @@ async def test_an_owner_uploads_an_agent_avatar_and_visitors_see_it(
     assert image.headers["cache-control"] == "public, max-age=31536000, immutable"
 
 
-async def test_the_agents_avatar_wins_over_the_live_versions_and_the_themes(
+async def test_the_agents_avatar_wins_over_the_themes(
     owner: SignedUpMember, visitor: httpx.AsyncClient, app: FastAPI
 ) -> None:
     project_id = await create_project(owner)
     agent = await create_agent(owner, project_id)
-    hosted = "https://cdn.example.com/hana.png"
-    draft = {"experience": {"avatar_url": hosted}}
+    # A Live Version's external avatar URL is never served (AGT-F3): hosted images only.
+    draft = {"experience": {"avatar_url": "https://cdn.example.com/hana.png"}}
     assert (await save_draft(owner, project_id, agent["id"], draft)).status_code == 200
     await published(owner, project_id, agent["id"])
     plain = await live_agent(owner)
     theme_avatar = images.png(1, 2, 3)
     theme_digest = hashlib.sha256(theme_avatar).hexdigest()[:16]
+    hosted = f"/widget/a/{agent['public_id']}/avatar?v={theme_digest}"
 
-    # Without an image of its own the Live Version's avatar shows; else the Theme's, if any.
-    assert boot(await shell_of(visitor, agent))["avatar_url"] == hosted
+    # Without an image of its own the Theme's avatar shows, if any.
+    assert boot(await shell_of(visitor, agent))["avatar_url"] is None
     await images.upload(owner, "avatar", theme_avatar)
     assert boot(await shell_of(visitor, agent))["avatar_url"] == hosted
     plain_url = boot(await shell_of(visitor, plain))["avatar_url"]

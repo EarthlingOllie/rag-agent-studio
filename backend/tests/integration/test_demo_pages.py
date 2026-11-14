@@ -85,7 +85,7 @@ async def test_the_shop_agent_may_be_framed_by_the_shop_origin_only(
         shell = await visitor.get(f"/widget/a/{found[role]['public_id']}")
         assert shell.status_code == 200, shell.text
         policy = shell.headers["content-security-policy"]
-        assert policy == f"frame-ancestors {SHOP_ORIGIN}"
+        assert policy == f"frame-ancestors {SHOP_ORIGIN}; img-src 'self' data: blob:"
         assert DISALLOWED_ORIGIN not in policy
 
 

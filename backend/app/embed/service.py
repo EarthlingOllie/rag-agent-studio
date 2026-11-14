@@ -14,6 +14,7 @@ from datetime import UTC, datetime, time, timedelta
 from datetime import date as date_type
 from typing import cast
 
+from publicsuffixlist import PublicSuffixList
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +22,7 @@ from app import audit
 from app.agents import serving
 from app.agents.config import Experience
 from app.agents.models import ORIGIN_MAX, Agent
-from app.agents.service import get_agent
+from app.agents.service import active_agent, get_agent
 from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
 from app.embed.admission import Admission, Limits, Refusal, Reservation, utc_date
@@ -32,6 +33,7 @@ from app.feedback.service import RatingState, feedback_on, rating_state
 from app.mail import templates
 from app.mail.port import Mailer
 from app.playground.service import PreparedTurn
+from app.projects.service import active_project
 from app.runtime.prompt import chunk_label
 from app.tenancy.models import Member, Membership, Role
 from app.tenancy.repository import OrganisationScope
@@ -52,6 +54,14 @@ _ORIGIN = re.compile(
 )
 # The developer's own machine, where any port may be allowed.
 _LOOPBACK = frozenset({"localhost", "127.0.0.1", "[::1]"})
+# The Public Suffix List snapshot bundled with the package: read from disk, never fetched.
+_PUBLIC_SUFFIXES = PublicSuffixList()
+
+
+def _over_public_suffix(host: str) -> bool:
+    """Whether ``host`` is a wildcard over a public suffix (``*.co.uk``, ``*.github.io``),
+    which would let every site registered under that suffix in."""
+    return host.startswith("*.") and bool(_PUBLIC_SUFFIXES.is_public(host[2:]))
 
 
 class InvalidOriginError(Exception):
@@ -63,7 +73,7 @@ class InvalidOriginError(Exception):
 
 def _valid(origin: str) -> bool:
     found = _ORIGIN.fullmatch(origin)
-    if found is None or len(origin) > ORIGIN_MAX:
+    if found is None or len(origin) > ORIGIN_MAX or _over_public_suffix(found["host"]):
         return False
     port = found["port"]
     if port == "*":
@@ -77,8 +87,9 @@ def normalise_origins(origins: list[str]) -> list[str]:
 
     An origin is ``http`` or ``https``, a host and an optional port, with no path. The host may
     start with a subdomain wildcard (``https://*.example.com``, any subdomain of example.com but
-    not example.com itself). Localhost (``localhost``, ``127.0.0.1``, ``[::1]``) may take any
-    port with ``:*``, for development.
+    not example.com itself) over a named site, never over a public suffix such as ``co.uk`` or
+    ``github.io`` (the Public Suffix List). Localhost (``localhost``, ``127.0.0.1``, ``[::1]``)
+    may take any port with ``:*``, for development.
     """
     found: list[str] = []
     for index, raw in enumerate(origins):
@@ -103,7 +114,8 @@ def _parts(origin: str) -> tuple[str, str, str | None] | None:
 
 def origin_allowed(origin: str, allowed: list[str]) -> bool:
     """Whether a browser's origin is one of the Allowed Origins (``normalise_origins``' forms:
-    an exact origin, a subdomain wildcard, or a loopback host with any port)."""
+    an exact origin, a subdomain wildcard, or a loopback host with any port). A wildcard over a
+    public suffix, stored before those were refused, lets nobody in."""
     request = _parts(origin)
     if request is None:
         return False
@@ -113,6 +125,8 @@ def origin_allowed(origin: str, allowed: list[str]) -> bool:
         if not rule.startswith(f"{scheme}://") or (found := _ORIGIN.fullmatch(rule)) is None:
             continue
         rule_host, rule_port = found["host"], found["port"]
+        if _over_public_suffix(rule_host):
+            continue
         if rule_host.startswith("*."):
             host_matches = host.endswith(rule_host[1:])
         else:
@@ -128,9 +142,20 @@ async def allowed_origins(session: AsyncSession, public_id: str) -> list[str]:
     return [] if found is None else list(found)
 
 
+# Where the widget shell may load images from: its own origin (the hosted avatar and logo) and
+# inline images, never an external host.
+WIDGET_IMG_SRC = "img-src 'self' data: blob:"
+
+
 def frame_ancestors(origins: list[str]) -> str:
-    """The ``Content-Security-Policy`` that lets only those origins frame the widget."""
-    return "frame-ancestors " + (" ".join(origins) if origins else "'none'")
+    """The ``Content-Security-Policy`` that lets only those origins frame the widget; a stored
+    wildcard over a public suffix is left out, as ``origin_allowed`` ignores it."""
+    framing = [
+        origin
+        for origin in origins
+        if (found := _ORIGIN.fullmatch(origin)) is None or not _over_public_suffix(found["host"])
+    ]
+    return "frame-ancestors " + (" ".join(framing) if framing else "'none'")
 
 
 @dataclass(frozen=True)
@@ -177,9 +202,12 @@ async def change_operational_settings(
     """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
     restores the default). The next request uses them. A change is recorded as an
     ``agent.operational_settings_changed`` Audit Event holding the before and after values of
-    the settings that changed; a save that changes nothing records nothing."""
+    the settings that changed; a save that changes nothing records nothing. Raises
+    ``ProjectArchivedError`` or ``AgentArchivedError`` while the Project or Agent is archived."""
     origins = None if allowed_origins is None else normalise_origins(allowed_origins)
-    agent = (await get_agent(session, scope, project_id, agent_id, lock=True)).agent
+    # An archived Agent, or one in an archived Project, is read-only until it is restored.
+    await active_project(session, scope, project_id)
+    agent = (await active_agent(session, scope, project_id, agent_id, lock=True)).agent
     before = asdict(_settings_of(agent))
     if origins is not None:
         agent.allowed_origins = origins
@@ -246,14 +274,11 @@ async def shell(
     experience = found.live.config.experience
     override = override_of(found.agent)
     public_id = found.agent.public_id
-    # The Agent's own avatar, else the Live Version's, else the Theme's default avatar.
-    avatar_url: str | None = None
-    if override.avatar is not None:
-        avatar_url = _image_url(public_id, "avatar", override.avatar)
-    elif experience.avatar_url is not None:
-        avatar_url = str(experience.avatar_url)
-    elif (theme_avatar := theme.images[ThemeImageKind.AVATAR]) is not None:
-        avatar_url = _image_url(public_id, "avatar", theme_avatar)
+    # The Agent's own avatar, else the Theme's default avatar: hosted images only. A Version's
+    # external ``experience.avatar_url`` is never served, so no Visitor's browser fetches a URL
+    # an Editor chose (the shell's ``img-src`` refuses other origins too).
+    avatar = override.avatar or theme.images[ThemeImageKind.AVATAR]
+    avatar_url = None if avatar is None else _image_url(public_id, "avatar", avatar)
     logo = theme.images[ThemeImageKind.LOGO]
     return Shell(
         public_id=found.agent.public_id,
